@@ -7,6 +7,7 @@ import static org.xcore.plugin.PluginVars.*;
 public class Config {
     public String server = "server";
     public boolean consoleEnabled = true;
+    public String globalConfigPath = null;
     public String discordBotToken = "token here";
     public long discordAdminRoleId = 0L;
 
