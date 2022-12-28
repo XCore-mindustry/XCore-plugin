@@ -1,5 +1,6 @@
 package org.xcore.plugin;
 
+import arc.files.Fi;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
