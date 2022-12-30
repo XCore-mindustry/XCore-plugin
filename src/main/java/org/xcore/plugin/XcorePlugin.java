@@ -3,28 +3,32 @@ package org.xcore.plugin;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
+import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.mod.Plugin;
+import mindustry.net.Administration;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.comp.Config;
+import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
 
 import java.util.HashSet;
 
+import static org.xcore.plugin.PluginVars.config;
+
 @SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
     public static boolean isSocketServer;
-
-    public static double ratio = 0.6;
-    public static HashSet<String> votes = new HashSet<>();
-    public static boolean rtvEnable = true;
     @Override
     public void init() {
         Config.load();
         Console.load();
         ServersConfig.load();
+        if (config.isMiniPvP()) {
+            Database.load();
+        }
         Listeners.load();
 
         info("Plugin loaded");

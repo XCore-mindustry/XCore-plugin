@@ -7,12 +7,16 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.comp.Database;
 
-import static mindustry.Vars.mods;
-import static org.xcore.plugin.XcorePlugin.*;
+import static mindustry.Vars.*;
+import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.discordURL;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {
+        handler.<Player>register("discord", "Redirects you to discord server", (args, player) -> Call.openURI(player.con, discordURL));
+
         handler.<Player>register("js", "<code...>", "Execute javascript. [red]ADMIN ONLY", (args, player) -> {
             if (!player.admin) return;
             player.sendMessage("[green]"+mods.getScripts().runConsole(args[0]));
@@ -20,15 +24,15 @@ public class ClientCommands {
 
         handler.<Player>register("rtv", "[off]", "Rock the vote to change map", (args, player) -> {
             if (player.admin()){
-                rtvEnable = args.length != 1 || !args[0].equals("off");
+                rtvEnabled = args.length != 1 || !args[0].equals("off");
             }
-            if (!rtvEnable) {
+            if (!rtvEnabled) {
                 player.sendMessage("RTV: RockTheVote is disabled");
                 return;
             }
-            votes.add(player.uuid());
-            int cur = votes.size();
-            int req = (int) Math.ceil(ratio * Groups.player.size());
+            rtvVotes.add(player.uuid());
+            int cur = rtvVotes.size();
+            int req = (int) Math.ceil(rtvRatio * Groups.player.size());
             Call.sendMessage("RTV: [accent]" + player.name + "[] wants to change the map, [green]" + cur +
                     "[] votes, [green]" + req + "[] required");
 
@@ -36,9 +40,28 @@ public class ClientCommands {
                 return;
             }
 
-            votes.clear();
+            rtvVotes.clear();
             Call.sendMessage("RTV: [green] vote passed, changing map.");
             Events.fire(new EventType.GameOverEvent(Team.crux));
         });
+        if (config.isMiniPvP()) {
+            handler.<Player>register("top", "Shows top players by wins", (args, player) -> {
+                var leaders = Database.getLeaders();
+
+                var builder = new StringBuilder();
+
+                if (leaders.isEmpty()) {
+                   builder.append("Empty.");
+                } else for (int i = 0; i < leaders.size; i++) {
+                    var data = leaders.get(i);
+                    var leader = netServer.admins.getInfo(data.uuid);
+
+                    builder.append("[orange]").append(i + 1).append(". ")
+                            .append(leader.lastName).append("[accent]: [cyan]")
+                            .append(data.wins).append("\n");
+                }
+                player.sendMessage(builder.toString());
+            });
+        }
     }
 }

@@ -11,6 +11,9 @@ public class Config {
     public String discordBotToken = "token here";
     public long discordAdminRoleId = 0L;
 
+    public boolean isMiniPvP() {
+        return server.equals("mini-pvp");
+    }
     public static void load() {
         if (configFile.exists()) {
             config = gson.fromJson(configFile.reader(), Config.class);

@@ -14,7 +14,7 @@ public class DiscordListeners extends ListenerAdapter {
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if (event.getAuthor().isBot() || !event.isFromGuild() || event.getMessage().getContentRaw().isEmpty()) return;
 
-        if (!servers.containsValue(event.getChannel().getIdLong(), false)) return;
+        if (!servers.containsValue(event.getChannel().getIdLong(), false) && !event.getMessage().getContentRaw().startsWith("/")) return;
 
         String server = servers.findKey(event.getChannel().getIdLong(), false);
 

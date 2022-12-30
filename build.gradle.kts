@@ -1,6 +1,5 @@
 
 import fr.xpdustry.toxopid.Toxopid
-import fr.xpdustry.toxopid.dsl.anukenJitpack
 import fr.xpdustry.toxopid.dsl.mindustryDependencies
 import fr.xpdustry.toxopid.spec.ModMetadata
 import fr.xpdustry.toxopid.spec.ModPlatform
@@ -34,7 +33,7 @@ val metadata = ModMetadata(
 
 repositories {
     mavenCentral()
-    anukenJitpack()
+    maven(url = "https://www.jitpack.io")
     maven(url = "https://maven.xpdustry.fr/releases")
 }
 
@@ -42,6 +41,8 @@ dependencies {
     mindustryDependencies()
 
     compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
+
+    implementation("com.github.artbits:quickio:1.1.9")
 
     implementation("com.google.code.gson:gson:2.10")
     implementation("net.dv8tion:JDA:5.0.0-beta.2")

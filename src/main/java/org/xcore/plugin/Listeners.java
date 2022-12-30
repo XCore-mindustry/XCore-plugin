@@ -7,9 +7,10 @@ import mindustry.game.EventType.*;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.discord.Bot;
 
-import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.XcorePlugin.*;
 
 public class Listeners {
@@ -61,10 +62,10 @@ public class Listeners {
 
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
-            int cur = votes.size();
-            int req = (int) Math.ceil(ratio * Groups.player.size());
-            if(votes.contains(player.uuid())) {
-                votes.remove(player.uuid());
+            int cur = rtvVotes.size();
+            int req = (int) Math.ceil(rtvRatio * Groups.player.size());
+            if(rtvVotes.contains(player.uuid())) {
+                rtvVotes.remove(player.uuid());
                 Call.sendMessage("RTV: [accent]" + player.name + "[] left, [green]" + cur + "[] votes, [green]" + req + "[] required");
             }
 
@@ -77,6 +78,17 @@ public class Listeners {
             }
         });
 
-        Events.on(GameOverEvent.class, e -> votes.clear());
+        Events.on(GameOverEvent.class, e -> {
+            rtvVotes.clear();
+            if (!config.isMiniPvP()) return;
+
+            Groups.player.each(p -> {
+                if (p.team() != e.winner) return;
+
+                var data = Database.getPlayerData(p.uuid());
+                data.wins++;
+                Database.setPlayerData(data);
+            });
+        });
     }
 }
