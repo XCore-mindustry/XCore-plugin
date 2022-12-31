@@ -32,9 +32,12 @@ public class XcorePlugin extends Plugin {
 
                 var builder = new StringBuilder();
                 var sorted = Database.cachedPlayerData.copy().values().toSeq().sort().reverse();
+                sorted.truncate(10);
+
                 builder.append("[blue]Leaderboard\n\n");
                 for (int i = 0; i < sorted.size; i++) {
                     var data = sorted.get(i);
+                    if (data.wins == 0) return;
                     builder.append("[orange]").append(i + 1)
                             .append(". ")
                             .append(data.nickname)
