@@ -1,6 +1,7 @@
 package org.xcore.plugin.commands;
 
 import arc.Events;
+import arc.struct.Seq;
 import arc.util.CommandHandler;
 import mindustry.game.EventType;
 import mindustry.game.Team;
@@ -8,6 +9,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.comp.Database;
+import org.xcore.plugin.comp.PlayerData;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
@@ -46,18 +48,16 @@ public class ClientCommands {
         });
         if (config.isMiniPvP()) {
             handler.<Player>register("top", "Shows top players by wins", (args, player) -> {
-                var leaders = Database.getLeaders();
+                Seq<PlayerData> leaders = Database.getLeaders();
 
                 var builder = new StringBuilder();
-
                 if (leaders.isEmpty()) {
                    builder.append("Empty.");
                 } else for (int i = 0; i < leaders.size; i++) {
                     var data = leaders.get(i);
-                    var leader = netServer.admins.getInfo(data.uuid);
 
                     builder.append("[orange]").append(i + 1).append(". ")
-                            .append(leader.lastName).append("[accent]: [cyan]")
+                            .append(data.nickname).append("[accent]: [cyan]")
                             .append(data.wins).append("\n");
                 }
                 player.sendMessage(builder.toString());

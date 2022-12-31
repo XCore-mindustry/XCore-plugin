@@ -51,6 +51,12 @@ public class Listeners {
         }));
 
         Events.on(PlayerJoin.class, event -> {
+            Call.openURI(event.player.con, discordURL);
+
+            if (config.isMiniPvP()) {
+                Database.cachedPlayerData.put(event.player.uuid() , Database.getPlayerData(event.player));
+            }
+
             if (isSocketServer) {
                 Bot.sendJoinLeaveEventMessage(event.player.plainName(), true);
             } else {
@@ -61,6 +67,9 @@ public class Listeners {
         });
 
         Events.on(PlayerLeave.class, event -> {
+            if (config.isMiniPvP()) {
+                Database.cachedPlayerData.remove(event.player.uuid());
+            }
             Player player = event.player;
             int cur = rtvVotes.size();
             int req = (int) Math.ceil(rtvRatio * Groups.player.size());
@@ -85,8 +94,9 @@ public class Listeners {
             Groups.player.each(p -> {
                 if (p.team() != e.winner) return;
 
-                var data = Database.getPlayerData(p.uuid());
+                var data = Database.cachedPlayerData.get(p.uuid());
                 data.wins++;
+                data.nickname = p.name;
                 Database.setPlayerData(data);
             });
         });

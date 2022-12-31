@@ -1,34 +1,72 @@
 package org.xcore.plugin.comp;
 
+import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import com.github.artbits.quickio.QuickIO;
+import arc.util.Strings;
+import mindustry.gen.Player;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
 public class Database {
-    public static QuickIO.DB db;
-
+    public static String connectionURL = "jdbc:sqlite:database.db";
+    public static ObjectMap<String, PlayerData> cachedPlayerData= new ObjectMap<>();
     public static void load() {
-        db = new QuickIO.DB("database");
-    }
-    public static PlayerData getPlayerData(String uuid) {
-        var data = db.findFirst(PlayerData.class, p -> p.uuid.equals(uuid));
-
-        if (data == null) {
-            return new PlayerData(uuid);
+        try {
+            Class.forName("org.sqlite.JDBC");
+            Connection conn = DriverManager.getConnection(connectionURL);
+            conn.createStatement().execute(
+                    "CREATE TABLE IF NOT EXISTS players (uuid TEXT, nickname TEXT, wins INTEGER, UNIQUE(uuid));"
+            );
+            conn.close();
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
 
-        return data;
+
+    }
+    public static PlayerData getPlayerData(Player player) {
+        try (Connection conn = DriverManager.getConnection(connectionURL)) {
+            var result = conn.createStatement().executeQuery(
+                    "SELECT * FROM players WHERE uuid = '" + player.uuid() + "'"
+            );
+            PlayerData data = new PlayerData(player.uuid(), player.coloredName(), 0);
+            while (result.next()) {
+                data = new PlayerData(
+                        player.uuid(),
+                        player.name,
+                        result.getInt("wins"));
+            }
+            return data;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void setPlayerData(PlayerData data) {
-        if (data.id() == 0L) {
-            db.save(data);
-        } else {
-            db.update(data, d -> data.uuid.equals(d.uuid));
+        try (Connection conn = DriverManager.getConnection(connectionURL)) {
+            conn.createStatement().execute(Strings.format(
+                    "INSERT OR REPLACE INTO players(uuid, nickname, wins) VALUES('@', '@', @)"
+                    , data.uuid, data.nickname, data.wins));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public static Seq<PlayerData> getLeaders() {
-        return Seq.with(db.find(PlayerData.class, null, options ->
-                options.sort("wins", 1).limit(10)));
+        try (Connection conn = DriverManager.getConnection(connectionURL)) {
+            var result = conn.createStatement().executeQuery("SELECT * FROM players ORDER BY wins DESC LIMIT 10");
+
+            Seq<PlayerData> datas = new Seq<>();
+            while (result.next()) {
+                datas.add(new PlayerData(result.getString("uuid"),
+                        result.getString("nickname"),
+                        result.getInt("wins")));
+            }
+            return datas;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

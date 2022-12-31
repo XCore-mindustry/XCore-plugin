@@ -42,9 +42,9 @@ dependencies {
 
     compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
 
-    implementation("com.github.artbits:quickio:1.1.9")
-
+    implementation("org.xerial:sqlite-jdbc:3.40.0.0")
     implementation("com.google.code.gson:gson:2.10")
+
     implementation("net.dv8tion:JDA:5.0.0-beta.2")
 
     implementation("org.jline:jline-reader:3.21.0")

@@ -1,17 +1,23 @@
 package org.xcore.plugin.comp;
 
-import com.github.artbits.quickio.QuickIO;
+import org.jetbrains.annotations.NotNull;
 
-public class PlayerData extends QuickIO.Object {
+public class PlayerData implements Comparable<PlayerData>{
     public String uuid;
-    public Integer wins = 0;
+    public String nickname;
+    public Integer wins;
 
-    public PlayerData(String uuid) {
+    public PlayerData(String uuid, String nickname, Integer wins) {
         this.uuid = uuid;
+        this.nickname = nickname;
+        this.wins = wins;
     }
 
-    public PlayerData(String uuid, Integer wins) {
-        this.uuid = uuid;
-        this.wins = wins;
+    @Override
+    public int compareTo(@NotNull PlayerData data) {
+        if (wins == null || data.wins == null) {
+            return 0;
+        }
+        return wins.compareTo(data.wins);
     }
 }
