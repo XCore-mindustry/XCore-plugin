@@ -37,16 +37,17 @@ public class XcorePlugin extends Plugin {
                 builder.append("[blue]Leaderboard\n\n");
                 for (int i = 0; i < sorted.size; i++) {
                     var data = sorted.get(i);
-                    if (data.rating == 0) return;
-                    builder.append("[orange]").append(i + 1)
-                            .append(". ")
-                            .append(data.nickname)
-                            .append(":[cyan] ")
-                            .append(data.wins).append(" []wins\n");
+                    if (data.rating != 0) {
+                        builder.append("[orange]").append(i + 1)
+                                .append(". ")
+                                .append(data.nickname)
+                                .append(":[cyan] ")
+                                .append(data.rating).append(" []wins\n");
+                    }
                 }
                 Groups.player.each(player -> Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0));
             }, 0f, 5f);
-            Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).wins + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
+            Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
         }
         Listeners.load();
         info("Plugin loaded");
