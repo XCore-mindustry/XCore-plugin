@@ -5,19 +5,19 @@ import org.jetbrains.annotations.NotNull;
 public class PlayerData implements Comparable<PlayerData>{
     public String uuid;
     public String nickname;
-    public Integer wins;
+    public Integer rating;
 
-    public PlayerData(String uuid, String nickname, Integer wins) {
+    public PlayerData(String uuid, String nickname, Integer rating) {
         this.uuid = uuid;
         this.nickname = nickname;
-        this.wins = wins;
+        this.rating = rating;
     }
 
     @Override
     public int compareTo(@NotNull PlayerData data) {
-        if (wins == null || data.wins == null) {
+        if (rating == null || data.rating == null) {
             return 0;
         }
-        return wins.compareTo(data.wins);
+        return rating.compareTo(data.rating);
     }
 }

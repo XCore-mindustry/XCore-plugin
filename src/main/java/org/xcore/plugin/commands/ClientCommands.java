@@ -58,7 +58,7 @@ public class ClientCommands {
 
                     builder.append("[orange]").append(i + 1).append(". ")
                             .append(data.nickname).append("[accent]: [cyan]")
-                            .append(data.wins).append("\n");
+                            .append(data.rating).append("\n");
                 }
                 player.sendMessage(builder.toString());
             });

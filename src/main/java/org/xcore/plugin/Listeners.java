@@ -91,12 +91,29 @@ public class Listeners {
             rtvVotes.clear();
             if (!config.isMiniPvP()) return;
 
-            Groups.player.each(p -> {
-                if (p.team() != e.winner) return;
+            e.winner.data().players.each(p -> {
+                var data = Database.cachedPlayerData.get(p.uuid());
+
+                int increased = 100 / e.winner.data().players.size;
+                data.rating += increased;
+                p.sendMessage("Your team has won. Your rating has increased by " + increased);
+                Database.setPlayerData(data);
+            });
+
+            Groups.player.each(p-> {
+                if (p.team() == e.winner) return;
 
                 var data = Database.cachedPlayerData.get(p.uuid());
-                data.wins++;
-                data.nickname = p.name;
+
+                int reduced = 50 / e.winner.data().players.size;
+
+                if ((data.rating - reduced) < 0) {
+                    data.rating = 0;
+                    p.sendMessage("Your team lost. Your rating is 0" );
+                } else {
+                    data.rating -= reduced;
+                }
+                p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
                 Database.setPlayerData(data);
             });
         });

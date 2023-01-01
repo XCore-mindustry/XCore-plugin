@@ -17,7 +17,7 @@ public class Database {
             Class.forName("org.sqlite.JDBC");
             Connection conn = DriverManager.getConnection(connectionURL);
             conn.createStatement().execute(
-                    "CREATE TABLE IF NOT EXISTS players (uuid TEXT, nickname TEXT, wins INTEGER, UNIQUE(uuid));"
+                    "CREATE TABLE IF NOT EXISTS players (uuid TEXT, nickname TEXT, rating INTEGER, UNIQUE(uuid));"
             );
             conn.close();
         } catch (SQLException | ClassNotFoundException e) {
@@ -36,7 +36,7 @@ public class Database {
                 data = new PlayerData(
                         player.uuid(),
                         player.name,
-                        result.getInt("wins"));
+                        result.getInt("rating"));
             }
             return data;
         } catch (SQLException e) {
@@ -47,8 +47,8 @@ public class Database {
     public static void setPlayerData(PlayerData data) {
         try (Connection conn = DriverManager.getConnection(connectionURL)) {
             conn.createStatement().execute(Strings.format(
-                    "INSERT OR REPLACE INTO players(uuid, nickname, wins) VALUES('@', '@', @)"
-                    , data.uuid, data.nickname, data.wins));
+                    "INSERT OR REPLACE INTO players(uuid, nickname, rating) VALUES('@', '@', @)"
+                    , data.uuid, data.nickname, data.rating));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -56,13 +56,13 @@ public class Database {
 
     public static Seq<PlayerData> getLeaders() {
         try (Connection conn = DriverManager.getConnection(connectionURL)) {
-            var result = conn.createStatement().executeQuery("SELECT * FROM players ORDER BY wins DESC LIMIT 10");
+            var result = conn.createStatement().executeQuery("SELECT * FROM players ORDER BY rating DESC LIMIT 10");
 
             Seq<PlayerData> datas = new Seq<>();
             while (result.next()) {
                 datas.add(new PlayerData(result.getString("uuid"),
                         result.getString("nickname"),
-                        result.getInt("wins")));
+                        result.getInt("rating")));
             }
             return datas;
         } catch (SQLException e) {
