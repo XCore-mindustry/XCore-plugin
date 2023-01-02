@@ -1,5 +1,6 @@
 package org.xcore.plugin;
 
+import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
@@ -12,6 +13,7 @@ import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.comp.Config;
 import org.xcore.plugin.comp.Database;
+import org.xcore.plugin.comp.PlayerData;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
 
@@ -31,7 +33,7 @@ public class XcorePlugin extends Plugin {
                 if (Groups.player.isEmpty()) return;
 
                 var builder = new StringBuilder();
-                var sorted = Database.cachedPlayerData.copy().values().toSeq().sort().reverse();
+                Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().sort().reverse();
                 sorted.truncate(10);
 
                 builder.append("[blue]Leaderboard\n\n");
@@ -42,7 +44,7 @@ public class XcorePlugin extends Plugin {
                                 .append(". ")
                                 .append(data.nickname)
                                 .append(":[cyan] ")
-                                .append(data.rating).append(" []wins\n");
+                                .append(data.rating).append(" []rating\n");
                     }
                 }
                 Groups.player.each(player -> Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0));

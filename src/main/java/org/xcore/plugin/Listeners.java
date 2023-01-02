@@ -42,6 +42,8 @@ public class Listeners {
         });
 
         Events.on(PlayerChatEvent.class, (event -> {
+            if (event.message.startsWith("/")) return;
+
             if (isSocketServer) {
                 Bot.sendMessageEventMessage(event.player.plainName(), event.message);
             } else {
