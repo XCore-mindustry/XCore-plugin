@@ -92,7 +92,7 @@ public class Listeners {
 
         Events.on(GameOverEvent.class, e -> {
             rtvVotes.clear();
-            if (!config.isMiniPvP() && e.winner == Team.derelict) return;
+            if (!config.isMiniPvP() && !(e.winner == Team.derelict)) return;
 
             e.winner.data().players.each(p -> {
                 var data = Database.cachedPlayerData.get(p.uuid());
