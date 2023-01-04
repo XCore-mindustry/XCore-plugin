@@ -17,6 +17,7 @@ import org.xcore.plugin.comp.PlayerData;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
 
+import static mindustry.Vars.maps;
 import static org.xcore.plugin.PluginVars.config;
 
 @SuppressWarnings("unused")
@@ -52,6 +53,9 @@ public class XcorePlugin extends Plugin {
             Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
         }
         Listeners.load();
+
+        maps.setMapProvider((mode, map) -> maps.customMaps().random(map));
+
         info("Plugin loaded");
     }
     @Override

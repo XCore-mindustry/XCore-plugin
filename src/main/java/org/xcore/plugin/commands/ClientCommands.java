@@ -44,7 +44,7 @@ public class ClientCommands {
 
             rtvVotes.clear();
             Call.sendMessage("RTV: [green] vote passed, changing map.");
-            Events.fire(new EventType.GameOverEvent(Team.crux));
+            Events.fire(new EventType.GameOverEvent(Team.derelict));
         });
         if (config.isMiniPvP()) {
             handler.<Player>register("top", "Shows top players by wins", (args, player) -> {

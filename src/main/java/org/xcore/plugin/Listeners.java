@@ -4,6 +4,7 @@ import arc.Events;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType.*;
+import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
@@ -91,7 +92,7 @@ public class Listeners {
 
         Events.on(GameOverEvent.class, e -> {
             rtvVotes.clear();
-            if (!config.isMiniPvP()) return;
+            if (!config.isMiniPvP() && e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
                 var data = Database.cachedPlayerData.get(p.uuid());
