@@ -1,6 +1,7 @@
 package org.xcore.plugin;
 
 import arc.files.Fi;
+import arc.util.CommandHandler;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -21,6 +22,8 @@ public class PluginVars {
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
+
+    public static CommandHandler serverCommands;
 
     public static double rtvRatio = 0.6;
     public static HashSet<String> rtvVotes = new HashSet<>();

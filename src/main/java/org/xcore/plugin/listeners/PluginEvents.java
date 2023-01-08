@@ -3,11 +3,13 @@ package org.xcore.plugin.listeners;
 import arc.Events;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
+import mindustry.game.EventType;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.discord.Bot;
@@ -103,25 +105,33 @@ public class PluginEvents {
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
                 Database.setPlayerData(data);
             });
+        });
 
-            Groups.player.each(p-> {
-                if (p.team() == e.winner) return;
+        Events.on(EventType.BlockDestroyEvent.class, event -> {
+            if (!config.isMiniPvP()) return;
 
-                var data = Database.cachedPlayerData.get(p.uuid());
+            var team = event.tile.team();
 
-                int reduced = 50 / e.winner.data().players.size + 1;
+            if (event.tile.block() instanceof CoreBlock) {
+                if (team != Team.derelict && team.cores().size <= 1) {
+                    team.data().players.each(p -> {
+                        var data = Database.cachedPlayerData.get(p.uuid());
 
-                if ((data.rating - reduced) < 0) {
-                    data.rating = 0;
-                    p.sendMessage("Your team lost. Your rating is 0");
-                    return;
-                } else {
-                    data.rating -= reduced;
-                    p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
+                        int reduced = 100 / Groups.player.count(_p->_p.team() != team) + 1;
+
+                        if ((data.rating - reduced) < 0) {
+                            data.rating = 0;
+                            p.sendMessage("Your team lost. Your rating is 0");
+                        } else {
+                            data.rating -= reduced;
+                            p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
+                        }
+
+                        Database.setPlayerData(data);
+                        Database.cachedPlayerData.put(p.uuid(), data);
+                    });
                 }
-
-                Database.setPlayerData(data);
-            });
+            }
         });
     }
 }

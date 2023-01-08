@@ -25,6 +25,7 @@ import org.xcore.plugin.listeners.PluginEvents;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.serverCommands;
 
 @SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
@@ -32,6 +33,7 @@ public class XcorePlugin extends Plugin {
     @Override
     public void init() {
         Config.load();
+        ServerCommands.register(serverCommands);
         Console.load();
         ServersConfig.load();
         if (config.isMiniPvP()) {
@@ -57,7 +59,7 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void registerServerCommands(CommandHandler handler) {
-        ServerCommands.register(handler);
+        serverCommands = handler;
     }
 
     public static void info(String text, Object... values) {

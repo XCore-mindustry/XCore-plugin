@@ -1,5 +1,6 @@
 package org.xcore.plugin.comp;
 
+import mindustry.net.Administration;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.*;
@@ -22,5 +23,7 @@ public class Config {
             configFile.writeString(gson.toJson(config = new Config()));
             XcorePlugin.info("Config generated.");
         }
+
+        Administration.Config.packetSpamLimit.set(0);
     }
 }

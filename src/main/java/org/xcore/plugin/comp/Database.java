@@ -23,20 +23,22 @@ public class Database {
         } catch (SQLException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-
-
     }
+
     public static PlayerData getPlayerData(Player player) {
+        return getPlayerData(player.uuid());
+    }
+    public static PlayerData getPlayerData(String uuid) {
         try (Connection conn = DriverManager.getConnection(connectionURL)) {
             var result = conn.createStatement().executeQuery(
-                    "SELECT * FROM players WHERE uuid = '" + player.uuid() + "'"
+                    "SELECT * FROM players WHERE uuid = '" + uuid + "'"
             );
-            PlayerData data = new PlayerData(player.uuid(), player.coloredName(), 0);
+            PlayerData data = new PlayerData(uuid, "<unknown>", 0, false);
             while (result.next()) {
                 data = new PlayerData(
-                        player.uuid(),
-                        player.name,
-                        result.getInt("rating"));
+                        uuid,
+                        result.getString("nickname"),
+                        result.getInt("rating"), true);
             }
             return data;
         } catch (SQLException e) {
@@ -62,7 +64,7 @@ public class Database {
             while (result.next()) {
                 datas.add(new PlayerData(result.getString("uuid"),
                         result.getString("nickname"),
-                        result.getInt("rating")));
+                        result.getInt("rating"), true));
             }
             return datas;
         } catch (SQLException e) {
