@@ -24,7 +24,10 @@ public class NetHandlers {
 
         switch (action) {
             case kick -> other.kick(Packets.KickReason.kick);
-            case ban -> netServer.admins.banPlayerID(other.uuid());
+            case ban -> {
+                other.kick(Packets.KickReason.banned);
+                netServer.admins.banPlayerID(other.uuid());
+            }
             case trace -> {
                 var info = other.getInfo();
                 Call.traceInfo(con, other, new Administration.TraceInfo(other.ip(), other.uuid(), other.con.modclient, other.con.mobile, info.timesJoined, info.timesKicked));
