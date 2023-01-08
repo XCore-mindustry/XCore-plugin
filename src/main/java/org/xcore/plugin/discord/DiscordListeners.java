@@ -4,7 +4,7 @@ import fr.xpdustry.javelin.JavelinPlugin;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
-import org.xcore.plugin.SocketEvents;
+import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.config;

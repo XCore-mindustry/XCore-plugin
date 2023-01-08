@@ -1,4 +1,4 @@
-package org.xcore.plugin;
+package org.xcore.plugin.listeners;
 
 import arc.Events;
 import fr.xpdustry.javelin.JavelinConfig;
@@ -8,13 +8,14 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.discord.Bot;
 
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.XcorePlugin.*;
 
-public class Listeners {
+public class PluginEvents {
     public static void load() {
         Events.on(ServerLoadEvent.class, event -> {
             isSocketServer = JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
@@ -92,12 +93,12 @@ public class Listeners {
 
         Events.on(GameOverEvent.class, e -> {
             rtvVotes.clear();
-            if (!config.isMiniPvP() && !(e.winner == Team.derelict)) return;
+            if (!config.isMiniPvP() || e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
                 var data = Database.cachedPlayerData.get(p.uuid());
 
-                int increased = 100 / e.winner.data().players.size;
+                int increased = 100 / e.winner.data().players.size + 1;
                 data.rating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
                 Database.setPlayerData(data);
@@ -108,15 +109,17 @@ public class Listeners {
 
                 var data = Database.cachedPlayerData.get(p.uuid());
 
-                int reduced = 50 / e.winner.data().players.size;
+                int reduced = 50 / e.winner.data().players.size + 1;
 
                 if ((data.rating - reduced) < 0) {
                     data.rating = 0;
-                    p.sendMessage("Your team lost. Your rating is 0" );
+                    p.sendMessage("Your team lost. Your rating is 0");
+                    return;
                 } else {
                     data.rating -= reduced;
+                    p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
                 }
-                p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
+
                 Database.setPlayerData(data);
             });
         });

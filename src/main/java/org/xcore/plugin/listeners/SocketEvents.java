@@ -1,4 +1,4 @@
-package org.xcore.plugin;
+package org.xcore.plugin.listeners;
 
 import fr.xpdustry.javelin.JavelinEvent;
 

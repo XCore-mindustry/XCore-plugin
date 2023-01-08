@@ -1,23 +1,29 @@
 package org.xcore.plugin;
 
-import arc.struct.Seq;
+import arc.Events;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
 import mindustry.Vars;
+import mindustry.game.EventType;
+import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
+import mindustry.gen.Player;
 import mindustry.mod.Plugin;
+import mindustry.net.Administration;
+import mindustry.net.Packets;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.comp.Config;
 import org.xcore.plugin.comp.Database;
-import org.xcore.plugin.comp.PlayerData;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
+import org.xcore.plugin.listeners.NetHandlers;
+import org.xcore.plugin.listeners.PluginEvents;
 
-import static mindustry.Vars.maps;
+import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.config;
 
 @SuppressWarnings("unused")
@@ -32,28 +38,14 @@ public class XcorePlugin extends Plugin {
             Database.load();
             Timer.schedule(() -> {
                 if (Groups.player.isEmpty()) return;
-
-                var builder = new StringBuilder();
-                Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().sort().reverse();
-                sorted.truncate(10);
-
-                builder.append("[blue]Leaderboard\n\n");
-                for (int i = 0; i < sorted.size; i++) {
-                    var data = sorted.get(i);
-                    if (data.rating != 0) {
-                        builder.append("[orange]").append(i + 1)
-                                .append(". ")
-                                .append(data.nickname)
-                                .append(":[cyan] ")
-                                .append(data.rating).append(" []rating\n");
-                    }
-                }
-                Groups.player.each(player -> Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0));
+                Groups.player.each(player -> Call.infoPopup(player.con, Utils.getLeaderboard(), 5f, 8, 0, 2, 50, 0));
             }, 0f, 5f);
+
             Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
         }
-        Listeners.load();
+        PluginEvents.load();
 
+        Vars.net.handleServer(AdminRequestCallPacket.class, NetHandlers::adminRequest);
         maps.setMapProvider((mode, map) -> maps.customMaps().random(map));
 
         info("Plugin loaded");
