@@ -1,26 +1,19 @@
 package org.xcore.plugin;
 
-import arc.Events;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
 import mindustry.Vars;
-import mindustry.game.EventType;
-import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.gen.Player;
 import mindustry.mod.Plugin;
-import mindustry.net.Administration;
-import mindustry.net.Packets;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.comp.Config;
 import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
-import org.xcore.plugin.listeners.NetHandlers;
 import org.xcore.plugin.listeners.PluginEvents;
 
 import static mindustry.Vars.*;
@@ -46,8 +39,6 @@ public class XcorePlugin extends Plugin {
             Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
         }
         PluginEvents.load();
-
-        Vars.net.handleServer(AdminRequestCallPacket.class, NetHandlers::adminRequest);
         maps.setMapProvider((mode, map) -> maps.customMaps().random(map));
 
         info("Plugin loaded");
