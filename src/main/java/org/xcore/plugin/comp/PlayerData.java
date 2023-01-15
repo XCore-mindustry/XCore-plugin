@@ -8,6 +8,11 @@ public class PlayerData implements Comparable<PlayerData>{
     public Integer rating;
     public Boolean exists;
 
+    public PlayerData setNickname(String nickname) {
+        this.nickname = nickname;
+        return this;
+    }
+
     public PlayerData(String uuid, String nickname, Integer rating, Boolean exists) {
         this.uuid = uuid;
         this.nickname = nickname;

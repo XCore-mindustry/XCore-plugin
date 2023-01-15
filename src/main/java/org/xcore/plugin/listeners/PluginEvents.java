@@ -60,7 +60,8 @@ public class PluginEvents {
             Call.openURI(event.player.con, discordURL);
 
             if (config.isMiniPvP()) {
-                Database.cachedPlayerData.put(event.player.uuid() , Database.getPlayerData(event.player));
+                Database.cachedPlayerData.put(event.player.uuid() , Database.getPlayerData(event.player)
+                        .setNickname(event.player.coloredName()));
             }
 
             if (isSocketServer) {
@@ -85,10 +86,10 @@ public class PluginEvents {
             }
 
             if (isSocketServer) {
-                Bot.sendJoinLeaveEventMessage(event.player.plainName(), false);
+                Bot.sendJoinLeaveEventMessage(player.plainName(), false);
             } else {
                 JavelinPlugin.getJavelinSocket().sendEvent(
-                        new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, false)
+                        new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false)
                 );
             }
         });
@@ -103,7 +104,9 @@ public class PluginEvents {
                 int increased = 100 / e.winner.data().players.size + 1;
                 data.rating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
+
                 Database.setPlayerData(data);
+                Database.cachedPlayerData.put(p.uuid(), data);
             });
         });
 
