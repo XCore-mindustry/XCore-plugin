@@ -1,6 +1,7 @@
 package org.xcore.plugin.listeners;
 
 import arc.Events;
+import arc.util.Log;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType;
@@ -104,6 +105,7 @@ public class PluginEvents {
                 int increased = 100 / e.winner.data().players.size + 1;
                 data.rating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
+                Log.info("@ rating increased by @", p.plainName(), increased);
 
                 Database.setPlayerData(data);
                 Database.cachedPlayerData.put(p.uuid(), data);
@@ -120,7 +122,7 @@ public class PluginEvents {
                     team.data().players.each(p -> {
                         var data = Database.cachedPlayerData.get(p.uuid());
 
-                        int reduced = 100 / Groups.player.count(_p->_p.team() != team) + 1;
+                        int reduced = 200 / Groups.player.count(_p->_p.team() != team) + 1;
 
                         if ((data.rating - reduced) < 0) {
                             data.rating = 0;
@@ -129,6 +131,7 @@ public class PluginEvents {
                             data.rating -= reduced;
                             p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
                         }
+                        Log.info("@ rating reduced by @", p.plainName(), reduced);
 
                         Database.setPlayerData(data);
                         Database.cachedPlayerData.put(p.uuid(), data);
