@@ -67,7 +67,7 @@ tasks.withType<JavaCompile> {
 }
 
 // Required for the GitHub actions
-tasks.register("getArtifactPath") {
+tasks.register("getProjectVersion") {
     doLast { println(project.version.toString()) }
 }
 
