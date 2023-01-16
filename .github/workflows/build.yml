@@ -25,7 +25,7 @@ jobs:
     - name: Get New Release Tag
       id: new-release-tag
       run: |
-        tag=$(cat src/main/resources/plugin.json | grep "version*" | cut -d ":" -f 2,3 | tr -d \"," ")
+        tag=$(./gradlew getProjectVersion)
         echo '::set-output name=tag::'$tag
     - name: Check Release Tag
       id: check-release-tag
