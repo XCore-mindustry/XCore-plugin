@@ -102,7 +102,7 @@ public class PluginEvents {
             e.winner.data().players.each(p -> {
                 var data = Database.cachedPlayerData.get(p.uuid());
 
-                int increased = 100 / e.winner.data().players.size + 1;
+                int increased = 150 / e.winner.data().players.size + 1;
                 data.rating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
@@ -122,7 +122,7 @@ public class PluginEvents {
                     team.data().players.each(p -> {
                         var data = Database.cachedPlayerData.get(p.uuid());
 
-                        int reduced = 200 / Groups.player.count(_p->_p.team() != team) + 1;
+                        int reduced = 100 / Groups.player.count(_p->_p.team() != team) + 1;
 
                         if ((data.rating - reduced) < 0) {
                             data.rating = 0;
