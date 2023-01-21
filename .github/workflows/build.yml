@@ -22,3 +22,37 @@ jobs:
       with:
         name: ${{ github.event.repository.name }}
         path: build/libs/XCore-plugin-*.jar
+    - name: Get New Release Tag
+      id: new-release-tag
+      run: |
+        tag=$(./gradlew getProjectVersion -q)
+        echo '::set-output name=tag::'$tag
+    - name: Check Release Tag
+      id: check-release-tag
+      uses: mukunku/tag-exists-action@v1.2.0
+      with:
+        tag: ${{ steps.new-release-tag.outputs.tag }}
+
+    - name: Create Release
+      id: create-release
+
+      if: ${{ steps.check-release-tag.outputs.exists == 'false' }}
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.new-release-tag.outputs.tag }}
+        release_name: Release ${{ steps.new-release-tag.outputs.tag }}
+
+    - name: Upload Release Assets
+      id: upload-release-assets
+
+      if: ${{ steps.check-release-tag.outputs.exists == 'false' }}
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./build/libs/XCore-plugin-${{ steps.new-release-tag.outputs.tag }}.jar
+        asset_name: XCore-plugin-${{ steps.new-release-tag.outputs.tag }}.jar
+        asset_content_type: application/java-archive

@@ -66,6 +66,11 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
+// Required for the GitHub actions
+tasks.register("getProjectVersion") {
+    doLast { println(project.version.toString()) }
+}
+
 tasks.register("runMainServer", MindustryExec::class.java) {
     group = Toxopid.TASK_GROUP_NAME
     classpath(tasks.downloadMindustryServer)
