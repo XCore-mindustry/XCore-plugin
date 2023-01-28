@@ -49,6 +49,7 @@ public class ClientCommands {
         if (config.isMiniPvP()) {
             handler.<Player>register("spectate", "Spectate.", (args, player) -> {
                 player.team(Team.derelict);
+                player.unit().kill();
                 player.sendMessage("You are now spectating.");
             });
 
