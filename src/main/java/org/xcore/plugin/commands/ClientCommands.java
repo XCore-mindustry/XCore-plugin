@@ -48,7 +48,7 @@ public class ClientCommands {
         });
         if (config.isMiniPvP()) {
             handler.<Player>register("spectate", "Spectate.", (args, player) -> {
-                player.team(Team.derelict)
+                player.team(Team.derelict);
                 player.sendMessage("You are now spectating.");
             });
 
