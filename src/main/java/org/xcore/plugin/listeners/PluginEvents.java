@@ -1,9 +1,11 @@
 package org.xcore.plugin.listeners;
 
+import arc.Core;
 import arc.Events;
 import arc.util.Log;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
+import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
@@ -14,6 +16,7 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.discord.Bot;
+import org.xcore.plugin.menus.TeamSelectMenu;
 
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.XcorePlugin.*;
@@ -102,7 +105,7 @@ public class PluginEvents {
             e.winner.data().players.each(p -> {
                 var data = Database.cachedPlayerData.get(p.uuid());
 
-                int increased = 150 / e.winner.data().players.size + 1;
+                int increased = 150 / (e.winner.data().players.size + 1);
                 data.rating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
@@ -111,18 +114,20 @@ public class PluginEvents {
                 Database.cachedPlayerData.put(p.uuid(), data);
             });
         });
-
+        if (!config.isMiniPvP()) return;
         Events.on(EventType.BlockDestroyEvent.class, event -> {
-            if (!config.isMiniPvP()) return;
-
             var team = event.tile.team();
 
             if (event.tile.block() instanceof CoreBlock) {
                 if (team != Team.derelict && team.cores().size <= 1) {
                     team.data().players.each(p -> {
+                        Core.app.post(() -> {
+                            if (Vars.state.teams.getActive().size != 1) TeamSelectMenu.show(p);
+                        });
+
                         var data = Database.cachedPlayerData.get(p.uuid());
 
-                        int reduced = 100 / Groups.player.count(_p->_p.team() != team) + 1;
+                        int reduced = 100 / (Groups.player.count(_p->_p.team() != team) + 1);
 
                         if ((data.rating - reduced) < 0) {
                             data.rating = 0;

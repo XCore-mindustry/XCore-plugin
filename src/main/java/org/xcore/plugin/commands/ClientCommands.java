@@ -47,6 +47,11 @@ public class ClientCommands {
             Events.fire(new EventType.GameOverEvent(Team.derelict));
         });
         if (config.isMiniPvP()) {
+            handler.<Player>register("spectate", "Spectate.", (args, player) -> {
+                player.team(Team.derelict)
+                player.sendMessage("You are now spectating.");
+            });
+
             handler.<Player>register("top", "Shows top players by wins", (args, player) -> {
                 Seq<PlayerData> leaders = Database.getLeaders();
 

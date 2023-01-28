@@ -12,7 +12,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "1.0"
-val mindustryVersion = "140.4"
+val mindustryVersion = "141.3"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -40,6 +40,7 @@ repositories {
 dependencies {
     mindustryDependencies()
 
+    implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
     compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
 
     implementation("org.xerial:sqlite-jdbc:3.40.0.0")

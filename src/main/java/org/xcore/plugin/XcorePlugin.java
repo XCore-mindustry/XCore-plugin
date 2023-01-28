@@ -15,10 +15,12 @@ import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.comp.ServersConfig;
 import org.xcore.plugin.features.Console;
 import org.xcore.plugin.listeners.PluginEvents;
+import org.xcore.plugin.menus.TeamSelectMenu;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.serverCommands;
+import static org.xcore.plugin.Utils.getAvailableMaps;
 
 @SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
@@ -29,6 +31,8 @@ public class XcorePlugin extends Plugin {
         ServerCommands.register(serverCommands);
         Console.load();
         ServersConfig.load();
+        TeamSelectMenu.load();
+
         if (config.isMiniPvP()) {
             Database.load();
             Timer.schedule(() -> {
@@ -38,8 +42,9 @@ public class XcorePlugin extends Plugin {
 
             Vars.netServer.chatFormatter = (player, message) -> player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
         }
+
         PluginEvents.load();
-        maps.setMapProvider((mode, map) -> maps.customMaps().random(map));
+        maps.setMapProvider((mode, map) -> getAvailableMaps().random(map));
 
         info("Plugin loaded");
     }

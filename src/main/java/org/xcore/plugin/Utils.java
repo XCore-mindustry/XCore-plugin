@@ -1,8 +1,13 @@
 package org.xcore.plugin;
 
 import arc.struct.Seq;
+import arc.util.Strings;
+import mindustry.game.Team;
+import mindustry.maps.Map;
 import org.xcore.plugin.comp.Database;
 import org.xcore.plugin.comp.PlayerData;
+
+import static mindustry.Vars.maps;
 
 public class Utils {
     public static String getLeaderboard() {
@@ -23,5 +28,13 @@ public class Utils {
         }
 
         return builder.toString();
+    }
+
+    public static Seq<Map> getAvailableMaps() {
+        return maps.customMaps().isEmpty() ? maps.defaultMaps() : maps.customMaps();
+    }
+
+    public static String colorizedTeam(Team team) {
+        return Strings.format("[#@]@", team.color, team);
     }
 }
