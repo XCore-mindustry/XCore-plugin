@@ -10,6 +10,7 @@ public class Config {
     public String globalConfigDirectory = null;
     public String discordBotToken = "token here";
     public long discordAdminRoleId = 0L;
+    public long discordBansChannelId;
 
     public boolean isMiniPvP() {
         return server.equals("mini-pvp");

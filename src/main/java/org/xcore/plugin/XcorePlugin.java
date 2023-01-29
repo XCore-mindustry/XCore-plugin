@@ -3,10 +3,16 @@ package org.xcore.plugin;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
+import mindustry.Vars;
+import mindustry.game.Gamemode;
+import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
+import mindustry.maps.Map;
+import mindustry.maps.Maps.*;
 import mindustry.mod.Plugin;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
+import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.ServersConfig;
 import org.xcore.plugin.modules.Console;
@@ -33,6 +39,15 @@ public class XcorePlugin extends Plugin {
         PluginEvents.load();
 
         maps.setMapProvider((mode, map) -> getAvailableMaps().random(map));
+        maps.setMapProvider(new MapProvider() {
+            public int lastMapID;
+            @Override
+            public Map next(Gamemode mode, Map previous) {
+                var allmaps = getAvailableMaps();
+                return allmaps.any() ? allmaps.get(lastMapID++ % allmaps.size) : null;
+            }
+        });
+        Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
 
         info("Plugin loaded");
     }

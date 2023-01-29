@@ -29,6 +29,9 @@ public class PluginEvents {
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName, e.server, e.join));
+
+                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.BanEvent.class, e ->
+                        Bot.sendBanEvent(e.targetName, e.adminName, e.server));
             } else {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
                     if (!e.server.equals(config.server)) return;
@@ -80,6 +83,7 @@ public class PluginEvents {
                 );
             }
         });
+
         Events.on(GameOverEvent.class, e -> rtvVotes.clear());
     }
 }

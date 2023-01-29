@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "1.2.1"
+version = "1.3"
 val mindustryVersion = "141.3"
 
 toxopid {
@@ -46,7 +46,7 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.40.0.0")
     implementation("com.google.code.gson:gson:2.10")
 
-    implementation("net.dv8tion:JDA:5.0.0-beta.2")
+    implementation("net.dv8tion:JDA:5.0.0-alpha.21")
 
     implementation("org.jline:jline-reader:3.21.0")
     implementation("org.jline:jline-console:3.21.0")

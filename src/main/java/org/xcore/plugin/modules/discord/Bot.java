@@ -1,11 +1,15 @@
 package org.xcore.plugin.modules.discord;
 
 import arc.util.Strings;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.xcore.plugin.XcorePlugin;
+
+import java.awt.*;
 
 import static net.dv8tion.jda.api.requests.GatewayIntent.GUILD_MEMBERS;
 import static net.dv8tion.jda.api.requests.GatewayIntent.MESSAGE_CONTENT;
@@ -14,6 +18,7 @@ import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
     public static JDA jda;
+    public static TextChannel bansChannel;
     public static Role adminRole;
 
     public static boolean isConnected = false;
@@ -25,6 +30,8 @@ public class Bot {
                     .build()
                     .awaitReady();
 
+
+            bansChannel = jda.getTextChannelById(config.discordBansChannelId);
             adminRole = jda.getRoleById(config.discordAdminRoleId);
             isConnected = true;
         } catch (Exception e) {
@@ -64,5 +71,18 @@ public class Bot {
         getServerLogChannel(server).sendMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
         ).queue();
+    }
+    public static void sendBanEvent(String targetName, String adminName) {
+        sendBanEvent(targetName, adminName, config.server);
+    }
+    public static void sendBanEvent(String targetName, String adminName, String server) {
+        if (!isConnected) return;
+
+        EmbedBuilder embed = new EmbedBuilder().setTitle("Бан")
+                .setColor(Color.red)
+                .addField("Violator", targetName, false)
+                .addField("Admin", adminName, false)
+                .addField("Server", server, false);
+        bansChannel.sendMessageEmbeds(embed.build()).addActionRow(Button.danger("editban", "Edit reason and date")).queue();
     }
 }
