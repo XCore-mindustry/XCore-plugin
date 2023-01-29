@@ -25,8 +25,8 @@ public class Bot {
                     .build()
                     .awaitReady();
 
-            isConnected = true;
             adminRole = jda.getRoleById(config.discordAdminRoleId);
+            isConnected = true;
         } catch (Exception e) {
             XcorePlugin.err("Error while connecting to discord: ");
             e.printStackTrace();
@@ -41,6 +41,7 @@ public class Bot {
     }
 
     public static void sendMessageEventMessage(String playerName, String message, String server) {
+        if (!isConnected) return;
         getServerLogChannel(server).sendMessage(
                 Strings.format("`@: @`", playerName, message)
         ).queue();
@@ -50,6 +51,7 @@ public class Bot {
         sendServerAction(message, config.server);
     }
     public static void sendServerAction(String message, String server) {
+        if (!isConnected) return;
         getServerLogChannel(server).sendMessage(message).queue();
     }
 
@@ -58,6 +60,7 @@ public class Bot {
     }
 
     public static void sendJoinLeaveEventMessage(String playerName, String server, Boolean join) {
+        if (!isConnected) return;
         getServerLogChannel(server).sendMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
         ).queue();
