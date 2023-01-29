@@ -8,8 +8,8 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.comp.Database;
-import org.xcore.plugin.comp.PlayerData;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.models.PlayerData;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;

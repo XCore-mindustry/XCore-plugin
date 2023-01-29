@@ -4,8 +4,8 @@ import arc.struct.Seq;
 import arc.util.Strings;
 import mindustry.game.Team;
 import mindustry.maps.Map;
-import org.xcore.plugin.comp.Database;
-import org.xcore.plugin.comp.PlayerData;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.models.PlayerData;
 
 import static mindustry.Vars.maps;
 

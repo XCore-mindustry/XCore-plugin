@@ -2,10 +2,10 @@ package org.xcore.plugin.commands;
 
 import arc.util.CommandHandler;
 import arc.util.Log;
-import org.xcore.plugin.comp.Config;
+import org.xcore.plugin.modules.Config;
 import mindustry.net.Administration.PlayerInfo;
-import org.xcore.plugin.comp.Database;
-import org.xcore.plugin.comp.PlayerData;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.models.PlayerData;
 
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;

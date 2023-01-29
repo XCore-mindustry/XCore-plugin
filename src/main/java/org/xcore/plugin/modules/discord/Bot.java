@@ -1,4 +1,4 @@
-package org.xcore.plugin.discord;
+package org.xcore.plugin.modules.discord;
 
 import arc.util.Strings;
 import net.dv8tion.jda.api.JDA;
@@ -9,7 +9,7 @@ import org.xcore.plugin.XcorePlugin;
 
 import static net.dv8tion.jda.api.requests.GatewayIntent.GUILD_MEMBERS;
 import static net.dv8tion.jda.api.requests.GatewayIntent.MESSAGE_CONTENT;
-import static org.xcore.plugin.comp.ServersConfig.servers;
+import static org.xcore.plugin.modules.ServersConfig.servers;
 import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
@@ -32,11 +32,6 @@ public class Bot {
             e.printStackTrace();
         }
     }
-
-    public static TextChannel getServerLogChannel() {
-        return getServerLogChannel(config.server);
-    }
-
     public static TextChannel getServerLogChannel(String server) {
         return jda.getTextChannelById(servers.get(server));
     }

@@ -1,4 +1,4 @@
-package org.xcore.plugin.comp;
+package org.xcore.plugin.modules.models;
 
 import org.jetbrains.annotations.NotNull;
 

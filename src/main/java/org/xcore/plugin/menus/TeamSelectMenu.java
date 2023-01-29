@@ -13,7 +13,7 @@ import static org.xcore.plugin.Utils.colorizedTeam;
 
 public class TeamSelectMenu {
     public static Menu menu = new Menu();
-    public static void load() {
+    public static void init() {
         MenuFormatter.setFormatter((text, player, values) -> Strings.format(text, values));
 
         menu.transform(menu -> {

@@ -1,4 +1,4 @@
-package org.xcore.plugin.features;
+package org.xcore.plugin.modules;
 
 import arc.Core;
 import arc.func.Cons;
@@ -19,7 +19,7 @@ import java.io.PrintStream;
 public class Console {
     public static ServerControl serverControl;
     public static LineReader lineReader;
-    public static void load() {
+    public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
         serverControl = (ServerControl) Core.app.getListeners().find(listener -> listener instanceof ServerControl);

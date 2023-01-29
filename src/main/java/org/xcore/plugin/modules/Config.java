@@ -1,6 +1,5 @@
-package org.xcore.plugin.comp;
+package org.xcore.plugin.modules;
 
-import mindustry.net.Administration;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.*;
@@ -15,7 +14,7 @@ public class Config {
     public boolean isMiniPvP() {
         return server.equals("mini-pvp");
     }
-    public static void load() {
+    public static void init() {
         if (configFile.exists()) {
             config = gson.fromJson(configFile.reader(), Config.class);
             XcorePlugin.info("Config loaded.");

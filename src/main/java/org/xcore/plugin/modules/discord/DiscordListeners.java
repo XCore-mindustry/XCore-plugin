@@ -1,4 +1,4 @@
-package org.xcore.plugin.discord;
+package org.xcore.plugin.modules.discord;
 
 import fr.xpdustry.javelin.JavelinPlugin;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -8,7 +8,7 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.comp.ServersConfig.servers;
+import static org.xcore.plugin.modules.ServersConfig.servers;
 public class DiscordListeners extends ListenerAdapter {
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {

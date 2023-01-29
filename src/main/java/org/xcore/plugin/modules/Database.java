@@ -1,9 +1,10 @@
-package org.xcore.plugin.comp;
+package org.xcore.plugin.modules;
 
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Strings;
 import mindustry.gen.Player;
+import org.xcore.plugin.modules.models.PlayerData;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,7 +13,7 @@ import java.sql.SQLException;
 public class Database {
     public static String connectionURL = "jdbc:sqlite:database.db";
     public static ObjectMap<String, PlayerData> cachedPlayerData= new ObjectMap<>();
-    public static void load() {
+    public static void init() {
         try {
             Class.forName("org.sqlite.JDBC");
             Connection conn = DriverManager.getConnection(connectionURL);
