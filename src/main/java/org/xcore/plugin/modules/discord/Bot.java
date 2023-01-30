@@ -78,7 +78,7 @@ public class Bot {
     public static void sendBanEvent(String targetName, String adminName, String server) {
         if (!isConnected) return;
 
-        EmbedBuilder embed = new EmbedBuilder().setTitle("Бан")
+        EmbedBuilder embed = new EmbedBuilder().setTitle("Ban")
                 .setColor(Color.red)
                 .addField("Violator", targetName, false)
                 .addField("Admin", adminName, false)
