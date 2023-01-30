@@ -13,7 +13,7 @@ import org.xcore.plugin.modules.discord.Bot;
 import static org.xcore.plugin.PluginVars.*;
 
 public class PluginEvents {
-    public static void load() {
+    public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
             isSocketServer = JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
             if (isSocketServer) {

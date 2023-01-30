@@ -46,7 +46,9 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.40.0.0")
     implementation("com.google.code.gson:gson:2.10")
 
-    implementation("net.dv8tion:JDA:5.0.0-alpha.21")
+    implementation("net.dv8tion:JDA:5.0.0-alpha.21") {
+        exclude(module="opus-java")
+    }
 
     implementation("org.jline:jline-reader:3.21.0")
     implementation("org.jline:jline-console:3.21.0")

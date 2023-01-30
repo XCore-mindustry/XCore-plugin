@@ -43,9 +43,7 @@ public class Console {
                     }
                 } catch (UserInterruptException | EndOfFileException e) {
                     Core.app.exit();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Core.app.exit();
+                    System.exit(0);
                 }
             }
         };

@@ -36,7 +36,7 @@ public class XcorePlugin extends Plugin {
         Console.init();
         TeamSelectMenu.init();
         MiniPvP.init();
-        PluginEvents.load();
+        PluginEvents.init();
 
         maps.setMapProvider((mode, map) -> getAvailableMaps().random(map));
         maps.setMapProvider(new MapProvider() {
