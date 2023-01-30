@@ -7,12 +7,15 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.ChunkingFilter;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.xcore.plugin.XcorePlugin;
 
 import java.awt.*;
 
-import static net.dv8tion.jda.api.requests.GatewayIntent.GUILD_MEMBERS;
-import static net.dv8tion.jda.api.requests.GatewayIntent.MESSAGE_CONTENT;
+import static net.dv8tion.jda.api.requests.GatewayIntent.*;
+import static net.dv8tion.jda.api.utils.MemberCachePolicy.OWNER;
+import static net.dv8tion.jda.api.utils.MemberCachePolicy.VOICE;
 import static org.xcore.plugin.modules.ServersConfig.servers;
 import static org.xcore.plugin.PluginVars.*;
 
@@ -25,11 +28,15 @@ public class Bot {
     public static void connect() {
         try {
             jda = JDABuilder.createLight(config.discordBotToken)
+                    .disableCache(CacheFlag.ACTIVITY)
+                    .setMemberCachePolicy(VOICE.or(OWNER))
+                    .setChunkingFilter(ChunkingFilter.NONE)
+                    .disableIntents(GUILD_MESSAGE_TYPING, GUILD_PRESENCES)
+                    .setLargeThreshold(50)
                     .enableIntents(GUILD_MEMBERS, MESSAGE_CONTENT)
                     .addEventListeners(new DiscordListeners())
                     .build()
                     .awaitReady();
-
 
             bansChannel = jda.getTextChannelById(config.discordBansChannelId);
             adminRole = jda.getRoleById(config.discordAdminRoleId);
