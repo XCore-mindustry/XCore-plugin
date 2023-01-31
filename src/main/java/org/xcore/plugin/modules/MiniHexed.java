@@ -29,7 +29,6 @@ public class MiniHexed {
 
         Events.on(EventType.PlayerJoin.class, event -> initPlayer(event.player));
         Events.on(EventType.GameOverEvent.class, event -> teams.clear());
-        Events.on(EventType.WorldLoadEvent.class, event -> Groups.player.each(MiniHexed::initPlayer));
 
         Timer.schedule(() -> {
             if (!Vars.state.isPaused()) {
@@ -42,7 +41,7 @@ public class MiniHexed {
                     1, Align.bottom, 0, 0, 0, 0));
 
             if (winScore < 1) {
-                winScore = 30;
+                winScore = 36000;
 
                 var winnerTeam = Vars.state.teams.getActive().filter(t -> !t.players.isEmpty()).max(t -> t.cores.size);
                 var player = winnerTeam.players.first();
@@ -63,8 +62,9 @@ public class MiniHexed {
             world.loadMap(map, map.applyRules(Vars.state.rules.mode()));
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             Vars.logic.play();
-
+            Groups.player.each(MiniHexed::initPlayer);
             reloader.end();
+
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
         }
