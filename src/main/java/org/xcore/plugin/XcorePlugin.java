@@ -13,12 +13,9 @@ import mindustry.mod.Plugin;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.ServersConfig;
-import org.xcore.plugin.modules.Console;
+import org.xcore.plugin.modules.*;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.menus.TeamSelectMenu;
-import org.xcore.plugin.modules.MiniPvP;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.Utils.getAvailableMaps;
@@ -36,6 +33,7 @@ public class XcorePlugin extends Plugin {
         Console.init();
         TeamSelectMenu.init();
         MiniPvP.init();
+        MiniHexed.init();
         PluginEvents.init();
 
         maps.setMapProvider((mode, map) -> getAvailableMaps().random(map));

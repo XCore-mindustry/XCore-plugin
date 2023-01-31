@@ -15,6 +15,9 @@ public class Config {
     public boolean isMiniPvP() {
         return server.equals("mini-pvp");
     }
+    public boolean isMiniHexed() {
+        return server.equals("mini-hexed");
+    }
     public static void init() {
         if (configFile.exists()) {
             config = gson.fromJson(configFile.reader(), Config.class);
