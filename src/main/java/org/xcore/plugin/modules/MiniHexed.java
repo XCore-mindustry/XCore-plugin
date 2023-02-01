@@ -82,7 +82,7 @@ public class MiniHexed {
             return;
         }
 
-        var core = Team.green.core();
+        var core = Team.green.cores().random();
         var team = Structs.find(Team.all, t -> t.id > 5 && !t.active());
 
         if (team == null || core == null) {
