@@ -11,6 +11,7 @@ public class ServersConfig {
     public static Fi serversConfigFile = Fi.get(config.globalConfigDirectory == null ? System.getProperty("user.home") : config.globalConfigDirectory).child("servers.json");
 
     public static void init() {
+        servers.clear();
         Jval.read(serversConfigFile.reader()).asObject().forEach(jval -> servers.put(jval.key, jval.value.asLong()));
     }
 }

@@ -5,6 +5,7 @@ import arc.util.Log;
 import org.xcore.plugin.modules.Config;
 import mindustry.net.Administration.PlayerInfo;
 import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.ServersConfig;
 import org.xcore.plugin.modules.models.PlayerData;
 
 import static arc.util.Strings.parseInt;
@@ -12,7 +13,10 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 public class ServerCommands {
     public static void register(CommandHandler handler) {
-        handler.register("reload-config", "Reload config", args -> config = gson.fromJson(configFile.reader(), Config.class));
+        handler.register("reload-config", "Reload config", args -> {
+            config = gson.fromJson(configFile.reader(), Config.class);
+            ServersConfig.init();
+        });
         if (config.isMiniPvP()) {
             handler.register("edit-rating", "<uuid> <+/-/value>", "Edit player`s rating.", args -> {
                 PlayerInfo info = netServer.admins.getInfoOptional(args[0]);

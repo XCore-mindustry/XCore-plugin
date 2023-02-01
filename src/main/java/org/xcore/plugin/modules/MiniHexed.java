@@ -87,6 +87,7 @@ public class MiniHexed {
 
         if (team == null || core == null) {
             notAvailableTeamMessage(player);
+            player.team(Team.sharded);
             return;
         }
 
