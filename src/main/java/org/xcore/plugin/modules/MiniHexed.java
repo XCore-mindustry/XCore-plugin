@@ -1,6 +1,7 @@
 package org.xcore.plugin.modules;
 
 import arc.Events;
+import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.Vars;
@@ -11,13 +12,16 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 
 import static mindustry.Vars.world;
+import static mindustry.content.Blocks.air;
 import static org.xcore.plugin.PluginVars.config;
 
 public class MiniHexed {
     private static final ObjectMap<String, Team> teams = new ObjectMap<>();
+    private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
     private static int winScore = 3600;
     private static Schematic startBase;
     public static void init() {
@@ -28,7 +32,10 @@ public class MiniHexed {
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
 
         Events.on(EventType.PlayerJoin.class, event -> initPlayer(event.player));
-        Events.on(EventType.GameOverEvent.class, event -> teams.clear());
+        Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(()-> {
+            killTeam(event.player.team());
+            left.get(event.player.uuid()).cancel();
+        }, 30f)));
 
         Timer.schedule(() -> {
             if (!Vars.state.isPaused()) {
@@ -62,9 +69,10 @@ public class MiniHexed {
             world.loadMap(map, map.applyRules(Vars.state.rules.mode()));
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             Vars.logic.play();
+            teams.clear();
+            left.clear();
             Groups.player.each(MiniHexed::initPlayer);
             reloader.end();
-
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
         }
@@ -75,6 +83,12 @@ public class MiniHexed {
     }
 
     private static void initPlayer(Player player) {
+        var leftPlayer = left.get(player.uuid());
+
+        if(leftPlayer != null) {
+            leftPlayer.cancel();
+        }
+
         var playerTeam = teams.get(player.uuid());
 
         if (playerTeam != null && playerTeam.active()) {
@@ -106,5 +120,22 @@ public class MiniHexed {
         });
 
         player.team(team);
+    }
+    private static void killTeam(Team team) {
+        if (team == Team.derelict || !team.data().active()) return;
+
+        world.tiles.eachTile(tile -> {
+            if (tile.build != null && tile.block() != air && tile.team() == team) {
+                if (tile.block() instanceof CoreBlock) {
+                    Time.run(Mathf.random(360f), () -> tile.setNet(Blocks.coreShard, Team.green, 0));
+                    return;
+                }
+
+                Time.run(Mathf.random(360f), tile::removeNet);
+            }
+        });
+
+        Groups.unit.each(unit -> unit.team == team, unit -> Time.run(Mathf.random(360f), () -> Call.unitEnvDeath(unit)));
+        team.data().plans.clear();
     }
 }
