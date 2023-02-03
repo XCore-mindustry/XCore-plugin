@@ -46,6 +46,11 @@ public class ClientCommands {
             Call.sendMessage("RTV: [green] vote passed, changing map.");
             Events.fire(new EventType.GameOverEvent(Team.derelict));
         });
+
+        if (config.isMiniHexed()) {
+            handler.removeCommand("votekick");
+        }
+
         if (config.isMiniPvP()) {
             handler.<Player>register("spectate", "Spectate.", (args, player) -> {
                 player.team(Team.derelict);

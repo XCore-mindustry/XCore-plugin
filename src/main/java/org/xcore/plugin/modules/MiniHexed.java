@@ -6,10 +6,12 @@ import arc.struct.Seq;
 import arc.util.*;
 import mindustry.Vars;
 import mindustry.content.Blocks;
+import mindustry.content.UnitTypes;
 import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 
 import static mindustry.Vars.world;
@@ -18,6 +20,7 @@ import static org.xcore.plugin.PluginVars.config;
 public class MiniHexed {
     private static final ObjectMap<String, Team> teams = new ObjectMap<>();
     private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
+    private static int destroyedCores = 0;
     private static int winScore = 1800;
     private static Schematic startBase;
     public static void init() {
@@ -26,6 +29,16 @@ public class MiniHexed {
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.WorldLoadEvent.class, event -> applyRules());
         Events.on(EventType.PlayerConnectionConfirmed.class, event -> initPlayer(event.player));
+        Events.on(EventType.BlockDestroyEvent.class, event -> {
+            if (event.tile.block() instanceof CoreBlock && event.tile.team() == Team.green) {
+                destroyedCores += 1;
+
+                if(destroyedCores == 61) {
+                    destroyedCores = 0;
+                    endGame();
+                }
+            }
+        });
         Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(()-> {
             killTeam(event.player.team());
             teams.remove(event.player.uuid());
@@ -53,13 +66,17 @@ public class MiniHexed {
     }
 
     private static void applyRules() {
+        UnitTypes.risso.flying = true;
+        UnitTypes.minke.flying = true;
+        UnitTypes.retusa.flying = true;
+        UnitTypes.oxynoe.flying = true;
+
         Vars.state.rules.canGameOver = false;
         Vars.state.rules.waves = false;
         Vars.state.rules.defaultTeam = Team.derelict;
 
         for (var team : Team.all) {
             Vars.state.rules.teams.get(team).rtsAi = true;
-            Vars.state.rules.teams.get(team).aiCoreSpawn = false;
         }
     }
 
