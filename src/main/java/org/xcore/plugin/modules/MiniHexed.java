@@ -3,6 +3,7 @@ package org.xcore.plugin.modules;
 import arc.Events;
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.*;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -25,19 +26,27 @@ public class MiniHexed {
         if (!config.isMiniHexed()) return;
 
         Vars.state.rules.canGameOver = false;
+        Vars.state.rules.waves = false;
+        Vars.state.rules.defaultTeam = Team.derelict;
+
+        for (var team : Team.all) {
+            Vars.state.rules.teams.get(team).rtsAi = true;
+            Vars.state.rules.teams.get(team).aiCoreSpawn = false;
+        }
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
 
-        Events.on(EventType.PlayerJoin.class, event -> initPlayer(event.player));
+        Events.on(EventType.PlayerConnectionConfirmed.class, event -> initPlayer(event.player));
         Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(()-> {
             killTeam(event.player.team());
             teams.remove(event.player.uuid());
-            left.get(event.player.uuid()).cancel();
-            left.remove(event.player.uuid());
+            var task = left.remove(event.player.uuid());
+
+            if (task != null) task.cancel();
         }, 120f)));
 
         Timer.schedule(() -> {
-            if (!Vars.state.isPaused()) {
+            if (!Groups.player.isEmpty()) {
                 winScore -= 1;
             }
             int sec = winScore % 60;
@@ -50,9 +59,15 @@ public class MiniHexed {
                 winScore = 1800;
 
                 var winnerTeam = Vars.state.teams.getActive().filter(t -> !t.players.isEmpty()).max(t -> t.cores.size);
-                var player = winnerTeam.players.first();
 
-                Groups.player.each(p -> Call.infoMessage(Strings.format("@[] won! He had @ hexes.", player.coloredName(), winnerTeam.cores.size)));
+                if(winnerTeam != null) {
+                    var player = winnerTeam.players.first();
+
+                    if (player != null) {
+                        Groups.player.each(p -> Call.infoMessage(Strings.format("@[] won! He had @ hexes.", player.coloredName(), winnerTeam.cores.size)));
+                    }
+                }
+
                 reloadMap();
             }
         }, 0f, 1);
@@ -69,8 +84,8 @@ public class MiniHexed {
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             Vars.logic.play();
             teams.clear();
+            left.each((uuid, task) -> task.cancel());
             left.clear();
-            Groups.player.each(MiniHexed::initPlayer);
             reloader.end();
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
@@ -82,7 +97,7 @@ public class MiniHexed {
     }
 
     private static void initPlayer(Player player) {
-        var leftPlayer = left.get(player.uuid());
+        var leftPlayer = left.remove(player.uuid());
 
         if(leftPlayer != null) {
             leftPlayer.cancel();
@@ -96,7 +111,7 @@ public class MiniHexed {
         }
 
         var core = Team.green.cores().random();
-        var team = Structs.find(Team.all, t -> t.id > 5 && !t.active());
+        var team = Seq.select(Team.all, t -> t.id > 5 && !t.active() && t.data().players.isEmpty()).random();
 
         if (team == null || core == null) {
             notAvailableTeamMessage(player);
