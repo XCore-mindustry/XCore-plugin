@@ -1,11 +1,9 @@
 package org.xcore.plugin.modules;
 
 import arc.Events;
-import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.*;
-import jdk.jfr.Event;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.game.*;
@@ -15,7 +13,6 @@ import mindustry.net.WorldReloader;
 import org.xcore.plugin.XcorePlugin;
 
 import static mindustry.Vars.world;
-import static mindustry.content.Blocks.air;
 import static org.xcore.plugin.PluginVars.config;
 
 public class MiniHexed {
@@ -48,17 +45,7 @@ public class MiniHexed {
                     1, Align.bottom, 0, 0, 0, 0));
 
             if (winScore < 1) {
-                winScore = 1800;
-
-                var winnerTeam = Vars.state.teams.getActive().filter(t -> !t.players.isEmpty()).max(t -> t.cores.size);
-
-                if(winnerTeam != null && !winnerTeam.players.isEmpty()) {
-                    var player = winnerTeam.players.first();
-
-                    Groups.player.each(p -> Call.infoMessage(Strings.format("@[] won! He had @ hexes.", player.coloredName(), winnerTeam.cores.size)));
-                }
-
-                reloadMap();
+                endGame();
             }
         }, 0f, 1);
 
@@ -74,6 +61,22 @@ public class MiniHexed {
             Vars.state.rules.teams.get(team).rtsAi = true;
             Vars.state.rules.teams.get(team).aiCoreSpawn = false;
         }
+    }
+
+    private static void endGame() {
+        winScore = 1800;
+
+        var winnerTeam = Vars.state.teams.getActive().filter(t -> !t.players.isEmpty()).max(t -> t.cores.size);
+
+        if(winnerTeam != null && !winnerTeam.players.isEmpty()) {
+            var player = winnerTeam.players.first();
+
+            Call.infoMessage(Strings.format("@[] won! He had @ hexes.", player.coloredName(), winnerTeam.cores.size));
+        } else {
+            Call.infoMessage("End of the game. Unfortunately, I couldn't find the winning player.");
+        }
+
+        reloadMap();
     }
 
     private static void reloadMap() {
@@ -142,11 +145,7 @@ public class MiniHexed {
 
         team.data().cores.each(core -> core.tile.setNet(Blocks.coreShard, Team.green, 0));
 
-        world.tiles.eachTile(tile -> {
-            if (tile.build != null && tile.block() != air && tile.team() == team) {
-                Time.run(Mathf.random(360f), tile::removeNet);
-            }
-        });
+        team.data().destroyToDerelict();
 
         team.data().units.each(Unitc::kill);
         team.data().plans.clear();
