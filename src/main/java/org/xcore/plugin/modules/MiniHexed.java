@@ -1,5 +1,6 @@
 package org.xcore.plugin.modules;
 
+import arc.Core;
 import arc.Events;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
@@ -20,7 +21,6 @@ import static org.xcore.plugin.PluginVars.config;
 public class MiniHexed {
     private static final ObjectMap<String, Team> teams = new ObjectMap<>();
     private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
-    private static int destroyedCores = 0;
     private static int winScore = 1800;
     private static Schematic startBase;
     public static void init() {
@@ -31,12 +31,11 @@ public class MiniHexed {
         Events.on(EventType.PlayerConnectionConfirmed.class, event -> initPlayer(event.player));
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             if (event.tile.block() instanceof CoreBlock && event.tile.team() == Team.green) {
-                destroyedCores += 1;
-
-                if(destroyedCores == 61) {
-                    destroyedCores = 0;
-                    endGame();
-                }
+                Core.app.post(() -> teams.each((uuid, team) -> {
+                    if (team.cores().size >= 61) {
+                        endGame();
+                    }
+                }));
             }
         });
         Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(()-> {
