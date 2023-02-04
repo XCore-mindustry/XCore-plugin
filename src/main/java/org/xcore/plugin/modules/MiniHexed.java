@@ -32,6 +32,8 @@ public class MiniHexed {
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             if (event.tile.block() instanceof CoreBlock && event.tile.team() == Team.green) {
                 Core.app.post(() -> teams.each((uuid, team) -> {
+                    if(team == null) return;
+
                     if (team.cores().size >= 61) {
                         endGame();
                     }
