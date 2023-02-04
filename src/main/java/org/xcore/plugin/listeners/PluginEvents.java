@@ -55,7 +55,8 @@ public class PluginEvents {
         }));
 
         Events.on(PlayerJoin.class, event -> {
-            Call.openURI(event.player.con, discordURL);
+            if(event.player.getInfo().timesJoined < 5)
+                Call.openURI(event.player.con, discordURL);
 
             if (isSocketServer) {
                 Bot.sendJoinLeaveEventMessage(event.player.plainName(), true);

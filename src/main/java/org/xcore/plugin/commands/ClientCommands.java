@@ -49,6 +49,7 @@ public class ClientCommands {
 
         if (config.isMiniHexed()) {
             handler.removeCommand("votekick");
+            handler.removeCommand("vote");
         }
 
         if (config.isMiniPvP()) {
