@@ -21,7 +21,7 @@ import static org.xcore.plugin.PluginVars.config;
 public class MiniHexed {
     private static final ObjectMap<String, Team> teams = new ObjectMap<>();
     private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
-    private static int winScore = 1800;
+    private static int winScore = 60;
     private static Schematic startBase;
     public static void init() {
         if (!config.isMiniHexed()) return;
@@ -86,15 +86,26 @@ public class MiniHexed {
     private static void endGame() {
         winScore = 1800;
 
-        var winnerTeam = Vars.state.teams.getActive().filter(t -> !t.players.isEmpty()).max(t -> t.cores.size);
+        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        teams.truncate(3);
 
-        if(winnerTeam != null && !winnerTeam.players.isEmpty()) {
-            var player = winnerTeam.players.first();
+        var builder = new StringBuilder();
+        if (!teams.isEmpty()) {
+            builder.append("GameOver. Winners:").append("\n");
+            for (int i = 0; i < teams.size; i++) {
+                var team = teams.get(i);
 
-            Call.infoMessage(Strings.format("@[] won! He had @ hexes.", player.coloredName(), winnerTeam.cores.size));
+                var player = team.players.first();
+
+                builder.append("[orange]").append(i + 1).append(". ")
+                        .append(player.coloredName()).append("[][accent]: [cyan]")
+                        .append(team.cores.size).append("\n");
+            }
         } else {
-            Call.infoMessage("End of the game. Unfortunately, I couldn't find the winning player.");
+            builder.append("GameOver. Unfortunately, I couldn't find the winning players.");
         }
+
+        Call.infoMessage(builder.toString());
 
         reloadMap();
     }

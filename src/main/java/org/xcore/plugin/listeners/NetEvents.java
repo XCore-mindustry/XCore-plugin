@@ -2,6 +2,7 @@ package org.xcore.plugin.listeners;
 
 import arc.Events;
 import arc.util.Log;
+import arc.util.Strings;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
@@ -19,30 +20,31 @@ import static org.xcore.plugin.PluginVars.isSocketServer;
 
 public class NetEvents {
     public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
-        Player other = packet.other, admin = con.player;
-        Packets.AdminAction action = packet.action;
+        Player admin = con.player, target = packet.other;
+        var action = packet.action;
 
-        if (action != Packets.AdminAction.ban && !con.player.admin || con.player == null || packet.other == null) return;
+        if (!admin.admin|| target == null || (target.admin && target != admin)) return;
 
-        Events.fire(new EventType.AdminRequestEvent(admin, other, action));
+        Events.fire(new EventType.AdminRequestEvent(admin, target, action));
 
         switch (action) {
-            case kick -> other.kick(Packets.KickReason.kick);
+            case kick -> target.kick(Packets.KickReason.kick);
             case ban -> {
-                other.kick(Packets.KickReason.banned);
-                netServer.admins.banPlayerID(other.uuid());
-                netServer.admins.banPlayerIP(other.ip());
+                target.kick(Packets.KickReason.banned);
+                netServer.admins.banPlayerID(target.uuid());
+                netServer.admins.banPlayerIP(target.ip());
+                Call.sendMessage(Strings.format("@[] banned @[].", admin.coloredName(), target.coloredName()));
 
                 if (isSocketServer) {
-                    Bot.sendBanEvent(other.plainName(), admin.plainName());
+                    Bot.sendBanEvent(target.plainName(), admin.plainName());
                 } else {
-                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.BanEvent(other.plainName(), admin.plainName(), config.server));
+                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.BanEvent(target.plainName(), admin.plainName(), config.server));
                 }
             }
             case trace -> {
-                var info = other.getInfo();
-                Call.traceInfo(con, other, new Administration.TraceInfo(other.ip(), other.uuid(), other.con.modclient, other.con.mobile, info.timesJoined, info.timesKicked));
-                Log.info("@ has requested trace info of @.", admin.plainName(), other.plainName());
+                var info = target.getInfo();
+                Call.traceInfo(con, target, new Administration.TraceInfo(target.ip(), target.uuid(), target.con.modclient, target.con.mobile, info.timesJoined, info.timesKicked));
+                Log.info("@ has requested trace info of @.", admin.plainName(), target.plainName());
             }
             case wave -> {
                 logic.skipWave();
