@@ -19,7 +19,7 @@ import static org.xcore.plugin.PluginVars.config;
 public class MiniHexed {
     private static final ObjectMap<String, Team> teams = new ObjectMap<>();
     private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
-    private static int winScore = 60;
+    private static int winScore = 1800;
     private static Schematic startBase;
     public static void init() {
         if (!config.isMiniHexed()) return;
