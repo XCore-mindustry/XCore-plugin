@@ -63,8 +63,14 @@ public class MiniHexed {
     private static void applyRules() {
         UnitTypes.risso.flying = true;
         UnitTypes.minke.flying = true;
+        UnitTypes.bryde.flying = true;
+        UnitTypes.sei.flying = true;
+        UnitTypes.omura.flying = true;
         UnitTypes.retusa.flying = true;
         UnitTypes.oxynoe.flying = true;
+        UnitTypes.cyerce.flying = true;
+        UnitTypes.aegires.flying = true;
+        UnitTypes.navanax.flying = true;
 
         Vars.state.rules.canGameOver = false;
         Vars.state.rules.waves = false;
