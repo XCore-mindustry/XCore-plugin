@@ -55,7 +55,7 @@ public class PluginEvents {
         }));
 
         Events.on(PlayerJoin.class, event -> {
-            if(event.player.getInfo().timesJoined < 5)
+            if (event.player.getInfo().timesJoined < 5)
                 Call.openURI(event.player.con, discordURL);
 
             if (isSocketServer) {
@@ -71,7 +71,7 @@ public class PluginEvents {
             Player player = event.player;
             int cur = rtvVotes.size();
             int req = (int) Math.ceil(rtvRatio * Groups.player.size());
-            if(rtvVotes.contains(player.uuid())) {
+            if (rtvVotes.contains(player.uuid())) {
                 rtvVotes.remove(player.uuid());
                 Call.sendMessage("RTV: [accent]" + player.name + "[] left, [green]" + cur + "[] votes, [green]" + req + "[] required");
             }

@@ -2,7 +2,10 @@ package org.xcore.plugin;
 
 import arc.struct.Seq;
 import arc.util.Strings;
+import arc.util.Timer;
 import mindustry.game.Team;
+import mindustry.gen.Call;
+import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.models.PlayerData;
@@ -28,6 +31,13 @@ public class Utils {
         }
 
         return builder.toString();
+    }
+
+    public static void showLeaderboard() {
+        Timer.schedule(() -> {
+            if (Groups.player.isEmpty()) return;
+            Groups.player.each(player -> Call.infoPopup(player.con, Utils.getLeaderboard(), 5f, 8, 0, 2, 50, 0));
+        }, 0f, 5f);
     }
 
     public static Seq<Map> getAvailableMaps() {

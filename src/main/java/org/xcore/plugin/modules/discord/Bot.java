@@ -16,8 +16,8 @@ import java.awt.*;
 import static net.dv8tion.jda.api.requests.GatewayIntent.*;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.OWNER;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.VOICE;
+import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.modules.ServersConfig.servers;
-import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
     public static JDA jda;
@@ -25,6 +25,7 @@ public class Bot {
     public static Role adminRole;
 
     public static boolean isConnected = false;
+
     public static void connect() {
         try {
             jda = JDABuilder.createLight(config.discordBotToken)
@@ -46,6 +47,7 @@ public class Bot {
             e.printStackTrace();
         }
     }
+
     public static TextChannel getServerLogChannel(String server) {
         return jda.getTextChannelById(servers.get(server));
     }
@@ -64,6 +66,7 @@ public class Bot {
     public static void sendServerAction(String message) {
         sendServerAction(message, config.server);
     }
+
     public static void sendServerAction(String message, String server) {
         if (!isConnected) return;
         getServerLogChannel(server).sendMessage(message).queue();
@@ -79,9 +82,11 @@ public class Bot {
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
         ).queue();
     }
+
     public static void sendBanEvent(String targetName, String adminName) {
         sendBanEvent(targetName, adminName, config.server);
     }
+
     public static void sendBanEvent(String targetName, String adminName, String server) {
         if (!isConnected) return;
 

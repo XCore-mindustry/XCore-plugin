@@ -9,11 +9,11 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.MiniHexed;
 import org.xcore.plugin.modules.models.PlayerData;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.mods;
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.PluginVars.discordURL;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {
@@ -21,11 +21,11 @@ public class ClientCommands {
 
         handler.<Player>register("js", "<code...>", "Execute javascript. [red]ADMIN ONLY", (args, player) -> {
             if (!player.admin) return;
-            player.sendMessage("[green]"+mods.getScripts().runConsole(args[0]));
+            player.sendMessage("[green]" + mods.getScripts().runConsole(args[0]));
         });
 
         handler.<Player>register("rtv", "[off]", "Rock the vote to change map", (args, player) -> {
-            if (player.admin()){
+            if (player.admin()) {
                 rtvEnabled = args.length != 1 || !args[0].equals("off");
             }
             if (!rtvEnabled) {
@@ -47,6 +47,20 @@ public class ClientCommands {
             Events.fire(new EventType.GameOverEvent(Team.derelict));
         });
 
+        handler.<Player>register("spectate", "Spectate.", (args, player) -> {
+            if (config.isMiniHexed()) {
+                var team = MiniHexed.teams.remove(player.uuid());
+
+                if (team != null) {
+                    team.data().destroyToDerelict();
+                }
+            }
+
+            player.team(Team.derelict);
+            player.unit().kill();
+            player.sendMessage("You are now spectating.");
+        });
+
         if (config.isMiniHexed()) {
             handler.removeCommand("votekick");
             handler.removeCommand("rtv");
@@ -54,18 +68,12 @@ public class ClientCommands {
         }
 
         if (config.isMiniPvP()) {
-            handler.<Player>register("spectate", "Spectate.", (args, player) -> {
-                player.team(Team.derelict);
-                player.unit().kill();
-                player.sendMessage("You are now spectating.");
-            });
-
             handler.<Player>register("top", "Shows top players by wins", (args, player) -> {
                 Seq<PlayerData> leaders = Database.getLeaders();
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
-                   builder.append("Empty.");
+                    builder.append("Empty.");
                 } else for (int i = 0; i < leaders.size; i++) {
                     var data = leaders.get(i);
 

@@ -8,16 +8,16 @@ import mindustry.game.Gamemode;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.maps.Map;
-import mindustry.maps.Maps.*;
+import mindustry.maps.Maps.MapProvider;
 import mindustry.mod.Plugin;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
-import org.xcore.plugin.modules.*;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.menus.TeamSelectMenu;
+import org.xcore.plugin.modules.*;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.maps;
 import static org.xcore.plugin.Utils.getAvailableMaps;
 
 @SuppressWarnings("unused")
@@ -28,6 +28,23 @@ public class XcorePlugin extends Plugin {
         ServersConfig.init();
     }
 
+    public static void info(String text, Object... values) {
+        Log.infoTag("XCore", Strings.format(text, values));
+    }
+
+    public static void err(String text, Object... values) {
+        Log.errTag("XCore", Strings.format(text, values));
+    }
+
+    public static void discord(String text, Object... values) {
+        Log.infoTag("Discord", Strings.format(text, values));
+    }
+
+    public static void sendMessageFromDiscord(String authorName, String message) {
+        discord("@: @", authorName, message);
+        Call.sendMessage(Strings.format("[blue][Discord][] @: @", authorName, message));
+    }
+
     @Override
     public void init() {
         Console.init();
@@ -36,9 +53,9 @@ public class XcorePlugin extends Plugin {
         MiniHexed.init();
         PluginEvents.init();
 
-        maps.setMapProvider((mode, map) -> getAvailableMaps().random(map));
         maps.setMapProvider(new MapProvider() {
             public int lastMapID;
+
             @Override
             public Map next(Gamemode mode, Map previous) {
                 var allmaps = getAvailableMaps();
@@ -49,6 +66,7 @@ public class XcorePlugin extends Plugin {
 
         info("Plugin loaded");
     }
+
     @Override
     public void registerClientCommands(CommandHandler handler) {
         ClientCommands.register(handler);
@@ -57,19 +75,5 @@ public class XcorePlugin extends Plugin {
     @Override
     public void registerServerCommands(CommandHandler handler) {
         ServerCommands.register(handler);
-    }
-
-    public static void info(String text, Object... values) {
-        Log.infoTag("XCore", Strings.format(text, values));
-    }
-    public static void err(String text, Object... values) {
-        Log.errTag("XCore", Strings.format(text, values));
-    }
-    public static void discord(String text, Object... values) {
-        Log.infoTag("Discord", Strings.format(text, values));
-    }
-    public static void sendMessageFromDiscord(String authorName, String message) {
-        discord("@: @", authorName, message);
-        Call.sendMessage(Strings.format("[blue][Discord][] @: @", authorName, message));
     }
 }

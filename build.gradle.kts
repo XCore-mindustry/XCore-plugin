@@ -1,4 +1,3 @@
-
 import fr.xpdustry.toxopid.Toxopid
 import fr.xpdustry.toxopid.dsl.mindustryDependencies
 import fr.xpdustry.toxopid.spec.ModMetadata
@@ -43,11 +42,12 @@ dependencies {
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
     compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
 
-    implementation("org.xerial:sqlite-jdbc:3.40.0.0")
+    implementation("com.j256.ormlite:ormlite-core:6.1")
+    implementation("com.j256.ormlite:ormlite-jdbc:6.1")
     implementation("com.google.code.gson:gson:2.10")
 
     implementation("net.dv8tion:JDA:5.0.0-alpha.21") {
-        exclude(module="opus-java")
+        exclude(module = "opus-java")
     }
 
     implementation("org.jline:jline-reader:3.21.0")

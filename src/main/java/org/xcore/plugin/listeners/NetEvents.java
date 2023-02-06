@@ -11,6 +11,7 @@ import mindustry.gen.Player;
 import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
 
 import static mindustry.Vars.logic;
@@ -19,11 +20,15 @@ import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.isSocketServer;
 
 public class NetEvents {
+    public static String chat(Player player, String message) {
+        return player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
+    }
+
     public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
         Player admin = con.player, target = packet.other;
         var action = packet.action;
 
-        if (!admin.admin|| target == null || (target.admin && target != admin)) return;
+        if (!admin.admin || target == null || (target.admin && target != admin)) return;
 
         Events.fire(new EventType.AdminRequestEvent(admin, target, action));
 

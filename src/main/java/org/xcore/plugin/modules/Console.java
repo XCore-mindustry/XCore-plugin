@@ -3,13 +3,11 @@ package org.xcore.plugin.modules;
 import arc.Core;
 import arc.func.Cons;
 import mindustry.server.ServerControl;
-
 import org.jetbrains.annotations.NotNull;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
-
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.XcorePlugin;
 
@@ -19,6 +17,7 @@ import java.io.PrintStream;
 public class Console {
     public static ServerControl serverControl;
     public static LineReader lineReader;
+
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
@@ -28,7 +27,7 @@ public class Console {
             lineReader = LineReaderBuilder.builder().build();
 
             System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
-        } catch (Exception e){
+        } catch (Exception e) {
             XcorePlugin.err(String.valueOf(e));
             XcorePlugin.err("Exiting...");
             Core.app.exit();
@@ -48,6 +47,7 @@ public class Console {
             }
         };
     }
+
     public static class BlockingPrintStream extends PrintStream {
         private final Cons<String> cons;
 

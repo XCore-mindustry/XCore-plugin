@@ -7,7 +7,7 @@ import arc.util.serialization.Jval;
 import static org.xcore.plugin.PluginVars.config;
 
 public class ServersConfig {
-    public static ObjectMap<String, Long> servers= new ObjectMap<>();
+    public static ObjectMap<String, Long> servers = new ObjectMap<>();
     public static Fi serversConfigFile = Fi.get(config.globalConfigDirectory == null ? System.getProperty("user.home") : config.globalConfigDirectory).child("servers.json");
 
     public static void init() {

@@ -2,45 +2,48 @@ package org.xcore.plugin.modules;
 
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import arc.util.Strings;
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.jdbc.JdbcConnectionSource;
+import com.j256.ormlite.support.ConnectionSource;
+import com.j256.ormlite.table.TableUtils;
 import mindustry.gen.Player;
+import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.models.PlayerData;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
 
 public class Database {
     public static String connectionURL = "jdbc:sqlite:database.db";
-    public static ObjectMap<String, PlayerData> cachedPlayerData= new ObjectMap<>();
+    public static ConnectionSource conn;
+    public static Dao<PlayerData, String> playerDataDao;
+
+    public static ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
+
     public static void init() {
-        try {
-            Class.forName("org.sqlite.JDBC");
-            Connection conn = DriverManager.getConnection(connectionURL);
-            conn.createStatement().execute(
-                    "CREATE TABLE IF NOT EXISTS players (uuid TEXT, nickname TEXT, rating INTEGER, UNIQUE(uuid));"
-            );
-            conn.close();
-        } catch (SQLException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+        try (ConnectionSource connectionSource = new JdbcConnectionSource(connectionURL)) {
+            conn = connectionSource;
+            playerDataDao = DaoManager.createDao(connectionSource, PlayerData.class);
+
+            TableUtils.createTableIfNotExists(connectionSource, PlayerData.class);
+        } catch (Exception e) {
+            XcorePlugin.err(e.getMessage());
         }
     }
 
     public static PlayerData getPlayerData(Player player) {
         return getPlayerData(player.uuid());
     }
+
     public static PlayerData getPlayerData(String uuid) {
-        try (Connection conn = DriverManager.getConnection(connectionURL)) {
-            var result = conn.createStatement().executeQuery(
-                    "SELECT * FROM players WHERE uuid = '" + uuid + "'"
-            );
-            PlayerData data = new PlayerData(uuid, "<unknown>", 0, false);
-            while (result.next()) {
-                data = new PlayerData(
-                        uuid,
-                        result.getString("nickname"),
-                        result.getInt("rating"), true);
+        try {
+            var data = playerDataDao.queryForId(uuid);
+
+            if (data == null) {
+                data = new PlayerData(uuid, "<unknown>", 0, false);
             }
+
             return data;
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -48,26 +51,17 @@ public class Database {
     }
 
     public static void setPlayerData(PlayerData data) {
-        try (Connection conn = DriverManager.getConnection(connectionURL)) {
-            conn.createStatement().execute(Strings.format(
-                    "INSERT OR REPLACE INTO players(uuid, nickname, rating) VALUES('@', '@', @)"
-                    , data.uuid, data.nickname, data.rating));
+        try {
+            playerDataDao.createOrUpdate(data);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     public static Seq<PlayerData> getLeaders() {
-        try (Connection conn = DriverManager.getConnection(connectionURL)) {
-            var result = conn.createStatement().executeQuery("SELECT * FROM players ORDER BY rating DESC LIMIT 10");
-
-            Seq<PlayerData> datas = new Seq<>();
-            while (result.next()) {
-                datas.add(new PlayerData(result.getString("uuid"),
-                        result.getString("nickname"),
-                        result.getInt("rating"), true));
-            }
-            return datas;
+        try {
+            List<PlayerData> datas = playerDataDao.queryBuilder().orderBy("rating", false).limit(10L).query();
+            return Seq.with(datas);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

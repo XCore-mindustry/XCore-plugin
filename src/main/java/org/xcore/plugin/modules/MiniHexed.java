@@ -3,30 +3,57 @@ package org.xcore.plugin.modules;
 import arc.Events;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import arc.util.*;
+import arc.util.Align;
+import arc.util.Log;
+import arc.util.Strings;
+import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.UnitTypes;
 import mindustry.game.*;
-import mindustry.gen.*;
+import mindustry.gen.Call;
+import mindustry.gen.Groups;
+import mindustry.gen.Player;
+import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.listeners.NetEvents;
 
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.Utils.showLeaderboard;
 
 public class MiniHexed {
-    private static final ObjectMap<String, Team> teams = new ObjectMap<>();
-    private static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
+    public static final ObjectMap<String, Team> teams = new ObjectMap<>();
+    public static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
     private static int winScore = 1800;
     private static Schematic startBase;
+
     public static void init() {
         if (!config.isMiniHexed()) return;
+        Database.init();
+
+        showLeaderboard();
+        Vars.netServer.chatFormatter = NetEvents::chat;
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> applyRules());
-        Events.on(EventType.PlayerConnectionConfirmed.class, event -> initPlayer(event.player));
+        Events.on(EventType.PlayerConnectionConfirmed.class, event -> {
+            Database.cachedPlayerData.put(event.player.uuid(), Database.getPlayerData(event.player)
+                    .setNickname(event.player.coloredName()));
+            initPlayer(event.player);
+        });
+        Events.on(EventType.PlayerLeave.class, event -> {
+            Database.cachedPlayerData.remove(event.player.uuid());
+            left.put(event.player.uuid(), Timer.schedule(() -> {
+                killTeam(event.player.team());
+                teams.remove(event.player.uuid());
+                var task = left.remove(event.player.uuid());
+
+                if (task != null) task.cancel();
+            }, 120f));
+        });
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 
@@ -34,14 +61,6 @@ public class MiniHexed {
                 endGame();
             }
         }));
-        Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(()-> {
-            killTeam(event.player.team());
-            teams.remove(event.player.uuid());
-            var task = left.remove(event.player.uuid());
-
-            if (task != null) task.cancel();
-        }, 120f)));
-
         Timer.schedule(() -> {
             if (!Groups.player.isEmpty()) {
                 winScore -= 1;
@@ -94,8 +113,14 @@ public class MiniHexed {
             builder.append("GameOver. Winners:").append("\n");
             for (int i = 0; i < teams.size; i++) {
                 var team = teams.get(i);
-
                 var player = team.players.first();
+
+                if (i == 0) {
+                    var data = Database.cachedPlayerData.get(player.uuid());
+                    data.rating += 1;
+                    Database.setPlayerData(data);
+                    Database.cachedPlayerData.put(player.uuid(), data);
+                }
 
                 builder.append("[orange]").append(i + 1).append(". ")
                         .append(player.coloredName()).append("[][accent]: [cyan]")
@@ -136,7 +161,7 @@ public class MiniHexed {
     private static void initPlayer(Player player) {
         var leftPlayer = left.remove(player.uuid());
 
-        if(leftPlayer != null) {
+        if (leftPlayer != null) {
             leftPlayer.cancel();
         }
 
@@ -171,6 +196,7 @@ public class MiniHexed {
 
         player.team(team);
     }
+
     private static void killTeam(Team team) {
         if (team == Team.derelict || !team.data().active()) return;
 

@@ -3,9 +3,9 @@ package org.xcore.plugin.menus;
 import arc.util.Strings;
 import mindustry.game.Team;
 import mindustry.gen.Player;
+import useful.menu.MenuFormatter;
 import useful.menu.view.Action;
 import useful.menu.view.Menu;
-import useful.menu.MenuFormatter;
 import useful.menu.view.MenuOption;
 
 import static mindustry.Vars.state;
@@ -13,6 +13,7 @@ import static org.xcore.plugin.Utils.colorizedTeam;
 
 public class TeamSelectMenu {
     public static Menu menu = new Menu();
+
     public static void init() {
         MenuFormatter.setFormatter((text, player, values) -> Strings.format(text, values));
 

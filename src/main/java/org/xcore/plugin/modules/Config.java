@@ -12,12 +12,6 @@ public class Config {
     public long discordAdminRoleId = 0L;
     public long discordBansChannelId;
 
-    public boolean isMiniPvP() {
-        return server.equals("mini-pvp");
-    }
-    public boolean isMiniHexed() {
-        return server.equals("mini-hexed");
-    }
     public static void init() {
         if (configFile.exists()) {
             config = gson.fromJson(configFile.reader(), Config.class);
@@ -26,5 +20,13 @@ public class Config {
             configFile.writeString(gson.toJson(config = new Config()));
             XcorePlugin.info("Config generated.");
         }
+    }
+
+    public boolean isMiniPvP() {
+        return server.equals("mini-pvp");
+    }
+
+    public boolean isMiniHexed() {
+        return server.equals("mini-hexed");
     }
 }

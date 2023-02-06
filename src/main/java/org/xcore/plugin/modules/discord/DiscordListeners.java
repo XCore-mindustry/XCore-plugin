@@ -1,20 +1,19 @@
 package org.xcore.plugin.modules.discord;
 
-import net.dv8tion.jda.api.interactions.components.Modal;
-import org.jetbrains.annotations.NotNull;
 import fr.xpdustry.javelin.JavelinPlugin;
-import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.XcorePlugin;
-
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Modal;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
-import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import org.jetbrains.annotations.NotNull;
+import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.listeners.SocketEvents;
 
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.modules.ServersConfig.servers;
@@ -25,7 +24,8 @@ public class DiscordListeners extends ListenerAdapter {
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if (event.getAuthor().isBot() || !event.isFromGuild() || event.getMessage().getContentRaw().isEmpty()) return;
 
-        if (!servers.containsValue(event.getChannel().getIdLong(), false) && !event.getMessage().getContentRaw().startsWith("/")) return;
+        if (!servers.containsValue(event.getChannel().getIdLong(), false) && !event.getMessage().getContentRaw().startsWith("/"))
+            return;
 
         String server = servers.findKey(event.getChannel().getIdLong(), false);
 
@@ -37,6 +37,7 @@ public class DiscordListeners extends ListenerAdapter {
             );
         }
     }
+
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if (event.getComponentId().equals("editban")) {

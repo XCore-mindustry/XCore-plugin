@@ -1,17 +1,20 @@
 package org.xcore.plugin.modules.models;
 
-import org.jetbrains.annotations.NotNull;
+import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.table.DatabaseTable;
 
-public class PlayerData implements Comparable<PlayerData>{
+@DatabaseTable(tableName = "players")
+public class PlayerData {
+    @DatabaseField(id = true, canBeNull = false)
     public String uuid;
-    public String nickname;
-    public Integer rating;
-    public Boolean exists;
 
-    public PlayerData setNickname(String nickname) {
-        this.nickname = nickname;
-        return this;
-    }
+    @DatabaseField(canBeNull = false, defaultValue = "<unknown>")
+    public String nickname;
+
+    @DatabaseField(defaultValue = "0")
+    public int rating;
+
+    public boolean exists = true;
 
     public PlayerData(String uuid, String nickname, Integer rating, Boolean exists) {
         this.uuid = uuid;
@@ -20,11 +23,13 @@ public class PlayerData implements Comparable<PlayerData>{
         this.exists = exists;
     }
 
-    @Override
-    public int compareTo(@NotNull PlayerData data) {
-        if (rating == null || data.rating == null) {
-            return 0;
-        }
-        return rating.compareTo(data.rating);
+    @SuppressWarnings("unused")
+    PlayerData() {
+        // all persisted classes must define a no-arg constructor with at least package visibility
+    }
+
+    public PlayerData setNickname(String nickname) {
+        this.nickname = nickname;
+        return this;
     }
 }

@@ -25,7 +25,9 @@ public class SocketEvents {
     public static final class PlayerJoinLeaveEvent implements JavelinEvent {
         public String playerName, server;
 
-        /** true if is join event, false if is leave event */
+        /**
+         * true if is join event, false if is leave event
+         */
         public boolean join;
 
         public PlayerJoinLeaveEvent(String playerName, String server, Boolean join) {
