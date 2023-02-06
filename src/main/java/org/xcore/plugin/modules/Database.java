@@ -23,6 +23,7 @@ public class Database {
 
     public static void init() {
         try (ConnectionSource connectionSource = new JdbcConnectionSource(connectionURL)) {
+            Class.forName("org.sqlite.JDBC");
             conn = connectionSource;
             playerDataDao = DaoManager.createDao(connectionSource, PlayerData.class);
 
