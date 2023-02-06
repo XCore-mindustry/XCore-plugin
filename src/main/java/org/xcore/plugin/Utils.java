@@ -15,7 +15,7 @@ import static mindustry.Vars.maps;
 public class Utils {
     public static String getLeaderboard() {
         var builder = new StringBuilder();
-        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().sort().reverse();
+        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().sort(d -> d.rating);
         sorted.truncate(10);
 
         builder.append("[blue]Leaderboard\n\n");
