@@ -16,10 +16,13 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
+import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.NetEvents;
 
+import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.Utils.showLeaderboard;
@@ -27,10 +30,12 @@ import static org.xcore.plugin.Utils.showLeaderboard;
 public class MiniHexed {
     public static final ObjectMap<String, Team> teams = new ObjectMap<>();
     public static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
-    private static int greenCores;
+    private static Schematic startBase;
+    private static int greenCores = 0;
 
     private static int winScore = 1800;
-    private static Schematic startBase;
+
+    private static boolean gameover = false;
 
     public static void init() {
         if (!config.isMiniHexed()) return;
@@ -41,8 +46,11 @@ public class MiniHexed {
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
-            greenCores = Team.green.cores().size;
             applyRules();
+            Timer.schedule(() -> {
+                greenCores = Team.green.cores().size;
+                XcorePlugin.info("Found @ green cores.", greenCores);
+            }, 5);
         });
         Events.on(EventType.PlayerConnectionConfirmed.class, event -> {
             Database.cachedPlayerData.put(event.player.uuid(), Database.getPlayerData(event.player)
@@ -54,15 +62,21 @@ public class MiniHexed {
             left.put(event.player.uuid(), Timer.schedule(() -> {
                 killTeam(event.player.team());
                 teams.remove(event.player.uuid());
-                var task = left.remove(event.player.uuid());
-
-                if (task != null) task.cancel();
+                left.remove(event.player.uuid());
             }, 120f));
+        });
+        Events.on(EventType.BlockDestroyEvent.class, event -> {
+            var team = event.tile.team();
+            if (event.tile.block() instanceof CoreBlock) {
+                if (team != Team.derelict && team != Team.green && team.cores().size <= 1) {
+                    killTeam(team);
+                }
+            }
         });
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 
-            if (team.cores().size >= greenCores) {
+            if (team.cores().size >= greenCores && greenCores != 0 && !gameover) {
                 endGame();
             }
         }));
@@ -76,7 +90,7 @@ public class MiniHexed {
             Groups.player.each(p -> Call.infoPopup(p.con(), Strings.format("[blue]@:@[] until endgame", min, sec),
                     1, Align.bottom, 0, 0, 0, 0));
 
-            if (winScore < 1) {
+            if (winScore < 1 && !gameover) {
                 endGame();
             }
         }, 0f, 1);
@@ -109,7 +123,7 @@ public class MiniHexed {
 
     private static void endGame() {
         winScore = 1800;
-
+        gameover = true;
         var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         teams.truncate(3);
 
@@ -135,17 +149,18 @@ public class MiniHexed {
             builder.append("GameOver. Unfortunately, I couldn't find the winning players.");
         }
 
+        builder.append("\nNew game in 10 seconds...");
         Call.infoMessage(builder.toString());
 
-        reloadMap();
+        Timer.schedule(MiniHexed::reloadMap, 10);
     }
 
     private static void reloadMap() {
         try {
             var map = Vars.maps.getNextMap(Gamemode.survival, Vars.state.map);
             var reloader = new WorldReloader();
+            netServer.kickAll(Packets.KickReason.serverRestarting);
             reloader.begin();
-
             world.loadMap(map, map.applyRules(Vars.state.rules.mode()));
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             applyRules();
@@ -154,6 +169,7 @@ public class MiniHexed {
             left.each((uuid, task) -> task.cancel());
             left.clear();
             reloader.end();
+            gameover = false;
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
         }
@@ -202,8 +218,14 @@ public class MiniHexed {
         player.team(team);
     }
 
-    private static void killTeam(Team team) {
+    public static void killTeam(Team team) {
         if (team == Team.derelict || !team.data().active()) return;
+
+        if (!team.data().players.isEmpty()) {
+            var player = team.data().players.first();
+            Call.sendMessage(player.coloredName() + "[] [accent]eliminated!");
+            player.team(Team.derelict);
+        }
 
         team.data().cores.each(core -> core.tile.setNet(Blocks.coreShard, Team.green, 0));
 

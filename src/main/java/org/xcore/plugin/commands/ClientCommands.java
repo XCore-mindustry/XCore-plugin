@@ -14,6 +14,7 @@ import org.xcore.plugin.modules.models.PlayerData;
 
 import static mindustry.Vars.mods;
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.modules.MiniHexed.killTeam;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {
@@ -52,7 +53,7 @@ public class ClientCommands {
                 var team = MiniHexed.teams.remove(player.uuid());
 
                 if (team != null) {
-                    team.data().destroyToDerelict();
+                    killTeam(player.team());
                 }
             }
 
