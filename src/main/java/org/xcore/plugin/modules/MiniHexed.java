@@ -52,11 +52,8 @@ public class MiniHexed {
                 XcorePlugin.info("Found @ green cores.", greenCores);
             }, 5);
         });
-        Events.on(EventType.PlayerConnectionConfirmed.class, event -> {
-            Database.cachedPlayerData.put(event.player.uuid(), Database.getPlayerData(event.player)
-                    .setNickname(event.player.coloredName()));
-            initPlayer(event.player);
-        });
+        Events.on(EventType.PlayerConnectionConfirmed.class, event -> Database.cachedPlayerData.put(event.player.uuid(), Database.getPlayerData(event.player)
+                .setNickname(event.player.coloredName())));
         Events.on(EventType.PlayerLeave.class, event -> {
             Database.cachedPlayerData.remove(event.player.uuid());
             left.put(event.player.uuid(), Timer.schedule(() -> {
@@ -94,6 +91,44 @@ public class MiniHexed {
                 endGame();
             }
         }, 0f, 1);
+
+        netServer.assigner = (player, players) -> {
+            var leftPlayer = left.remove(player.uuid());
+
+            if (leftPlayer != null) {
+                leftPlayer.cancel();
+            }
+
+            var playerTeam = teams.get(player.uuid());
+
+            if (playerTeam != null && playerTeam.active()) {
+                return playerTeam;
+            }
+
+            var core = Team.green.cores().random();
+            var team = Seq.select(Team.all, t -> t.id > 5 && !t.active() && t.data().players.isEmpty()).random();
+
+            if (team == null || core == null) {
+                notAvailableTeamMessage(player);
+                return Team.derelict;
+            }
+
+            teams.put(player.uuid(), team);
+
+            core.tile.setNet(Blocks.coreShard, team, 0);
+
+            int x = core.tileX() - startBase.width / 2, y = core.tileY() - startBase.height / 2;
+
+            startBase.tiles.each(st -> {
+                var tile = world.tile(st.x + x, st.y + y);
+                if (tile == null) return;
+
+                tile.setNet(st.block, team, st.rotation);
+                tile.build.configureAny(st.config);
+            });
+
+            return team;
+        };
 
         XcorePlugin.info("MiniHexed loaded.");
     }
@@ -177,45 +212,6 @@ public class MiniHexed {
 
     private static void notAvailableTeamMessage(Player player) {
         player.sendMessage("All cores are busy. You are an observer of the game.");
-    }
-
-    private static void initPlayer(Player player) {
-        var leftPlayer = left.remove(player.uuid());
-
-        if (leftPlayer != null) {
-            leftPlayer.cancel();
-        }
-
-        var playerTeam = teams.get(player.uuid());
-
-        if (playerTeam != null && playerTeam.active()) {
-            player.team(playerTeam);
-            return;
-        }
-
-        var core = Team.green.cores().random();
-        var team = Seq.select(Team.all, t -> t.id > 5 && !t.active() && t.data().players.isEmpty()).random();
-
-        if (team == null || core == null) {
-            notAvailableTeamMessage(player);
-            return;
-        }
-
-        teams.put(player.uuid(), team);
-
-        core.tile.setNet(Blocks.coreShard, team, 0);
-
-        int x = core.tileX() - startBase.width / 2, y = core.tileY() - startBase.height / 2;
-
-        startBase.tiles.each(st -> {
-            var tile = world.tile(st.x + x, st.y + y);
-            if (tile == null) return;
-
-            tile.setNet(st.block, team, st.rotation);
-            tile.build.configureAny(st.config);
-        });
-
-        player.team(team);
     }
 
     public static void killTeam(Team team) {
