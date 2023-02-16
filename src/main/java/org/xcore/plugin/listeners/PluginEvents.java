@@ -11,6 +11,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.Utils.votesRequired;
 
 public class PluginEvents {
     public static void init() {
@@ -69,6 +70,12 @@ public class PluginEvents {
 
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
+
+            if(currentlyKicking[0] != null && currentlyKicking[0].target == player) {
+                currentlyKicking[0].votes = votesRequired();
+                currentlyKicking[0].checkPass();
+            }
+
             int cur = rtvVotes.size();
             int req = (int) Math.ceil(rtvRatio * Groups.player.size());
             if (rtvVotes.contains(player.uuid())) {

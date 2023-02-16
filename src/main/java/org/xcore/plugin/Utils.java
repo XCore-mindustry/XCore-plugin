@@ -1,16 +1,22 @@
 package org.xcore.plugin;
 
+import arc.struct.ObjectSet;
 import arc.struct.Seq;
 import arc.util.Strings;
 import arc.util.Timer;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
+import mindustry.gen.Player;
 import mindustry.maps.Map;
+import mindustry.net.Packets;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.models.PlayerData;
 
 import static mindustry.Vars.maps;
+import static mindustry.Vars.netServer;
+import static org.xcore.plugin.PluginVars.kickDuration;
+import static org.xcore.plugin.PluginVars.voteDuration;
 
 public class Utils {
     public static String getLeaderboard() {
@@ -44,5 +50,50 @@ public class Utils {
 
     public static String colorizedTeam(Team team) {
         return Strings.format("[#@]@", team.color, team);
+    }
+
+    public static int votesRequired(){
+        return 2 + (Groups.player.size() > 4 ? 1 : 0);
+    }
+
+    public static class VoteSession{
+        public Player target;
+        public ObjectSet<String> voted = new ObjectSet<>();
+        VoteSession[] map;
+        Timer.Task task;
+        public int votes;
+
+        public VoteSession(VoteSession[] map, Player target){
+            this.target = target;
+            this.map = map;
+            this.task = Timer.schedule(() -> {
+                if(!checkPass()){
+                    Call.sendMessage(Strings.format("[lightgray]Vote failed. Not enough votes to kick[orange] @[lightgray].", target.name));
+                    map[0] = null;
+                    task.cancel();
+                }
+            }, voteDuration);
+        }
+
+        public void vote(Player player, int d){
+            votes += d;
+            voted.addAll(player.uuid(), netServer.admins.getInfo(player.uuid()).lastIP);
+
+            Call.sendMessage(Strings.format("[lightgray]@[lightgray] has voted on kicking[orange] @[lightgray].[accent] (@/@)\n[lightgray]Type[orange] /vote <y/n>[] to agree.",
+                    player.name, target.name, votes, votesRequired()));
+
+            checkPass();
+        }
+
+        public boolean checkPass(){
+            if(votes >= votesRequired()){
+                Call.sendMessage(Strings.format("[orange]Vote passed.[scarlet] @[orange] will be banned from the server for @ minutes.", target.name, (kickDuration / 60)));
+                target.kick(Packets.KickReason.vote, kickDuration * 1000L);
+                map[0] = null;
+                task.cancel();
+                return true;
+            }
+            return false;
+        }
     }
 }

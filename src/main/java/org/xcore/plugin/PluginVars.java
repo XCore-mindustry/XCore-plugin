@@ -1,6 +1,8 @@
 package org.xcore.plugin;
 
 import arc.files.Fi;
+import arc.struct.ObjectMap;
+import arc.util.Timekeeper;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -25,4 +27,15 @@ public class PluginVars {
     public static double rtvRatio = 0.6;
     public static HashSet<String> rtvVotes = new HashSet<>();
     public static boolean rtvEnabled = true;
+
+    //duration of a kick in seconds
+    public static int kickDuration = 60 * 60;
+    //voting round duration in seconds
+    public static float voteDuration = 0.5f * 60;
+    //cooldown between votes in seconds
+    public static int voteCooldown = 60 * 2;
+
+    public static ObjectMap<String, Timekeeper> cooldowns = new ObjectMap<>();
+    //current kick sessions
+    public static Utils.VoteSession[] currentlyKicking = { null };
 }
