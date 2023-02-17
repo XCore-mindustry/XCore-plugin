@@ -37,5 +37,5 @@ public class PluginVars {
 
     public static ObjectMap<String, Timekeeper> cooldowns = new ObjectMap<>();
     //current kick sessions
-    public static Utils.VoteSession[] currentlyKicking = { null };
+    public static Utils.VoteSession[] currentlyKicking = {null};
 }

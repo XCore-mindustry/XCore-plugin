@@ -7,6 +7,7 @@ import arc.util.Align;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
+import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.UnitTypes;
@@ -21,10 +22,13 @@ import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.NetEvents;
+import org.xcore.plugin.listeners.SocketEvents;
+import org.xcore.plugin.modules.discord.Bot;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.isSocketServer;
 import static org.xcore.plugin.Utils.showLeaderboard;
 
 public class MiniHexed {
@@ -196,6 +200,11 @@ public class MiniHexed {
 
         builder.append("\nNew game in 10 seconds...");
         Call.infoMessage(builder.toString());
+        if (isSocketServer) {
+            Bot.sendServerAction(Strings.stripColors(Strings.stripGlyphs(builder.toString())));
+        } else {
+            JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
+        }
 
         Timer.schedule(MiniHexed::reloadMap, 10);
     }

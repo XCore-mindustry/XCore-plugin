@@ -16,7 +16,7 @@ public class SocketEvents {
     public static final class ServerActionEvent implements JavelinEvent {
         public String message, server;
 
-        ServerActionEvent(String message, String server) {
+        public ServerActionEvent(String message, String server) {
             this.message = message;
             this.server = server;
         }

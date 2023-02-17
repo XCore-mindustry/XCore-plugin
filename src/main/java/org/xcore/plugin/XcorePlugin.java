@@ -10,6 +10,7 @@ import mindustry.gen.Call;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
 import mindustry.mod.Plugin;
+import mindustry.net.Packets;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
@@ -63,6 +64,8 @@ public class XcorePlugin extends Plugin {
             }
         });
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
+        Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
+        Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
         info("Plugin loaded");
     }

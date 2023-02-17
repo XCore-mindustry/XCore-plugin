@@ -1,6 +1,7 @@
 package org.xcore.plugin.listeners;
 
 import arc.Events;
+import arc.util.Strings;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType.*;
@@ -10,6 +11,7 @@ import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 
+import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.Utils.votesRequired;
 
@@ -71,7 +73,7 @@ public class PluginEvents {
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
-            if(currentlyKicking[0] != null && currentlyKicking[0].target == player) {
+            if (currentlyKicking[0] != null && currentlyKicking[0].target == player) {
                 currentlyKicking[0].votes = votesRequired();
                 currentlyKicking[0].checkPass();
             }
@@ -92,6 +94,22 @@ public class PluginEvents {
             }
         });
 
-        Events.on(GameOverEvent.class, e -> rtvVotes.clear());
+        Events.on(GameOverEvent.class, event -> {
+            String message = null;
+            if (state.rules.waves) {
+                message = Strings.format(
+                        "Game over! Reached wave @ with @ players online on map @.", state.wave, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
+            } else if (state.rules.pvp && !config.isMiniHexed()) {
+                message = Strings.format(
+                        "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
+            }
+
+            if (isSocketServer) {
+                Bot.sendServerAction(message);
+            } else {
+                JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent(message, config.server));
+            }
+            rtvVotes.clear();
+        });
     }
 }
