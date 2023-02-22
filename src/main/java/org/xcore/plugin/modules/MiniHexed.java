@@ -194,6 +194,7 @@ public class MiniHexed {
             world.loadMap(map, map.applyRules(Vars.state.rules.mode()));
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             applyRules();
+            Vars.logic.reset();
             Vars.logic.play();
             teams.clear();
             left.each((uuid, task) -> task.cancel());
