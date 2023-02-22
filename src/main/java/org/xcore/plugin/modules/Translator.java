@@ -63,12 +63,10 @@ public class Translator {
         Database.cachedPlayerData.forEach(entry -> {
             var data = entry.value;
             var player = Groups.player.find(p -> p.uuid().equals(data.uuid));
-            Log.info(player);
             if (player == null || player == author) return;
 
             if (data.translatorLanguage.equals("off")) {
                 player.sendMessage(message, author, text);
-                Log.info("nya");
                 return;
             }
 
