@@ -33,8 +33,6 @@ public class Database {
         MongoClient mongoClient = MongoClients.create(globalConfig.mongoConnectionString);
         MongoDatabase database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
         playersCollection = database.getCollection("players", PlayerData.class);
-
-        playersCollection.find().forEach(data->Log.info(data.toString()));
     }
 
     public static PlayerData getPlayerData(Player player) {
