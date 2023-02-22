@@ -60,14 +60,6 @@ public class MiniHexed {
                 left.remove(event.player.uuid());
             }, 120f));
         });
-        Events.on(EventType.BlockDestroyEvent.class, event -> {
-            var team = event.tile.team();
-            if (event.tile.block() instanceof CoreBlock) {
-                if (team != Team.derelict && team != Team.green && team.cores().size <= 1) {
-                    killTeam(team);
-                }
-            }
-        });
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 
@@ -133,30 +125,19 @@ public class MiniHexed {
 
     private static void applyRules() {
         UnitTypes.risso.flying = true;
-        UnitTypes.risso.naval = false;
         UnitTypes.minke.flying = true;
-        UnitTypes.minke.naval = false;
         UnitTypes.bryde.flying = true;
-        UnitTypes.bryde.naval = false;
         UnitTypes.sei.flying = true;
-        UnitTypes.sei.naval = false;
         UnitTypes.omura.flying = true;
-        UnitTypes.omura.naval = false;
         UnitTypes.retusa.flying = true;
-        UnitTypes.retusa.naval = false;
         UnitTypes.oxynoe.flying = true;
-        UnitTypes.oxynoe.naval = false;
         UnitTypes.cyerce.flying = true;
-        UnitTypes.cyerce.naval = false;
         UnitTypes.aegires.flying = true;
-        UnitTypes.aegires.naval = false;
         UnitTypes.navanax.flying = true;
-        UnitTypes.navanax.naval = false;
 
         Vars.state.rules.canGameOver = false;
-        Vars.state.rules.waves = false;
-        Vars.state.rules.attackMode = false;
-        Vars.state.rules.defaultTeam = Team.derelict;
+        Vars.state.rules.pvp=true;
+        Vars.state.rules.pvpAutoPause = false;
 
         for (var team : Team.all) {
             team.rules().rtsAi = true;
