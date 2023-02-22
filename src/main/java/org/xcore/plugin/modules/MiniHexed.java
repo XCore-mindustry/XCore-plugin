@@ -186,7 +186,7 @@ public class MiniHexed {
 
     private static void reloadMap() {
         try {
-            var map = Vars.maps.getNextMap(Gamemode.survival, Vars.state.map);
+            var map = Vars.maps.getNextMap(Gamemode.pvp, Vars.state.map);
             var reloader = new WorldReloader();
             netServer.kickAll(Packets.KickReason.serverRestarting);
             reloader.begin();
