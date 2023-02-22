@@ -23,7 +23,7 @@ import static org.xcore.plugin.PluginVars.*;
 public class Utils {
     public static String getLeaderboard() {
         var builder = new StringBuilder();
-        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> d.rating != 0).sort(d -> d.rating).reverse();
+        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> (config.isMiniPvP() ? d.pvpRating : d.hexedWins) != 0).sort(d -> config.isMiniPvP() ? d.pvpRating : d.hexedWins).reverse();
         sorted.truncate(10);
 
         builder.append("[blue]Leaderboard\n\n");
@@ -33,7 +33,7 @@ public class Utils {
                     .append(". ")
                     .append(data.nickname)
                     .append(":[cyan] ")
-                    .append(data.rating).append(" []rating\n");
+                    .append(config.isMiniPvP() ? data.pvpRating : data.hexedWins).append(" []rating\n");
         }
 
         return builder.toString();
@@ -48,6 +48,10 @@ public class Utils {
 
     public static Seq<Map> getAvailableMaps() {
         return maps.customMaps().isEmpty() ? maps.defaultMaps() : maps.customMaps();
+    }
+
+    public static String findTranslatorLanguage(String locale) {
+        return translatorLanguages.orderedKeys().find(locale::startsWith);
     }
 
     public static String colorizedTeam(Team team) {

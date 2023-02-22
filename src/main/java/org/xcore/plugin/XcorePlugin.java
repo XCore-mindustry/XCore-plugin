@@ -19,6 +19,7 @@ import org.xcore.plugin.menus.TeamSelectMenu;
 import org.xcore.plugin.modules.*;
 
 import static mindustry.Vars.maps;
+import static mindustry.Vars.netServer;
 import static org.xcore.plugin.Utils.getAvailableMaps;
 
 @SuppressWarnings("unused")
@@ -26,7 +27,7 @@ public class XcorePlugin extends Plugin {
 
     public XcorePlugin() {
         Config.init();
-        ServersConfig.init();
+        GlobalConfig.init();
     }
 
     public static void info(String text, Object... values) {
@@ -48,12 +49,13 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void init() {
+        Database.init();
         Console.init();
         TeamSelectMenu.init();
         MiniPvP.init();
         MiniHexed.init();
         PluginEvents.init();
-
+        Translator.init();
         maps.setMapProvider(new MapProvider() {
             public int lastMapID;
 
@@ -63,6 +65,7 @@ public class XcorePlugin extends Plugin {
                 return allmaps.any() ? allmaps.get(lastMapID++ % allmaps.size) : null;
             }
         });
+        netServer.admins.addChatFilter(NetEvents::chat);
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
         Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);

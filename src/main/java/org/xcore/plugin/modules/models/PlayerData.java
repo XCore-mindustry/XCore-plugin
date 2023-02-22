@@ -1,31 +1,27 @@
 package org.xcore.plugin.modules.models;
 
-import com.j256.ormlite.field.DatabaseField;
-import com.j256.ormlite.table.DatabaseTable;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
-@DatabaseTable(tableName = "players")
 public class PlayerData {
-    @DatabaseField(id = true, canBeNull = false)
     public String uuid;
 
-    @DatabaseField(canBeNull = false, defaultValue = "<unknown>")
-    public String nickname;
+    public String nickname = "<unknown>";
 
-    @DatabaseField(defaultValue = "0")
-    public int rating;
+    public int pvpRating = 0;
+    public int hexedWins = 0;
 
+    public String translatorLanguage = "off";
+
+    @BsonIgnore
     public boolean exists = true;
 
-    public PlayerData(String uuid, String nickname, Integer rating, Boolean exists) {
+    public PlayerData(String uuid, Boolean exists) {
         this.uuid = uuid;
-        this.nickname = nickname;
-        this.rating = rating;
         this.exists = exists;
     }
 
     @SuppressWarnings("unused")
-    PlayerData() {
-        // all persisted classes must define a no-arg constructor with at least package visibility
+    public PlayerData() {
     }
 
     public PlayerData setNickname(String nickname) {

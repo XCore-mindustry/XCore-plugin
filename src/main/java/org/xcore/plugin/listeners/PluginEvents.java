@@ -9,6 +9,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
 
 import static mindustry.Vars.state;
@@ -45,21 +46,16 @@ public class PluginEvents {
                 JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
             }
         });
-
-        Events.on(PlayerChatEvent.class, (event -> {
-            if (event.message.startsWith("/")) return;
-
-            if (isSocketServer) {
-                Bot.sendMessageEventMessage(event.player.plainName(), event.message);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(
-                        new SocketEvents.MessageEvent(event.player.plainName(), event.message, config.server));
-            }
-        }));
-
         Events.on(PlayerJoin.class, event -> {
             if (event.player.getInfo().timesJoined < 5)
                 Call.openURI(event.player.con, discordURL);
+
+            var data = Database.getPlayerData(event.player).setNickname(event.player.coloredName());
+            Database.cachedPlayerData.put(event.player.uuid(), data);
+
+            if (data.translatorLanguage.equals("off")) {
+                event.player.sendMessage("[accent]I see that you have automatic chat translator turned off, so I recommend turning it on using the [grey]/tr auto[] command.");
+            }
 
             if (isSocketServer) {
                 Bot.sendJoinLeaveEventMessage(event.player.plainName(), true);
@@ -72,6 +68,8 @@ public class PluginEvents {
 
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
+
+            Database.cachedPlayerData.remove(player.uuid());
 
             if (currentlyKicking[0] != null && currentlyKicking[0].target == player) {
                 currentlyKicking[0].votes = votesRequired();

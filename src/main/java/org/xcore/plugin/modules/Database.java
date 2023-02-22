@@ -1,36 +1,40 @@
 package org.xcore.plugin.modules;
 
+
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import com.j256.ormlite.dao.Dao;
-import com.j256.ormlite.dao.DaoManager;
-import com.j256.ormlite.jdbc.JdbcConnectionSource;
-import com.j256.ormlite.support.ConnectionSource;
-import com.j256.ormlite.table.TableUtils;
+
+import arc.util.Log;
+import com.mongodb.client.*;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.codecs.configuration.CodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
+
 import mindustry.gen.Player;
-import org.xcore.plugin.XcorePlugin;
+
 import org.xcore.plugin.modules.models.PlayerData;
 
-import java.sql.SQLException;
-import java.util.List;
+import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static com.mongodb.client.model.Sorts.descending;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class Database {
-    public static String connectionURL = "jdbc:sqlite:database.db";
-    public static ConnectionSource conn;
-    public static Dao<PlayerData, String> playerDataDao;
-
+    public static MongoCollection<PlayerData> playersCollection;
     public static ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
 
     public static void init() {
-        try (ConnectionSource connectionSource = new JdbcConnectionSource(connectionURL)) {
-            Class.forName("org.sqlite.JDBC");
-            conn = connectionSource;
-            playerDataDao = DaoManager.createDao(connectionSource, PlayerData.class);
+        CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
+        CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
 
-            TableUtils.createTableIfNotExists(connectionSource, PlayerData.class);
-        } catch (Exception e) {
-            XcorePlugin.err(e.getMessage());
-        }
+        MongoClient mongoClient = MongoClients.create(globalConfig.mongoConnectionString);
+        MongoDatabase database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
+        playersCollection = database.getCollection("players", PlayerData.class);
+
+        playersCollection.find().forEach(data->Log.info(data.toString()));
     }
 
     public static PlayerData getPlayerData(Player player) {
@@ -38,33 +42,24 @@ public class Database {
     }
 
     public static PlayerData getPlayerData(String uuid) {
-        try {
-            var data = playerDataDao.queryForId(uuid);
+        var data = playersCollection.find(Filters.eq("uuid", uuid)).first();
 
-            if (data == null) {
-                data = new PlayerData(uuid, "<unknown>", 0, false);
-            }
-
-            return data;
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        if (data == null) {
+            data = new PlayerData(uuid, false);
         }
+
+        return data;
     }
 
     public static void setPlayerData(PlayerData data) {
-        try {
-            playerDataDao.createOrUpdate(data);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        playersCollection.replaceOne(Filters.eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
-    public static Seq<PlayerData> getLeaders() {
-        try {
-            List<PlayerData> datas = playerDataDao.queryBuilder().orderBy("rating", false).limit(10L).query();
-            return Seq.with(datas);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    public static Seq<PlayerData> getLeaders(String column) {
+        Seq<PlayerData> datas = new Seq<>();
+
+        playersCollection.find(descending(column)).limit(10).forEach(datas::add);
+
+        return datas;
     }
 }

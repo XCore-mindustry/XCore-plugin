@@ -21,7 +21,6 @@ import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
 
@@ -43,10 +42,8 @@ public class MiniHexed {
 
     public static void init() {
         if (!config.isMiniHexed()) return;
-        Database.init();
 
         showLeaderboard();
-        Vars.netServer.chatFormatter = NetEvents::chat;
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
@@ -56,10 +53,7 @@ public class MiniHexed {
                 XcorePlugin.info("Found @ green cores.", greenCores);
             }, 5);
         });
-        Events.on(EventType.PlayerConnectionConfirmed.class, event -> Database.cachedPlayerData.put(event.player.uuid(), Database.getPlayerData(event.player)
-                .setNickname(event.player.coloredName())));
         Events.on(EventType.PlayerLeave.class, event -> {
-            Database.cachedPlayerData.remove(event.player.uuid());
             left.put(event.player.uuid(), Timer.schedule(() -> {
                 killTeam(event.player.team());
                 teams.remove(event.player.uuid());
@@ -185,7 +179,7 @@ public class MiniHexed {
 
                 if (i == 0) {
                     var data = Database.cachedPlayerData.get(player.uuid());
-                    data.rating += 1;
+                    data.hexedWins += 1;
                     Database.setPlayerData(data);
                     Database.cachedPlayerData.put(player.uuid(), data);
                 }

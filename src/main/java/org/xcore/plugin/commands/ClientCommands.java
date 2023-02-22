@@ -18,6 +18,7 @@ import org.xcore.plugin.modules.models.PlayerData;
 import static mindustry.Vars.mods;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.Utils.findTranslatorLanguage;
 import static org.xcore.plugin.modules.MiniHexed.killTeam;
 
 public class ClientCommands {
@@ -50,6 +51,39 @@ public class ClientCommands {
             rtvVotes.clear();
             Call.sendMessage("RTV: [green] vote passed, changing map.");
             Events.fire(new EventType.GameOverEvent(Team.derelict));
+        });
+        handler.<Player>register("tr", "<lang>", "Set the translator language", (args, player) -> {
+            var data = Database.cachedPlayerData.get(player.uuid());
+
+            String success = "[accent]The translator language has been successfully changed to [grey]@[]!";
+
+            switch (args[0].toLowerCase()) {
+                case "off" -> {
+                    data.translatorLanguage = "off";
+                    player.sendMessage("[accent]Translator is [grey]off[].");
+                }
+                case "auto" -> {
+                    var lang = findTranslatorLanguage(player.locale);
+                    data.translatorLanguage = lang == null ? "en" : lang;
+                    player.sendMessage(Strings.format(
+                            success, translatorLanguages.get(data.translatorLanguage)));
+                }
+                default -> {
+                    var lang = findTranslatorLanguage(args[0]);
+                    if (lang == null) {
+                        player.sendMessage("[accent]There is no such language.");
+                        break;
+                    }
+
+                    data.translatorLanguage = lang;
+
+                    player.sendMessage(Strings.format(
+                            success, translatorLanguages.get(data.translatorLanguage)));
+                }
+            }
+
+            Database.setPlayerData(data);
+            Database.cachedPlayerData.put(player.uuid(), data);
         });
 
         handler.removeCommand("votekick");
@@ -175,8 +209,8 @@ public class ClientCommands {
         }
 
         if (config.isMiniPvP()) {
-            handler.<Player>register("top", "Shows top players by wins", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders();
+            handler.<Player>register("top", "Shows top players by rating", (args, player) -> {
+                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
@@ -186,7 +220,7 @@ public class ClientCommands {
 
                     builder.append("[orange]").append(i + 1).append(". ")
                             .append(data.nickname).append("[accent]: [cyan]")
-                            .append(data.rating).append("\n");
+                            .append(data.pvpRating).append("\n");
                 }
                 player.sendMessage(builder.toString());
             });

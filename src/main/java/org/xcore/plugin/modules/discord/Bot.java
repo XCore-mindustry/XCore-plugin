@@ -17,7 +17,7 @@ import static net.dv8tion.jda.api.requests.GatewayIntent.*;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.OWNER;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.VOICE;
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.modules.ServersConfig.servers;
+import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class Bot {
     public static JDA jda;
@@ -28,7 +28,7 @@ public class Bot {
 
     public static void connect() {
         try {
-            jda = JDABuilder.createLight(config.discordBotToken)
+            jda = JDABuilder.createLight(globalConfig.discordBotToken)
                     .disableCache(CacheFlag.ACTIVITY)
                     .setMemberCachePolicy(VOICE.or(OWNER))
                     .setChunkingFilter(ChunkingFilter.NONE)
@@ -39,8 +39,8 @@ public class Bot {
                     .build()
                     .awaitReady();
 
-            bansChannel = jda.getTextChannelById(config.discordBansChannelId);
-            adminRole = jda.getRoleById(config.discordAdminRoleId);
+            bansChannel = jda.getTextChannelById(globalConfig.discordBansChannelId);
+            adminRole = jda.getRoleById(globalConfig.discordAdminRoleId);
             isConnected = true;
         } catch (Exception e) {
             XcorePlugin.err("Error while connecting to discord: ");
@@ -49,7 +49,7 @@ public class Bot {
     }
 
     public static TextChannel getServerLogChannel(String server) {
-        return jda.getTextChannelById(servers.get(server));
+        return jda.getTextChannelById(globalConfig.servers.get(server));
     }
 
     public static void sendMessageEventMessage(String playerName, String message) {
@@ -62,7 +62,6 @@ public class Bot {
                 Strings.format("`@: @`", playerName, message)
         ).queue();
     }
-
     public static void sendServerAction(String message) {
         sendServerAction(message, config.server);
     }

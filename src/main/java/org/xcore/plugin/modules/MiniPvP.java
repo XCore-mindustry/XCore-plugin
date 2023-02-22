@@ -9,7 +9,6 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.menus.TeamSelectMenu;
 
 import static org.xcore.plugin.PluginVars.config;
@@ -19,16 +18,7 @@ public class MiniPvP {
     public static void init() {
         if (!config.isMiniPvP()) return;
 
-        Database.init();
         showLeaderboard();
-
-        Vars.netServer.chatFormatter = NetEvents::chat;
-        Events.on(EventType.PlayerJoin.class, event -> Database.cachedPlayerData.put(
-                event.player.uuid(), Database.getPlayerData(event.player)
-                        .setNickname(event.player.coloredName()))
-        );
-
-        Events.on(EventType.PlayerLeave.class, event -> Database.cachedPlayerData.remove(event.player.uuid()));
 
         Events.on(EventType.GameOverEvent.class, e -> {
             if (e.winner == Team.derelict) return;
@@ -37,7 +27,7 @@ public class MiniPvP {
                 var data = Database.cachedPlayerData.get(p.uuid());
 
                 int increased = 150 / (e.winner.data().players.size + 1);
-                data.rating += increased;
+                data.pvpRating += increased;
                 p.sendMessage("Your team has won. Your rating has increased by " + increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
@@ -60,11 +50,11 @@ public class MiniPvP {
 
                         int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);
 
-                        if ((data.rating - reduced) < 0) {
-                            data.rating = 0;
+                        if ((data.pvpRating - reduced) < 0) {
+                            data.pvpRating = 0;
                             p.sendMessage("Your team lost. Your rating is 0");
                         } else {
-                            data.rating -= reduced;
+                            data.pvpRating -= reduced;
                             p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
                         }
                         Log.info("@ rating reduced by @", p.plainName(), reduced);

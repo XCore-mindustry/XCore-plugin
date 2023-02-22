@@ -16,7 +16,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.modules.ServersConfig.servers;
+import static org.xcore.plugin.PluginVars.globalConfig;
 import static org.xcore.plugin.modules.discord.Bot.adminRole;
 
 public class DiscordListeners extends ListenerAdapter {
@@ -24,10 +24,10 @@ public class DiscordListeners extends ListenerAdapter {
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if (event.getAuthor().isBot() || !event.isFromGuild() || event.getMessage().getContentRaw().isEmpty()) return;
 
-        if (!servers.containsValue(event.getChannel().getIdLong(), false) && !event.getMessage().getContentRaw().startsWith("/"))
+        if (!globalConfig.servers.containsValue(event.getChannel().getIdLong(), false) && !event.getMessage().getContentRaw().startsWith("/"))
             return;
 
-        String server = servers.findKey(event.getChannel().getIdLong(), false);
+        String server = globalConfig.servers.findKey(event.getChannel().getIdLong(), false);
 
         if (server.equals(config.server)) {
             XcorePlugin.sendMessageFromDiscord(event.getAuthor().getName(), event.getMessage().getContentRaw());

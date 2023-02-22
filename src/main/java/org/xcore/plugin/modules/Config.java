@@ -8,9 +8,6 @@ public class Config {
     public String server = "server";
     public boolean consoleEnabled = true;
     public String globalConfigDirectory = null;
-    public String discordBotToken = "token here";
-    public long discordAdminRoleId = 0L;
-    public long discordBansChannelId;
 
     public static void init() {
         if (configFile.exists()) {

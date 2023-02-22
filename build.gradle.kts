@@ -11,7 +11,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "1.5"
-val mindustryVersion = "141.3"
+val mindustryVersion = "142"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -42,9 +42,7 @@ dependencies {
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
     compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
 
-    implementation("org.xerial:sqlite-jdbc:3.40.0.0")
-    implementation("com.j256.ormlite:ormlite-core:6.1")
-    implementation("com.j256.ormlite:ormlite-jdbc:6.1")
+    implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10")
 
     implementation("net.dv8tion:JDA:5.0.0-alpha.21") {

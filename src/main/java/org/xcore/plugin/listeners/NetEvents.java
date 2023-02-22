@@ -19,7 +19,7 @@ import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.PluginVars;
-import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.modules.discord.Bot;
 
 import java.nio.ByteBuffer;
@@ -31,8 +31,22 @@ import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.isSocketServer;
 
 public class NetEvents {
-    public static String chat(Player player, String message) {
-        return player != null ? "[coral][[[cyan]" + Database.cachedPlayerData.get(player.uuid()).rating + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message : message;
+    public static String chat(Player author, String text) {
+        Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
+
+        author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
+        Translator.translate(author, text);
+
+        if (isSocketServer) {
+            Bot.sendMessageEventMessage(author.plainName(), text);
+        } else {
+            JavelinPlugin.getJavelinSocket().sendEvent(
+                    new SocketEvents.MessageEvent(author.plainName(), text, config.server));
+        }
+        return null;
+
+        //var data = Database.cachedPlayerData.get(player.uuid());
+        //return "[coral][[[cyan]" + (config.isMiniPvP() ? data.pvpRating : data.hexedWins) + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message;
     }
 
     public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
@@ -81,9 +95,6 @@ public class NetEvents {
 
     public static void connectPacket(NetConnection con, Packets.ConnectPacket packet) {
         if (con.kicked) return;
-        if (con.address.startsWith("steam:")) {
-            packet.uuid = con.address.substring("steam:".length());
-        }
 
         Events.fire(new EventType.ConnectPacketEvent(con, packet));
 
