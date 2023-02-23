@@ -10,14 +10,14 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.modules.models.BanData;
 
 import java.awt.*;
 
 import static net.dv8tion.jda.api.requests.GatewayIntent.*;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.OWNER;
 import static net.dv8tion.jda.api.utils.MemberCachePolicy.VOICE;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.globalConfig;
+import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
     public static JDA jda;
@@ -62,6 +62,7 @@ public class Bot {
                 Strings.format("`@: @`", playerName, message)
         ).queue();
     }
+
     public static void sendServerAction(String message) {
         sendServerAction(message, config.server);
     }
@@ -82,18 +83,16 @@ public class Bot {
         ).queue();
     }
 
-    public static void sendBanEvent(String targetName, String adminName) {
-        sendBanEvent(targetName, adminName, config.server);
-    }
-
-    public static void sendBanEvent(String targetName, String adminName, String server) {
+    public static void sendBanEvent(BanData ban) {
         if (!isConnected) return;
 
         EmbedBuilder embed = new EmbedBuilder().setTitle("Ban")
                 .setColor(Color.red)
-                .addField("Violator", targetName, false)
-                .addField("Admin", adminName, false)
-                .addField("Server", server, false);
-        bansChannel.sendMessageEmbeds(embed.build()).addActionRow(Button.danger("editban", "Edit reason and date")).queue();
+                .addField("Violator", ban.name, false)
+                .addField("Admin", ban.adminName, false)
+                .addField("Server", ban.server, false);
+
+        bansChannel.sendMessageEmbeds(embed.build()).addActionRow(Button.danger("editban", "Edit reason and ban duration"))
+                .queue(m -> activeBanData.put(m.getIdLong(), ban));
     }
 }

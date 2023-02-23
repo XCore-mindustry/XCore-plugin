@@ -3,6 +3,7 @@ package org.xcore.plugin;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
+import arc.util.Time;
 import arc.util.serialization.JsonValue;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.Vars;
@@ -19,6 +20,7 @@ import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.menus.TeamSelectMenu;
 import org.xcore.plugin.modules.*;
+import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.models.BanData;
 
 import java.util.concurrent.TimeUnit;
@@ -90,9 +92,6 @@ public class XcorePlugin extends Plugin {
             boolean skipToDiscord = json.get("skip_to_discord").asBoolean();
             short duration = json.get("duration").asShort();
 
-            if (duration == 0) {
-                return;
-            }
             if (uuid == null || uuid.isBlank()) {
                 player.sendMessage("UUID cannot be blank.");
                 return;
@@ -103,11 +102,20 @@ public class XcorePlugin extends Plugin {
             }
 
             if (skipToDiscord) {
-                return; // todo
+                BanData ban = new BanData(uuid, ip, name, player.name, config.server);
+                if (isSocketServer) {
+                    Bot.sendBanEvent(ban);
+                } else {
+                    JavelinPlugin.getJavelinSocket().sendEvent(ban);
+                }
+                return;
             }
 
-            BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, TimeUnit.DAYS.toMillis(duration));
+            if (duration == 0) {
+                return;
+            }
 
+            BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, Time.millis() + TimeUnit.DAYS.toMillis(duration));
             if (isSocketServer) {
                 temporaryBan(ban);
             } else {

@@ -25,10 +25,12 @@ import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.discord.Bot.bansChannel;
+import static org.xcore.plugin.modules.discord.Bot.isConnected;
 
 public class Utils {
     public static void temporaryBan(BanData ban) {
         Database.setBan(ban);
+        if (!isConnected) return;
 
         EmbedBuilder embed = new EmbedBuilder().setTitle("Ban")
                 .setColor(Color.red)

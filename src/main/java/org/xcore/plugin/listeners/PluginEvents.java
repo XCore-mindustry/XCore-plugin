@@ -39,7 +39,13 @@ public class PluginEvents {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName, e.server, e.join));
 
-                JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::temporaryBan);
+                JavelinPlugin.getJavelinSocket().subscribe(BanData.class, ban -> {
+                    if (ban.full) {
+                        Utils.temporaryBan(ban);
+                    } else {
+                        Bot.sendBanEvent(ban);
+                    }
+                });
             } else {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
                     if (!e.server.equals(config.server)) return;

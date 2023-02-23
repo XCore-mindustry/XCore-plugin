@@ -12,8 +12,19 @@ public class BanData implements JavelinEvent {
     public String server;
     public long unbanDate;
 
+    public boolean full = true;
+
     @SuppressWarnings("unused")
     public BanData() {
+    }
+
+    public BanData(String uuid, String ip, String name, String adminName, String server) {
+        this.uuid = uuid;
+        this.ip = ip;
+        this.name = name;
+        this.adminName = adminName;
+        this.server = server;
+        this.full = false;
     }
 
     public BanData(String uuid, String ip, String name, String adminName, String reason, String server, long unbanDate) {

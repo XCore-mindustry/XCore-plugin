@@ -67,33 +67,27 @@ public class Database {
         return datas;
     }
 
-    public static BanData getBan(String uuid, String ip)
-    {
+    public static BanData getBan(String uuid, String ip) {
         return bansCollection.find(getBanFilter(uuid, ip)).first();
     }
 
-    public static UpdateResult setBan(BanData data)
-    {
+    public static UpdateResult setBan(BanData data) {
         return bansCollection.replaceOne(getBanFilter(data.uuid, data.ip), data, new ReplaceOptions().upsert(true));
     }
 
-    public static DeleteResult unBan(BanData data)
-    {
+    public static DeleteResult unBan(BanData data) {
         return unBan(data.uuid, data.ip);
     }
 
-    public static DeleteResult unBan(String uuid, String ip)
-    {
+    public static DeleteResult unBan(String uuid, String ip) {
         return bansCollection.deleteMany(getBanFilter(uuid, ip));
     }
 
-    private static Bson getBanFilter(String uuid, String ip)
-    {
+    private static Bson getBanFilter(String uuid, String ip) {
         return or(and(eq("uuid", uuid), eq("server", config.server)), and(eq("ip", ip), eq("server", config.server)));
     }
 
-    public static Seq<BanData> getBanned()
-    {
+    public static Seq<BanData> getBanned() {
         Seq<BanData> bans = new Seq<>();
         bansCollection.find(eq("server", config.server)).forEach(bans::add);
 

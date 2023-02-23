@@ -66,11 +66,6 @@ public class NetEvents {
                 netServer.admins.banPlayerIP(target.ip());
                 Call.sendMessage(Strings.format("@[] banned @[].", admin.coloredName(), target.coloredName()));
                 Call.clientPacketReliable(admin.con, "give_ban_data", Strings.format(banJson, target.name, target.uuid(), target.ip()));
-//                if (isSocketServer) {
-//                    Bot.sendBanEvent(target.plainName(), admin.plainName());
-//                } else {
-//                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.BanEvent(target.plainName(), admin.plainName(), config.server));
-//                }
             }
             case trace -> {
                 var info = target.getInfo();
@@ -119,6 +114,14 @@ public class NetEvents {
                 [blue]Discord:[cyan]
                 """ + PluginVars.discordURL;
 
+        String temporaryBanReason = """
+                [accent]You have been banned from this server by admin @[accent] for the reason "[gold]@[]".
+                You will be unbanned in [gold]@[] days [gold]@[] hours and [gold]@[] minutes.
+                If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
+                                
+                [blue]Discord:[cyan] @
+                """;
+
         BanData ban = Database.getBan(uuid, con.address);
 
         if (ban != null) {
@@ -129,14 +132,7 @@ public class NetEvents {
             } else {
                 Duration remain = Duration.ofMillis(ban.unbanDate - Time.millis());
 
-                con.kick(Strings.format("""
-                    [accent]You have been banned from this server by admin @[accent] for the reason "[grey]@[]".
-                    You will be unbanned in [grey]@[] days [grey]@[] hours and [grey]@[] minutes.
-                     
-                    If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
-                                
-                    [blue]Discord:[cyan] @
-                """, ban.adminName, ban.reason, remain.toDays(), remain.toHoursPart(), remain.toMinutesPart()));
+                con.kick(Strings.format(temporaryBanReason, ban.adminName, ban.reason, remain.toDays(), remain.toHoursPart(), remain.toMinutesPart(), PluginVars.discordURL));
                 return;
             }
         }

@@ -8,12 +8,12 @@ import org.xcore.plugin.XcorePlugin;
 import static org.xcore.plugin.PluginVars.*;
 
 public class GlobalConfig {
+    public static Fi globalConfigFile = Fi.get(config.globalConfigDirectory == null ? System.getProperty("user.home") : config.globalConfigDirectory).child("servers.json");
     public ObjectMap<String, Long> servers = new ObjectMap<>();
     public String mongoConnectionString = "";
     public String discordBotToken = "";
     public long discordAdminRoleId = 0L;
     public long discordBansChannelId = 0L;
-    public static Fi globalConfigFile = Fi.get(config.globalConfigDirectory == null ? System.getProperty("user.home") : config.globalConfigDirectory).child("servers.json");
 
     public static void init() {
         if (globalConfigFile.exists()) {

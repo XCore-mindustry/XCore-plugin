@@ -133,8 +133,8 @@ public class MiniHexed {
         UnitTypes.navanax.flying = true;
 
         Vars.state.rules.canGameOver = false;
-        Vars.state.rules.attackMode=true;
-        Vars.state.rules.pvp=true;
+        Vars.state.rules.attackMode = true;
+        Vars.state.rules.pvp = true;
         Vars.state.rules.pvpAutoPause = false;
 
         for (var team : Team.all) {

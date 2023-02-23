@@ -1,5 +1,7 @@
 package org.xcore.plugin.modules.discord;
 
+import arc.util.Strings;
+import arc.util.Time;
 import fr.xpdustry.javelin.JavelinPlugin;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
@@ -11,12 +13,16 @@ import net.dv8tion.jda.api.interactions.components.Modal;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.utils.TimeFormat;
 import org.jetbrains.annotations.NotNull;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.models.BanData;
 
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.globalConfig;
+import java.util.concurrent.TimeUnit;
+
+import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.discord.Bot.adminRole;
 
 public class DiscordListeners extends ListenerAdapter {
@@ -50,11 +56,11 @@ public class DiscordListeners extends ListenerAdapter {
                     .build();
 
             TextInput date = TextInput.create("date", "Unban date", TextInputStyle.SHORT)
-                    .setPlaceholder("Unban date (dd/mm/yyyy)")
-                    .setRequiredRange(3, 200)
+                    .setPlaceholder("Ban duration (in days)")
+                    .setRequiredRange(1, 20)
                     .build();
 
-            Modal modal = Modal.create("editban", "Edit reason and date")
+            Modal modal = Modal.create("editban", "Edit reason and ban duration")
                     .addActionRows(ActionRow.of(reason), ActionRow.of(date))
                     .build();
 
@@ -68,13 +74,19 @@ public class DiscordListeners extends ListenerAdapter {
             String reason = event.getValue("reason").getAsString();
             String date = event.getValue("date").getAsString();
 
+            BanData ban = activeBanData.get(event.getMessage().getIdLong());
+            ban.reason = reason;
+            ban.unbanDate = Time.millis() + TimeUnit.DAYS.toMillis(Strings.parseInt(date));
+
             event.getMessage().editMessageEmbeds(new EmbedBuilder(event.getMessage().getEmbeds().get(0))
                     .setAuthor(event.getUser().getName(), event.getUser().getEffectiveAvatarUrl(), event.getUser().getEffectiveAvatarUrl())
                     .addField("Reason", reason, false)
-                    .addField("Unban date", date, false)
+                    .addField("Unban date", TimeFormat.DATE_LONG.format(ban.unbanDate), false)
                     .build()).setActionRow(Button.primary("editban", "Edit reason and date").asDisabled()).queue();
 
             event.reply("Successful.").setEphemeral(true).queue();
+            Database.setBan(ban);
+            activeBanData.remove(event.getMessage().getIdLong());
         }
     }
 }
