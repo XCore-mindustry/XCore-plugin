@@ -11,12 +11,11 @@ import org.xcore.plugin.modules.models.PlayerData;
 
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.*;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
         handler.register("reload-config", "Reload config", args -> {
-            config = gson.fromJson(configFile.reader(), Config.class);
+            Config.init();
             GlobalConfig.init();
         });
         handler.register("edit-rating", "<uuid> <+/-/value> [hex/pvp]", "Edit player`s rating.", args -> {

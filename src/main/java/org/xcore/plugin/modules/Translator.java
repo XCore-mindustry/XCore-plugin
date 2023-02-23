@@ -3,7 +3,6 @@ package org.xcore.plugin.modules;
 import arc.func.Cons;
 import arc.struct.StringMap;
 import arc.util.Http;
-import arc.util.Log;
 import arc.util.Strings;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;

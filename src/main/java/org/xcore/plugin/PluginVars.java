@@ -30,6 +30,8 @@ public class PluginVars {
 
     public static final JsonReader reader = new JsonReader();
 
+    public static final String banJson = "{'name': '@', 'uuid': '@', 'ip': '@', 'reason': '', 'duration': 0, 'skip_to_discord': false, 'error': ''}";
+
     public static double rtvRatio = 0.6;
     public static HashSet<String> rtvVotes = new HashSet<>();
     public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();

@@ -19,7 +19,6 @@ import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
-import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
@@ -53,13 +52,11 @@ public class MiniHexed {
                 XcorePlugin.info("Found @ green cores.", greenCores);
             }, 5);
         });
-        Events.on(EventType.PlayerLeave.class, event -> {
-            left.put(event.player.uuid(), Timer.schedule(() -> {
-                killTeam(event.player.team());
-                teams.remove(event.player.uuid());
-                left.remove(event.player.uuid());
-            }, 120f));
-        });
+        Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(() -> {
+            killTeam(event.player.team());
+            teams.remove(event.player.uuid());
+            left.remove(event.player.uuid());
+        }, 120f)));
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 
@@ -194,7 +191,6 @@ public class MiniHexed {
             world.loadMap(map, map.applyRules(Vars.state.rules.mode()));
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             applyRules();
-            Vars.logic.reset();
             Vars.logic.play();
             teams.clear();
             left.each((uuid, task) -> task.cancel());

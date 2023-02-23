@@ -4,13 +4,18 @@ import arc.Events;
 import arc.util.Strings;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinPlugin;
-import mindustry.game.EventType.*;
+import mindustry.game.EventType.GameOverEvent;
+import mindustry.game.EventType.PlayerJoin;
+import mindustry.game.EventType.PlayerLeave;
+import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.Utils;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
+import org.xcore.plugin.modules.models.BanData;
 
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
@@ -34,8 +39,7 @@ public class PluginEvents {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName, e.server, e.join));
 
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.BanEvent.class, e ->
-                        Bot.sendBanEvent(e.targetName, e.adminName, e.server));
+                JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::temporaryBan);
             } else {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
                     if (!e.server.equals(config.server)) return;

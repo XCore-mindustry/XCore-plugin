@@ -11,16 +11,35 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.net.Packets;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.utils.TimeFormat;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
+import org.xcore.plugin.modules.models.BanData;
 import org.xcore.plugin.modules.models.PlayerData;
+
+import java.awt.*;
 
 import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.modules.discord.Bot.bansChannel;
 
 public class Utils {
+    public static void temporaryBan(BanData ban) {
+        Database.setBan(ban);
+
+        EmbedBuilder embed = new EmbedBuilder().setTitle("Ban")
+                .setColor(Color.red)
+                .addField("Violator", ban.name, false)
+                .addField("Admin", ban.adminName, false)
+                .addField("Server", ban.server, false)
+                .addField("Reason", ban.reason, false)
+                .addField("Unban Date", TimeFormat.DATE_LONG.format(ban.unbanDate), false);
+        bansChannel.sendMessageEmbeds(embed.build()).queue();
+    }
+
     public static String getLeaderboard() {
         var builder = new StringBuilder();
         Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> (config.isMiniPvP() ? d.pvpRating : d.hexedWins) != 0).sort(d -> config.isMiniPvP() ? d.pvpRating : d.hexedWins).reverse();

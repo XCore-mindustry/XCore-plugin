@@ -19,16 +19,17 @@ import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.PluginVars;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.modules.discord.Bot;
+import org.xcore.plugin.modules.models.BanData;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.zip.CRC32;
 
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.isSocketServer;
+import static org.xcore.plugin.PluginVars.*;
 
 public class NetEvents {
     public static String chat(Player author, String text) {
@@ -64,12 +65,12 @@ public class NetEvents {
                 netServer.admins.banPlayerID(target.uuid());
                 netServer.admins.banPlayerIP(target.ip());
                 Call.sendMessage(Strings.format("@[] banned @[].", admin.coloredName(), target.coloredName()));
-
-                if (isSocketServer) {
-                    Bot.sendBanEvent(target.plainName(), admin.plainName());
-                } else {
-                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.BanEvent(target.plainName(), admin.plainName(), config.server));
-                }
+                Call.clientPacketReliable(admin.con, "give_ban_data", Strings.format(banJson, target.name, target.uuid(), target.ip()));
+//                if (isSocketServer) {
+//                    Bot.sendBanEvent(target.plainName(), admin.plainName());
+//                } else {
+//                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.BanEvent(target.plainName(), admin.plainName(), config.server));
+//                }
             }
             case trace -> {
                 var info = target.getInfo();
@@ -111,15 +112,37 @@ public class NetEvents {
             return;
         }
 
-        String banReason = """
+        String defaultBanReason = """
                 [accent]You are banned from this server.
                 If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
                                 
                 [blue]Discord:[cyan]
                 """ + PluginVars.discordURL;
 
+        BanData ban = Database.getBan(uuid, con.address);
+
+        if (ban != null) {
+            if (Time.millis() > ban.unbanDate) {
+                netServer.admins.unbanPlayerID(uuid);
+                netServer.admins.unbanPlayerIP(con.address);
+                Database.unBan(ban);
+            } else {
+                Duration remain = Duration.ofMillis(ban.unbanDate - Time.millis());
+
+                con.kick(Strings.format("""
+                    [accent]You have been banned from this server by admin @[accent] for the reason "[grey]@[]".
+                    You will be unbanned in [grey]@[] days [grey]@[] hours and [grey]@[] minutes.
+                     
+                    If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
+                                
+                    [blue]Discord:[cyan] @
+                """, ban.adminName, ban.reason, remain.toDays(), remain.toHoursPart(), remain.toMinutesPart()));
+                return;
+            }
+        }
+
         if (netServer.admins.isIPBanned(con.address) || netServer.admins.isSubnetBanned(con.address)) {
-            con.kick(banReason);
+            con.kick(defaultBanReason);
             return;
         }
 
@@ -139,7 +162,7 @@ public class NetEvents {
         }
 
         if (netServer.admins.isIDBanned(uuid)) {
-            con.kick(banReason);
+            con.kick(defaultBanReason);
             return;
         }
 
