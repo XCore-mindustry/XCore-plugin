@@ -18,7 +18,6 @@ import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
-import org.xcore.plugin.menus.TeamSelectMenu;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.models.BanData;
@@ -60,7 +59,6 @@ public class XcorePlugin extends Plugin {
     public void init() {
         Database.init();
         Console.init();
-        TeamSelectMenu.init();
         MiniPvP.init();
         MiniHexed.init();
         PluginEvents.init();

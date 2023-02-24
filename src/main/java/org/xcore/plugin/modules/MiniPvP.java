@@ -2,6 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.Core;
 import arc.Events;
+import arc.struct.Seq;
 import arc.util.Log;
 import mindustry.Vars;
 import mindustry.game.EventType;
@@ -9,18 +10,20 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.menus.TeamSelectMenu;
 
+import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.Utils.showLeaderboard;
 
 public class MiniPvP {
+    public static Seq<String> losingPlayers = new Seq<>();
     public static void init() {
         if (!config.isMiniPvP()) return;
 
         showLeaderboard();
 
         Events.on(EventType.GameOverEvent.class, e -> {
+            losingPlayers.clear();
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
@@ -43,8 +46,13 @@ public class MiniPvP {
                 if (team != Team.derelict && team.cores().size <= 1) {
                     team.data().players.each(p -> {
                         Core.app.post(() -> {
-                            if (Vars.state.teams.getActive().size != 1) TeamSelectMenu.show(p);
+                            if (Vars.state.teams.getActive().size != 1) {
+                                p.team(netServer.assignTeam(p));
+                                if (!losingPlayers.contains(p.uuid())) losingPlayers.add(p.uuid());
+                            };
                         });
+
+                        if (losingPlayers.contains(p.uuid())) return;
 
                         var data = Database.cachedPlayerData.get(p.uuid());
 
