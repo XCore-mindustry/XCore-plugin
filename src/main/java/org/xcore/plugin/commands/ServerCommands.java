@@ -32,6 +32,32 @@ public class ServerCommands {
             Config.init();
             GlobalConfig.init();
         });
+
+        handler.register("perm", "<uuid> <perm> <true/false>", "Give/remove permission.", args -> {
+            PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
+            String perm = args[1];
+            boolean value = Boolean.parseBoolean(args[2]);
+
+            if (info == null) {
+                Log.info("Player not found.");
+                return;
+            }
+
+            PlayerData data = Database.cachedPlayerData.get(args[0]);
+            boolean cached = true;
+            if (data == null) {
+                cached = false;
+                data = Database.getPlayerData(args[0]);
+            }
+
+            if (perm.equals("js-access")) data.jsAccess = value;
+            if (perm.equals("console-panel-access")) data.consolePanelAccess = value;
+
+            if (cached) Database.cachedPlayerData.get(args[0]);
+            Database.setPlayerData(data);
+            Log.info("Done.");
+        });
+
         handler.register("edit-rating", "<uuid> <+/-/value> [hex/pvp]", "Edit player`s rating.", args -> {
             PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
             char operator = args[1].charAt(0);

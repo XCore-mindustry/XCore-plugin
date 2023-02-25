@@ -4,14 +4,14 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 public class PlayerData {
     public String uuid;
-
     public String nickname = "<unknown>";
+    public String translatorLanguage = "off";
 
     public int pvpRating = 0;
     public int hexedWins = 0;
 
-    public String translatorLanguage = "off";
-
+    public boolean jsAccess = false;
+    public boolean consolePanelAccess = false;
     @BsonIgnore
     public boolean exists = true;
 

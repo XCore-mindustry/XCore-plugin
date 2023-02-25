@@ -25,8 +25,14 @@ public class ClientCommands {
     public static void register(CommandHandler handler) {
         handler.<Player>register("discord", "Redirects you to discord server", (args, player) -> Call.openURI(player.con, discordURL));
 
-        handler.<Player>register("js", "<code...>", "Execute javascript. [red]ADMIN ONLY", (args, player) -> {
-            if (!player.admin) return;
+        handler.<Player>register("js", "<code...>", "Execute javascript. [red]JS Access users only.", (args, player) -> {
+            PlayerData data = Database.cachedPlayerData.get(player.uuid());
+
+            if (!player.admin || !data.jsAccess) {
+                player.sendMessage("[blue]JS[]: [red]Access denied.");
+                return;
+            }
+
             player.sendMessage("[green]" + mods.getScripts().runConsole(args[0]));
         });
 
