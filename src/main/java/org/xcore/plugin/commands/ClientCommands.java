@@ -15,9 +15,9 @@ import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.MiniHexed;
 import org.xcore.plugin.modules.models.PlayerData;
 
-import static mindustry.Vars.mods;
-import static mindustry.Vars.netServer;
+import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.discordURL;
 import static org.xcore.plugin.Utils.findTranslatorLanguage;
 import static org.xcore.plugin.modules.MiniHexed.killTeam;
 
@@ -34,6 +34,12 @@ public class ClientCommands {
             }
 
             player.sendMessage("[green]" + mods.getScripts().runConsole(args[0]));
+        });
+
+        handler.<Player>register("artv", "Change map", (args, player) -> {
+            if (!player.admin) return;
+
+            Events.fire(new EventType.GameOverEvent(Team.derelict));
         });
 
         handler.<Player>register("rtv", "[off]", "Rock the vote to change map", (args, player) -> {
