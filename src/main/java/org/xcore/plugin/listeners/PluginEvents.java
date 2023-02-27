@@ -25,11 +25,14 @@ import static org.xcore.plugin.utils.Utils.votesRequired;
 public class PluginEvents {
     public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
-            isSocketServer = JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
+            JavelinCommunicator.init();
+
+            JavelinCommunicator.sendEvent(
+                    new SocketEvents.ServerActionEvent("Server loaded", config.server),
+                    e -> Bot.sendServerAction(e.message));
+
             if (isSocketServer) {
                 Bot.connect();
-
-                Bot.sendServerAction("Server loaded");
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
                         Bot.sendMessageEventMessage(e.authorName, e.message, e.server));
@@ -53,8 +56,6 @@ public class PluginEvents {
 
                     XcorePlugin.sendMessageFromDiscord(e.authorName, e.message);
                 });
-
-                JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
             }
         });
         Events.on(PlayerJoin.class, event -> {

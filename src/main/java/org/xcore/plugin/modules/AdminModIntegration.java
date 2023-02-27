@@ -53,7 +53,13 @@ public class AdminModIntegration {
 
             BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, Time.millis() + TimeUnit.DAYS.toMillis(duration));
 
-            JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
+            JavelinCommunicator.sendEvent(ban, b -> {
+                if (b.full) {
+                    Utils.temporaryBan(b);
+                } else {
+                    Bot.sendBanEvent(b);
+                }
+            });
         });
     }
 }
