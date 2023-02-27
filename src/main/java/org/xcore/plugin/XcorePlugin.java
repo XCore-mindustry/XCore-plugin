@@ -56,13 +56,13 @@ public class XcorePlugin extends Plugin {
         AdminModIntegration.init();
         Translator.init();
         maps.setMapProvider(new MapProvider() {
-            public int lastMapID;
-
             @Override
             public Map next(Gamemode mode, Map previous) {
                 var allmaps = getAvailableMaps();
                 return allmaps.any() ? allmaps.get(lastMapID++ % allmaps.size) : null;
             }
+
+            public int lastMapID;
         });
         netServer.admins.addChatFilter(NetEvents::chat);
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);

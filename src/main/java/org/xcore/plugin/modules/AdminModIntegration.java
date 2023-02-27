@@ -3,15 +3,8 @@ package org.xcore.plugin.modules;
 import arc.util.Time;
 import arc.util.serialization.JsonValue;
 import fr.xpdustry.javelin.JavelinPlugin;
-import mindustry.Vars;
-import mindustry.gen.Call;
-import mindustry.io.JsonIO;
-import mindustry.net.Packet;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.models.BanData;
-import org.xcore.plugin.modules.models.BannedData;
-import org.xcore.plugin.modules.models.PlayerData;
-import org.xcore.plugin.modules.packets.BannedPlayersPacket;
 
 import java.util.concurrent.TimeUnit;
 
@@ -21,18 +14,6 @@ import static org.xcore.plugin.Utils.temporaryBan;
 
 public class AdminModIntegration {
     public static void init() {
-        netServer.addPacketHandler("give_banned_players", (player, content) -> {
-            PlayerData data = Database.cachedPlayerData.get(player.uuid());
-            if (!data.consolePanelAccess) return;
-
-            BannedPlayersPacket packet = new BannedPlayersPacket();
-
-            netServer.admins.getBanned().each(info -> {
-                packet.bans.add(new BannedData(info.id, info.names, info.ips));
-            });
-
-            Call.clientPacketReliable(player.con, "take_banned_players", JsonIO.write(packet));
-        });
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;
 

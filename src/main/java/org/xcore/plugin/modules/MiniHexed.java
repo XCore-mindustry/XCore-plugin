@@ -19,6 +19,7 @@ import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
@@ -57,6 +58,12 @@ public class MiniHexed {
             teams.remove(event.player.uuid());
             left.remove(event.player.uuid());
         }, 120f)));
+        Events.on(EventType.BlockDestroyEvent.class, event -> {
+            var team = event.tile.team();
+            if (event.tile.block() instanceof CoreBlock) {
+                Call.sendMessage(team.data().players.first().name + "[] [accent]eliminated!");
+            }
+        });
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 

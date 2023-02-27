@@ -36,7 +36,7 @@ public class ClientCommands {
             player.sendMessage("[green]" + mods.getScripts().runConsole(args[0]));
         });
 
-        handler.<Player>register("artv", "Change map", (args, player) -> {
+        handler.<Player>register("artv", "Change map. [red]Admin only", (args, player) -> {
             if (!player.admin) return;
 
             Events.fire(new EventType.GameOverEvent(Team.derelict));
