@@ -4,13 +4,14 @@ import arc.util.Time;
 import arc.util.serialization.JsonValue;
 import fr.xpdustry.javelin.JavelinPlugin;
 import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.Utils.temporaryBan;
 
 public class AdminModIntegration {
     public static void init() {
@@ -51,11 +52,8 @@ public class AdminModIntegration {
             }
 
             BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, Time.millis() + TimeUnit.DAYS.toMillis(duration));
-            if (isSocketServer) {
-                temporaryBan(ban);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(ban);
-            }
+
+            JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
         });
     }
 }

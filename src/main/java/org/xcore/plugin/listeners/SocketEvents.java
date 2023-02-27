@@ -37,16 +37,6 @@ public class SocketEvents {
         }
     }
 
-    public static final class BanEvent implements JavelinEvent {
-        public String targetName, adminName, server;
-
-        public BanEvent(String targetName, String adminName, String server) {
-            this.targetName = targetName;
-            this.adminName = adminName;
-            this.server = server;
-        }
-    }
-
     public static final class DiscordMessageEvent implements JavelinEvent {
         public String authorName, message, server;
 

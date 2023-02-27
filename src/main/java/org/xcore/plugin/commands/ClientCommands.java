@@ -10,16 +10,16 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.Utils;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.MiniHexed;
-import org.xcore.plugin.modules.models.PlayerData;
+import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.PlayerData;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.mods;
+import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.PluginVars.discordURL;
-import static org.xcore.plugin.Utils.findTranslatorLanguage;
 import static org.xcore.plugin.modules.MiniHexed.killTeam;
+import static org.xcore.plugin.utils.Utils.findTranslatorLanguage;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {

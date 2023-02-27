@@ -10,7 +10,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.awt.*;
 

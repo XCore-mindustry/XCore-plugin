@@ -1,4 +1,4 @@
-package org.xcore.plugin.modules;
+package org.xcore.plugin.utils;
 
 import org.xcore.plugin.XcorePlugin;
 

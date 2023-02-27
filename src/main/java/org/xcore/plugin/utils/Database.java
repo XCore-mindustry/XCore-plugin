@@ -1,4 +1,4 @@
-package org.xcore.plugin.modules;
+package org.xcore.plugin.utils;
 
 
 import arc.struct.ObjectMap;
@@ -15,8 +15,8 @@ import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.xcore.plugin.modules.models.BanData;
-import org.xcore.plugin.modules.models.PlayerData;
+import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static com.mongodb.client.model.Filters.*;

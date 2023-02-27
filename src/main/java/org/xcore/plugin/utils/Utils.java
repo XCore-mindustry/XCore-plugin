@@ -1,10 +1,9 @@
-package org.xcore.plugin;
+package org.xcore.plugin.utils;
 
 import arc.struct.ObjectSet;
 import arc.struct.Seq;
 import arc.util.Strings;
 import arc.util.Timer;
-import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
@@ -14,10 +13,9 @@ import mindustry.net.Packets;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.modules.models.BanData;
-import org.xcore.plugin.modules.models.PlayerData;
+import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import java.awt.*;
 
@@ -75,10 +73,6 @@ public class Utils {
         return translatorLanguages.orderedKeys().find(locale::startsWith);
     }
 
-    public static String colorizedTeam(Team team) {
-        return Strings.format("[#@]@", team.color, team);
-    }
-
     public static int votesRequired() {
         return 2 + (Groups.player.size() > 4 ? 1 : 0);
     }
@@ -110,11 +104,9 @@ public class Utils {
                     player.name, target.name, votes, votesRequired()));
             String message = Strings.format("@ has voted on kicking @. (@/@)", player.plainName(), target.plainName(), votes, votesRequired());
 
-            if (isSocketServer) {
-                Bot.sendServerAction(message);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent(message, config.server));
-            }
+            JavelinCommunicator.sendEvent(
+                    new SocketEvents.ServerActionEvent(message, config.server),
+                    e -> Bot.sendServerAction(e.message));
             checkPass();
         }
 
@@ -126,11 +118,10 @@ public class Utils {
                 task.cancel();
 
                 String message = Strings.format("Vote passed. @ will be banned from the server for @ minutes.", target.name, (kickDuration / 60));
-                if (isSocketServer) {
-                    Bot.sendServerAction(message);
-                } else {
-                    JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent(message, config.server));
-                }
+
+                JavelinCommunicator.sendEvent(
+                        new SocketEvents.ServerActionEvent(message, config.server),
+                        e -> Bot.sendServerAction(e.message));
                 return true;
             }
             return false;

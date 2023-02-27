@@ -8,7 +8,6 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.serialization.Base64Coder;
-import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
@@ -19,17 +18,19 @@ import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.PluginVars;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.zip.CRC32;
 
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.banJson;
+import static org.xcore.plugin.PluginVars.config;
 
 public class NetEvents {
     public static String chat(Player author, String text) {
@@ -38,16 +39,10 @@ public class NetEvents {
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
 
-        if (isSocketServer) {
-            Bot.sendMessageEventMessage(author.plainName(), text);
-        } else {
-            JavelinPlugin.getJavelinSocket().sendEvent(
-                    new SocketEvents.MessageEvent(author.plainName(), text, config.server));
-        }
+        JavelinCommunicator.sendEvent(
+                new SocketEvents.MessageEvent(author.plainName(), text, config.server),
+                e -> Bot.sendMessageEventMessage(e.authorName, e.message));
         return null;
-
-        //var data = Database.cachedPlayerData.get(player.uuid());
-        //return "[coral][[[cyan]" + (config.isMiniPvP() ? data.pvpRating : data.hexedWins) + " [sky]#[white] " + player.coloredName() + "[coral]]: [white]" + message;
     }
 
     public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {

@@ -11,15 +11,16 @@ import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.Utils;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.BanData;
 
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.Utils.votesRequired;
+import static org.xcore.plugin.utils.Utils.votesRequired;
 
 public class PluginEvents {
     public static void init() {
@@ -67,13 +68,9 @@ public class PluginEvents {
                 event.player.sendMessage("[accent]I see that you have automatic chat translator turned off, so I recommend turning it on using the [grey]/tr auto[] command.");
             }
 
-            if (isSocketServer) {
-                Bot.sendJoinLeaveEventMessage(event.player.plainName(), true);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(
-                        new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true)
-                );
-            }
+            JavelinCommunicator.sendEvent(
+                    new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true),
+                    e -> Bot.sendJoinLeaveEventMessage(e.playerName, true));
         });
 
         Events.on(PlayerLeave.class, event -> {
@@ -93,16 +90,13 @@ public class PluginEvents {
                 Call.sendMessage("RTV: [accent]" + player.name + "[] left, [green]" + cur + "[] votes, [green]" + req + "[] required");
             }
 
-            if (isSocketServer) {
-                Bot.sendJoinLeaveEventMessage(player.plainName(), false);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(
-                        new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false)
-                );
-            }
+            JavelinCommunicator.sendEvent(
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false),
+                    e -> Bot.sendJoinLeaveEventMessage(e.playerName, false));
         });
 
         Events.on(GameOverEvent.class, event -> {
+            rtvVotes.clear();
             String message = null;
             if (state.rules.waves) {
                 message = Strings.format(
@@ -112,12 +106,9 @@ public class PluginEvents {
                         "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
             }
 
-            if (isSocketServer) {
-                Bot.sendServerAction(message);
-            } else {
-                JavelinPlugin.getJavelinSocket().sendEvent(new SocketEvents.ServerActionEvent(message, config.server));
-            }
-            rtvVotes.clear();
+            JavelinCommunicator.sendEvent(
+                    new SocketEvents.ServerActionEvent(message, config.server),
+                    e -> Bot.sendServerAction(e.message));
         });
     }
 }

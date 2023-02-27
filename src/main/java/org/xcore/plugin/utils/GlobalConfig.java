@@ -1,4 +1,4 @@
-package org.xcore.plugin.modules;
+package org.xcore.plugin.utils;
 
 import arc.files.Fi;
 import arc.struct.ObjectMap;

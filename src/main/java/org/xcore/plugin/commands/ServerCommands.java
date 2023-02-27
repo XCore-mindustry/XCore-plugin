@@ -9,11 +9,9 @@ import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.Database;
-import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.modules.models.BanData;
-import org.xcore.plugin.modules.models.PlayerData;
+import org.xcore.plugin.utils.*;
+import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -24,7 +22,6 @@ import static arc.util.Strings.parseInt;
 import static java.lang.Long.parseLong;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.Utils.temporaryBan;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
@@ -149,9 +146,10 @@ public class ServerCommands {
 
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
-            temporaryBan(new BanData(target.id, target.lastIP, target.lastName, "console", args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days)));
-        });
+            BanData ban = new BanData(target.id, target.lastIP, target.lastName, "console", args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days));
 
+            JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
+        });
         handler.register("tempbans", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");
             Seq<BanData> bans = Database.getBanned();

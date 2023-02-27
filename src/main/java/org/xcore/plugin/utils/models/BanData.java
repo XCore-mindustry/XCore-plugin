@@ -1,4 +1,4 @@
-package org.xcore.plugin.modules.models;
+package org.xcore.plugin.utils.models;
 
 import fr.xpdustry.javelin.JavelinEvent;
 

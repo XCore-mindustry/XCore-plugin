@@ -8,9 +8,10 @@ import arc.util.serialization.JsonReader;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.Config;
+import org.xcore.plugin.utils.GlobalConfig;
+import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.util.HashSet;
 

@@ -10,13 +10,15 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.utils.Database;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.Utils.showLeaderboard;
+import static org.xcore.plugin.utils.Utils.showLeaderboard;
 
 public class MiniPvP {
     public static Seq<String> losingPlayers = new Seq<>();
+
     public static void init() {
         if (!config.isMiniPvP()) return;
 
@@ -49,7 +51,7 @@ public class MiniPvP {
                             if (Vars.state.teams.getActive().size != 1) {
                                 p.team(netServer.assignTeam(p));
                                 if (!losingPlayers.contains(p.uuid())) losingPlayers.add(p.uuid());
-                            };
+                            }
                         });
 
                         if (losingPlayers.contains(p.uuid())) return;

@@ -16,10 +16,13 @@ import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.modules.*;
+import org.xcore.plugin.utils.Config;
+import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.GlobalConfig;
 
 import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.Utils.getAvailableMaps;
+import static org.xcore.plugin.utils.Utils.getAvailableMaps;
 
 @SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
@@ -56,13 +59,13 @@ public class XcorePlugin extends Plugin {
         AdminModIntegration.init();
         Translator.init();
         maps.setMapProvider(new MapProvider() {
+            public int lastMapID;
+
             @Override
             public Map next(Gamemode mode, Map previous) {
                 var allmaps = getAvailableMaps();
                 return allmaps.any() ? allmaps.get(lastMapID++ % allmaps.size) : null;
             }
-
-            public int lastMapID;
         });
         netServer.admins.addChatFilter(NetEvents::chat);
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);

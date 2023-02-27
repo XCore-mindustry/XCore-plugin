@@ -17,8 +17,8 @@ import net.dv8tion.jda.api.utils.TimeFormat;
 import org.jetbrains.annotations.NotNull;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.Database;
-import org.xcore.plugin.modules.models.BanData;
+import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.util.concurrent.TimeUnit;
 
