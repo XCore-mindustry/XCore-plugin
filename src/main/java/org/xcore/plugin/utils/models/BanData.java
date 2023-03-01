@@ -1,8 +1,13 @@
 package org.xcore.plugin.utils.models;
 
 import fr.xpdustry.javelin.JavelinEvent;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
+
+import static org.xcore.plugin.utils.Database.bansCollection;
 
 public class BanData implements JavelinEvent {
+    public long bid;
+
     public String uuid;
     public String ip;
 
@@ -12,7 +17,10 @@ public class BanData implements JavelinEvent {
     public String server;
     public long unbanDate;
 
+    @BsonIgnore
     public boolean full = true;
+    @BsonIgnore
+    public boolean unban = false;
 
     @SuppressWarnings("unused")
     public BanData() {
@@ -35,5 +43,9 @@ public class BanData implements JavelinEvent {
         this.reason = reason;
         this.server = server;
         this.unbanDate = unbanDate;
+    }
+
+    public void generateBid() {
+        this.bid = bansCollection.countDocuments() + 1;
     }
 }

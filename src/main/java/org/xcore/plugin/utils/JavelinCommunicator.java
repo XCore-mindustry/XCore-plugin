@@ -12,8 +12,14 @@ public class JavelinCommunicator {
         isSocketServer = JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
     }
 
+    public static <E extends JavelinEvent> void sendEvent(E event) {
+        sendEvent(event, null);
+    }
+
+    ;
+
     public static <E extends JavelinEvent> void sendEvent(E event, Cons<E> callback) {
-        if (isSocketServer) {
+        if (isSocketServer && callback != null) {
             callback.get(event);
         } else {
             JavelinPlugin.getJavelinSocket().sendEvent(event);

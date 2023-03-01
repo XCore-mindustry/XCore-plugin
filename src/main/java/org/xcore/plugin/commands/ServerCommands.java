@@ -1,9 +1,9 @@
 package org.xcore.plugin.commands;
 
-import arc.func.Cons2;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Time;
 import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Groups;
@@ -18,13 +18,20 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
-import static arc.util.Strings.parseInt;
+import static arc.Core.app;
 import static java.lang.Long.parseLong;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
+        handler.removeCommand("exit");
+        handler.register("exit", "Exit the server application.", args -> {
+            Log.info("Shutting down server.");
+            netServer.kickAll(Packets.KickReason.serverRestarting);
+            app.exit();
+        });
+
         handler.register("reload-config", "Reload config", args -> {
             Config.init();
             GlobalConfig.init();
@@ -55,7 +62,7 @@ public class ServerCommands {
             Log.info("Done.");
         });
 
-        handler.register("edit-rating", "<uuid> <+/-/value> [hex/pvp]", "Edit player`s rating.", args -> {
+        handler.register("edit-rating", "<uuid> <value> [hex/pvp]", "Edit player`s rating.", args -> {
             PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
             char operator = args[1].charAt(0);
 
@@ -78,25 +85,11 @@ public class ServerCommands {
                 return;
             }
 
-            Cons2<Integer, Boolean> set = (i, b) -> {
-                if (pvp) {
-                    data.pvpRating = b ? i : data.pvpRating + i;
-                } else {
-                    data.hexedWins += b ? i : data.hexedWins + i;
-                }
-            };
+            if (pvp) data.pvpRating = Strings.parseInt(args[2]);
+            else data.hexedWins = Strings.parseInt(args[2]);
 
-            switch (operator) {
-                case '+' -> {
-                    int increment = parseInt(args[1].substring(1));
-                    set.get(increment, false);
-                }
-                case '-' -> {
-                    int reduce = parseInt(args[1].substring(1));
-                    set.get(-reduce, false);
-                }
-                default -> set.get(parseInt(args[1]), true);
-            }
+            if (Groups.player.contains(p -> p.uuid().equals(data.uuid)))
+                Database.cachedPlayerData.put(data.uuid, data);
 
             Database.setPlayerData(data);
             Log.info("'@' rating is now @(pvp), @(hex)", data.nickname, data.pvpRating, data.hexedWins);
@@ -147,7 +140,7 @@ public class ServerCommands {
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
             BanData ban = new BanData(target.id, target.lastIP, target.lastName, "console", args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days));
-
+            ban.generateBid();
             JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
         });
         handler.register("tempbans", "List all temporary banned players.", args -> {
@@ -174,6 +167,8 @@ public class ServerCommands {
         });
 
         handler.register("tempunban", "<uuid/ip>", "Unban a temporary banned player.", args -> {
+            netServer.admins.unbanPlayerID(args[0]);
+            netServer.admins.unbanPlayerIP(args[0]);
             DeleteResult result = Database.unBan(args[0], "");
             if (result.getDeletedCount() < 1) Database.unBan("", args[0]);
 

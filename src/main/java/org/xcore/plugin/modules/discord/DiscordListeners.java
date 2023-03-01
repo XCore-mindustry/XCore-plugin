@@ -18,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 
 import java.util.concurrent.TimeUnit;
@@ -46,6 +48,24 @@ public class DiscordListeners extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        if (event.getComponentId().endsWith("unban")) {
+            if (!event.getMember().getRoles().contains(adminRole)) return;
+            long bid = Long.parseLong(event.getComponentId().split("-")[0]);
+
+            BanData ban = Database.getBanById(bid);
+            ban.unban = true;
+
+            if (!ban.server.equals(config.server)) {
+                JavelinCommunicator.sendEvent(ban);
+            } else {
+                Utils.handleBanData(ban);
+            }
+
+            event.reply("Successfully unbanned.").setEphemeral(true).queue();
+            event.getMessage().editMessageEmbeds(event.getMessage().getEmbeds().get(0))
+                    .setActionRow(Button.success("success", "Unbanned.").asDisabled()).queue();
+            return;
+        }
         if (event.getComponentId().equals("editban")) {
 
             if (!event.getMember().getRoles().contains(adminRole)) return;
@@ -82,7 +102,9 @@ public class DiscordListeners extends ListenerAdapter {
                     .setAuthor(event.getUser().getName(), event.getUser().getEffectiveAvatarUrl(), event.getUser().getEffectiveAvatarUrl())
                     .addField("Reason", reason, false)
                     .addField("Unban date", TimeFormat.DATE_LONG.format(ban.unbanDate), false)
-                    .build()).setActionRow(Button.primary("editban", "Edit reason and date").asDisabled()).queue();
+                    .build()).setActionRow(
+                    Button.danger(ban.bid + "-unban", "Unban")
+            ).queue();
 
             event.reply("Successful.").setEphemeral(true).queue();
             Database.setBan(ban);

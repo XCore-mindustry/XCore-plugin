@@ -27,6 +27,8 @@ import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class Database {
+    public static MongoClient mongoClient;
+    public static MongoDatabase database;
     public static MongoCollection<PlayerData> playersCollection;
     public static MongoCollection<BanData> bansCollection;
     public static ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
@@ -35,8 +37,8 @@ public class Database {
         CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
         CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
 
-        MongoClient mongoClient = MongoClients.create(globalConfig.mongoConnectionString);
-        MongoDatabase database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
+        mongoClient = MongoClients.create(globalConfig.mongoConnectionString);
+        database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
         playersCollection = database.getCollection("players", PlayerData.class);
         bansCollection = database.getCollection("bans", BanData.class);
     }
@@ -83,6 +85,10 @@ public class Database {
         return bansCollection.deleteMany(getBanFilter(uuid, ip));
     }
 
+    public static BanData getBanById(long id) {
+        return bansCollection.find(eq("bid", id)).first();
+    }
+
     private static Bson getBanFilter(String uuid, String ip) {
         return or(and(eq("uuid", uuid), eq("server", config.server)), and(eq("ip", ip), eq("server", config.server)));
     }
@@ -90,7 +96,6 @@ public class Database {
     public static Seq<BanData> getBanned() {
         Seq<BanData> bans = new Seq<>();
         bansCollection.find(eq("server", config.server)).forEach(bans::add);
-
         return bans;
     }
 }

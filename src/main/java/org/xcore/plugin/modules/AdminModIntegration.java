@@ -39,6 +39,7 @@ public class AdminModIntegration {
 
             if (skipToDiscord) {
                 BanData ban = new BanData(uuid, ip, name, player.name, config.server);
+                ban.generateBid();
                 if (isSocketServer) {
                     Bot.sendBanEvent(ban);
                 } else {
@@ -52,6 +53,7 @@ public class AdminModIntegration {
             }
 
             BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, Time.millis() + TimeUnit.DAYS.toMillis(duration));
+            ban.generateBid();
 
             JavelinCommunicator.sendEvent(ban, b -> {
                 if (b.full) {

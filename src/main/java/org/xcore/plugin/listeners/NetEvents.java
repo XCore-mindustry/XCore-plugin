@@ -59,7 +59,8 @@ public class NetEvents {
                 target.kick(Packets.KickReason.banned);
                 netServer.admins.banPlayerID(target.uuid());
                 netServer.admins.banPlayerIP(target.ip());
-                Call.sendMessage(Strings.format("@[] banned @[].", admin.coloredName(), target.coloredName()));
+                Call.sendMessage(Strings.format("@[accent] banned @[].", admin.coloredName(), target.coloredName()));
+                Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
                 Call.clientPacketReliable(admin.con, "give_ban_data", Strings.format(banJson, target.name, target.uuid(), target.ip()));
             }
             case trace -> {
@@ -69,6 +70,7 @@ public class NetEvents {
             }
             case wave -> {
                 logic.skipWave();
+                Call.sendMessage(admin.name + "[accent] has skipped the wave.");
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
         }
@@ -127,18 +129,26 @@ public class NetEvents {
             } else {
                 Duration remain = Duration.ofMillis(ban.unbanDate - Time.millis());
 
-                con.kick(Strings.format(temporaryBanReason, ban.adminName, ban.reason, remain.toDays(), remain.toHoursPart(), remain.toMinutesPart(), PluginVars.discordURL));
+                con.kick(Strings.format(
+                                temporaryBanReason,
+                                ban.adminName,
+                                ban.reason,
+                                remain.toDays(),
+                                remain.toHoursPart(),
+                                remain.toMinutesPart(),
+                                PluginVars.discordURL)
+                        , 0);
                 return;
             }
         }
 
         if (netServer.admins.isIPBanned(con.address) || netServer.admins.isSubnetBanned(con.address)) {
-            con.kick(defaultBanReason);
+            con.kick(defaultBanReason, 0);
             return;
         }
 
         if (con.hasBegunConnecting) {
-            con.kick(Packets.KickReason.idInUse);
+            con.kick(Packets.KickReason.idInUse, 0);
             return;
         }
 
@@ -148,19 +158,21 @@ public class NetEvents {
         con.mobile = packet.mobile;
 
         if (packet.uuid == null || packet.usid == null) {
-            con.kick(Packets.KickReason.idInUse);
+            con.kick(Packets.KickReason.idInUse, 0);
             return;
         }
 
         if (netServer.admins.isIDBanned(uuid)) {
-            con.kick(defaultBanReason);
+            con.kick(defaultBanReason, 0);
             return;
         }
 
         long kickTime = netServer.admins.getKickTime(uuid, con.address);
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
-            con.kick(Strings.format("[accent]You were recently kicked from this server. Wait [cyan]@:@[accent].", remain.toMinutes(), remain.toSecondsPart()));
+            con.kick(Strings.format("[accent]You were recently kicked from this server. Wait [cyan]@:@[accent].",
+                            remain.toMinutes(), remain.toSecondsPart()),
+                    0);
             return;
         }
 
@@ -193,12 +205,12 @@ public class NetEvents {
             netServer.admins.save();
             Call.infoMessage(con, "You are not whitelisted here.");
             Log.info("&lcDo &lywhitelist-add @&lc to whitelist the player &lb'@'", packet.uuid, packet.name);
-            con.kick(Packets.KickReason.whitelist);
+            con.kick(Packets.KickReason.whitelist, 0);
             return;
         }
 
         if (packet.versionType == null || ((packet.version == -1 || !packet.versionType.equals(Version.type)) && Version.build != -1 && !netServer.admins.allowsCustomClients())) {
-            con.kick(!Version.type.equals(packet.versionType) ? Packets.KickReason.typeMismatch : Packets.KickReason.customClient);
+            con.kick(!Version.type.equals(packet.versionType) ? Packets.KickReason.typeMismatch : Packets.KickReason.customClient, 0);
             return;
         }
 
@@ -206,20 +218,20 @@ public class NetEvents {
 
         if (preventDuplicates) {
             if (Groups.player.contains(p -> Strings.stripColors(p.name).trim().equalsIgnoreCase(Strings.stripColors(packet.name).trim()))) {
-                con.kick(Packets.KickReason.nameInUse);
+                con.kick(Packets.KickReason.nameInUse, 0);
                 return;
             }
 
             if (Groups.player.contains(player -> player.uuid().equals(packet.uuid) || player.usid().equals(packet.usid))) {
                 con.uuid = packet.uuid;
-                con.kick(Packets.KickReason.idInUse);
+                con.kick(Packets.KickReason.idInUse, 0);
                 return;
             }
 
             for (var otherCon : net.getConnections()) {
                 if (otherCon != con && uuid.equals(otherCon.uuid)) {
                     con.uuid = packet.uuid;
-                    con.kick(Packets.KickReason.idInUse);
+                    con.kick(Packets.KickReason.idInUse, 0);
                     return;
                 }
             }
@@ -241,7 +253,7 @@ public class NetEvents {
         netServer.admins.updatePlayerJoined(uuid, ip, packet.name);
 
         if (packet.version != Version.build && Version.build != -1 && packet.version != -1) {
-            con.kick(packet.version > Version.build ? Packets.KickReason.serverOutdated : Packets.KickReason.clientOutdated);
+            con.kick(packet.version > Version.build ? Packets.KickReason.serverOutdated : Packets.KickReason.clientOutdated, 0);
             return;
         }
 

@@ -2,15 +2,16 @@ package org.xcore.plugin.utils;
 
 import arc.struct.ObjectSet;
 import arc.struct.Seq;
+import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
-import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.net.Packets;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
@@ -37,7 +38,31 @@ public class Utils {
                 .addField("Server", ban.server, false)
                 .addField("Reason", ban.reason, false)
                 .addField("Unban Date", TimeFormat.DATE_LONG.format(ban.unbanDate), false);
-        bansChannel.sendMessageEmbeds(embed.build()).queue();
+        bansChannel.sendMessageEmbeds(embed.build()).addActionRow(
+                Button.danger(ban.bid + "-unban", "Unban")).queue();
+    }
+
+    public static void handleBanData(BanData ban) {
+        Log.info(ban.unban);
+        if (ban.unban) {
+            Log.info(ban.server);
+            Log.info(config.server);
+            if (!ban.server.equals(config.server)) return;
+            Log.info(ban.uuid);
+            Log.info(ban.ip);
+            netServer.admins.unbanPlayerID(ban.uuid);
+            netServer.admins.unbanPlayerIP(ban.ip);
+            Database.unBan(ban.uuid, ban.ip);
+            return;
+        }
+
+        if (!isSocketServer) return;
+
+        if (ban.full) {
+            Utils.temporaryBan(ban);
+        } else {
+            Bot.sendBanEvent(ban);
+        }
     }
 
     public static String getLeaderboard() {
