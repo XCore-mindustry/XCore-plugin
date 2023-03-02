@@ -33,6 +33,12 @@ import static org.xcore.plugin.PluginVars.banJson;
 import static org.xcore.plugin.PluginVars.config;
 
 public class NetEvents {
+    /**
+     * Пользовательский обработчик игрового чата
+     * @param author автор сообщения
+     * @param text текст сообщения
+     * @return Ничего (ПРИЧИНА: отключение первоначального сообщения)
+     */
     public static String chat(Player author, String text) {
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
@@ -45,6 +51,11 @@ public class NetEvents {
         return null;
     }
 
+    /**
+     * Пользовательский обработчик действий администратора
+     * @param con соединение администратора
+     * @param packet пакет с информацией о действии
+     */
     public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
         Player admin = con.player, target = packet.other;
         var action = packet.action;
@@ -76,6 +87,11 @@ public class NetEvents {
         }
     }
 
+    /**
+     * Пользовательский обработчик пакета запроса присоединения игрока
+     * @param con соединение игрока
+     * @param packet !ИГНОРИРУЕТСЯ В КОДЕ! пакет соединения игрока (упрощенный, мало полей)
+     */
     public static void connect(NetConnection con, Packets.Connect packet) {
         Events.fire(new EventType.ConnectionEvent(con));
 
@@ -86,6 +102,11 @@ public class NetEvents {
         }
     }
 
+    /**
+     * Пользовательский обработчик пакета присоединения игрока
+     * @param con соединение игрока
+     * @param packet пакет полученый из соединения с данными о нем
+     */
     public static void connectPacket(NetConnection con, Packets.ConnectPacket packet) {
         if (con.kicked) return;
 
@@ -237,7 +258,7 @@ public class NetEvents {
             }
         }
 
-        packet.name = fixName(packet.name);
+        packet.name = Strings.stripColors(packet.name);
 
         if (packet.name.trim().length() <= 0) {
             con.kick(Packets.KickReason.nameEmpty);
@@ -286,6 +307,7 @@ public class NetEvents {
         Events.fire(new EventType.PlayerConnect(player));
     }
 
+    @Deprecated
     public static String fixName(String name) {
         name = name.trim().replace("\n", "").replace("\t", "");
         if (name.equals("[") || name.equals("]")) {
@@ -310,6 +332,7 @@ public class NetEvents {
         return result.toString();
     }
 
+    @Deprecated
     public static String checkColor(String str) {
         for (int i = 1; i < str.length(); i++) {
             if (str.charAt(i) == ']') {

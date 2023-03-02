@@ -13,6 +13,11 @@ import static org.xcore.plugin.PluginVars.reader;
 import static org.xcore.plugin.PluginVars.translatorLanguages;
 
 public class Translator {
+
+    /**
+     * Инициализация переводчика/прогрузка списка языков
+     */
+    // TODO: 02.03.2023 Статическая инициализация не? 
     public static void init() {
         translatorLanguages.putAll(
                 "ca", "Català",
@@ -50,12 +55,26 @@ public class Translator {
         );
     }
 
+    // TODO: 02.03.2023 перегрузка с автоматическим указанием автоподбора локали
+    /**
+     * Переводит сообщение на указаный язык
+     * @param text текст который требуется перевести
+     * @param from язык отправителя (локаль) / auto - для автоматического перевода
+     * @param to язык на который требуется перевод (локаль игрока получателя)
+     * @param result обработчик результата
+     * @param error обработчик ошибок
+     */
     public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
         Http.post("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&dt=t", "tl=" + to + "&sl=" + from + "&q=" + Strings.encode(text))
                 .error(throwable -> error.run())
                 .submit(response -> result.get(reader.parse(response.getResultAsString()).get(0).get(0).asString()));
     }
 
+    /**
+     * Перевод сообщения от игрока для остальных игроков
+     * @param author Ник автора сообщения (не переводится)
+     * @param text Текст сообщения для перевода
+     */
     public static void translate(Player author, String text) {
         var cache = new StringMap();
         var message = netServer.chatFormatter.format(author, text);

@@ -24,6 +24,10 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
 
 public class ServerCommands {
+    /**
+     * Регистрация комманд сервера в соответствующий обработчик комманд
+     * @param handler обработчик комманд
+     */
     public static void register(CommandHandler handler) {
         handler.removeCommand("exit");
         handler.register("exit", "Exit the server application.", args -> {

@@ -14,6 +14,10 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 
 public class AdminModIntegration {
+
+    /**
+     * Инициализация возможностоей мода для упрощения администрирования
+     */
     public static void init() {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;

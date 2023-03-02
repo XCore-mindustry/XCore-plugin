@@ -18,6 +18,9 @@ public class Console {
     public static ServerControl serverControl;
     public static LineReader lineReader;
 
+    /**
+     * Инициализация улучшения консольного ввода
+     */
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 

@@ -22,6 +22,9 @@ import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.votesRequired;
 
 public class PluginEvents {
+    /**
+     * Инициализация обработчиков серверных событий
+     */
     public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
             JavelinCommunicator.init();

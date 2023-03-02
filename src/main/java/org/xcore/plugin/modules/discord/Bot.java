@@ -26,6 +26,9 @@ public class Bot {
 
     public static boolean isConnected = false;
 
+    /**
+     * Базовый метод подключения сервера к Discord боту
+     */
     public static void connect() {
         try {
             jda = JDABuilder.createLight(globalConfig.discordBotToken)
@@ -48,14 +51,35 @@ public class Bot {
         }
     }
 
+    /**
+     * Получение канала Discord для взаимодействия
+     *
+     * @param server Название сервера
+     * @return Текстовый Discord канал для отправки сообщений
+     */
     public static TextChannel getServerLogChannel(String server) {
         return jda.getTextChannelById(globalConfig.servers.get(server));
     }
 
+    /**
+     * Отправка сообщения из чата в Discord. Простоновка сервера автоматическая.
+     * Перегрузка метода: {@link Bot#sendMessageEventMessage(String, String, String)}
+     *
+     * @param playerName Ник игрока
+     * @param message    Текст сообщения
+     */
     public static void sendMessageEventMessage(String playerName, String message) {
         sendMessageEventMessage(playerName, message, config.server);
     }
 
+    /**
+     * Отправка сообщения из чата в Discord. Простоновка сервера автоматическая.
+     * Упрощенная версия с автоматической простановкой сервера:
+     * {@link Bot#sendMessageEventMessage(String, String)}
+     *
+     * @param playerName Ник игрока
+     * @param message    Текст сообщения
+     */
     public static void sendMessageEventMessage(String playerName, String message, String server) {
         if (!isConnected) return;
         getServerLogChannel(server).sendMessage(
@@ -63,19 +87,49 @@ public class Bot {
         ).queue();
     }
 
+    /**
+     * Отправка события сервера. Название сервера проставляется автоматически
+     * Перегрузка данного метода: {@link Bot#sendServerAction(String, String)}
+     *
+     * @param message Сообщение о событии
+     */
     public static void sendServerAction(String message) {
         sendServerAction(message, config.server);
     }
 
+    /**
+     * Отправка события сервера. Название сервера проставляется автоматически
+     * Перегрузка данного метода: {@link Bot#sendServerAction(String)}
+     *
+     * @param message Сообщение о событии
+     * @param server  Название сервера
+     */
     public static void sendServerAction(String message, String server) {
         if (!isConnected) return;
         getServerLogChannel(server).sendMessage(message).queue();
     }
 
+    /**
+     * Отправка сообщения о входе/выходе игрока. Название сервера проставляется автоматически
+     * Упрощенный вариант с автоматической простановкой сервера:
+     * {@link Bot#sendServerAction(String)}
+     *
+     * @param playerName Ник игрока
+     * @param join       true - при входе, false - при выходе
+     */
     public static void sendJoinLeaveEventMessage(String playerName, Boolean join) {
         sendJoinLeaveEventMessage(playerName, config.server, join);
     }
 
+    /**
+     * Отправка сообщения о входе/выходе игрока
+     * Упрощенный вариант с автоматической простановкой сервера:
+     * {@link Bot#sendJoinLeaveEventMessage(String, Boolean)}
+     *
+     * @param playerName Ник игрока
+     * @param server     Название сервера
+     * @param join       true - при входе, false - при выходе
+     */
     public static void sendJoinLeaveEventMessage(String playerName, String server, Boolean join) {
         if (!isConnected) return;
         getServerLogChannel(server).sendMessage(
@@ -83,6 +137,11 @@ public class Bot {
         ).queue();
     }
 
+    /**
+     * Отправка события об бане в Discord
+     *
+     * @param ban Исформация о бане. Смотри {@link BanData}
+     */
     public static void sendBanEvent(BanData ban) {
         if (!isConnected) return;
 

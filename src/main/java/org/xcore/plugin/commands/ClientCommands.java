@@ -22,6 +22,10 @@ import static org.xcore.plugin.modules.MiniHexed.killTeam;
 import static org.xcore.plugin.utils.Utils.findTranslatorLanguage;
 
 public class ClientCommands {
+    /**
+     * Регистрация комманд чата в соответствующий обработчик комманд
+     * @param handler обработчик комманд
+     */
     public static void register(CommandHandler handler) {
         handler.<Player>register("discord", "Redirects you to discord server", (args, player) -> Call.openURI(player.con, discordURL));
 
