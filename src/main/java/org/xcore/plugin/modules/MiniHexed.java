@@ -60,8 +60,10 @@ public class MiniHexed {
         }, 120f)));
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
-            if (event.tile.block() instanceof CoreBlock) {
-                Call.sendMessage(team.data().players.first().name + "[] [accent]eliminated!");
+            if (event.tile.block() instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
+                var player = team.data().players.first();
+                Call.sendMessage(player.name + "[] [accent]eliminated!");
+                player.team(Team.derelict);
             }
         });
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
