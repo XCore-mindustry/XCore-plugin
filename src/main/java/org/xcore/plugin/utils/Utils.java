@@ -2,7 +2,6 @@ package org.xcore.plugin.utils;
 
 import arc.struct.ObjectSet;
 import arc.struct.Seq;
-import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
 import mindustry.gen.Call;
@@ -43,13 +42,8 @@ public class Utils {
     }
 
     public static void handleBanData(BanData ban) {
-        Log.info(ban.unban);
         if (ban.unban) {
-            Log.info(ban.server);
-            Log.info(config.server);
             if (!ban.server.equals(config.server)) return;
-            Log.info(ban.uuid);
-            Log.info(ban.ip);
             netServer.admins.unbanPlayerID(ban.uuid);
             netServer.admins.unbanPlayerIP(ban.ip);
             Database.unBan(ban.uuid, ban.ip);

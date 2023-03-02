@@ -89,6 +89,10 @@ public class Database {
         return bansCollection.find(eq("bid", id)).first();
     }
 
+    public static BanData unBanById(long id) {
+        return bansCollection.findOneAndDelete(eq("bid", id));
+    }
+
     private static Bson getBanFilter(String uuid, String ip) {
         return or(and(eq("uuid", uuid), eq("server", config.server)), and(eq("ip", ip), eq("server", config.server)));
     }

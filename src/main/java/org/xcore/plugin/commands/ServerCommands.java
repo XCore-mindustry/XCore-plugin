@@ -64,7 +64,6 @@ public class ServerCommands {
 
         handler.register("edit-rating", "<uuid> <value> [hex/pvp]", "Edit player`s rating.", args -> {
             PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
-            char operator = args[1].charAt(0);
 
             boolean pvp;
             if (args.length >= 3) {
@@ -85,8 +84,8 @@ public class ServerCommands {
                 return;
             }
 
-            if (pvp) data.pvpRating = Strings.parseInt(args[2]);
-            else data.hexedWins = Strings.parseInt(args[2]);
+            if (pvp) data.pvpRating = Strings.parseInt(args[1]);
+            else data.hexedWins = Strings.parseInt(args[1]);
 
             if (Groups.player.contains(p -> p.uuid().equals(data.uuid)))
                 Database.cachedPlayerData.put(data.uuid, data);
@@ -148,25 +147,28 @@ public class ServerCommands {
             Seq<BanData> bans = Database.getBanned();
 
             bans.each(ban -> {
-                var info = netServer.admins.getInfoOptional(ban.uuid);
-
                 var date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneId.systemDefault()).toString();
-
-                if (info != null) {
-                    Log.info(
-                            "  '@' / Last known name: '@' / IP: '@' / Unban date: @ / Reason: '@'",
-                            ban.uuid,
-                            info.plainLastName(),
-                            ban.ip,
-                            date,
-                            ban.reason);
-                } else {
-                    Log.info("  '@' / IP: '@' / Unban date: @ / Reason: '@'", ban.uuid, ban.ip, date, ban.reason);
-                }
+                Log.info("@:  '@' / IP: '@' / Admin: @ / Unban date: @ / Reason: '@'", ban.bid, ban.uuid, ban.ip, ban.adminName, date, ban.reason);
             });
         });
 
-        handler.register("tempunban", "<uuid/ip>", "Unban a temporary banned player.", args -> {
+        handler.register("tempunban", "<uuid/ip/bid>", "Unban a temporary banned player.", args -> {
+            try {
+                long bid = Long.parseLong(args[0]);
+                var ban = Database.unBanById(bid);
+
+                if (ban == null) {
+                    Log.info("Ban not found.");
+                    return;
+                }
+
+                netServer.admins.unbanPlayerID(ban.uuid);
+                netServer.admins.unbanPlayerIP(ban.ip);
+                Log.info("'@' (@) unbanned", ban.name, ban.uuid);
+                return;
+            } catch (NumberFormatException ignored) {
+            }
+
             netServer.admins.unbanPlayerID(args[0]);
             netServer.admins.unbanPlayerIP(args[0]);
             DeleteResult result = Database.unBan(args[0], "");
