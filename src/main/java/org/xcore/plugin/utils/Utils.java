@@ -1,24 +1,25 @@
 package org.xcore.plugin.utils;
 
-import arc.struct.ObjectSet;
+import arc.func.Boolf;
 import arc.struct.Seq;
-import arc.util.Strings;
+import arc.util.Log;
 import arc.util.Timer;
+import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.gen.Player;
 import mindustry.maps.Map;
-import mindustry.net.Packets;
+import mindustry.maps.MapException;
+import mindustry.net.WorldReloader;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.TimeFormat;
-import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.awt.*;
 
+import static arc.util.Strings.*;
 import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
@@ -88,62 +89,45 @@ public class Utils {
         return maps.customMaps().isEmpty() ? maps.defaultMaps() : maps.customMaps();
     }
 
+    public static int voteChoice(String vote) {
+        return switch (vote.toLowerCase()) {
+            case "y" -> 1;
+            case "n" -> -1;
+            default -> 0;
+        };
+    }
+
     public static String findTranslatorLanguage(String locale) {
         return translatorLanguages.orderedKeys().find(locale::startsWith);
     }
 
-    public static int votesRequired() {
-        return 2 + (Groups.player.size() > 4 ? 1 : 0);
+    public static <T> T findInSeq(String name, Seq<T> values, Boolf<T> filter) {
+        int index = parseInt(name) - 1;
+        return values.find(value -> values.indexOf(value) == index || filter.get(value));
     }
 
-    public static class VoteSession {
-        public Player target;
-        public ObjectSet<String> voted = new ObjectSet<>();
-        public int votes;
-        VoteSession[] map;
-        Timer.Task task;
+    public static boolean deepEquals(String first, String second) {
+        first = stripColors(stripGlyphs(first));
+        second = stripColors(stripGlyphs(second));
+        return first.equalsIgnoreCase(second) || first.toLowerCase().contains(second.toLowerCase());
+    }
 
-        public VoteSession(VoteSession[] map, Player target) {
-            this.target = target;
-            this.map = map;
-            this.task = Timer.schedule(() -> {
-                if (!checkPass()) {
-                    Call.sendMessage(Strings.format("[lightgray]Vote failed. Not enough votes to kick[orange] @[lightgray].", target.name));
-                    map[0] = null;
-                    task.cancel();
-                }
-            }, voteDuration);
-        }
+    public static Map findMap(String name) {
+        return findInSeq(name, getAvailableMaps(), map -> deepEquals(map.name(), name));
+    }
 
-        public void vote(Player player, int d) {
-            votes += d;
-            voted.addAll(player.uuid(), netServer.admins.getInfo(player.uuid()).lastIP);
+    public static void reloadWorld(Runnable runnable) {
+        try {
+            var reloader = new WorldReloader();
+            reloader.begin();
 
-            Call.sendMessage(Strings.format("[lightgray]@[lightgray] has voted on kicking[orange] @[lightgray].[accent] (@/@)\n[lightgray]Type[orange] /vote <y/n>[] to agree.",
-                    player.name, target.name, votes, votesRequired()));
-            String message = Strings.format("@ has voted on kicking @. (@/@)", player.plainName(), target.plainName(), votes, votesRequired());
+            runnable.run();
+            Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
+            Vars.logic.play();
 
-            JavelinCommunicator.sendEvent(
-                    new SocketEvents.ServerActionEvent(message, config.server),
-                    e -> Bot.sendServerAction(e.message));
-            checkPass();
-        }
-
-        public boolean checkPass() {
-            if (votes >= votesRequired()) {
-                Call.sendMessage(Strings.format("[orange]Vote passed.[scarlet] @[orange] will be banned from the server for @ minutes.", target.name, (kickDuration / 60)));
-                target.kick(Packets.KickReason.vote, kickDuration * 1000L);
-                map[0] = null;
-                task.cancel();
-
-                String message = Strings.format("Vote passed. @ will be banned from the server for @ minutes.", target.name, (kickDuration / 60));
-
-                JavelinCommunicator.sendEvent(
-                        new SocketEvents.ServerActionEvent(message, config.server),
-                        e -> Bot.sendServerAction(e.message));
-                return true;
-            }
-            return false;
+            reloader.end();
+        } catch (MapException e) {
+            Log.err("@: @", e.map.name(), e.getMessage());
         }
     }
 }

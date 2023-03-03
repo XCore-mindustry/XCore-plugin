@@ -19,7 +19,6 @@ import org.xcore.plugin.utils.models.BanData;
 
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.utils.Utils.votesRequired;
 
 public class PluginEvents {
     public static void init() {
@@ -72,17 +71,8 @@ public class PluginEvents {
 
             Database.cachedPlayerData.remove(player.uuid());
 
-            if (currentlyKicking[0] != null && currentlyKicking[0].target == player) {
-                currentlyKicking[0].votes = votesRequired();
-                currentlyKicking[0].checkPass();
-            }
-
-            int cur = rtvVotes.size();
-            int req = (int) Math.ceil(rtvRatio * Groups.player.size());
-            if (rtvVotes.contains(player.uuid())) {
-                rtvVotes.remove(player.uuid());
-                Call.sendMessage("RTV: [accent]" + player.name + "[] left, [green]" + cur + "[] votes, [green]" + req + "[] required");
-            }
+            if (vote != null) vote.left(event.player);
+            if (voteKick != null) voteKick.left(event.player);
 
             JavelinCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false),
@@ -90,7 +80,6 @@ public class PluginEvents {
         });
 
         Events.on(GameOverEvent.class, event -> {
-            rtvVotes.clear();
             String message = null;
             if (state.rules.waves) {
                 message = Strings.format(

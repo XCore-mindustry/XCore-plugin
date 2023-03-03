@@ -29,11 +29,20 @@ import java.time.Duration;
 import java.util.zip.CRC32;
 
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.banJson;
-import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.utils.Utils.voteChoice;
 
 public class NetEvents {
     public static String chat(Player author, String text) {
+        int sign = voteChoice(text);
+        if (sign != 0 && vote != null) {
+            if (vote.voted.containsKey(author.id)) {
+                player.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
+                return null;
+            }
+            vote.vote(author, sign);
+        }
+
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
