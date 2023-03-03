@@ -58,6 +58,9 @@ public class MiniHexed {
             teams.remove(event.player.uuid());
             left.remove(event.player.uuid());
         }, 120f)));
+        Events.on(EventType.GameOverEvent.class, e -> {
+            winScore = 1800;
+        });
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
             if (event.tile.block() instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
@@ -69,12 +72,12 @@ public class MiniHexed {
         Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
             if (team == null) return;
 
-            if (team.cores().size >= greenCores && greenCores != 0 && !gameover) {
+            if (team.cores().size >= greenCores && greenCores != 0 && !gameover && !Vars.state.gameOver) {
                 endGame();
             }
         }));
         Timer.schedule(() -> {
-            if (!Groups.player.isEmpty()) {
+            if (!Groups.player.isEmpty() && !Vars.state.gameOver && !gameover) {
                 winScore -= 1;
             }
             int sec = winScore % 60;
@@ -83,7 +86,7 @@ public class MiniHexed {
             Groups.player.each(p -> Call.infoPopup(p.con(), Strings.format("[blue]@:@[] until endgame", min, sec),
                     1, Align.bottom, 0, 0, 0, 0));
 
-            if (winScore < 1 && !gameover) {
+            if (winScore < 1 && !gameover && !Vars.state.gameOver) {
                 endGame();
             }
         }, 0f, 1);
@@ -142,7 +145,6 @@ public class MiniHexed {
         UnitTypes.navanax.flying = true;
 
         Vars.state.rules.canGameOver = false;
-        //Vars.state.rules.waves=false;
         Vars.state.rules.pvp = true;
         Vars.state.rules.pvpAutoPause = false;
 
@@ -215,7 +217,7 @@ public class MiniHexed {
     }
 
     public static void killTeam(Team team) {
-        if (team == Team.derelict || !team.data().active()) return;
+        if (team == Team.derelict || team == Team.green || !team.data().active()) return;
 
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
