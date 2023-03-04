@@ -26,6 +26,14 @@ public class BanData implements JavelinEvent {
     public BanData() {
     }
 
+    /**
+     * Конструктор информации о бане (упрощенный)
+     * @param uuid идентификатор нарушителя
+     * @param ip интернет аддрес нарушителя
+     * @param name ник нарушителя
+     * @param adminName имя администратора, забанившего нарушителя
+     * @param server сервер блокировки
+     */
     public BanData(String uuid, String ip, String name, String adminName, String server) {
         this.uuid = uuid;
         this.ip = ip;
@@ -35,6 +43,16 @@ public class BanData implements JavelinEvent {
         this.full = false;
     }
 
+    /**
+     * Конструктор информации о бане
+     * @param uuid идентификатор нарушителя
+     * @param ip интернет аддрес нарушителя
+     * @param name ник нарушителя
+     * @param adminName имя администратора, забанившего нарушителя
+     * @param reason причина блокировки
+     * @param server сервер блокировки
+     * @param unbanDate дата разбана
+     */
     public BanData(String uuid, String ip, String name, String adminName, String reason, String server, long unbanDate) {
         this.uuid = uuid;
         this.ip = ip;
@@ -45,6 +63,9 @@ public class BanData implements JavelinEvent {
         this.unbanDate = unbanDate;
     }
 
+    /**
+     * Генеоация идентификатора бана на основе базы данных
+     */
     public void generateBid() {
         this.bid = bansCollection.countDocuments() + 1;
     }

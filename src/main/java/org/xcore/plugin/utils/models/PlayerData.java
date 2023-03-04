@@ -24,6 +24,11 @@ public class PlayerData {
     public PlayerData() {
     }
 
+    /**
+     * Установка ника игрока
+     * @param nickname желаемый ник
+     * @return Сущность игрока
+     */
     public PlayerData setNickname(String nickname) {
         this.nickname = nickname;
         return this;

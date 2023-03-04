@@ -26,6 +26,10 @@ import static org.xcore.plugin.modules.discord.Bot.bansChannel;
 import static org.xcore.plugin.modules.discord.Bot.isConnected;
 
 public class Utils {
+    /**
+     * Регистрация бана в системе
+     * @param ban информация о бане, смотри {@link BanData#BanData(String, String, String, String, String, String, long)}
+     */
     public static void temporaryBan(BanData ban) {
         Database.setBan(ban);
         if (!isConnected) return;
@@ -41,6 +45,10 @@ public class Utils {
                 Button.danger(ban.bid + "-unban", "Unban")).queue();
     }
 
+    /**
+     * Обработка входящей информации о бане
+     * @param ban информация о бане, смотри {@link BanData#BanData(String, String, String, String, String, String, long)}
+     */
     public static void handleBanData(BanData ban) {
         if (ban.unban) {
             if (!ban.server.equals(config.server)) return;
@@ -59,6 +67,10 @@ public class Utils {
         }
     }
 
+    /**
+     * Генерирует таблицу лидеров
+     * @return таблица лидеров
+     */
     public static String getLeaderboard() {
         var builder = new StringBuilder();
         Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> (config.isMiniPvP() ? d.pvpRating : d.hexedWins) != 0).sort(d -> config.isMiniPvP() ? d.pvpRating : d.hexedWins).reverse();
@@ -77,6 +89,9 @@ public class Utils {
         return builder.toString();
     }
 
+    /**
+     * Показывает таблицу лидеров всем игрокам с автоматическим обновлением, вызов более одного раза не рекомендован
+     */
     public static void showLeaderboard() {
         Timer.schedule(() -> {
             if (Groups.player.isEmpty()) return;
@@ -84,14 +99,27 @@ public class Utils {
         }, 0f, 5f);
     }
 
+    /**
+     * Список достурных карт
+     * @return карты
+     */
     public static Seq<Map> getAvailableMaps() {
         return maps.customMaps().isEmpty() ? maps.defaultMaps() : maps.customMaps();
     }
 
+    /**
+     * Преобразование встроенной локали игры в локаль переводчика
+     * @param locale внутриигровая локаль смотри {@link Player#locale}
+     * @return локаль переводчика
+     */
     public static String findTranslatorLanguage(String locale) {
         return translatorLanguages.orderedKeys().find(locale::startsWith);
     }
 
+    /**
+     * Генерация требуемого числа голосов на основе количества игроков
+     * @return число требуемых голосов для выполнения действия, всегда больше или равно 2
+     */
     public static int votesRequired() {
         return 2 + (Groups.player.size() > 4 ? 1 : 0);
     }
