@@ -55,6 +55,7 @@ public class ClientCommands {
 
             if (map == null) {
                 player.sendMessage("[scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.");
+                return;
             }
 
             vote = new VoteRtv(map);

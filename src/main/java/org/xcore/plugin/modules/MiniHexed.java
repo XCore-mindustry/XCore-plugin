@@ -147,11 +147,6 @@ public class MiniHexed {
         Vars.state.rules.canGameOver = false;
         Vars.state.rules.pvp = true;
         Vars.state.rules.pvpAutoPause = false;
-
-        for (var team : Team.all) {
-            team.rules().rtsAi = true;
-            team.rules().aiCoreSpawn = false;
-        }
     }
 
     private static void endGame() {
