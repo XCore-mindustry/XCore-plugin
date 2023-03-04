@@ -258,7 +258,7 @@ public class NetEvents {
             }
         }
 
-        packet.name = Strings.stripColors(packet.name);
+        packet.name = fixName(packet.name);
 
         if (packet.name.trim().length() <= 0) {
             con.kick(Packets.KickReason.nameEmpty);
@@ -307,7 +307,6 @@ public class NetEvents {
         Events.fire(new EventType.PlayerConnect(player));
     }
 
-    @Deprecated
     public static String fixName(String name) {
         name = name.trim().replace("\n", "").replace("\t", "");
         if (name.equals("[") || name.equals("]")) {
@@ -332,7 +331,6 @@ public class NetEvents {
         return result.toString();
     }
 
-    @Deprecated
     public static String checkColor(String str) {
         for (int i = 1; i < str.length(); i++) {
             if (str.charAt(i) == ']') {
