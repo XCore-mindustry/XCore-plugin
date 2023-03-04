@@ -14,6 +14,7 @@ public class AttackAi extends CommandAI {
     public void updateUnit() {
         if (!hasCommand() && Time.timeSinceMillis(lastCommandTime) > inactivityInterval) {
             attackTarget = unit.closestEnemyCore();
+            if (attackTarget == null) return;
             targetPos = Tmp.v1.set(attackTarget);
         } else {
             super.updateUnit();
