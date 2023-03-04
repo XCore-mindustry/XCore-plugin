@@ -37,6 +37,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.jetbrains:annotations:23.0.0")
+    implementation("org.jetbrains:annotations:23.0.0")
     mindustryDependencies()
 
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
@@ -45,9 +47,7 @@ dependencies {
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10")
 
-    implementation("net.dv8tion:JDA:5.0.0-alpha.21") {
-        exclude(module = "opus-java")
-    }
+    implementation("com.discord4j:discord4j-core:3.2.2")
 
     implementation("org.jline:jline-reader:3.21.0")
     implementation("org.jline:jline-console:3.21.0")

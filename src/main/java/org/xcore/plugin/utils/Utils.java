@@ -4,20 +4,23 @@ import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Timer;
+import discord4j.common.util.TimestampFormat;
+import discord4j.core.object.component.ActionRow;
+import discord4j.core.object.component.Button;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.MessageCreateSpec;
+import discord4j.rest.util.Color;
 import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.utils.TimeFormat;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import java.awt.*;
+import java.time.Instant;
 
 import static arc.util.Strings.*;
 import static mindustry.Vars.maps;
@@ -31,15 +34,19 @@ public class Utils {
         Database.setBan(ban);
         if (!isConnected) return;
 
-        EmbedBuilder embed = new EmbedBuilder().setTitle("Ban")
-                .setColor(Color.red)
-                .addField("Violator", ban.name, false)
-                .addField("Admin", ban.adminName, false)
-                .addField("Server", ban.server, false)
-                .addField("Reason", ban.reason, false)
-                .addField("Unban Date", TimeFormat.DATE_LONG.format(ban.unbanDate), false);
-        bansChannel.sendMessageEmbeds(embed.build()).addActionRow(
-                Button.danger(ban.bid + "-unban", "Unban")).queue();
+        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                .addEmbed(EmbedCreateSpec.builder()
+                        .title("Ban")
+                        .color(Color.RED)
+                        .addField("Violator", ban.name, false)
+                        .addField("Admin", ban.adminName, false)
+                        .addField("Server", ban.server, false)
+                        .addField("Reason", ban.reason, false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
+                        .build()
+                )
+                .addComponent(ActionRow.of(Button.danger(ban.bid + "-unban", "Unban")))
+                .build())).subscribe();
     }
 
     public static void handleBanData(BanData ban) {
