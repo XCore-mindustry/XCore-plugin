@@ -130,4 +130,8 @@ public class Utils {
             Log.err("@: @", e.map.name(), e.getMessage());
         }
     }
+
+    public enum UnitState {
+        IDLE, ATTACK
+    }
 }

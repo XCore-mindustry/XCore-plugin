@@ -2,7 +2,6 @@ package org.xcore.plugin.modules;
 
 import arc.Events;
 import arc.struct.ObjectMap;
-import arc.struct.Seq;
 import arc.util.Align;
 import arc.util.Log;
 import arc.util.Strings;
@@ -13,7 +12,6 @@ import mindustry.content.UnitTypes;
 import mindustry.game.*;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.gen.Player;
 import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.Packets;
@@ -24,6 +22,7 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.models.HexMember;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
@@ -31,9 +30,8 @@ import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.utils.Utils.showLeaderboard;
 
 public class MiniHexed {
-    public static final ObjectMap<String, Team> teams = new ObjectMap<>();
-    public static final ObjectMap<String, Timer.Task> left = new ObjectMap<>();
-    private static Schematic startBase;
+    public static final ObjectMap<String, HexMember> members = new ObjectMap<>();
+    public static Schematic startBase;
     private static int greenCores = 0;
 
     private static int winScore = 1800;
@@ -53,14 +51,8 @@ public class MiniHexed {
                 XcorePlugin.info("Found @ green cores.", greenCores);
             }, 5);
         });
-        Events.on(EventType.PlayerLeave.class, event -> left.put(event.player.uuid(), Timer.schedule(() -> {
-            killTeam(event.player.team());
-            teams.remove(event.player.uuid());
-            left.remove(event.player.uuid());
-        }, 120f)));
-        Events.on(EventType.GameOverEvent.class, e -> {
-            winScore = 1800;
-        });
+        Events.on(EventType.PlayerLeave.class, event -> members.get(event.player.uuid()).leave());
+        Events.on(EventType.GameOverEvent.class, e -> winScore = 1800);
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
             if (event.tile.block() instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
@@ -69,10 +61,9 @@ public class MiniHexed {
                 player.team(Team.derelict);
             }
         });
-        Events.run(EventType.Trigger.update, () -> teams.each((uuid, team) -> {
-            if (team == null) return;
-
-            if (team.cores().size >= greenCores && greenCores != 0 && !gameover && !Vars.state.gameOver) {
+        Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
+        Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
+            if (member.controlled() >= greenCores && greenCores != 0 && !gameover && !Vars.state.gameOver) {
                 endGame();
             }
         }));
@@ -92,41 +83,11 @@ public class MiniHexed {
         }, 0f, 1);
 
         netServer.assigner = (player, players) -> {
-            var leftPlayer = left.remove(player.uuid());
+            var member = new HexMember(player.uuid());
 
-            if (leftPlayer != null) {
-                leftPlayer.cancel();
-            }
-
-            var playerTeam = teams.get(player.uuid());
-
-            if (playerTeam != null && playerTeam.active()) {
-                return playerTeam;
-            }
-
-            var core = Team.green.cores().random();
-            var team = Seq.select(Team.all, t -> t.id > 5 && !t.active() && t.data().players.isEmpty()).random();
-
-            if (team == null || core == null) {
-                notAvailableTeamMessage(player);
-                return Team.derelict;
-            }
-
-            teams.put(player.uuid(), team);
-
-            core.tile.setNet(Blocks.coreShard, team, 0);
-
-            int x = core.tileX() - startBase.width / 2, y = core.tileY() - startBase.height / 2;
-
-            startBase.tiles.each(st -> {
-                var tile = world.tile(st.x + x, st.y + y);
-                if (tile == null) return;
-
-                tile.setNet(st.block, team, st.rotation);
-                tile.build.configureAny(st.config);
-            });
-
-            return team;
+            if (members.containsKey(player.uuid())) member = members.get(player.uuid());
+            members.put(player.uuid(), member);
+            return member.join();
         };
 
         XcorePlugin.info("MiniHexed loaded.");
@@ -145,6 +106,7 @@ public class MiniHexed {
         UnitTypes.navanax.flying = true;
 
         Vars.state.rules.canGameOver = false;
+        Vars.state.rules.waves = false;
         Vars.state.rules.pvp = true;
         Vars.state.rules.pvpAutoPause = false;
     }
@@ -197,9 +159,8 @@ public class MiniHexed {
             Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
             applyRules();
             Vars.logic.play();
-            teams.clear();
-            left.each((uuid, task) -> task.cancel());
-            left.clear();
+            members.each((uuid, member) -> member.cancelTasks());
+            members.clear();
             reloader.end();
             gameover = false;
         } catch (MapException e) {
@@ -207,16 +168,12 @@ public class MiniHexed {
         }
     }
 
-    private static void notAvailableTeamMessage(Player player) {
-        player.sendMessage("All cores are busy. You are an observer of the game.");
-    }
-
     public static void killTeam(Team team) {
         if (team == Team.derelict || team == Team.green || !team.data().active()) return;
 
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
-            Call.sendMessage(player.coloredName() + "[] [accent]eliminated!");
+            Call.sendMessage(player.coloredName() + " [accent]eliminated!");
             player.team(Team.derelict);
         }
 

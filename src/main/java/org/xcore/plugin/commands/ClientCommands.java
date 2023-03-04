@@ -12,15 +12,16 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import org.xcore.plugin.modules.MiniHexed;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.MiniHexed.killTeam;
+import static org.xcore.plugin.modules.MiniHexed.members;
 import static org.xcore.plugin.utils.Utils.findTranslatorLanguage;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
@@ -140,7 +141,7 @@ public class ClientCommands {
                 int id = Strings.parseInt(args[0].substring(1));
                 found = Groups.player.find(p -> p.id() == id);
             } else {
-                found = Groups.player.find(p -> p.name.equalsIgnoreCase(args[0]));
+                found = Groups.player.find(p -> Strings.stripColors(p.name).equalsIgnoreCase(args[0]));
             }
 
             if (found == null) {
@@ -174,13 +175,7 @@ public class ClientCommands {
         });
 
         handler.<Player>register("spectate", "Spectate.", (args, player) -> {
-            if (config.isMiniHexed()) {
-                var team = MiniHexed.teams.remove(player.uuid());
-
-                if (team != null) {
-                    killTeam(player.team());
-                }
-            }
+            if (config.isMiniHexed()) killTeam(player.team());
 
             player.team(Team.derelict);
             player.unit().kill();
@@ -191,6 +186,26 @@ public class ClientCommands {
             handler.removeCommand("votekick");
             handler.removeCommand("vote");
             handler.removeCommand("rtv");
+
+            handler.<Player>register("ai", "<idle/i/attack/a>", "Control ai", (args, player) -> {
+                HexMember member = members.get(player.uuid());
+
+                if (player.team() == Team.derelict || member.team == Team.derelict) {
+                    player.sendMessage("[red]Error. [accent]You are spectator.");
+                    return;
+                }
+
+                switch (args[0]) {
+                    case "attack", "a" -> member.setUnitState(Utils.UnitState.ATTACK);
+                    case "idle", "i" -> member.setUnitState(Utils.UnitState.IDLE);
+                    default -> {
+                        player.sendMessage("[red]attack(i) []or [accent]idle(i).");
+                        return;
+                    }
+                }
+
+                player.sendMessage("[green]Successfully.");
+            });
         }
 
         if (config.isMiniPvP()) {

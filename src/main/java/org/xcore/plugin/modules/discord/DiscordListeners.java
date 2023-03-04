@@ -64,7 +64,7 @@ public class DiscordListeners extends ListenerAdapter {
             event.reply("Successfully unbanned.").setEphemeral(true).queue();
             var member = event.getMember();
             event.getMessage().editMessageEmbeds(new EmbedBuilder(event.getMessage().getEmbeds().get(0))
-                            .setFooter("Unbanned by" + member.getEffectiveName(), member.getAvatarUrl()).build())
+                            .setFooter("Unbanned by " + member.getEffectiveName(), member.getEffectiveAvatarUrl()).build())
                     .setActionRow(Button.success("success", "Unbanned.").asDisabled()).queue();
             return;
         }
