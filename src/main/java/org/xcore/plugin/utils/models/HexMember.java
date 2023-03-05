@@ -2,10 +2,11 @@ package org.xcore.plugin.utils.models;
 
 import arc.struct.Seq;
 import arc.util.Timer;
-import mindustry.content.Blocks;
+import mindustry.Vars;
 import mindustry.content.UnitTypes;
 import mindustry.game.Team;
 import mindustry.gen.Unit;
+import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.utils.AttackAi;
 import org.xcore.plugin.utils.Utils;
 
@@ -51,16 +52,14 @@ public class HexMember {
             return team;
         }
 
-        var core = Team.green.cores().random();
         var team = Seq.select(Team.all, t -> t.id > 5 && !t.active() && t.data().players.isEmpty()).random();
+        var spawnCore = getSpawnCore();
 
-        if (team == null || core == null) {
+        if (team == null || spawnCore == null) {
             return Team.derelict;
         }
 
-        core.tile.setNet(Blocks.coreShard, team, 0);
-
-        int x = core.tileX() - startBase.width / 2, y = core.tileY() - startBase.height / 2;
+        int x = spawnCore.tileX() - startBase.width / 2, y = spawnCore.tileY() - startBase.height / 2;
 
         startBase.tiles.each(st -> {
             var tile = world.tile(st.x + x, st.y + y);
@@ -72,6 +71,16 @@ public class HexMember {
 
         this.team = team;
         return team;
+    }
+
+    private CoreBlock.CoreBuild getSpawnCore() {
+        var allCores = Vars.state.teams.getActive()
+                .select(team -> team.team != Team.green)
+                .flatMap(team -> team.cores);
+
+        if (allCores.isEmpty()) return null;
+
+        return Team.green.cores().copy().sort(core -> -core.dst(allCores.min(other -> core.dst(other)))).firstOpt();
     }
 
     public void leave() {
