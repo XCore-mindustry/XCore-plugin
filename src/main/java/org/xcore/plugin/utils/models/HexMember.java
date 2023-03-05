@@ -37,7 +37,7 @@ public class HexMember {
     }
 
     public void handleUnit(Unit unit) {
-        if (unit == null || unit.team != team || unit.type == UnitTypes.poly || unit.type == UnitTypes.mega || unit.isPlayer())
+        if (unit == null || unit.team != team || unit.type == UnitTypes.mono || unit.type == UnitTypes.poly || unit.type == UnitTypes.mega || unit.isPlayer())
             return;
         if (state == Utils.UnitState.ATTACK) unit.controller(new AttackAi());
         else unit.controller(unit.type.createController(unit));

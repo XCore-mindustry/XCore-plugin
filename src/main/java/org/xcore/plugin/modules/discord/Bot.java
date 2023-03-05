@@ -23,7 +23,6 @@ import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
 import discord4j.rest.util.Color;
-import fr.xpdustry.javelin.JavelinPlugin;
 import org.reactivestreams.Publisher;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
@@ -148,16 +147,15 @@ public class Bot {
                 if (author == null || author.isBot() || event.getMessage().getContent().isBlank())
                     return Mono.empty();
 
-                Log.info("nya1");
                 if (!globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong(), false) && !event.getMessage().getContent().startsWith("/"))
                     return Mono.empty();
-                Log.info("nya2");
+
                 String server = globalConfig.servers.findKey(event.getMessage().getChannelId().asLong(), false);
 
                 if (server.equals(config.server)) {
                     XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), event.getMessage().getContent());
                 } else {
-                    JavelinPlugin.getJavelinSocket().sendEvent(
+                    JavelinCommunicator.sendEvent(
                             new SocketEvents.DiscordMessageEvent(author.getDisplayName(), event.getMessage().getContent(), server)
                     );
                 }
