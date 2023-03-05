@@ -3,7 +3,6 @@ package org.xcore.plugin;
 import arc.files.Fi;
 import arc.struct.ObjectMap;
 import arc.struct.OrderedMap;
-import arc.util.Timekeeper;
 import arc.util.serialization.JsonReader;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -21,9 +20,8 @@ public class PluginVars {
     public static final String banJson = "{\"name\": \"@\", \"uuid\": \"@\", \"ip\": \"@\", \"reason\": \"\", \"duration\": \"0\", \"skip_to_discord\": false, \"error\": \"\"}";
     public static final long kickDuration = 30 * 60 * 1000L;
     public static final float voteRatio = 0.55f;
-    public static final float voteDuration = 0.5f * 60;
+    public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
-    public static final ObjectMap<String, Timekeeper> cooldowns = new ObjectMap<>();
     public static boolean isSocketServer;
     public static String discordURL = "https://discord.gg/RUMCCa9QAC";
     public static Fi configFile = dataDirectory.child("xcconfig.json");

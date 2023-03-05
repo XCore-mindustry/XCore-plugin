@@ -56,7 +56,8 @@ public class VoteKick extends VoteSession {
     @Override
     public void fail() {
         stop();
-        Call.sendMessage(Strings.format("[lightgray]Vote failed. Not enough votes to kick @[lightgray] from the server."));
+        Call.sendMessage(Strings.format("[lightgray]Vote failed. Not enough votes to kick @[lightgray] from the server.",
+                target.coloredName()));
     }
 
     @Override

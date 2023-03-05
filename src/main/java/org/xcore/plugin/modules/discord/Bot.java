@@ -130,14 +130,14 @@ public class Bot {
                     ban.unbanDate = Time.millis() + TimeUnit.DAYS.toMillis(Strings.parseInt(duration));
                     Database.setBan(ban);
 
-                    message.edit(MessageEditSpec.builder()
+                    var edit = message.edit(MessageEditSpec.builder()
                             .addEmbed(toEmbedCreateSpecBuilder(message.getEmbeds().get(0))
                                     .addField("Reason", reason, false)
                                     .addField("Unban date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
                                     .build())
                             .components(List.of(ActionRow.of(Button.danger(ban.bid + "-unban", "Unban"))))
-                            .build()).subscribe();
-                    return event.reply("Successfully.").withEphemeral(true);
+                            .build());
+                    return Mono.zip(edit, event.reply("Successfully.").withEphemeral(true));
                 }
                 return Mono.empty();
             });

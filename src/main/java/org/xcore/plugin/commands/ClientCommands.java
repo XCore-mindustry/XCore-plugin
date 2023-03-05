@@ -44,11 +44,12 @@ public class ClientCommands {
             if (!player.admin) return;
 
             Events.fire(new EventType.GameOverEvent(Team.derelict));
+            Call.sendMessage(Strings.format("@[accent] skipped map.", player.coloredName()));
         });
 
         handler.<Player>register("rtv", "[map]", "Rock the vote to change map", (args, player) -> {
             if (vote != null) {
-                Call.sendMessage("[scarlet]⚠ A voting is already in progress.");
+                player.sendMessage("[scarlet]⚠ A voting is already in progress.");
                 return;
             }
 

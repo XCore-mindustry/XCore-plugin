@@ -78,7 +78,7 @@ public class HexMember {
         left = Timer.schedule(() -> {
             if (team != null) killTeam(team);
             members.remove(uuid);
-        }, 10f);
+        }, 120f);
     }
 
     public void cancelTasks() {

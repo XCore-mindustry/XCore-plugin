@@ -105,6 +105,10 @@ public class MiniHexed {
         UnitTypes.aegires.flying = true;
         UnitTypes.navanax.flying = true;
 
+        UnitTypes.crawler.flying = true;
+        UnitTypes.atrax.flying = true;
+        UnitTypes.spiroct.flying = true;
+
         Vars.state.rules.canGameOver = false;
         Vars.state.rules.waves = false;
         Vars.state.rules.pvp = true;
