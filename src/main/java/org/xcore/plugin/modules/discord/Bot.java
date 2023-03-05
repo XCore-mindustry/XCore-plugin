@@ -152,6 +152,8 @@ public class Bot {
 
                 String server = globalConfig.servers.findKey(event.getMessage().getChannelId().asLong(), false);
 
+                if (server == null) return Mono.empty();
+
                 if (server.equals(config.server)) {
                     XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), event.getMessage().getContent());
                 } else {
