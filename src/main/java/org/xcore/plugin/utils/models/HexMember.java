@@ -78,7 +78,8 @@ public class HexMember {
                 .select(team -> team.team != Team.green)
                 .flatMap(team -> team.cores);
 
-        if (allCores.isEmpty()) return null;
+        if (allCores.isEmpty())
+            return Team.green.cores().random();
 
         return Team.green.cores().copy().sort(core -> -core.dst(allCores.min(other -> core.dst(other)))).firstOpt();
     }
