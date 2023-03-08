@@ -3,7 +3,6 @@ package org.xcore.plugin.commands;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
-import arc.util.Strings;
 import arc.util.Time;
 import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Groups;
@@ -62,38 +61,6 @@ public class ServerCommands {
             Log.info("Done.");
         });
 
-        handler.register("edit-rating", "<uuid> <value> [hex/pvp]", "Edit player`s rating.", args -> {
-            PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
-
-            boolean pvp;
-            if (args.length >= 3) {
-                pvp = args[2].equals("pvp");
-            } else {
-                pvp = true;
-            }
-
-            if (info == null) {
-                Log.info("Player not found.");
-                return;
-            }
-
-            PlayerData data = Database.getPlayerData(info.id);
-
-            if (!data.exists) {
-                Log.err("Player in db not found.");
-                return;
-            }
-
-            if (pvp) data.pvpRating = Strings.parseInt(args[1]);
-            else data.hexedWins = Strings.parseInt(args[1]);
-
-            if (Groups.player.contains(p -> p.uuid().equals(data.uuid)))
-                Database.cachedPlayerData.put(data.uuid, data);
-
-            Database.setPlayerData(data);
-            Log.info("'@' rating is now @(pvp), @(hex)", data.nickname, data.pvpRating, data.hexedWins);
-        });
-
         handler.register("dbinfo", "<uuid>", "Info about player from db.", args -> {
             PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
 
@@ -111,7 +78,7 @@ public class ServerCommands {
 
             Log.info("'@' DB '@': ", info.plainLastName(), data.nickname);
             Log.info("  PvP Rating: @", data.pvpRating);
-            Log.info("  Hexed Wins: @", data.hexedWins);
+            Log.info("  Hexed Wins: @", data.hexedPoints);
             Log.info("  Translator Language: @", data.translatorLanguage);
         });
 

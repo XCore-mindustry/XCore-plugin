@@ -12,6 +12,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
+import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Database;
@@ -20,8 +21,8 @@ import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.modules.MiniHexed.killTeam;
-import static org.xcore.plugin.modules.MiniHexed.members;
+import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
+import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 import static org.xcore.plugin.utils.Utils.findTranslatorLanguage;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
@@ -187,6 +188,41 @@ public class ClientCommands {
             handler.removeCommand("votekick");
             handler.removeCommand("vote");
             handler.removeCommand("rtv");
+
+            handler.<Player>register("rank", "Shows information about your rank", (args, player) -> {
+                var data = Database.cachedPlayerData.get(player.uuid());
+
+                if (data == null) {
+                    player.sendMessage("[red]NOT AVAILABLE");
+                    return;
+                }
+
+                var rank = data.hexedRank();
+
+                Call.infoMessage(player.con, Strings.format("@ [accent]@\n[gold]Wins: @/@", rank.tag, rank.name, data.hexedPoints, rank.next.requirements.wins()));
+            });
+
+            handler.<Player>register("ranks", "Shows information about ranks", (args, player) -> {
+                var data = Database.cachedPlayerData.get(player.uuid());
+
+                if (data == null) {
+                    player.sendMessage("[red]NOT AVAILABLE");
+                    return;
+                }
+
+                var builder = new StringBuilder();
+
+                for (HexedRanks.HexedRank rank : HexedRanks.HexedRank.values()) {
+                    builder.append(rank.tag).append(" [accent]").append(rank.name).append("\n")
+                            .append("[gold]Requirements: ").append("[grey]").append(rank.requirements == null ? 0 : rank.requirements.wins())
+                            .append(" [accent]wins[]").append("[]\n\n");
+                }
+
+                builder.append("[accent]The number of wins is rolled into the number of wins over players of your rank. ");
+
+                Call.infoMessage(player.con, builder.toString());
+
+            });
 
             handler.<Player>register("ai", "<idle/i/attack/a>", "Control ai", (args, player) -> {
                 HexMember member = members.get(player.uuid());

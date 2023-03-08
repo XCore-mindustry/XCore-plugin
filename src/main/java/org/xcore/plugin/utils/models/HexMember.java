@@ -11,7 +11,7 @@ import org.xcore.plugin.utils.AttackAi;
 import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.world;
-import static org.xcore.plugin.modules.MiniHexed.*;
+import static org.xcore.plugin.modules.hexed.MiniHexed.*;
 
 public class HexMember {
     public String uuid;

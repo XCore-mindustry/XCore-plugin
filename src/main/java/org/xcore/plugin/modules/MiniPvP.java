@@ -4,17 +4,19 @@ import arc.Core;
 import arc.Events;
 import arc.struct.Seq;
 import arc.util.Log;
+import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.game.Team;
+import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.utils.Utils.showLeaderboard;
 
 public class MiniPvP {
     public static Seq<String> losingPlayers = new Seq<>();
@@ -22,7 +24,10 @@ public class MiniPvP {
     public static void init() {
         if (!config.isMiniPvP()) return;
 
-        showLeaderboard();
+        Timer.schedule(() -> {
+            if (Groups.player.isEmpty()) return;
+            Groups.player.each(player -> Call.infoPopup(player.con, Utils.getPvPLeaderboard(), 5f, 8, 0, 2, 50, 0));
+        }, 0f, 5f);
 
         Events.on(EventType.GameOverEvent.class, e -> {
             losingPlayers.clear();

@@ -37,7 +37,7 @@ public class NetEvents {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
             if (vote.voted.containsKey(author.id)) {
-                player.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
+                author.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
                 return null;
             }
             vote.vote(author, sign);

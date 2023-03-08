@@ -3,7 +3,6 @@ package org.xcore.plugin.utils;
 import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Log;
-import arc.util.Timer;
 import discord4j.common.util.TimestampFormat;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
@@ -11,8 +10,6 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
 import mindustry.Vars;
-import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
@@ -67,9 +64,9 @@ public class Utils {
         }
     }
 
-    public static String getLeaderboard() {
+    public static String getPvPLeaderboard() {
         var builder = new StringBuilder();
-        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> (config.isMiniPvP() ? d.pvpRating : d.hexedWins) != 0).sort(d -> config.isMiniPvP() ? d.pvpRating : d.hexedWins).reverse();
+        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
         builder.append("[blue]Leaderboard\n\n");
@@ -78,18 +75,29 @@ public class Utils {
             builder.append("[orange]").append(i + 1)
                     .append(". ")
                     .append(data.nickname)
-                    .append(":[cyan] ")
-                    .append(config.isMiniPvP() ? data.pvpRating : data.hexedWins).append(" []rating\n");
+                    .append("[accent]:[cyan] ")
+                    .append(data.pvpRating).append(" [accent]rating\n");
         }
 
         return builder.toString();
     }
 
-    public static void showLeaderboard() {
-        Timer.schedule(() -> {
-            if (Groups.player.isEmpty()) return;
-            Groups.player.each(player -> Call.infoPopup(player.con, Utils.getLeaderboard(), 5f, 8, 0, 2, 50, 0));
-        }, 0f, 5f);
+    public static String getHexedLeaderboard() {
+        var builder = new StringBuilder();
+        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+
+        builder.append("[blue]Leaderboard\n\n");
+        for (int i = 0; i < teams.size; i++) {
+            var team = teams.get(i);
+            var player = team.players.first();
+
+            builder.append("[orange]").append(i + 1)
+                    .append(". ").append(player.coloredName())
+                    .append("[accent]: [cyan]")
+                    .append(team.cores.size).append(" [accent]hexes\n");
+        }
+
+        return builder.toString();
     }
 
     public static Seq<Map> getAvailableMaps() {

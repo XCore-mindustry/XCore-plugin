@@ -1,7 +1,8 @@
-package org.xcore.plugin.modules;
+package org.xcore.plugin.modules.hexed;
 
 import arc.Events;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.Align;
 import arc.util.Log;
 import arc.util.Strings;
@@ -22,15 +23,16 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.utils.Utils.showLeaderboard;
 
 public class MiniHexed {
     public static final ObjectMap<String, HexMember> members = new ObjectMap<>();
+    public static final ObjectMap<HexedRanks.HexedRank, Seq<String>> rankings = new ObjectMap<>();
     public static Schematic startBase;
     private static int greenCores = 0;
 
@@ -41,7 +43,10 @@ public class MiniHexed {
     public static void init() {
         if (!config.isMiniHexed()) return;
 
-        showLeaderboard();
+        Timer.schedule(() -> {
+            if (Groups.player.isEmpty()) return;
+            Groups.player.each(player -> Call.infoPopup(player.con, Utils.getHexedLeaderboard(), 5f, 8, 0, 2, 50, 0));
+        }, 0f, 5f);
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
@@ -55,7 +60,8 @@ public class MiniHexed {
         Events.on(EventType.GameOverEvent.class, e -> winScore = 1800);
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
-            if (event.tile.block() instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
+            var block = event.tile.block();
+            if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
                 Call.sendMessage(player.name + "[] [accent]eliminated!");
                 player.team(Team.derelict);
@@ -63,6 +69,18 @@ public class MiniHexed {
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
+            var data = Database.cachedPlayerData.get(member.uuid);
+
+            if (member.controlled() > 1 && data != null) {
+                var ranked = rankings.get(data.hexedRank());
+
+                if (ranked == null) {
+                    rankings.put(data.hexedRank(), Seq.with(member.uuid));
+                } else {
+                    if (!ranked.contains(member.uuid)) ranked.add(member.uuid);
+                }
+            }
+
             if (member.controlled() >= greenCores && greenCores != 0 && !gameover && !Vars.state.gameOver) {
                 endGame();
             }
@@ -130,7 +148,18 @@ public class MiniHexed {
 
                 if (i == 0) {
                     var data = Database.cachedPlayerData.get(player.uuid());
-                    data.hexedWins += 1;
+
+                    var ranked = rankings.get(data.hexedRank());
+                    if (ranked != null && ranked.size > 1 ||
+                            rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
+                        data.hexedPoints++;
+                        if (data.hexedRank().checkNext(data.hexedPoints)) {
+                            HexedRanks.updateRank(player, data);
+                            data.hexedPoints = 0;
+                            data.hexedRank(data.hexedRank().next);
+                        }
+                    }
+
                     Database.setPlayerData(data);
                     Database.cachedPlayerData.put(player.uuid(), data);
                 }
@@ -165,6 +194,7 @@ public class MiniHexed {
             Vars.logic.play();
             members.each((uuid, member) -> member.cancelTasks());
             members.clear();
+            rankings.clear();
             reloader.end();
             gameover = false;
         } catch (MapException e) {

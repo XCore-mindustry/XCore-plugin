@@ -12,6 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
+import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
@@ -55,6 +56,8 @@ public class PluginEvents {
                 Call.openURI(event.player.con, discordURL);
 
             var data = Database.getPlayerData(event.player).setNickname(event.player.coloredName());
+            HexedRanks.updateRank(event.player, data);
+
             Database.cachedPlayerData.put(event.player.uuid(), data);
 
             if (data.translatorLanguage.equals("off")) {
