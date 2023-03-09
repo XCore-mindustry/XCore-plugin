@@ -26,4 +26,8 @@ public class Config {
     public boolean isMiniHexed() {
         return server.equals("mini-hexed");
     }
+
+    public boolean isLastStanding() {
+        return server.equals("the-last-standing");
+    }
 }
