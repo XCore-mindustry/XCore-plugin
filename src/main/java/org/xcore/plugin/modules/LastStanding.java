@@ -24,7 +24,6 @@ public class LastStanding {
     public static void init() {
         if (!config.isLastStanding()) return;
         Events.on(EventType.CoreChangeEvent.class, event -> app.post(() -> spawnFloors.each((team, floor) -> {
-            System.out.println("nya");
             if (team.active()) return;
             spawner.getSpawns().each(tile -> tile.floor() == floor, tile -> {
                 tile.setOverlayNet(Blocks.air);
