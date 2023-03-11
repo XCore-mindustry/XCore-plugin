@@ -1,5 +1,6 @@
 package org.xcore.plugin.utils;
 
+import arc.Core;
 import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Log;
@@ -10,6 +11,7 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
 import mindustry.Vars;
+import mindustry.game.Gamemode;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
@@ -137,7 +139,7 @@ public class Utils {
             reloader.begin();
 
             runnable.run();
-            Vars.state.rules = Vars.state.map.applyRules(Vars.state.rules.mode());
+            Vars.state.rules = Vars.state.map.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode")));
             Vars.logic.play();
 
             reloader.end();
