@@ -154,10 +154,7 @@ public class Utils {
 
     public static char emoji(UnlockableContent content) {
         try {
-            long start = System.nanoTime();
-            var nya = Reflect.get(Iconc.class, Strings.kebabToCamel(content.getContentType().name() + "-" + content.name));
-            Log.info(System.nanoTime() - start);
-            return (char) nya;
+            return Reflect.get(Iconc.class, Strings.kebabToCamel(content.getContentType().name() + "-" + content.name));
         } catch (Exception e) {
             return '?';
         }
