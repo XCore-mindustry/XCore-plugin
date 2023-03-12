@@ -3,6 +3,7 @@ package org.xcore.plugin.commands;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Time;
 import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Groups;
@@ -15,6 +16,7 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static arc.Core.app;
@@ -25,6 +27,7 @@ import static org.xcore.plugin.PluginVars.config;
 public class ServerCommands {
     public static void register(CommandHandler handler) {
         handler.removeCommand("exit");
+
         handler.register("exit", "Exit the server application.", args -> {
             Log.info("Shutting down server.");
             netServer.kickAll(Packets.KickReason.serverRestarting);
@@ -82,7 +85,7 @@ public class ServerCommands {
             Log.info("  Translator Language: @", data.translatorLanguage);
         });
 
-        handler.register("tempban", "<uuid> <days-of-ban> <reason...>", "Temporary ban player.", args -> {
+        handler.register("tempban", "<uuid> <days-of-ban> <banByIP?/reason...>", "Temporary ban player.", args -> {
             var target = netServer.admins.getInfoOptional(args[0]);
 
             if (target == null) {
@@ -90,22 +93,23 @@ public class ServerCommands {
                 return;
             }
 
-            long days;
-            try {
-                days = parseLong(args[1]);
-            } catch (NumberFormatException ignored) {
-                Log.err("Ban days must be a number.");
+            int days = Strings.parseInt(args[1]);
+
+            if (days <= 0) {
+                Log.err("Ban days must be a number / positive number.");
                 return;
             }
 
-            if (days <= 0) {
-                Log.err("Ban days must be a positive number.");
-                return;
+            boolean banByIP = Boolean.parseBoolean(args[2].split(" ")[0]);
+            String reason = null;
+            if (banByIP) {
+                String[] toCopy = args[2].split(" ");
+                reason = Strings.join(" ", Arrays.copyOfRange(toCopy, 1, toCopy.length));
             }
 
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
-            BanData ban = new BanData(target.id, target.lastIP, target.lastName, "console", args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days));
+            BanData ban = new BanData(target.id, banByIP ? target.lastIP : "", target.lastName, "console", banByIP ? reason : args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days));
             ban.generateBid();
             JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
         });

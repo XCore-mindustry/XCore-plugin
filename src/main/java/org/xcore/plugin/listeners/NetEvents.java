@@ -63,11 +63,14 @@ public class NetEvents {
         Events.fire(new EventType.AdminRequestEvent(admin, target, action));
 
         switch (action) {
-            case kick -> target.kick(Packets.KickReason.kick);
+            case kick -> {
+                target.kick(Packets.KickReason.kick);
+                Call.sendMessage(Strings.format("@[accent] kicked @[].", admin.coloredName(), target.coloredName()));
+                Log.info("@ kicked @ (@)", admin.plainName(), target.plainName(), target.uuid());
+            }
             case ban -> {
                 target.kick(Packets.KickReason.banned);
                 netServer.admins.banPlayerID(target.uuid());
-                netServer.admins.banPlayerIP(target.ip());
                 Call.sendMessage(Strings.format("@[accent] banned @[].", admin.coloredName(), target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
                 Call.clientPacketReliable(admin.con, "give_ban_data", Strings.format(banJson, target.name, target.uuid(), target.ip()));

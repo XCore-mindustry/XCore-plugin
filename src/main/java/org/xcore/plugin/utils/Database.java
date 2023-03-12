@@ -9,8 +9,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.UpdateResult;
 import mindustry.gen.Player;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
@@ -73,12 +73,16 @@ public class Database {
         return bansCollection.find(getBanFilter(uuid, ip)).first();
     }
 
-    public static UpdateResult setBan(BanData data) {
-        return bansCollection.replaceOne(getBanFilter(data.uuid, data.ip), data, new ReplaceOptions().upsert(true));
+    public static void setBan(BanData data) {
+        bansCollection.replaceOne(getBanFilter(data.uuid, data.ip), data, new ReplaceOptions().upsert(true));
     }
 
-    public static DeleteResult unBan(BanData data) {
-        return unBan(data.uuid, data.ip);
+    public static void updateBanById(long bid, BanData data) {
+        bansCollection.replaceOne(eq("bid", bid), data, new ReplaceOptions().upsert(true));
+    }
+
+    public static void unBan(BanData data) {
+        unBan(data.uuid, data.ip);
     }
 
     public static DeleteResult unBan(String uuid, String ip) {
@@ -98,8 +102,23 @@ public class Database {
     }
 
     public static Seq<BanData> getBanned() {
+        return getBanned(false);
+    }
+
+    public static Seq<BanData> getBanned(boolean global) {
         Seq<BanData> bans = new Seq<>();
-        bansCollection.find(eq("server", config.server)).forEach(bans::add);
+        bansCollection.find(global ? new Document() : eq("server", config.server)).forEach(bans::add);
         return bans;
+    }
+
+    public static int getNextSequence(String name) {
+        MongoCollection<Document> counters = database.getCollection("counters");
+
+        Document find = new Document().append("_id", name);
+        Document update = new Document("$inc", new Document("seq", 1));
+
+        Document result = counters.findOneAndUpdate(find, update);
+
+        return (int) result.get("seq");
     }
 }

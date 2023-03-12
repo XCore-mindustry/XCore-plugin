@@ -2,6 +2,7 @@ package org.xcore.plugin.utils.models;
 
 import fr.xpdustry.javelin.JavelinEvent;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
+import org.xcore.plugin.utils.Database;
 
 import static org.xcore.plugin.utils.Database.bansCollection;
 
@@ -46,6 +47,6 @@ public class BanData implements JavelinEvent {
     }
 
     public void generateBid() {
-        this.bid = bansCollection.countDocuments() + 1;
+        this.bid = Database.getNextSequence("banid");
     }
 }
