@@ -4,6 +4,8 @@ import arc.Core;
 import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Log;
+import arc.util.Reflect;
+import arc.util.Strings;
 import discord4j.common.util.TimestampFormat;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
@@ -11,7 +13,9 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
 import mindustry.Vars;
+import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
+import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
@@ -145,6 +149,17 @@ public class Utils {
             reloader.end();
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
+        }
+    }
+
+    public static char emoji(UnlockableContent content) {
+        try {
+            long start = System.nanoTime();
+            var nya = Reflect.get(Iconc.class, Strings.kebabToCamel(content.getContentType().name() + "-" + content.name));
+            Log.info(System.nanoTime() - start);
+            return (char) nya;
+        } catch (Exception e) {
+            return '?';
         }
     }
 

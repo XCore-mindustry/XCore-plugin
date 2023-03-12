@@ -2,11 +2,14 @@ package org.xcore.plugin;
 
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Reflect;
 import arc.util.Strings;
 import mindustry.Vars;
+import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
+import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
 import mindustry.mod.Plugin;
@@ -76,7 +79,6 @@ public class XcorePlugin extends Plugin {
 
         info("Plugin loaded");
     }
-
     @Override
     public void registerClientCommands(CommandHandler handler) {
         ClientCommands.register(handler);

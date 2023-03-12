@@ -15,6 +15,9 @@ public class PlayerData {
 
     public boolean jsAccess = false;
     public boolean consolePanelAccess = false;
+
+    @BsonIgnore
+    public boolean history = false;
     @BsonIgnore
     public boolean exists = true;
 

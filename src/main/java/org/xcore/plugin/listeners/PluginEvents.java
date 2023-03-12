@@ -3,6 +3,7 @@ package org.xcore.plugin.listeners;
 import arc.Events;
 import arc.util.Strings;
 import fr.xpdustry.javelin.JavelinPlugin;
+import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
@@ -13,6 +14,8 @@ import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
+import org.xcore.plugin.modules.history.History;
+import org.xcore.plugin.modules.history.HistoryEntry;
 import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
@@ -57,8 +60,7 @@ public class PluginEvents {
 
             var data = Database.getPlayerData(event.player).setNickname(event.player.coloredName());
             HexedRanks.updateRank(event.player, data);
-
-            Database.cachedPlayerData.put(event.player.uuid(), data);
+            Database.setCached(data);
 
             if (data.translatorLanguage.equals("off")) {
                 event.player.sendMessage("[accent]I see that you have automatic chat translator turned off, so I recommend turning it on using the [grey]/tr auto[] command.");
@@ -72,7 +74,7 @@ public class PluginEvents {
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
-            Database.cachedPlayerData.remove(player.uuid());
+            Database.removeCached(event.player.uuid());
 
             if (vote != null) vote.left(event.player);
             if (voteKick != null) voteKick.left(event.player);
@@ -80,6 +82,10 @@ public class PluginEvents {
             JavelinCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false),
                     e -> Bot.sendJoinLeaveEventMessage(e.playerName, false));
+        });
+
+        Events.on(EventType.WorldLoadEvent.class, event -> {
+            History.clear();
         });
 
         Events.on(GameOverEvent.class, event -> {
@@ -95,6 +101,35 @@ public class PluginEvents {
             JavelinCommunicator.sendEvent(
                     new SocketEvents.ServerActionEvent(message, config.server),
                     e -> Bot.sendServerAction(e.message));
+        });
+
+        Events.on(EventType.ConfigEvent.class, event -> {
+            if (History.enabled() && event.player != null)
+                History.put(new HistoryEntry(event), event.tile.tile);
+        });
+
+        Events.on(EventType.BlockBuildEndEvent.class, event -> {
+            if (!event.unit.isPlayer()) return;
+
+            if (History.enabled() && event.tile.build != null)
+                History.put(new HistoryEntry(event), event.tile);
+        });
+
+        Events.on(EventType.TapEvent.class, event -> {
+            if (!History.enabled() || event.tile == null) return;
+
+            var data = Database.getCached(event.player.uuid());
+            if (!data.history) return;
+
+            var stack = History.get(event.tile.array());
+            if (stack == null) return;
+
+            var builder = new StringBuilder();
+
+            if (stack.isEmpty()) builder.append("Empty.");
+            else stack.each(entry -> builder.append("\n").append(entry.getMessage()));
+
+            event.player.sendMessage(Strings.format("[yellow]History of tile (@, @) @", event.tile.x, event.tile.y, builder.toString()));
         });
     }
 }

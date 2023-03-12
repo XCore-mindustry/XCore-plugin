@@ -33,6 +33,18 @@ public class Database {
     public static MongoCollection<BanData> bansCollection;
     public static ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
 
+    public static PlayerData getCached(String uuid) {
+        return cachedPlayerData.get(uuid);
+    }
+
+    public static void setCached(PlayerData data) {
+        cachedPlayerData.put(data.uuid, data);
+    }
+
+    public static PlayerData removeCached(String uuid) {
+        return cachedPlayerData.remove(uuid);
+    }
+
     public static void init() {
         CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
         CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));

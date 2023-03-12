@@ -69,7 +69,7 @@ public class MiniHexed {
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
-            var data = Database.cachedPlayerData.get(member.uuid);
+            var data = Database.getCached(member.uuid);
 
             if (member.controlled() > 1 && data != null) {
                 var ranked = rankings.get(data.hexedRank());
@@ -147,7 +147,7 @@ public class MiniHexed {
                 var player = team.players.first();
 
                 if (i == 0) {
-                    var data = Database.cachedPlayerData.get(player.uuid());
+                    var data = Database.getCached(player.uuid());
 
                     var ranked = rankings.get(data.hexedRank());
                     if (ranked != null && ranked.size > 1 ||
@@ -161,7 +161,7 @@ public class MiniHexed {
                     }
 
                     Database.setPlayerData(data);
-                    Database.cachedPlayerData.put(player.uuid(), data);
+                    Database.setCached(data);
                 }
 
                 builder.append("[orange]").append(i + 1).append(". ")

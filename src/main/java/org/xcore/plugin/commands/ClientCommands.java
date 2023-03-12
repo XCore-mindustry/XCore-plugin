@@ -31,7 +31,7 @@ public class ClientCommands {
         handler.<Player>register("discord", "Redirects you to discord server", (args, player) -> Call.openURI(player.con, discordURL));
 
         handler.<Player>register("js", "<code...>", "Execute javascript. [red]JS Access users only.", (args, player) -> {
-            PlayerData data = Database.cachedPlayerData.get(player.uuid());
+            PlayerData data = Database.getCached(player.uuid());
 
             if (!player.admin || !data.jsAccess) {
                 player.sendMessage("[blue]JS[]: [red]Access denied.");
@@ -64,8 +64,18 @@ public class ClientCommands {
             vote = new VoteRtv(map);
             vote.vote(player, 1);
         });
+
+        handler.<Player>register("history", "Enable/disable block inspection.", (args, player) -> {
+            var data = Database.getCached(player.uuid());
+
+            data.history = !data.history;
+
+            player.sendMessage("[accent]History set to [red]" + data.history);
+            Database.setCached(data);
+        });
+
         handler.<Player>register("tr", "<lang>", "Set the translator language", (args, player) -> {
-            var data = Database.cachedPlayerData.get(player.uuid());
+            var data = Database.getCached(player.uuid());
 
             String success = "[accent]The translator language has been successfully changed to [grey]@[]!";
 
@@ -95,7 +105,7 @@ public class ClientCommands {
             }
 
             Database.setPlayerData(data);
-            Database.cachedPlayerData.put(player.uuid(), data);
+            Database.setCached(data);
         });
 
         handler.<Player>register("maps", "[page]", "List all maps on server", (args, player) -> {
@@ -185,12 +195,13 @@ public class ClientCommands {
         });
 
         if (config.isMiniHexed()) {
+            handler.removeCommand("history");
             handler.removeCommand("votekick");
             handler.removeCommand("vote");
             handler.removeCommand("rtv");
 
             handler.<Player>register("rank", "Shows information about your rank", (args, player) -> {
-                var data = Database.cachedPlayerData.get(player.uuid());
+                var data = Database.getCached(player.uuid());
 
                 if (data == null) {
                     player.sendMessage("[red]NOT AVAILABLE");
@@ -203,13 +214,6 @@ public class ClientCommands {
             });
 
             handler.<Player>register("ranks", "Shows information about ranks", (args, player) -> {
-                var data = Database.cachedPlayerData.get(player.uuid());
-
-                if (data == null) {
-                    player.sendMessage("[red]NOT AVAILABLE");
-                    return;
-                }
-
                 var builder = new StringBuilder();
 
                 for (HexedRanks.HexedRank rank : HexedRanks.HexedRank.values()) {

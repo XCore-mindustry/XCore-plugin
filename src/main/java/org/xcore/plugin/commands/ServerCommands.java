@@ -49,7 +49,7 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = Database.cachedPlayerData.get(args[0]);
+            PlayerData data = Database.getCached(args[0]);
             boolean cached = true;
             if (data == null) {
                 cached = false;
@@ -59,7 +59,7 @@ public class ServerCommands {
             if (perm.equals("js-access")) data.jsAccess = value;
             if (perm.equals("console-panel-access")) data.consolePanelAccess = value;
 
-            if (cached) Database.cachedPlayerData.get(args[0]);
+            if (cached) Database.getCached(args[0]);
             Database.setPlayerData(data);
             Log.info("Done.");
         });

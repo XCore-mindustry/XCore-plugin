@@ -34,7 +34,7 @@ public class MiniPvP {
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
-                var data = Database.cachedPlayerData.get(p.uuid());
+                var data = Database.getCached(p.uuid());
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
@@ -42,7 +42,7 @@ public class MiniPvP {
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 Database.setPlayerData(data);
-                Database.cachedPlayerData.put(p.uuid(), data);
+                Database.setCached(data);
             });
         });
 
@@ -61,7 +61,7 @@ public class MiniPvP {
 
                         if (losingPlayers.contains(p.uuid())) return;
 
-                        var data = Database.cachedPlayerData.get(p.uuid());
+                        var data = Database.getCached(p.uuid());
 
                         int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);
 
@@ -75,7 +75,7 @@ public class MiniPvP {
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
                         Database.setPlayerData(data);
-                        Database.cachedPlayerData.put(p.uuid(), data);
+                        Database.setCached(data);
                     });
                 }
             }
