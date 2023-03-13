@@ -117,6 +117,7 @@ public class PluginEvents {
             if (!History.enabled() || event.tile == null) return;
 
             var data = Database.getCached(event.player.uuid());
+
             if (!data.history) return;
 
             var stack = History.get(event.tile.array());

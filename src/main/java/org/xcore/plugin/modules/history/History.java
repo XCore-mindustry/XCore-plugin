@@ -49,4 +49,19 @@ public class History {
             if (size > maxHistoryCapacity) removeFirst();
         }
     }
+
+    public static class TransportableHistoryStack {
+        int x;
+        int y;
+        HistoryEntry[] data = new HistoryEntry[maxHistoryCapacity];
+
+        public TransportableHistoryStack(Tile t) {
+            var stack = get(t.array());
+            this.x = t.x;
+            this.y = t.y;
+            for (int i = 0; i < maxHistoryCapacity; i++) {
+                data[i] = stack.get(i);
+            }
+        }
+    }
 }
