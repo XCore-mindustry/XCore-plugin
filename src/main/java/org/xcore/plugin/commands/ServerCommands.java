@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static arc.Core.app;
-import static java.lang.Long.parseLong;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
 
@@ -109,8 +108,17 @@ public class ServerCommands {
 
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
-            BanData ban = new BanData(target.id, banByIP ? target.lastIP : "", target.lastName, "console", banByIP ? reason : args[2], config.server, Time.millis() + TimeUnit.DAYS.toMillis(days));
+            BanData ban = BanData.builder()
+                    .uuid(target.id)
+                    .ip(banByIP ? target.lastIP : "")
+                    .name(target.lastName)
+                    .adminName("console")
+                    .reason(banByIP ? reason : args[2])
+                    .server(config.server)
+                    .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(days))
+                    .build();
             ban.generateBid();
+
             JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
         });
         handler.register("tempbans", "List all temporary banned players.", args -> {

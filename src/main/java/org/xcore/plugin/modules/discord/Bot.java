@@ -175,11 +175,11 @@ public class Bot {
         return client.getChannelById(Snowflake.of(globalConfig.servers.get(server)));
     }
 
-    public static void sendMessageEventMessage(String playerName, String message) {
-        sendMessageEventMessage(playerName, message, config.server);
+    public static void sendMessageEvent(String playerName, String message) {
+        sendMessageEvent(playerName, message, config.server);
     }
 
-    public static void sendMessageEventMessage(String playerName, String message, String server) {
+    public static void sendMessageEvent(String playerName, String message, String server) {
         if (!isConnected) return;
         getServerLogChannel(server).createMessage(
                 Strings.format("`@: @`", playerName, message)
@@ -220,7 +220,9 @@ public class Bot {
     }
 
     public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {
-        gateway.on(eventClass, mapper).doOnError(Log::err).subscribe();
+        gateway.on(eventClass, mapper).
+                doOnError(Log::err).
+                subscribe();
     }
 
     public static EmbedCreateSpec.Builder toEmbedCreateSpecBuilder(Embed embed) {

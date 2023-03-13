@@ -37,8 +37,11 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains:annotations:23.0.0")
-    implementation("org.jetbrains:annotations:23.0.0")
+    compileOnly("org.projectlombok:lombok:1.18.22")
+    annotationProcessor("org.projectlombok:lombok:1.18.26")
+
+    implementation("org.json:json:20230227")
+
     mindustryDependencies()
 
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")

@@ -1,8 +1,9 @@
 package org.xcore.plugin.modules.votes;
 
+import arc.Core;
 import arc.util.Strings;
 import arc.util.Timer;
-import mindustry.Vars;
+import mindustry.game.Gamemode;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
@@ -37,7 +38,7 @@ public class VoteRtv extends VoteSession {
         stop();
         Call.sendMessage(Strings.format("[orange]Vote passed. Map [accent]@[] will be loaded in [accent]@[] seconds...",
                 target.name(), mapLoadDelay));
-        Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Vars.state.rules.mode()))), mapLoadDelay);
+        Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
     }
 
     @Override

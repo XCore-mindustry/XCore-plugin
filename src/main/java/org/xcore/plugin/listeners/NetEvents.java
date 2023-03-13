@@ -17,6 +17,7 @@ import mindustry.gen.Player;
 import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
+import org.json.JSONObject;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.modules.discord.Bot;
@@ -50,7 +51,7 @@ public class NetEvents {
 
         JavelinCommunicator.sendEvent(
                 new SocketEvents.MessageEvent(author.plainName(), text, config.server),
-                e -> Bot.sendMessageEventMessage(e.authorName, e.message));
+                e -> Bot.sendMessageEvent(e.authorName, e.message));
         return null;
     }
 
@@ -73,7 +74,17 @@ public class NetEvents {
                 netServer.admins.banPlayerID(target.uuid());
                 Call.sendMessage(Strings.format("@[accent] banned @[].", admin.coloredName(), target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
-                Call.clientPacketReliable(admin.con, "give_ban_data", Strings.format(banJson, target.name, target.uuid(), target.ip()));
+
+                String banJson = new JSONObject()
+                        .put("name", target.name)
+                        .put("uuid", target.uuid())
+                        .put("ip", target.ip())
+                        .put("reason", "")
+                        .put("duration", "0")
+                        .put("skip_to_discord", false)
+                        .toString();
+
+                Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
             case trace -> {
                 var info = target.getInfo();

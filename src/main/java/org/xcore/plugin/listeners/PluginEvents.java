@@ -37,7 +37,7 @@ public class PluginEvents {
                 Bot.connect();
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
-                        Bot.sendMessageEventMessage(e.authorName, e.message, e.server));
+                        Bot.sendMessageEvent(e.authorName, e.message, e.server));
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.ServerActionEvent.class, e ->
                         Bot.sendServerAction(e.message, e.server));
@@ -84,9 +84,7 @@ public class PluginEvents {
                     e -> Bot.sendJoinLeaveEventMessage(e.playerName, false));
         });
 
-        Events.on(EventType.WorldLoadEvent.class, event -> {
-            History.clear();
-        });
+        Events.on(EventType.WorldLoadEvent.class, event -> History.clear());
 
         Events.on(GameOverEvent.class, event -> {
             String message = null;

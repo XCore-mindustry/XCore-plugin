@@ -2,7 +2,6 @@ package org.xcore.plugin.modules;
 
 import arc.util.Time;
 import arc.util.serialization.JsonValue;
-import fr.xpdustry.javelin.JavelinPlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
@@ -38,21 +37,29 @@ public class AdminModIntegration {
             }
 
             if (skipToDiscord) {
-                BanData ban = new BanData(uuid, ip, name, player.name, config.server);
+                BanData ban = BanData.builder()
+                        .uuid(uuid)
+                        .name(name)
+                        .adminName(player.name)
+                        .server(config.server)
+                        .full(false)
+                        .build();
                 ban.generateBid();
-                if (isSocketServer) {
-                    Bot.sendBanEvent(ban);
-                } else {
-                    JavelinPlugin.getJavelinSocket().sendEvent(ban);
-                }
+                JavelinCommunicator.sendEvent(ban, Bot::sendBanEvent);
                 return;
             }
 
             if (duration == 0) {
                 return;
             }
-
-            BanData ban = new BanData(uuid, ip, name, player.name, reason, config.server, Time.millis() + TimeUnit.DAYS.toMillis(duration));
+            BanData ban = BanData.builder()
+                    .uuid(uuid)
+                    .name(name)
+                    .adminName(player.name)
+                    .reason(reason)
+                    .server(config.server)
+                    .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
+                    .build();
             ban.generateBid();
 
             JavelinCommunicator.sendEvent(ban, b -> {

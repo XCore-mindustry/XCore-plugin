@@ -7,7 +7,7 @@ import mindustry.entities.units.AIController;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.world.Block;
-import org.xcore.plugin.utils.LastStandingAi;
+import org.xcore.plugin.utils.ai.LastStandingAi;
 
 import static arc.Core.app;
 import static mindustry.Vars.*;

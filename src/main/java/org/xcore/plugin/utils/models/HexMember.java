@@ -7,7 +7,7 @@ import mindustry.content.UnitTypes;
 import mindustry.game.Team;
 import mindustry.gen.Unit;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.utils.AttackAi;
+import org.xcore.plugin.utils.ai.AttackAi;
 import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.world;

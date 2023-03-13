@@ -1,4 +1,4 @@
-package org.xcore.plugin.utils;
+package org.xcore.plugin.utils.ai;
 
 import arc.math.geom.Geometry;
 import mindustry.entities.Units;

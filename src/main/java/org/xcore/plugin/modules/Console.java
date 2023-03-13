@@ -2,6 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.Core;
 import arc.func.Cons;
+import arc.util.Log;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -28,7 +29,7 @@ public class Console {
 
             System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
         } catch (Exception e) {
-            XcorePlugin.err(String.valueOf(e));
+            Log.err(e);
             XcorePlugin.err("Exiting...");
             Core.app.exit();
         }
