@@ -38,7 +38,6 @@ public class PluginVars {
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
-
     public static final DateTimeFormatter shortDateFormat = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
     public static ObjectMap<Long, BanData> activeBanData = new ObjectMap<>();
     public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
