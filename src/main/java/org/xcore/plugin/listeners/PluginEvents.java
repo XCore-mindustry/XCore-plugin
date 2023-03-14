@@ -11,6 +11,7 @@ import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.io.JsonIO;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
