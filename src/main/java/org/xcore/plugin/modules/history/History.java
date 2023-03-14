@@ -57,6 +57,11 @@ public class History {
 
         public TransportableHistoryStack(Tile t) {
             var stack = get(t.array());
+
+            if (stack.size < 1) {
+                data[0] = new HistoryEntry();
+            }
+
             this.x = t.x;
             this.y = t.y;
             for (int i = 0; i < maxHistoryCapacity; i++) {

@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Reflect;
 import arc.util.Strings;
 import arc.util.Time;
+import lombok.NoArgsConstructor;
 import mindustry.ctype.UnlockableContent;
 import mindustry.game.EventType;
 import mindustry.gen.Iconc;
@@ -17,11 +18,12 @@ import static mindustry.Vars.content;
 import static org.xcore.plugin.PluginVars.shortDateFormat;
 import static org.xcore.plugin.utils.Utils.emoji;
 
+@NoArgsConstructor
 public class HistoryEntry {
-    public final String name;
-    public final Type type;
-    public final short blockID;
-    public final long time;
+    public String name;
+    public Type type;
+    public short blockID;
+    public long time;
 
     public HistoryEntry(EventType.BlockBuildEndEvent event) {
         this.name = event.unit.getControllerName();
