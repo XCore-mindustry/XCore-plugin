@@ -83,7 +83,7 @@ public class Bot {
                     BanData ban = Database.getBanById(bid);
                     ban.unban = true;
 
-                    if (!ban.server.equals(config.server)) {
+                    if (!ban.server.equals(config.server) && !ban.server.equals("global")) {
                         JavelinCommunicator.sendEvent(ban);
                     } else {
                         Utils.handleBanData(ban);

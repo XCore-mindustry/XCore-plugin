@@ -24,6 +24,7 @@ public class AdminModIntegration {
             String name = json.get("name").asString();
             String reason = json.get("reason").asString();
 
+            boolean global = json.get("global").asBoolean();
             boolean skipToDiscord = json.get("skip_to_discord").asBoolean();
             short duration = json.get("duration").asShort();
 
@@ -33,7 +34,7 @@ public class AdminModIntegration {
             }
 
             if (reason == null || reason.isBlank()) {
-                reason = "unknown";
+                reason = "<unknown>";
             }
 
             if (skipToDiscord) {
@@ -41,7 +42,7 @@ public class AdminModIntegration {
                         .uuid(uuid)
                         .name(name)
                         .adminName(player.name)
-                        .server(config.server)
+                        .server(global ? "global" : config.server)
                         .full(false)
                         .build();
                 ban.generateBid();
@@ -54,10 +55,11 @@ public class AdminModIntegration {
             }
             BanData ban = BanData.builder()
                     .uuid(uuid)
+                    .ip(global ? ip : "")
                     .name(name)
                     .adminName(player.name)
                     .reason(reason)
-                    .server(config.server)
+                    .server(global ? "global" : config.server)
                     .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
                     .build();
             ban.generateBid();

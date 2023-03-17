@@ -82,6 +82,7 @@ public class NetEvents {
                         .put("reason", "")
                         .put("duration", "0")
                         .put("skip_to_discord", false)
+                        .put("global", false)
                         .toString();
 
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);

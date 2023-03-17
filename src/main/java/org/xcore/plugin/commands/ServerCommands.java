@@ -16,7 +16,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static arc.Core.app;
@@ -58,7 +57,7 @@ public class ServerCommands {
             if (perm.equals("js-access")) data.jsAccess = value;
             if (perm.equals("console-panel-access")) data.consolePanelAccess = value;
 
-            if (cached) Database.getCached(args[0]);
+            if (cached) Database.setCached(data);
             Database.setPlayerData(data);
             Log.info("Done.");
         });
@@ -84,7 +83,7 @@ public class ServerCommands {
             Log.info("  Translator Language: @", data.translatorLanguage);
         });
 
-        handler.register("tempban", "<uuid> <days-of-ban> <banByIP?/reason...>", "Temporary ban player.", args -> {
+        handler.register("tempban", "<uuid> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {
             var target = netServer.admins.getInfoOptional(args[0]);
 
             if (target == null) {
@@ -99,31 +98,26 @@ public class ServerCommands {
                 return;
             }
 
-            boolean banByIP = Boolean.parseBoolean(args[2].split(" ")[0]);
-            String reason = null;
-            if (banByIP) {
-                String[] toCopy = args[2].split(" ");
-                reason = Strings.join(" ", Arrays.copyOfRange(toCopy, 1, toCopy.length));
-            }
+            boolean global = Boolean.parseBoolean(args[2]);
 
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
             BanData ban = BanData.builder()
                     .uuid(target.id)
-                    .ip(banByIP ? target.lastIP : "")
+                    .ip(global ? target.lastIP : "")
                     .name(target.lastName)
                     .adminName("console")
-                    .reason(banByIP ? reason : args[2])
-                    .server(config.server)
+                    .reason(args[3])
+                    .server(global ? "global" : config.server)
                     .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(days))
                     .build();
             ban.generateBid();
 
             JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
         });
-        handler.register("tempbans", "List all temporary banned players.", args -> {
+        handler.register("tempbans", "[global]", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");
-            Seq<BanData> bans = Database.getBanned();
+            Seq<BanData> bans = Database.getBanned(args.length > 0);
 
             bans.each(ban -> {
                 var date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneId.systemDefault()).toString();
