@@ -26,7 +26,8 @@ public class BanData implements JavelinEvent {
     public String reason = "Not Specified";
 
     @NonNull
-    public String server;
+    @Builder.Default
+    public String server = "global";
 
     public long unbanDate;
 

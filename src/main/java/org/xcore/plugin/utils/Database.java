@@ -41,8 +41,8 @@ public class Database {
         cachedPlayerData.put(data.uuid, data);
     }
 
-    public static PlayerData removeCached(String uuid) {
-        return cachedPlayerData.remove(uuid);
+    public static void removeCached(String uuid) {
+        cachedPlayerData.remove(uuid);
     }
 
     public static void init() {
@@ -88,11 +88,6 @@ public class Database {
     public static void setBan(BanData data) {
         bansCollection.replaceOne(getBanFilter(data.uuid, data.ip), data, new ReplaceOptions().upsert(true));
     }
-
-    public static void updateBanById(long bid, BanData data) {
-        bansCollection.replaceOne(eq("bid", bid), data, new ReplaceOptions().upsert(true));
-    }
-
     public static void unBan(BanData data) {
         unBan(data.uuid, data.ip);
     }
@@ -110,7 +105,9 @@ public class Database {
     }
 
     private static Bson getBanFilter(String uuid, String ip) {
-        return or(and(eq("uuid", uuid), eq("server", config.server)), and(eq("ip", ip), eq("server", config.server)));
+        return and(or(eq("uuid", uuid), eq("ip", ip)),
+                or(eq("server", config.server),
+                        eq("server", "global")));
     }
 
     public static Seq<BanData> getBanned() {
