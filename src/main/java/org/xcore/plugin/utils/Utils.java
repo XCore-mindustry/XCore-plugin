@@ -6,6 +6,7 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Reflect;
 import arc.util.Strings;
+import arc.util.Timer;
 import discord4j.common.util.TimestampFormat;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
@@ -15,6 +16,8 @@ import discord4j.rest.util.Color;
 import mindustry.Vars;
 import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
+import mindustry.gen.Call;
+import mindustry.gen.Groups;
 import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
@@ -26,13 +29,16 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.time.Instant;
 
 import static arc.util.Strings.*;
-import static mindustry.Vars.maps;
-import static mindustry.Vars.netServer;
+import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.discord.Bot.bansChannel;
 import static org.xcore.plugin.modules.discord.Bot.isConnected;
 
 public class Utils {
+    public static <T> T notNullElse(T value, T defaultValue) {
+        return value != null ? value : defaultValue;
+    }
+
     public static void temporaryBan(BanData ban) {
         Database.setBan(ban);
         if (!isConnected) return;
@@ -106,6 +112,16 @@ public class Utils {
         return builder.toString();
     }
 
+    public static void showLeaderboard(String content) {
+        Timer.schedule(() -> {
+            if (Groups.player.isEmpty()) return;
+            Groups.player.each(player -> {
+                if (!Database.getCached(player.uuid()).leaderboard) return;
+                Call.infoPopup(player.con, content, 5f, 8, 0, 2, 50, 0);
+            });
+        }, 0f, 5f);
+    }
+
     public static Seq<Map> getAvailableMaps() {
         return maps.customMaps().isEmpty() ? maps.defaultMaps() : maps.customMaps();
     }
@@ -116,10 +132,6 @@ public class Utils {
             case "n" -> -1;
             default -> 0;
         };
-    }
-
-    public static String findTranslatorLanguage(String locale) {
-        return translatorLanguages.orderedKeys().find(locale::startsWith);
     }
 
     public static <T> T findInSeq(String name, Seq<T> values, Boolf<T> filter) {

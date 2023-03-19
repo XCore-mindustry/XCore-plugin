@@ -81,6 +81,8 @@ public class Database {
         return datas;
     }
 
+    // region ban
+
     public static BanData getBan(String uuid, String ip) {
         return bansCollection.find(getBanFilter(uuid, ip)).first();
     }
@@ -88,6 +90,7 @@ public class Database {
     public static void setBan(BanData data) {
         bansCollection.replaceOne(getBanFilter(data.uuid, data.ip), data, new ReplaceOptions().upsert(true));
     }
+
     public static void unBan(BanData data) {
         unBan(data.uuid, data.ip);
     }
@@ -119,6 +122,8 @@ public class Database {
         bansCollection.find(global ? new Document() : eq("server", config.server)).forEach(bans::add);
         return bans;
     }
+
+    // endregion
 
     public static int getNextSequence(String name) {
         MongoCollection<Document> counters = database.getCollection("counters");

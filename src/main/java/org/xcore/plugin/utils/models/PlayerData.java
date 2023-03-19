@@ -13,6 +13,8 @@ public class PlayerData {
     public int hexedRank = 0;
     public int hexedPoints = 0;
 
+
+    public boolean leaderboard = true;
     public boolean jsAccess = false;
     public boolean consolePanelAccess = false;
 
