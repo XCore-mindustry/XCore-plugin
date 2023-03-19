@@ -5,7 +5,6 @@ import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
-import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
@@ -25,7 +24,6 @@ import static org.xcore.plugin.PluginVars.config;
 public class ServerCommands {
     public static void register(CommandHandler handler) {
         handler.removeCommand("exit");
-
         handler.register("exit", "Exit the server application.", args -> {
             Log.info("Shutting down server.");
             netServer.kickAll(Packets.KickReason.serverRestarting);
@@ -37,8 +35,8 @@ public class ServerCommands {
             GlobalConfig.init();
         });
 
-        handler.register("perm", "<uuid> <perm> <true/false>", "Give/remove permission.", args -> {
-            PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
+        handler.register("perm", "<name/uuid/ip> <perm> <true/false>", "Give/remove permission.", args -> {
+            PlayerInfo info = Find.playerInfo(args[0]);
             String perm = args[1];
             boolean value = Boolean.parseBoolean(args[2]);
 
@@ -62,8 +60,8 @@ public class ServerCommands {
             Log.info("Done.");
         });
 
-        handler.register("dbinfo", "<uuid>", "Info about player from db.", args -> {
-            PlayerInfo info = netServer.admins.getInfoOptional(args[0]);
+        handler.register("dbinfo", "<name/uuid/ip>", "Info about player from db.", args -> {
+            PlayerInfo info = Find.playerInfo(args[0]);
 
             if (info == null) {
                 Log.info("Player not found.");
@@ -83,8 +81,8 @@ public class ServerCommands {
             Log.info("  Translator Language: @", data.translatorLanguage);
         });
 
-        handler.register("tempban", "<uuid> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {
-            var target = netServer.admins.getInfoOptional(args[0]);
+        handler.register("tempban", "<name/uuid/ip> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {
+            var target = Find.playerInfo(args[0]);
 
             if (target == null) {
                 Log.err("Player not found.");
@@ -121,11 +119,11 @@ public class ServerCommands {
 
             bans.each(ban -> {
                 var date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneId.systemDefault()).toString();
-                Log.info("@:  '@' / IP: '@' / Admin: @ / Unban date: @ / Reason: '@'", ban.bid, ban.uuid, ban.ip, ban.adminName, date, ban.reason);
+                Log.info("@:  '@' / Name: @ / IP: '@' / Admin: @ / Unban date: @ / Reason: '@'", ban.bid, ban.uuid, ban.name, ban.ip, ban.adminName, date, ban.reason);
             });
         });
 
-        handler.register("tempunban", "<uuid/ip/bid>", "Unban a temporary banned player.", args -> {
+        handler.register("tempunban", "<name/uuid/ip/bid>", "Unban a temporary banned player.", args -> {
             try {
                 long bid = Long.parseLong(args[0]);
                 var ban = Database.unBanById(bid);
@@ -142,12 +140,12 @@ public class ServerCommands {
             } catch (NumberFormatException ignored) {
             }
 
-            netServer.admins.unbanPlayerID(args[0]);
-            netServer.admins.unbanPlayerIP(args[0]);
-            DeleteResult result = Database.unBan(args[0], "");
-            if (result.getDeletedCount() < 1) Database.unBan("", args[0]);
+            var info = Find.playerInfo(args[0]);
 
-            Log.info("Unbanned.");
+            netServer.admins.unbanPlayerID(info.id);
+            netServer.admins.unbanPlayerIP(info.lastIP);
+            Database.unBan(info.id, info.lastIP);
+            Log.info("Unbanned @", info.lastName);
         });
     }
 }

@@ -13,7 +13,6 @@ import org.xcore.plugin.utils.Config;
 import org.xcore.plugin.utils.GlobalConfig;
 import org.xcore.plugin.utils.models.BanData;
 
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -21,7 +20,6 @@ import static mindustry.Vars.dataDirectory;
 
 public class PluginVars {
     public static final JsonReader reader = new JsonReader();
-    public static final String banJson = "{\"name\": \"@\", \"uuid\": \"@\", \"ip\": \"@\", \"reason\": \"\", \"duration\": \"0\", \"skip_to_discord\": false, \"error\": \"\"}";
     public static final int maxHistoryCapacity = 6;
     public static final long kickDuration = 30 * 60 * 1000L;
     public static final float voteRatio = 0.55f;

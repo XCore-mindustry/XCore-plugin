@@ -9,13 +9,13 @@ import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -23,7 +23,7 @@ import org.xcore.plugin.utils.models.PlayerData;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
 import static org.xcore.plugin.modules.hexed.MiniHexed.members;
-import static org.xcore.plugin.utils.Utils.findTranslatorLanguage;
+import static org.xcore.plugin.utils.Find.findTranslatorLanguage;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
 public class ClientCommands {
@@ -70,8 +70,18 @@ public class ClientCommands {
 
             data.history = !data.history;
 
-            player.sendMessage("[accent]History set to [red]" + data.history);
+            player.sendMessage("[accent]History set to [scarlet]" + data.history);
             Database.setCached(data);
+        });
+
+        handler.<Player>register("lb", "Enable/disable leaderboard.", (args, player) -> {
+            var data = Database.getCached(player.uuid());
+
+            data.leaderboard = !data.leaderboard;
+
+            player.sendMessage("[accent]Leaderboard set to [scarlet]" + data.leaderboard);
+            Database.setCached(data);
+            Database.setPlayerData(data);
         });
 
         handler.<Player>register("tr", "<lang>", "Set the translator language", (args, player) -> {
@@ -148,13 +158,7 @@ public class ClientCommands {
                 return;
             }
 
-            Player found;
-            if (args[0].length() > 1 && args[0].startsWith("#") && Strings.canParseInt(args[0].substring(1))) {
-                int id = Strings.parseInt(args[0].substring(1));
-                found = Groups.player.find(p -> p.id() == id);
-            } else {
-                found = Groups.player.find(p -> Strings.stripColors(p.name).equalsIgnoreCase(args[0]));
-            }
+            Player found = Find.player(args[0]);
 
             if (found == null) {
                 player.sendMessage("[accent]Player not found.");
@@ -175,6 +179,10 @@ public class ClientCommands {
             if (voteKick.voted.containsKey(player.id)) {
                 player.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
                 return;
+            }
+
+            if (voteKick.target == player) {
+                player.sendMessage("[scarlet]⚠ You cannot vote for yourself.");
             }
 
             int sign = voteChoice(args[0]);
@@ -200,14 +208,15 @@ public class ClientCommands {
             handler.removeCommand("vote");
             handler.removeCommand("rtv");
 
-            handler.<Player>register("rank", "Shows information about your rank", (args, player) -> {
-                var data = Database.getCached(player.uuid());
+            handler.<Player>register("rank", "[player]", "Shows information about your/player rank", (args, player) -> {
+                var target = args.length > 0 ? Find.player(args[0]) : player;
 
-                if (data == null) {
-                    player.sendMessage("[red]NOT AVAILABLE");
+                if (target == null) {
+                    player.sendMessage("[scarlet]Player not found.");
                     return;
                 }
 
+                var data = Database.getCached(target.uuid());
                 var rank = data.hexedRank();
 
                 Call.infoMessage(player.con, Strings.format("@ [accent]@\n[gold]Wins: @/@", rank.tag, rank.name, data.hexedPoints, rank.next.requirements.wins()));
