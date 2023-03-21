@@ -26,7 +26,7 @@ import discord4j.rest.util.Color;
 import org.reactivestreams.Publisher;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
@@ -175,28 +175,11 @@ public class Bot {
         return client.getChannelById(Snowflake.of(globalConfig.servers.get(server)));
     }
 
-    public static void sendMessageEvent(String playerName, String message) {
-        sendMessageEvent(playerName, message, config.server);
-    }
-
     public static void sendMessageEvent(String playerName, String message, String server) {
         if (!isConnected) return;
         getServerLogChannel(server).createMessage(
                 Strings.format("`@: @`", playerName, message)
         ).subscribe();
-    }
-
-    public static void sendServerAction(String message) {
-        sendServerAction(message, config.server);
-    }
-
-    public static void sendServerAction(String message, String server) {
-        if (!isConnected) return;
-        getServerLogChannel(server).createMessage(message).subscribe();
-    }
-
-    public static void sendJoinLeaveEventMessage(String playerName, Boolean join) {
-        sendJoinLeaveEventMessage(playerName, config.server, join);
     }
 
     public static void sendJoinLeaveEventMessage(String playerName, String server, Boolean join) {
@@ -220,9 +203,9 @@ public class Bot {
     }
 
     public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {
-        gateway.on(eventClass, mapper).
-                doOnError(Log::err).
-                subscribe();
+        gateway.on(eventClass, mapper)
+                .doOnError(Log::err)
+                .subscribe();
     }
 
     public static EmbedCreateSpec.Builder toEmbedCreateSpecBuilder(Embed embed) {

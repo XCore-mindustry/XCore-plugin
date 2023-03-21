@@ -2,14 +2,11 @@ package org.xcore.plugin;
 
 import arc.util.CommandHandler;
 import arc.util.Log;
-import arc.util.Reflect;
 import arc.util.Strings;
 import mindustry.Vars;
-import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
-import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
 import mindustry.mod.Plugin;
@@ -20,9 +17,9 @@ import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.hexed.MiniHexed;
-import org.xcore.plugin.utils.Config;
-import org.xcore.plugin.utils.Database;
-import org.xcore.plugin.utils.GlobalConfig;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.GlobalConfig;
 
 import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
@@ -63,6 +60,7 @@ public class XcorePlugin extends Plugin {
         PluginEvents.init();
         AdminModIntegration.init();
         Translator.init();
+
         maps.setMapProvider(new MapProvider() {
             public int lastMapID;
 

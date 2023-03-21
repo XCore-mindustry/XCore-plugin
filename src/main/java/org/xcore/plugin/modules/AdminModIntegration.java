@@ -2,9 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.util.Time;
 import arc.util.serialization.JsonValue;
-import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.JavelinCommunicator;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 
 import java.util.concurrent.TimeUnit;
@@ -46,7 +44,7 @@ public class AdminModIntegration {
                         .full(false)
                         .build();
                 ban.generateBid();
-                JavelinCommunicator.sendEvent(ban, Bot::sendBanEvent);
+                JavelinCommunicator.sendEvent(ban);
                 return;
             }
 
@@ -64,13 +62,7 @@ public class AdminModIntegration {
                     .build();
             ban.generateBid();
 
-            JavelinCommunicator.sendEvent(ban, b -> {
-                if (b.full) {
-                    Utils.temporaryBan(b);
-                } else {
-                    Bot.sendBanEvent(b);
-                }
-            });
+            JavelinCommunicator.sendEvent(ban);
         });
     }
 }

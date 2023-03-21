@@ -2,6 +2,7 @@ package org.xcore.plugin.utils;
 
 import arc.Core;
 import arc.func.Boolf;
+import arc.func.Prov;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Reflect;
@@ -22,6 +23,7 @@ import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -38,7 +40,6 @@ public class Utils {
     public static <T> T notNullElse(T value, T defaultValue) {
         return value != null ? value : defaultValue;
     }
-
     public static void temporaryBan(BanData ban) {
         Database.setBan(ban);
         if (!isConnected) return;
@@ -67,7 +68,7 @@ public class Utils {
             return;
         }
 
-        if (!isSocketServer) return;
+        if (!JavelinCommunicator.isSocketServer()) return;
 
         if (ban.full) {
             Utils.temporaryBan(ban);
@@ -112,12 +113,12 @@ public class Utils {
         return builder.toString();
     }
 
-    public static void showLeaderboard(String content) {
+    public static void showLeaderboard(Prov<String> content) {
         Timer.schedule(() -> {
             if (Groups.player.isEmpty()) return;
             Groups.player.each(player -> {
                 if (!Database.getCached(player.uuid()).leaderboard) return;
-                Call.infoPopup(player.con, content, 5f, 8, 0, 2, 50, 0);
+                Call.infoPopup(player.con, content.get(), 5f, 8, 0, 2, 50, 0);
             });
         }, 0f, 5f);
     }

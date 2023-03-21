@@ -32,12 +32,12 @@ val metadata = ModMetadata(
 
 repositories {
     mavenCentral()
+    maven(url = "https://maven.xpdustry.fr/snapshots")
     maven(url = "https://www.jitpack.io")
-    maven(url = "https://maven.xpdustry.fr/releases")
 }
 
 dependencies {
-    compileOnly("org.projectlombok:lombok:1.18.22")
+    compileOnly("org.projectlombok:lombok:1.18.26")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
 
     implementation("org.json:json:20230227")
@@ -45,7 +45,7 @@ dependencies {
     mindustryDependencies()
 
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
-    compileOnly("fr.xpdustry:javelin-mindustry:1.2.0")
+    compileOnly("fr.xpdustry:javelin-mindustry:1.3.0-SNAPSHOT")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10")

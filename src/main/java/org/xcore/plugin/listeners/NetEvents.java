@@ -20,8 +20,7 @@ import mindustry.net.Packets;
 import org.json.JSONObject;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.modules.Translator;
-import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.models.BanData;
 
@@ -49,9 +48,7 @@ public class NetEvents {
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
 
-        JavelinCommunicator.sendEvent(
-                new SocketEvents.MessageEvent(author.plainName(), text, config.server),
-                e -> Bot.sendMessageEvent(e.authorName, e.message));
+        JavelinCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text, config.server));
         return null;
     }
 

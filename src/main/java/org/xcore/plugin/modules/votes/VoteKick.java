@@ -6,7 +6,6 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.JavelinCommunicator;
 
 import static org.xcore.plugin.PluginVars.*;
@@ -28,8 +27,7 @@ public class VoteKick extends VoteSession {
                 player.coloredName(), target.coloredName(), votes(), votesRequired()));
         JavelinCommunicator.sendEvent(
                 new SocketEvents.ServerActionEvent(Strings.format("@ voted to kick @ from the server. (@/@)",
-                        player.plainName(), target.plainName(), votes(), votesRequired()), config.server),
-                e -> Bot.sendServerAction(e.message));
+                        player.plainName(), target.plainName(), votes(), votesRequired()), config.server));
     }
 
     @Override
@@ -49,8 +47,7 @@ public class VoteKick extends VoteSession {
                 target.coloredName(), kickDuration / 60000));
         target.kick(Packets.KickReason.vote, kickDuration);
         JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(Strings.format("Vote passed. @ kicked from the server for @ minutes",
-                        target.plainName(), kickDuration / 60000), config.server),
-                e -> Bot.sendServerAction(e.message));
+                target.plainName(), kickDuration / 60000), config.server));
     }
 
     @Override

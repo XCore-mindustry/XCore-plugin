@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 
 @Builder
 @AllArgsConstructor
