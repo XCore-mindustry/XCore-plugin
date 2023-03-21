@@ -6,7 +6,6 @@ import arc.util.Http;
 import arc.util.Strings;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.utils.Database;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.reader;

@@ -8,6 +8,9 @@ import arc.util.Time;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.*;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -111,7 +114,7 @@ public class ServerCommands {
                     .build();
             ban.generateBid();
 
-            JavelinCommunicator.sendEvent(ban, Utils::temporaryBan);
+            JavelinCommunicator.sendEvent(ban);
         });
         handler.register("tempbans", "[global]", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");
@@ -124,8 +127,8 @@ public class ServerCommands {
         });
 
         handler.register("tempunban", "<name/uuid/ip/bid>", "Unban a temporary banned player.", args -> {
-            try {
-                long bid = Long.parseLong(args[0]);
+            if (args[0].startsWith("#") && Strings.canParseInt(args[0].substring(1))) {
+                int bid = Strings.parseInt(args[0].substring(1));
                 var ban = Database.unBanById(bid);
 
                 if (ban == null) {
@@ -137,7 +140,6 @@ public class ServerCommands {
                 netServer.admins.unbanPlayerIP(ban.ip);
                 Log.info("'@' (@) unbanned", ban.name, ban.uuid);
                 return;
-            } catch (NumberFormatException ignored) {
             }
 
             var info = Find.playerInfo(args[0]);

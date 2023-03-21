@@ -20,8 +20,7 @@ import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
@@ -42,7 +41,7 @@ public class MiniHexed {
 
     public static void init() {
         if (!config.isMiniHexed()) return;
-        Utils.showLeaderboard(Utils.getHexedLeaderboard());
+        Utils.showLeaderboard(Utils::getHexedLeaderboard);
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
@@ -172,8 +171,7 @@ public class MiniHexed {
         Call.infoMessage(builder.toString());
 
         JavelinCommunicator.sendEvent(
-                new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server),
-                e -> Bot.sendServerAction(e.message));
+                new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
 
         Timer.schedule(MiniHexed::reloadMap, 10);
     }

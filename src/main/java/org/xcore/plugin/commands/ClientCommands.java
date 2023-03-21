@@ -14,7 +14,7 @@ import mindustry.maps.Map;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;

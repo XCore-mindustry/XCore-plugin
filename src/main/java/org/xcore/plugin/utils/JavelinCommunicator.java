@@ -1,26 +1,18 @@
 package org.xcore.plugin.utils;
 
-import arc.func.Cons;
 import fr.xpdustry.javelin.JavelinConfig;
 import fr.xpdustry.javelin.JavelinEvent;
 import fr.xpdustry.javelin.JavelinPlugin;
-
-import static org.xcore.plugin.PluginVars.isSocketServer;
+import fr.xpdustry.javelin.JavelinSocket;
 
 public class JavelinCommunicator {
-    public static void init() {
-        isSocketServer = JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
-    }
-
     public static <E extends JavelinEvent> void sendEvent(E event) {
-        sendEvent(event, null);
-    }
-
-    public static <E extends JavelinEvent> void sendEvent(E event, Cons<E> callback) {
-        if (isSocketServer && callback != null) {
-            callback.get(event);
-        } else {
+        if (JavelinPlugin.getJavelinSocket().getStatus() == JavelinSocket.Status.OPEN) {
             JavelinPlugin.getJavelinSocket().sendEvent(event);
         }
+    }
+
+    public static boolean isSocketServer() {
+        return JavelinPlugin.getJavelinConfig().getMode() == JavelinConfig.Mode.SERVER;
     }
 }

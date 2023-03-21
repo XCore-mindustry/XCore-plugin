@@ -17,7 +17,7 @@ import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.history.History;
 import org.xcore.plugin.modules.history.HistoryEntry;
-import org.xcore.plugin.utils.Database;
+import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
@@ -28,20 +28,13 @@ import static org.xcore.plugin.PluginVars.*;
 public class PluginEvents {
     public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
-            JavelinCommunicator.init();
+            JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
 
-            JavelinCommunicator.sendEvent(
-                    new SocketEvents.ServerActionEvent("Server loaded", config.server),
-                    e -> Bot.sendServerAction(e.message));
-
-            if (isSocketServer) {
+            if (JavelinCommunicator.isSocketServer()) {
                 Bot.connect();
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
                         Bot.sendMessageEvent(e.authorName, e.message, e.server));
-
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.ServerActionEvent.class, e ->
-                        Bot.sendServerAction(e.message, e.server));
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName, e.server, e.join));
@@ -53,6 +46,7 @@ public class PluginEvents {
                     XcorePlugin.sendMessageFromDiscord(e.authorName, e.message);
                 });
             }
+
             JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::handleBanData);
         });
         Events.on(PlayerJoin.class, event -> {
@@ -68,8 +62,7 @@ public class PluginEvents {
             }
 
             JavelinCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true),
-                    e -> Bot.sendJoinLeaveEventMessage(e.playerName, true));
+                    new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true));
         });
 
         Events.on(PlayerLeave.class, event -> {
@@ -81,8 +74,7 @@ public class PluginEvents {
             if (voteKick != null) voteKick.left(event.player);
 
             JavelinCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false),
-                    e -> Bot.sendJoinLeaveEventMessage(e.playerName, false));
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false));
         });
 
         Events.on(EventType.WorldLoadEvent.class, event -> History.clear());
@@ -98,8 +90,7 @@ public class PluginEvents {
             }
 
             JavelinCommunicator.sendEvent(
-                    new SocketEvents.ServerActionEvent(message, config.server),
-                    e -> Bot.sendServerAction(e.message));
+                    new SocketEvents.ServerActionEvent(message, config.server));
         });
 
         Events.on(EventType.ConfigEvent.class, event -> {
@@ -121,7 +112,7 @@ public class PluginEvents {
             var stack = History.get(event.tile.array());
             if (stack == null) return;
 
-            if (event.player.admin) {
+            if (event.player.admin && !event.player.con.mobile) {
                 Call.clientPacketUnreliable(event.player.con, "take_history_info",
                         JsonIO.write(new History.TransportableHistoryStack(event.tile)));
                 return;

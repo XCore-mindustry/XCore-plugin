@@ -9,8 +9,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteSession;
-import org.xcore.plugin.utils.Config;
-import org.xcore.plugin.utils.GlobalConfig;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.models.BanData;
 
 import java.time.ZoneOffset;
@@ -25,7 +25,6 @@ public class PluginVars {
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
-    public static boolean isSocketServer;
     public static String discordURL = "https://discord.gg/RUMCCa9QAC";
     public static Fi configFile = dataDirectory.child("xcconfig.json");
     public static Config config;

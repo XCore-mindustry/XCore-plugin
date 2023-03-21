@@ -10,7 +10,6 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.utils.Database;
 import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.netServer;
@@ -21,7 +20,7 @@ public class MiniPvP {
 
     public static void init() {
         if (!config.isMiniPvP()) return;
-        Utils.showLeaderboard(Utils.getPvPLeaderboard());
+        Utils.showLeaderboard(Utils::getPvPLeaderboard);
 
         Events.on(EventType.GameOverEvent.class, e -> {
             losingPlayers.clear();
