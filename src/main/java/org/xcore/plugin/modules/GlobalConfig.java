@@ -14,6 +14,7 @@ public class GlobalConfig {
     public String discordBotToken = "";
     public long discordAdminRoleId = 0L;
     public long discordBansChannelId = 0L;
+    public long discordPrivateChannelId = 0L;
 
     public static void init() {
         if (globalConfigFile.exists()) {
