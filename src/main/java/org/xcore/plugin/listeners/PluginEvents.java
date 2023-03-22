@@ -18,10 +18,12 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.history.History;
 import org.xcore.plugin.modules.history.HistoryEntry;
 import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 
+import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
 
@@ -34,20 +36,43 @@ public class PluginEvents {
                 Bot.connect();
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
-                        Bot.sendMessageEvent(e.authorName, e.message, e.server));
+                        Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
-                        Bot.sendJoinLeaveEventMessage(e.playerName, e.server, e.join));
+                        Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
+                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestEvent.class, e ->
+                        Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
 
             } else {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
-                    if (!e.server.equals(config.server)) return;
+                    if (!e.server().equals(config.server)) return;
 
-                    XcorePlugin.sendMessageFromDiscord(e.authorName, e.message);
+                    XcorePlugin.sendMessageFromDiscord(e.authorName(), e.message());
                 });
             }
 
+            JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestConfirmEvent.class, e -> {
+                if (!e.server().equals(config.server)) return;
+
+                var info = Find.playerInfo(e.uuid());
+                var player = Find.playerByUuid(e.uuid());
+
+                if (info == null) return;
+                if (player != null) {
+                    player.admin = true;
+                    player.sendMessage("[green]Admin confirmed.");
+                }
+
+                netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
+            });
             JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::handleBanData);
+        });
+        Events.on(EventType.PlayerConnect.class, event -> {
+            var info = netServer.admins.getInfo(event.player.uuid());
+            if (!info.ips.contains(event.player.con.address)) {
+                event.player.admin = false;
+                netServer.admins.unAdminPlayer(event.player.uuid());
+            }
         });
         Events.on(PlayerJoin.class, event -> {
             if (event.player.getInfo().timesJoined < 5)

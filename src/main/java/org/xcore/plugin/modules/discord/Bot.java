@@ -15,7 +15,6 @@ import discord4j.core.object.Embed;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.component.TextInput;
-import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.channel.GuildMessageChannel;
 import discord4j.core.spec.*;
 import discord4j.discordjson.possible.Possible;
@@ -27,6 +26,7 @@ import org.reactivestreams.Publisher;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.Database;
+import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
@@ -41,8 +41,7 @@ import java.util.stream.Collectors;
 import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
-    public static Mono<GuildMessageChannel> bansChannel;
-    public static Mono<Role> adminRole;
+    public static Mono<GuildMessageChannel> bansChannel, privateChannel;
 
     public static DiscordClient client;
     public static GatewayDiscordClient gateway;
@@ -57,9 +56,7 @@ public class Bot {
                     .login().block();
 
             bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(GuildMessageChannel.class);
-            adminRole = gateway.getRoleById(
-                    Snowflake.of("1058023472661549176"),
-                    Snowflake.of(globalConfig.discordAdminRoleId));
+            privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(GuildMessageChannel.class);
 
             onEvent(ButtonInteractionEvent.class, event -> {
                 if (event.getCustomId().equals("edit-ban")) {
@@ -71,12 +68,34 @@ public class Bot {
                             .build());
                 }
 
+                if (event.getCustomId().endsWith("admreq")) {
+                    var author = event.getInteraction().getMember().orElse(null);
+
+                    if (author == null) return Mono.empty();
+                    if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
+                        return event.reply("Access denied").withEphemeral(true);
+
+                    String[] args = event.getCustomId().split("_");
+
+                    String server = args[0];
+                    String uuid = args[1];
+
+                    JavelinCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(uuid, server));
+
+                    var info = Find.playerInfo(uuid);
+
+                    event.getMessage().ifPresent(message -> message.delete().subscribe());
+
+                    return event.reply(author.getDisplayName() + " confirmed adminship to player "
+                            + (info != null ? info.lastName : "<unknown>"));
+                }
+
                 if (event.getCustomId().endsWith("unban")) {
                     var author = event.getInteraction().getMember().orElse(null);
 
                     if (author == null) return Mono.empty();
                     if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
-                        return Mono.empty();
+                        return event.reply("Access denied");
 
                     long bid = Long.parseLong(event.getCustomId().split("-")[0]);
 
@@ -92,7 +111,7 @@ public class Bot {
                     var message = event.getMessage().orElseThrow();
                     message.edit(MessageEditSpec.builder()
                             .addEmbed(toEmbedCreateSpecBuilder(message.getEmbeds().get(0))
-                                    .footer("Unbanned by " + author.getDisplayName(), author.getEffectiveAvatarUrl())
+                                    .footer("Unbanned by " + author.getDisplayName(), author.getAvatarUrl())
                                     .build()
                             )
                             .components(List.of())
@@ -200,6 +219,18 @@ public class Bot {
                         .build())
                 .addComponent(ActionRow.of(Button.danger("edit-ban", "Edit reason and ban duration.")))
                 .build())).subscribe(data -> activeBanData.put(data.getId().asLong(), ban));
+    }
+
+
+    public static void sendAdminRequestEvent(String uuid, String name, String server) {
+        privateChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                .addEmbed(EmbedCreateSpec.builder().title("Admin Request")
+                        .color(Color.RED)
+                        .addField("Name", name, false)
+                        .addField("Server", server, false)
+                        .build())
+                .addComponent(ActionRow.of(Button.danger(server + "_" + uuid + "_admreq", "Confirm")))
+                .build())).subscribe();
     }
 
     public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {

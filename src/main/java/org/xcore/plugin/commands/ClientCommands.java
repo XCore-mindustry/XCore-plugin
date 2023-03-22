@@ -11,11 +11,13 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
+import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -82,6 +84,11 @@ public class ClientCommands {
             player.sendMessage("[accent]Leaderboard set to [scarlet]" + data.leaderboard);
             Database.setCached(data);
             Database.setPlayerData(data);
+        });
+
+        handler.<Player>register("login", "Admin request. Don't use if you don't know what you're doing.", (args, player) -> {
+            JavelinCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
+            player.sendMessage("[green]Request sent.");
         });
 
         handler.<Player>register("tr", "<lang>", "Set the translator language", (args, player) -> {

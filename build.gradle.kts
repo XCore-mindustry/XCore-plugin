@@ -37,23 +37,23 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.projectlombok:lombok:1.18.26")
-    annotationProcessor("org.projectlombok:lombok:1.18.26")
-
-    implementation("org.json:json:20230227")
-
     mindustryDependencies()
 
     implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
     compileOnly("fr.xpdustry:javelin-mindustry:1.3.0-SNAPSHOT")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
-    implementation("com.google.code.gson:gson:2.10")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    implementation("org.json:json:20230227")
 
     implementation("com.discord4j:discord4j-core:3.2.2")
 
-    implementation("org.jline:jline-reader:3.21.0")
-    implementation("org.jline:jline-console:3.21.0")
+    implementation("org.jline:jline-reader:3.23.0")
+    implementation("org.jline:jline-console:3.23.0")
+
+    compileOnly("org.projectlombok:lombok:1.18.26")
+    annotationProcessor("org.projectlombok:lombok:1.18.26")
 }
 
 tasks.jar {

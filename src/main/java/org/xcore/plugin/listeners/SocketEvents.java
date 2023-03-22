@@ -1,31 +1,23 @@
 package org.xcore.plugin.listeners;
 
 import fr.xpdustry.javelin.JavelinEvent;
-import lombok.AllArgsConstructor;
 
 public class SocketEvents {
-    @AllArgsConstructor
-    public static final class MessageEvent implements JavelinEvent {
-        public String authorName, message, server;
+    public record MessageEvent(String authorName, String message, String server) implements JavelinEvent {
     }
 
-    @AllArgsConstructor
-    public static final class ServerActionEvent implements JavelinEvent {
-        public String message, server;
+    public record ServerActionEvent(String message, String server) implements JavelinEvent {
     }
 
-    @AllArgsConstructor
-    public static final class PlayerJoinLeaveEvent implements JavelinEvent {
-        public String playerName, server;
-
-        /**
-         * true if is join event, false if is leave event
-         */
-        public boolean join;
+    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements JavelinEvent {
     }
 
-    @AllArgsConstructor
-    public static final class DiscordMessageEvent implements JavelinEvent {
-        public String authorName, message, server;
+    public record DiscordMessageEvent(String authorName, String message, String server) implements JavelinEvent {
+    }
+
+    public record AdminRequestEvent(String uuid, String name, String server) implements JavelinEvent {
+    }
+
+    public record AdminRequestConfirmEvent(String uuid, String server) implements JavelinEvent {
     }
 }
