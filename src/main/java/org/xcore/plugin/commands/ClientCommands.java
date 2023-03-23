@@ -244,7 +244,7 @@ public class ClientCommands {
             });
 
             handler.<Player>register("top", "Top players by rank", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
+                Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
@@ -282,7 +282,7 @@ public class ClientCommands {
 
         if (config.isMiniPvP()) {
             handler.<Player>register("top", "Shows top players by rating", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
+                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
