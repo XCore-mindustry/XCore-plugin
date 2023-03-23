@@ -73,11 +73,10 @@ public class Database {
         playersCollection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
-    public static Seq<PlayerData> getLeaders(String column) {
+    public static Seq<PlayerData> getLeaders(String... fields) {
         Seq<PlayerData> datas = new Seq<>();
 
-        playersCollection.find(descending(column)).limit(10).forEach(datas::add);
-
+        playersCollection.find().sort(descending(fields)).limit(10).forEach(datas::add);
         return datas;
     }
 
@@ -111,10 +110,6 @@ public class Database {
         return and(or(eq("uuid", uuid), eq("ip", ip)),
                 or(eq("server", config.server),
                         eq("server", "global")));
-    }
-
-    public static Seq<BanData> getBanned() {
-        return getBanned(false);
     }
 
     public static Seq<BanData> getBanned(boolean global) {

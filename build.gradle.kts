@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "2.4"
+version = "2.4.1"
 val mindustryVersion = "142"
 
 toxopid {
@@ -49,8 +49,8 @@ dependencies {
 
     implementation("com.discord4j:discord4j-core:3.2.2")
 
-    implementation("org.jline:jline-reader:3.23.0")
-    implementation("org.jline:jline-console:3.23.0")
+    implementation("org.jline:jline-reader:3.21.0")
+    implementation("org.jline:jline-console:3.21.0")
 
     compileOnly("org.projectlombok:lombok:1.18.26")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
