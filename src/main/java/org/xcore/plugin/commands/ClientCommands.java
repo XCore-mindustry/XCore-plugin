@@ -241,7 +241,22 @@ public class ClientCommands {
                 builder.append("[accent]The number of wins is rolled into the number of wins over players of your rank. ");
 
                 Call.infoMessage(player.con, builder.toString());
+            });
 
+            handler.<Player>register("top", "Top players by rank", (args, player) -> {
+                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
+
+                var builder = new StringBuilder();
+                if (leaders.isEmpty()) {
+                    builder.append("Empty.");
+                } else for (int i = 0; i < leaders.size; i++) {
+                    var data = leaders.get(i);
+
+                    builder.append("[orange]").append(i + 1).append(". ")
+                            .append(data.nickname).append("[accent]: [blue]")
+                            .append(data.hexedRank().name).append(" [cyan]").append(data.hexedPoints).append(" []wins \n");
+                }
+                player.sendMessage(builder.toString());
             });
 
             handler.<Player>register("ai", "<idle/i/attack/a>", "Control ai", (args, player) -> {

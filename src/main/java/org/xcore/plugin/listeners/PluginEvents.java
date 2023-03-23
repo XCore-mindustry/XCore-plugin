@@ -132,16 +132,17 @@ public class PluginEvents {
 
         Events.on(EventType.TapEvent.class, event -> {
             if (!History.enabled() || event.tile == null) return;
-            if (!event.player.admin() && !Database.getCached(event.player.uuid()).history) return;
-
-            var stack = History.get(event.tile.array());
-            if (stack == null) return;
 
             if (event.player.admin && !event.player.con.mobile) {
                 Call.clientPacketUnreliable(event.player.con, "take_history_info",
                         JsonIO.write(new History.TransportableHistoryStack(event.tile)));
                 return;
             }
+
+            if (!Database.getCached(event.player.uuid()).history) return;
+
+            var stack = History.get(event.tile.array());
+            if (stack == null) return;
 
             var builder = new StringBuilder();
 
