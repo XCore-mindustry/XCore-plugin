@@ -282,7 +282,7 @@ public class ClientCommands {
 
         if (config.isMiniPvP()) {
             handler.<Player>register("top", "Shows top players by rating", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
+                Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
