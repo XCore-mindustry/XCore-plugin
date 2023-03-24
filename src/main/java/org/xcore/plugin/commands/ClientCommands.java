@@ -244,7 +244,7 @@ public class ClientCommands {
             });
 
             handler.<Player>register("top", "Top players by rank", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
+                Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
