@@ -1,21 +1,16 @@
 package org.xcore.plugin.modules.history;
 
-import arc.util.Log;
-import arc.util.Reflect;
-import arc.util.Strings;
 import arc.util.Time;
 import lombok.NoArgsConstructor;
-import mindustry.ctype.UnlockableContent;
 import mindustry.game.EventType;
-import mindustry.gen.Iconc;
+import mindustry.gen.Player;
 import mindustry.world.blocks.ConstructBlock;
 
 import java.time.Instant;
-import java.time.temporal.Temporal;
-import java.time.temporal.TemporalAccessor;
 
 import static mindustry.Vars.content;
 import static org.xcore.plugin.PluginVars.shortDateFormat;
+import static useful.Bundle.*;
 import static org.xcore.plugin.utils.Utils.emoji;
 
 @NoArgsConstructor
@@ -39,17 +34,11 @@ public class HistoryEntry {
         this.time = Time.millis();
     }
 
-    public String getMessage() {
-        var builder = new StringBuilder();
-        builder.append("[lightgray][").append(shortDateFormat.format(Instant.ofEpochMilli(time))).append(" (UTC)] ")
-                .append(name).append("[accent] ");
-
-        builder.append(type.name());
-
+    public String getMessage(Player player) {
         var block = content.block(blockID);
-        builder.append(" ").append(emoji(block));
-
-        return builder.toString();
+        return format("history.entry", player.locale,
+                shortDateFormat.format(Instant.ofEpochMilli(time)),
+                name, type.name(), emoji(block));
     }
 
     public enum Type {

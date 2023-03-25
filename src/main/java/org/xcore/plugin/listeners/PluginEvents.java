@@ -23,8 +23,8 @@ import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 
-import static mindustry.Vars.netServer;
-import static mindustry.Vars.state;
+import static mindustry.Vars.*;
+import static useful.Bundle.*;
 import static org.xcore.plugin.PluginVars.*;
 
 public class PluginEvents {
@@ -60,7 +60,7 @@ public class PluginEvents {
                 if (info == null) return;
                 if (player != null) {
                     player.admin = true;
-                    player.sendMessage("[green]Admin confirmed.");
+                    bundled(player, "commands.login.confirmed");
                 }
 
                 netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
@@ -76,14 +76,14 @@ public class PluginEvents {
         });
         Events.on(PlayerJoin.class, event -> {
             if (event.player.getInfo().timesJoined < 5)
-                Call.openURI(event.player.con, discordURL);
+                Call.openURI(event.player.con, discordUrl);
 
             var data = Database.getPlayerData(event.player).setNickname(event.player.coloredName());
             HexedRanks.updateRank(event.player, data);
             Database.setCached(data);
 
             if (data.translatorLanguage.equals("off")) {
-                event.player.sendMessage("[accent]I see that you have automatic chat translator turned off, so I recommend turning it on using the [grey]/tr auto[] command.");
+                bundled(event.player, "recommendation.tr");
             }
 
             JavelinCommunicator.sendEvent(
@@ -146,10 +146,10 @@ public class PluginEvents {
 
             var builder = new StringBuilder();
 
-            if (stack.isEmpty()) builder.append("Empty.");
-            else stack.each(entry -> builder.append("\n").append(entry.getMessage()));
+            if (stack.isEmpty()) builder.append(format("empty", event.player.locale));
+            else stack.each(entry -> builder.append("\n").append(entry.getMessage(event.player)));
 
-            event.player.sendMessage(Strings.format("[yellow]History of tile (@, @) @", event.tile.x, event.tile.y, builder.toString()));
+            bundled(player, "history.content", event.tile.x, event.tile.y, builder.toString());
         });
     }
 }

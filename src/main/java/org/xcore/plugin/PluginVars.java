@@ -25,7 +25,7 @@ public class PluginVars {
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
-    public static String discordURL = "https://discord.gg/RUMCCa9QAC";
+    public static String discordUrl = "https://discord.gg/RUMCCa9QAC";
     public static Fi configFile = dataDirectory.child("xcconfig.json");
     public static Config config;
     public static GlobalConfig globalConfig;

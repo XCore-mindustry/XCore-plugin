@@ -130,7 +130,7 @@ public class NetEvents {
                 If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
                                 
                 [blue]Discord:[cyan]
-                """ + PluginVars.discordURL;
+                """ + PluginVars.discordUrl;
 
         String temporaryBanReason = """
                 [accent]You have been banned from this server by admin @[accent] for the reason "[gold]@[]".
@@ -157,7 +157,7 @@ public class NetEvents {
                                 remain.toDays(),
                                 remain.toHoursPart(),
                                 remain.toMinutesPart(),
-                                PluginVars.discordURL)
+                                PluginVars.discordUrl)
                         , 0);
                 return;
             }

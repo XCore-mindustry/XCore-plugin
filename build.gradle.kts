@@ -39,7 +39,8 @@ repositories {
 dependencies {
     mindustryDependencies()
 
-    implementation("com.github.xzxADIxzx.useful-stuffs:server-menus:c48df39e17")
+    implementation("com.github.xzxADIxzx.useful-stuffs:bundle:954a8f990a")
+
     compileOnly("fr.xpdustry:javelin-mindustry:1.3.0-SNAPSHOT")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")

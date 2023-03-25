@@ -21,45 +21,80 @@ import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
+import useful.Bundle;
 
+import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
 import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 import static org.xcore.plugin.utils.Find.findTranslatorLanguage;
 import static org.xcore.plugin.utils.Utils.voteChoice;
+import static useful.Bundle.*;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {
-        handler.<Player>register("discord", "Redirects you to discord server", (args, player) -> Call.openURI(player.con, discordURL));
+        handler.removeCommand("help");
+        register("help", (args, player) -> {
+            if (args.length > 0 && !Strings.canParseInt(args[0])) {
+                bundled(player, "error.page-number");
+                return;
+            }
+            int commandsPerPage = 6;
+            int page = args.length > 0 ? Strings.parseInt(args[0]) : 1;
+            int pages = Mathf.ceil((float) netServer.clientCommands.getCommandList().size / commandsPerPage);
 
-        handler.<Player>register("js", "<code...>", "Execute javascript. [red]JS Access users only.", (args, player) -> {
+            page--;
+
+            if (page >= pages || page < 0) {
+                bundled(player, "error.page-between", pages);
+                return;
+            }
+
+            StringBuilder result = new StringBuilder();
+            result.append(format("commands.help.start-content", player.locale, page + 1, pages));
+
+            for (int i = commandsPerPage * page; i < Math.min(commandsPerPage * (page + 1), netServer.clientCommands.getCommandList().size); i++) {
+                CommandHandler.Command command = netServer.clientCommands.getCommandList().get(i);
+                result.append(format("commands.help.content",
+                        player.locale,
+                        command.text,
+                        format("commands." + command.text + ".params", player.locale),
+                        format("commands." + command.text + ".description", player.locale)));
+            }
+            player.sendMessage(result.toString());
+        });
+
+        register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
+
+        register("js", (args, player) -> {
             PlayerData data = Database.getCached(player.uuid());
 
             if (!player.admin || !data.jsAccess) {
-                player.sendMessage("[blue]JS[]: [red]Access denied.");
+                bundled(player, "commands.js.denied");
                 return;
             }
 
             player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0]));
         });
 
-        handler.<Player>register("artv", "Change map. [red]Admin only", (args, player) -> {
+        register("artv", (args, player) -> {
             if (!player.admin) return;
 
             Events.fire(new EventType.GameOverEvent(Team.derelict));
-            Call.sendMessage(Strings.format("@[accent] skipped map.", player.coloredName()));
+
+            sendToChat("commands.artv.map-skipped", player.coloredName());
         });
 
-        handler.<Player>register("rtv", "[map]", "Rock the vote to change map", (args, player) -> {
+        register("rtv", (args, player) -> {
             if (vote != null) {
-                player.sendMessage("[scarlet]⚠ A voting is already in progress.");
+                bundled(player, "error.vote-in-progress");
                 return;
             }
 
             var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
             if (map == null) {
-                player.sendMessage("[scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.");
+                bundled(player, "error.map-not-found");
                 return;
             }
 
@@ -67,67 +102,61 @@ public class ClientCommands {
             vote.vote(player, 1);
         });
 
-        handler.<Player>register("history", "Enable/disable block inspection.", (args, player) -> {
+        register("history", (args, player) -> {
             var data = Database.getCached(player.uuid());
 
             data.history = !data.history;
 
-            player.sendMessage("[accent]History set to [scarlet]" + data.history);
+            bundled(player, "commands.history.success", data.history);
             Database.setCached(data);
         });
 
-        handler.<Player>register("lb", "Enable/disable leaderboard.", (args, player) -> {
+        register("lb", (args, player) -> {
             var data = Database.getCached(player.uuid());
 
             data.leaderboard = !data.leaderboard;
 
-            player.sendMessage("[accent]Leaderboard set to [scarlet]" + data.leaderboard);
+            bundled(player, "commands.lb.success", data.leaderboard);
             Database.setCached(data);
             Database.setPlayerData(data);
         });
 
-        handler.<Player>register("login", "Admin request. Don't use if you don't know what you're doing.", (args, player) -> {
+        register("login", (args, player) -> {
             JavelinCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
-            player.sendMessage("[green]Request sent.");
+            bundled(player, "commands.login.success");
         });
 
-        handler.<Player>register("tr", "<lang>", "Set the translator language", (args, player) -> {
+        register("tr", (args, player) -> {
             var data = Database.getCached(player.uuid());
-
-            String success = "[accent]The translator language has been successfully changed to [grey]@[]!";
 
             switch (args[0].toLowerCase()) {
                 case "off" -> {
                     data.translatorLanguage = "off";
-                    player.sendMessage("[accent]Translator is [grey]off[].");
+                    bundled(player, "commands.tr.off");
                 }
                 case "auto" -> {
                     var lang = findTranslatorLanguage(player.locale);
                     data.translatorLanguage = lang == null ? "en" : lang;
-                    player.sendMessage(Strings.format(
-                            success, translatorLanguages.get(data.translatorLanguage)));
                 }
                 default -> {
                     var lang = findTranslatorLanguage(args[0]);
                     if (lang == null) {
-                        player.sendMessage("[accent]There is no such language.");
-                        break;
+                        bundled(player, "commands.tr.not-found");
+                        return;
                     }
 
                     data.translatorLanguage = lang;
-
-                    player.sendMessage(Strings.format(
-                            success, translatorLanguages.get(data.translatorLanguage)));
                 }
             }
+            bundled(player, "commands.tr.success", translatorLanguages.get(data.translatorLanguage));
 
             Database.setPlayerData(data);
             Database.setCached(data);
         });
 
-        handler.<Player>register("maps", "[page]", "List all maps on server", (args, player) -> {
+        register("maps", (args, player) -> {
             if (args.length == 1 && !Strings.canParseInt(args[0])) {
-                player.sendMessage("[scarlet]'page' must be a number.");
+                bundled(player, "commands.maps.page-must-number");
                 return;
             }
 
@@ -138,19 +167,16 @@ public class ClientCommands {
             if (list.size % lines != 0) pages++;
 
             if (page > pages || page < 1) {
-                player.sendMessage("[scarlet]'page' must be a number between[orange] 1[] and [orange]" + pages + "[].");
+                bundled(player, "error.page-between", pages);
                 return;
             }
 
-            builder.append("[accent]Actual map: []").append(Vars.state.map.name()).append("[white]")
-                    .append("\n[orange][gold]Maps list [lightgray]").append(page).append("[gray]/[lightgray]")
-                    .append(pages);
+            builder.append(format("commands.maps.start-content", player.locale, Vars.state.map.name(), page, pages));
             for (int i = (page - 1) * lines; i < lines * page; i++) {
                 try {
                     map = list.get(i);
-                    builder.append("\n").append(i + 1).append(". [orange] - [white]").append(map.name())
-                            .append("[orange] | [white]").append(map.width).append("x")
-                            .append(map.height).append("[orange] | By: [sky]").append(map.author());
+                    builder.append(format("commands.maps.content", player.locale,
+                            i + 1, map.name(), map.width, map.height, map.author()));
                 } catch (IndexOutOfBoundsException e) {
                     break;
                 }
@@ -159,16 +185,16 @@ public class ClientCommands {
         });
 
         handler.removeCommand("votekick");
-        handler.<Player>register("votekick", "[player...]", "Vote to kick a player.", (args, player) -> {
+        register("votekick", (args, player) -> {
             if (voteKick != null) {
-                player.sendMessage("[scarlet]⚠ A voting is already in progress.");
+                bundled(player, "error.vote-in-progress");
                 return;
             }
 
             Player found = Find.player(args[0]);
 
             if (found == null) {
-                player.sendMessage("[accent]Player not found.");
+                bundled(player, "error.player-not-found");
                 return;
             }
 
@@ -177,36 +203,37 @@ public class ClientCommands {
         });
 
         handler.removeCommand("vote");
-        handler.<Player>register("vote", "<y/n>", "Vote to kick the current player.", (args, player) -> {
+        register("vote", (args, player) -> {
             if (voteKick == null) {
-                player.sendMessage("[scarlet]⚠ No voting at the moment.");
+                bundled(player, "error.no-voting");
                 return;
             }
 
             if (voteKick.voted.containsKey(player.id)) {
-                player.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
+                bundled(player, "error.already-voted");
                 return;
             }
 
             if (voteKick.target == player) {
-                player.sendMessage("[scarlet]⚠ You cannot vote for yourself.");
+                bundled(player, "error.vote-yourself");
+                return;
             }
 
             int sign = voteChoice(args[0]);
             if (sign == 0) {
-                player.sendMessage("[scarlet]⚠ Vote with [orange]/vote <y/n>[].");
+                bundled(player, "commands.vote.vote-with");
                 return;
             }
 
             voteKick.vote(player, sign);
         });
 
-        handler.<Player>register("spectate", "Spectate.", (args, player) -> {
+        register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
             player.team(Team.derelict);
             player.unit().kill();
-            player.sendMessage("You are now spectating.");
+            bundled(player, "commands.spectate.success");
         });
 
         if (config.isMiniHexed()) {
@@ -215,55 +242,52 @@ public class ClientCommands {
             handler.removeCommand("vote");
             handler.removeCommand("rtv");
 
-            handler.<Player>register("rank", "[player]", "Shows information about your/player rank", (args, player) -> {
+            register("rank", (args, player) -> {
                 var target = args.length > 0 ? Find.player(args[0]) : player;
 
                 if (target == null) {
-                    player.sendMessage("[scarlet]Player not found.");
+                    bundled(player, "error.player-not-found");
                     return;
                 }
 
                 var data = Database.getCached(target.uuid());
                 var rank = data.hexedRank();
 
-                Call.infoMessage(player.con, Strings.format("@ [accent]@\n[gold]Wins: @/@", rank.tag, rank.name, data.hexedPoints, rank.next.requirements.wins()));
+                infoMessage(player, "commands.rank.content", target.name, rank.tag, rank.name, data.hexedPoints, rank.next.requirements.wins());
             });
 
-            handler.<Player>register("ranks", "Shows information about ranks", (args, player) -> {
+            register("ranks", (args, player) -> {
                 var builder = new StringBuilder();
 
                 for (HexedRanks.HexedRank rank : HexedRanks.HexedRank.values()) {
-                    builder.append(rank.tag).append(" [accent]").append(rank.name).append("\n")
-                            .append("[gold]Requirements: ").append("[grey]").append(rank.requirements == null ? 0 : rank.requirements.wins())
-                            .append(" [accent]wins[]").append("[]\n\n");
+                    builder.append(format("commands.ranks.content", player.locale,
+                            rank.tag, rank.name, rank.requirements == null ? 0 : rank.requirements.wins()));
                 }
-
-                builder.append("[accent]The number of wins is rolled into the number of wins over players of your rank. ");
+                builder.append(format("commands.ranks.footer", player.locale));
 
                 Call.infoMessage(player.con, builder.toString());
             });
 
-            handler.<Player>register("top", "Top players by rank", (args, player) -> {
+            register("top", (args, player) -> {
                 Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
-                    builder.append("Empty.");
+                    builder.append(format("empty", player.locale));
                 } else for (int i = 0; i < leaders.size; i++) {
                     var data = leaders.get(i);
 
-                    builder.append("[orange]").append(i + 1).append(". ")
-                            .append(data.nickname).append("[accent]: [blue]")
-                            .append(data.hexedRank().name).append(" [cyan]").append(data.hexedPoints).append(" []wins \n");
+                    builder.append(format("commands.top.hexed-content",
+                            player.locale, i + 1, data.nickname, data.hexedRank().name, data.hexedPoints));
                 }
                 player.sendMessage(builder.toString());
             });
 
-            handler.<Player>register("ai", "<idle/i/attack/a>", "Control ai", (args, player) -> {
+            register("ai", (args, player) -> {
                 HexMember member = members.get(player.uuid());
 
                 if (player.team() == Team.derelict || member.team == Team.derelict) {
-                    player.sendMessage("[red]Error. [accent]You are spectator.");
+                    bundled(player, "error.spectator");
                     return;
                 }
 
@@ -271,31 +295,37 @@ public class ClientCommands {
                     case "attack", "a" -> member.setUnitState(Utils.UnitState.ATTACK);
                     case "idle", "i" -> member.setUnitState(Utils.UnitState.IDLE);
                     default -> {
-                        player.sendMessage("[red]attack(i) []or [accent]idle(i).");
+                        bundled(player, "commands.ai.usage");
                         return;
                     }
                 }
 
-                player.sendMessage("[green]Successfully.");
+                bundled(player, "success");
             });
         }
 
         if (config.isMiniPvP()) {
-            handler.<Player>register("top", "Shows top players by rating", (args, player) -> {
+            register("top", (args, player) -> {
                 Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
-                    builder.append("Empty.");
+                    builder.append(format("empty", player.locale));
                 } else for (int i = 0; i < leaders.size; i++) {
                     var data = leaders.get(i);
 
-                    builder.append("[orange]").append(i + 1).append(". ")
-                            .append(data.nickname).append("[accent]: [cyan]")
-                            .append(data.pvpRating).append("\n");
+                    builder.append(format("commands.top.pvp-content", player.locale,
+                            i + 1, data.nickname, data.pvpRating));
                 }
                 player.sendMessage(builder.toString());
             });
         }
+    }
+
+    public static void register(String name, CommandHandler.CommandRunner<Player> runner) {
+        netServer.clientCommands.register(name,
+                Bundle.get("commands." + name + ".params", "", defaultLocale),
+                Bundle.get("commands." + name + ".description", defaultLocale),
+                runner);
     }
 }

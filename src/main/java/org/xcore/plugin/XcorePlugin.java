@@ -20,6 +20,7 @@ import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.GlobalConfig;
+import useful.Bundle;
 
 import static mindustry.Vars.maps;
 import static mindustry.Vars.netServer;
@@ -60,6 +61,7 @@ public class XcorePlugin extends Plugin {
         PluginEvents.init();
         AdminModIntegration.init();
         Translator.init();
+        Bundle.load(XcorePlugin.class);
 
         maps.setMapProvider(new MapProvider() {
             public int lastMapID;
