@@ -48,11 +48,11 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = Database.getCached(args[0]);
+            PlayerData data = Database.getCached(info.id);
             boolean cached = true;
             if (data == null) {
                 cached = false;
-                data = Database.getPlayerData(args[0]);
+                data = Database.getPlayerData(info.id);
             }
 
             if (perm.equals("js-access")) data.jsAccess = value;

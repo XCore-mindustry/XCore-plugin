@@ -33,6 +33,7 @@ import java.time.Instant;
 import static arc.util.Strings.*;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
+import static useful.Bundle.*;
 import static org.xcore.plugin.modules.discord.Bot.bansChannel;
 import static org.xcore.plugin.modules.discord.Bot.isConnected;
 
@@ -85,11 +86,11 @@ public class Utils {
         builder.append("[blue]Leaderboard\n\n");
         for (int i = 0; i < sorted.size; i++) {
             var data = sorted.get(i);
-            builder.append("[orange]").append(i + 1)
-                    .append(". ")
-                    .append(data.nickname)
-                    .append("[accent]:[cyan] ")
-                    .append(data.pvpRating).append(" [accent]rating\n");
+            var player = Find.playerByUuid(data.uuid);
+
+            if (player == null) return "[scarlet]error";
+
+            builder.append(format("pvp.leaderboard.content", player.locale, i + 1, data.nickname, data.pvpRating));
         }
 
         return builder.toString();
@@ -104,10 +105,7 @@ public class Utils {
             var team = teams.get(i);
             var player = team.players.first();
 
-            builder.append("[orange]").append(i + 1)
-                    .append(". ").append(player.coloredName())
-                    .append("[accent]: [cyan]")
-                    .append(team.cores.size).append(" [accent]hexes\n");
+            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, player.coloredName(), team.cores.size));
         }
 
         return builder.toString();

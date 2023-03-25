@@ -95,7 +95,7 @@ public class Bot {
 
                     if (author == null) return Mono.empty();
                     if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
-                        return event.reply("Access denied");
+                        return event.reply("Access denied").withEphemeral(true);
 
                     long bid = Long.parseLong(event.getCustomId().split("-")[0]);
 

@@ -1,16 +1,15 @@
 package org.xcore.plugin.modules.votes;
 
 import arc.Core;
-import arc.util.Strings;
 import arc.util.Timer;
 import mindustry.game.Gamemode;
-import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.mapLoadDelay;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
+import static useful.Bundle.sendToChat;
 
 public class VoteRtv extends VoteSession {
     public final Map target;
@@ -22,29 +21,25 @@ public class VoteRtv extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        Call.sendMessage(Strings.format("@[lightgray] voted to change the current map to [orange]@[lightgray]. ([accent]@[]/[accent]@[])\nType [orange]y[] or [orange]n[] to vote.",
-                player.coloredName(), target.name(), votes(), votesRequired()));
+        sendToChat("rtv.vote", player.coloredName(), target.name(), votes(), votesRequired());
     }
 
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0)
-            Call.sendMessage(Strings.format("@[lightgray] left. His vote to change the current map was cancelled. ([accent]@[]/[accent]@[])",
-                    player.coloredName(), votes(), votesRequired()));
+            sendToChat("rtv.left", player.coloredName(), votes(), votesRequired());
     }
 
     @Override
     public void success() {
         stop();
-        Call.sendMessage(Strings.format("[orange]Vote passed. Map [accent]@[] will be loaded in [accent]@[] seconds...",
-                target.name(), mapLoadDelay));
+        sendToChat("rtv.success", target.name(), mapLoadDelay);
         Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
     }
 
     @Override
     public void fail() {
         stop();
-        Call.sendMessage(Strings.format("[lightgray]Vote failed. Not enough votes to change the current map to [orange]@[].",
-                target.name()));
+        sendToChat("rtv.fail", target.name());
     }
 }

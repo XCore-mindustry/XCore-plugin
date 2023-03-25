@@ -13,7 +13,9 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.netServer;
+import static mindustry.Vars.player;
 import static org.xcore.plugin.PluginVars.config;
+import static useful.Bundle.bundled;
 
 public class MiniPvP {
     public static Seq<String> losingPlayers = new Seq<>();
@@ -31,7 +33,7 @@ public class MiniPvP {
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
-                p.sendMessage("Your team has won. Your rating has increased by " + increased);
+                bundled(player, "pvp.team-won", increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 Database.setPlayerData(data);
@@ -60,11 +62,11 @@ public class MiniPvP {
 
                         if ((data.pvpRating - reduced) < 0) {
                             data.pvpRating = 0;
-                            p.sendMessage("Your team lost. Your rating is 0");
                         } else {
                             data.pvpRating -= reduced;
-                            p.sendMessage("Your team lost. Your rating is reduced by " + reduced);
                         }
+                        bundled(p, "pvp.team-lose", reduced);
+
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
                         Database.setPlayerData(data);
