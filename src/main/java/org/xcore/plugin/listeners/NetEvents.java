@@ -7,7 +7,6 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
-import arc.util.serialization.Base64Coder;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
@@ -24,9 +23,7 @@ import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.models.BanData;
 
-import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.zip.CRC32;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
@@ -48,7 +45,7 @@ public class NetEvents {
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
 
-        JavelinCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text, config.server));
+        JavelinCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
         return null;
     }
 
@@ -115,15 +112,6 @@ public class NetEvents {
         con.connectTime = Time.millis();
 
         String uuid = packet.uuid;
-        byte[] buuid = Base64Coder.decode(uuid);
-        CRC32 crc = new CRC32();
-        crc.update(buuid, 0, 8);
-        ByteBuffer buff = ByteBuffer.allocate(8);
-        buff.put(buuid, 8, 8);
-        if (crc.getValue() != buff.getLong(0)) {
-            con.kick(Packets.KickReason.clientOutdated);
-            return;
-        }
 
         String defaultBanReason = """
                 [accent]You are banned from this server.
@@ -196,8 +184,7 @@ public class NetEvents {
                     0);
             return;
         }
-
-        if (netServer.admins.getPlayerLimit() > 0 && Groups.player.size() >= netServer.admins.getPlayerLimit() && !netServer.admins.isAdmin(uuid, packet.usid)) {
+        if (!netServer.admins.isAdmin(uuid, packet.usid) && netServer.admins.getPlayerLimit() > 0 && Groups.player.size() >= netServer.admins.getPlayerLimit()) {
             con.kick(Packets.KickReason.playerLimit);
             return;
         }
