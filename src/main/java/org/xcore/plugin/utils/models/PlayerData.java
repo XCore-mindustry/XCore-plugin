@@ -19,6 +19,8 @@ public class PlayerData {
     public boolean consolePanelAccess = false;
 
     @BsonIgnore
+    public boolean adminMod = false;
+    @BsonIgnore
     public boolean history = false;
     @BsonIgnore
     public boolean exists = true;

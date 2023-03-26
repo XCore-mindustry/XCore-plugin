@@ -71,17 +71,14 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = Database.getPlayerData(info.id);
-
-            if (!data.exists) {
-                Log.err("Player in db not found.");
-                return;
-            }
+            PlayerData data = Database.getCached(info.id);
+            data = data == null ? Database.getPlayerData(info.id) : data;
 
             Log.info("'@' DB '@': ", info.plainLastName(), data.nickname);
             Log.info("  PvP Rating: @", data.pvpRating);
-            Log.info("  Hexed Wins: @", data.hexedPoints);
+            Log.info("  Hexed Rank/Points: @ / @", data.hexedRank().name, data.hexedPoints);
             Log.info("  Translator Language: @", data.translatorLanguage);
+            Log.info("  Has Admin Mod: @", data.adminMod);
         });
 
         handler.register("tempban", "<name/uuid/ip> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {

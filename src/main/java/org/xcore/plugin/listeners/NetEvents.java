@@ -23,8 +23,9 @@ import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.models.BanData;
 
-import java.time.Duration;
+import java.time.*;
 
+import static arc.util.Strings.stripColors;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.voteChoice;
@@ -114,18 +115,19 @@ public class NetEvents {
         String uuid = packet.uuid;
 
         String defaultBanReason = """
-                [accent]You are banned from this server.
+                You are banned from this server.
                 If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
                                 
                 [blue]Discord:[cyan]
                 """ + PluginVars.discordUrl;
 
         String temporaryBanReason = """
-                [accent]You have been banned from this server by admin @[accent] for the reason "[gold]@[]".
-                You will be unbanned in [gold]@[] days [gold]@[] hours and [gold]@[] minutes.
-                If you want to apply for an unban, please join our discord server and write appeal in the #support channel.
-                                
-                [blue]Discord:[cyan] @
+                @[accent] have been banned.
+                Admin: @[accent]
+                Reason: "[gold]@[]"
+                Unban Date: @ (UTC)
+                For unban visit discord(channel [gray]#support[]):
+                [cyan]@
                 """;
 
         BanData ban = Database.getBan(uuid, con.address);
@@ -136,15 +138,14 @@ public class NetEvents {
                 netServer.admins.unbanPlayerIP(con.address);
                 Database.unBan(ban);
             } else {
-                Duration remain = Duration.ofMillis(ban.unbanDate - Time.millis());
+                LocalDateTime date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneOffset.UTC);
 
                 con.kick(Strings.format(
                                 temporaryBanReason,
+                                stripColors(ban.name),
                                 ban.adminName,
                                 ban.reason,
-                                remain.toDays(),
-                                remain.toHoursPart(),
-                                remain.toMinutesPart(),
+                                longDateFormat.format(date),
                                 PluginVars.discordUrl)
                         , 0);
                 return;
@@ -225,7 +226,7 @@ public class NetEvents {
         boolean preventDuplicates = headless && netServer.admins.isStrict();
 
         if (preventDuplicates) {
-            if (Groups.player.contains(p -> Strings.stripColors(p.name).trim().equalsIgnoreCase(Strings.stripColors(packet.name).trim()))) {
+            if (Groups.player.contains(p -> stripColors(p.name).trim().equalsIgnoreCase(stripColors(packet.name).trim()))) {
                 con.kick(Packets.KickReason.nameInUse, 0);
                 return;
             }

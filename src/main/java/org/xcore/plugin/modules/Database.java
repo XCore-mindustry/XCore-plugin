@@ -107,7 +107,7 @@ public class Database {
     }
 
     private static Bson getBanFilter(String uuid, String ip) {
-        return and(or(eq("uuid", uuid), eq("ip", ip)),
+        return and(or(eq("uuid", uuid), eq("ip", ip == null ? "no" : ip)),
                 or(eq("server", config.server),
                         eq("server", "global")));
     }

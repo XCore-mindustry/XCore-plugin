@@ -82,6 +82,8 @@ public class PluginEvents {
             HexedRanks.updateRank(event.player, data);
             Database.setCached(data);
 
+            Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
+
             if (data.translatorLanguage.equals("off")) {
                 bundled(event.player, "recommendation.tr");
             }
@@ -133,13 +135,15 @@ public class PluginEvents {
         Events.on(EventType.TapEvent.class, event -> {
             if (!History.enabled() || event.tile == null) return;
 
-            if (event.player.admin && !event.player.con.mobile) {
+            var data = Database.getCached(event.player.uuid());
+
+            if (data.adminMod && !event.player.con.mobile) {
                 Call.clientPacketUnreliable(event.player.con, "take_history_info",
                         JsonIO.write(new History.TransportableHistoryStack(event.tile)));
                 return;
             }
 
-            if (!Database.getCached(event.player.uuid()).history) return;
+            if (!data.history) return;
 
             var stack = History.get(event.tile.array());
             if (stack == null) return;
