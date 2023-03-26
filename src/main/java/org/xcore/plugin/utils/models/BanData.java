@@ -17,7 +17,7 @@ public class BanData implements JavelinEvent {
     @NonNull
     public String uuid;
     @Builder.Default
-    public String ip = "";
+    public String ip = null;
     @Builder.Default
     public String name = "<unknown>";
     @Builder.Default

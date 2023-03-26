@@ -59,6 +59,13 @@ public class Bot {
             privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(GuildMessageChannel.class);
 
             onEvent(ButtonInteractionEvent.class, event -> {
+                var author = event.getInteraction().getMember().orElse(null);
+                var message = event.getMessage().orElse(null);
+
+                if (author == null || message == null) return Mono.empty();
+                if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
+                    return event.reply("Access denied").withEphemeral(true);
+
                 if (event.getCustomId().equals("edit-ban")) {
                     return event.presentModal(InteractionPresentModalSpec.builder()
                             .title("Edit reason and ban duration")
@@ -69,12 +76,6 @@ public class Bot {
                 }
 
                 if (event.getCustomId().endsWith("admreq")) {
-                    var author = event.getInteraction().getMember().orElse(null);
-
-                    if (author == null) return Mono.empty();
-                    if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
-                        return event.reply("Access denied").withEphemeral(true);
-
                     String[] args = event.getCustomId().split("_");
 
                     String server = args[0];
@@ -84,19 +85,17 @@ public class Bot {
 
                     var info = Find.playerInfo(uuid);
 
-                    event.getMessage().ifPresent(message -> message.delete().subscribe());
+                    message.delete().subscribe();
 
                     return event.reply(author.getDisplayName() + " confirmed adminship to player "
                             + (info != null ? info.lastName : "<unknown>"));
                 }
 
+                if (event.getCustomId().equals("decline")) {
+                    return message.delete(author.getDisplayName());
+                }
+
                 if (event.getCustomId().endsWith("unban")) {
-                    var author = event.getInteraction().getMember().orElse(null);
-
-                    if (author == null) return Mono.empty();
-                    if (!author.getRoleIds().contains(Snowflake.of(globalConfig.discordAdminRoleId)))
-                        return event.reply("Access denied").withEphemeral(true);
-
                     long bid = Long.parseLong(event.getCustomId().split("-")[0]);
 
                     BanData ban = Database.getBanById(bid);
@@ -108,7 +107,6 @@ public class Bot {
                         Utils.handleBanData(ban);
                     }
 
-                    var message = event.getMessage().orElseThrow();
                     message.edit(MessageEditSpec.builder()
                             .addEmbed(toEmbedCreateSpecBuilder(message.getEmbeds().get(0))
                                     .footer("Unbanned by " + author.getDisplayName(), author.getAvatarUrl())
@@ -119,6 +117,7 @@ public class Bot {
 
                     return event.reply("Successfully").withEphemeral(true);
                 }
+
                 return Mono.empty();
             });
 
@@ -229,7 +228,8 @@ public class Bot {
                         .addField("Name", name, false)
                         .addField("Server", server, false)
                         .build())
-                .addComponent(ActionRow.of(Button.danger(server + "_" + uuid + "_admreq", "Confirm")))
+                .addComponent(ActionRow.of(Button.danger(server + "_" + uuid + "_admreq", "Confirm"),
+                        Button.success("decline", "Decline")))
                 .build())).subscribe();
     }
 
