@@ -33,7 +33,7 @@ public class MiniPvP {
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
-                bundled(player, "pvp.team-won", increased);
+                bundled(p, "pvp.team-won", increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 Database.setPlayerData(data);
