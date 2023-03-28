@@ -1,5 +1,6 @@
 package org.xcore.plugin.modules;
 
+import mindustry.gen.Groups;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.*;
@@ -7,6 +8,8 @@ import static org.xcore.plugin.PluginVars.*;
 public class Config {
     public String server = "server";
     public boolean consoleEnabled = true;
+
+    public int playerLimit = 30;
     public String globalConfigDirectory = null;
 
     public static void init() {
@@ -17,6 +20,10 @@ public class Config {
             configFile.writeString(gson.toJson(config = new Config()));
             XcorePlugin.info("Config generated.");
         }
+    }
+
+    public int getNoAdminPlayerLimit() {
+        return this.playerLimit + Groups.player.count(p -> p.admin);
     }
 
     public boolean isMiniPvP() {

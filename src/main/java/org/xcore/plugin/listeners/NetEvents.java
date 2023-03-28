@@ -17,7 +17,6 @@ import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.json.JSONObject;
-import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
@@ -29,6 +28,7 @@ import static arc.util.Strings.stripColors;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.voteChoice;
+import static useful.Bundle.format;
 
 public class NetEvents {
     public static String chat(Player author, String text) {
@@ -114,22 +114,6 @@ public class NetEvents {
 
         String uuid = packet.uuid;
 
-        String defaultBanReason = """
-                You are banned from this server.
-                If you want to apply for an unban, please join our discord server and write appeal in the #appeals channel.
-                                
-                [blue]Discord:[cyan]
-                """ + PluginVars.discordUrl;
-
-        String temporaryBanReason = """
-                @[accent] have been banned.
-                Admin: @[accent]
-                Reason: "[gold]@[]"
-                Unban Date: @ (UTC)
-                For unban visit discord(channel [gray]#support[]):
-                [cyan]@
-                """;
-
         BanData ban = Database.getBan(uuid, con.address);
 
         if (ban != null) {
@@ -140,20 +124,18 @@ public class NetEvents {
             } else {
                 LocalDateTime date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneOffset.UTC);
 
-                con.kick(Strings.format(
-                                temporaryBanReason,
-                                stripColors(ban.name),
-                                ban.adminName,
-                                ban.reason,
-                                longDateFormat.format(date),
-                                PluginVars.discordUrl)
-                        , 0);
+                con.kick(format("tempban.content", packet.locale,
+                        stripColors(ban.name),
+                        stripColors(ban.adminName),
+                        ban.reason,
+                        longDateFormat.format(date),
+                        discordUrl), 0);
                 return;
             }
         }
 
         if (netServer.admins.isIPBanned(con.address) || netServer.admins.isSubnetBanned(con.address)) {
-            con.kick(defaultBanReason, 0);
+            con.kick(format("ban.content", packet.locale, stripColors(packet.name), discordUrl), 0);
             return;
         }
 
@@ -173,7 +155,7 @@ public class NetEvents {
         }
 
         if (netServer.admins.isIDBanned(uuid)) {
-            con.kick(defaultBanReason, 0);
+            con.kick(format("ban.content", packet.locale, stripColors(packet.name), discordUrl), 0);
             return;
         }
 
@@ -185,7 +167,7 @@ public class NetEvents {
                     0);
             return;
         }
-        if (!netServer.admins.isAdmin(uuid, packet.usid) && netServer.admins.getPlayerLimit() > 0 && Groups.player.size() >= netServer.admins.getPlayerLimit()) {
+        if (!netServer.admins.isAdmin(uuid, packet.usid) && config.playerLimit > 0 && Groups.player.size() >= config.getNoAdminPlayerLimit()) {
             con.kick(Packets.KickReason.playerLimit);
             return;
         }
