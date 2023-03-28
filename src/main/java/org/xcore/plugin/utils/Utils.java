@@ -28,7 +28,9 @@ import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Arrays;
 
 import static arc.util.Strings.*;
 import static mindustry.Vars.*;
@@ -169,6 +171,22 @@ public class Utils {
         } catch (Exception e) {
             return '?';
         }
+    }
+
+    // https://github.com/Anuken/Mindustry/blob/b81e9424794ca8eccb7008a1f85ab9c2199bdbd3/core/src/mindustry/net/NetworkIO.java#L132
+    public static void writeString(ByteBuffer buffer, String string, int maxlen) {
+        byte[] bytes = string.getBytes(charset);
+        //todo truncating this way may lead to wierd encoding errors at the ends of strings...
+        if (bytes.length > maxlen) {
+            bytes = Arrays.copyOfRange(bytes, 0, maxlen);
+        }
+
+        buffer.put((byte) bytes.length);
+        buffer.put(bytes);
+    }
+
+    public static void writeString(ByteBuffer buffer, String string) {
+        writeString(buffer, string, 32);
     }
 
     public enum UnitState {

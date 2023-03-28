@@ -110,8 +110,8 @@ public class ServerCommands {
                     .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(days))
                     .build();
             ban.generateBid();
-
             JavelinCommunicator.sendEvent(ban);
+            Log.info("'@' (@) unbanned", ban.name, ban.uuid);
         });
         handler.register("tempbans", "[global]", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");
@@ -140,6 +140,11 @@ public class ServerCommands {
             }
 
             var info = Find.playerInfo(args[0]);
+
+            if (info == null) {
+                Log.err("Player not found.");
+                return;
+            }
 
             netServer.admins.unbanPlayerID(info.id);
             netServer.admins.unbanPlayerIP(info.lastIP);
