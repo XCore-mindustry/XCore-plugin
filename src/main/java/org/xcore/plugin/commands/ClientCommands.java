@@ -253,7 +253,12 @@ public class ClientCommands {
                 var data = Database.getCached(target.uuid());
                 var rank = data.hexedRank();
 
-                infoMessage(player, "commands.rank.content", target.name, rank.tag, rank.name, data.hexedPoints, rank.next.requirements.wins());
+                infoMessage(player, "commands.rank.content",
+                        target.name,
+                        rank.tag,
+                        format("hexed.ranks." + rank.name(), player.locale),
+                        data.hexedPoints,
+                        rank.next.requirements.wins());
             });
 
             register("ranks", (args, player) -> {
@@ -261,7 +266,9 @@ public class ClientCommands {
 
                 for (HexedRanks.HexedRank rank : HexedRanks.HexedRank.values()) {
                     builder.append(format("commands.ranks.content", player.locale,
-                            rank.tag, rank.name, rank.requirements == null ? 0 : rank.requirements.wins()));
+                            rank.tag,
+                            format("hexed.ranks." + rank.name(), player.locale),
+                            rank.requirements == null ? 0 : rank.requirements.wins()));
                 }
                 builder.append(format("commands.ranks.footer", player.locale));
 
@@ -278,7 +285,11 @@ public class ClientCommands {
                     var data = leaders.get(i);
 
                     builder.append(format("commands.top.hexed-content",
-                            player.locale, i + 1, data.nickname, data.hexedRank().name, data.hexedPoints));
+                            player.locale,
+                            i + 1,
+                            data.nickname,
+                            format("hexed.ranks." + data.hexedRank().name(), player.locale),
+                            data.hexedPoints));
                 }
                 player.sendMessage(builder.toString());
             });

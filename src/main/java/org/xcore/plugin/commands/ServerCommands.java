@@ -76,7 +76,7 @@ public class ServerCommands {
 
             Log.info("'@' DB '@': ", info.plainLastName(), data.nickname);
             Log.info("  PvP Rating: @", data.pvpRating);
-            Log.info("  Hexed Rank/Points: @ / @", data.hexedRank().name, data.hexedPoints);
+            Log.info("  Hexed Rank/Points: @ / @", data.hexedRank().name(), data.hexedPoints);
             Log.info("  Translator Language: @", data.translatorLanguage);
             Log.info("  Has Admin Mod: @", data.adminMod);
         });
