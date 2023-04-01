@@ -2,7 +2,7 @@ package org.xcore.plugin.utils;
 
 import arc.Core;
 import arc.func.Boolf;
-import arc.func.Prov;
+import arc.func.Cons2;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Reflect;
@@ -20,6 +20,7 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Iconc;
+import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
@@ -80,45 +81,40 @@ public class Utils {
         }
     }
 
-    public static String getPvPLeaderboard() {
-        var builder = new StringBuilder();
+    public static void getPvPLeaderboard(StringBuilder builder, Player player) {
         Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
         builder.append("[blue]Leaderboard\n\n");
         for (int i = 0; i < sorted.size; i++) {
             var data = sorted.get(i);
-            var player = Find.playerByUuid(data.uuid);
-
-            if (player == null) return "[scarlet]error";
 
             builder.append(format("pvp.leaderboard.content", player.locale, i + 1, data.nickname, data.pvpRating));
         }
 
-        return builder.toString();
     }
 
-    public static String getHexedLeaderboard() {
-        var builder = new StringBuilder();
+    public static void getHexedLeaderboard(StringBuilder builder, Player player) {
         var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        teams.truncate(10);
 
         builder.append("[blue]Leaderboard\n\n");
         for (int i = 0; i < teams.size; i++) {
             var team = teams.get(i);
-            var player = team.players.first();
 
             builder.append(format("hexed.leaderboard.content", player.locale, i + 1, player.coloredName(), team.cores.size));
         }
 
-        return builder.toString();
     }
 
-    public static void showLeaderboard(Prov<String> content) {
+    public static void showLeaderboard(Cons2<StringBuilder, Player> cons) {
         Timer.schedule(() -> {
             if (Groups.player.isEmpty()) return;
             Groups.player.each(player -> {
                 if (!Database.getCached(player.uuid()).leaderboard) return;
-                Call.infoPopup(player.con, content.get(), 5f, 8, 0, 2, 50, 0);
+                StringBuilder builder = new StringBuilder();
+                cons.get(builder, player);
+                Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0);
             });
         }, 0f, 5f);
     }
