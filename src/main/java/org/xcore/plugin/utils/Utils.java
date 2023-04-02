@@ -85,7 +85,7 @@ public class Utils {
         Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
-        builder.append("[blue]Leaderboard\n\n");
+        builder.append(format("leaderboard", player.locale));
         for (int i = 0; i < sorted.size; i++) {
             var data = sorted.get(i);
 
@@ -98,11 +98,10 @@ public class Utils {
         var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         teams.truncate(10);
 
-        builder.append("[blue]Leaderboard\n\n");
+        builder.append(format("leaderboard", player.locale));
         for (int i = 0; i < teams.size; i++) {
             var team = teams.get(i);
-
-            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.data().players.first().coloredName(), team.cores.size));
+            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.players.first().coloredName(), team.cores.size));
         }
 
     }
