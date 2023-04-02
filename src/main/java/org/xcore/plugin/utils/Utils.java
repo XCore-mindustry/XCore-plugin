@@ -102,7 +102,7 @@ public class Utils {
         for (int i = 0; i < teams.size; i++) {
             var team = teams.get(i);
 
-            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, player.coloredName(), team.cores.size));
+            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.data().players.first().coloredName(), team.cores.size));
         }
 
     }
