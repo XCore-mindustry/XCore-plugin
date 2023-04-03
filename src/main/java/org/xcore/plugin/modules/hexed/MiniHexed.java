@@ -59,6 +59,7 @@ public class MiniHexed {
             var block = event.tile.block();
             if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
+                
                 sendToChat("hexed.eliminated", player.coloredName());
                 player.team(Team.derelict);
             }

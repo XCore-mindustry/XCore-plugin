@@ -17,6 +17,7 @@ import discord4j.rest.util.Color;
 import mindustry.Vars;
 import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
+import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Iconc;
@@ -95,7 +96,7 @@ public class Utils {
     }
 
     public static void getHexedLeaderboard(StringBuilder builder, Player player) {
-        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty() && t.team != Team.derelict).sort(t -> t.cores.size).reverse();
         teams.truncate(10);
 
         builder.append(format("leaderboard", player.locale));
