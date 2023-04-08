@@ -17,6 +17,10 @@ import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
+import mindustry.net.Administration.ActionFilter;
+import mindustry.net.Administration.ActionType;
+import mindustry.net.Administration.PlayerAction;
+import mindustry.world.blocks.defense.turrets.Turret;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
@@ -45,6 +49,10 @@ public class MiniHexed {
         Utils.showLeaderboard(Utils::getHexedLeaderboard);
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
+        Vars.netServer.admins.addActionFilter(action -> {
+            if (action.type == ActionType.depositItem && action.block instanceof Turret) return false;
+            return true;
+        });
         Events.on(EventType.PlayEvent.class, event -> {
             applyRules();
             Timer.schedule(() -> {
