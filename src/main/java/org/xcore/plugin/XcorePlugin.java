@@ -104,16 +104,6 @@ public class XcorePlugin extends Plugin {
             buffer.position(0);
             handler.respond(buffer);
         });
-
-        maps.setMapProvider(new MapProvider() {
-            public int lastMapID;
-
-            @Override
-            public Map next(Gamemode mode, Map previous) {
-                var allmaps = getAvailableMaps();
-                return allmaps.any() ? allmaps.get(lastMapID++ % allmaps.size) : null;
-            }
-        });
         netServer.admins.addChatFilter(NetEvents::chat);
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
         Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);

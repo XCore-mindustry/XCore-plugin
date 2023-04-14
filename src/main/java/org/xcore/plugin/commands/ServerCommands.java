@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import static arc.Core.app;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.gson;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
@@ -74,11 +75,7 @@ public class ServerCommands {
             PlayerData data = Database.getCached(info.id);
             data = data == null ? Database.getPlayerData(info.id) : data;
 
-            Log.info("'@' DB '@': ", info.plainLastName(), data.nickname);
-            Log.info("  PvP Rating: @", data.pvpRating);
-            Log.info("  Hexed Rank/Points: @ / @", data.hexedRank().name(), data.hexedPoints);
-            Log.info("  Translator Language: @", data.translatorLanguage);
-            Log.info("  Has Admin Mod: @", data.adminMod);
+            Log.info(gson.toJson(data));
         });
 
         handler.register("tempban", "<name/uuid/ip> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {
