@@ -34,7 +34,10 @@ public class MiniPvP {
             closed = true;
         }, 120, 120);
 
-        Events.on(EventType.PlayEvent.class, e -> closed = false);
+        Events.on(EventType.PlayEvent.class, e -> {
+            closed = false;
+            teams.clear();
+        });
 
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             Team team = teams.get(e.player.uuid());
