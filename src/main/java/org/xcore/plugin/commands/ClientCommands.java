@@ -1,12 +1,13 @@
 package org.xcore.plugin.commands;
 
-import arc.Events;
+import arc.Core;
 import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Strings;
+import arc.util.Timer;
 import mindustry.Vars;
-import mindustry.game.EventType;
+import mindustry.game.Gamemode;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
@@ -24,10 +25,12 @@ import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
 
 import static mindustry.Vars.netServer;
+import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
 import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 import static org.xcore.plugin.utils.Find.findTranslatorLanguage;
+import static org.xcore.plugin.utils.Utils.reloadWorld;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 import static useful.Bundle.*;
 
@@ -66,6 +69,9 @@ public class ClientCommands {
 
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
+        handler.removeCommand("t");
+        register("t", (args, player) -> sendToChat(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]));
+
         register("js", (args, player) -> {
             PlayerData data = Database.getCached(player.uuid());
 
@@ -80,7 +86,14 @@ public class ClientCommands {
         register("artv", (args, player) -> {
             if (!player.admin) return;
 
-            Events.fire(new EventType.GameOverEvent(Team.derelict));
+            var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+
+            if (map == null) {
+                bundled(player, "error.map-not-found");
+                return;
+            }
+
+            Timer.schedule(() -> reloadWorld(() -> world.loadMap(map, map.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
 
             sendToChat("commands.artv.map-skipped", player.coloredName());
         });

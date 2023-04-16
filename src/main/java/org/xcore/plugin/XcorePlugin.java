@@ -2,22 +2,15 @@ package org.xcore.plugin;
 
 import arc.Core;
 import arc.net.Server;
-import arc.util.CommandHandler;
-import arc.util.Log;
-import arc.util.Reflect;
-import arc.util.Strings;
+import arc.util.*;
 import mindustry.Vars;
 import mindustry.core.Version;
-import mindustry.game.Gamemode;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.maps.Map;
-import mindustry.maps.Maps.MapProvider;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration;
 import mindustry.net.ArcNetProvider;
-import mindustry.net.NetworkIO;
 import mindustry.net.Packets;
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
@@ -28,6 +21,7 @@ import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.GlobalConfig;
+import org.xcore.plugin.utils.Find;
 import useful.Bundle;
 
 import java.nio.ByteBuffer;
@@ -36,7 +30,6 @@ import static mindustry.Vars.*;
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.utils.Utils.writeString;
-import static org.xcore.plugin.utils.Utils.getAvailableMaps;
 
 @SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
@@ -108,6 +101,16 @@ public class XcorePlugin extends Plugin {
         Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
         Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
+
+        Timer.schedule(() -> Database.cachedPlayerData.each((uuid, data) -> {
+            var player = Find.playerByUuid(uuid);
+
+            data.totalPlayTime++;
+            data.playTime++;
+
+            Database.setCached(data);
+            Database.setPlayerData(data);
+        }), 0, 60);
 
         info("Plugin loaded");
     }

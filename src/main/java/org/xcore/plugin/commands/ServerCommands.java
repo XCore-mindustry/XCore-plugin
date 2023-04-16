@@ -5,6 +5,9 @@ import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
+import arc.util.serialization.JsonReader;
+import arc.util.serialization.JsonValue;
+import arc.util.serialization.JsonWriter;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
@@ -39,10 +42,10 @@ public class ServerCommands {
             GlobalConfig.init();
         });
 
-        handler.register("perm", "<name/uuid/ip> <perm> <true/false>", "Give/remove permission.", args -> {
+        handler.register("edit-data", "<name/uuid/ip> <perm> <value>", "Give/remove permission.", args -> {
             PlayerInfo info = Find.playerInfo(args[0]);
-            String perm = args[1];
-            boolean value = Boolean.parseBoolean(args[2]);
+            String field = args[1];
+            String value = args[2];
 
             if (info == null) {
                 Log.info("Player not found.");
@@ -56,11 +59,26 @@ public class ServerCommands {
                 data = Database.getPlayerData(info.id);
             }
 
-            if (perm.equals("js-access")) data.jsAccess = value;
-            if (perm.equals("console-panel-access")) data.consolePanelAccess = value;
+            String json = gson.toJson(data);
+            JsonValue reader = new JsonReader().parse(json);
 
-            if (cached) Database.setCached(data);
-            Database.setPlayerData(data);
+            if (!reader.has(field)) {
+                Log.err("Field '@' not found", field);
+                return;
+            }
+
+            JsonValue jfield = reader.get(field);
+
+            switch (jfield.type()) {
+                case stringValue -> jfield.set(value);
+                case booleanValue -> jfield.set(Boolean.parseBoolean(value));
+                case longValue -> jfield.set(Long.parseLong(value), null);
+            }
+
+            PlayerData result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
+
+            if (cached) Database.setCached(result);
+            Database.setPlayerData(result);
             Log.info("Done.");
         });
 
@@ -93,13 +111,13 @@ public class ServerCommands {
                 return;
             }
 
-            boolean global = Boolean.parseBoolean(args[2]);
+            boolean global = args[2].equals("1") || args[2].equals("true");
 
             Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
 
             BanData ban = BanData.builder()
                     .uuid(target.id)
-                    .ip(global ? target.lastIP : "")
+                    .ip(global ? target.lastIP : null)
                     .name(target.lastName)
                     .adminName("console")
                     .reason(args[3])
@@ -108,7 +126,7 @@ public class ServerCommands {
                     .build();
             ban.generateBid();
             JavelinCommunicator.sendEvent(ban);
-            Log.info("'@' (@) unbanned", ban.name, ban.uuid);
+            Log.info("'@' (@) banned", ban.name, ban.uuid);
         });
         handler.register("tempbans", "[global]", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");

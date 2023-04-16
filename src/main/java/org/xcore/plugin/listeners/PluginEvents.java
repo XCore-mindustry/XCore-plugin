@@ -2,6 +2,7 @@ package org.xcore.plugin.listeners;
 
 import arc.Events;
 import arc.util.Strings;
+import arc.util.Timer;
 import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
@@ -22,6 +23,12 @@ import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import static mindustry.Vars.*;
 import static useful.Bundle.*;
@@ -37,11 +44,23 @@ public class PluginEvents {
 
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
                         Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
-
+                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.ServerActionEvent.class, e ->
+                        Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestEvent.class, e ->
                         Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
+
+                Timer.schedule(() -> {
+                    var datas = Database.getPlayersData(netServer.admins.getAdmins());
+                    Bot.sendAdminPlayTimeMessage(datas);
+
+                    for (PlayerData data : datas) {
+                        data.playTime = 0;
+                        Database.setPlayerData(data);
+                        JavelinCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
+                    }
+                }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)).toSeconds(), 60 * 60 * 24);
 
             } else {
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
@@ -65,6 +84,11 @@ public class PluginEvents {
 
                 netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
             });
+
+            JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.SyncPlayerData.class, e -> {
+                if (Database.cachedPlayerData.containsKey(e.data().uuid)) Database.setCached(e.data());
+            });
+
             JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::handleBanData);
         });
         Events.on(EventType.PlayerConnect.class, event -> {

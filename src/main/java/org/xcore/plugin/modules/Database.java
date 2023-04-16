@@ -8,8 +8,8 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.result.DeleteResult;
 import mindustry.gen.Player;
+import mindustry.net.Administration;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
@@ -69,15 +69,25 @@ public class Database {
         return data;
     }
 
+    public static Seq<PlayerData> getPlayersData(Iterable<Administration.PlayerInfo> infos) {
+        Seq<PlayerData> datas = new Seq<>();
+        for (Administration.PlayerInfo info : infos) {
+            PlayerData data = getPlayerData(info.id);
+
+            if (data != null) {
+                datas.add(data);
+            }
+        }
+
+        return datas;
+    }
+
     public static void setPlayerData(PlayerData data) {
         playersCollection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
     public static Seq<PlayerData> getLeaders(String... fields) {
-        Seq<PlayerData> datas = new Seq<>();
-
-        playersCollection.find().sort(descending(fields)).limit(10).forEach(datas::add);
-        return datas;
+        return Seq.with(playersCollection.find().sort(descending(fields)).limit(10));
     }
 
     // region ban
@@ -94,8 +104,8 @@ public class Database {
         unBan(data.uuid, data.ip);
     }
 
-    public static DeleteResult unBan(String uuid, String ip) {
-        return bansCollection.deleteMany(getBanFilter(uuid, ip));
+    public static void unBan(String uuid, String ip) {
+        bansCollection.deleteMany(getBanFilter(uuid, ip));
     }
 
     public static BanData getBanById(long id) {
@@ -120,6 +130,7 @@ public class Database {
 
     // endregion
 
+    @SuppressWarnings("DataFlowIssue")
     public static int getNextSequence(String name) {
         MongoCollection<Document> counters = database.getCollection("counters");
 
