@@ -90,6 +90,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
+                        teams.remove(p.uuid());
                         Database.setPlayerData(data);
                         Database.setCached(data);
                     });
