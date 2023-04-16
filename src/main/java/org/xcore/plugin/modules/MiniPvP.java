@@ -1,10 +1,9 @@
 package org.xcore.plugin.modules;
 
-import arc.Core;
 import arc.Events;
-import arc.struct.Seq;
+import arc.struct.ObjectMap;
 import arc.util.Log;
-import mindustry.Vars;
+import arc.util.Timer;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
@@ -13,19 +12,50 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Utils;
 
 import static mindustry.Vars.netServer;
-import static mindustry.Vars.player;
 import static org.xcore.plugin.PluginVars.config;
 import static useful.Bundle.bundled;
+import static useful.Bundle.sendToChat;
 
 public class MiniPvP {
-    public static Seq<String> losingPlayers = new Seq<>();
+    public static ObjectMap<String, Team> teams = new ObjectMap<>();
+
+    public static boolean closed = false;
 
     public static void init() {
         if (!config.isMiniPvP()) return;
         Utils.showLeaderboard(Utils::getPvPLeaderboard);
 
+        Timer.schedule(() -> {
+            if (Groups.player.size() < 4) {
+                closed = false;
+                return;
+            }
+            if (!closed) sendToChat("pvp.server-closed");
+            closed = true;
+        }, 120, 120);
+
+        Events.on(EventType.PlayEvent.class, e -> closed = false);
+
+        Events.on(EventType.PlayerJoin.class, e -> {
+            Team team = teams.get(e.player.uuid());
+
+            if (team != null) {
+                e.player.team(team);
+                return;
+            }
+
+            if (!closed) {
+                var t = netServer.assignTeam(e.player);
+                e.player.team(t);
+                teams.put(e.player.uuid(), t);
+                return;
+            }
+
+            e.player.team(Team.derelict);
+            bundled(e.player, "pvp.you-spectator");
+        });
+
         Events.on(EventType.GameOverEvent.class, e -> {
-            losingPlayers.clear();
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
@@ -47,15 +77,6 @@ public class MiniPvP {
             if (event.tile.block() instanceof CoreBlock) {
                 if (team != Team.derelict && team.cores().size <= 1) {
                     team.data().players.each(p -> {
-                        Core.app.post(() -> {
-                            if (Vars.state.teams.getActive().size != 1) {
-                                p.team(netServer.assignTeam(p));
-                                if (!losingPlayers.contains(p.uuid())) losingPlayers.add(p.uuid());
-                            }
-                        });
-
-                        if (losingPlayers.contains(p.uuid())) return;
-
                         var data = Database.getCached(p.uuid());
 
                         int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);

@@ -1,5 +1,6 @@
 package org.xcore.plugin.modules.discord;
 
+import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
@@ -30,6 +31,7 @@ import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -205,6 +207,20 @@ public class Bot {
         getServerLogChannel(server).createMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
         ).subscribe();
+    }
+
+    public static void sendAdminPlayTimeMessage(Seq<PlayerData> datas) {
+        if (!isConnected) return;
+        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder().title("Admin Activity Today")
+                .color(Color.RED);
+
+        for (PlayerData data : datas) {
+            embed.addField(data.nickname, Strings.format("@/@ minutes", data.playTime, data.totalPlayTime), false);
+        }
+
+        privateChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                .addEmbed(embed.build())
+                .build())).subscribe();
     }
 
     public static void sendBanEvent(BanData ban) {
