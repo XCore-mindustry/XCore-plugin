@@ -31,6 +31,7 @@ import static org.xcore.plugin.utils.Utils.voteChoice;
 import static useful.Bundle.format;
 
 public class NetEvents {
+    public static Seq<String> bannedNames = Seq.with("valve", "tuttop");
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
@@ -114,8 +115,12 @@ public class NetEvents {
 
         String uuid = packet.uuid;
 
-        BanData ban = Database.getBan(uuid, con.address);
+        if (bannedNames.contains(packet.name.toLowerCase())) {
+            con.kick(format("kick.pirated-game", packet.locale), 0);
+            return;
+        }
 
+        BanData ban = Database.getBan(uuid, con.address);
         if (ban != null) {
             if (Time.millis() > ban.unbanDate) {
                 netServer.admins.unbanPlayerID(uuid);
@@ -162,9 +167,7 @@ public class NetEvents {
         long kickTime = netServer.admins.getKickTime(uuid, con.address);
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
-            con.kick(Strings.format("[accent]You were recently kicked from this server. Wait [cyan]@:@[accent].",
-                            remain.toMinutes(), remain.toSecondsPart()),
-                    0);
+            con.kick(format("kick.recently-kicked", packet.locale, remain.toMinutes(), remain.toSecondsPart()), 0);
             return;
         }
         if (!netServer.admins.isAdmin(uuid, packet.usid) && config.playerLimit > 0 && Groups.player.size() >= config.getNoAdminPlayerLimit()) {
