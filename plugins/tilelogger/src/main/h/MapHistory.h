@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
-#include <algorithm>
-#include <numeric>
+#include <chrono>
 
 #include "TileHistory.h"
 #include "Cache.h"
@@ -100,13 +99,13 @@ public:
     size_t MemoryUsage(size_t id) const {
         switch (id) {
         case 0:
-            return tiles_.size() * sizeof tiles_[0] 
-                + std::reduce(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
+            return tiles_.size() * sizeof(tiles_[0])
+                + std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
                     return a + b.Size();
                 });
         case 1:
-            return tiles_.capacity() * sizeof tiles_[0] 
-                + std::reduce(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
+            return tiles_.capacity() * sizeof(tiles_[0])
+                + std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
                     return a + b.Capacity();
                 });
         case 2:

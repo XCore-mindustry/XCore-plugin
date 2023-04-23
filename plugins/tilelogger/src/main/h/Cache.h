@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
+#include <stddef.h>
+#include <numeric>
 
 template<class Data, class Id>
 class Cache {
@@ -23,16 +25,16 @@ public:
     }
     
     size_t Size() const noexcept {
-        return data_.size() * sizeof data_[0]
-            + std::reduce(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const Data, Id>& b){
-                return a + b.first.size() * sizeof b.first[0] + sizeof Id;
+        return data_.size() * sizeof(data_[0])
+            + std::accumulate(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const Data, Id>& b){
+                return a + b.first.size() * sizeof(b.first[0]) + sizeof(Id);
             });
     }
 
     size_t Capacity() const noexcept {
-        return data_.capacity() * sizeof data_[0]
-            + std::reduce(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const Data, Id>& b){
-                return a + b.first.capacity() * sizeof b.first[0] + sizeof Id;
+        return data_.capacity() * sizeof(data_[0])
+            + std::accumulate(ids_.begin(), ids_.end(), 0ull, [](size_t a, const std::pair<const Data, Id>& b){
+                return a + b.first.capacity() * sizeof(b.first[0]) + sizeof(Id);
             });
     }
 

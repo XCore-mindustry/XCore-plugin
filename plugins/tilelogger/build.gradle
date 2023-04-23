@@ -1,5 +1,5 @@
 plugins {
-    id 'cpp-library'
+    id 'cpp'
     id 'java'
 }
 
@@ -26,27 +26,62 @@ dependencies{
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
 }
 
-tasks.withType(CppCompile).configureEach {
-    dependsOn jar
-
-    includes "${project.projectDir}/src/main/h"
-    includes "${project.buildDir}/generated/sources/headers/java/main"
-    includes "${System.properties['java.home']}/include"
-
-    OperatingSystem os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem;
-    if (os.isLinux()) {
-        includes "${System.properties['java.home']}/include/linux"
-        compilerArgs.add '-std=c++20'
-    } else if (os.isWindows()) {
-        includes "${System.properties['java.home']}/include/win32"
-        compilerArgs.add '/std:c++20'
-        compilerArgs.add '/EHsc'
-        compilerArgs.add '/W4'
-        compilerArgs.add '/WX'
+model {
+    platforms {
+        aarch64 {
+            architecture "aarch64"
+        }
+        x64 {
+            architecture "x86_64"
+        }
+    }
+    toolChains {
+        gcc(Gcc) {
+            path '/usr/bin'
+            target("aarch64") {
+                cCompiler.executable "aarch64-linux-gnu-gcc"
+                cppCompiler.executable "aarch64-linux-gnu-g++"
+                linker.executable "aarch64-linux-gnu-g++"
+                assembler.executable "aarch64-linux-gnu-as"
+                staticLibArchiver.executable "aarch64-linux-gnu-ar"
+            }
+        }
+        VisualCpp(VisualCpp) {}
+    }
+    components {
+        TileLogger(NativeLibrarySpec) {
+            OperatingSystem os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem;
+            if (os.isWindows()) {
+                targetPlatform "x64"
+            } else if (os.isLinux()) {
+                targetPlatform "aarch64"
+            }
+            sources.cpp.source.srcDir "src/main/cpp"
+            binaries.all {
+                cppCompiler.args "-I${project.projectDir}/src/main/h"
+                cppCompiler.args "-I${project.buildDir}/generated/sources/headers/java/main"
+                cppCompiler.args "-I${System.properties['java.home']}/include"
+                if (toolChain in Gcc) {
+                    cppCompiler.args "-I${System.properties['java.home']}/include/linux"
+                    cppCompiler.args '-std=c++20'
+                    cppCompiler.args '-O3'
+                    cppCompiler.args '-DNDEBUG'
+                    cppCompiler.args '-s'
+                    cppCompiler.args '-Wall'
+                }
+                if (toolChain in VisualCpp) {
+                    cppCompiler.args "-I${System.properties['java.home']}/include/win32"
+                    cppCompiler.args '/std:c++20'
+                    cppCompiler.args '/EHsc'
+                    cppCompiler.args '/W4'
+                    cppCompiler.args '/WX'
+                }
+            }
+        }
     }
 }
 
-jar{
+jar {
     archiveFileName = "${project.archivesBaseName}.jar"
     from{
         configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}

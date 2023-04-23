@@ -6,7 +6,7 @@
 	  {
 		"label": "build",
 		"type": "shell",
-		"command": ".\\gradlew build",
+		"command": ".\\gradlew jar; .\\gradlew TileLoggerSharedLibrary",
 		"group": {
 		  "kind": "build",
 		  "isDefault": true

@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <chrono>
 #include <optional>
 #include "TileState.h"
 
@@ -41,11 +40,11 @@ public:
     }
 
     size_t Size() const noexcept {
-        return states_.size() * sizeof states_[0];
+        return states_.size() * sizeof(states_[0]);
     }
 
     size_t Capacity() const noexcept {
-        return states_.capacity() * sizeof states_[0];
+        return states_.capacity() * sizeof(states_[0]);
     }
 
 private:
