@@ -1,0 +1,58 @@
+plugins {
+    id 'cpp-library'
+    id 'java'
+}
+
+version '1.0'
+
+sourceCompatibility = 1.17
+
+sourceSets.main.java.srcDirs = ["src"]
+
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
+
+repositories{
+    mavenCentral()
+    maven{ url 'https://www.jitpack.io' }
+}
+
+ext{
+    mindustryVersion = 'v143'
+}
+
+dependencies{
+    compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
+    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
+}
+
+tasks.withType(CppCompile).configureEach {
+    dependsOn jar
+
+    includes "${project.projectDir}/src/main/h"
+    includes "${project.buildDir}/generated/sources/headers/java/main"
+    includes "${System.properties['java.home']}/include"
+
+    OperatingSystem os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem;
+    if (os.isLinux()) {
+        includes "${System.properties['java.home']}/include/linux"
+        compilerArgs.add '-std=c++20'
+    } else if (os.isWindows()) {
+        includes "${System.properties['java.home']}/include/win32"
+        compilerArgs.add '/std:c++20'
+        compilerArgs.add '/EHsc'
+        compilerArgs.add '/W4'
+        compilerArgs.add '/WX'
+    }
+}
+
+jar{
+    archiveFileName = "${project.archivesBaseName}.jar"
+    from{
+        configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+    }
+
+    from(rootDir){
+        include "plugin.json"
+    }
+}

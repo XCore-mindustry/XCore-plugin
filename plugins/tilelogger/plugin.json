@@ -1,0 +1,7 @@
+{
+  "name": "TileLogger",
+  "author": "Горыныч#3545",
+  "main": "main.java.TileLoggerPlugin",
+  "description": "Mindustry plugin for recording tile history and rollback actions.",
+  "version": 1.0
+}
