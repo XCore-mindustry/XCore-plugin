@@ -75,6 +75,8 @@ model {
                     cppCompiler.args '/EHsc'
                     cppCompiler.args '/W4'
                     cppCompiler.args '/WX'
+                    cppCompiler.args '/Zi'
+                    linker.args '/DEBUG'
                 }
             }
         }
