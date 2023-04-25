@@ -194,7 +194,7 @@ public class TileLogger {
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
-        Call.sendMessage(String.format(initiator == null ? "Server" : initiator.coloredName() + "[white] initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
+        Call.sendMessage(String.format((initiator == null ? "Server" : initiator.coloredName()) + "[white] initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
             target != null ? target.coloredName() : "@all", time, x1, y1, x2, y2, tiles.length));
     }
     
