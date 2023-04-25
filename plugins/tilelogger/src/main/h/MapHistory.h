@@ -99,22 +99,24 @@ public:
     size_t MemoryUsage(size_t id) const {
         switch (id) {
         case 0:
-            return tiles_.size() * sizeof(tiles_[0])
-                + std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
+            return tiles_.size() * sizeof(tiles_[0]);
+        case 1:
+            return tiles_.capacity() * sizeof(tiles_[0]);
+        case 2:
+            return std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
                     return a + b.Size();
                 });
-        case 1:
-            return tiles_.capacity() * sizeof(tiles_[0])
-                + std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
+        case 3:
+            return std::accumulate(tiles_.begin(), tiles_.end(), 0ull, [](size_t a, const TileHistory& b){
                     return a + b.Capacity();
                 });
-        case 2:
-            return players_.Size();
-        case 3:
-            return players_.Capacity();
         case 4:
-            return configs_.Size();
+            return players_.Size();
         case 5:
+            return players_.Capacity();
+        case 6:
+            return configs_.Size();
+        case 7:
             return configs_.Capacity();
         default:
             return 0;
