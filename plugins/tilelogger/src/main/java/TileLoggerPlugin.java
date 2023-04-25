@@ -60,7 +60,7 @@ public class TileLoggerPlugin extends Plugin{
 
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("tl", "", "Shows general info.", (args, player) -> {
+        handler.<Player>register("tilelogger", "", "Shows general info.", (args, player) -> {
             TileLogger.showInfo(player);
         });
 
