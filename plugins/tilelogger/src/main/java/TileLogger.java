@@ -177,7 +177,7 @@ public class TileLogger {
         y = (short)tile.centerY();
         String str = String.format("Tile %d, %d history %d:", x, y, duration());
         for (TileState state : getHistory(x, y, size)) {
-            str += "\n    " + (state.player() == null ? "@" + state.team() : state.player().coloredName()) + " "
+            str += "\n    " + (state.player() == null ? "@" + state.team() : state.player().coloredName()) + "[white] "
                 + state.time + " " + state.blockEmoji() + " " + state.rotation() + " " + state.getConfigAsString();
         }
         player.sendMessage(str);
@@ -185,8 +185,8 @@ public class TileLogger {
 
     public static List<Block> blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
 
-    public static void rollback(String initiator, @Nullable Player player, int time, short x1, short y1, short x2, short y2) {
-        TileState[] tiles = rollback(x1, y1, x2, y2, player == null ? "" : player.uuid(), time, true);
+    public static void rollback(@Nullable Player initiator, @Nullable Player target, int time, short x1, short y1, short x2, short y2) {
+        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.uuid(), time, true);
         for (TileState state : tiles) {
             if (blacklist.contains(Vars.content.block(state.block))) continue;
             if (blacklist.contains(state.tile().block())) continue;
@@ -194,8 +194,8 @@ public class TileLogger {
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
-        Call.sendMessage(String.format(initiator + " initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
-            player != null ? player.coloredName() : "@all", time, x1, y1, x2, y2, tiles.length));
+        Call.sendMessage(String.format(initiator == null ? "Server" : initiator.coloredName() + "[white] initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
+            target != null ? target.coloredName() : "@all", time, x1, y1, x2, y2, tiles.length));
     }
     
     public static void reset() {

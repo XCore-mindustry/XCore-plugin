@@ -87,7 +87,10 @@ public class TileLoggerPlugin extends Plugin{
         });
 
         handler.<Player>register("rollback", "<uuid> [time] [x1] [y1] [x2] [y2]", "Rolls back tiles.", (args, player) -> {
-            if (!player.admin) return;
+            if (!player.admin) {
+                player.sendMessage("Access denied.");
+                return;
+            }
             try {
                 short x1 = 0, y1 = 0, x2 = (short)(Vars.world.width() - 1), y2 = (short)(Vars.world.height() - 1);
                 int time = args.length > 1 ? Integer.parseInt(args[1]) : 0;
@@ -111,7 +114,7 @@ public class TileLoggerPlugin extends Plugin{
                     player.sendMessage("Player not found.");
                     return;
                 }
-                TileLogger.rollback(player.coloredName(), target, time, x1, y1, x2, y2);
+                TileLogger.rollback(player, target, time, x1, y1, x2, y2);
             }
             catch (NumberFormatException e) {
                 player.sendMessage("Failed to parse parameters.");
