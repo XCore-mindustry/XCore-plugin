@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -183,11 +184,11 @@ public class TileLogger {
         if (tile == null) return;
         x = (short)tile.centerX();
         y = (short)tile.centerY();
-        String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).toString());
+        String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, size)) {
             Object rotation = state.rotationAsString();
             str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + "[white] "
-                + LocalTime.MIN.plusSeconds(state.time).toString() + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
+                + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         player.sendMessage(str);
     }
