@@ -211,6 +211,15 @@ public class ClientCommands {
                 return;
             }
 
+            if(found.admin){
+                player.kick(Bundle.get("error.player-admin",player),5*60*1000);
+            }
+
+            if(found.team() != player.team()){
+                bundled(player, "error.player-not-teammate");
+                return;
+            }
+
             voteKick = new VoteKick(player, found);
             voteKick.vote(player, 1);
         });
