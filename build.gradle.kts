@@ -7,7 +7,7 @@ import fr.xpdustry.toxopid.task.MindustryExec
 plugins {
     java
     id("fr.xpdustry.toxopid") version "3.0.0"
-}
+} 
 
 group = "org.xcore.plugin"
 version = "2.6.3"
