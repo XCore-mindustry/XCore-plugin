@@ -2,6 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.Events;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Timer;
 import mindustry.game.EventType;
@@ -18,44 +19,31 @@ import static useful.Bundle.sendToChat;
 
 public class MiniPvP {
     public static ObjectMap<String, Team> teams = new ObjectMap<>();
-
-    public static boolean closed = false;
+    public static Seq<String> defeatedPlayers = new Seq<>();
 
     public static void init() {
         if (!config.isMiniPvP()) return;
         Utils.showLeaderboard(Utils::getPvPLeaderboard);
 
-        Timer.schedule(() -> {
-            if (Groups.player.size() < 4) {
-                closed = false;
-                return;
-            }
-            if (!closed) sendToChat("pvp.server-closed");
-            closed = true;
-        }, 120, 120);
-
         Events.on(EventType.PlayEvent.class, e -> {
-            closed = false;
             teams.clear();
+            defeatedPlayers.clear();
         });
-
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             Team team = teams.get(e.player.uuid());
+
+            if (defeatedPlayers.contains(e.player.uuid())) {
+                e.player.team(Team.derelict);
+                bundled(e.player, "pvp.you-spectator");
+                return;
+            }
 
             if (team != null) {
                 e.player.team(team);
                 return;
             }
 
-            if (!closed) {
-                var t = netServer.assignTeam(e.player);
-                e.player.team(t);
-                teams.put(e.player.uuid(), t);
-                return;
-            }
-
-            e.player.team(Team.derelict);
-            bundled(e.player, "pvp.you-spectator");
+            e.player.team(netServer.assignTeam(e.player));
         });
 
         Events.on(EventType.GameOverEvent.class, e -> {
@@ -80,6 +68,8 @@ public class MiniPvP {
             if (event.tile.block() instanceof CoreBlock) {
                 if (team != Team.derelict && team.cores().size <= 1) {
                     team.data().players.each(p -> {
+                        defeatedPlayers.add(p.uuid());
+
                         var data = Database.getCached(p.uuid());
 
                         int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);
