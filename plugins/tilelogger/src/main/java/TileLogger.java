@@ -93,21 +93,27 @@ public class TileLogger {
             }
         }
 
+        public Block block() {
+            return Vars.content.block(block);
+        }
+
         public char blockEmoji() {
             try {
-                return Reflect.get(Iconc.class, Strings.kebabToCamel(Vars.content.block(block).getContentType().name() + "-" + Vars.content.block(block).name));
+                return Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + Vars.content.block(block).name));
             } catch (Exception e) {
                 return 'X';
             }
         }
 
-        public char rotation() {
+        public String rotation() {
+            if (!block().rotate)
+                return "";
             switch (rotation) {
-                case 0: return '';
-                case 1: return '';
-                case 2: return '';
-                case 3: return '';
-                default: return '?';
+                case 0: return "";
+                case 1: return "";
+                case 2: return "";
+                case 3: return "";
+                default: return "?";
             }
         }
     }
