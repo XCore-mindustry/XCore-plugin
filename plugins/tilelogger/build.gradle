@@ -56,13 +56,16 @@ model {
             } else if (os.isLinux()) {
                 targetPlatform "aarch64"
             }
-            sources.cpp.source.srcDir "src/main/cpp"
+            sources.cpp {
+                source.srcDir "src/main/cpp"
+                exportedHeaders.srcDirs "${project.projectDir}/src/main/h"
+                exportedHeaders.srcDirs "${project.buildDir}/generated/sources/headers/java/main"
+                exportedHeaders.srcDirs "${System.properties['java.home']}/include"
+                exportedHeaders.srcDirs "${System.properties['java.home']}/include/linux"
+                exportedHeaders.srcDirs "${System.properties['java.home']}/include/win32"
+            }
             binaries.all {
-                cppCompiler.args "-I${project.projectDir}/src/main/h"
-                cppCompiler.args "-I${project.buildDir}/generated/sources/headers/java/main"
-                cppCompiler.args "-I${System.properties['java.home']}/include"
                 if (toolChain in Gcc) {
-                    cppCompiler.args "-I${System.properties['java.home']}/include/linux"
                     cppCompiler.args '-std=c++20'
                     cppCompiler.args '-O3'
                     cppCompiler.args '-DNDEBUG'
@@ -70,7 +73,6 @@ model {
                     cppCompiler.args '-Wall'
                 }
                 if (toolChain in VisualCpp) {
-                    cppCompiler.args "-I${System.properties['java.home']}/include/win32"
                     cppCompiler.args '/std:c++20'
                     cppCompiler.args '/EHsc'
                     cppCompiler.args '/W4'
