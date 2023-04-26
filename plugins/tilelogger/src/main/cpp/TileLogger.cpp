@@ -5,8 +5,8 @@
 
 static MapHistory g_map_history;
 
-JNIEXPORT void JNICALL Java_main_java_TileLogger_reset (JNIEnv*, jclass, jshort width, jshort height) {
-    g_map_history.Reset(width, height);
+JNIEXPORT jlong JNICALL Java_main_java_TileLogger_reset (JNIEnv*, jclass, jshort width, jshort height) {
+    return g_map_history.Reset(width, height);
 }
 
 JNIEXPORT jshort JNICALL Java_main_java_TileLogger_duration (JNIEnv*, jclass) {

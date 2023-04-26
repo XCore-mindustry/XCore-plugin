@@ -3,6 +3,7 @@ package main.java;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,6 +21,9 @@ import mindustry.world.*;
 
 public class TileLogger {
     public static String version = "1.0";
+
+    public static List<Block> rollback_blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
+
     static {
         System.loadLibrary("TileLogger");
     }
@@ -70,7 +74,7 @@ public class TileLogger {
                     str += p.toString() + " ";
                 return str;
             }
-            return obj + "";
+            return obj == null ? "" : obj + "";
         }
 
         public Tile tile() {
@@ -99,10 +103,10 @@ public class TileLogger {
 
         public char rotation() {
             switch (rotation) {
-                case 0: return 'R';
-                case 1: return 'U';
-                case 2: return 'L';
-                case 3: return 'D';
+                case 0: return '';
+                case 1: return '';
+                case 2: return '';
+                case 3: return '';
                 default: return '?';
             }
         }
@@ -175,21 +179,20 @@ public class TileLogger {
         if (tile == null) return;
         x = (short)tile.centerX();
         y = (short)tile.centerY();
-        String str = String.format("Tile %d, %d history %d:", x, y, duration());
+        String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).toString());
         for (TileState state : getHistory(x, y, size)) {
             str += "\n    " + (state.player() == null ? "@" + state.team() : state.player().coloredName()) + "[white] "
-                + state.time + " " + state.blockEmoji() + " " + state.rotation() + " " + state.getConfigAsString();
+                + LocalTime.MIN.plusSeconds(state.time).toString() + " " + state.blockEmoji() + " " + state.rotation() + " " + state.getConfigAsString();
         }
         player.sendMessage(str);
     }
 
-    public static List<Block> blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
 
     public static void rollback(@Nullable Player initiator, @Nullable Player target, int time, short x1, short y1, short x2, short y2) {
         TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.uuid(), time, true);
         for (TileState state : tiles) {
-            if (blacklist.contains(Vars.content.block(state.block))) continue;
-            if (blacklist.contains(state.tile().block())) continue;
+            if (rollback_blacklist.contains(Vars.content.block(state.block))) continue;
+            if (rollback_blacklist.contains(state.tile().block())) continue;
             Call.setTile(state.tile(), Vars.content.block(state.block), state.player() == null ? state.team() : state.player().team(), state.rotation);
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
@@ -219,7 +222,7 @@ public class TileLogger {
         player.sendMessage(str);
     }
     
-    private static native void reset(short width, short height);
+    private static native long reset(short width, short height);
     private static native short duration();
     private static native void onAction(short x, short y, String uuid, short block, short rotation, short config_type, byte[] config);
     private static native void onAction(short x, short y, String uuid, short block, short rotation, short config_type, int config);
