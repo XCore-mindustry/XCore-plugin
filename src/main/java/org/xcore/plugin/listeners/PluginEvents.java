@@ -16,8 +16,6 @@ import mindustry.io.JsonIO;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
-import org.xcore.plugin.modules.history.History;
-import org.xcore.plugin.modules.history.HistoryEntry;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
@@ -128,8 +126,6 @@ public class PluginEvents {
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false));
         });
 
-        Events.on(EventType.WorldLoadEvent.class, event -> History.clear());
-
         Events.on(GameOverEvent.class, event -> {
             String message = null;
             if (state.rules.waves) {
@@ -142,42 +138,6 @@ public class PluginEvents {
 
             JavelinCommunicator.sendEvent(
                     new SocketEvents.ServerActionEvent(message, config.server));
-        });
-
-        Events.on(EventType.ConfigEvent.class, event -> {
-            if (History.enabled() && event.player != null)
-                History.put(new HistoryEntry(event), event.tile.tile);
-        });
-
-        Events.on(EventType.BlockBuildEndEvent.class, event -> {
-            if (!event.unit.isPlayer()) return;
-
-            if (History.enabled() && event.tile.build != null)
-                History.put(new HistoryEntry(event), event.tile);
-        });
-
-        Events.on(EventType.TapEvent.class, event -> {
-            if (!History.enabled() || event.tile == null) return;
-
-            var data = Database.getCached(event.player.uuid());
-
-            if (data.adminMod && !event.player.con.mobile) {
-                Call.clientPacketUnreliable(event.player.con, "take_history_info",
-                        JsonIO.write(new History.TransportableHistoryStack(event.tile)));
-                return;
-            }
-
-            if (!data.history) return;
-
-            var stack = History.get(event.tile.array());
-            if (stack == null) return;
-
-            var builder = new StringBuilder();
-
-            if (stack.isEmpty()) builder.append(format("empty", event.player.locale));
-            else stack.each(entry -> builder.append("\n").append(entry.getMessage(event.player)));
-
-            bundled(player, "history.content", event.tile.x, event.tile.y, builder.toString());
         });
     }
 }
