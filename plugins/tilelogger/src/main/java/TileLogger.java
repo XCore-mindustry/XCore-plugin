@@ -105,9 +105,9 @@ public class TileLogger {
             }
         }
 
-        public String rotation() {
+        public Object rotationAsString() {
             if (!block().rotate)
-                return "";
+                return null;
             switch (rotation) {
                 case 0: return "";
                 case 1: return "";
@@ -187,8 +187,9 @@ public class TileLogger {
         y = (short)tile.centerY();
         String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).toString());
         for (TileState state : getHistory(x, y, size)) {
+            Object rotation = state.rotationAsString();
             str += "\n    " + (state.player() == null ? "@" + state.team() : state.player().coloredName()) + "[white] "
-                + LocalTime.MIN.plusSeconds(state.time).toString() + " " + state.blockEmoji() + " " + state.rotation() + " " + state.getConfigAsString();
+                + LocalTime.MIN.plusSeconds(state.time).toString() + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         player.sendMessage(str);
     }
