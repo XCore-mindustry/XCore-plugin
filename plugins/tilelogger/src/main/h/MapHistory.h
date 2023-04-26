@@ -56,13 +56,13 @@ public:
     }
 
     template<class T>
-    void Record(pos_t_ x, pos_t_ y, const std::string& uuid, block_t_ block, rotation_t_ rotation, config_type_t_ config_type, const T& config) {
+    void Record(pos_t_ x, pos_t_ y, const std::string& uuid, team_t_ team, block_t_ block, rotation_t_ rotation, config_type_t_ config_type, const T& config) {
         config_t_ config_id;
         if constexpr (std::is_same_v<T, ConfigData>)
             config_id = configs_[config];
         else
             config_id = config;
-        Tile(x, y).Record(TileState(players_[uuid], Duration(), block, rotation, config_type, config_id));
+        Tile(x, y).Record(TileState(players_[uuid], team, Duration(), block, rotation, config_type, config_id));
     }
 
     void ClampPos(pos_t_& x, pos_t_& y) const {
@@ -75,7 +75,7 @@ public:
         return Tile(x, y).Last(size);
     }
 
-    std::vector<TileStateXY> Rollback(pos_t_ x1, pos_t_ y1, pos_t_ x2, pos_t_ y2, const std::string& uuid, int time, bool erase) {
+    std::vector<TileStateXY> Rollback(pos_t_ x1, pos_t_ y1, pos_t_ x2, pos_t_ y2, const std::string& uuid, int teams, int time, bool erase) {
         ClampPos(x1, y1);
         ClampPos(x2, y2);
         std::vector<TileStateXY> states_remove;
@@ -88,7 +88,7 @@ public:
         time = std::clamp(time, 0, 0xffff);
         for (pos_t_ x = x1; x <= x2; x++) {
             for (pos_t_ y = y1; y <= y2; y++) {
-                if (const std::optional<TileState>& state = Tile(x, y).Rollback(player, static_cast<time_t_>(time), erase))
+                if (const std::optional<TileState>& state = Tile(x, y).Rollback(player, teams, static_cast<time_t_>(time), erase))
                     (state->block ? states_add : states_remove).emplace_back(*state, x, y);
             }
         }

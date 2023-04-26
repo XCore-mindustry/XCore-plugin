@@ -16,6 +16,7 @@ import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
 import mindustry.game.Team;
 import mindustry.gen.*;
+import mindustry.net.Administration.PlayerInfo;
 import mindustry.type.Item;
 import mindustry.world.*;
 
@@ -29,10 +30,11 @@ public class TileLogger {
     }
     
     private static class TileState {
-        public short x;
-        public short y;
+        public short x; // value is undefined if returned by getHistory()
+        public short y; // value is undefined if returned by getHistory()
 
         public String uuid;
+        public byte team;
         public short time;
         public short block;
         public short rotation;
@@ -81,16 +83,12 @@ public class TileLogger {
             return Vars.world.tile(x, y);
         }
 
-        public Player player() {
-            return Groups.player.find(p -> p.uuid().equals(uuid));
+        public PlayerInfo playerInfo() {
+            return Vars.netServer.admins.getInfoOptional(uuid);
         }
 
         public Team team() {
-            try {
-                return Team.get(Integer.parseInt(uuid));
-            } catch(NumberFormatException ex) {
-                return Team.derelict;
-            }
+            return Team.all[team];
         }
 
         public Block block() {
@@ -157,27 +155,27 @@ public class TileLogger {
         }
     }
 
-    public static @Nullable Player unitToPlayer(@Nullable Unit unit) {
+    public static @Nullable PlayerInfo unitToPlayerInfo(@Nullable Unit unit) {
         if (unit == null) return null;
         if (unit.controller() instanceof LogicAI logic_ai) {
             TileState[] history = TileLogger.getHistory(logic_ai.controller.tile.x, logic_ai.controller.tile.y,1);
-            return history.length > 0 ? history[0].player() : null;
+            return history.length > 0 ? history[0].playerInfo() : null;
         }
-        return unit.getPlayer();
+        return unit.getPlayer().getInfo();
     }
 
-    public static void build(Tile tile, @Nullable Player player) {
+    public static void build(Tile tile, @Nullable PlayerInfo player_info) {
         if (tile.build == null) return; // rollback recursion
-        String uuid = player == null ? tile.team().id + "" : player.uuid();
+        String uuid = player_info == null ? "" : player_info.id;
         ConfigWrapper wrapper = new ConfigWrapper(tile.build.config());
         if (wrapper.config instanceof Integer integer)
-            onAction(tile.x, tile.y, uuid, tile.blockID(), (short)tile.build.rotation, wrapper.config_type, integer);
+            onAction(tile.x, tile.y, uuid, (short)tile.team().id, tile.blockID(), (short)tile.build.rotation, wrapper.config_type, integer);
         else if (wrapper.config instanceof byte[] bytes)
-            onAction(tile.x, tile.y, uuid, tile.blockID(), (short)tile.build.rotation, wrapper.config_type, bytes);
+            onAction2(tile.x, tile.y, uuid, (short)tile.team().id, tile.blockID(), (short)tile.build.rotation, wrapper.config_type, bytes);
     }
 
-    public static void destroy(Tile tile, @Nullable Player player) {
-        onAction(tile.x, tile.y, player == null ? tile.team().id + "" : player.uuid(), (short)0, (short)0, (short)0, 0);
+    public static void destroy(Tile tile, @Nullable PlayerInfo player_info) {
+        onAction(tile.x, tile.y, player_info == null ? "" : player_info.id, (short)tile.team().id, (short)0, (short)0, (short)0, 0);
     }
 
     public static void showHistory(short x, short y, long size, Player player) {
@@ -188,24 +186,24 @@ public class TileLogger {
         String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).toString());
         for (TileState state : getHistory(x, y, size)) {
             Object rotation = state.rotationAsString();
-            str += "\n    " + (state.player() == null ? "@" + state.team() : state.player().coloredName()) + "[white] "
+            str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + "[white] "
                 + LocalTime.MIN.plusSeconds(state.time).toString() + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         player.sendMessage(str);
     }
 
 
-    public static void rollback(@Nullable Player initiator, @Nullable Player target, int time, short x1, short y1, short x2, short y2) {
-        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.uuid(), time, true);
+    public static void rollback(@Nullable Player initiator, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2) {
+        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, true);
         for (TileState state : tiles) {
             if (rollback_blacklist.contains(Vars.content.block(state.block))) continue;
             if (rollback_blacklist.contains(state.tile().block())) continue;
-            Call.setTile(state.tile(), Vars.content.block(state.block), state.player() == null ? state.team() : state.player().team(), state.rotation);
+            Call.setTile(state.tile(), Vars.content.block(state.block), state.team(), state.rotation);
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
         Call.sendMessage(String.format((initiator == null ? "Server" : initiator.coloredName()) + "[white] initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
-            target != null ? target.coloredName() : "@all", time, x1, y1, x2, y2, tiles.length));
+            target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
     }
     
     public static void reset() {
@@ -231,9 +229,9 @@ public class TileLogger {
     
     private static native long reset(short width, short height);
     private static native short duration();
-    private static native void onAction(short x, short y, String uuid, short block, short rotation, short config_type, byte[] config);
-    private static native void onAction(short x, short y, String uuid, short block, short rotation, short config_type, int config);
+    private static native void onAction(short x, short y, String uuid, short team, short block, short rotation, short config_type, int config);
+    private static native void onAction2(short x, short y, String uuid, short team, short block, short rotation, short config_type, byte[] config);
     private static native TileState[] getHistory(short x, short y, long size);
-    private static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int time, boolean erase);
+    private static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int teams, int time, boolean erase);
     private static native long memoryUsage(long id);
 }

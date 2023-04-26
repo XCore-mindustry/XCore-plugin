@@ -18,13 +18,15 @@ public:
         return std::vector<TileState>(states_.end() - last, states_.end());
     }
 
-    std::optional<TileState> Rollback(const std::optional<player_t_>& player, time_t_ time, bool erase) {
+    std::optional<TileState> Rollback(const std::optional<player_t_>& player, int teams, time_t_ time, bool erase) {
         if (states_.empty())
             return std::nullopt; // nothing to rollback
         if (player && *player != states_.rbegin()->player)
             return std::nullopt; // the last change was not made by this player
         if (time >= states_.rbegin()->time)
             return std::nullopt; // the last change was made too long ago
+        if (!(1 << states_.rbegin()->team & teams))
+            return std::nullopt; // team ignored
 
         for(auto it = states_.rbegin(); it != states_.rend(); it++) {
             if (player && *player != it->player || time >= it->time) {

@@ -3,7 +3,8 @@
 
 #pragma pack(push, 2)
 struct TileState {
-    uint16_t player = 0;
+    uint16_t player : 13 = 0;
+    uint16_t team : 3 = 0;
     uint16_t time = 0;
     uint16_t block : 11 = 0;
     uint16_t rotation : 2 = 0;
@@ -11,12 +12,12 @@ struct TileState {
     uint32_t config = 0;
 
     TileState() = default;
-    TileState(uint16_t player, uint16_t time, uint16_t block, uint16_t rotation, uint16_t config_type, uint32_t config)
-        : player(player), time(time), block(block), rotation(rotation), config_type(config_type), config(config) {}
+    TileState(uint16_t player, uint16_t team, uint16_t time, uint16_t block, uint16_t rotation, uint16_t config_type, uint32_t config)
+        : player(player), team(team), time(time), block(block), rotation(rotation), config_type(config_type), config(config) {}
 
     bool operator==(const TileState& o) const = delete;
     bool BlockRotationConfigEquals(const TileState& o) const {
-        return block == o.block && rotation == o.rotation && config_type == o.config_type && config == o.config;
+        return team == o.team && block == o.block && rotation == o.rotation && config_type == o.config_type && config == o.config;
     }
 };
 
@@ -35,6 +36,7 @@ static_assert(sizeof(TileState) == 10);
 #define TILESTATE_H_GEN_TYPE_ALIAS(name) \
     using name##_t_ = decltype(TileState::name);
 TILESTATE_H_GEN_TYPE_ALIAS(player);
+TILESTATE_H_GEN_TYPE_ALIAS(team);
 TILESTATE_H_GEN_TYPE_ALIAS(time);
 TILESTATE_H_GEN_TYPE_ALIAS(block);
 TILESTATE_H_GEN_TYPE_ALIAS(rotation);

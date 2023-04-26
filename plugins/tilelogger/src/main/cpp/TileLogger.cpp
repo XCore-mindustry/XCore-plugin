@@ -13,20 +13,20 @@ JNIEXPORT jshort JNICALL Java_main_java_TileLogger_duration (JNIEnv*, jclass) {
     return g_map_history.Duration();
 }
 
-JNIEXPORT void JNICALL Java_main_java_TileLogger_onAction__SSLjava_lang_String_2SSS_3B (JNIEnv* env, jclass, 
-    jshort x, jshort y, jstring juuid, jshort block, jshort rotation, jshort config_type, jbyteArray jconfig) {
+JNIEXPORT void JNICALL Java_main_java_TileLogger_onAction (JNIEnv* env, jclass,
+    jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jint config) {
+
+    std::string uuid = env->GetStringUTFChars(juuid, NULL);
+    g_map_history.Record(x, y, uuid, team, block, rotation, config_type, config);
+}
+
+JNIEXPORT void JNICALL Java_main_java_TileLogger_onAction2 (JNIEnv* env, jclass, 
+    jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jbyteArray jconfig) {
         
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
     std::byte* jconfig_ptr = reinterpret_cast<std::byte*>(env->GetByteArrayElements(jconfig, NULL));
     jsize jconfig_len = env->GetArrayLength(jconfig);
-    g_map_history.Record(x, y, uuid, block, rotation, config_type, ConfigData(jconfig_ptr, jconfig_ptr + jconfig_len));
-}
-
-JNIEXPORT void JNICALL Java_main_java_TileLogger_onAction__SSLjava_lang_String_2SSSI (JNIEnv* env, jclass,
-    jshort x, jshort y, jstring juuid, jshort block, jshort rotation, jshort config_type, jint config) {
-
-    std::string uuid = env->GetStringUTFChars(juuid, NULL);
-    g_map_history.Record(x, y, uuid, block, rotation, config_type, config);
+    g_map_history.Record(x, y, uuid, team, block, rotation, config_type, ConfigData(jconfig_ptr, jconfig_ptr + jconfig_len));
 }
 
 template<class T>
@@ -35,6 +35,7 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<T> vec) {
     jfieldID x_field = env->GetFieldID(state_class, "x", "S"); assert(x_field != nullptr);
     jfieldID y_field = env->GetFieldID(state_class, "y", "S"); assert(y_field != nullptr);
     jfieldID uuid_field = env->GetFieldID(state_class, "uuid", "Ljava/lang/String;"); assert(uuid_field != nullptr);
+    jfieldID team_field = env->GetFieldID(state_class, "team", "B"); assert(team_field != nullptr);
     jfieldID time_field = env->GetFieldID(state_class, "time", "S"); assert(time_field != nullptr);
     jfieldID block_field = env->GetFieldID(state_class, "block", "S"); assert(block_field != nullptr);
     jfieldID rotation_field = env->GetFieldID(state_class, "rotation", "S"); assert(rotation_field != nullptr);
@@ -52,6 +53,7 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<T> vec) {
             env->SetShortField(state_j, y_field, vec[i].y);
         }
         env->SetObjectField(state_j, uuid_field, env->NewStringUTF(g_map_history.CachePlayer(vec[i].player).c_str()));
+        env->SetByteField(state_j, team_field, vec[i].team);
         env->SetShortField(state_j, time_field, vec[i].time);
         env->SetShortField(state_j, block_field, vec[i].block);
         env->SetShortField(state_j, rotation_field, vec[i].rotation);
@@ -78,10 +80,10 @@ JNIEXPORT jobjectArray JNICALL Java_main_java_TileLogger_getHistory (JNIEnv* env
 }
 
 JNIEXPORT jobjectArray JNICALL Java_main_java_TileLogger_rollback (JNIEnv* env, jclass,
-    jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint time, jboolean erase) {
+    jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jboolean erase) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
-    return MarhalTileStateArray(env, g_map_history.Rollback(x1, y1, x2, y2, uuid, time, erase));
+    return MarhalTileStateArray(env, g_map_history.Rollback(x1, y1, x2, y2, uuid, teams, time, erase));
 }
 
 JNIEXPORT jlong JNICALL Java_main_java_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
