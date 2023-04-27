@@ -22,7 +22,7 @@ public class PlayerData {
     @BsonIgnore
     public boolean adminMod = false;
     @BsonIgnore
-    public boolean history = false;
+    public long historySize = 0L;
     @BsonIgnore
     public boolean exists = true;
 
