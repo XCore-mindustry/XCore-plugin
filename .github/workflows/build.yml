@@ -4,6 +4,7 @@ on: [ push, workflow_dispatch ]
 
 jobs:
   buildJar:
+    permissions: write-all
     runs-on: ubuntu-latest
 
     steps:
