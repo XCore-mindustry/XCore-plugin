@@ -1,5 +1,6 @@
 package org.xcore.plugin.modules.votes;
 
+import arc.func.Cons;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
@@ -11,9 +12,17 @@ import static org.xcore.plugin.PluginVars.*;
 import static useful.Bundle.*;
 
 public class VoteKick extends VoteSession {
+    public static Cons<Player> onKick = (player) -> {
+    };
 
     public final Player starter;
     public final Player target;
+
+    @SuppressWarnings("unused")
+    public static void setOnKick(Cons<Player> onKick) {
+        if (onKick == null) return;
+        VoteKick.onKick = onKick;
+    }
 
     public VoteKick(Player starter, Player target) {
         this.starter = starter;

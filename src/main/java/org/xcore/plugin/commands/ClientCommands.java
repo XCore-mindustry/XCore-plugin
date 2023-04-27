@@ -118,9 +118,12 @@ public class ClientCommands {
         register("history", (args, player) -> {
             var data = Database.getCached(player.uuid());
 
-            data.history = !data.history;
+            if (args.length > 1) {
+                data.historySize = Math.abs(Strings.parseLong(args[0], 0));
+            } else if (data.historySize == 0) data.historySize = 6L;
+            else data.historySize = 0L;
 
-            bundled(player, "commands.history.success", data.history);
+            bundled(player, "commands.history.success", data.historySize);
             Database.setCached(data);
         });
 
