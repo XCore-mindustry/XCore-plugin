@@ -197,7 +197,6 @@ public class TileLogger {
     public static void rollback(@Nullable Player initiator, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2) {
         TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, true);
         for (TileState state : tiles) {
-            if (rollback_blacklist.contains(Vars.content.block(state.block))) continue;
             if (rollback_blacklist.contains(state.tile().block())) continue;
             Call.setTile(state.tile(), Vars.content.block(state.block), state.team(), state.rotation);
             if (state.tile().build != null)
