@@ -63,9 +63,9 @@ public class TileLogger {
         short x = (short) tile.centerX();
         short y = (short) tile.centerY();
 
-        return (TileStatePacket[]) Arrays.stream(getHistory(x, y, size)).map(t ->
+        return Arrays.stream(getHistory(x, y, size)).map(t ->
                 new TileStatePacket(x, y, netServer.admins.getInfoOptional(t.uuid).lastName,
-                        t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString())).toArray();
+                        t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString())).toArray(TileStatePacket[]::new);
     }
 
     public static void showHistory(short x, short y, long size, Player player) {

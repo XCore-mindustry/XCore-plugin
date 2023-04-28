@@ -2,6 +2,7 @@ package main.java;
 
 import arc.Events;
 import arc.util.CommandHandler;
+import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Call;
@@ -10,9 +11,13 @@ import mindustry.gen.RotateBlockCallPacket;
 import mindustry.io.JsonIO;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
+import mindustry.world.Tile;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.models.PlayerData;
+
+import static org.xcore.plugin.commands.ClientCommands.register;
+import static useful.Bundle.bundled;
 
 @SuppressWarnings("unused")
 public class TileLoggerPlugin extends Plugin {
@@ -54,7 +59,7 @@ public class TileLoggerPlugin extends Plugin {
 
             PlayerData data = Database.getCached(event.player.uuid());
 
-            if (data.adminMod && !event.player.con.mobile) {
+            if (data.historySize <= 0 && data.adminMod && !event.player.con.mobile) {
                 Call.clientPacketUnreliable("take_history_infov2",
                         JsonIO.write(TileLogger.getTileStatePacket(event.tile, 100L)));
                 return;
@@ -68,8 +73,28 @@ public class TileLoggerPlugin extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        handler.<Player>register("tilelogger", "", "Shows general info.", (args, player) ->
+        register("tilelogger", (args, player) ->
                 TileLogger.showInfo(player));
+        register("history", (args, player) -> {
+            var data = Database.getCached(player.uuid());
+
+            if (args.length == 3) {
+                long size = Math.abs(Strings.parseLong(args[0], 0));
+                short x = Short.parseShort(args[1]);
+                short y = Short.parseShort(args[2]);
+
+                TileLogger.showHistory(x, y, size, player);
+                return;
+            }
+
+            if (args.length > 0) {
+                data.historySize = Math.abs(Strings.parseLong(args[0], 0));
+            } else if (data.historySize == 0) data.historySize = 6L;
+            else data.historySize = 0L;
+
+            bundled(player, "commands.history.success", data.historySize);
+            Database.setCached(data);
+        });
 
 //        handler.<Player>register("history", "<size> [x] [y]", "Shows tile history.", (args, player) -> {
 //            try {
