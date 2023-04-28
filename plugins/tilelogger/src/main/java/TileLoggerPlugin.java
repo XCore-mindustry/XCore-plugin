@@ -23,7 +23,9 @@ import static useful.Bundle.bundled;
 public class TileLoggerPlugin extends Plugin {
     @Override
     public void init() {
-        VoteKick.setOnKick(player -> {/*TODO: rollback on kick */});
+        VoteKick.setOnKick(player -> {
+            TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1);
+        });
 
         Events.on(EventType.BlockBuildBeginEvent.class, event -> event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) ->
                 TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit))));
@@ -66,7 +68,7 @@ public class TileLoggerPlugin extends Plugin {
             }
 
             if (data.historySize > 0) {
-                TileLogger.showHistory(event.tile.x, event.tile.y, data.historySize, event.player);
+                TileLogger.showHistory((short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize, event.player);
             }
         });
     }
@@ -76,47 +78,35 @@ public class TileLoggerPlugin extends Plugin {
         register("tilelogger", (args, player) ->
                 TileLogger.showInfo(player));
         register("history", (args, player) -> {
-            var data = Database.getCached(player.uuid());
+            try {
+                var data = Database.getCached(player.uuid());
 
-            if (args.length == 3) {
-                long size = Math.abs(Strings.parseLong(args[0], 0));
-                short x = Short.parseShort(args[1]);
-                short y = Short.parseShort(args[2]);
+                if (args.length == 3) {
+                    long size = Math.abs(Strings.parseLong(args[0], 0));
+                    short x = Short.parseShort(args[1]);
+                    short y = Short.parseShort(args[2]);
 
-                TileLogger.showHistory(x, y, size, player);
-                return;
+                    TileLogger.showHistory(x, y, size, player);
+                    return;
+                }
+
+                if (args.length > 0) {
+                    data.historySize = Math.abs(Strings.parseLong(args[0], 0));
+                }
+                else if (data.historySize == 0) {
+                    data.historySize = 6L;
+                }
+                else {
+                    data.historySize = 0L;
+                }
+                
+                bundled(player, "commands.history.success", data.historySize);
+                Database.setCached(data);
             }
-
-            if (args.length > 0) {
-                data.historySize = Math.abs(Strings.parseLong(args[0], 0));
-            } else if (data.historySize == 0) data.historySize = 6L;
-            else data.historySize = 0L;
-
-            bundled(player, "commands.history.success", data.historySize);
-            Database.setCached(data);
+            catch (NumberFormatException e) {
+                bundled(player, "commands.history.fail");
+            }
         });
-
-//        handler.<Player>register("history", "<size> [x] [y]", "Shows tile history.", (args, player) -> {
-//            try {
-//                long size = Long.parseLong(args[0]);
-//                if (args.length == 3) {
-//                    TileLogger.showHistory(Short.parseShort(args[1]), Short.parseShort(args[2]), size, player);
-//                }
-//                else {
-//                    if (size > 0) {
-//                        history_active.put(player.uuid(), size);
-//                        player.sendMessage("History inspector size set to: " + size);
-//                    }
-//                    else {
-//                        history_active.remove(player.uuid());
-//                        player.sendMessage("History inspector disabled.");
-//                    }
-//                }
-//            }
-//            catch (NumberFormatException e) {
-//                player.sendMessage("Failed to parse parameters.");
-//            }
-//        });
 
         handler.<Player>register("rollback", "<uuid> [time] [x1] [y1] [x2] [y2]", "Rolls back tiles.", (args, player) -> {
             if (!player.admin) {

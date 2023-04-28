@@ -69,11 +69,6 @@ public class TileLogger {
     }
 
     public static void showHistory(short x, short y, long size, Player player) {
-        Tile tile = Vars.world.tile(x, y);
-
-        if (tile == null) return;
-        x = (short) tile.centerX();
-        y = (short) tile.centerY();
         String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, size)) {
             Object rotation = state.rotationAsString();
