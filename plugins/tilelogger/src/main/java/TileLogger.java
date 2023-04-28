@@ -14,6 +14,8 @@ import mindustry.gen.Player;
 import mindustry.gen.Unit;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.type.Item;
+import mindustry.type.Liquid;
+import mindustry.type.UnitType;
 import mindustry.world.Block;
 import mindustry.world.Tile;
 
@@ -166,7 +168,13 @@ public class TileLogger {
                 case 0 -> null;
                 case 1 -> config;
                 case 2 -> (int) config > 0;
-                case 3 -> Vars.content.items().get((int) config);
+                case 3 -> (int) config < Vars.content.items().size
+                    ? Vars.content.items().get((int) config)
+                    : (int)config < Vars.content.items().size + Vars.content.liquids().size
+                        ? Vars.content.liquids().get((int) config)
+                        : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size
+                            ? Vars.content.units().get((int) config)
+                            : null;
                 case 4 -> Point2.unpack((int) config);
                 case 5 -> config;
                 case 6 -> new String((byte[]) config, StandardCharsets.UTF_8);
@@ -249,6 +257,10 @@ public class TileLogger {
                 set((short) 2, bool ? 1 : 0);
             else if (config instanceof Item item)
                 set((short) 3, Vars.content.items().indexOf(item));
+            else if (config instanceof Liquid liquid)
+                set((short) 3, Vars.content.items().size + Vars.content.liquids().indexOf(liquid));
+            else if (config instanceof UnitType unit)
+                set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().indexOf(unit));
             else if (config instanceof Point2 point)
                 set((short) 4, point.pack());
             else if (config instanceof byte[] bytes)
