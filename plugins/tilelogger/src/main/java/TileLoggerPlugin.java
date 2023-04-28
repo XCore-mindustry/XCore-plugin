@@ -63,7 +63,7 @@ public class TileLoggerPlugin extends Plugin {
             PlayerData data = Database.getCached(event.player.uuid());
 
             if (data.historySize <= 0 && data.adminMod && !event.player.con.mobile) {
-                Call.clientPacketUnreliable("take_history_infov2",
+                Call.clientPacketUnreliable(event.player.con, "take_history_infov2",
                         JsonIO.write(TileLogger.getTileStatePacket(event.tile, 100L)));
                 return;
             }
