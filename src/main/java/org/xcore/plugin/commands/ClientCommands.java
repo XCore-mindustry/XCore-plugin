@@ -76,7 +76,7 @@ public class ClientCommands {
             PlayerData data = Database.getCached(player.uuid());
 
             if (!player.admin || !data.jsAccess) {
-                bundled(player, "commands.js.denied");
+                bundled(player, "error.access-denied");
                 return;
             }
 
