@@ -14,6 +14,7 @@ import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Tile;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.votes.VoteKick;
+import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import static org.xcore.plugin.commands.ClientCommands.register;
@@ -104,13 +105,13 @@ public class TileLoggerPlugin extends Plugin {
                 Database.setCached(data);
             }
             catch (NumberFormatException e) {
-                bundled(player, "commands.history.fail");
+                bundled(player, "error.wrong-number");
             }
         });
 
-        handler.<Player>register("rollback", "<uuid> [time] [x1] [y1] [x2] [y2]", "Rolls back tiles.", (args, player) -> {
+        register("rollback", (args, player) -> {
             if (!player.admin) {
-                player.sendMessage("Access denied.");
+                bundled(player, "error.access-denied");
                 return;
             }
             try {
@@ -118,12 +119,12 @@ public class TileLoggerPlugin extends Plugin {
                 int time = args.length > 1 ? Integer.parseInt(args[1]) : 0;
                 String uuid = args[0].equals("all") ? "" : args[0];
                 if (uuid.equals("") && time == 0) {
-                    player.sendMessage("All players with 0 time are not allowed.");
+                    bundled(player, "commands.rollback.all-0-time");
                     return;
                 }
                 if (args.length > 2) {
                     if (args.length < 6) {
-                        player.sendMessage("Not enought position params.");
+                        bundled(player, "error.not-enough-params");
                         return;
                     }
                     x1 = Short.parseShort(args[2]);
@@ -131,14 +132,14 @@ public class TileLoggerPlugin extends Plugin {
                     x2 = Short.parseShort(args[4]);
                     y2 = Short.parseShort(args[5]);
                 }
-                PlayerInfo target = uuid.equals("self") ? player.getInfo() : Vars.netServer.admins.getInfoOptional(uuid);
+                PlayerInfo target = uuid.equals("self") ? player.getInfo() : Find.playerInfo(uuid);
                 if (!uuid.equals("") && target == null) {
-                    player.sendMessage("Player not found.");
+                    bundled(player, "error.player-not-found");
                     return;
                 }
                 TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2);
             } catch (NumberFormatException e) {
-                player.sendMessage("Failed to parse parameters.");
+                bundled(player, "error.wrong-number");
             }
         });
     }
