@@ -18,7 +18,6 @@ import static useful.Bundle.bundled;
 import static useful.Bundle.sendToChat;
 
 public class MiniPvP {
-    public static ObjectMap<String, Team> teams = new ObjectMap<>();
     public static Seq<String> defeatedPlayers = new Seq<>();
 
     public static void init() {
@@ -26,24 +25,13 @@ public class MiniPvP {
         Utils.showLeaderboard(Utils::getPvPLeaderboard);
 
         Events.on(EventType.PlayEvent.class, e -> {
-            teams.clear();
             defeatedPlayers.clear();
         });
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
-            Team team = teams.get(e.player.uuid());
-
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
                 bundled(e.player, "pvp.you-spectator");
-                return;
             }
-
-            if (team != null) {
-                e.player.team(team);
-                return;
-            }
-
-            e.player.team(netServer.assignTeam(e.player));
         });
 
         Events.on(EventType.GameOverEvent.class, e -> {
@@ -83,7 +71,6 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        teams.remove(p.uuid());
                         Database.setPlayerData(data);
                         Database.setCached(data);
                     });
