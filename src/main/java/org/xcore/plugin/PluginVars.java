@@ -20,7 +20,7 @@ import static mindustry.Vars.dataDirectory;
 
 public class PluginVars {
     public static final JsonReader reader = new JsonReader();
-    public static final int maxHistoryCapacity = 6;
+    public static final int votekickPlayTime = 60;
     public static final long kickDuration = 30 * 60 * 1000L;
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
@@ -37,7 +37,6 @@ public class PluginVars {
             .create();
 
     public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
-    public static final DateTimeFormatter shortDateFormat = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC);
     public static ObjectMap<Long, BanData> activeBanData = new ObjectMap<>();
     public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;

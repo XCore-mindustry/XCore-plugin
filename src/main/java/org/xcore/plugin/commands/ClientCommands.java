@@ -195,6 +195,13 @@ public class ClientCommands {
                 return;
             }
 
+            PlayerData data = Database.getPlayerData(player.uuid());
+
+            if (data.totalPlayTime < votekickPlayTime) {
+                bundled(player, "error.votekick-total-playtime", votekickPlayTime);
+                return;
+            }
+
             Player found = Find.player(args[0]);
 
             if (found == null) {
@@ -202,11 +209,11 @@ public class ClientCommands {
                 return;
             }
 
-            if(found.admin){
-                player.kick(Bundle.get("error.player-admin",player),5*60*1000);
+            if (found.admin) {
+                player.kick(Bundle.get("error.player-admin", player), 5 * 60 * 1000);
             }
 
-            if(found.team() != player.team()){
+            if (found.team() != player.team()) {
                 bundled(player, "error.player-not-teammate");
                 return;
             }
