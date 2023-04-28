@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static mindustry.Vars.netServer;
+import static mindustry.Vars.state;
 
 public class TileLogger {
     public static String version = "1.0";
@@ -63,9 +64,12 @@ public class TileLogger {
         short x = (short) tile.centerX();
         short y = (short) tile.centerY();
 
-        return Arrays.stream(getHistory(x, y, size)).map(t ->
-                new TileStatePacket(x, y, netServer.admins.getInfoOptional(t.uuid).lastName,
-                        t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString())).toArray(TileStatePacket[]::new);
+        return Arrays.stream(getHistory(x, y, size)).map(t -> {
+            var info = netServer.admins.getInfoOptional(t.uuid);
+
+            return new TileStatePacket(x, y, info == null ? "@" + t.team() : info.lastName,
+                        t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString());
+        }).toArray(TileStatePacket[]::new);
     }
 
     public static void showHistory(short x, short y, long size, Player player) {
