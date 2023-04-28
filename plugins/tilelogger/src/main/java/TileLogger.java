@@ -43,7 +43,7 @@ public class TileLogger {
             TileState[] history = TileLogger.getHistory(logic_ai.controller.tile.x, logic_ai.controller.tile.y, 1);
             return history.length > 0 ? history[0].playerInfo() : null;
         }
-        return unit.getPlayer().getInfo();
+        return unit.isPlayer() ? unit.getPlayer().getInfo() : null;
     }
 
     public static void build(Tile tile, @Nullable PlayerInfo player_info) {
