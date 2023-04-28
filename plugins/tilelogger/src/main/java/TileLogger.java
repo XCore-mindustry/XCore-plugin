@@ -31,8 +31,6 @@ import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
 
 public class TileLogger {
-    public static String version = "1.0";
-
     public static List<Block> rollback_blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
 
     static {
@@ -75,7 +73,7 @@ public class TileLogger {
     }
 
     public static void showHistory(short x, short y, long size, Player player) {
-        String str = String.format("Tile (%d,%d) history: player, %s, block, rotation, config", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
+        String str = String.format("Tile (%d,%d) history. Current time: %s.", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, size)) {
             Object rotation = state.rotationAsString();
             str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + "[white] "
@@ -106,7 +104,7 @@ public class TileLogger {
 
     public static void showInfo(Player player) {
         Runtime runtime = Runtime.getRuntime();
-        String str = String.format("TileLogger %s by [white] (Горыныч#3545), thanks to kowkonya#8536.", version);
+        String str = String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#8536.\nBuild: %s", getBuildString());
         str += String.format("\nMemory usage in MB: used | allocated | maximum");
         str += String.format("\n    JVM: %.3f | %.3f | %.3f", (runtime.totalMemory() - runtime.freeMemory()) * 1e-6, runtime.totalMemory() * 1e-6, runtime.maxMemory() * 1e-6);
         str += String.format("\n    Native:");
@@ -130,6 +128,8 @@ public class TileLogger {
     private static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int teams, int time, boolean erase);
 
     private static native long memoryUsage(long id);
+
+    private static native String getBuildString();
 
     private static class TileStatePacket {
         public short x;
@@ -178,7 +178,9 @@ public class TileLogger {
                         ? Vars.content.liquids().get((int) config - Vars.content.items().size)
                         : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size
                             ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size)
-                            : null;
+                            : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size
+                                ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size)
+                                : null;
                 case 4 -> Point2.unpack((int) config);
                 case 5 -> config;
                 case 6 -> new String((byte[]) config, StandardCharsets.UTF_8);
@@ -265,6 +267,8 @@ public class TileLogger {
                 set((short) 3, Vars.content.items().size + Vars.content.liquids().indexOf(liquid));
             else if (config instanceof UnitType unit)
                 set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().indexOf(unit));
+            else if (config instanceof Block block)
+                set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().indexOf(block));
             else if (config instanceof Point2 point)
                 set((short) 4, point.pack());
             else if (config instanceof byte[] bytes)

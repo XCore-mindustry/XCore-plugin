@@ -89,3 +89,7 @@ JNIEXPORT jobjectArray JNICALL Java_main_java_TileLogger_rollback (JNIEnv* env, 
 JNIEXPORT jlong JNICALL Java_main_java_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
     return g_map_history.MemoryUsage(id);
 }
+
+JNIEXPORT jstring JNICALL Java_main_java_TileLogger_getBuildString (JNIEnv* env, jclass) {
+    return env->NewStringUTF(__DATE__ " " __TIME__);
+}
