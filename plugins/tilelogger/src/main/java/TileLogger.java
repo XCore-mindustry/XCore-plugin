@@ -177,7 +177,7 @@ public class TileLogger {
                     : (int)config < Vars.content.items().size + Vars.content.liquids().size
                         ? Vars.content.liquids().get((int) config - Vars.content.items().size)
                         : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size
-                            ? Vars.content.units().get((int) config - Vars.content.items().size + Vars.content.liquids().size)
+                            ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size)
                             : null;
                 case 4 -> Point2.unpack((int) config);
                 case 5 -> config;
