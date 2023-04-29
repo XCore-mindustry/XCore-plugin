@@ -14,8 +14,7 @@ jobs:
     - name: Build
       run: |
         chmod +x gradlew
-        ./gradlew jar
-        ./gradlew TileLoggerSharedLibrary
+        ./gradlew build
       
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
@@ -39,8 +38,7 @@ jobs:
 
       - name: Build
         run: |
-          ./gradlew jar
-          ./gradlew TileLoggerSharedLibrary
+          ./gradlew build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3

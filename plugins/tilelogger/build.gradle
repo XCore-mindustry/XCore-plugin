@@ -96,3 +96,7 @@ jar {
         include "plugin.json"
     }
 }
+
+tasks.withType(CppCompile).configureEach {
+    dependsOn jar
+}
