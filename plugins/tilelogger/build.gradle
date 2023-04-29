@@ -1,13 +1,11 @@
 plugins {
-    id 'cpp'
-    id 'java'
+    id "cpp"
+    id "java"
 }
 
 version '1.0'
 
 sourceCompatibility = 1.17
-
-sourceSets.main.java.srcDirs = ["src"]
 
 compileJava.options.encoding = "UTF-8"
 compileTestJava.options.encoding = "UTF-8"

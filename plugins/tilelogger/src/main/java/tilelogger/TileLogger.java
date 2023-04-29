@@ -1,4 +1,4 @@
-package main.java;
+package tilelogger;
 
 import arc.math.geom.Point2;
 import arc.util.Nullable;
@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static mindustry.Vars.netServer;
-import static mindustry.Vars.state;
 
 public class TileLogger {
     public static List<Block> rollback_blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);

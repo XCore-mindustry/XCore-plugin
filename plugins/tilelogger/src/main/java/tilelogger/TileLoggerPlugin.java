@@ -1,4 +1,4 @@
-package main.java;
+package tilelogger;
 
 import arc.Events;
 import arc.util.CommandHandler;
@@ -6,27 +6,26 @@ import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Call;
-import mindustry.gen.Player;
 import mindustry.gen.RotateBlockCallPacket;
 import mindustry.io.JsonIO;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
-import mindustry.world.Tile;
 import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
+import useful.Bundle;
 
 import static org.xcore.plugin.commands.ClientCommands.register;
-import static useful.Bundle.bundled;
+import static useful.Bundle.send;
 
 @SuppressWarnings("unused")
 public class TileLoggerPlugin extends Plugin {
     @Override
     public void init() {
-        VoteKick.setOnKick(player -> {
-            TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1, true);
-        });
+        Bundle.load(TileLoggerPlugin.class);
+
+        VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1, true));
 
         Events.on(EventType.BlockBuildBeginEvent.class, event -> event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) ->
                 TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit))));
@@ -101,17 +100,17 @@ public class TileLoggerPlugin extends Plugin {
                     data.historySize = 0L;
                 }
                 
-                bundled(player, "commands.history.success", data.historySize);
+                send(player, "commands.history.success", data.historySize);
                 Database.setCached(data);
             }
             catch (NumberFormatException e) {
-                bundled(player, "error.wrong-number");
+                send(player, "error.wrong-number");
             }
         });
 
         register("rollback", (args, player) -> {
             if (!player.admin) {
-                bundled(player, "error.access-denied");
+                send(player, "error.access-denied");
                 return;
             }
             try {
@@ -126,7 +125,7 @@ public class TileLoggerPlugin extends Plugin {
                 }
                 if (args.length > 2) {
                     if (args.length < 6) {
-                        bundled(player, "error.not-enough-params");
+                        send(player, "error.not-enough-params");
                         return;
                     }
                     x1 = Short.parseShort(args[2]);
@@ -138,7 +137,7 @@ public class TileLoggerPlugin extends Plugin {
                 if (uuid != null) {
                     target = uuid.equals("self") ? player.getInfo() : Find.playerInfo(uuid);
                     if (target == null) {
-                        bundled(player, "error.player-not-found");
+                        send(player, "error.player-not-found");
                         return;
                     }
                 }
@@ -148,7 +147,7 @@ public class TileLoggerPlugin extends Plugin {
                         JsonIO.write(tiles));
                 }
             } catch (NumberFormatException e) {
-                bundled(player, "error.wrong-number");
+                send(player, "error.wrong-number");
             }
         });
     }
