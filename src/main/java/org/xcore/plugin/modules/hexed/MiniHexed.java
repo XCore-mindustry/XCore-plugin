@@ -17,9 +17,7 @@ import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
-import mindustry.net.Administration.ActionFilter;
 import mindustry.net.Administration.ActionType;
-import mindustry.net.Administration.PlayerAction;
 import mindustry.world.blocks.defense.turrets.Turret;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
@@ -65,7 +63,7 @@ public class MiniHexed {
             if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
                 
-                sendToChat("hexed.eliminated", player.coloredName());
+                send("hexed.eliminated", player.coloredName());
                 player.team(Team.derelict);
             }
         });
@@ -208,7 +206,7 @@ public class MiniHexed {
 
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
-            sendToChat("hexed.eliminated", player.coloredName());
+            send("hexed.eliminated", player.coloredName());
             player.team(Team.derelict);
         }
 

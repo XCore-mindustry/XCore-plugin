@@ -77,7 +77,7 @@ public class PluginEvents {
                 if (info == null) return;
                 if (player != null) {
                     player.admin = true;
-                    bundled(player, "commands.login.confirmed");
+                    send(player, "commands.login.confirmed");
                 }
 
                 netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
@@ -107,7 +107,7 @@ public class PluginEvents {
             Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
 
             if (data.translatorLanguage.equals("off")) {
-                bundled(event.player, "recommendation.tr");
+                send(event.player, "recommendation.tr");
             }
 
             JavelinCommunicator.sendEvent(
@@ -128,6 +128,7 @@ public class PluginEvents {
 
         Events.on(GameOverEvent.class, event -> {
             String message = null;
+
             if (state.rules.waves) {
                 message = Strings.format(
                         "Game over! Reached wave @ with @ players online on map @.", state.wave, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));

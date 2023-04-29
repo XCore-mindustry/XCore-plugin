@@ -1,10 +1,8 @@
 package org.xcore.plugin.modules;
 
 import arc.Events;
-import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Log;
-import arc.util.Timer;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
@@ -12,10 +10,8 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Utils;
 
-import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.config;
-import static useful.Bundle.bundled;
-import static useful.Bundle.sendToChat;
+import static useful.Bundle.send;
 
 public class MiniPvP {
     public static Seq<String> defeatedPlayers = new Seq<>();
@@ -30,7 +26,7 @@ public class MiniPvP {
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
-                bundled(e.player, "pvp.you-spectator");
+                send(e.player, "pvp.you-spectator");
             }
         });
 
@@ -42,7 +38,7 @@ public class MiniPvP {
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
-                bundled(p, "pvp.team-won", increased);
+                send(p, "pvp.team-won", increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 Database.setPlayerData(data);
@@ -67,7 +63,7 @@ public class MiniPvP {
                         } else {
                             data.pvpRating -= reduced;
                         }
-                        bundled(p, "pvp.team-lose", reduced);
+                        send(p, "pvp.team-lose", reduced);
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
