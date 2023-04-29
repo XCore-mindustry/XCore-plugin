@@ -82,8 +82,8 @@ public class TileLogger {
         player.sendMessage(str);
     }
 
-    public static void rollback(@Nullable Player initiator, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2) {
-        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, true);
+    public static RollbackPreviewPacket[] rollback(@Nullable Player initiator, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2, boolean erase) {
+        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, erase);
         for (TileState state : tiles) {
             if (rollback_blacklist.contains(state.tile().block())) continue;
             Call.setTile(state.tile(), Vars.content.block(state.block), state.team(), state.rotation);
@@ -92,6 +92,10 @@ public class TileLogger {
         }
         Call.sendMessage(String.format((initiator == null ? "Server" : initiator.coloredName()) + "[white] initiated rollback against player %s, time %d, rect %d %d %d %d, tiles %d",
                 target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
+
+        return Arrays.stream(tiles).map(t -> {
+            return new RollbackPreviewPacket(t.x, t.y, t.block, t.rotation, t.config_type, t.getConfigAsString());
+        }).toArray(RollbackPreviewPacket[]::new);
     }
 
     public static void reset() {
@@ -148,6 +152,24 @@ public class TileLogger {
             this.name = name;
             this.uuid = uuid;
             this.time = time;
+            this.block = block;
+            this.rotation = rotation;
+            this.config_type = config_type;
+            this.config = config;
+        }
+    }
+
+    public static class RollbackPreviewPacket {
+        public short x;
+        public short y;
+        public short block;
+        public short rotation;
+        public short config_type;
+        public String config;
+
+        public RollbackPreviewPacket(short x, short y, short block, short rotation, short config_type, String config) {
+            this.x = x;
+            this.y = y;
             this.block = block;
             this.rotation = rotation;
             this.config_type = config_type;

@@ -25,7 +25,7 @@ public class TileLoggerPlugin extends Plugin {
     @Override
     public void init() {
         VoteKick.setOnKick(player -> {
-            TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1);
+            TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1, true);
         });
 
         Events.on(EventType.BlockBuildBeginEvent.class, event -> event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) ->
@@ -118,8 +118,10 @@ public class TileLoggerPlugin extends Plugin {
                 short x1 = 0, y1 = 0, x2 = (short) (Vars.world.width() - 1), y2 = (short) (Vars.world.height() - 1);
                 int time = args.length > 1 ? Integer.parseInt(args[1]) : 0;
                 String uuid = args[0].equals("all") ? null : args[0];
+                boolean erase = true;
                 if (uuid == null && time == 0) {
-                    bundled(player, "commands.rollback.all-0-time");
+                    //bundled(player, "commands.rollback.all-0-time");
+                    erase = false; // TODO: rollback preview
                     return;
                 }
                 if (args.length > 2) {
@@ -140,7 +142,11 @@ public class TileLoggerPlugin extends Plugin {
                         return;
                     }
                 }
-                TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2);
+                TileLogger.RollbackPreviewPacket[] tiles = TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2, erase);
+                if (!erase && tiles.length > 0) {
+                    Call.clientPacketUnreliable(player.con, "tilelogger_rollback_preview",
+                        JsonIO.write(tiles));
+                }
             } catch (NumberFormatException e) {
                 bundled(player, "error.wrong-number");
             }
