@@ -54,6 +54,7 @@ public class VoteKick extends VoteSession {
         target.kick(Packets.KickReason.vote, kickDuration);
         JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(format("votekick.success", defaultLocale,
                 target.plainName(), kickDuration / 60000), config.server));
+        onKick.get(target);
     }
 
     @Override
