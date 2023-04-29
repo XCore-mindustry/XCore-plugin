@@ -32,7 +32,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        sendToChat("votekick.vote", player.coloredName(), target.coloredName(), votes(), votesRequired());
+        send("votekick.vote", player.coloredName(), target.coloredName(), votes(), votesRequired());
 
         JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
                 player.coloredName(), target.plainName(), votes(), votesRequired())), config.server));
@@ -41,7 +41,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0)
-            sendToChat("votekick.left", player.coloredName(), votes(), votesRequired());
+            send("votekick.left", player.coloredName(), votes(), votesRequired());
 
         if (target == player && votes() > 0)
             success();
@@ -50,7 +50,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void success() {
         stop();
-        sendToChat("votekick.success", target.coloredName(), kickDuration / 60000);
+        send("votekick.success", target.coloredName(), kickDuration / 60000);
         target.kick(Packets.KickReason.vote, kickDuration);
         JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(format("votekick.success", defaultLocale,
                 target.plainName(), kickDuration / 60000), config.server));
@@ -60,7 +60,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void fail() {
         stop();
-        sendToChat("votekick.fail", target.coloredName());
+        send("votekick.fail", target.coloredName());
     }
 
     @Override

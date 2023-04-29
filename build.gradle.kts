@@ -39,7 +39,7 @@ repositories {
 dependencies {
     mindustryDependencies()
 
-    implementation("com.github.xzxADIxzx.useful-stuffs:bundle:954a8f990a")
+    implementation("com.github.xzxadixzx.useful-stuffs:bundle:e89b363e1a")
 
     compileOnly("fr.xpdustry:javelin-mindustry:1.3.0-SNAPSHOT")
 
