@@ -66,10 +66,15 @@ public class Utils {
 
     public static void handleBanData(BanData ban) {
         if (ban.unban) {
+            if (ban.server.equals("global") && JavelinCommunicator.isSocketServer()) {
+                Database.unBanById(ban.bid);
+                return;
+            }
+
             if (!ban.server.equals(config.server)) return;
             netServer.admins.unbanPlayerID(ban.uuid);
             netServer.admins.unbanPlayerIP(ban.ip);
-            Database.unBan(ban.uuid, ban.ip);
+            Database.unBanById(ban.bid);
             return;
         }
 
@@ -124,11 +129,21 @@ public class Utils {
     }
 
     public static int voteChoice(String vote) {
-        return switch (vote.toLowerCase()) {
+        return switch (stripFooCharacters(vote.toLowerCase())) {
             case "y" -> 1;
             case "n" -> -1;
             default -> 0;
         };
+    }
+
+    public static String stripFooCharacters(String text) {
+        var builder = new StringBuilder(text);
+
+        for (int i = text.length() - 1; i >= 0; i--)
+            if (builder.charAt(i) >= 0xF80 && builder.charAt(i) <= 0x107F)
+                builder.deleteCharAt(i);
+
+        return builder.toString();
     }
 
     public static <T> T findInSeq(String name, Seq<T> values, Boolf<T> filter) {
