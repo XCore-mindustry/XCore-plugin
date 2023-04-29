@@ -117,8 +117,8 @@ public class TileLoggerPlugin extends Plugin {
             try {
                 short x1 = 0, y1 = 0, x2 = (short) (Vars.world.width() - 1), y2 = (short) (Vars.world.height() - 1);
                 int time = args.length > 1 ? Integer.parseInt(args[1]) : 0;
-                String uuid = args[0].equals("all") ? "" : args[0];
-                if (uuid.equals("") && time == 0) {
+                String uuid = args[0].equals("all") ? null : args[0];
+                if (uuid == null && time == 0) {
                     bundled(player, "commands.rollback.all-0-time");
                     return;
                 }
@@ -132,10 +132,13 @@ public class TileLoggerPlugin extends Plugin {
                     x2 = Short.parseShort(args[4]);
                     y2 = Short.parseShort(args[5]);
                 }
-                PlayerInfo target = uuid.equals("self") ? player.getInfo() : Find.playerInfo(uuid);
-                if (!uuid.equals("") && target == null) {
-                    bundled(player, "error.player-not-found");
-                    return;
+                PlayerInfo target = null;
+                if (uuid != null) {
+                    target = uuid.equals("self") ? player.getInfo() : Find.playerInfo(uuid);
+                    if (target == null) {
+                        bundled(player, "error.player-not-found");
+                        return;
+                    }
                 }
                 TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2);
             } catch (NumberFormatException e) {
