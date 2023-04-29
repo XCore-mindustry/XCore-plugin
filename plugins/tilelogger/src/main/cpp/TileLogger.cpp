@@ -5,22 +5,22 @@
 
 static MapHistory g_map_history;
 
-JNIEXPORT jlong JNICALL Java_tilelogger_Tilelogger_reset (JNIEnv*, jclass, jshort width, jshort height) {
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_reset (JNIEnv*, jclass, jshort width, jshort height) {
     return g_map_history.Reset(width, height);
 }
 
-JNIEXPORT jshort JNICALL Java_tilelogger_Tilelogger_duration (JNIEnv*, jclass) {
+JNIEXPORT jshort JNICALL Java_tilelogger_TileLogger_duration (JNIEnv*, jclass) {
     return g_map_history.Duration();
 }
 
-JNIEXPORT void JNICALL Java_tilelogger_Tilelogger_onAction (JNIEnv* env, jclass,
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction (JNIEnv* env, jclass,
     jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jint config) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
     g_map_history.Record(x, y, uuid, team, block, rotation, config_type, config);
 }
 
-JNIEXPORT void JNICALL Java_tilelogger_Tilelogger_onAction2 (JNIEnv* env, jclass, 
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass, 
     jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jbyteArray jconfig) {
         
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
@@ -73,23 +73,23 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<T> vec) {
     return object_array_j;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_tilelogger_Tilelogger_getHistory (JNIEnv* env, jclass,
+JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_getHistory (JNIEnv* env, jclass,
     jshort x, jshort y, jlong size) {
 
     return MarhalTileStateArray(env, g_map_history.GetHistory(x, y, size));
 }
 
-JNIEXPORT jobjectArray JNICALL Java_tilelogger_Tilelogger_rollback (JNIEnv* env, jclass,
+JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_rollback (JNIEnv* env, jclass,
     jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jboolean erase) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
     return MarhalTileStateArray(env, g_map_history.Rollback(x1, y1, x2, y2, uuid, teams, time, erase));
 }
 
-JNIEXPORT jlong JNICALL Java_tilelogger_Tilelogger_memoryUsage (JNIEnv*, jclass, jlong id) {
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
     return g_map_history.MemoryUsage(id);
 }
 
-JNIEXPORT jstring JNICALL Java_tilelogger_Tilelogger_getBuildString (JNIEnv* env, jclass) {
+JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_getBuildString (JNIEnv* env, jclass) {
     return env->NewStringUTF(__DATE__ " " __TIME__);
 }
