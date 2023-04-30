@@ -106,7 +106,10 @@ public class XcorePlugin extends Plugin {
             var player = Find.playerByUuid(uuid);
 
             data.totalPlayTime++;
-            data.playTime++;
+
+            if (player.admin) {
+                data.playTime++;
+            }
 
             Database.setCached(data);
             Database.setPlayerData(data);

@@ -41,15 +41,18 @@ public class AdminModIntegration {
                 reason = "<unknown>";
             }
 
+            var builder = BanData.builder()
+                    .uuid(uuid)
+                    .name(name)
+                    .adminName(player.name)
+                    .server(global ? "global" : config.server);
+
             if (skipToDiscord) {
-                BanData ban = BanData.builder()
-                        .uuid(uuid)
-                        .name(name)
-                        .adminName(player.name)
-                        .server(global ? "global" : config.server)
-                        .full(false)
-                        .build();
-                ban.generateBid();
+                builder.full(false);
+
+                var ban = builder.build();
+
+                Log.info("Admin @ skipped to discord ban of player @ (@)", ban.adminName, ban.name, ban.uuid);
                 JavelinCommunicator.sendEvent(ban);
                 return;
             }
@@ -57,17 +60,13 @@ public class AdminModIntegration {
             if (duration == 0) {
                 return;
             }
-            BanData ban = BanData.builder()
-                    .uuid(uuid)
-                    .ip(global ? ip : null)
-                    .name(name)
-                    .adminName(player.name)
+            var ban = builder.ip(global ? ip : null)
                     .reason(reason)
-                    .server(global ? "global" : config.server)
                     .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
                     .build();
             ban.generateBid();
 
+            Log.info("Admin @ banned @ for @ days", ban.adminName, ban.name, duration);
             JavelinCommunicator.sendEvent(ban);
         });
 

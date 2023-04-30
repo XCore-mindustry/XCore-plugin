@@ -12,7 +12,6 @@ import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import mindustry.io.JsonIO;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -35,8 +34,6 @@ import static org.xcore.plugin.PluginVars.*;
 public class PluginEvents {
     public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
-            JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
-
             if (JavelinCommunicator.isSocketServer()) {
                 Bot.connect();
 
@@ -88,6 +85,7 @@ public class PluginEvents {
             });
 
             JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::handleBanData);
+            JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
         });
         Events.on(EventType.PlayerConnect.class, event -> {
             var info = netServer.admins.getInfo(event.player.uuid());

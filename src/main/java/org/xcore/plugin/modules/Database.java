@@ -18,6 +18,8 @@ import org.bson.conversions.Bson;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
+import java.util.Optional;
+
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
@@ -60,23 +62,16 @@ public class Database {
     }
 
     public static PlayerData getPlayerData(String uuid) {
-        var data = playersCollection.find(eq("uuid", uuid)).first();
-
-        if (data == null) {
-            data = new PlayerData(uuid, false);
-        }
-
-        return data;
+        return Optional.ofNullable(playersCollection.find(eq("uuid", uuid)).first())
+                .orElse(new PlayerData(uuid, false));
     }
 
-    public static Seq<PlayerData> getPlayersData(Iterable<Administration.PlayerInfo> infos) {
+    public static Seq<PlayerData> getPlayersData(Iterable<Administration.PlayerInfo> players) {
         Seq<PlayerData> datas = new Seq<>();
-        for (Administration.PlayerInfo info : infos) {
-            PlayerData data = getPlayerData(info.id);
+        for (Administration.PlayerInfo player : players) {
+            PlayerData data = getPlayerData(player.id);
 
-            if (data != null) {
-                datas.add(data);
-            }
+            datas.add(data);
         }
 
         return datas;
