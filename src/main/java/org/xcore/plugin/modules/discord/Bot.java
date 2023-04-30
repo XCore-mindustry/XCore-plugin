@@ -90,7 +90,7 @@ public class Bot {
                     message.delete().subscribe();
 
                     return event.reply(author.getDisplayName() + " confirmed adminship to player "
-                            + (info != null ? info.lastName : "<unknown>"));
+                            + (info != null ? info.lastName : "<unknown>") + " on server "+ server);
                 }
 
                 if (event.getCustomId().equals("decline")) {
