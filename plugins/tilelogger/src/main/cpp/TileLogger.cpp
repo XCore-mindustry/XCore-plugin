@@ -31,7 +31,7 @@ JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass
 
 template<class T>
 jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<T> vec) {
-    jclass state_class = env->FindClass("tilelogger/TileLogger$TileState"); assert(state_class != nullptr);
+    jclass state_class = env->FindClass("tilelogger/TileState"); assert(state_class != nullptr);
     jfieldID x_field = env->GetFieldID(state_class, "x", "S"); assert(x_field != nullptr);
     jfieldID y_field = env->GetFieldID(state_class, "y", "S"); assert(y_field != nullptr);
     jfieldID uuid_field = env->GetFieldID(state_class, "uuid", "Ljava/lang/String;"); assert(uuid_field != nullptr);
