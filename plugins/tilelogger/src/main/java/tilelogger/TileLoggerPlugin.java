@@ -122,7 +122,7 @@ public class TileLoggerPlugin extends Plugin {
                 if (uuid == null && time == 0) {
                     //bundled(player, "commands.rollback.all-0-time");
                     erase = false; // TODO: rollback preview
-                    return;
+                    //return;
                 }
                 if (args.length > 2) {
                     if (args.length < 6) {
