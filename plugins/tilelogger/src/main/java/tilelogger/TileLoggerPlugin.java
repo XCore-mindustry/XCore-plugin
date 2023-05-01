@@ -63,7 +63,7 @@ public class TileLoggerPlugin extends Plugin {
             PlayerData data = Database.getCached(event.player.uuid());
 
             if (data.historySize <= 0 && data.adminMod && !event.player.con.mobile) {
-                Call.clientPacketUnreliable(event.player.con, "take_history_infov2",
+                Call.clientPacketUnreliable(event.player.con, "tilelogger_history_tile",
                         JsonIO.write(TileLogger.getTileStatePacket(event.tile, 100L)));
                 return;
             }
@@ -142,7 +142,7 @@ public class TileLoggerPlugin extends Plugin {
                         return;
                     }
                 }
-                TileLogger.RollbackPreviewPacket[] tiles = TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2, erase);
+                TileStatePacket[] tiles = TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2, erase);
                 if (!erase && tiles.length > 0) {
                     Call.clientPacketUnreliable(player.con, "tilelogger_rollback_preview",
                         JsonIO.write(tiles));
