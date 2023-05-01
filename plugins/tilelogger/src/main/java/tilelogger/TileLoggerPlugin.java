@@ -6,6 +6,7 @@ import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Call;
+import mindustry.gen.Player;
 import mindustry.gen.RotateBlockCallPacket;
 import mindustry.io.JsonIO;
 import mindustry.mod.Plugin;
@@ -75,9 +76,9 @@ public class TileLoggerPlugin extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        register("tilelogger", (args, player) ->
+        handler.<Player>register("tilelogger", "", "Shows general info.", (args, player) ->
                 TileLogger.showInfo(player));
-        register("history", (args, player) -> {
+        handler.<Player>register("history", "<size> [x] [y]", "Shows tile history.", (args, player) -> {
             try {
                 var data = Database.getCached(player.uuid());
 
@@ -108,7 +109,7 @@ public class TileLoggerPlugin extends Plugin {
             }
         });
 
-        register("rollback", (args, player) -> {
+        handler.<Player>register("rollback", "<name/uuid> [time] [x1] [y1] [x2] [y2]", "Rolls back tiles.", (args, player) -> {
             if (!player.admin) {
                 send(player, "error.access-denied");
                 return;
