@@ -80,7 +80,8 @@ public class TileLogger {
                 target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
 
         return Arrays.stream(tiles).map(t -> {
-            return new TileStatePacket(t.x, t.y, Vars.netServer.admins.getInfoOptional(t.uuid).lastName, t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString());
+            var info = Vars.netServer.admins.getInfoOptional(t.uuid);
+            return new TileStatePacket(t.x, t.y, info == null ? "" : info.lastName, t.uuid, t.time, t.block, t.rotation, t.config_type, t.getConfigAsString());
         }).toArray(TileStatePacket[]::new);
     }
 
