@@ -62,14 +62,11 @@ public class TileLoggerPlugin extends Plugin {
 
             PlayerData data = Database.getCached(event.player.uuid());
 
-            if (data.historySize <= 0 && data.adminMod && !event.player.con.mobile) {
-                Call.clientPacketUnreliable(event.player.con, "tilelogger_history_tile",
-                        JsonIO.write(TileLogger.getTileStatePacket(event.tile, 100L)));
-                return;
-            }
-
             if (data.historySize > 0) {
                 TileLogger.showHistory((short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize, event.player);
+            }
+            else if (data.adminMod && !event.player.con.mobile) {
+                TileLogger.sendTileHistory((short)event.tile.centerX(), (short)event.tile.centerY(), event.player);
             }
         });
     }
@@ -78,21 +75,30 @@ public class TileLoggerPlugin extends Plugin {
     public void registerClientCommands(CommandHandler handler) {
         handler.<Player>register("tilelogger", "", "Shows general info.", (args, player) ->
                 TileLogger.showInfo(player));
-        handler.<Player>register("history", "<size> [x] [y]", "Shows tile history.", (args, player) -> {
+        handler.<Player>register("history", "[size] [uuid/x] [y]", "Shows tile history.", (args, player) -> {
             try {
                 var data = Database.getCached(player.uuid());
 
-                if (args.length == 3) {
-                    long size = Math.abs(Strings.parseLong(args[0], 0));
+                if (args.length == 2) {
+                    long size = Strings.parseLong(args[0], 0);
+                    if (data.historySize > 0) {
+                        TileLogger.showHistory(Find.playerInfo(args[1]), size, player);
+                    }
+                    else if (data.adminMod && !player.con.mobile) {
+                        TileLogger.sendTileHistory(Find.playerInfo(args[1]), player);
+                    }
+                    return;
+                }
+                else if (args.length == 3) {
+                    long size = Strings.parseLong(args[0], 0);
                     short x = Short.parseShort(args[1]);
                     short y = Short.parseShort(args[2]);
-
                     TileLogger.showHistory(x, y, size, player);
                     return;
                 }
 
                 if (args.length > 0) {
-                    data.historySize = Math.abs(Strings.parseLong(args[0], 0));
+                    data.historySize = Strings.parseLong(args[0], 0);
                 }
                 else if (data.historySize == 0) {
                     data.historySize = 6L;

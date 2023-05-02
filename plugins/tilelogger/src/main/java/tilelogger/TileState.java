@@ -15,12 +15,13 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 
 public class TileState {
-    public short x; // value is undefined if returned by getHistory()
-    public short y; // value is undefined if returned by getHistory()
+    public short x;
+    public short y;
 
     public String uuid;
     public byte team;
     public short time;
+    public boolean valid;
     public short block;
     public short rotation;
     public short config_type;

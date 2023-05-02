@@ -20,6 +20,11 @@ public:
         return it->second;
     }
 
+    std::optional<Id> at(const Data& data) const {
+        auto it = ids_.find(data);
+        return it == ids_.end() ? std::nullopt : std::optional<Id>(it->second);
+    }
+
     const Data& operator[](Id id) const {
         return *data_[id];
     }

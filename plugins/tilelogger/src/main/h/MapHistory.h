@@ -47,11 +47,11 @@ public:
         return std::chrono::duration_cast<std::chrono::duration<time_t_>>(duration).count();
     }
 
-    const std::string& CachePlayer(player_t_ player) const {
+    const std::string& GetPlayer(player_t_ player) const {
         return players_[player];
     }
 
-    const ConfigData& CacheConfig(config_t_ config) const {
+    const ConfigData& GetConfig(config_t_ config) const {
         return configs_[config];
     }
 
@@ -62,33 +62,44 @@ public:
             config_id = configs_[config];
         else
             config_id = config;
-        Tile(x, y).Record(TileState(players_[uuid], team, Duration(), block, rotation, config_type, config_id));
+        Tile(x, y).Record(TileState(players_[uuid], team, Duration(), 1, block, rotation, config_type, config_id));
     }
 
-    void ClampPos(pos_t_& x, pos_t_& y) const {
-        x = std::clamp(x, pos_t_{}, static_cast<pos_t_>(width_ - 1));
-        y = std::clamp(y, pos_t_{}, static_cast<pos_t_>(height_ - 1));
+    std::vector<TileStateXY> GetHistory(pos_t_ x1, pos_t_ y1, pos_t_ x2, pos_t_ y2, const std::string& uuid, int teams, int time, size_t size) const {
+        ClampPos(x1, y1);
+        ClampPos(x2, y2);
+        std::optional<player_t_> player = uuid.empty() ? std::nullopt : players_.at(uuid);
+        if (!player && uuid.size())
+            return {}; // uuid not found
+        time_t_ abs_time = AbsTime(time);
+        std::vector<TileStateXY> ret;
+        for (pos_t_ x = x1; x <= x2; x++) {
+            for (pos_t_ y = y1; y <= y2; y++) {
+                const std::vector<TileState>& states = Tile(x, y).Last(player, teams, abs_time, size);
+                std::transform(states.rbegin(), states.rend(), std::back_inserter(ret), 
+                    [x, y](const TileState& state) {
+                        return TileStateXY(state, x, y);
+                    });
+            }
+        }
+        std::sort(ret.begin(), ret.end(), [](const auto& a, const auto& b) {
+            return a.time < b.time;
+        });
+        return std::vector<TileStateXY>(ret.end() - (ret.size() > size ? size : ret.size()), ret.end());
     }
 
-    std::vector<TileState> GetHistory(pos_t_ x, pos_t_ y, size_t size) const {
-        ClampPos(x, y);
-        return Tile(x, y).Last(size);
-    }
-
-    std::vector<TileStateXY> Rollback(pos_t_ x1, pos_t_ y1, pos_t_ x2, pos_t_ y2, const std::string& uuid, int teams, int time, bool erase) {
+    std::vector<TileStateXY> Rollback(pos_t_ x1, pos_t_ y1, pos_t_ x2, pos_t_ y2, const std::string& uuid, int teams, int time, TileHistory::RollbackFlags flags) {
         ClampPos(x1, y1);
         ClampPos(x2, y2);
         std::vector<TileStateXY> states_remove;
         std::vector<TileStateXY> states_add;
-        std::optional<player_t_> player;
-        if (!uuid.empty())
-            player = players_[uuid];
-        if (time < 0)
-            time += Duration();
-        time = std::clamp(time, 0, 0xffff);
+        std::optional<player_t_> player = uuid.empty() ? std::nullopt : players_.at(uuid);
+        if (!player && uuid.size())
+            return {}; // uuid not found
+        time_t_ abs_time = AbsTime(time);
         for (pos_t_ x = x1; x <= x2; x++) {
             for (pos_t_ y = y1; y <= y2; y++) {
-                if (const std::optional<TileState>& state = Tile(x, y).Rollback(player, teams, static_cast<time_t_>(time), erase))
+                if (const std::optional<TileState>& state = Tile(x, y).Rollback(player, teams, abs_time, flags))
                     (state->block ? states_add : states_remove).emplace_back(*state, x, y);
             }
         }
@@ -124,6 +135,17 @@ public:
     }
 
 private:
+    void ClampPos(pos_t_& x, pos_t_& y) const {
+        x = std::clamp(x, pos_t_{}, static_cast<pos_t_>(width_ - 1));
+        y = std::clamp(y, pos_t_{}, static_cast<pos_t_>(height_ - 1));
+    }
+
+    time_t_ AbsTime(int time) const {
+        if (time < 0)
+            time += Duration();
+        return static_cast<time_t_>(std::clamp(time, 0, 0xffff));
+    }
+
     pos_t_ width_;
     pos_t_ height_;
     std::chrono::steady_clock::time_point time_begin_{};
