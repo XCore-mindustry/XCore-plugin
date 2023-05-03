@@ -5,6 +5,7 @@ import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Strings;
+import arc.util.Time;
 import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
@@ -22,6 +23,8 @@ import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
+
+import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
@@ -350,6 +353,46 @@ public class ClientCommands {
                 player.sendMessage(builder.toString());
             });
         }
+
+        register("mute", (args, player) -> {
+            if (!player.admin) {
+                send(player, "error.access-denied");
+                return;
+            }
+            var target = Find.playerByName(args[0]);
+
+            if (target == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
+
+            PlayerData data = database.getCached(target.uuid());
+
+            data.muted = Time.millis() + TimeUnit.HOURS.toMillis(Strings.parseInt(args[1]));
+
+            database.getPlayerDataExecutor().setPlayerData(data);
+            send(player, "commands.mute.success", target.coloredName());
+            send(target, "you-are-muted-by", player.coloredName(), args[1]);
+        });
+
+        register("unmute", (args, player) -> {
+            if (!player.admin) {
+                send(player, "error.access-denied");
+                return;
+            }
+            var target = Find.playerByName(args[0]);
+
+            if (target == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
+
+            PlayerData data = database.getCached(target.uuid());
+
+            data.muted = 0;
+            database.getPlayerDataExecutor().setPlayerData(data);
+            send(player, "commands.unmute.success", target.coloredName());
+        });
     }
 
     public static void register(String name, CommandHandler.CommandRunner<Player> runner) {

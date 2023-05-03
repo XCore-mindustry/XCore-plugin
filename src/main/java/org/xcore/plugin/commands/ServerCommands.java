@@ -172,5 +172,42 @@ public class ServerCommands {
             database.getBanDataExecutor().deleteIPBan(args[0]);
             Log.info("Unbanned @", info.lastName);
         });
+
+        handler.register("mute", "<player> <period>", "shut up", (args) -> {
+            var target = Find.playerInfo(args[0]);
+
+            if (target == null) {
+                Log.err("Player not found.");
+                return;
+            }
+
+            PlayerData data = database.getCached(target.id);
+            if (data == null) {
+                data = database.getPlayerDataExecutor().getPlayerData(target.id);
+            }
+
+            data.muted = Time.millis() + TimeUnit.HOURS.toMillis(Strings.parseInt(args[1]));
+
+            database.getPlayerDataExecutor().setPlayerData(data);
+            Log.info("@ (@) muted for @ hours", target.lastName, target.id, args[1]);
+        });
+
+        handler.register("unmute", "<player>", (args, player) -> {
+            var target = Find.playerInfo(args[0]);
+
+            if (target == null) {
+                Log.err("Player not found.");
+                return;
+            }
+
+            PlayerData data = database.getCached(target.id);
+            if (data == null) {
+                data = database.getPlayerDataExecutor().getPlayerData(target.id);
+            }
+
+            data.muted = 0;
+            database.getPlayerDataExecutor().setPlayerData(data);
+            Log.info("@ unmuted", target.lastName);
+        });
     }
 }
