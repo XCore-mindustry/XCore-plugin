@@ -123,12 +123,14 @@ public class TileLoggerPlugin extends Plugin {
             try {
                 short x1 = 0, y1 = 0, x2 = (short) (Vars.world.width() - 1), y2 = (short) (Vars.world.height() - 1);
                 int time = 0;
-                String[] times = args[1].split(":", 3);
-                for (int i = 0; i < times.length; i++) {
-                    time += Math.abs(Integer.parseInt(times[times.length - 1 - i])) * Math.pow(60, i);
+                if (args.length > 1) {
+                    String[] times = args[1].split(":", 3);
+                    for (int i = 0; i < times.length; i++) {
+                        time += Math.abs(Integer.parseInt(times[times.length - 1 - i])) * Math.pow(60, i);
+                    }
+                    if (args[1].startsWith("-"))
+                        time *= -1;
                 }
-                if (args[1].startsWith("-"))
-                    time *= -1;
                 String uuid = args[0].equals("all") ? null : args[0];
                 if (args.length > 2) {
                     if (args.length < 6) {
