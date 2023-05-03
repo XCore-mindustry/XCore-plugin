@@ -1,11 +1,13 @@
 package org.xcore.plugin.modules.votes;
 
 import arc.func.Cons;
+import arc.util.Log;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.JavelinCommunicator;
+import useful.Bundle;
 
 import static arc.util.Strings.stripColors;
 import static org.xcore.plugin.PluginVars.*;
@@ -33,6 +35,7 @@ public class VoteKick extends VoteSession {
     public void vote(Player player, int sign) {
         super.vote(player, sign);
         send("votekick.vote", player.coloredName(), target.coloredName(), votes(), votesRequired());
+        Log.info(Bundle.format("votekick.vote","en", player.name(), target.name(), votes(), votesRequired()));
 
         JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
                 player.coloredName(), target.plainName(), votes(), votesRequired())), config.server));
