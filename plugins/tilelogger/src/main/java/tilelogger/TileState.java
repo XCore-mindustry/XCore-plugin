@@ -91,9 +91,10 @@ public class TileState {
 
     public char blockEmoji() {
         try {
+            if (block == 0) return 'X';
             return Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + Vars.content.block(block).name));
         } catch (Exception e) {
-            return 'X';
+            return '?';
         }
     }
 
