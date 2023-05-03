@@ -26,7 +26,7 @@ public class TileLoggerPlugin extends Plugin {
     public void init() {
         Bundle.load(TileLoggerPlugin.class);
 
-        VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1, true));
+        VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, (short)0, (short)0, (short)-1, (short)-1));
 
         Events.on(EventType.BlockBuildBeginEvent.class, event -> event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) ->
                 TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit))));
@@ -130,12 +130,6 @@ public class TileLoggerPlugin extends Plugin {
                 if (args[1].startsWith("-"))
                     time *= -1;
                 String uuid = args[0].equals("all") ? null : args[0];
-                boolean erase = true;
-                if (uuid == null && time == 0) {
-                    //bundled(player, "commands.rollback.all-0-time");
-                    erase = false; // TODO: rollback preview
-                    //return;
-                }
                 if (args.length > 2) {
                     if (args.length < 6) {
                         send(player, "error.not-enough-params");
@@ -154,11 +148,7 @@ public class TileLoggerPlugin extends Plugin {
                         return;
                     }
                 }
-                TileStatePacket[] tiles = TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2, erase);
-                if (!erase && tiles.length > 0) {
-                    Call.clientPacketUnreliable(player.con, "tilelogger_rollback_preview",
-                        JsonIO.write(tiles));
-                }
+                TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2);
             } catch (NumberFormatException e) {
                 send(player, "error.wrong-number");
             }

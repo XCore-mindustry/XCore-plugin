@@ -1,5 +1,6 @@
 package tilelogger;
 
+import arc.util.Log;
 import arc.util.Nullable;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
@@ -91,7 +92,7 @@ public class TileLogger {
         kPreview, 
     }
 
-    public static TileStatePacket[] rollback(@Nullable Player caller, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2, boolean erase) {
+    public static void rollback(@Nullable Player caller, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2) {
         TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, 0);
         for (TileState state : tiles) {
             if (rollback_blacklist.contains(state.tile().block())) continue;
@@ -99,13 +100,15 @@ public class TileLogger {
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
-        Call.sendMessage(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
+        Broadcast(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
                 target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
 
-        return Arrays.stream(tiles).map(t -> {
-            var info = Vars.netServer.admins.getInfoOptional(t.uuid);
-            return new TileStatePacket(t.x, t.y, info == null ? "" : info.lastName, t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
-        }).toArray(TileStatePacket[]::new);
+        Call.clientPacketUnreliable(caller.con, "tilelogger_rollback_preview",
+            JsonIO.write(Arrays.stream(tiles).map(t -> {
+                var info = Vars.netServer.admins.getInfoOptional(t.uuid);
+                return new TileStatePacket(t.x, t.y, info == null ? "" : info.lastName, t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
+            }
+        ).toArray(TileStatePacket[]::new)));
     }
 
     public static void reset() {
@@ -129,7 +132,10 @@ public class TileLogger {
         player.sendMessage(str);
     }
 
-    
+    public static void Broadcast(String msg) {
+        Call.sendMessage(msg);
+        Log.info(msg);
+    }
 
     private static native long reset(short width, short height);
 
