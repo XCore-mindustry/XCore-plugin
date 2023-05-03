@@ -18,11 +18,14 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.json.JSONObject;
 import org.xcore.plugin.modules.Translator;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
-import java.time.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static arc.util.Strings.stripColors;
 import static mindustry.Vars.*;
@@ -32,6 +35,7 @@ import static useful.Bundle.format;
 
 public class NetEvents {
     public static Seq<String> bannedNames = Seq.with("valve", "tuttop");
+
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
@@ -120,21 +124,27 @@ public class NetEvents {
             return;
         }
 
-        BanData ban = Database.getBan(uuid, con.address);
-        if (ban != null) {
-            if (Time.millis() > ban.unbanDate) {
+
+        UUIDBanData uuidBan = database.getBanDataExecutor().getUUIDBan(uuid);
+        if (uuidBan != null) {
+            if (Time.millis() > uuidBan.unbanDate) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(con.address);
-                Database.unBan(ban);
+                database.getBanDataExecutor().deleteUUIDBan(uuidBan.uuid);
             } else {
-                LocalDateTime date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneOffset.UTC);
+                tempBanKick(con, packet.locale, uuidBan.name, uuidBan.adminName, uuidBan.reason, uuidBan.unbanDate);
+                return;
+            }
+        }
 
-                con.kick(format("tempban.content", packet.locale,
-                        stripColors(ban.name),
-                        stripColors(ban.adminName),
-                        ban.reason,
-                        longDateFormat.format(date),
-                        discordUrl), 0);
+        IPBanData ipBan = database.banDataExecutor.getIPBan(con.address);
+        if (ipBan != null) {
+            if (Time.millis() > ipBan.unbanDate) {
+                netServer.admins.unbanPlayerID(uuid);
+                netServer.admins.unbanPlayerIP(con.address);
+                database.getBanDataExecutor().deleteIPBan(ipBan.ip);
+            } else {
+                tempBanKick(con, packet.locale, ipBan.name, ipBan.adminName, ipBan.reason, ipBan.unbanDate);
                 return;
             }
         }
@@ -278,6 +288,17 @@ public class NetEvents {
         netServer.sendWorldData(player);
 
         Events.fire(new EventType.PlayerConnect(player));
+    }
+
+    public static void tempBanKick(NetConnection con, String locale, String name, String adminName, String reason, long unbanDate) {
+        LocalDateTime date = LocalDateTime.ofInstant(Instant.ofEpochMilli(unbanDate), ZoneOffset.UTC);
+
+        con.kick(format("tempban.content", locale,
+                stripColors(name),
+                stripColors(adminName),
+                reason,
+                longDateFormat.format(date),
+                discordUrl), 0);
     }
 
     public static String fixName(String name) {

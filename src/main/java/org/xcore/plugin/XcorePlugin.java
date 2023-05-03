@@ -18,17 +18,16 @@ import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.hexed.MiniHexed;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.Database;
-import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.utils.database.Database;
 import useful.Bundle;
 
 import java.nio.ByteBuffer;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.utils.Utils.writeString;
 
 @SuppressWarnings("unused")
@@ -102,7 +101,7 @@ public class XcorePlugin extends Plugin {
         Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
-        Timer.schedule(() -> Database.cachedPlayerData.each((uuid, data) -> {
+        Timer.schedule(() -> database.cachedPlayerData.each((uuid, data) -> {
             var player = Find.playerByUuid(uuid);
 
             data.totalPlayTime++;
@@ -111,12 +110,13 @@ public class XcorePlugin extends Plugin {
                 data.playTime++;
             }
 
-            Database.setCached(data);
-            Database.setPlayerData(data);
+            database.setCached(data);
+            database.getPlayerDataExecutor().getPlayerData(data.uuid);
         }), 0, 60);
 
         info("Plugin loaded");
     }
+
     @Override
     public void registerClientCommands(CommandHandler handler) {
         ClientCommands.register(handler);

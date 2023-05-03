@@ -12,11 +12,12 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.utils.*;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -25,8 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import static arc.Core.app;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.gson;
+import static org.xcore.plugin.PluginVars.*;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
@@ -52,11 +52,11 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = Database.getCached(info.id);
+            PlayerData data = database.getCached(info.id);
             boolean cached = true;
             if (data == null) {
                 cached = false;
-                data = Database.getPlayerData(info.id);
+                data = database.getPlayerDataExecutor().getPlayerData(info.id);
             }
 
             String json = gson.toJson(data);
@@ -77,8 +77,8 @@ public class ServerCommands {
 
             PlayerData result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
 
-            if (cached) Database.setCached(result);
-            Database.setPlayerData(result);
+            if (cached) database.setCached(result);
+            database.getPlayerDataExecutor().setPlayerData(result);
             Log.info("Done.");
         });
 
@@ -90,8 +90,8 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = Database.getCached(info.id);
-            data = data == null ? Database.getPlayerData(info.id) : data;
+            PlayerData data = database.getCached(info.id);
+            data = data == null ? database.getPlayerDataExecutor().getPlayerData(info.id) : data;
 
             Log.info(gson.toJson(data));
         });
@@ -105,6 +105,7 @@ public class ServerCommands {
             }
 
             int days = Strings.parseInt(args[1]);
+            long unbanDate = Time.millis() + TimeUnit.DAYS.toMillis(days);
 
             if (days <= 0) {
                 Log.err("Ban days must be a number / positive number.");
@@ -113,47 +114,53 @@ public class ServerCommands {
 
             boolean global = args[2].equals("1") || args[2].equals("true");
 
-            Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned));
+            Groups.player.each(p -> p.uuid().equals(target.id) || p.ip().equals(target.lastIP), p -> p.kick(Packets.KickReason.banned, 0));
 
-            BanData ban = BanData.builder()
-                    .uuid(target.id)
-                    .ip(global ? target.lastIP : null)
-                    .name(target.lastName)
-                    .adminName("console")
-                    .reason(args[3])
-                    .server(global ? "global" : config.server)
-                    .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(days))
-                    .build();
-            ban.generateBid();
-            JavelinCommunicator.sendEvent(ban);
-            Log.info("'@' (@) banned", ban.name, ban.uuid);
+            if (global) {
+                IPBanData ban = IPBanData.builder()
+                        .ip(target.lastIP)
+                        .name(target.lastName)
+                        .adminName("console")
+                        .reason(args[3])
+                        .unbanDate(unbanDate)
+                        .build();
+
+                JavelinCommunicator.sendEvent(ban);
+                database.getBanDataExecutor().saveIPBan(ban);
+                Log.info("'@' (@) banned", ban.ip, target.lastName);
+            } else {
+                UUIDBanData ban = UUIDBanData.builder()
+                        .uuid(target.id)
+                        .name(target.lastName)
+                        .adminName("console")
+                        .reason(args[3])
+                        .server(config.server)
+                        .unbanDate(unbanDate)
+                        .build();
+
+                JavelinCommunicator.sendEvent(ban);
+                database.getBanDataExecutor().saveUUIDBan(ban);
+                Log.info("'@' (@) banned", ban.name, ban.uuid);
+            }
         });
-        handler.register("tempbans", "[global]", "List all temporary banned players.", args -> {
+        handler.register("tempbans", "List all temporary banned players.", args -> {
             Log.info("Temporary banned players:");
-            Seq<BanData> bans = Database.getBanned(args.length > 0);
+            Seq<UUIDBanData> uuidBans = database.getBanDataExecutor().getUUIDBanned();
+            Seq<IPBanData> ipBans = database.getBanDataExecutor().getIPBanned();
 
-            bans.each(ban -> {
+            Log.info("Temporary UUID banned players:");
+            uuidBans.each(ban -> {
                 var date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneId.systemDefault()).toString();
-                Log.info("@:  '@' / Name: @ / IP: '@' / Admin: @ / Unban date: @ / Reason: '@'", ban.bid, ban.uuid, ban.name, ban.ip, ban.adminName, date, ban.reason);
+                Log.info("'@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'", ban.uuid, ban.name, ban.adminName, date, ban.reason);
+            });
+            Log.info("Temporary IP banned players:");
+            ipBans.each(ban -> {
+                var date = LocalDateTime.ofInstant(Instant.ofEpochMilli(ban.unbanDate), ZoneId.systemDefault()).toString();
+                Log.info("'@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'", ban.ip, ban.name, ban.adminName, date, ban.reason);
             });
         });
 
-        handler.register("tempunban", "<name/uuid/ip/bid>", "Unban a temporary banned player.", args -> {
-            if (args[0].startsWith("#") && Strings.canParseInt(args[0].substring(1))) {
-                int bid = Strings.parseInt(args[0].substring(1));
-                var ban = Database.unBanById(bid);
-
-                if (ban == null) {
-                    Log.info("Ban not found.");
-                    return;
-                }
-
-                netServer.admins.unbanPlayerID(ban.uuid);
-                netServer.admins.unbanPlayerIP(ban.ip);
-                Log.info("'@' (@) unbanned", ban.name, ban.uuid);
-                return;
-            }
-
+        handler.register("tempunban", "<name/uuid/ip>", "Unban a temporary banned player.", args -> {
             var info = Find.playerInfo(args[0]);
 
             if (info == null) {
@@ -161,9 +168,8 @@ public class ServerCommands {
                 return;
             }
 
-            netServer.admins.unbanPlayerID(info.id);
-            netServer.admins.unbanPlayerIP(info.lastIP);
-            Database.unBan(info.id, info.lastIP);
+            database.getBanDataExecutor().deleteUUIDBan(info.id);
+            database.getBanDataExecutor().deleteIPBan(args[0]);
             Log.info("Unbanned @", info.lastName);
         });
     }

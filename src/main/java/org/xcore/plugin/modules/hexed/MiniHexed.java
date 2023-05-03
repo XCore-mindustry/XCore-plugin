@@ -15,14 +15,13 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Unitc;
 import mindustry.maps.MapException;
+import mindustry.net.Administration.ActionType;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
-import mindustry.net.Administration.ActionType;
 import mindustry.world.blocks.defense.turrets.Turret;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
@@ -30,7 +29,9 @@ import org.xcore.plugin.utils.models.HexMember;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
 import static org.xcore.plugin.PluginVars.config;
-import static useful.Bundle.*;
+import static org.xcore.plugin.PluginVars.database;
+import static useful.Bundle.format;
+import static useful.Bundle.send;
 
 public class MiniHexed {
     public static final ObjectMap<String, HexMember> members = new ObjectMap<>();
@@ -62,14 +63,14 @@ public class MiniHexed {
             var block = event.tile.block();
             if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
-                
+
                 send("hexed.eliminated", player.coloredName());
                 player.team(Team.derelict);
             }
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
-            var data = Database.getCached(member.uuid);
+            var data = database.getCached(member.uuid);
 
             if (member.controlled() > 1 && data != null) {
                 var ranked = rankings.get(data.hexedRank());
@@ -147,7 +148,7 @@ public class MiniHexed {
                 var player = team.players.first();
 
                 if (i == 0) {
-                    var data = Database.getCached(player.uuid());
+                    var data = database.getCached(player.uuid());
 
                     var ranked = rankings.get(data.hexedRank());
                     if (ranked != null && ranked.size > 1 ||
@@ -160,8 +161,8 @@ public class MiniHexed {
                         }
                     }
 
-                    Database.setPlayerData(data);
-                    Database.setCached(data);
+                    database.getPlayerDataExecutor().setPlayerData(data);
+                    database.setCached(data);
                 }
 
                 builder.append("[orange]").append(i + 1).append(". ")

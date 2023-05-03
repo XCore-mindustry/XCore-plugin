@@ -15,21 +15,22 @@ import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import static mindustry.Vars.*;
-import static useful.Bundle.*;
+import static mindustry.Vars.netServer;
+import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
+import static useful.Bundle.send;
 
 public class PluginEvents {
     public static void init() {
@@ -45,14 +46,16 @@ public class PluginEvents {
                         Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
                 JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestEvent.class, e ->
                         Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
+                JavelinPlugin.getJavelinSocket().subscribe(UUIDBanData.class, Utils::UUIDTemporaryBan);
+                JavelinPlugin.getJavelinSocket().subscribe(IPBanData.class, Utils::IPTemporaryBan);
 
                 Timer.schedule(() -> {
-                    var datas = Database.getPlayersData(netServer.admins.getAdmins());
+                    var datas = database.getPlayerDataExecutor().getPlayersData(netServer.admins.getAdmins());
                     Bot.sendAdminPlayTimeMessage(datas);
 
                     for (PlayerData data : datas) {
                         data.playTime = 0;
-                        Database.setPlayerData(data);
+                        database.getPlayerDataExecutor().setPlayerData(data);
                         JavelinCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
                     }
                 }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)).toSeconds(), 60 * 60 * 24);
@@ -81,10 +84,9 @@ public class PluginEvents {
             });
 
             JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.SyncPlayerData.class, e -> {
-                if (Database.cachedPlayerData.containsKey(e.data().uuid)) Database.setCached(e.data());
+                if (database.cachedPlayerData.containsKey(e.data().uuid)) database.setCached(e.data());
             });
 
-            JavelinPlugin.getJavelinSocket().subscribe(BanData.class, Utils::handleBanData);
             JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
         });
         Events.on(EventType.PlayerConnect.class, event -> {
@@ -98,9 +100,9 @@ public class PluginEvents {
             if (event.player.getInfo().timesJoined < 5)
                 Call.openURI(event.player.con, discordUrl);
 
-            var data = Database.getPlayerData(event.player).setNickname(event.player.coloredName());
+            var data = database.getPlayerDataExecutor().getPlayerData(event.player).setNickname(event.player.coloredName());
             HexedRanks.updateRank(event.player, data);
-            Database.setCached(data);
+            database.setCached(data);
 
             Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
 
@@ -115,7 +117,7 @@ public class PluginEvents {
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
-            Database.removeCached(event.player.uuid());
+            database.removeCached(event.player.uuid());
 
             if (vote != null) vote.left(event.player);
             if (voteKick != null) voteKick.left(event.player);

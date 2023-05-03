@@ -9,8 +9,6 @@ import arc.util.Reflect;
 import arc.util.Strings;
 import arc.util.Timer;
 import discord4j.common.util.TimestampFormat;
-import discord4j.core.object.component.ActionRow;
-import discord4j.core.object.component.Button;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
@@ -25,28 +23,28 @@ import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
-import org.xcore.plugin.modules.Database;
-import org.xcore.plugin.modules.discord.Bot;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Arrays;
 
 import static arc.util.Strings.*;
-import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.*;
-import static useful.Bundle.*;
+import static mindustry.Vars.charset;
+import static mindustry.Vars.maps;
+import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.modules.discord.Bot.bansChannel;
 import static org.xcore.plugin.modules.discord.Bot.isConnected;
+import static useful.Bundle.format;
 
 public class Utils {
     public static <T> T notNullElse(T value, T defaultValue) {
         return value != null ? value : defaultValue;
     }
-    public static void temporaryBan(BanData ban) {
-        Database.setBan(ban);
+
+    public static void UUIDTemporaryBan(UUIDBanData ban) {
         if (!isConnected) return;
 
         bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
@@ -60,35 +58,28 @@ public class Utils {
                         .addField("Unban Date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
                         .build()
                 )
-                .addComponent(ActionRow.of(Button.danger(ban.bid + "-unban", "Unban")))
                 .build())).subscribe();
     }
 
-    public static void handleBanData(BanData ban) {
-        if (ban.unban) {
-            if (ban.server.equals("global") && JavelinCommunicator.isSocketServer()) {
-                Database.unBanById(ban.bid);
-                return;
-            }
+    public static void IPTemporaryBan(IPBanData ban) {
+        if (!isConnected) return;
 
-            if (!ban.server.equals(config.server)) return;
-            netServer.admins.unbanPlayerID(ban.uuid);
-            netServer.admins.unbanPlayerIP(ban.ip);
-            Database.unBanById(ban.bid);
-            return;
-        }
-
-        if (!JavelinCommunicator.isSocketServer()) return;
-
-        if (ban.full) {
-            Utils.temporaryBan(ban);
-        } else {
-            Bot.sendBanEvent(ban);
-        }
+        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                .addEmbed(EmbedCreateSpec.builder()
+                        .title("Ban")
+                        .color(Color.RED)
+                        .addField("Violator", ban.name, false)
+                        .addField("Admin", ban.adminName, false)
+                        .addField("Server", "global", false)
+                        .addField("Reason", ban.reason, false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
+                        .build()
+                )
+                .build())).subscribe();
     }
 
     public static void getPvPLeaderboard(StringBuilder builder, Player player) {
-        Seq<PlayerData> sorted = Database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
+        Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
         builder.append(format("leaderboard", player.locale));
@@ -116,7 +107,7 @@ public class Utils {
         Timer.schedule(() -> {
             if (Groups.player.isEmpty()) return;
             Groups.player.each(player -> {
-                if (!Database.getCached(player.uuid()).leaderboard) return;
+                if (!database.getCached(player.uuid()).leaderboard) return;
                 StringBuilder builder = new StringBuilder();
                 cons.get(builder, player);
                 Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0);

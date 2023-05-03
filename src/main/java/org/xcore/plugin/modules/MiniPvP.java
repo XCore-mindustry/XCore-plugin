@@ -11,6 +11,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Utils;
 
 import static org.xcore.plugin.PluginVars.config;
+import static org.xcore.plugin.PluginVars.database;
 import static useful.Bundle.send;
 
 public class MiniPvP {
@@ -34,15 +35,15 @@ public class MiniPvP {
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
-                var data = Database.getCached(p.uuid());
+                var data = database.getCached(p.uuid());
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
                 send(p, "pvp.team-won", increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                Database.setPlayerData(data);
-                Database.setCached(data);
+                database.getPlayerDataExecutor().setPlayerData(data);
+                database.setCached(data);
             });
         });
 
@@ -54,7 +55,7 @@ public class MiniPvP {
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
 
-                        var data = Database.getCached(p.uuid());
+                        var data = database.getCached(p.uuid());
 
                         int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);
 
@@ -67,8 +68,8 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        Database.setPlayerData(data);
-                        Database.setCached(data);
+                        database.getPlayerDataExecutor().setPlayerData(data);
+                        database.setCached(data);
                     });
                 }
             }
