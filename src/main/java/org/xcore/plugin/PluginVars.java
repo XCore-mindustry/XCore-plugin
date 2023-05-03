@@ -7,11 +7,13 @@ import arc.util.serialization.JsonReader;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.xcore.plugin.modules.votes.VoteKick;
-import org.xcore.plugin.modules.votes.VoteSession;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.modules.votes.VoteKick;
+import org.xcore.plugin.modules.votes.VoteSession;
+import org.xcore.plugin.utils.database.Database;
+import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -25,19 +27,20 @@ public class PluginVars {
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
+    public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
     public static String discordUrl = "https://discord.gg/RUMCCa9QAC";
     public static Fi configFile = dataDirectory.child("xcconfig.json");
     public static Config config;
     public static GlobalConfig globalConfig;
+    public static Database database;
     public static Gson gson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
-
-    public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
-    public static ObjectMap<Long, BanData> activeBanData = new ObjectMap<>();
+    public static ObjectMap<Long, UUIDBanData> activeUUIDBanData = new ObjectMap<>();
+    public static ObjectMap<Long, IPBanData> activeIpBanData = new ObjectMap<>();
     public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;

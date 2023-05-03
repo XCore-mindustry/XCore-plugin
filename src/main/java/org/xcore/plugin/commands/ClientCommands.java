@@ -16,7 +16,6 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
-import org.xcore.plugin.modules.Database;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.JavelinCommunicator;
 import org.xcore.plugin.utils.Utils;
@@ -73,7 +72,7 @@ public class ClientCommands {
         register("t", (args, player) -> sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]));
 
         register("js", (args, player) -> {
-            PlayerData data = Database.getCached(player.uuid());
+            PlayerData data = database.getCached(player.uuid());
 
             if (!player.admin || !data.jsAccess) {
                 send(player, "error.access-denied");
@@ -116,13 +115,13 @@ public class ClientCommands {
         });
 
         register("lb", (args, player) -> {
-            var data = Database.getCached(player.uuid());
+            var data = database.getCached(player.uuid());
 
             data.leaderboard = !data.leaderboard;
 
             send(player, "commands.lb.success", data.leaderboard);
-            Database.setCached(data);
-            Database.setPlayerData(data);
+            database.setCached(data);
+            database.getPlayerDataExecutor().setPlayerData(data);
         });
 
         register("login", (args, player) -> {
@@ -131,7 +130,7 @@ public class ClientCommands {
         });
 
         register("tr", (args, player) -> {
-            var data = Database.getCached(player.uuid());
+            var data = database.getCached(player.uuid());
 
             switch (args[0].toLowerCase()) {
                 case "off" -> {
@@ -154,8 +153,8 @@ public class ClientCommands {
             }
             send(player, "commands.tr.success", translatorLanguages.get(data.translatorLanguage));
 
-            Database.setPlayerData(data);
-            Database.setCached(data);
+            database.getPlayerDataExecutor().setPlayerData(data);
+            database.setCached(data);
         });
 
         register("maps", (args, player) -> {
@@ -195,7 +194,7 @@ public class ClientCommands {
                 return;
             }
 
-            PlayerData data = Database.getPlayerData(player.uuid());
+            PlayerData data = database.getPlayerDataExecutor().getPlayerData(player.uuid());
 
             if (data.totalPlayTime < votekickPlayTime) {
                 send(player, "error.votekick-total-playtime", votekickPlayTime);
@@ -270,7 +269,7 @@ public class ClientCommands {
                     return;
                 }
 
-                var data = Database.getCached(target.uuid());
+                var data = database.getCached(target.uuid());
                 var rank = data.hexedRank();
 
                 infoMessage(player, "commands.rank.content",
@@ -296,7 +295,7 @@ public class ClientCommands {
             });
 
             register("top", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("hexedRank", "hexedPoints");
+                Seq<PlayerData> leaders = database.getPlayerDataExecutor().getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
@@ -337,7 +336,7 @@ public class ClientCommands {
 
         if (config.isMiniPvP()) {
             register("top", (args, player) -> {
-                Seq<PlayerData> leaders = Database.getLeaders("pvpRating");
+                Seq<PlayerData> leaders = database.getPlayerDataExecutor().getLeaders("pvpRating");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {

@@ -8,8 +8,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.reader;
-import static org.xcore.plugin.PluginVars.translatorLanguages;
+import static org.xcore.plugin.PluginVars.*;
 
 public class Translator {
     public static void init() {
@@ -59,7 +58,7 @@ public class Translator {
         var cache = new StringMap();
         var message = netServer.chatFormatter.format(author, text);
 
-        Database.cachedPlayerData.forEach(entry -> {
+        database.cachedPlayerData.forEach(entry -> {
             var data = entry.value;
             var player = Groups.player.find(p -> p.uuid().equals(data.uuid));
             if (player == null || player == author) return;

@@ -26,14 +26,6 @@ public class PlayerData {
     @BsonIgnore
     public boolean exists = true;
 
-    public HexedRanks.HexedRank hexedRank() {
-        return HexedRanks.HexedRank.values()[hexedRank];
-    }
-
-    public void hexedRank(HexedRanks.HexedRank rank) {
-        this.hexedRank = rank.ordinal();
-    }
-
     public PlayerData(String uuid, Boolean exists) {
         this.uuid = uuid;
         this.exists = exists;
@@ -41,6 +33,14 @@ public class PlayerData {
 
     @SuppressWarnings("unused")
     public PlayerData() {
+    }
+
+    public HexedRanks.HexedRank hexedRank() {
+        return HexedRanks.HexedRank.values()[hexedRank];
+    }
+
+    public void hexedRank(HexedRanks.HexedRank rank) {
+        this.hexedRank = rank.ordinal();
     }
 
     public PlayerData setNickname(String nickname) {

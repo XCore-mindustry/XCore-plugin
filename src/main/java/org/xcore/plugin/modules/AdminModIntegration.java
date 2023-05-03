@@ -9,11 +9,12 @@ import mindustry.io.JsonIO;
 import org.xcore.plugin.modules.packets.BanInfoPacket;
 import org.xcore.plugin.modules.packets.PlayerInfoPacket;
 import org.xcore.plugin.utils.JavelinCommunicator;
-import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.util.concurrent.TimeUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 
 public class AdminModIntegration {
@@ -29,7 +30,6 @@ public class AdminModIntegration {
             String reason = json.get("reason").asString();
 
             boolean global = json.get("global").asBoolean();
-            boolean skipToDiscord = json.get("skip_to_discord").asBoolean();
             short duration = json.get("duration").asShort();
 
             if (uuid == null || uuid.isBlank()) {
@@ -41,53 +41,52 @@ public class AdminModIntegration {
                 reason = "<unknown>";
             }
 
-            var builder = BanData.builder()
+            var builder = UUIDBanData.builder()
                     .uuid(uuid)
                     .name(name)
                     .adminName(player.name)
                     .server(global ? "global" : config.server);
 
-            if (skipToDiscord) {
-                builder.full(false);
-
-                var ban = builder.build();
-
-                Log.info("Admin @ skipped to discord ban of player @ (@)", ban.adminName, ban.name, ban.uuid);
-                JavelinCommunicator.sendEvent(ban);
-                return;
-            }
-
             if (duration == 0) {
-                return;
+                duration = 1000;
             }
-            var ban = builder.ip(global ? ip : null)
-                    .reason(reason)
-                    .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
-                    .build();
-            ban.generateBid();
 
-            Log.info("Admin @ banned @ for @ days", ban.adminName, ban.name, duration);
-            JavelinCommunicator.sendEvent(ban);
+            netServer.admins.unbanPlayerID(uuid);
+            if (global) {
+                var ban = IPBanData.builder()
+                        .ip(ip)
+                        .name(name)
+                        .adminName(player.name)
+                        .reason(reason)
+                        .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
+                        .build();
+
+                JavelinCommunicator.sendEvent(ban);
+                database.getBanDataExecutor().saveIPBan(ban);
+            } else {
+                var ban = UUIDBanData.builder()
+                        .name(name)
+                        .uuid(uuid)
+                        .adminName(player.name)
+                        .server(config.server)
+                        .reason(reason)
+                        .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
+                        .build();
+                JavelinCommunicator.sendEvent(ban);
+                database.getBanDataExecutor().saveUUIDBan(ban);
+            }
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
-            var data = Database.getCached(player.uuid());
+            var data = database.getCached(player.uuid());
             if (data == null || data.adminMod) return;
 
             data.adminMod = true;
-            Database.setCached(data);
-        });
-
-        netServer.addPacketHandler("unban", (player, content) -> {
-            var data = Database.getCached(player.uuid());
-            if (data == null || !data.consolePanelAccess) return;
-
-            netServer.admins.unbanPlayerID(content);
-            Database.unBan(content, null);
+            database.setCached(data);
         });
 
         netServer.addPacketHandler("info_request", (player, content) -> {
-            var data = Database.getCached(player.uuid());
+            var data = database.getCached(player.uuid());
             if (data == null || !data.consolePanelAccess) return;
 
             Log.debug("AR " + content);
@@ -100,12 +99,12 @@ public class AdminModIntegration {
         });
 
         netServer.addPacketHandler("bans_request", (player, content) -> {
-            var data = Database.getCached(player.uuid());
+            var data = database.getCached(player.uuid());
             if (data == null || !data.consolePanelAccess) return;
 
             Log.debug("BR " + content);
             if (player.admin) {
-                Seq<BanInfoPacket> packets = Database.getBanned(false).map(b ->
+                Seq<BanInfoPacket> packets = database.getBanDataExecutor().getUUIDBanned().map(b ->
                         new BanInfoPacket(b.name, b.uuid, b.adminName, b.reason, b.unbanDate));
                 packets.each(p -> Call.clientPacketUnreliable(player.con, "ban_data", JsonIO.write(p)));
             }

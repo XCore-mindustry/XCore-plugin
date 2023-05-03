@@ -5,19 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
-import org.bson.codecs.pojo.annotations.BsonIgnore;
-import org.xcore.plugin.modules.Database;
 
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class BanData implements JavelinEvent {
-    public long bid;
-
+public class UUIDBanData implements JavelinEvent {
     @NonNull
     public String uuid;
-    @Builder.Default
-    public String ip = null;
     @Builder.Default
     public String name = "<unknown>";
     @Builder.Default
@@ -26,19 +20,7 @@ public class BanData implements JavelinEvent {
     public String reason = "Not Specified";
 
     @NonNull
-    @Builder.Default
-    public String server = "global";
+    public String server;
 
     public long unbanDate;
-
-    @BsonIgnore
-    @Builder.Default
-    public boolean full = true;
-    @BsonIgnore
-    @Builder.Default
-    public boolean unban = false;
-
-    public void generateBid() {
-        this.bid = Database.getNextSequence("banid");
-    }
 }

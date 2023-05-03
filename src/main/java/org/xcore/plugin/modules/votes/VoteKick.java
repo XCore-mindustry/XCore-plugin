@@ -18,15 +18,15 @@ public class VoteKick extends VoteSession {
     public final Player starter;
     public final Player target;
 
+    public VoteKick(Player starter, Player target) {
+        this.starter = starter;
+        this.target = target;
+    }
+
     @SuppressWarnings("unused")
     public static void setOnKick(Cons<Player> onKick) {
         if (onKick == null) return;
         VoteKick.onKick = onKick;
-    }
-
-    public VoteKick(Player starter, Player target) {
-        this.starter = starter;
-        this.target = target;
     }
 
     @Override
