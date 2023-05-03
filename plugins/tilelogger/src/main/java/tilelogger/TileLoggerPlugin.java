@@ -2,6 +2,8 @@ package tilelogger;
 
 import arc.Events;
 import arc.util.CommandHandler;
+import arc.util.Log;
+import arc.util.Nullable;
 import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.game.EventType;
@@ -22,6 +24,14 @@ import static useful.Bundle.send;
 
 @SuppressWarnings("unused")
 public class TileLoggerPlugin extends Plugin {
+
+    private void SendMessage(@Nullable Player player, String msg) {
+        if (player == null)
+            Log.info(msg);
+        else
+            send(player, msg);
+    }
+
     @Override
     public void init() {
         Bundle.load(TileLoggerPlugin.class);
@@ -63,7 +73,7 @@ public class TileLoggerPlugin extends Plugin {
             PlayerData data = Database.getCached(event.player.uuid());
 
             if (data.historySize > 0) {
-                TileLogger.showHistory((short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize, event.player);
+                TileLogger.showHistory(event.player, (short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize);
             }
             else if (data.adminMod && !event.player.con.mobile) {
                 TileLogger.sendTileHistory((short)event.tile.centerX(), (short)event.tile.centerY(), event.player);
@@ -71,18 +81,17 @@ public class TileLoggerPlugin extends Plugin {
         });
     }
 
-    @Override
-    public void registerClientCommands(CommandHandler handler) {
+    public void registerCommands(CommandHandler handler) {
         handler.<Player>register("tilelogger", "", "Shows general info.", (args, player) ->
                 TileLogger.showInfo(player));
         handler.<Player>register("history", "[size] [uuid/x] [y]", "Shows tile history.", (args, player) -> {
             try {
-                var data = Database.getCached(player.uuid());
+                var data = player == null ? null : Database.getCached(player.uuid());
 
                 if (args.length == 2) {
                     long size = Strings.parseLong(args[0], 0);
-                    if (data.historySize > 0) {
-                        TileLogger.showHistory(Find.playerInfo(args[1]), size, player);
+                    if (data == null || data.historySize > 0) {
+                        TileLogger.showHistory(player, Find.playerInfo(args[1]), size);
                     }
                     else if (data.adminMod && !player.con.mobile) {
                         TileLogger.sendTileHistory(Find.playerInfo(args[1]), player);
@@ -93,9 +102,10 @@ public class TileLoggerPlugin extends Plugin {
                     long size = Strings.parseLong(args[0], 0);
                     short x = Short.parseShort(args[1]);
                     short y = Short.parseShort(args[2]);
-                    TileLogger.showHistory(x, y, size, player);
+                    TileLogger.showHistory(player, x, y, size);
                     return;
                 }
+                if (data == null) return;
 
                 if (args.length > 0) {
                     data.historySize = Strings.parseLong(args[0], 0);
@@ -111,13 +121,13 @@ public class TileLoggerPlugin extends Plugin {
                 Database.setCached(data);
             }
             catch (NumberFormatException e) {
-                send(player, "error.wrong-number");
+                SendMessage(player, "error.wrong-number");
             }
         });
 
         handler.<Player>register("rollback", "<name/uuid> [time] [x1] [y1] [x2] [y2]", "Rolls back tiles.", (args, player) -> {
-            if (!player.admin) {
-                send(player, "error.access-denied");
+            if (player != null && !player.admin) {
+                SendMessage(player, "error.access-denied");
                 return;
             }
             try {
@@ -134,7 +144,7 @@ public class TileLoggerPlugin extends Plugin {
                 String uuid = args[0].equals("all") ? null : args[0];
                 if (args.length > 2) {
                     if (args.length < 6) {
-                        send(player, "error.not-enough-params");
+                        SendMessage(player, "error.not-enough-params");
                         return;
                     }
                     x1 = Short.parseShort(args[2]);
@@ -144,16 +154,26 @@ public class TileLoggerPlugin extends Plugin {
                 }
                 PlayerInfo target = null;
                 if (uuid != null) {
-                    target = uuid.equals("self") ? player.getInfo() : Find.playerInfo(uuid);
+                    target = uuid.equals("self") ? (player == null ? null : player.getInfo()) : Find.playerInfo(uuid);
                     if (target == null) {
-                        send(player, "error.player-not-found");
+                        SendMessage(player, "error.player-not-found");
                         return;
                     }
                 }
                 TileLogger.rollback(player, target, -1, time, x1, y1, x2, y2);
             } catch (NumberFormatException e) {
-                send(player, "error.wrong-number");
+                SendMessage(player, "error.wrong-number");
             }
         });
+    }
+
+    @Override
+    public void registerClientCommands(CommandHandler handler) {
+        registerCommands(handler);
+    }
+    
+    @Override
+    public void registerServerCommands(CommandHandler handler){
+        registerCommands(handler);
     }
 }
