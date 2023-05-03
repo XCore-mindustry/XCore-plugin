@@ -32,6 +32,7 @@ import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 import static useful.Bundle.format;
+import static useful.Bundle.send;
 
 public class NetEvents {
     public static Seq<String> bannedNames = Seq.with("valve", "tuttop");
@@ -40,13 +41,20 @@ public class NetEvents {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
             if (vote.voted.containsKey(author.id)) {
-                author.sendMessage("[scarlet]⚠ You have already voted. Calm down.");
+                send(author, "error.already-voted");
                 return null;
             }
             vote.vote(author, sign);
         }
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
+
+        var data = database.getCached(author.uuid());
+        if (data.muted > Time.millis()) {
+            Duration remain = Duration.ofMillis(data.muted - Time.millis());
+            send(author, "you-are-muted", remain.toMinutes(), remain.toSecondsPart());
+            return null;
+        }
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);

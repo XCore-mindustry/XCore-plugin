@@ -19,6 +19,8 @@ public class PlayerData {
     public boolean jsAccess = false;
     public boolean consolePanelAccess = false;
 
+    public long muted = 0;
+
     @BsonIgnore
     public boolean adminMod = false;
     @BsonIgnore
