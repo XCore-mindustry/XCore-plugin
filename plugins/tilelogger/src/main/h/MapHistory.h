@@ -82,7 +82,7 @@ public:
                     });
             }
         }
-        std::sort(ret.begin(), ret.end(), [](const auto& a, const auto& b) {
+        std::stable_sort(ret.begin(), ret.end(), [](const auto& a, const auto& b) {
             return a.time < b.time;
         });
         return std::vector<TileStateXY>(ret.end() - (ret.size() > size ? size : ret.size()), ret.end());
