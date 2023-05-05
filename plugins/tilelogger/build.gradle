@@ -23,7 +23,7 @@ dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
 
-    compileOnly files("libs/XCore-plugin.jar")
+    compileOnly fileTree(dir: 'xcore-plugin/build/libs', include: ['*.jar'])
 }
 
 model {
@@ -86,7 +86,15 @@ model {
     }
 }
 
+task buildXCorePlugin(type: GradleBuild) {
+  buildFile = 'xcore-plugin/build.gradle.kts'
+  tasks = ['jar']
+}
+
 jar {
+    dependsOn buildXCorePlugin
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     archiveFileName = "${project.archivesBaseName}.jar"
     from{
         configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}

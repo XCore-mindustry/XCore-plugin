@@ -1,0 +1,3 @@
+[submodule "xcore-plugin"]
+	path = xcore-plugin
+	url = https://github.com/XCore-mindustry/XCore-plugin.git

@@ -6,6 +6,7 @@ import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.Strings;
 import mindustry.Vars;
+import mindustry.content.UnitTypes;
 import mindustry.game.EventType;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
@@ -13,7 +14,7 @@ import mindustry.gen.RotateBlockCallPacket;
 import mindustry.io.JsonIO;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
-import org.xcore.plugin.modules.Database;
+
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -21,6 +22,7 @@ import useful.Bundle;
 
 import static org.xcore.plugin.commands.ClientCommands.register;
 import static useful.Bundle.send;
+import static org.xcore.plugin.PluginVars.database;
 
 @SuppressWarnings("unused")
 public class TileLoggerPlugin extends Plugin {
@@ -70,7 +72,7 @@ public class TileLoggerPlugin extends Plugin {
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
 
-            PlayerData data = Database.getCached(event.player.uuid());
+            PlayerData data = database.getCached(event.player.uuid());
 
             if (data.historySize > 0) {
                 TileLogger.showHistory(event.player, (short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize);
@@ -86,7 +88,7 @@ public class TileLoggerPlugin extends Plugin {
                 TileLogger.showInfo(player));
         handler.<Player>register("history", "[size] [uuid/x] [y]", "Shows tile history.", (args, player) -> {
             try {
-                var data = player == null ? null : Database.getCached(player.uuid());
+                var data = player == null ? null : database.getCached(player.uuid());
 
                 if (args.length == 2) {
                     long size = Strings.parseLong(args[0], 0);
@@ -118,7 +120,7 @@ public class TileLoggerPlugin extends Plugin {
                 }
                 
                 send(player, "commands.history.success", data.historySize);
-                Database.setCached(data);
+                database.setCached(data);
             }
             catch (NumberFormatException e) {
                 SendMessage(player, "error.wrong-number");
