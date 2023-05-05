@@ -209,5 +209,11 @@ public class ServerCommands {
             database.getPlayerDataExecutor().setPlayerData(data);
             Log.info("@ unmuted", target.lastName);
         });
+
+        handler.register("sock-restart", "Restart sock", args -> {
+            SockCommunicator.sock.disconnect();
+            SockCommunicator.safeConnect();
+            Log.info("Done");
+        });
     }
 }

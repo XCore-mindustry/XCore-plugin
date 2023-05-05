@@ -1,6 +1,8 @@
 package org.xcore.plugin.utils;
 
 import arc.func.Cons;
+import arc.util.Timer;
+import com.esotericsoftware.minlog.Log;
 import com.ospx.sock.ClientSock;
 import com.ospx.sock.ServerSock;
 import com.ospx.sock.Sock;
@@ -18,10 +20,28 @@ public class SockCommunicator {
             case SERVER -> sock = new ServerSock(globalConfig.sockServerPort);
         }
 
-        sock.connect();
+        safeConnect();
+
+        if (sock.isClient())
+            Timer.schedule(() -> {
+                if (!sock.isConnected()) {
+                    Log.info("Trying reconnect to Sock server");
+                    safeConnect();
+                }
+            }, 0, 180);
+    }
+
+    public static void safeConnect() {
+        try {
+            sock.connect();
+        } catch (Exception e) {
+            Log.error("Exception occurred while connecting to Sock server", e);
+        }
     }
 
     public static void sendEvent(Object event) {
+        if (!sock.isConnected()) return;
+
         sock.sendEvent(event);
     }
 
