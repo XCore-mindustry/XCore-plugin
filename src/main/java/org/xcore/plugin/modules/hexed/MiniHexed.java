@@ -22,7 +22,7 @@ import mindustry.world.blocks.defense.turrets.Turret;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 
@@ -176,7 +176,7 @@ public class MiniHexed {
         builder.append("\nNew game in 10 seconds...");
         Call.infoMessage(builder.toString());
 
-        JavelinCommunicator.sendEvent(
+        SockCommunicator.sendEvent(
                 new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
 
         Timer.schedule(MiniHexed::reloadMap, 10);

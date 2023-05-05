@@ -14,7 +14,7 @@ import mindustry.net.Packets;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import org.xcore.plugin.utils.models.UUIDBanData;
@@ -125,7 +125,7 @@ public class ServerCommands {
                         .unbanDate(unbanDate)
                         .build();
 
-                JavelinCommunicator.sendEvent(ban);
+                SockCommunicator.sendEvent(ban);
                 database.getBanDataExecutor().saveIPBan(ban);
                 Log.info("'@' (@) banned", ban.ip, target.lastName);
             } else {
@@ -138,7 +138,7 @@ public class ServerCommands {
                         .unbanDate(unbanDate)
                         .build();
 
-                JavelinCommunicator.sendEvent(ban);
+                SockCommunicator.sendEvent(ban);
                 database.getBanDataExecutor().saveUUIDBan(ban);
                 Log.info("'@' (@) banned", ban.name, ban.uuid);
             }

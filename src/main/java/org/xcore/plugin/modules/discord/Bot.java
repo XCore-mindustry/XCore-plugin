@@ -25,7 +25,7 @@ import org.reactivestreams.Publisher;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
@@ -67,14 +67,14 @@ public class Bot {
                     String server = args[0];
                     String uuid = args[1];
 
-                    JavelinCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(uuid, server));
+                    SockCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(uuid, server));
 
                     var info = Find.playerInfo(uuid);
 
                     message.delete().subscribe();
 
                     return event.reply(author.getDisplayName() + " confirmed adminship to player "
-                            + (info != null ? info.lastName : "<unknown>") + " on server "+ server);
+                            + (info != null ? info.lastName : "<unknown>") + " on server " + server);
                 }
 
                 if (event.getCustomId().equals("decline")) {
@@ -99,7 +99,7 @@ public class Bot {
                 if (server.equals(config.server)) {
                     XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), event.getMessage().getContent());
                 } else {
-                    JavelinCommunicator.sendEvent(
+                    SockCommunicator.sendEvent(
                             new SocketEvents.DiscordMessageEvent(author.getDisplayName(), event.getMessage().getContent(), server)
                     );
                 }
@@ -161,36 +161,5 @@ public class Bot {
         gateway.on(eventClass, mapper)
                 .doOnError(Log::err)
                 .subscribe();
-    }
-
-    public static EmbedCreateSpec.Builder toEmbedCreateSpecBuilder(Embed embed) {
-        return EmbedCreateSpec.builder()
-                .title(embed.getData().title())
-                .description(embed.getData().description())
-                .url(embed.getData().url())
-                .timestamp(embed.getTimestamp()
-                        .map(Possible::of)
-                        .orElse(Possible.absent()))
-                .color(embed.getColor()
-                        .map(Possible::of)
-                        .orElse(Possible.absent()))
-                .footer(embed.getFooter()
-                        .map(d -> EmbedCreateFields.Footer.of(d.getText(), d.getIconUrl().orElse(null)))
-                        .orElse(null))
-                .image(embed.getImage()
-                        .map(Embed.Image::getUrl)
-                        .map(Possible::of)
-                        .orElse(Possible.absent()))
-                .author(embed.getAuthor()
-                        .map(d -> EmbedCreateFields.Author.of(d.getName().orElse(null),
-                                d.getUrl().orElse(null), d.getIconUrl().orElse(null)))
-                        .orElse(null))
-                .thumbnail(embed.getThumbnail()
-                        .map(Embed.Thumbnail::getUrl)
-                        .map(Possible::of)
-                        .orElse(Possible.absent()))
-                .fields(embed.getFields().stream()
-                        .map(d -> EmbedCreateFields.Field.of(d.getName(), d.getValue(), d.isInline()))
-                        .collect(Collectors.toList()));
     }
 }

@@ -26,8 +26,7 @@ val metadata = ModMetadata(
     author = "osp54, OSPx#7122",
     version = project.version.toString(),
     minGameVersion = mindustryVersion,
-    main = "${project.group}.XcorePlugin",
-    dependencies = mutableListOf("xpdustry-javelin")
+    main = "${project.group}.XcorePlugin"
 )
 
 repositories {
@@ -40,15 +39,14 @@ dependencies {
     mindustryDependencies()
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:e89b363e1a")
-
-    compileOnly("fr.xpdustry:javelin-mindustry:1.3.0-SNAPSHOT")
+    implementation("com.github.osp54:Sock:ba9619a803")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
     implementation("org.json:json:20230227")
 
-    implementation("com.discord4j:discord4j-core:3.2.2")
+    implementation("com.discord4j:discord4j-core:3.2.3")
 
     implementation("org.jline:jline-reader:3.21.0")
     implementation("org.jline:jline-console:3.21.0")
@@ -83,7 +81,7 @@ tasks.register("runMainServer", MindustryExec::class.java) {
     mainClass.convention("mindustry.server.ServerLauncher")
     modsPath.convention("./config/mods")
     standardInput = System.`in`
-    mods.setFrom(setOf(tasks.jar, project.file("./build/libs/Javelin.jar")))
+    mods.setFrom(setOf(tasks.jar))
 }
 
 tasks.register("runServer", MindustryExec::class.java) {
@@ -92,5 +90,5 @@ tasks.register("runServer", MindustryExec::class.java) {
     mainClass.convention("mindustry.server.ServerLauncher")
     modsPath.convention("./config/mods")
     standardInput = System.`in`
-    mods.setFrom(setOf(tasks.jar, project.file("./build/libs/Javelin.jar")))
+    mods.setFrom(setOf(tasks.jar))
 }

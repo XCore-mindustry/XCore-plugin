@@ -18,7 +18,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.json.JSONObject;
 import org.xcore.plugin.modules.Translator;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.UUIDBanData;
 
@@ -59,7 +59,7 @@ public class NetEvents {
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
 
-        JavelinCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
+        SockCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
         return null;
     }
 

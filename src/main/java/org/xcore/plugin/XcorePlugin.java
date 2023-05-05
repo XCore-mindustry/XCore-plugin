@@ -19,6 +19,7 @@ import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.database.Database;
 import useful.Bundle;
 
@@ -57,8 +58,8 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void init() {
+        SockCommunicator.init();
         Database.init();
-        Console.init();
         MiniPvP.init();
         MiniHexed.init();
         LastStanding.init();
@@ -114,6 +115,7 @@ public class XcorePlugin extends Plugin {
             database.getPlayerDataExecutor().getPlayerData(data.uuid);
         }), 0, 60);
 
+        Console.init();
         info("Plugin loaded");
     }
 

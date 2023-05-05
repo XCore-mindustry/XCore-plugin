@@ -12,6 +12,7 @@ public class GlobalConfig {
     public ObjectMap<String, Long> servers = new ObjectMap<>();
     public String mongoConnectionString = "";
     public String discordBotToken = "";
+    public int sockServerPort = 2000;
     public long discordAdminRoleId = 0L;
     public long discordBansChannelId = 0L;
     public long discordPrivateChannelId = 0L;

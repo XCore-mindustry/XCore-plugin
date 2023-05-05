@@ -6,7 +6,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import useful.Bundle;
 
 import static arc.util.Strings.stripColors;
@@ -35,9 +35,9 @@ public class VoteKick extends VoteSession {
     public void vote(Player player, int sign) {
         super.vote(player, sign);
         send("votekick.vote", player.coloredName(), target.coloredName(), votes(), votesRequired());
-        Log.info(Bundle.format("votekick.vote","en", player.name(), target.name(), votes(), votesRequired()));
+        Log.info(Bundle.format("votekick.vote", "en", player.name(), target.name(), votes(), votesRequired()));
 
-        JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
+        SockCommunicator.sendEvent(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
                 player.coloredName(), target.plainName(), votes(), votesRequired())), config.server));
     }
 
@@ -55,7 +55,7 @@ public class VoteKick extends VoteSession {
         stop();
         send("votekick.success", target.coloredName(), kickDuration / 60000);
         target.kick(Packets.KickReason.vote, kickDuration);
-        JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent(format("votekick.success", defaultLocale,
+        SockCommunicator.sendEvent(new SocketEvents.ServerActionEvent(format("votekick.success", defaultLocale,
                 target.plainName(), kickDuration / 60000), config.server));
         onKick.get(target);
     }
