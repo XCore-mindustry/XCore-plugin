@@ -7,6 +7,7 @@ import static org.xcore.plugin.PluginVars.*;
 
 public class Config {
     public String server = "server";
+    public SockType sockType = SockType.CLIENT;
     public boolean consoleEnabled = true;
 
     public int playerLimit = 30;
@@ -36,5 +37,9 @@ public class Config {
 
     public boolean isLastStanding() {
         return server.equals("the-last-standing");
+    }
+
+    public enum SockType {
+        CLIENT, SERVER
     }
 }

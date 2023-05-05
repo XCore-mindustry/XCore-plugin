@@ -1,6 +1,5 @@
 package org.xcore.plugin.utils.models;
 
-import fr.xpdustry.javelin.JavelinEvent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -9,7 +8,7 @@ import lombok.NonNull;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UUIDBanData implements JavelinEvent {
+public class UUIDBanData {
     @NonNull
     public String uuid;
     @Builder.Default

@@ -4,9 +4,7 @@ import arc.files.Fi;
 import arc.struct.ObjectMap;
 import arc.struct.OrderedMap;
 import arc.util.serialization.JsonReader;
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.votes.VoteKick;
@@ -39,8 +37,6 @@ public class PluginVars {
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
-    public static ObjectMap<Long, UUIDBanData> activeUUIDBanData = new ObjectMap<>();
-    public static ObjectMap<Long, IPBanData> activeIpBanData = new ObjectMap<>();
     public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;

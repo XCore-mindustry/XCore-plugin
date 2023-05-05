@@ -2,7 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.util.Time;
 import arc.util.serialization.JsonValue;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.UUIDBanData;
 
@@ -49,7 +49,7 @@ public class AdminModIntegration {
                         .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
                         .build();
 
-                JavelinCommunicator.sendEvent(ban);
+                SockCommunicator.sendEvent(ban);
                 database.getBanDataExecutor().saveIPBan(ban);
             } else {
                 var ban = UUIDBanData.builder()
@@ -60,7 +60,7 @@ public class AdminModIntegration {
                         .reason(reason)
                         .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
                         .build();
-                JavelinCommunicator.sendEvent(ban);
+                SockCommunicator.sendEvent(ban);
                 database.getBanDataExecutor().saveUUIDBan(ban);
             }
         });

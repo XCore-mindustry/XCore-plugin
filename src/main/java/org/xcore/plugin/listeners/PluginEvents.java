@@ -3,7 +3,6 @@ package org.xcore.plugin.listeners;
 import arc.Events;
 import arc.util.Strings;
 import arc.util.Timer;
-import fr.xpdustry.javelin.JavelinPlugin;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayerJoin;
@@ -16,7 +15,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.IPBanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -35,19 +34,19 @@ import static useful.Bundle.send;
 public class PluginEvents {
     public static void init() {
         Events.on(ServerLoadEvent.class, event -> {
-            if (JavelinCommunicator.isSocketServer()) {
+            if (SockCommunicator.isSocketServer()) {
                 Bot.connect();
 
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.MessageEvent.class, e ->
+                SockCommunicator.onEvent(SocketEvents.MessageEvent.class, e ->
                         Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.ServerActionEvent.class, e ->
+                SockCommunicator.onEvent(SocketEvents.ServerActionEvent.class, e ->
                         Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
+                SockCommunicator.onEvent(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                         Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestEvent.class, e ->
+                SockCommunicator.onEvent(SocketEvents.AdminRequestEvent.class, e ->
                         Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
-                JavelinPlugin.getJavelinSocket().subscribe(UUIDBanData.class, Utils::UUIDTemporaryBan);
-                JavelinPlugin.getJavelinSocket().subscribe(IPBanData.class, Utils::IPTemporaryBan);
+                SockCommunicator.onEvent(UUIDBanData.class, Utils::UUIDTemporaryBan);
+                SockCommunicator.onEvent(IPBanData.class, Utils::IPTemporaryBan);
 
                 Timer.schedule(() -> {
                     var datas = database.getPlayerDataExecutor().getPlayersData(netServer.admins.getAdmins());
@@ -56,19 +55,19 @@ public class PluginEvents {
                     for (PlayerData data : datas) {
                         data.playTime = 0;
                         database.getPlayerDataExecutor().setPlayerData(data);
-                        JavelinCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
+                        SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
                     }
                 }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)).toSeconds(), 60 * 60 * 24);
 
             } else {
-                JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
+                SockCommunicator.onEvent(SocketEvents.DiscordMessageEvent.class, e -> {
                     if (!e.server().equals(config.server)) return;
 
                     XcorePlugin.sendMessageFromDiscord(e.authorName(), e.message());
                 });
             }
 
-            JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.AdminRequestConfirmEvent.class, e -> {
+            SockCommunicator.onEvent(SocketEvents.AdminRequestConfirmEvent.class, e -> {
                 if (!e.server().equals(config.server)) return;
 
                 var info = Find.playerInfo(e.uuid());
@@ -83,11 +82,11 @@ public class PluginEvents {
                 netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
             });
 
-            JavelinPlugin.getJavelinSocket().subscribe(SocketEvents.SyncPlayerData.class, e -> {
+            SockCommunicator.onEvent(SocketEvents.SyncPlayerData.class, e -> {
                 if (database.cachedPlayerData.containsKey(e.data().uuid)) database.setCached(e.data());
             });
 
-            JavelinCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
+            SockCommunicator.sendEvent(new SocketEvents.ServerActionEvent("Server loaded", config.server));
         });
         Events.on(EventType.PlayerConnect.class, event -> {
             var info = netServer.admins.getInfo(event.player.uuid());
@@ -110,7 +109,7 @@ public class PluginEvents {
                 send(event.player, "recommendation.tr");
             }
 
-            JavelinCommunicator.sendEvent(
+            SockCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true));
         });
 
@@ -122,7 +121,7 @@ public class PluginEvents {
             if (vote != null) vote.left(event.player);
             if (voteKick != null) voteKick.left(event.player);
 
-            JavelinCommunicator.sendEvent(
+            SockCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false));
         });
 
@@ -137,7 +136,7 @@ public class PluginEvents {
                         "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
             }
 
-            JavelinCommunicator.sendEvent(
+            SockCommunicator.sendEvent(
                     new SocketEvents.ServerActionEvent(message, config.server));
         });
     }

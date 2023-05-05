@@ -18,7 +18,7 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.JavelinCommunicator;
+import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -128,7 +128,7 @@ public class ClientCommands {
         });
 
         register("login", (args, player) -> {
-            JavelinCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
+            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
             send(player, "commands.login.success");
         });
 

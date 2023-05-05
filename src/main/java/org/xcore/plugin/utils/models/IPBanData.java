@@ -1,6 +1,5 @@
 package org.xcore.plugin.utils.models;
 
-import fr.xpdustry.javelin.JavelinEvent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -8,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class IPBanData implements JavelinEvent {
+public class IPBanData {
     public String ip;
 
     @Builder.Default
