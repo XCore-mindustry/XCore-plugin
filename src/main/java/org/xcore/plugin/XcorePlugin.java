@@ -105,6 +105,8 @@ public class XcorePlugin extends Plugin {
         Timer.schedule(() -> database.cachedPlayerData.each((uuid, data) -> {
             var player = Find.playerByUuid(uuid);
 
+            if (player == null) return;
+            
             data.totalPlayTime++;
 
             if (player.admin) {
