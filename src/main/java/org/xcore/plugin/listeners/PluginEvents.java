@@ -134,6 +134,8 @@ public class PluginEvents {
             } else if (state.rules.pvp && !config.isMiniHexed()) {
                 message = Strings.format(
                         "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
+            } else {
+                message = "Game over!";
             }
 
             SockCommunicator.sendEvent(
