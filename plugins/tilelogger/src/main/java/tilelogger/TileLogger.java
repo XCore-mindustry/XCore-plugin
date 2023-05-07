@@ -16,6 +16,7 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -32,7 +33,7 @@ public class TileLogger {
             var file = TileLogger.class.getResource("/" + fileName);
             var temp = Files.createTempFile("tilelogger", OS.isWindows ? ".dll" : ".so");
 
-            Files.copy(file.openStream(), temp);
+            Files.write(temp, file.openStream().readAllBytes());
 
             System.load(temp.toString());
         } catch (IOException e) {
