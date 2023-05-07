@@ -92,20 +92,13 @@ tasks.register('buildXCorePlugin', GradleBuild) {
     buildFile = 'xcore-plugin/build.gradle.kts'
     tasks = ['jar']
 }
+
 tasks.register("packLibToJar", Zip) {
-    def original = file("build/libs/TileLogger.jar")
-
-    archiveBaseName = 'TileLogger'
-    archiveExtension = 'jar'
-
-    OperatingSystem os = DefaultNativePlatform.currentOperatingSystem
+    archiveFileName = "TileLogger.jar"
+    destinationDir = file('build/')
 
     from (file("build/libs/tileLogger/shared")) {
-        if (os.isLinux()) {
-            include("libTileLogger.so")
-        } else if (os.isWindows()) {
-            include("TileLogger.dll")
-        }
+        include("*")
     }
 }
 
