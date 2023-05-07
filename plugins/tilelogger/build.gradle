@@ -104,7 +104,7 @@ tasks.register('buildXCorePlugin', GradleBuild) {
 
 jar {
     dependsOn tasks.buildXCorePlugin
-    dependsOn tasks.TileLoggerSharedLibrary
+    dependsOn tasks.withType(CppCompile)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     archiveFileName = "${project.archivesBaseName}.jar"
