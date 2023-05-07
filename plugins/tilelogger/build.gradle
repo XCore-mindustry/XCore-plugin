@@ -93,10 +93,10 @@ tasks.register('buildXCorePlugin', GradleBuild) {
     tasks = ['jar']
 }
 
-tasks.register("packLibToJar", Zip) {
-    archiveFileName = "TileLogger.jar"
-    destinationDir = file('build/')
+tasks.register("packLibToJar", Jar) {
+    archiveFileName = "TileLoggerPacked.jar"
 
+    from zipTree("build/libs/TileLogger.jar")
     from (file("build/libs/tileLogger/shared")) {
         include("*")
     }
