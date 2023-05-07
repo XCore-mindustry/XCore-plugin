@@ -44,8 +44,7 @@ jobs:
 
       - name: Build
         run: |
-          ./gradlew build
-          ./gradlew packLibToJar
+          ./gradlew build packLibToJar
 
       # - name: Upload artifacts
       #   uses: actions/upload-artifact@v3
