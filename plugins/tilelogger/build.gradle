@@ -99,7 +99,8 @@ tasks.register("packLibToJar", Jar) {
 
     from zipTree("build/libs/TileLogger.jar")
     from (file("build/libs/tileLogger/shared")) {
-        include("*")
+        include("*.so")
+        include("*.dll")
     }
 }
 
