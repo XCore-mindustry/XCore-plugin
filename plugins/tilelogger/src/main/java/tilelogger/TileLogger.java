@@ -1,7 +1,9 @@
 package tilelogger;
 
+import arc.Core;
 import arc.util.Log;
 import arc.util.Nullable;
+import arc.util.OS;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
@@ -13,6 +15,9 @@ import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
 import mindustry.world.Tile;
 
+import java.io.IOException;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -22,7 +27,18 @@ public class TileLogger {
     public static List<Block> rollback_blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
 
     static {
-        System.loadLibrary("TileLogger");
+        String fileName = OS.isWindows ? "TileLogger.dll" : "libTileLogger.so";
+
+        try {
+            var file = TileLogger.class.getResource("/" + fileName);
+            var temp = Files.createTempFile("tilelogger", OS.isWindows ? ".dll" : ".so");
+
+            Files.write(temp, file.openStream().readAllBytes());
+
+            System.load(temp.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static @Nullable PlayerInfo unitToPlayerInfo(@Nullable Unit unit) {

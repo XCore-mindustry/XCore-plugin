@@ -1,3 +1,5 @@
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+
 plugins {
     id "cpp"
     id "java"
@@ -50,7 +52,7 @@ model {
     }
     components {
         TileLogger(NativeLibrarySpec) {
-            OperatingSystem os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem;
+            OperatingSystem os = DefaultNativePlatform.currentOperatingSystem;
             if (os.isWindows()) {
                 targetPlatform "x64"
             } else if (os.isLinux()) {
@@ -86,13 +88,22 @@ model {
     }
 }
 
-task buildXCorePlugin(type: GradleBuild) {
-  buildFile = 'xcore-plugin/build.gradle.kts'
-  tasks = ['jar']
+tasks.register('buildXCorePlugin', GradleBuild) {
+    buildFile = 'xcore-plugin/build.gradle.kts'
+    tasks = ['jar']
+}
+
+tasks.register("packLibToJar", Jar) {
+    archiveFileName = "TileLoggerPacked.jar"
+
+    from zipTree("build/libs/TileLogger.jar")
+    from (file("build/libs/tileLogger/shared")) {
+        include("*")
+    }
 }
 
 jar {
-    dependsOn buildXCorePlugin
+    dependsOn tasks.buildXCorePlugin
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     archiveFileName = "${project.archivesBaseName}.jar"
