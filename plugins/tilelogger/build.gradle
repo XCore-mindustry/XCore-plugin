@@ -94,6 +94,7 @@ tasks.register('buildXCorePlugin', GradleBuild) {
 }
 
 tasks.register("packLibToJar", Jar) {
+    dependsOn assemble
     archiveFileName = "TileLoggerPacked.jar"
 
     from zipTree("build/libs/TileLogger.jar")
@@ -114,6 +115,10 @@ jar {
     from(rootDir){
         include "plugin.json"
     }
+}
+
+build {
+    dependsOn tasks.packLibToJar
 }
 
 tasks.withType(CppCompile).configureEach {
