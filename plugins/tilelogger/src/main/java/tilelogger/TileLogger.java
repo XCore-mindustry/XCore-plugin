@@ -119,14 +119,14 @@ public class TileLogger {
         Broadcast(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
                 target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
 
-        if (caller != null) {
-            Call.clientPacketUnreliable(caller.con, "tilelogger_rollback_preview",
-                JsonIO.write(Arrays.stream(tiles).map(t -> {
-                    var info = Vars.netServer.admins.getInfoOptional(t.uuid);
-                    return new TileStatePacket(t.x, t.y, info == null ? "" : info.lastName, t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
-                }
-            ).toArray(TileStatePacket[]::new)));
-        }
+        // if (caller != null) {
+        //     Call.clientPacketUnreliable(caller.con, "tilelogger_rollback_preview",
+        //         JsonIO.write(Arrays.stream(tiles).map(t -> {
+        //             var info = Vars.netServer.admins.getInfoOptional(t.uuid);
+        //             return new TileStatePacket(t.x, t.y, info == null ? "" : info.lastName, t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
+        //         }
+        //     ).toArray(TileStatePacket[]::new)));
+        // }
     }
 
     public static void reset() {
