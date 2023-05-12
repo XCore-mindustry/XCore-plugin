@@ -39,7 +39,7 @@ dependencies {
     mindustryDependencies()
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:e89b363e1a")
-    implementation("com.github.osp54:Sock:b91ce27619")
+    implementation("com.github.osp54:Sock:a2a3c0d58b")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
