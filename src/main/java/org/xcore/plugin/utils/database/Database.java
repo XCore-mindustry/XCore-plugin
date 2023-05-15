@@ -52,6 +52,10 @@ public class Database {
         return cachedPlayerData.get(uuid);
     }
 
+    public PlayerData getCachedOrDb(String uuid) {
+        return cachedPlayerData.get(uuid, () -> playerDataExecutor.getPlayerData(uuid));
+    }
+
     public void setCached(PlayerData data) {
         cachedPlayerData.put(data.uuid, data);
     }

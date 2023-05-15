@@ -2,47 +2,35 @@ package org.xcore.plugin.modules;
 
 import arc.Core;
 import arc.func.Cons;
-import arc.util.Log;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.xcore.plugin.PluginVars;
-import org.xcore.plugin.XcorePlugin;
 import reactor.util.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 public class Console {
-    public static ServerControl serverControl;
+    public static ServerControl serverControl = ServerControl.instance;
     public static LineReader lineReader;
 
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
-        serverControl = (ServerControl) Core.app.getListeners().find(listener -> listener instanceof ServerControl);
-
-        try {
-            lineReader = LineReaderBuilder.builder().build();
-
-            System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
-        } catch (Exception e) {
-            Log.err(e);
-            XcorePlugin.err("Exiting...");
-            Core.app.exit();
-        }
+        lineReader = LineReaderBuilder.builder().build();
+        System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
 
         serverControl.serverInput = () -> {
             while (true) {
                 try {
                     String line = lineReader.readLine("> ");
-                    if (!line.isEmpty()) {
+                    if (!line.isEmpty() && !String.valueOf(line.charAt(0)).equals("#")) {
                         Core.app.post(() -> serverControl.handleCommandString(line));
                     }
                 } catch (UserInterruptException | EndOfFileException e) {
-                    Core.app.exit();
                     System.exit(0);
                 }
             }
