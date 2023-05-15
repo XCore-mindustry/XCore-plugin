@@ -52,12 +52,7 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = database.getCached(info.id);
-            boolean cached = true;
-            if (data == null) {
-                cached = false;
-                data = database.getPlayerDataExecutor().getPlayerData(info.id);
-            }
+            PlayerData data = database.getCachedOrDb(info.id);
 
             String json = gson.toJson(data);
             JsonValue reader = new JsonReader().parse(json);
@@ -77,7 +72,6 @@ public class ServerCommands {
 
             PlayerData result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
 
-            if (cached) database.setCached(result);
             database.getPlayerDataExecutor().setPlayerData(result);
             Log.info("Done.");
         });
@@ -90,19 +84,13 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = database.getCached(info.id);
-            data = data == null ? database.getPlayerDataExecutor().getPlayerData(info.id) : data;
+            PlayerData data = database.getCachedOrDb(args[0]);
 
             Log.info(gson.toJson(data));
         });
 
         handler.register("tempban", "<name/uuid/ip> <days-of-ban> <global> <reason...>", "Temporary ban player.", args -> {
             var target = Find.playerInfo(args[0]);
-
-            if (target == null) {
-                Log.err("Player not found.");
-                return;
-            }
 
             int days = Strings.parseInt(args[1]);
             long unbanDate = Time.millis() + TimeUnit.DAYS.toMillis(days);
@@ -163,17 +151,16 @@ public class ServerCommands {
         handler.register("tempunban", "<name/uuid/ip>", "Unban a temporary banned player.", args -> {
             var info = Find.playerInfo(args[0]);
 
-            if (info == null) {
-                Log.err("Player not found.");
-                return;
+            if (String.valueOf(args[0].charAt(0)).equals("#")) {
+                database.getBanDataExecutor().deleteIPBan(args[0].substring(1));
+            } else {
+                database.getBanDataExecutor().deleteUUIDBan(args[0]);
             }
 
-            database.getBanDataExecutor().deleteUUIDBan(info.id);
-            database.getBanDataExecutor().deleteIPBan(args[0]);
-            Log.info("Unbanned @", info.lastName);
+            Log.info("@ unbanned", info == null ? args[0] : info.lastName);
         });
 
-        handler.register("mute", "<player> <period>", "shut up", (args) -> {
+        handler.register("mute", "<player> <period>", "Mute player", (args) -> {
             var target = Find.playerInfo(args[0]);
 
             if (target == null) {
@@ -181,10 +168,7 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = database.getCached(target.id);
-            if (data == null) {
-                data = database.getPlayerDataExecutor().getPlayerData(target.id);
-            }
+            PlayerData data = database.getCachedOrDb(target.id);
 
             data.muted = Time.millis() + TimeUnit.HOURS.toMillis(Strings.parseInt(args[1]));
 
@@ -192,7 +176,7 @@ public class ServerCommands {
             Log.info("@ (@) muted for @ hours", target.lastName, target.id, args[1]);
         });
 
-        handler.register("unmute", "<player>", (args, player) -> {
+        handler.register("unmute", "<player>", "Unmute player", (args, player) -> {
             var target = Find.playerInfo(args[0]);
 
             if (target == null) {
@@ -200,10 +184,7 @@ public class ServerCommands {
                 return;
             }
 
-            PlayerData data = database.getCached(target.id);
-            if (data == null) {
-                data = database.getPlayerDataExecutor().getPlayerData(target.id);
-            }
+            PlayerData data = database.getCachedOrDb(target.id);
 
             data.muted = 0;
             database.getPlayerDataExecutor().setPlayerData(data);

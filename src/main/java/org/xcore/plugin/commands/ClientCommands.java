@@ -197,7 +197,7 @@ public class ClientCommands {
                 return;
             }
 
-            PlayerData data = database.getPlayerDataExecutor().getPlayerData(player.uuid());
+            PlayerData data = database.getCached(player.uuid());
 
             if (data.totalPlayTime < votekickPlayTime) {
                 send(player, "error.votekick-total-playtime", votekickPlayTime);
@@ -387,9 +387,10 @@ public class ClientCommands {
                 return;
             }
 
-            PlayerData data = database.getCached(target.uuid());
+            PlayerData data = database.getCachedOrDb(args[0]);
 
             data.muted = 0;
+
             database.getPlayerDataExecutor().setPlayerData(data);
             send(player, "commands.unmute.success", target.coloredName());
         });
