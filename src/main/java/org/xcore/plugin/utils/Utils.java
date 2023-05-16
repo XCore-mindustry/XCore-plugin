@@ -4,10 +4,7 @@ import arc.Core;
 import arc.func.Boolf;
 import arc.func.Cons2;
 import arc.struct.Seq;
-import arc.util.Log;
-import arc.util.Reflect;
-import arc.util.Strings;
-import arc.util.Timer;
+import arc.util.*;
 import discord4j.common.util.TimestampFormat;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
@@ -23,13 +20,15 @@ import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
-import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
-import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static arc.util.Strings.*;
 import static mindustry.Vars.charset;
@@ -40,28 +39,41 @@ import static org.xcore.plugin.modules.discord.Bot.isConnected;
 import static useful.Bundle.format;
 
 public class Utils {
+    private static final Pattern periodPattern = Pattern.compile("([0-9]+)([hdwmy])");
+
     public static <T> T notNullElse(T value, T defaultValue) {
         return value != null ? value : defaultValue;
     }
 
-    public static void UUIDTemporaryBan(UUIDBanData ban) {
-        if (!isConnected) return;
+    public static @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit) {
+        if (period == null) return null;
+        period = period.toLowerCase();
+        Matcher matcher = periodPattern.matcher(period);
+        Instant instant = Instant.EPOCH;
 
-        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
-                .addEmbed(EmbedCreateSpec.builder()
-                        .title("Ban")
-                        .color(Color.RED)
-                        .addField("Violator", ban.name, false)
-                        .addField("Admin", ban.adminName, false)
-                        .addField("Server", ban.server, false)
-                        .addField("Reason", ban.reason, false)
-                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
-                        .build()
-                )
-                .build())).subscribe();
+        while (matcher.find()) {
+            int num = Integer.parseInt(matcher.group(1));
+            String typ = matcher.group(2);
+            switch (typ) {
+                case "m" -> instant = instant.plusMillis(TimeUnit.MINUTES.toMillis(num));
+                case "h" -> instant = instant.plusMillis(TimeUnit.HOURS.toMillis(num));
+                case "d" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(num));
+                case "w" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(7L * num));
+                case "y" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(365L * num));
+            }
+        }
+
+        boolean same = instant.plusMillis(Time.millis()).toEpochMilli() == Time.millis();
+        if (same && Strings.canParsePositiveInt(period)) {
+            return Instant.ofEpochMilli(defaultUnit.toMillis(Strings.parseInt(period)));
+        } else if (same) {
+            return null;
+        }
+
+        return instant;
     }
 
-    public static void IPTemporaryBan(IPBanData ban) {
+    public static void temporaryBan(BanData ban) {
         if (!isConnected) return;
 
         bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
@@ -70,9 +82,8 @@ public class Utils {
                         .color(Color.RED)
                         .addField("Violator", ban.name, false)
                         .addField("Admin", ban.adminName, false)
-                        .addField("Server", "global", false)
                         .addField("Reason", ban.reason, false)
-                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(Instant.ofEpochMilli(ban.unbanDate)), false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant()), false)
                         .build()
                 )
                 .build())).subscribe();
@@ -164,14 +175,6 @@ public class Utils {
             reloader.end();
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
-        }
-    }
-
-    public static char emoji(UnlockableContent content) {
-        try {
-            return Reflect.get(Iconc.class, Strings.kebabToCamel(content.getContentType().name() + "-" + content.name));
-        } catch (Exception e) {
-            return '?';
         }
     }
 

@@ -24,6 +24,8 @@ import org.xcore.plugin.utils.models.HexMember;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
@@ -368,11 +370,19 @@ public class ClientCommands {
 
             PlayerData data = database.getCached(target.uuid());
 
-            data.muted = Time.millis() + TimeUnit.HOURS.toMillis(Strings.parseInt(args[1]));
+            Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
+
+            if (date == null) {
+                send(player, "error.wrong-period-format", format("hours", player));
+                return;
+            }
+
+            data.muted = Time.millis() + date.toEpochMilli();
 
             database.getPlayerDataExecutor().setPlayerData(data);
             send(player, "commands.mute.success", target.coloredName());
-            send(target, "you-are-muted-by", player.coloredName(), args[1]);
+            Duration duration = Duration.ofMillis(date.toEpochMilli());
+            send(target, "you-are-muted-by", player.coloredName(), duration.toMinutes(), duration.toSecondsPart());
         });
 
         register("unmute", (args, player) -> {

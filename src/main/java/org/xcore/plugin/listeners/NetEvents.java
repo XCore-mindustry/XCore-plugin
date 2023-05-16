@@ -19,11 +19,9 @@ import mindustry.net.Packets;
 import org.json.JSONObject;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.models.IPBanData;
-import org.xcore.plugin.utils.models.UUIDBanData;
+import org.xcore.plugin.utils.models.BanData;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -133,26 +131,14 @@ public class NetEvents {
         }
 
 
-        UUIDBanData uuidBan = database.getBanDataExecutor().getUUIDBan(uuid);
-        if (uuidBan != null) {
-            if (Time.millis() > uuidBan.unbanDate) {
+        BanData ban = database.getBanDataExecutor().getBan(uuid, con.address);
+        if (ban != null) {
+            if (ban.expired()) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(con.address);
-                database.getBanDataExecutor().deleteUUIDBan(uuidBan.uuid);
+                database.getBanDataExecutor().deleteBan(ban.uuid, con.address);
             } else {
-                tempBanKick(con, packet.locale, uuidBan.name, uuidBan.adminName, uuidBan.reason, uuidBan.unbanDate);
-                return;
-            }
-        }
-
-        IPBanData ipBan = database.banDataExecutor.getIPBan(con.address);
-        if (ipBan != null) {
-            if (Time.millis() > ipBan.unbanDate) {
-                netServer.admins.unbanPlayerID(uuid);
-                netServer.admins.unbanPlayerIP(con.address);
-                database.getBanDataExecutor().deleteIPBan(ipBan.ip);
-            } else {
-                tempBanKick(con, packet.locale, ipBan.name, ipBan.adminName, ipBan.reason, ipBan.unbanDate);
+                tempBanKick(con, packet.locale, ban);
                 return;
             }
         }
@@ -298,13 +284,13 @@ public class NetEvents {
         Events.fire(new EventType.PlayerConnect(player));
     }
 
-    public static void tempBanKick(NetConnection con, String locale, String name, String adminName, String reason, long unbanDate) {
-        LocalDateTime date = LocalDateTime.ofInstant(Instant.ofEpochMilli(unbanDate), ZoneOffset.UTC);
+    public static void tempBanKick(NetConnection con, String locale, BanData ban) {
+        LocalDateTime date = LocalDateTime.ofInstant(ban.unbanDate.toInstant(), ZoneOffset.UTC);
 
         con.kick(format("tempban.content", locale,
-                stripColors(name),
-                stripColors(adminName),
-                reason,
+                stripColors(ban.name),
+                stripColors(ban.adminName),
+                ban.reason,
                 longDateFormat.format(date),
                 discordUrl), 0);
     }

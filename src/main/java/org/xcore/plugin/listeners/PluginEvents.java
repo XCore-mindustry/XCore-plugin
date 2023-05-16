@@ -11,15 +11,15 @@ import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
-import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -45,8 +45,7 @@ public class PluginEvents {
                         Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
                 SockCommunicator.onEvent(SocketEvents.AdminRequestEvent.class, e ->
                         Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
-                SockCommunicator.onEvent(UUIDBanData.class, Utils::UUIDTemporaryBan);
-                SockCommunicator.onEvent(IPBanData.class, Utils::IPTemporaryBan);
+                SockCommunicator.onEvent(BanData.class, Utils::temporaryBan);
 
                 Timer.schedule(() -> {
                     var datas = database.getPlayerDataExecutor().getPlayersData(netServer.admins.getAdmins());
@@ -81,6 +80,9 @@ public class PluginEvents {
 
                 netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
             });
+
+            SockCommunicator.onEvent(SocketEvents.KickBannedPlayer.class, e ->
+                    Groups.player.each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
 
             SockCommunicator.onEvent(SocketEvents.SyncPlayerData.class, e -> {
                 if (database.cachedPlayerData.containsKey(e.data().uuid)) database.setCached(e.data());
@@ -126,7 +128,7 @@ public class PluginEvents {
         });
 
         Events.on(GameOverEvent.class, event -> {
-            String message = null;
+            String message = "Game over!";
 
             if (state.rules.waves) {
                 message = Strings.format(
@@ -134,8 +136,6 @@ public class PluginEvents {
             } else if (state.rules.pvp && !config.isMiniHexed()) {
                 message = Strings.format(
                         "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
-            } else {
-                message = "Game over!";
             }
 
             SockCommunicator.sendEvent(
