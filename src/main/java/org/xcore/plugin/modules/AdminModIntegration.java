@@ -66,11 +66,11 @@ public class AdminModIntegration {
 
             if (data == null || data.adminModVersion != null) return;
 
-//            if (content.isBlank() || content.isEmpty()) {
-//                player.con.kick("Update Admin Mod", 0);
-//                return;
-//            }
-
+            if (content.isBlank() || content.isEmpty()) {
+                player.con.kick("Update Admin Mod", 0);
+                return;
+            }
+            System.out.println(content);
             data.adminModVersion = content;
 
             database.setCached(data);
