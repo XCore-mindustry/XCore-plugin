@@ -6,12 +6,9 @@ import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.Strings;
 import mindustry.Vars;
-import mindustry.content.UnitTypes;
 import mindustry.game.EventType;
-import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.gen.RotateBlockCallPacket;
-import mindustry.io.JsonIO;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
 
@@ -20,7 +17,6 @@ import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
 
-import static org.xcore.plugin.commands.ClientCommands.register;
 import static useful.Bundle.send;
 import static org.xcore.plugin.PluginVars.database;
 
@@ -77,7 +73,7 @@ public class TileLoggerPlugin extends Plugin {
             if (data.historySize > 0) {
                 TileLogger.showHistory(event.player, (short)event.tile.centerX(), (short)event.tile.centerY(), data.historySize);
             }
-            else if (data.adminMod && !event.player.con.mobile) {
+            else if (data.adminModVersion != null && !event.player.con.mobile) {
                 TileLogger.sendTileHistory((short)event.tile.centerX(), (short)event.tile.centerY(), event.player);
             }
         });
@@ -95,7 +91,7 @@ public class TileLoggerPlugin extends Plugin {
                     if (data == null || data.historySize > 0) {
                         TileLogger.showHistory(player, Find.playerInfo(args[1]), size);
                     }
-                    else if (data.adminMod && !player.con.mobile) {
+                    else if (data.adminModVersion != null && !player.con.mobile) {
                         TileLogger.sendTileHistory(Find.playerInfo(args[1]), player);
                     }
                     return;
