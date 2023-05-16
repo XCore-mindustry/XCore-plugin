@@ -23,6 +23,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
@@ -151,6 +152,18 @@ public class Bot {
                 .addComponent(ActionRow.of(Button.danger(server + "_" + uuid + "_admreq", "Confirm"),
                         Button.success("decline", "Decline")))
                 .build())).subscribe();
+    }
+
+    public static void sendUnban(BanData data) {
+        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                        .addEmbed(EmbedCreateSpec.builder().title("Player Ban Expired")
+                                .color(Color.GREEN)
+                                .addField("Player", data.name, false)
+                                .addField("Reason", data.reason, false)
+                                .addField("Admin", data.adminName, false)
+                                .build())
+                        .build()))
+                .subscribe();
     }
 
     public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {

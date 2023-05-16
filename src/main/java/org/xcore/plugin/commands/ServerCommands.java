@@ -91,7 +91,7 @@ public class ServerCommands {
             Log.info(gson.toJson(data));
         });
 
-        handler.register("tempban", "<name/uuid/#ip> <days-of-ban> [reason...>]", "Temporary ban player.", args -> {
+        handler.register("tempban", "<name/uuid/#ip> <period> [reason...>]", "Temporary ban player.", args -> {
             var target = Find.playerInfo(args[0].startsWith("#") ? args[0].substring(1) : args[0]);
 
             String name = "Unknown";
@@ -108,6 +108,12 @@ public class ServerCommands {
             }
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+
+            if (date == null) {
+                Log.err("Invalid period format. Example: 1h30m, 30 (hours)");
+                return;
+            }
+
             Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
             SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(uuid, ip));
 
@@ -143,7 +149,7 @@ public class ServerCommands {
             if (args[0].startsWith("#")) {
                 uuid = info == null ? null : info.id;
                 ip = args[0].substring(1);
-                Log.info("Unbanning by ip and internal uuid ()", ip, uuid);
+                Log.info("Unbanning by ip and internal uuid (@, @)", ip, uuid);
             } else if (info != null) {
                 uuid = args[0];
                 ip = info.lastIP;

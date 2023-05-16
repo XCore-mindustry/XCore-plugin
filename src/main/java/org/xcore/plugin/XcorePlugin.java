@@ -16,6 +16,7 @@ import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
+import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.utils.Find;
@@ -60,12 +61,13 @@ public class XcorePlugin extends Plugin {
     public void init() {
         SockCommunicator.init();
         Database.init();
+        PluginEvents.init();
+        SocketEvents.init();
+        AdminModIntegration.init();
+        Translator.init();
         MiniPvP.init();
         MiniHexed.init();
         LastStanding.init();
-        PluginEvents.init();
-        AdminModIntegration.init();
-        Translator.init();
         Bundle.load(XcorePlugin.class);
 
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
