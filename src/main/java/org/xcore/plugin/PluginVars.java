@@ -1,17 +1,16 @@
 package org.xcore.plugin;
 
 import arc.files.Fi;
-import arc.struct.ObjectMap;
 import arc.struct.OrderedMap;
 import arc.util.serialization.JsonReader;
-import com.google.gson.*;
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteSession;
 import org.xcore.plugin.utils.database.Database;
-import org.xcore.plugin.utils.models.IPBanData;
-import org.xcore.plugin.utils.models.UUIDBanData;
 
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;

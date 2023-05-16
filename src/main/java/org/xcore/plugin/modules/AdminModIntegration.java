@@ -1,15 +1,22 @@
 package org.xcore.plugin.modules;
 
 import arc.util.Time;
+import arc.util.Timer;
 import arc.util.serialization.JsonValue;
+import mindustry.gen.Call;
 import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.models.IPBanData;
-import org.xcore.plugin.utils.models.UUIDBanData;
+import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.BanData;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.PluginVars.reader;
+import static useful.Bundle.format;
+import static useful.Bundle.send;
 
 public class AdminModIntegration {
     public static void init() {
@@ -23,8 +30,7 @@ public class AdminModIntegration {
             String name = json.get("name").asString();
             String reason = json.get("reason").asString();
 
-            boolean global = json.get("global").asBoolean();
-            short duration = json.get("duration").asShort();
+            Instant date = Utils.parsePeriod(json.get("duration").asString(), TimeUnit.DAYS);
 
             if (uuid == null || uuid.isBlank()) {
                 player.sendMessage("UUID cannot be blank.");
@@ -35,41 +41,38 @@ public class AdminModIntegration {
                 reason = "<unknown>";
             }
 
-            if (duration == 0) {
-                duration = 1000;
+            if (date == null) {
+                send(player, "error.wrong-period-format", format("days", player));
+                Timer.schedule(() -> Call.clientPacketReliable(player.con, "give_ban_data", content), 5);
+                return;
             }
 
             netServer.admins.unbanPlayerID(uuid);
-            if (global) {
-                var ban = IPBanData.builder()
-                        .ip(ip)
-                        .name(name)
-                        .adminName(player.name)
-                        .reason(reason)
-                        .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
-                        .build();
 
-                SockCommunicator.sendEvent(ban);
-                database.getBanDataExecutor().saveIPBan(ban);
-            } else {
-                var ban = UUIDBanData.builder()
-                        .name(name)
-                        .uuid(uuid)
-                        .adminName(player.name)
-                        .server(config.server)
-                        .reason(reason)
-                        .unbanDate(Time.millis() + TimeUnit.DAYS.toMillis(duration))
-                        .build();
-                SockCommunicator.sendEvent(ban);
-                database.getBanDataExecutor().saveUUIDBan(ban);
-            }
+            var ban = BanData.builder()
+                    .name(name)
+                    .uuid(uuid)
+                    .ip(ip)
+                    .adminName(player.name)
+                    .reason(reason)
+                    .unbanDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .build();
+            SockCommunicator.sendEvent(ban);
+            database.getBanDataExecutor().saveBan(ban);
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
             var data = database.getCached(player.uuid());
-            if (data == null || data.adminMod) return;
 
-            data.adminMod = true;
+            if (data == null || data.adminModVersion != null) return;
+
+//            if (content.isBlank() || content.isEmpty()) {
+//                player.con.kick("Update Admin Mod", 0);
+//                return;
+//            }
+
+            data.adminModVersion = content;
+
             database.setCached(data);
         });
     }

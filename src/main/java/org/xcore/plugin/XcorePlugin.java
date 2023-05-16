@@ -106,7 +106,7 @@ public class XcorePlugin extends Plugin {
             var player = Find.playerByUuid(uuid);
 
             if (player == null) return;
-            
+
             data.totalPlayTime++;
 
             if (player.admin) {

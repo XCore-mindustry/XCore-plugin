@@ -11,9 +11,8 @@ import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.PluginVars;
-import org.xcore.plugin.utils.models.IPBanData;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
-import org.xcore.plugin.utils.models.UUIDBanData;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -38,8 +37,7 @@ public class Database {
 
         playerDataExecutor = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
         banDataExecutor = new BanDataExecutor(
-                database.getCollection("uuid_bans", UUIDBanData.class),
-                database.getCollection("ip_bans", IPBanData.class));
+                database.getCollection("bans", BanData.class));
     }
 
     public static void init() {

@@ -9,14 +9,11 @@ import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.Event;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.Embed;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.channel.GuildMessageChannel;
-import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
-import discord4j.discordjson.possible.Possible;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
@@ -30,7 +27,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.globalConfig;

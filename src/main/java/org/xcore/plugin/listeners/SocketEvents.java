@@ -21,6 +21,9 @@ public class SocketEvents {
     public record AdminRequestConfirmEvent(String uuid, String server) {
     }
 
+    public record KickBannedPlayer(String uuid, String ip) {
+    }
+
     public record SyncPlayerData(PlayerData data) {
     }
 }

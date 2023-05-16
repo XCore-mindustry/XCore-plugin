@@ -17,12 +17,11 @@ public class PlayerData {
 
     public boolean leaderboard = true;
     public boolean jsAccess = false;
-    public boolean consolePanelAccess = false;
 
     public long muted = 0;
 
     @BsonIgnore
-    public boolean adminMod = false;
+    public String adminModVersion = null;
     @BsonIgnore
     public long historySize = 0L;
     @BsonIgnore
