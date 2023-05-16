@@ -154,18 +154,6 @@ public class Bot {
                 .build())).subscribe();
     }
 
-    public static void sendUnban(BanData data) {
-        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
-                        .addEmbed(EmbedCreateSpec.builder().title("Player Ban Expired")
-                                .color(Color.GREEN)
-                                .addField("Player", data.name, false)
-                                .addField("Reason", data.reason, false)
-                                .addField("Admin", data.adminName, false)
-                                .build())
-                        .build()))
-                .subscribe();
-    }
-
     public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {
         gateway.on(eventClass, mapper)
                 .doOnError(Log::err)
