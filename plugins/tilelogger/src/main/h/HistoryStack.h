@@ -51,7 +51,6 @@ public:
                 bool forward = !it->valid; 
                 bool sel_player = !player || it->player == player; 
                 bool sel_team = 1 << it->team & teams;
-                printf("back: %d, forw %d, player %d, team %d\n",backward,forward,sel_player,sel_team);
                 bool rollback = sel_player && sel_team && (backward || forward);
                 if (!rollback && !it->valid)
                     continue;
@@ -62,7 +61,7 @@ public:
                 if (it->valid && player && it->player != *player || it->time <= time) {
                     if (!tile->ret) {
                         tile->ret = &*it; // rollback to first suitable state
-                        last_valid_cache_[it->pos] = static_cast<stack_counter_t_>(it - stack_.rbegin());
+                        last_valid_cache_[it->pos] = static_cast<stack_counter_t_>(stack_.rend() - it) - 1;
                     }
                     if (it->valid) {
                         tile->rollback = false; // terminate stack unwinding if a suitable valid state is found
