@@ -7,11 +7,6 @@
 template<class Data, class Id>
 class Cache {
 public:
-    void Reset() {
-        ids_.clear();
-        data_.clear();
-    }
-
     Id operator[](const Data& data) {
         auto [it, insert] = ids_.insert({data, static_cast<Id>(data_.size())});
         if (insert) {

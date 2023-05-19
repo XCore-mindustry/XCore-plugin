@@ -1,12 +1,12 @@
 #include <cassert>
 
 #include "tilelogger_TileLogger.h"
-#include "MapHistory.h"
+#include "TileLogger.h"
 
-static MapHistory g_map_history;
+static TileLogger g_map_history;
 
 JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_reset (JNIEnv*, jclass, jshort width, jshort height) {
-    return g_map_history.Reset(width, height);
+    return g_map_history.Reset({width, height});
 }
 
 JNIEXPORT jshort JNICALL Java_tilelogger_TileLogger_duration (JNIEnv*, jclass) {
@@ -17,7 +17,7 @@ JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction (JNIEnv* env, jclass,
     jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jint config) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
-    g_map_history.Record(x, y, uuid, team, block, rotation, config_type, config);
+    g_map_history.Record({x, y}, uuid, team, block, rotation, config_type, config);
 }
 
 JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass, 
@@ -26,10 +26,10 @@ JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
     std::byte* jconfig_ptr = reinterpret_cast<std::byte*>(env->GetByteArrayElements(jconfig, NULL));
     jsize jconfig_len = env->GetArrayLength(jconfig);
-    g_map_history.Record(x, y, uuid, team, block, rotation, config_type, ConfigData(jconfig_ptr, jconfig_ptr + jconfig_len));
+    g_map_history.Record({x, y}, uuid, team, block, rotation, config_type, ConfigData(jconfig_ptr, jconfig_ptr + jconfig_len));
 }
 
-jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileStateXY> vec) {
+jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec) {
     jclass state_class = env->FindClass("tilelogger/TileState"); assert(state_class != nullptr);
     jfieldID x_field = env->GetFieldID(state_class, "x", "S"); assert(x_field != nullptr);
     jfieldID y_field = env->GetFieldID(state_class, "y", "S"); assert(y_field != nullptr);
@@ -48,8 +48,8 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileStateXY> ve
     jobjectArray object_array_j = env->NewObjectArray(static_cast<jsize>(vec.size()), state_class, nullptr); assert(object_array_j != nullptr);
     for (int i = 0; i < vec.size(); i++) {
         jobject state_j = env->AllocObject(state_class); assert(state_j != nullptr);
-        env->SetShortField(state_j, x_field, vec[i].x);
-        env->SetShortField(state_j, y_field, vec[i].y);
+        env->SetShortField(state_j, x_field, vec[i].pos.x);
+        env->SetShortField(state_j, y_field, vec[i].pos.y);
         env->SetObjectField(state_j, uuid_field, env->NewStringUTF(g_map_history.GetPlayer(vec[i].player).c_str()));
         env->SetByteField(state_j, team_field, vec[i].team);
         env->SetShortField(state_j, time_field, vec[i].time);
@@ -76,14 +76,14 @@ JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_getHistory (JNIEnv* en
     jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jlong size) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
-    return MarhalTileStateArray(env, g_map_history.GetHistory(x1, y1, x2, y2, uuid, teams, time, size));
+    return MarhalTileStateArray(env, g_map_history.GetHistory({x1, y1, x2, y2}, uuid, teams, time, size));
 }
 
 JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_rollback (JNIEnv* env, jclass,
     jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jint flags) {
 
     std::string uuid = env->GetStringUTFChars(juuid, NULL);
-    return MarhalTileStateArray(env, g_map_history.Rollback(x1, y1, x2, y2, uuid, teams, time, static_cast<TileHistory::RollbackFlags>(flags)));
+    return MarhalTileStateArray(env, g_map_history.Rollback({x1, y1, x2, y2}, uuid, teams, time, static_cast<HistoryStack::RollbackFlags>(flags)));
 }
 
 JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
