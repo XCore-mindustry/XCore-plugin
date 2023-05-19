@@ -70,3 +70,4 @@ TILESTATE_H_GEN_TYPE_ALIAS(config);
 #undef TILESTATE_H_GEN_TYPE_ALIAS
 
 using timestamp_t_ = uint64_t;
+using stack_counter_t_ = uint32_t;

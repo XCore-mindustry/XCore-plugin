@@ -10,6 +10,7 @@ public:
         if (std::optional<TileState> last_valid = LastValid(state.pos); last_valid && state.BlockEquals(*last_valid))
             return; // don't stack the same states
         stack_.push_back(state);
+        last_valid_cache_[state.pos] = static_cast<stack_counter_t_>(stack_.size() - 1);
     }
 
     std::vector<TileState> Last(const Rect& rect, const std::optional<player_t_>& player, int teams, time_t_ time, size_t size) const {
@@ -59,10 +60,13 @@ public:
             }
             if (tile->rollback) {
                 if (it->valid && player && it->player != *player || it->time <= time) {
-                    if (!tile->ret)
+                    if (!tile->ret) {
                         tile->ret = &*it; // rollback to first suitable state
-                    if (it->valid)
+                        last_valid_cache_[it->pos] = static_cast<stack_counter_t_>(it - stack_.rbegin());
+                    }
+                    if (it->valid) {
                         tile->rollback = false; // terminate stack unwinding if a suitable valid state is found
+                    }
                 }
                 if (~flags & kPreview)
                     it->valid = !!tile->ret; // invalidate or revalidate tile state
@@ -90,12 +94,12 @@ public:
 
 private:
     std::optional<TileState> LastValid(const Pos& pos) const {
-        for(auto it = stack_.rbegin(); it != stack_.rend(); it++) {
-            if (it->pos == pos && it->valid)
-                return *it;
-        }
+        auto it = last_valid_cache_.find(pos);
+        if (it != last_valid_cache_.end())
+            return stack_[it->second];
         return std::nullopt;
     }
 
     std::vector<TileState> stack_;
+    std::unordered_map<Pos, stack_counter_t_> last_valid_cache_;
 };
