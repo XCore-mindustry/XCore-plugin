@@ -1,4 +1,4 @@
-package org.xcore.plugin.utils.models;
+package org.xcore.plugin.modules.hexed;
 
 import arc.struct.Seq;
 import arc.util.Timer;

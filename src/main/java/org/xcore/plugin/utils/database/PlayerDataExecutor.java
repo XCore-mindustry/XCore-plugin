@@ -28,6 +28,10 @@ public class PlayerDataExecutor {
                 .orElse(new PlayerData(uuid, false));
     }
 
+    public PlayerData getPlayerDataById(int id) {
+        return collection.find(eq("pid", id)).first();
+    }
+
     public Seq<PlayerData> getPlayersData(Seq<Administration.PlayerInfo> players) {
         return players.map(p -> getPlayerData(p.id));
     }

@@ -24,7 +24,6 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.HexMember;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;

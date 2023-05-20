@@ -6,13 +6,20 @@ import arc.util.Log;
 import arc.util.Time;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
+
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -38,6 +45,14 @@ public class Database {
         playerDataExecutor = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
         banDataExecutor = new BanDataExecutor(
                 database.getCollection("bans", BanData.class));
+
+        AtomicInteger counter = new AtomicInteger();
+        database.getCollection("players", PlayerData.class).find(Filters.not(Filters.exists("pid"))).forEach(p -> {
+            p.pid = getNextSequence("player_id");
+            playerDataExecutor.setPlayerData(p);
+            counter.getAndIncrement();
+        });
+        Log.info("Updated @ documents.", counter.get());
     }
 
     public static void init() {
@@ -50,8 +65,22 @@ public class Database {
         return cachedPlayerData.get(uuid);
     }
 
+    public PlayerData getCached(int id) {
+        AtomicReference<PlayerData> result = new AtomicReference<>();
+
+        cachedPlayerData.values().forEach(d -> {
+            if (d.pid == id) result.set(d);
+        });
+
+        return result.get();
+    }
+
     public PlayerData getCachedOrDb(String uuid) {
         return cachedPlayerData.get(uuid, () -> playerDataExecutor.getPlayerData(uuid));
+    }
+
+    public PlayerData getCachedOrDb(int id) {
+        return Optional.ofNullable(getCached(id)).orElse(playerDataExecutor.getPlayerDataById(id));
     }
 
     public void setCached(PlayerData data) {
@@ -68,5 +97,17 @@ public class Database {
 
     public BanDataExecutor getBanDataExecutor() {
         return banDataExecutor;
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public int getNextSequence(String name) {
+        MongoCollection<Document> counters = database.getCollection("counters");
+
+        Document find = new Document().append("_id", name);
+        Document update = new Document("$inc", new Document("seq", 1));
+
+        Document result = counters.findOneAndUpdate(find, update);
+
+        return (int) result.get("seq");
     }
 }
