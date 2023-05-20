@@ -3,6 +3,7 @@ package org.xcore.plugin.commands;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Time;
 import arc.util.serialization.JsonReader;
 import arc.util.serialization.JsonValue;
@@ -20,7 +21,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
@@ -91,20 +91,30 @@ public class ServerCommands {
             Log.info(gson.toJson(data));
         });
 
-        handler.register("tempban", "<name/uuid/#ip> <period> [reason...>]", "Temporary ban player.", args -> {
-            var target = Find.playerInfo(args[0].startsWith("#") ? args[0].substring(1) : args[0]);
+        handler.register("tempban", "<uuid/ip/#id> <period> [reason...]", "Temporary ban player.", args -> {
+            var target = Find.playerInfo(args[0]);
 
-            String name = "Unknown";
-            String uuid = null;
-            String ip = null;
-            if (target != null) {
-                name = target.lastName;
-                uuid = target.id;
-                ip = target.lastIP;
+            String name = target != null ? target.lastName : "Unknown";
+            String uuid = target != null ? target.id : null;
+            String ip = target != null ? target.lastIP : null;
+
+            if (target == null && !args[0].startsWith("#")) {
+                Log.err("Player not found");
+                return;
             }
 
             if (args[0].startsWith("#")) {
-                ip = args[0].substring(1);
+                var data = database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1)));
+
+                if (data == null) {
+                    Log.err("Player not found");
+                    return;
+                }
+
+                name = data.nickname;
+                uuid = data.uuid;
+                var info = netServer.admins.getInfoOptional(uuid);
+                ip = info != null ? info.lastIP : null;
             }
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
@@ -117,61 +127,65 @@ public class ServerCommands {
             Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
             SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(uuid, ip));
 
-            BanData.BanDataBuilder ban = BanData.builder()
+            BanData result = BanData.builder()
                     .name(name)
                     .uuid(uuid)
                     .ip(ip)
                     .adminName("console")
                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .unbanDate(unbanDate);
-
-            BanData result = ban.build();
+                    .unbanDate(unbanDate)
+                    .build();
 
             SockCommunicator.sendEvent(result);
             database.getBanDataExecutor().saveBan(result);
             Log.info("'@' (@/@) banned", result.name, result.uuid, result.ip);
         });
-        handler.register("tempbans", "List all temporary banned players.", args -> {
-            Log.info("Temporary banned players:");
+
+        handler.register("tempbans", "List all temporarily banned players.", args -> {
+            StringBuilder builder = new StringBuilder("Temporary banned players:");
             Seq<BanData> bans = database.getBanDataExecutor().getBanned();
 
-            bans.each(ban -> {
-                var date = LocalDateTime.ofInstant(ban.unbanDate.toInstant(), ZoneId.systemDefault()).toString();
-                Log.info("'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'", ban.uuid, ban.ip, ban.name, ban.adminName, date, ban.reason);
-            });
+            bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'",
+                    ban.uuid, ban.ip, ban.name, ban.adminName,
+                    ban.unbanDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                    ban.reason)));
+
+            Log.info(builder.toString());
         });
 
-        handler.register("tempunban", "<uuid/ip>", "Unban a temporary banned player.", args -> {
-            var info = netServer.admins.getInfoOptional(args[0]);
 
+        handler.register("tempunban", "<uuid/ip>", "Unban a temporarily banned player.", args -> {
+            var info = netServer.admins.getInfoOptional(args[0]);
             String uuid;
-            String ip = null;
-            if (args[0].startsWith("#")) {
-                uuid = info == null ? null : info.id;
-                ip = args[0].substring(1);
-                Log.info("Unbanning by ip and internal uuid (@, @)", ip, uuid);
-            } else if (info != null) {
+            String ip;
+
+            if (info == null) {
                 uuid = args[0];
-                ip = info.lastIP;
-                Log.info("Info found, unbanning by provided uuid and internal ip (@, @)", uuid, ip);
+                ip = null;
+                Log.info("Info not found, unbanning only by UUID (@)", uuid);
+            } else if (args[0].startsWith("#")) {
+                uuid = info.id;
+                ip = args[0].substring(1);
+                Log.info("Unbanning by IP and internal UUID (@, @)", ip, uuid);
             } else {
                 uuid = args[0];
-                Log.info("Info not found, Unbanning only by uuid (@)", uuid);
+                ip = info.lastIP;
+                Log.info("Info found, unbanning by provided UUID and internal IP (@, @)", uuid, ip);
             }
 
             database.getBanDataExecutor().deleteBan(uuid, ip);
         });
 
-        handler.register("mute", "<player> <period>", "Mute player", (args) -> {
-            var target = Find.playerInfo(args[0]);
 
-            if (target == null) {
+        handler.register("mute", "<player> <period>", "Mute player", args -> {
+            var info = Find.playerInfo(args[0]);
+
+            if (info == null) {
                 Log.err("Player not found.");
                 return;
             }
 
-            PlayerData data = database.getCachedOrDb(target.id);
-
+            PlayerData data = database.getCachedOrDb(info.id);
             Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
             if (date == null) {
@@ -183,8 +197,9 @@ public class ServerCommands {
 
             database.getPlayerDataExecutor().setPlayerData(data);
             Duration duration = Duration.ofMillis(date.toEpochMilli());
-            Log.info("@ (@) muted for @:@", target.lastName, target.id, duration.toMinutes(), duration.toSecondsPart());
+            Log.info("@ (@) muted for @:@", info.lastName, info.id, duration.toMinutes(), duration.toSecondsPart());
         });
+
 
         handler.register("unmute", "<player>", "Unmute player", (args, player) -> {
             var target = Find.playerInfo(args[0]);

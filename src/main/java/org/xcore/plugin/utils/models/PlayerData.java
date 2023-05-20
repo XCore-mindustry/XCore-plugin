@@ -3,7 +3,11 @@ package org.xcore.plugin.utils.models;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 
+import static org.xcore.plugin.PluginVars.database;
+
 public class PlayerData {
+    public int pid;
+
     public String uuid;
     public String nickname = "<unknown>";
     public String translatorLanguage = "off";
@@ -47,5 +51,9 @@ public class PlayerData {
     public PlayerData setNickname(String nickname) {
         this.nickname = nickname;
         return this;
+    }
+
+    public void generatePid() {
+        this.pid = database.getNextSequence("player_id");
     }
 }

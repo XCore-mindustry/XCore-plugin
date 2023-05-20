@@ -70,7 +70,6 @@ public class AdminModIntegration {
                 player.con.kick("Update Admin Mod", 0);
                 return;
             }
-            System.out.println(content);
             data.adminModVersion = content;
 
             database.setCached(data);

@@ -2,29 +2,15 @@ package org.xcore.plugin.listeners;
 
 import arc.Events;
 import arc.util.Strings;
-import arc.util.Timer;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
-import mindustry.game.EventType.ServerLoadEvent;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import mindustry.net.Packets;
-import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.modules.hexed.HexedRanks;
-import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.BanData;
-import org.xcore.plugin.utils.models.PlayerData;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
@@ -34,21 +20,32 @@ import static useful.Bundle.send;
 public class PluginEvents {
     public static void init() {
         Events.on(EventType.PlayerConnect.class, event -> {
+            var player = event.player;
             var info = netServer.admins.getInfo(event.player.uuid());
+
+            Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
+
             if (!info.ips.contains(event.player.con.address)) {
                 event.player.admin = false;
                 netServer.admins.unAdminPlayer(event.player.uuid());
             }
+
+            var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
+            if (!data.exists) {
+                data.generatePid();
+                database.getPlayerDataExecutor().setPlayerData(data);
+            }
+
+            HexedRanks.updateRank(player, data);
+            player.name = player.name + " [white]([grey]" + data.pid + "[white])";
+            database.setCached(data);
         });
         Events.on(PlayerJoin.class, event -> {
-            if (event.player.getInfo().timesJoined < 5)
-                Call.openURI(event.player.con, discordUrl);
+            var player = event.player;
+            var data = database.getPlayerDataExecutor().getPlayerData(player);
 
-            var data = database.getPlayerDataExecutor().getPlayerData(event.player).setNickname(event.player.coloredName());
-            HexedRanks.updateRank(event.player, data);
-            database.setCached(data);
-
-            Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
+            if (player.getInfo().timesJoined < 5)
+                Call.openURI(player.con, discordUrl);
 
             if (data.translatorLanguage.equals("off")) {
                 send(event.player, "recommendation.tr");

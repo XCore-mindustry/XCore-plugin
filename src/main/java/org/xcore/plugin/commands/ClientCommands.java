@@ -20,12 +20,15 @@ import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.HexMember;
+import org.xcore.plugin.modules.hexed.HexMember;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
@@ -76,32 +79,6 @@ public class ClientCommands {
         handler.removeCommand("t");
         register("t", (args, player) -> sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]));
 
-        register("js", (args, player) -> {
-            PlayerData data = database.getCached(player.uuid());
-
-            if (!player.admin || !data.jsAccess) {
-                send(player, "error.access-denied");
-                return;
-            }
-
-            player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0]));
-        });
-
-        register("artv", (args, player) -> {
-            if (!player.admin) return;
-
-            var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
-
-            if (map == null) {
-                send(player, "error.map-not-found");
-                return;
-            }
-
-            Timer.schedule(() -> reloadWorld(() -> world.loadMap(map, map.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
-
-            send("commands.artv.map-skipped", player.coloredName());
-        });
-
         register("rtv", (args, player) -> {
             if (vote != null) {
                 send(player, "error.vote-in-progress");
@@ -127,11 +104,6 @@ public class ClientCommands {
             send(player, "commands.lb.success", data.leaderboard);
             database.setCached(data);
             database.getPlayerDataExecutor().setPlayerData(data);
-        });
-
-        register("login", (args, player) -> {
-            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
-            send(player, "commands.login.success");
         });
 
         register("tr", (args, player) -> {
@@ -168,27 +140,28 @@ public class ClientCommands {
                 return;
             }
 
-            StringBuilder builder = new StringBuilder();
             Seq<Map> list = Utils.getAvailableMaps();
-            Map map;
-            int page = args.length == 1 ? Strings.parseInt(args[0]) : 1, lines = 8, pages = Mathf.ceil(list.size / lines);
-            if (list.size % lines != 0) pages++;
+            int lines = 8;
+            int page = args.length == 1 ? Strings.parseInt(args[0]) : 1;
 
-            if (page > pages || page < 1) {
-                send(player, "error.page-between", pages);
+            int pageCount = list.size / lines + (list.size % lines == 0 ? 0 : 1);
+
+            if (page < 1 || page > pageCount) {
+                send(player, "error.page-between", pageCount);
                 return;
             }
 
-            builder.append(format("commands.maps.start-content", player.locale, Vars.state.map.name(), page, pages));
-            for (int i = (page - 1) * lines; i < lines * page; i++) {
-                try {
-                    map = list.get(i);
-                    builder.append(format("commands.maps.content", player.locale,
-                            i + 1, map.name(), map.width, map.height, map.author()));
-                } catch (IndexOutOfBoundsException e) {
-                    break;
-                }
+            StringBuilder builder = new StringBuilder(format("commands.maps.start-content", player.locale, Vars.state.map.name(), page, pageCount));
+
+            int startIndex = (page - 1) * lines;
+            int endIndex = Math.min(startIndex + lines, list.size);
+
+            for (int i = startIndex; i < endIndex; i++) {
+                Map map = list.get(i);
+                builder.append(format("commands.maps.content", player.locale,
+                        i + 1, map.name(), map.width, map.height, map.author()));
             }
+
             player.sendMessage(builder.toString());
         });
 
@@ -356,19 +329,71 @@ public class ClientCommands {
             });
         }
 
-        register("mute", (args, player) -> {
+        register("ban", (args, player) -> {
             if (!player.admin) {
                 send(player, "error.access-denied");
                 return;
             }
-            var target = Find.playerByName(args[0]);
+
+            var id = Strings.parseInt(args[0]);
+
+            if (id < 1) {
+                send(player, "error.invalid-id");
+                return;
+            }
+
+            var target = database.getPlayerDataExecutor().getPlayerDataById(id);
 
             if (target == null) {
                 send(player, "error.player-not-found");
                 return;
             }
 
-            PlayerData data = database.getCached(target.uuid());
+            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+
+            if (date == null) {
+                send(player, "error.wrong-period-format", format("days", player));
+                return;
+            }
+
+            Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
+            var info = netServer.admins.getInfoOptional(target.uuid);
+            String ip = info != null ? info.lastIP : null;
+
+            SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(target.uuid, ip));
+
+            BanData result = BanData.builder()
+                    .name(target.nickname)
+                    .uuid(target.uuid)
+                    .ip(ip)
+                    .adminName(player.name)
+                    .reason(args.length > 2 ? args[2] : "Not Specified")
+                    .unbanDate(unbanDate)
+                    .build();
+
+            SockCommunicator.sendEvent(result);
+            database.getBanDataExecutor().saveBan(result);
+
+            send(player, "commands.ban.success", target.nickname);
+
+        });
+        register("mute", (args, player) -> {
+            if (!player.admin) {
+                send(player, "error.access-denied");
+                return;
+            }
+            var id = Strings.parseInt(args[0]);
+
+            if (id < 1) {
+                send(player, "error.invalid-id");
+                return;
+            }
+            var target = database.getCachedOrDb(id);
+
+            if (target == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
@@ -377,12 +402,14 @@ public class ClientCommands {
                 return;
             }
 
-            data.muted = Time.millis() + date.toEpochMilli();
+            target.muted = Time.millis() + date.toEpochMilli();
 
-            database.getPlayerDataExecutor().setPlayerData(data);
-            send(player, "commands.mute.success", target.coloredName());
+            database.getPlayerDataExecutor().setPlayerData(target);
+            send(player, "commands.mute.success", target.nickname);
             Duration duration = Duration.ofMillis(date.toEpochMilli());
-            send(target, "you-are-muted-by", player.coloredName(), duration.toMinutes(), duration.toSecondsPart());
+
+            Optional.ofNullable(Find.playerByUuid(target.uuid)).ifPresent(p ->
+                    send(p, "you-are-muted-by", player.coloredName(), duration.toMinutes(), duration.toSecondsPart()));
         });
 
         register("unmute", (args, player) -> {
@@ -390,19 +417,56 @@ public class ClientCommands {
                 send(player, "error.access-denied");
                 return;
             }
-            var target = Find.playerByName(args[0]);
+
+            var id = Strings.parseInt(args[0]);
+
+            if (id < 1) {
+                send(player, "error.invalid-id");
+                return;
+            }
+
+            var target = database.getCachedOrDb(id);
 
             if (target == null) {
                 send(player, "error.player-not-found");
                 return;
             }
 
-            PlayerData data = database.getCachedOrDb(args[0]);
+            target.muted = 0;
 
-            data.muted = 0;
+            database.getPlayerDataExecutor().setPlayerData(target);
+            send(player, "commands.unmute.success", target.nickname);
+        });
 
-            database.getPlayerDataExecutor().setPlayerData(data);
-            send(player, "commands.unmute.success", target.coloredName());
+        register("js", (args, player) -> {
+            PlayerData data = database.getCached(player.uuid());
+
+            if (!player.admin || !data.jsAccess) {
+                send(player, "error.access-denied");
+                return;
+            }
+
+            player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0]));
+        });
+
+        register("artv", (args, player) -> {
+            if (!player.admin) return;
+
+            var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+
+            if (map == null) {
+                send(player, "error.map-not-found");
+                return;
+            }
+
+            Timer.schedule(() -> reloadWorld(() -> world.loadMap(map, map.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
+
+            send("commands.artv.map-skipped", player.coloredName());
+        });
+
+        register("login", (args, player) -> {
+            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
+            send(player, "commands.login.success");
         });
     }
 
