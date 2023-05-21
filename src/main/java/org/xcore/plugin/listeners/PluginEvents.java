@@ -66,7 +66,7 @@ public class PluginEvents {
             if (voteKick != null) voteKick.left(event.player);
 
             Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
-            Bundle.send("player.left", player.coloredName(), player.uuid(), data.pid);
+            Bundle.send("player.left", player.coloredName(), data.pid);
             SockCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server, false));
         });
