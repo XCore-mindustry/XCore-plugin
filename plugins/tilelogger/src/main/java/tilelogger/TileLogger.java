@@ -1,12 +1,12 @@
 package tilelogger;
 
-import arc.Core;
 import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.OS;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
+import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.gen.Unit;
@@ -16,7 +16,6 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 
 import java.io.IOException;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -24,7 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class TileLogger {
-    public static List<Block> rollback_blacklist = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
+    public static List<Block> rollback_blacklist_ = Arrays.asList(Blocks.coreShard, Blocks.coreFoundation, Blocks.coreNucleus, Blocks.coreCitadel, Blocks.coreBastion, Blocks.coreAcropolis);
 
     static {
         String fileName = OS.isWindows ? "TileLogger.dll" : "libTileLogger.so";
@@ -91,7 +90,7 @@ public class TileLogger {
             str += "[white]\n    " + state.x + "," + state.y + " " + (state.valid ? "[white] " : "[gray] ")
                     + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
-        SendMessage(caller, str);
+        sendMessage(caller, str);
     }
 
     public static void showHistory(@Nullable Player caller, short x, short y, long size) {
@@ -101,23 +100,23 @@ public class TileLogger {
             str += "[white]\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + (state.valid ? "[white] " : "[gray] ")
                     + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
-        SendMessage(caller, str);
+        sendMessage(caller, str);
     }
 
     public enum RollbackFlags {
         kPreview, 
     }
 
-    public static void rollback(@Nullable Player caller, @Nullable PlayerInfo target, int teams, int time, short x1, short y1, short x2, short y2) {
-        TileState[] tiles = rollback(x1, y1, x2, y2, target == null ? "" : target.id, teams, time, 0);
+    public static void rollback(@Nullable Player caller, @Nullable PlayerInfo target, int teams, int time, Rect rect) {
+        TileState[] tiles = rollback(rect.x1, rect.y1, rect.x2, rect.y2, target == null ? "" : target.id, teams, time, 0);
         for (TileState state : tiles) {
-            if (rollback_blacklist.contains(state.tile().block())) continue;
+            if (rollback_blacklist_.contains(state.tile().block())) continue;
             Call.setTile(state.tile(), Vars.content.block(state.block), state.team(), state.rotation);
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
-        Broadcast(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
-                target != null ? target.lastName : "@all", time, x1, y1, x2, y2, tiles.length));
+        broadcast(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
+                target != null ? target.lastName : "@all", time, rect.x1, rect.y1, rect.x2, rect.y2, tiles.length));
 
         // if (caller != null) {
         //     Call.clientPacketUnreliable(caller.con, "tilelogger_rollback_preview",
@@ -129,6 +128,15 @@ public class TileLogger {
         // }
     }
 
+    public static void fill(@Nullable Player caller, @Nullable Team team, Block block, Rect rect) {
+        for(short x = rect.x1; x <= rect.x2; x+=block.size) {
+            for(short y = rect.y1; y <= rect.y2; y+=block.size) {
+                Call.setTile(Vars.world.tile(x, y), block, team == null ? caller.team() : team, 0);
+            }
+        }
+        sendMessage(caller, "Filled with block: " + block.name);
+    }
+
     public static void reset() {
         reset((short) Vars.world.width(), (short) Vars.world.height());
         for (Tile tile : Vars.world.tiles) {
@@ -136,28 +144,31 @@ public class TileLogger {
                 build(tile, null);
         }
     }
-
+    
     public static void showInfo(@Nullable Player player) {
+        sendMessage(player, String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString()));
+    }
+
+    public static void showMemoryUsage(@Nullable Player player) {
         Runtime runtime = Runtime.getRuntime();
-        String str = String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#8536.\nBuild: %s", getBuildString());
-        str += String.format("\nMemory usage in MB: used | allocated | maximum");
+        String str = "";
+        str += String.format("Memory usage in MB: used | allocated | maximum");
         str += String.format("\n    JVM: %.3f | %.3f | %.3f", (runtime.totalMemory() - runtime.freeMemory()) * 1e-6, runtime.totalMemory() * 1e-6, runtime.maxMemory() * 1e-6);
         str += String.format("\n    Native:");
-        str += String.format("\n        Grid: %.3f | %.3f", memoryUsage(0) * 1e-6, memoryUsage(1) * 1e-6);
         str += String.format("\n        Tiles: %.3f | %.3f", memoryUsage(2) * 1e-6, memoryUsage(3) * 1e-6);
         str += String.format("\n        Players: %.3f | %.3f", memoryUsage(4) * 1e-6, memoryUsage(5) * 1e-6);
         str += String.format("\n        Configs: %.3f | %.3f", memoryUsage(6) * 1e-6, memoryUsage(7) * 1e-6);
-        SendMessage(player, str);
+        sendMessage(player, str);
     }
 
-    private static void SendMessage(@Nullable Player player, String msg) {
+    public static void sendMessage(@Nullable Player player, String msg) {
         if (player == null)
             Log.info(msg);
         else
             player.sendMessage(msg);
     }
 
-    private static void Broadcast(String msg) {
+    public static void broadcast(String msg) {
         Call.sendMessage(msg);
         Log.info(msg);
     }
