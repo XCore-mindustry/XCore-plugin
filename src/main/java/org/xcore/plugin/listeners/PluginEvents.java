@@ -1,6 +1,7 @@
 package org.xcore.plugin.listeners;
 
 import arc.Events;
+import arc.util.Log;
 import arc.util.Strings;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
@@ -11,6 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.SockCommunicator;
+import useful.Bundle;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
@@ -37,12 +39,11 @@ public class PluginEvents {
             }
 
             HexedRanks.updateRank(player, data);
-            player.name = player.name + " [white]([grey]" + data.pid + "[white])";
             database.setCached(data);
         });
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
-            var data = database.getPlayerDataExecutor().getPlayerData(player);
+            var data = database.getCached(event.player.uuid());
 
             if (player.getInfo().timesJoined < 5)
                 Call.openURI(player.con, discordUrl);
@@ -51,20 +52,23 @@ public class PluginEvents {
                 send(event.player, "recommendation.tr");
             }
 
+            Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
+            Bundle.send("player.joined", player.coloredName(), data.pid);
             SockCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(event.player.plainName(), config.server, true));
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server, true));
         });
-
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
-            database.removeCached(event.player.uuid());
+            var data = database.removeCached(event.player.uuid());
 
             if (vote != null) vote.left(event.player);
             if (voteKick != null) voteKick.left(event.player);
 
+            Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
+            Bundle.send("player.left", player.coloredName(), player.uuid(), data.pid);
             SockCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName(), config.server, false));
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server, false));
         });
 
         Events.on(GameOverEvent.class, event -> {

@@ -87,8 +87,8 @@ public class Database {
         cachedPlayerData.put(data.uuid, data);
     }
 
-    public void removeCached(String uuid) {
-        cachedPlayerData.remove(uuid);
+    public PlayerData removeCached(String uuid) {
+        return cachedPlayerData.remove(uuid);
     }
 
     public PlayerDataExecutor getPlayerDataExecutor() {

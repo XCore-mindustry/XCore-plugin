@@ -1,6 +1,7 @@
 package org.xcore.plugin.modules;
 
 import mindustry.gen.Groups;
+import mindustry.net.Administration;
 import org.xcore.plugin.XcorePlugin;
 
 import static org.xcore.plugin.PluginVars.*;
@@ -21,6 +22,8 @@ public class Config {
             configFile.writeString(gson.toJson(config = new Config()));
             XcorePlugin.info("Config generated.");
         }
+
+        Administration.Config.showConnectMessages.set(false);
     }
 
     public int getNoAdminPlayerLimit() {

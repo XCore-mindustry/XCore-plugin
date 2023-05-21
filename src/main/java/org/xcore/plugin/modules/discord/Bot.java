@@ -23,7 +23,6 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
@@ -43,9 +42,11 @@ public class Bot {
     public static void connect() {
         try {
             client = DiscordClient.create(globalConfig.discordBotToken);
-            gateway = client.gateway().
-                    setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
-                    .login().block();
+            gateway = client.gateway()
+                    .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
+                    .login()
+                    .blockOptional()
+                    .orElseThrow();
 
             bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(GuildMessageChannel.class);
             privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(GuildMessageChannel.class);
