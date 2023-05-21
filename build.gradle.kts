@@ -38,7 +38,7 @@ repositories {
 dependencies {
     mindustryDependencies()
 
-    implementation("com.github.xzxadixzx.useful-stuffs:bundle:e89b363e1a")
+    implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
     implementation("com.github.osp54:Sock:639e311")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")

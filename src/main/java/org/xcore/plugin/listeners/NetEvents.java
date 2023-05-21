@@ -95,7 +95,14 @@ public class NetEvents {
             }
             case trace -> {
                 var info = target.getInfo();
-                Call.traceInfo(con, target, new Administration.TraceInfo(target.ip(), target.uuid(), target.con.modclient, target.con.mobile, info.timesJoined, info.timesKicked));
+                var data = database.getCachedOrDb(info.id);
+
+                if (data == null) {
+                    Log.err("[trace] DB Data null");
+                    return;
+                }
+
+                Call.traceInfo(con, target, new Administration.TraceInfo(target.ip(), String.valueOf(data.pid), target.con.modclient, target.con.mobile, info.timesJoined, info.timesKicked));
                 Log.info("@ has requested trace info of @.", admin.plainName(), target.plainName());
             }
             case wave -> {
