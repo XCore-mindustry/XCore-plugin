@@ -69,6 +69,7 @@ public:
             if (--size == 0)
                 break;
         }
+        std::reverse(ret.begin(), ret.end());
         return ret;
     }
 
