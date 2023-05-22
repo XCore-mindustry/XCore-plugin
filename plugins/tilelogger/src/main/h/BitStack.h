@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cassert>
+#include <bit>
 
 using DataVec = std::vector<uint8_t>;
 
@@ -73,7 +74,12 @@ public:
     size_t read_i_ = 0;
 };
 
+#if defined(_MSC_VER)
 #pragma warning(disable : 4463)
+#else
+#pragma GCC diagnostic ignored "-Woverflow"
+#endif
+
 #define GET_BIT_FIELD_WIDTH(T, f) \
     []() constexpr -> size_t \
     { \

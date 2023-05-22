@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <numeric>
 #include <fstream>
+#include <bit>
 
 template<class Id>
 class Cache {
