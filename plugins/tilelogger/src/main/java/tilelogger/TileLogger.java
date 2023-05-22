@@ -143,7 +143,7 @@ public class TileLogger {
     public static void resetHistory(String path) {
         if (path == null) {
             DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-            reset(formatter.format(new Date()) + "_" + Vars.state.map.file.name());
+            reset(formatter.format(new Date()) + "_" + Vars.state.map.name());
             for (Tile tile : Vars.world.tiles) {
                 if (tile.build != null && tile == tile.build.tile)
                 build(tile, null);

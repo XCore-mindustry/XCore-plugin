@@ -22,7 +22,10 @@ namespace std {
 class TileLogger {
 public:
     timestamp_t_ Reset(std::filesystem::path path) {
-        path = "test";
+        if (path.is_relative()) {
+            path = "tilelogs" / path;
+            std::filesystem::create_directory("tilelogs");
+        }
         history_.Reset(path.replace_extension("history"));
         players_.Reset(path.replace_extension("players"));
         configs_.Reset(path.replace_extension("configs"));

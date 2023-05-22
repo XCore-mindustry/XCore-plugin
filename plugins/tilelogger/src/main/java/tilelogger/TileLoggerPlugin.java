@@ -59,7 +59,7 @@ public class TileLoggerPlugin extends Plugin {
             packet.handleServer(con);
             TileLogger.build(packet.build.tile, con.player.getInfo());
         });
-        Events.on(EventType.WorldLoadEvent.class, event -> TileLogger.resetHistory(null));
+        Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null));
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
 
@@ -101,14 +101,14 @@ public class TileLoggerPlugin extends Plugin {
                 case "memory", "m" -> TileLogger.showMemoryUsage(player);
                 case "select", "s" -> {
                     if (player == null) {
-                        sendBundled(null, "error.not-allowed-from-console");
+                        sendBundled(player, "error.not-allowed-from-console");
                         return;
                     }
                     config.select = 1;
                 }
                 case "fill", "f" -> {
                     if (player == null) {
-                        sendBundled(null, "error.not-allowed-from-console");
+                        sendBundled(player, "error.not-allowed-from-console");
                         return;
                     }
                     if (!player.admin) {
@@ -125,6 +125,17 @@ public class TileLoggerPlugin extends Plugin {
                         return;
                     }
                     TileLogger.fill(player, null, block, config.rect);
+                }
+                case "file" -> {
+                    if (player != null) {
+                        sendBundled(player, "error.not-allowed-from-player");
+                        return;
+                    }
+                    if (args_seq.size == 0) {
+                        sendBundled(player, "error.not-enough-params");
+                        return;
+                    }
+                    TileLogger.resetHistory(args_seq.pop());
                 }
                 default -> sendBundled(player, "error.unknown-command");
             }
