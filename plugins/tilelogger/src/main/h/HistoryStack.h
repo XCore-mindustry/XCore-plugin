@@ -2,15 +2,56 @@
 #include <vector>
 #include <optional>
 #include <unordered_map>
+#include <fstream>
+#include <filesystem>
+#include <iostream>
 #include "TileState.h"
 
 class HistoryStack {
 public:
+    void Reset(const std::filesystem::path& path) {
+        stack_ = {};
+        last_valid_cache_ = {};
+
+        file_.close();
+        file_.open(path, std::ios::in | std::ios::out | std::ios::app | std::ios::binary);
+        if (file_.peek() == std::fstream::traits_type::eof()) {
+            file_.seekg(0);
+            file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
+        }
+        else {
+            BitStack bs;
+            bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
+            if (bs.read_bytes(header_.size()) != header_) {
+                std::cerr << "ERROR: wrong file header" << std::endl;
+                file_.close();
+                return;
+            }
+            if (bs.buffer_.size() % sizeof(TileState) != 0) {
+                std::cerr << "ERROR: wrong file length" << std::endl;
+                file_.close();
+                return;
+            }
+
+            while (bs.read_i_ / 8 + 1 < bs.buffer_.size()) {
+                TileState state;
+                state.Serialize(bs, Serialize::read);
+                stack_.push_back(state);
+            }
+        }
+    }
+
     void Record(const TileState& state) {
         if (std::optional<TileState> last_valid = LastValid(state.pos); last_valid && state.BlockEquals(*last_valid))
             return; // don't stack the same states
         stack_.push_back(state);
         last_valid_cache_[state.pos] = static_cast<stack_counter_t_>(stack_.size() - 1);
+
+        if (file_) {
+            BitStack bs;
+            const_cast<TileState&>(state).Serialize(bs, Serialize::write);
+            file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
+        }
     }
 
     std::vector<TileState> Last(const Rect& rect, const std::optional<player_t_>& player, int teams, time_t_ time, size_t size) const {
@@ -99,6 +140,9 @@ private:
         return std::nullopt;
     }
 
+    static inline const DataVec header_{'T','L',0,0,0,0,0,0,0,0,0,0,0,0};
+
     std::vector<TileState> stack_;
     std::unordered_map<Pos, stack_counter_t_> last_valid_cache_;
+    std::fstream file_;
 };

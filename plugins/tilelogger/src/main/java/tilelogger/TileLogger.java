@@ -17,9 +17,12 @@ import mindustry.world.Tile;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public class TileLogger {
@@ -137,11 +140,17 @@ public class TileLogger {
         sendMessage(caller, "Filled with block: " + block.name);
     }
 
-    public static void reset() {
-        reset((short) Vars.world.width(), (short) Vars.world.height());
-        for (Tile tile : Vars.world.tiles) {
-            if (tile.build != null && tile == tile.build.tile)
+    public static void resetHistory(String path) {
+        if (path == null) {
+            DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+            reset(formatter.format(new Date()) + "_" + Vars.state.map.file.name());
+            for (Tile tile : Vars.world.tiles) {
+                if (tile.build != null && tile == tile.build.tile)
                 build(tile, null);
+            }
+        }
+        else {
+            reset(path);
         }
     }
     
@@ -154,10 +163,9 @@ public class TileLogger {
         String str = "";
         str += String.format("Memory usage in MB: used | allocated | maximum");
         str += String.format("\n    JVM: %.3f | %.3f | %.3f", (runtime.totalMemory() - runtime.freeMemory()) * 1e-6, runtime.totalMemory() * 1e-6, runtime.maxMemory() * 1e-6);
-        str += String.format("\n    Native:");
-        str += String.format("\n        Tiles: %.3f | %.3f", memoryUsage(2) * 1e-6, memoryUsage(3) * 1e-6);
-        str += String.format("\n        Players: %.3f | %.3f", memoryUsage(4) * 1e-6, memoryUsage(5) * 1e-6);
-        str += String.format("\n        Configs: %.3f | %.3f", memoryUsage(6) * 1e-6, memoryUsage(7) * 1e-6);
+        str += String.format("\n    History: %.3f | %.3f", memoryUsage(2) * 1e-6, memoryUsage(3) * 1e-6);
+        str += String.format("\n    Players: %.3f | %.3f", memoryUsage(4) * 1e-6, memoryUsage(5) * 1e-6);
+        str += String.format("\n    Configs: %.3f | %.3f", memoryUsage(6) * 1e-6, memoryUsage(7) * 1e-6);
         sendMessage(player, str);
     }
 
@@ -173,20 +181,13 @@ public class TileLogger {
         Log.info(msg);
     }
 
-    private static native long reset(short width, short height);
-
+    private static native long reset(String path);
     private static native short duration();
-
     private static native void onAction(short x, short y, String uuid, short team, short block, short rotation, short config_type, int config);
-
     private static native void onAction2(short x, short y, String uuid, short team, short block, short rotation, short config_type, byte[] config);
-
     private static native TileState[] getHistory(short x1, short y1, short x2, short y2, String uuid, int teams, int time, long size);
-
     private static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int teams, int time, int flags);
-
     private static native long memoryUsage(long id);
-
     private static native String getBuildString();
     
 }

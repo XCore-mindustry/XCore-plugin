@@ -6,10 +6,15 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Attach",
+            "name": "Attach Java",
             "request": "attach",
             "projectName": "TileLogger",
             "processId": "${command:PickJavaProcess}"
+        },
+        {
+            "type": "cppvsdbg",
+            "name": "Attach C++",
+            "request": "attach",
         },
     ]
 }

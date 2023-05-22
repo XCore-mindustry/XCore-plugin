@@ -1,5 +1,11 @@
 #pragma once
+#include "BitStack.h"
 #include <cstdint>
+
+enum class Serialize {
+    read,
+    write,
+};
 
 #pragma pack(push, 2)
 struct Pos {
@@ -32,6 +38,7 @@ struct TileState {
     uint16_t config_type : 3{};
     uint32_t config{};
 
+    TileState() = default;
     TileState(const Pos& pos) : pos(pos) {}
     TileState(const Pos& pos, uint16_t player, uint16_t team, uint16_t time, uint16_t valid, uint16_t block, uint16_t rotation, uint16_t config_type, uint32_t config)
         : pos(pos), player(player), team(team), time(time), valid(valid), block(block), rotation(rotation), config_type(config_type), config(config) {}
@@ -41,8 +48,24 @@ struct TileState {
         return team == o.team && block == o.block && rotation == o.rotation && config_type == o.config_type && config == o.config;
     }
 
-private:
-    TileState() = default;
+    void Serialize(BitStack& bs, Serialize mode) {
+#define TILESTATE_H_BITSTREAM(f) \
+        if (mode == Serialize::write) \
+            bs.push(f, GET_BIT_FIELD_WIDTH(TileState, f)); \
+        else \
+            f = static_cast<decltype(f)>(bs.read(GET_BIT_FIELD_WIDTH(TileState, f)))
+        TILESTATE_H_BITSTREAM(pos.x);
+        TILESTATE_H_BITSTREAM(pos.y);
+        TILESTATE_H_BITSTREAM(player);
+        TILESTATE_H_BITSTREAM(team);
+        TILESTATE_H_BITSTREAM(time);
+        TILESTATE_H_BITSTREAM(valid);
+        TILESTATE_H_BITSTREAM(block);
+        TILESTATE_H_BITSTREAM(rotation);
+        TILESTATE_H_BITSTREAM(config_type);
+        TILESTATE_H_BITSTREAM(config);
+#undef TILESTATE_H_BITSTREAM
+    }
 };
 #pragma pack(pop)
 

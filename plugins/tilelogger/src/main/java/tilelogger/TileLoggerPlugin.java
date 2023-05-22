@@ -59,7 +59,7 @@ public class TileLoggerPlugin extends Plugin {
             packet.handleServer(con);
             TileLogger.build(packet.build.tile, con.player.getInfo());
         });
-        Events.on(EventType.WorldLoadEvent.class, event -> TileLogger.reset());
+        Events.on(EventType.WorldLoadEvent.class, event -> TileLogger.resetHistory(null));
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
             
