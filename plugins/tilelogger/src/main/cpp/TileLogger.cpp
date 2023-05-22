@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 
 #include "tilelogger_TileLogger.h"
 #include "TileLogger.h"
