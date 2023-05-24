@@ -38,13 +38,23 @@ public class TileLoggerPlugin extends Plugin {
 
         VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1))));
 
-        Events.on(EventType.BlockBuildBeginEvent.class, event -> event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) ->
-                TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit))));
+        Events.on(EventType.BlockBuildBeginEvent.class, event -> {
+            if (event.unit == null) return; // rollback recursion
+            event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) -> {
+                if (!event.breaking && event.tile.x == x && event.tile.y == y)
+                    TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.unit));
+                else
+                    TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit));
+            });
+        });
         Events.on(EventType.BlockBuildEndEvent.class, event -> {
             if (event.breaking) return; // already handled by BlockBuildBeginEvent
+            if (event.unit == null) return; // rollback recursion
             TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.unit));
         });
-        Events.on(EventType.ConfigEvent.class, event -> TileLogger.build(event.tile.tile, event.player == null ? null : event.player.getInfo()));
+        Events.on(EventType.ConfigEvent.class, event -> {
+            TileLogger.build(event.tile.tile, event.player == null ? null : event.player.getInfo());
+        });
         Events.on(EventType.PickupEvent.class, event -> {
             if (event.build == null) return; // payload is unit
             TileLogger.destroy(event.build.tile, TileLogger.unitToPlayerInfo(event.carrier));
@@ -53,12 +63,15 @@ public class TileLoggerPlugin extends Plugin {
             if (event.build == null) return; // payload is unit
             TileLogger.build(event.build.tile, TileLogger.unitToPlayerInfo(event.carrier));
         });
-        Events.on(EventType.BlockDestroyEvent.class, event -> TileLogger.destroy(event.tile, null));
+        Events.on(EventType.BlockDestroyEvent.class, event -> {
+            TileLogger.destroy(event.tile, null);
+        });
         Vars.net.handleServer(RotateBlockCallPacket.class, (con, packet) -> {
             packet.handled();
             packet.handleServer(con);
             TileLogger.build(packet.build.tile, con.player.getInfo());
         });
+
         Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null, true));
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;

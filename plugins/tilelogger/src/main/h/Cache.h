@@ -35,6 +35,7 @@ public:
                 bs.push(data.size(), 32);
                 bs.push_bytes(data);
                 file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
+                file_.flush();
             }
         }
         return it->second;
@@ -67,5 +68,5 @@ private:
     std::unordered_map<DataVec, Id> ids_;
     std::vector<const DataVec*> data_;
     std::fstream file_;
-    std::ios::openmode file_flags_;
+    int file_flags_;
 };

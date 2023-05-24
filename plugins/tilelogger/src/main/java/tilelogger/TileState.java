@@ -20,9 +20,10 @@ public class TileState {
 
     public String uuid;
     public byte team;
-    public short time;
     public boolean valid;
+    public short time;
     public short block;
+    public boolean destroy;
     public short rotation;
     public short config_type;
     private Object config;
@@ -89,12 +90,13 @@ public class TileState {
         return Vars.content.block(block);
     }
 
-    public char blockEmoji() {
+    public String blockEmoji() {
         try {
-            if (block == 0) return 'X';
-            return Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + Vars.content.block(block).name));
+            if (block == 0) return destroy ? "[red]X[]" : "[green][]";
+            if (block >= 3 && block <= 11) return "[green]" + (block - 2) + "[]";
+            return (destroy ? "[red]" : "[]") + Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + block().name)) + "[]";
         } catch (Exception e) {
-            return '?';
+            return "[scarlet]" + block + "[]";
         }
     }
 

@@ -29,23 +29,26 @@ struct Rect {
 
 struct TileState {
     Pos pos{};
-    uint16_t player : 13{};
+    uint16_t player : 12{};
     uint16_t team : 3{};
-    uint16_t time{};
     uint16_t valid : 1{};
+    uint16_t time{};
     uint16_t block : 10{};
+    uint16_t destroy : 1{};
     uint16_t rotation : 2{};
     uint16_t config_type : 3{};
     uint32_t config{};
 
     TileState() = default;
     TileState(const Pos& pos) : pos(pos) {}
-    TileState(const Pos& pos, uint16_t player, uint16_t team, uint16_t time, uint16_t valid, uint16_t block, uint16_t rotation, uint16_t config_type, uint32_t config)
-        : pos(pos), player(player), team(team), time(time), valid(valid), block(block), rotation(rotation), config_type(config_type), config(config) {}
+    TileState(const Pos& pos, uint16_t player, uint16_t team, uint16_t valid, uint16_t time, uint16_t block, uint16_t destroy, uint16_t rotation, uint16_t config_type, uint32_t config)
+        : pos(pos), player(player), team(team), valid(valid), time(time), block(block), destroy(destroy), rotation(rotation), config_type(config_type), config(config) {}
 
     bool operator==(const TileState& o) const = delete;
-    bool BlockEquals(const TileState& o) const {
-        return team == o.team && block == o.block && rotation == o.rotation && config_type == o.config_type && config == o.config;
+    bool RecordAction(const TileState& o) const {
+        // if (destroy && o.destroy)
+        //     return player != o.player; // track place/destroy only for different players 
+        return block != o.block || destroy != o.destroy || rotation != o.rotation || config_type != o.config_type || config != o.config;
     }
 
     void Serialize(BitStack& bs, Serialize mode) {
@@ -58,9 +61,10 @@ struct TileState {
         TILESTATE_H_BITSTREAM(pos.y);
         TILESTATE_H_BITSTREAM(player);
         TILESTATE_H_BITSTREAM(team);
-        TILESTATE_H_BITSTREAM(time);
         TILESTATE_H_BITSTREAM(valid);
+        TILESTATE_H_BITSTREAM(time);
         TILESTATE_H_BITSTREAM(block);
+        TILESTATE_H_BITSTREAM(destroy);
         TILESTATE_H_BITSTREAM(rotation);
         TILESTATE_H_BITSTREAM(config_type);
         TILESTATE_H_BITSTREAM(config);
@@ -84,9 +88,10 @@ namespace std {
     using name##_t_ = decltype(TileState::name);
 TILESTATE_H_GEN_TYPE_ALIAS(player);
 TILESTATE_H_GEN_TYPE_ALIAS(team);
-TILESTATE_H_GEN_TYPE_ALIAS(time);
 TILESTATE_H_GEN_TYPE_ALIAS(valid);
+TILESTATE_H_GEN_TYPE_ALIAS(time);
 TILESTATE_H_GEN_TYPE_ALIAS(block);
+TILESTATE_H_GEN_TYPE_ALIAS(destroy);
 TILESTATE_H_GEN_TYPE_ALIAS(rotation);
 TILESTATE_H_GEN_TYPE_ALIAS(config_type);
 TILESTATE_H_GEN_TYPE_ALIAS(config);

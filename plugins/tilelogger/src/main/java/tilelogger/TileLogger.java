@@ -71,7 +71,7 @@ public class TileLogger {
             JsonIO.write(Arrays.stream(getHistory((short)0, (short)0, (short)-1, (short)-1, player_info == null ? "" : player_info.id, -1, 0, 100)).map(t -> {
                 var info = Vars.netServer.admins.getInfoOptional(t.uuid);
                 return new TileStatePacket(t.x, t.y, info == null ? "@" + t.team() : info.lastName,
-                            t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
+                            t.uuid, t.valid, t.time, t.block, t.destroy, t.rotation, t.config_type, t.getConfigAsString());
             }
         ).toArray(TileStatePacket[]::new)));
     }
@@ -81,13 +81,13 @@ public class TileLogger {
             JsonIO.write(Arrays.stream(getHistory(x, y, x, y, "", -1, 0, 100)).map(t -> {
                 var info = Vars.netServer.admins.getInfoOptional(t.uuid);
                 return new TileStatePacket(t.x, t.y, info == null ? "@" + t.team() : info.lastName,
-                            t.uuid, t.time, t.valid, t.block, t.rotation, t.config_type, t.getConfigAsString());
+                            t.uuid, t.valid, t.time, t.block, t.destroy, t.rotation, t.config_type, t.getConfigAsString());
             }
         ).toArray(TileStatePacket[]::new)));
     }
 
     public static void showHistory(@Nullable Player caller, @Nullable PlayerInfo player_info, long size) {
-        String str = String.format("Player %s[white] history. Current time: %s.", player_info == null ? "" : player_info.lastName, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
+        String str = String.format("Player %s [white]history. Current time: %s.", player_info == null ? "" : player_info.lastName, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory((short)0, (short)0, (short)-1, (short)-1, player_info == null ? "" : player_info.id, -1, 0, size)) {
             Object rotation = state.rotationAsString();
             str += "[white]\n    " + state.x + "," + state.y + " " + (state.valid ? "[white] " : "[gray] ")
@@ -100,8 +100,8 @@ public class TileLogger {
         String str = String.format("Tile (%d,%d) history. Current time: %s.", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, x, y, "", -1, 0, size)) {
             Object rotation = state.rotationAsString();
-            str += "[white]\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + (state.valid ? "[white] " : "[gray] ")
-                    + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
+            str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + (state.valid ? "[white] " : "[gray] ")
+                    + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[] " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         sendMessage(caller, str);
     }
@@ -114,7 +114,7 @@ public class TileLogger {
         TileState[] tiles = rollback(rect.x1, rect.y1, rect.x2, rect.y2, target == null ? "" : target.id, teams, time, 0);
         for (TileState state : tiles) {
             if (rollback_blacklist_.contains(state.tile().block())) continue;
-            Call.setTile(state.tile(), Vars.content.block(state.block), state.team(), state.rotation);
+            Call.setTile(state.tile(), Vars.content.block(state.destroy ? 0 : state.block), state.team(), state.rotation);
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }

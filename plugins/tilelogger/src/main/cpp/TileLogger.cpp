@@ -73,9 +73,10 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec)
     jfieldID y_field = env->GetFieldID(state_class, "y", "S"); assert(y_field != nullptr);
     jfieldID uuid_field = env->GetFieldID(state_class, "uuid", "Ljava/lang/String;"); assert(uuid_field != nullptr);
     jfieldID team_field = env->GetFieldID(state_class, "team", "B"); assert(team_field != nullptr);
-    jfieldID time_field = env->GetFieldID(state_class, "time", "S"); assert(time_field != nullptr);
     jfieldID valid_field = env->GetFieldID(state_class, "valid", "Z"); assert(valid_field != nullptr);
+    jfieldID time_field = env->GetFieldID(state_class, "time", "S"); assert(time_field != nullptr);
     jfieldID block_field = env->GetFieldID(state_class, "block", "S"); assert(block_field != nullptr);
+    jfieldID destroy_field = env->GetFieldID(state_class, "destroy", "Z"); assert(destroy_field != nullptr);
     jfieldID rotation_field = env->GetFieldID(state_class, "rotation", "S"); assert(rotation_field != nullptr);
     jfieldID config_type_field = env->GetFieldID(state_class, "config_type", "S"); assert(config_type_field != nullptr);
     jfieldID config_field = env->GetFieldID(state_class, "config", "Ljava/lang/Object;"); assert(config_field != nullptr);
@@ -91,9 +92,10 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec)
         const DataVec& uuid = g_map_history.GetPlayer(vec[i].player);
         env->SetObjectField(state_j, uuid_field, env->NewStringUTF(std::string(uuid.begin(), uuid.end()).c_str()));
         env->SetByteField(state_j, team_field, vec[i].team);
-        env->SetShortField(state_j, time_field, vec[i].time);
         env->SetBooleanField(state_j, valid_field, vec[i].valid);
+        env->SetShortField(state_j, time_field, vec[i].time);
         env->SetShortField(state_j, block_field, vec[i].block);
+        env->SetBooleanField(state_j, destroy_field, vec[i].destroy);
         env->SetShortField(state_j, rotation_field, vec[i].rotation);
         env->SetShortField(state_j, config_type_field, vec[i].config_type);
         if (vec[i].config_type >= 5) {

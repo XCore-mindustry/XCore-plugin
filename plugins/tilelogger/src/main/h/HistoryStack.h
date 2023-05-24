@@ -19,6 +19,7 @@ public:
         if (file_.peek() == std::fstream::traits_type::eof()) {
             file_.seekg(0);
             file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
+            file_.flush();
         }
         else {
             BitStack bs;
@@ -38,14 +39,25 @@ public:
         return 0;
     }
 
-    void Record(const TileState& state) {
-        if (std::optional<TileState> last_valid = LastValid(state.pos); last_valid && state.BlockEquals(*last_valid))
-            return; // don't stack the same states
+    void Record(TileState state) {
+        if (std::optional<TileState> last_valid = LastValid(state.pos); last_valid) {
+            if (state.destroy) {
+                state.block = last_valid->block;
+                state.rotation = last_valid->rotation;
+                state.config_type = last_valid->config_type;
+                state.config = last_valid->config;
+            }
+            if (!state.RecordAction(*last_valid))
+                return; // don't stack the same states
+        }
+        if (!state.block)
+            return; // don't save air blocks
         stack_.push_back(state);
         last_valid_cache_[state.pos] = static_cast<stack_counter_t_>(stack_.size() - 1);
 
         if (file_) {
             WriteState(state);
+            file_.flush();
         }
     }
 
@@ -95,7 +107,7 @@ public:
                 tile->rollback = rollback;
             }
             if (tile->rollback) {
-                if (it->valid && player && it->player != *player || it->time <= time) {
+                if ((it->valid && player && it->player != *player || it->time <= time) && (it->block < 3 || it->block > 11)) {
                     if (!tile->ret) {
                         tile->ret = &*it; // rollback to first suitable state
                         last_valid_cache_[it->pos] = static_cast<stack_counter_t_>(stack_.rend() - it) - 1;
@@ -123,7 +135,7 @@ public:
         std::vector<TileState> states_add;
         for (const auto& [k,v] : map) {
             if (v.ret)
-                (v.ret->block ? states_add : states_remove).push_back(*v.ret);
+                (v.ret->destroy ? states_remove : states_add).push_back(*v.ret);
             else if (v.rollback)
                 states_remove.push_back(TileState(k));
         }
@@ -161,5 +173,5 @@ private:
     std::fstream file_;
     BitStack bs_;
     std::filesystem::path path_;
-    std::ios::openmode file_flags_;
+    int file_flags_;
 };

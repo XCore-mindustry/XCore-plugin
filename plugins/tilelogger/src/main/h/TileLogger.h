@@ -53,7 +53,7 @@ public:
             config_id = configs_[config];
         else
             config_id = config;
-        history_.Record(TileState(pos, players_[uuid], team, Duration(), 1, block, rotation, config_type, config_id));
+        history_.Record(TileState(pos, players_[uuid], team, 1, Duration(), block, !block, rotation, config_type, config_id));
     }
 
     std::vector<TileState> GetHistory(const Rect& rect, const DataVec& uuid, int teams, int time, size_t size) const {
