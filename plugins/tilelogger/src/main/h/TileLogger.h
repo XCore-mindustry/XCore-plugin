@@ -23,8 +23,8 @@ class TileLogger {
 public:
     timestamp_t_ Reset(std::filesystem::path path, bool write) {
         if (path.is_relative()) {
-            path = "tilelogs" / path;
-            std::filesystem::create_directory("tilelogs");
+            path = tilelogs_ / path;
+            std::filesystem::create_directories(tilelogs_);
         }
         time_t_ duration = history_.Reset(path.replace_extension("history"), write);
         players_.Reset(path.replace_extension("players"), write);
@@ -96,8 +96,9 @@ private:
         return static_cast<time_t_>(std::clamp(time, 0, 0xffff));
     }
 
-    std::chrono::steady_clock::time_point time_begin_{};
+    static inline const std::filesystem::path tilelogs_ = "config/tilelogs";
 
+    std::chrono::steady_clock::time_point time_begin_{};
     HistoryStack history_;
     Cache<player_t_> players_;
     Cache<config_t_> configs_;
