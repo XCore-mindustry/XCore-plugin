@@ -3,6 +3,7 @@ package tilelogger;
 import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.OS;
+import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
@@ -143,7 +144,7 @@ public class TileLogger {
     public static void resetHistory(String path, boolean write) {
         if (path == null) {
             DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-            reset(formatter.format(new Date()) + "_" + Vars.state.map.name(), write);
+            reset(formatter.format(new Date()) + "_" + Strings.stripColors(Vars.state.map.name()).replace(' ', '_'), write);
             for (Tile tile : Vars.world.tiles) {
                 if (tile.build != null && tile == tile.build.tile)
                 build(tile, null);
