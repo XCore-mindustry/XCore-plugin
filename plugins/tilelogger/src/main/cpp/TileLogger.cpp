@@ -1,36 +1,70 @@
 #include <cassert>
 #include <cstring>
+#include <iostream>
 
 #include "tilelogger_TileLogger.h"
 #include "TileLogger.h"
 
 static TileLogger g_map_history;
 
-JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_reset (JNIEnv* env, jclass, jstring path) {
-    return g_map_history.Reset(env->GetStringUTFChars(path, NULL));
+void HandleException(const std::exception& e) {
+    std::cerr << "Native exception: " << e.what() << std::endl;
+    g_map_history = {};
+}
+
+JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_reset (JNIEnv* env, jclass, jstring path, jboolean write) {
+    try {
+        return g_map_history.Reset(env->GetStringUTFChars(path, NULL), write);
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 JNIEXPORT jshort JNICALL Java_tilelogger_TileLogger_duration (JNIEnv*, jclass) {
-    return g_map_history.Duration();
+    try {
+        return g_map_history.Duration();
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 DataVec jstringToDataVec(JNIEnv* env, jstring jstr) {
-    const char* buffer = env->GetStringUTFChars(jstr, NULL);
-    return DataVec(buffer, buffer + strlen(buffer));
+    try {
+        const char* buffer = env->GetStringUTFChars(jstr, NULL);
+        return DataVec(buffer, buffer + strlen(buffer));
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction (JNIEnv* env, jclass,
     jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jint config) {
 
-    g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, config);
+    try {
+        g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, config);
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+    }
 }
 
 JNIEXPORT void JNICALL Java_tilelogger_TileLogger_onAction2 (JNIEnv* env, jclass, 
     jshort x, jshort y, jstring juuid, jshort team, jshort block, jshort rotation, jshort config_type, jbyteArray jconfig) {
         
-    uint8_t* jconfig_ptr = std::bit_cast<uint8_t*>(env->GetByteArrayElements(jconfig, NULL));
-    jsize jconfig_len = env->GetArrayLength(jconfig);
-    g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, DataVec(jconfig_ptr, jconfig_ptr + jconfig_len));
+    try {
+        uint8_t* jconfig_ptr = std::bit_cast<uint8_t*>(env->GetByteArrayElements(jconfig, NULL));
+        jsize jconfig_len = env->GetArrayLength(jconfig);
+        g_map_history.Record({x, y}, jstringToDataVec(env, juuid), team, block, rotation, config_type, DataVec(jconfig_ptr, jconfig_ptr + jconfig_len));
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+    }
 }
 
 jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec) {
@@ -80,17 +114,35 @@ jobjectArray MarhalTileStateArray(JNIEnv* env, const std::vector<TileState> vec)
 JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_getHistory (JNIEnv* env, jclass,
     jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jlong size) {
 
-    return MarhalTileStateArray(env, g_map_history.GetHistory({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, size));
+    try {
+        return MarhalTileStateArray(env, g_map_history.GetHistory({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, size));
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_rollback (JNIEnv* env, jclass,
     jshort x1, jshort y1, jshort x2, jshort y2, jstring juuid, jint teams, jint time, jint flags) {
 
-    return MarhalTileStateArray(env, g_map_history.Rollback({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, static_cast<HistoryStack::RollbackFlags>(flags)));
+    try {
+        return MarhalTileStateArray(env, g_map_history.Rollback({x1, y1, x2, y2}, jstringToDataVec(env, juuid), teams, time, static_cast<HistoryStack::RollbackFlags>(flags)));
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
-    return g_map_history.MemoryUsage(id);
+    try {
+        return g_map_history.MemoryUsage(id);
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+        return {};
+    }
 }
 
 JNIEXPORT jstring JNICALL Java_tilelogger_TileLogger_getBuildString (JNIEnv* env, jclass) {
