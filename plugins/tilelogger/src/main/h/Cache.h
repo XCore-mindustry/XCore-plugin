@@ -68,5 +68,5 @@ private:
     std::unordered_map<DataVec, Id> ids_;
     std::vector<const DataVec*> data_;
     std::fstream file_;
-    int file_flags_;
+    std::ios_base::openmode file_flags_;
 };

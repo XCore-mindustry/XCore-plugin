@@ -173,5 +173,5 @@ private:
     std::fstream file_;
     BitStack bs_;
     std::filesystem::path path_;
-    int file_flags_;
+    std::ios_base::openmode file_flags_;
 };
