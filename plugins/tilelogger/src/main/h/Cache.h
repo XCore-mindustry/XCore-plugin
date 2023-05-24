@@ -9,16 +9,17 @@
 template<class Id>
 class Cache {
 public:
-    void Reset(const std::filesystem::path& path) {
+    void Reset(const std::filesystem::path& path, bool write) {
         ids_ = {};
         data_ = {};
+        file_flags_ = std::ios::binary | std::ios::in | (write ? std::ios::app : 0);
 
         file_.close();
-        file_.open(path, std::ios::in | std::ios::out | std::ios::app | std::ios::binary);
+        file_.open(path, std::ios::binary | std::ios::in | (write ? std::ios::app : 0));
         BitStack bs;
         bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
 
-        while (bs.read_i_ / 8 + 1 < bs.buffer_.size()) {
+        while (bs.read_i_ / 8 < bs.buffer_.size()) {
             size_t len = bs.read(32);
             auto [it, insert] = ids_.emplace(bs.read_bytes(len), static_cast<Id>(data_.size()));
             data_.push_back(&it->first);
@@ -29,10 +30,12 @@ public:
         auto [it, insert] = ids_.emplace(data, static_cast<Id>(data_.size()));
         if (insert) {
             data_.push_back(&it->first);
-            BitStack bs;
-            bs.push(data.size(), 32);
-            bs.push_bytes(data);
-            file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
+            if (file_ && file_flags_ & std::ios::app) {
+                BitStack bs;
+                bs.push(data.size(), 32);
+                bs.push_bytes(data);
+                file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
+            }
         }
         return it->second;
     }
@@ -64,4 +67,5 @@ private:
     std::unordered_map<DataVec, Id> ids_;
     std::vector<const DataVec*> data_;
     std::fstream file_;
+    std::ios::openmode file_flags_;
 };

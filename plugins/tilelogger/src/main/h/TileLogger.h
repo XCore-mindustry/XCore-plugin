@@ -21,15 +21,15 @@ namespace std {
 
 class TileLogger {
 public:
-    timestamp_t_ Reset(std::filesystem::path path) {
+    timestamp_t_ Reset(std::filesystem::path path, bool write) {
         if (path.is_relative()) {
             path = "tilelogs" / path;
             std::filesystem::create_directory("tilelogs");
         }
-        history_.Reset(path.replace_extension("history"));
-        players_.Reset(path.replace_extension("players"));
-        configs_.Reset(path.replace_extension("configs"));
-        time_begin_ = std::chrono::steady_clock::now();
+        time_t_ duration = history_.Reset(path.replace_extension("history"), write);
+        players_.Reset(path.replace_extension("players"), write);
+        configs_.Reset(path.replace_extension("configs"), write);
+        time_begin_ = std::chrono::steady_clock::now() - std::chrono::seconds(duration);
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 

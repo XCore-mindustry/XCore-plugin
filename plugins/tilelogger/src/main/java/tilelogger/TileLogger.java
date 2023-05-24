@@ -140,17 +140,17 @@ public class TileLogger {
         sendMessage(caller, "Filled with block: " + block.name);
     }
 
-    public static void resetHistory(String path) {
+    public static void resetHistory(String path, boolean write) {
         if (path == null) {
             DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
-            reset(formatter.format(new Date()) + "_" + Vars.state.map.name());
+            reset(formatter.format(new Date()) + "_" + Vars.state.map.name(), write);
             for (Tile tile : Vars.world.tiles) {
                 if (tile.build != null && tile == tile.build.tile)
                 build(tile, null);
             }
         }
         else {
-            reset(path);
+            reset(path, write);
         }
     }
     
@@ -181,7 +181,7 @@ public class TileLogger {
         Log.info(msg);
     }
 
-    private static native long reset(String path);
+    private static native long reset(String path, boolean write);
     private static native short duration();
     private static native void onAction(short x, short y, String uuid, short team, short block, short rotation, short config_type, int config);
     private static native void onAction2(short x, short y, String uuid, short team, short block, short rotation, short config_type, byte[] config);

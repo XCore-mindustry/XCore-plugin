@@ -4,17 +4,18 @@
 #include <unordered_map>
 #include <fstream>
 #include <filesystem>
-#include <iostream>
 #include "TileState.h"
 
 class HistoryStack {
 public:
-    void Reset(const std::filesystem::path& path) {
+    time_t_ Reset(const std::filesystem::path& path, bool write) {
         stack_ = {};
         last_valid_cache_ = {};
+        path_ = path;
+        file_flags_ = std::ios::binary | std::ios::in | (write ? std::ios::app : 0);
 
         file_.close();
-        file_.open(path, std::ios::in | std::ios::out | std::ios::app | std::ios::binary);
+        file_.open(path_, file_flags_);
         if (file_.peek() == std::fstream::traits_type::eof()) {
             file_.seekg(0);
             file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
@@ -22,23 +23,19 @@ public:
         else {
             BitStack bs;
             bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
-            if (bs.read_bytes(header_.size()) != header_) {
-                std::cerr << "ERROR: wrong file header" << std::endl;
-                file_.close();
-                return;
-            }
-            if (bs.buffer_.size() % sizeof(TileState) != 0) {
-                std::cerr << "ERROR: wrong file length" << std::endl;
-                file_.close();
-                return;
-            }
+            if (bs.read_bytes(header_.size()) != header_)
+                throw std::runtime_error("wrong file header");
+            if (bs.buffer_.size() % sizeof(TileState) != 0)
+                throw std::runtime_error("wrong file length");
 
-            while (bs.read_i_ / 8 + 1 < bs.buffer_.size()) {
-                TileState state;
+            TileState state;
+            while (bs.read_i_ / 8 < bs.buffer_.size()) {
                 state.Serialize(bs, Serialize::read);
                 stack_.push_back(state);
             }
+            return state.time;
         }
+        return 0;
     }
 
     void Record(const TileState& state) {
@@ -48,9 +45,7 @@ public:
         last_valid_cache_[state.pos] = static_cast<stack_counter_t_>(stack_.size() - 1);
 
         if (file_) {
-            BitStack bs;
-            const_cast<TileState&>(state).Serialize(bs, Serialize::write);
-            file_.write(std::bit_cast<const char*>(bs.buffer_.data()), bs.buffer_.size());
+            WriteState(state);
         }
     }
 
@@ -113,6 +108,17 @@ public:
                     it->valid = !!tile->ret; // invalidate or revalidate tile state
             }
         }
+
+        if (file_ && file_flags_ & std::ios::app) {
+            file_.close();
+            file_.open(path_, std::ios::binary | std::ios::out);
+            file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
+            for (const TileState& state : stack_)
+                WriteState(state);
+            file_.close();
+            file_.open(path_, file_flags_);
+        }
+
         std::vector<TileState> states_remove;
         std::vector<TileState> states_add;
         for (const auto& [k,v] : map) {
@@ -141,9 +147,19 @@ private:
         return std::nullopt;
     }
 
+    void WriteState(const TileState& state) {
+        assert(bs_.empty());
+        const_cast<TileState&>(state).Serialize(bs_, Serialize::write);
+        file_.write(std::bit_cast<const char*>(bs_.buffer_.data()), bs_.buffer_.size());
+        bs_.reset();
+    }
+
     static inline const DataVec header_{'T','L',0,0,0,0,0,0,0,0,0,0,0,0};
 
     std::vector<TileState> stack_;
     std::unordered_map<Pos, stack_counter_t_> last_valid_cache_;
     std::fstream file_;
+    BitStack bs_;
+    std::filesystem::path path_;
+    std::ios::openmode file_flags_;
 };

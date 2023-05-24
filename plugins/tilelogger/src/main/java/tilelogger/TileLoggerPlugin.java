@@ -59,7 +59,7 @@ public class TileLoggerPlugin extends Plugin {
             packet.handleServer(con);
             TileLogger.build(packet.build.tile, con.player.getInfo());
         });
-        Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null));
+        Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null, true));
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
 
@@ -135,7 +135,7 @@ public class TileLoggerPlugin extends Plugin {
                         sendBundled(player, "error.not-enough-params");
                         return;
                     }
-                    TileLogger.resetHistory(args_seq.pop());
+                    TileLogger.resetHistory(args_seq.pop(), args_seq.pop(String::new).equals("w"));
                 }
                 default -> sendBundled(player, "error.unknown-command");
             }

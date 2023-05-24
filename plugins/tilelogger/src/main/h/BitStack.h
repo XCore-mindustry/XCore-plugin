@@ -7,6 +7,18 @@ using DataVec = std::vector<uint8_t>;
 
 class BitStack {
 public:
+    BitStack() { reset(); }
+
+    void reset() {
+        buffer_.clear();
+        free_ = 0;
+        read_i_ = 0;
+    }
+
+    bool empty() const {
+        return buffer_.empty() && !free_ && !read_i_;
+    }
+
     void push(size_t val, size_t size) {
         while (size) {
             if (!free_) {
@@ -70,8 +82,8 @@ public:
     }
 
     DataVec buffer_;
-    size_t free_ = 0;
-    size_t read_i_ = 0;
+    size_t free_;
+    size_t read_i_;
 };
 
 #if defined(_MSC_VER)
