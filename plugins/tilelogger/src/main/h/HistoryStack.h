@@ -12,7 +12,7 @@ public:
         stack_ = {};
         last_valid_cache_ = {};
         path_ = path;
-        file_flags_ = std::ios::binary | std::ios::in | (write ? std::ios::app : 0);
+        file_flags_ = static_cast<std::ios_base::openmode>(std::ios::binary | std::ios::in | (write ? std::ios::app : 0));
 
         file_.close();
         file_.open(path_, file_flags_);
