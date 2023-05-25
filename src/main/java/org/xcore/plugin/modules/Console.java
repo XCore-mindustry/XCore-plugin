@@ -4,10 +4,7 @@ import arc.func.Cons;
 import arc.util.Log;
 import lombok.SneakyThrows;
 import mindustry.server.ServerControl;
-import org.jline.reader.EndOfFileException;
-import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
-import org.jline.reader.UserInterruptException;
+import org.jline.reader.*;
 import org.jline.terminal.TerminalBuilder;
 import org.xcore.plugin.PluginVars;
 import reactor.util.annotation.NonNull;
@@ -32,6 +29,7 @@ public class Console {
         lineReader = LineReaderBuilder.builder()
                 .terminal(terminal)
                 .build();
+        terminal.enterRawMode();
         System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
 
         serverControl.serverInput = () -> {
@@ -49,7 +47,8 @@ public class Console {
                 return null;
             }
 
-            serverControl.handleCommandString(result);
+            if (!result.isEmpty() && !result.startsWith("#"))
+                serverControl.handleCommandString(result);
 
             handleInput();
             return null;
