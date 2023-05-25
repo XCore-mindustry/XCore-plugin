@@ -375,8 +375,32 @@ public class ClientCommands {
             database.getBanDataExecutor().saveBan(result);
 
             send(player, "commands.ban.success", target.nickname);
-
         });
+
+        register("unban", (args, player) -> {
+            if (!player.admin) {
+                send(player, "error.access-denied");
+                return;
+            }
+
+            var id = Strings.parseInt(args[0]);
+
+            if (id < 1) {
+                send(player, "error.invalid-id");
+                return;
+            }
+
+            var target = database.getPlayerDataExecutor().getPlayerDataById(id);
+
+            if (target == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
+
+            database.getBanDataExecutor().deleteBan(target.uuid, null);
+            send(player, "commands.unban.success", target.nickname, target.pid);
+        });
+
         register("mute", (args, player) -> {
             if (!player.admin) {
                 send(player, "error.access-denied");

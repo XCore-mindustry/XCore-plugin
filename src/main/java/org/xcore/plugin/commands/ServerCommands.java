@@ -145,7 +145,7 @@ public class ServerCommands {
             StringBuilder builder = new StringBuilder("Temporary banned players:");
             Seq<BanData> bans = database.getBanDataExecutor().getBanned();
 
-            bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'",
+            bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'".replace("@", "&fb&lb@&fr"),
                     ban.uuid, ban.ip, ban.name, ban.adminName,
                     ban.unbanDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
                     ban.reason)));

@@ -1,12 +1,12 @@
 package org.xcore.plugin.utils;
 
 import arc.func.Cons;
+import arc.util.Log;
 import arc.util.Timer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.esotericsoftware.minlog.Log;
 import com.ospx.sock.ClientSock;
 import com.ospx.sock.ServerSock;
 import com.ospx.sock.Sock;
@@ -53,7 +53,7 @@ public class SockCommunicator {
         try {
             sock.connect();
         } catch (Exception e) {
-            Log.error("Exception occurred while connecting to Sock server", e);
+            Log.err("Exception occurred while connecting to Sock server", e);
         }
     }
 
