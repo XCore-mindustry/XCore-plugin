@@ -1,40 +1,70 @@
 package org.xcore.plugin.modules;
 
-import arc.Core;
 import arc.func.Cons;
+import arc.util.Log;
+import lombok.SneakyThrows;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.TerminalBuilder;
 import org.xcore.plugin.PluginVars;
 import reactor.util.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Console {
-    public static ServerControl serverControl = ServerControl.instance;
-    public static LineReader lineReader;
+    private static final ServerControl serverControl = ServerControl.instance;
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private static LineReader lineReader;
 
+    @SneakyThrows(IOException.class)
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
-        lineReader = LineReaderBuilder.builder().build();
+        var terminal = TerminalBuilder.builder().system(true).build();
+        lineReader = LineReaderBuilder.builder()
+                .terminal(terminal)
+                .build();
         System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
 
         serverControl.serverInput = () -> {
-            while (true) {
-                try {
-                    String line = lineReader.readLine("> ");
-                    if (!line.isEmpty() && !String.valueOf(line.charAt(0)).equals("#")) {
-                        Core.app.post(() -> serverControl.handleCommandString(line));
-                    }
-                } catch (UserInterruptException | EndOfFileException e) {
-                    System.exit(0);
-                }
-            }
         };
+
+        handleInput();
+    }
+
+    public static void handleInput() {
+        CompletableFuture<String> readFuture = read("> ");
+
+        readFuture.handle((result, exception) -> {
+            if (exception != null) {
+                Log.err(exception);
+                return null;
+            }
+
+            serverControl.handleCommandString(result);
+
+            handleInput();
+            return null;
+        });
+    }
+
+    public static CompletableFuture<String> read(String inputPrompt) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return lineReader.readLine(inputPrompt);
+            } catch (UserInterruptException | EndOfFileException err) {
+                System.exit(0);
+                return null;
+            }
+        }, executor);
     }
 
     public static class BlockingPrintStream extends PrintStream {
