@@ -3,6 +3,8 @@ package tilelogger;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 import arc.math.geom.Point2;
 import arc.util.Reflect;
@@ -110,5 +112,9 @@ public class TileState {
             case 3 -> "";
             default -> "?";
         };
+    }
+
+    public String timeAsString() {
+        return (valid ? "[white]" : "[gray]") + LocalTime.MIN.plusSeconds(time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[]";
     }
 }

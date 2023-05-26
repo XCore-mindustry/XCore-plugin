@@ -115,8 +115,8 @@ public class TileLogger {
         String str = String.format("Tile (%d,%d) history. Current time: %s.", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, x, y, "", -1, 0, size)) {
             Object rotation = state.rotationAsString();
-            str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + (state.valid ? "[white] " : "[gray] ")
-                    + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[] " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
+            str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + " " + state.timeAsString()
+                    + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         sendMessage(caller, str);
     }
