@@ -38,18 +38,21 @@ public class TileLoggerPlugin extends Plugin {
 
         VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1))));
 
+        Events.on(EventType.BuildSelectEvent.class, event -> {
+            if (event.builder == null) return; // rollback recursion
+            if (event.breaking) return; // handled by BlockBuildBeginEvent 
+            TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.builder));
+        });
         Events.on(EventType.BlockBuildBeginEvent.class, event -> {
+            // prevent duplicate build/destroy events when muiltiple player acting on the same building
             if (event.unit == null) return; // rollback recursion
-            event.tile.block().iterateTaken(event.tile.x, event.tile.y, (x, y) -> {
-                if (!event.breaking && event.tile.x == x && event.tile.y == y)
-                    TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.unit));
-                else
-                    TileLogger.destroy(Vars.world.tile(x, y), TileLogger.unitToPlayerInfo(event.unit));
-            });
+            if (!event.breaking) return; // handled by BuildSelectEvent, prevent initial config duplication
+            TileLogger.destroy(event.tile, TileLogger.unitToPlayerInfo(event.unit));
         });
         Events.on(EventType.BlockBuildEndEvent.class, event -> {
-            if (event.breaking) return; // already handled by BlockBuildBeginEvent
+            // need for low build time blocks
             if (event.unit == null) return; // rollback recursion
+            if (event.breaking) return; // handled by BlockBuildBeginEvent
             TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.unit));
         });
         Events.on(EventType.ConfigEvent.class, event -> {

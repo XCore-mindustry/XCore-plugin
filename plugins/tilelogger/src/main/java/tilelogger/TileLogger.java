@@ -3,11 +3,11 @@ package tilelogger;
 import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.OS;
-import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.ai.types.LogicAI;
 import mindustry.content.Blocks;
 import mindustry.game.Team;
+import mindustry.gen.Building;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.gen.Unit;
@@ -15,6 +15,7 @@ import mindustry.io.JsonIO;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
 import mindustry.world.Tile;
+import mindustry.world.blocks.ConstructBlock.ConstructBuild;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -55,12 +56,25 @@ public class TileLogger {
 
     public static void build(Tile tile, @Nullable PlayerInfo player_info) {
         if (tile.build == null) return; // rollback recursion
+        short block_id = tile.blockID();
+        short rotation = (short)tile.build.rotation;
+        Object config = tile.build.config();
+        if (tile.build instanceof ConstructBuild construct) {
+            if (construct.progress == 0) {
+                for (Building building : construct.prevBuild)
+                    destroy(building.tile, player_info);
+                return;
+            }
+            block_id = construct.current.id;
+            rotation = (short)construct.rotation;
+            config = construct.lastConfig;
+        }
         String uuid = player_info == null ? "" : player_info.id;
-        ConfigWrapper wrapper = new ConfigWrapper(tile.build.config());
+        ConfigWrapper wrapper = new ConfigWrapper(config);
         if (wrapper.config instanceof Integer integer)
-            onAction(tile.x, tile.y, uuid, (short) tile.team().id, tile.blockID(), (short) tile.build.rotation, wrapper.config_type, integer);
+            onAction(tile.x, tile.y, uuid, (short)tile.team().id, block_id, rotation, wrapper.config_type, integer);
         else if (wrapper.config instanceof byte[] bytes)
-            onAction2(tile.x, tile.y, uuid, (short) tile.team().id, tile.blockID(), (short) tile.build.rotation, wrapper.config_type, bytes);
+            onAction2(tile.x, tile.y, uuid, (short)tile.team().id, block_id, rotation, wrapper.config_type, bytes);
     }
 
     public static void destroy(Tile tile, @Nullable PlayerInfo player_info) {
