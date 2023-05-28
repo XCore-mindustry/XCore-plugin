@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
-import static org.xcore.plugin.PluginVars.gson;
 
 public class BanDataExecutor {
     private final MongoCollection<BanData> collection;

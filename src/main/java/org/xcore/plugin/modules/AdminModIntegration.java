@@ -1,5 +1,6 @@
 package org.xcore.plugin.modules;
 
+import arc.util.Log;
 import arc.util.Time;
 import arc.util.Timer;
 import arc.util.serialization.JsonValue;
@@ -65,6 +66,7 @@ public class AdminModIntegration {
             var data = database.getCached(player.uuid());
 
             if (data == null || data.adminModVersion != null) return;
+            Log.info("Admin @ joined with the Admin mod version '@'", player.plainName(), content);
 
             if (content.isBlank() || content.isEmpty()) {
                 player.con.kick("Update Admin Mod", 0);

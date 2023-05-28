@@ -21,6 +21,7 @@ public class PlayerData {
 
     public boolean leaderboard = true;
     public boolean jsAccess = false;
+    public boolean adminConfirmed = false;
 
     public long muted = 0;
 

@@ -21,15 +21,13 @@ import discord4j.rest.util.Color;
 import org.reactivestreams.Publisher;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
 import java.util.function.Function;
 
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.globalConfig;
+import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
     public static Mono<GuildMessageChannel> bansChannel, privateChannel;
@@ -63,16 +61,18 @@ public class Bot {
                     String[] args = event.getCustomId().split("_");
 
                     String server = args[0];
-                    String uuid = args[1];
+                    PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
 
-                    SockCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(uuid, server));
-
-                    var info = Find.playerInfo(uuid);
+                    SockCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
 
                     message.delete().subscribe();
 
-                    return event.reply(author.getDisplayName() + " confirmed adminship to player "
-                            + (info != null ? info.lastName : "<unknown>") + " on server " + server);
+                    data.adminConfirmed = true;
+
+                    SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
+                    database.getPlayerDataExecutor().setPlayerData(data);
+                    return event.reply(author.getDisplayName() + " confirmed adminship to player " +
+                            data.nickname + " on server " + server);
                 }
 
                 if (event.getCustomId().equals("decline")) {
@@ -143,14 +143,16 @@ public class Bot {
                 .build())).subscribe();
     }
 
-    public static void sendAdminRequestEvent(String uuid, String name, String server) {
+    public static void sendAdminRequestEvent(int pid, String server) {
+        PlayerData data = database.getPlayerDataExecutor().getPlayerDataById(pid);
+
         privateChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")
                         .color(Color.RED)
-                        .addField("Name", name, false)
+                        .addField("Name", data.nickname, false)
                         .addField("Server", server, false)
                         .build())
-                .addComponent(ActionRow.of(Button.danger(server + "_" + uuid + "_admreq", "Confirm"),
+                .addComponent(ActionRow.of(Button.danger(server + "_" + pid + "_admreq", "Confirm"),
                         Button.success("decline", "Decline")))
                 .build())).subscribe();
     }

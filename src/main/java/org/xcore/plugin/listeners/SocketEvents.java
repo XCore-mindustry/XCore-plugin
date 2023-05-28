@@ -33,11 +33,11 @@ public class SocketEvents {
             SockCommunicator.onEvent(SocketEvents.PlayerJoinLeaveEvent.class, e ->
                     Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
             SockCommunicator.onEvent(SocketEvents.AdminRequestEvent.class, e ->
-                    Bot.sendAdminRequestEvent(e.uuid(), e.name(), e.server()));
+                    Bot.sendAdminRequestEvent(e.pid(), e.server()));
             SockCommunicator.onEvent(BanData.class, Utils::temporaryBan);
 
             Timer.schedule(() -> {
-                var datas = database.getPlayerDataExecutor().getPlayersData(netServer.admins.getAdmins());
+                var datas = database.getPlayerDataExecutor().getAdmins();
                 Bot.sendAdminPlayTimeMessage(datas);
 
                 for (PlayerData data : datas) {
@@ -92,7 +92,7 @@ public class SocketEvents {
     public record DiscordMessageEvent(String authorName, String message, String server) {
     }
 
-    public record AdminRequestEvent(String uuid, String name, String server) {
+    public record AdminRequestEvent(int pid, String server) {
     }
 
     public record AdminRequestConfirmEvent(String uuid, String server) {

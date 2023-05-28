@@ -48,6 +48,9 @@ dependencies {
 
     implementation("com.discord4j:discord4j-core:3.2.3")
 
+    if (project.hasProperty("dev")) {
+        implementation("org.jline:jline-terminal-jna:3.21.0")
+    }
     implementation("org.jline:jline-reader:3.21.0")
     implementation("org.jline:jline-console:3.21.0")
 

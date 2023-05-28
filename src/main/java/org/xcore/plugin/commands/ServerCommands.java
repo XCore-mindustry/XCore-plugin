@@ -1,5 +1,6 @@
 package org.xcore.plugin.commands;
 
+import arc.struct.ObjectSet;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
@@ -8,6 +9,8 @@ import arc.util.Time;
 import arc.util.serialization.JsonReader;
 import arc.util.serialization.JsonValue;
 import arc.util.serialization.JsonWriter;
+import mindustry.gen.Groups;
+import mindustry.gen.Player;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
@@ -37,6 +40,51 @@ public class ServerCommands {
             Log.info("Shutting down server.");
             netServer.kickAll(Packets.KickReason.serverRestarting);
             app.exit();
+        });
+
+        handler.removeCommand("info");
+        handler.register("info", "<IP/UUID/#id/name...>", "Find player info(s).", args -> {
+            ObjectSet<PlayerInfo> infos;
+            String query = args[0];
+
+            if (query.startsWith("#")) {
+                int id = Strings.parseInt(query.substring(1));
+                PlayerData data = database.getCachedOrDb(id);
+                infos = (data != null) ? ObjectSet.with(netServer.admins.getInfoOptional(data.uuid)) : new ObjectSet<>();
+            } else {
+                infos = netServer.admins.findByName(query);
+            }
+
+            if (infos.isEmpty()) {
+                Log.info("Nobody with that name could be found.");
+                return;
+            }
+
+            Log.info("Players found: " + infos.size);
+            int index = 0;
+
+            for (PlayerInfo info : infos) {
+                Log.info("[" + index + "] Trace info for player '" + info.plainLastName() + "' / UUID " + info.id + " / RAW " + info.lastName);
+                Log.info("  all names used: " + info.names);
+                Log.info("  IP: " + info.lastIP);
+                Log.info("  all IPs used: " + info.ips);
+                Log.info("  times joined: " + info.timesJoined);
+                Log.info("  times kicked: " + info.timesKicked);
+                index++;
+            }
+        });
+        handler.removeCommand("players");
+        handler.register("players", "List all players currently in game.", args -> {
+            if (Groups.player.size() == 0) {
+                Log.info("No players are currently in the server.");
+            } else {
+                Log.info("Players: @", Groups.player.size());
+                for (Player user : Groups.player) {
+                    PlayerInfo userInfo = user.getInfo();
+                    PlayerData data = database.getCached(user.uuid());
+                    Log.info(" @&lm @ / UUID: @/@ / IP: @", userInfo.admin ? "&r[A]&c" : "&b[P]&c", userInfo.plainLastName(), data.pid, userInfo.id, userInfo.lastIP, userInfo.admin);
+                }
+            }
         });
 
         handler.register("reload-config", "Reload config", args -> {
@@ -78,15 +126,15 @@ public class ServerCommands {
             Log.info("Done.");
         });
 
-        handler.register("dbinfo", "<name/uuid/ip>", "Info about player from db.", args -> {
-            PlayerInfo info = Find.playerInfo(args[0]);
+        handler.register("dbinfo", "<#id/uuid>", "Info about player from db.", args -> {
+            PlayerData data = args[0].startsWith("#") ?
+                    database.getCachedOrDb(Strings.parseInt(args[0].substring(1))) :
+                    database.getCachedOrDb(args[0]);
 
-            if (info == null) {
-                Log.info("Player not found.");
+            if (data == null) {
+                Log.err("Player not found");
                 return;
             }
-
-            PlayerData data = database.getCachedOrDb(args[0]);
 
             Log.info(gson.toJson(data));
         });
@@ -120,7 +168,7 @@ public class ServerCommands {
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
 
             if (date == null) {
-                Log.err("Invalid period format. Example: 1h30m, 30 (hours)");
+                Log.err("Invalid period format. Example: 1h30m, 30 (days)");
                 return;
             }
 
@@ -154,38 +202,42 @@ public class ServerCommands {
         });
 
 
-        handler.register("tempunban", "<uuid/ip>", "Unban a temporarily banned player.", args -> {
-            var info = netServer.admins.getInfoOptional(args[0]);
-            String uuid;
-            String ip;
+        handler.register("tempunban", "<type:uuid/ip/id> <value>", "Unban a temporarily banned player.", args -> {
+            String uuid = null;
+            String ip = null;
+            switch (args[0]) {
+                case "uuid", "uid" -> uuid = args[1];
 
-            if (info == null) {
-                uuid = args[0];
-                ip = null;
-                Log.info("Info not found, unbanning only by UUID (@)", uuid);
-            } else if (args[0].startsWith("#")) {
-                uuid = info.id;
-                ip = args[0].substring(1);
-                Log.info("Unbanning by IP and internal UUID (@, @)", ip, uuid);
-            } else {
-                uuid = args[0];
-                ip = info.lastIP;
-                Log.info("Info found, unbanning by provided UUID and internal IP (@, @)", uuid, ip);
+                case "ip" -> ip = args[1];
+
+                case "id" -> {
+                    PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
+
+                    if (data == null) {
+                        Log.err("Player not found");
+                        return;
+                    }
+
+                    uuid = data.uuid;
+                }
+
+                default -> Log.err("Incorrect type. Example: uuid/ip/id");
             }
 
             database.getBanDataExecutor().deleteBan(uuid, ip);
+            Log.info("Unbanned (@/@)", uuid, ip);
         });
 
 
-        handler.register("mute", "<player> <period>", "Mute player", args -> {
-            var info = Find.playerInfo(args[0]);
+        handler.register("mute", "<uuid/#id> <period>", "Mute player", args -> {
+            PlayerData data = args[0].startsWith("#") ? database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
+                    database.getPlayerDataExecutor().getPlayerData(args[0]);
 
-            if (info == null) {
+            if (data == null) {
                 Log.err("Player not found.");
                 return;
             }
 
-            PlayerData data = database.getCachedOrDb(info.id);
             Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
             if (date == null) {
@@ -197,23 +249,22 @@ public class ServerCommands {
 
             database.getPlayerDataExecutor().setPlayerData(data);
             Duration duration = Duration.ofMillis(date.toEpochMilli());
-            Log.info("@ (@) muted for @:@", info.lastName, info.id, duration.toMinutes(), duration.toSecondsPart());
+            Log.info("@ (@) muted for @:@", data.nickname, data.uuid, duration.toMinutes(), duration.toSecondsPart());
         });
 
 
-        handler.register("unmute", "<player>", "Unmute player", (args, player) -> {
-            var target = Find.playerInfo(args[0]);
+        handler.register("unmute", "<uuid/#id>", "Unmute player", (args, player) -> {
+            PlayerData data = args[0].startsWith("#") ? database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
+                    database.getPlayerDataExecutor().getPlayerData(args[0]);
 
-            if (target == null) {
+            if (data == null) {
                 Log.err("Player not found.");
                 return;
             }
 
-            PlayerData data = database.getCachedOrDb(target.id);
-
             data.muted = 0;
             database.getPlayerDataExecutor().setPlayerData(data);
-            Log.info("@ unmuted", target.lastName);
+            Log.info("@ (@) unmuted", data.nickname, data.uuid);
         });
 
         handler.register("sock-restart", "Restart sock", args -> {
