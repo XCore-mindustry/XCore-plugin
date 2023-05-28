@@ -14,13 +14,13 @@ import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.listeners.SocketEvents;
+import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
@@ -489,7 +489,9 @@ public class ClientCommands {
         });
 
         register("login", (args, player) -> {
-            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(player.uuid(), player.name, config.server));
+            PlayerData data = database.getCached(player.uuid());
+
+            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(data.pid, config.server));
             send(player, "commands.login.success");
         });
     }

@@ -32,15 +32,15 @@ public class PlayerDataExecutor {
         return collection.find(eq("pid", id)).first();
     }
 
-    public Seq<PlayerData> getPlayersData(Seq<Administration.PlayerInfo> players) {
-        return players.map(p -> getPlayerData(p.id));
-    }
-
     public void setPlayerData(PlayerData data) {
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
     public Seq<PlayerData> getLeaders(String... fields) {
         return Seq.with(collection.find().sort(descending(fields)).limit(10));
+    }
+
+    public Seq<PlayerData> getAdmins() {
+        return Seq.with(collection.find(eq("adminConfirmed", true)));
     }
 }

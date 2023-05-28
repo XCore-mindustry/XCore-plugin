@@ -10,12 +10,10 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
 import mindustry.Vars;
-import mindustry.ctype.UnlockableContent;
 import mindustry.game.Gamemode;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.gen.Iconc;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
@@ -76,10 +74,13 @@ public class Utils {
     public static void temporaryBan(BanData ban) {
         if (!isConnected) return;
 
+        PlayerData data = database.getPlayerDataExecutor().getPlayerData(ban.uuid);
+
         bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder()
                         .title("Ban")
                         .color(Color.RED)
+                        .addField("ID", String.valueOf(data == null ? -1 : data.pid), false)
                         .addField("Violator", ban.name, false)
                         .addField("Admin", ban.adminName, false)
                         .addField("Reason", ban.reason, false)
