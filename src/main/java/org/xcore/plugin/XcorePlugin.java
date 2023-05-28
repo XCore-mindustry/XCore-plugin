@@ -119,10 +119,6 @@ public class XcorePlugin extends Plugin {
             database.getPlayerDataExecutor().getPlayerData(data.uuid);
         }), 0, 60);
 
-        Timer.schedule(() -> database.cachedPlayerData.each((uuid, data) -> {
-            if (!Groups.player.contains(p -> p.uuid().equals(data.uuid))) database.removeCached(uuid);
-        }), 0, 60);
-
         Console.init();
         info("Plugin loaded");
     }
