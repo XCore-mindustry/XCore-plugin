@@ -102,7 +102,6 @@ public class ClientCommands {
             data.leaderboard = !data.leaderboard;
 
             send(player, "commands.lb.success", data.leaderboard);
-            database.setCached(data);
             database.getPlayerDataExecutor().setPlayerData(data);
         });
 
@@ -131,7 +130,6 @@ public class ClientCommands {
             send(player, "commands.tr.success", translatorLanguages.get(data.translatorLanguage));
 
             database.getPlayerDataExecutor().setPlayerData(data);
-            database.setCached(data);
         });
 
         register("maps", (args, player) -> {

@@ -73,8 +73,6 @@ public class AdminModIntegration {
                 return;
             }
             data.adminModVersion = content;
-
-            database.setCached(data);
         });
     }
 }

@@ -120,7 +120,6 @@ public class XcorePlugin extends Plugin {
                 data.playTime++;
             }
 
-            database.setCached(data);
             database.getPlayerDataExecutor().getPlayerData(data.uuid);
         }), 0, 60);
 
