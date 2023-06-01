@@ -43,7 +43,6 @@ public class MiniPvP {
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 database.getPlayerDataExecutor().setPlayerData(data);
-                database.setCached(data);
             });
         });
 
@@ -69,7 +68,6 @@ public class MiniPvP {
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
                         database.getPlayerDataExecutor().setPlayerData(data);
-                        database.setCached(data);
                     });
                 }
             }
