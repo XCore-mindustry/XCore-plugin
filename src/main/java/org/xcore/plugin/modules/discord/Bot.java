@@ -1,14 +1,16 @@
 package org.xcore.plugin.modules.discord;
 
+import arc.files.Fi;
 import arc.struct.Seq;
-import arc.util.Log;
+import arc.util.Http;
 import arc.util.Strings;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
+import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.Event;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.component.ActionComponent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.channel.GuildMessageChannel;
@@ -17,16 +19,22 @@ import discord4j.core.spec.MessageCreateSpec;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
+import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
-import org.reactivestreams.Publisher;
+import io.netty.handler.timeout.TimeoutException;
+import mindustry.io.MapIO;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.PlayerData;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.function.Function;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
+import static mindustry.Vars.dataDirectory;
 import static org.xcore.plugin.PluginVars.*;
 
 public class Bot {
@@ -39,7 +47,9 @@ public class Bot {
 
     public static void connect() {
         try {
-            client = DiscordClient.create(globalConfig.discordBotToken);
+            client = DiscordClientBuilder.create(globalConfig.discordBotToken)
+                    .setDefaultAllowedMentions(AllowedMentions.suppressAll())
+                    .build();
             gateway = client.gateway()
                     .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
                     .login()
@@ -49,7 +59,7 @@ public class Bot {
             bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(GuildMessageChannel.class);
             privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(GuildMessageChannel.class);
 
-            onEvent(ButtonInteractionEvent.class, event -> {
+            gateway.on(ButtonInteractionEvent.class, event -> {
                 var author = event.getInteraction().getMember().orElse(null);
                 var message = event.getMessage().orElse(null);
 
@@ -80,35 +90,84 @@ public class Bot {
                 }
 
                 return Mono.empty();
-            });
+            }).subscribe();
 
-            onEvent(MessageCreateEvent.class, event -> {
-                var author = event.getMember().orElse(null);
-                if (author == null || author.isBot() || event.getMessage().getContent().isBlank())
-                    return Mono.empty();
+            command("upload-map")
+                    .filter(event -> DiscordHelper.hasRole(event.getMember(), globalConfig.discordMapReviewerRoleId))
+                    .map(MessageCreateEvent::getMessage)
+                    .filter(message -> !message.getAttachments().isEmpty())
+                    .subscribe(message -> {
+                        Seq<String> maps = new Seq<>();
+                        message.getAttachments().forEach(attachment -> Http.get(attachment.getUrl())
+                                .error(err -> message.getRestChannel().createMessage(attachment.getFilename() + " is not valid map file!").subscribe())
+                                .block((response) -> {
+                                    String filename = attachment.getFilename().endsWith(".msav") ? attachment.getFilename() : attachment.getFilename() + ".msav";
+                                    var file = dataDirectory.child("tmp").child(filename);
+                                    file.writeBytes(response.getResult());
 
-                if (!globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong(), false) && !event.getMessage().getContent().startsWith("/"))
-                    return Mono.empty();
+                                    MapIO.createMap(new Fi(file.toString()), true);
 
-                String server = globalConfig.servers.findKey(event.getMessage().getChannelId().asLong(), false);
+                                    maps.add(file.absolutePath());
+                                }));
 
-                if (server == null) return Mono.empty();
+                        if (maps.isEmpty()) return;
 
-                if (server.equals(config.server)) {
-                    XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), event.getMessage().getContent());
-                } else {
-                    SockCommunicator.sendEvent(
-                            new SocketEvents.DiscordMessageEvent(author.getDisplayName(), event.getMessage().getContent(), server)
-                    );
-                }
-                return Mono.empty();
-            });
+                        List<ActionComponent> servers = new ArrayList<>();
+                        for (String key : globalConfig.servers.keys()) {
+                            servers.add(Button.primary(key, key));
+                        }
+
+                        message.getChannel().flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                                        .content("Choose server:")
+                                        .addComponent(ActionRow.of(servers))
+                                        .build()))
+                                .doOnNext(m -> gateway.on(ButtonInteractionEvent.class)
+                                        .filter(event -> DiscordHelper.hasRole(event.getInteraction().getMember(), globalConfig.discordMapReviewerRoleId))
+                                        .filter(event -> m.getId().asLong() == event.getMessageId().asLong())
+                                        .timeout(Duration.ofMinutes(3))
+                                        .onErrorResume(TimeoutException.class, ignore -> {
+                                            maps.each(map -> new Fi(map).delete());
+                                            return Mono.empty();
+                                        })
+                                        .subscribe(e -> {
+                                            SockCommunicator.sendEvent(new SocketEvents.LoadMaps(maps.toArray(String.class), e.getCustomId()));
+                                            m.delete().subscribe();
+                                            e.reply("Successfully uploaded maps").subscribe();
+                                        }))
+                                .subscribe();
+                    });
+            gateway.on(MessageCreateEvent.class)
+                    .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
+                    .filter(event -> globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong(), false) && !event.getMessage().getContent().startsWith("/"))
+                    .subscribe(event -> {
+                        var author = event.getMember().orElse(null);
+                        var message = event.getMessage();
+                        var content = message.getContent();
+
+                        String server = globalConfig.servers.findKey(event.getMessage().getChannelId().asLong(), false);
+
+                        if (server == null) return;
+
+                        if (server.equals(config.server)) {
+                            XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), content);
+                        } else {
+                            SockCommunicator.sendEvent(
+                                    new SocketEvents.DiscordMessageEvent(author.getDisplayName(), content, server)
+                            );
+                        }
+                    });
 
             isConnected = true;
         } catch (Exception e) {
             XcorePlugin.err("Error while connecting to discord: ");
             e.printStackTrace();
         }
+    }
+
+    public static Flux<MessageCreateEvent> command(String name) {
+        return gateway.on(MessageCreateEvent.class)
+                .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
+                .filter(event -> event.getMessage().getContent().startsWith(globalConfig.discordCommandPrefix + name));
     }
 
     public static RestChannel getServerLogChannel(String server) {
@@ -152,14 +211,8 @@ public class Bot {
                         .addField("Name", data.nickname, false)
                         .addField("Server", server, false)
                         .build())
-                .addComponent(ActionRow.of(Button.danger(server + "_" + pid + "_admreq", "Confirm"),
-                        Button.success("decline", "Decline")))
+                .addComponent(ActionRow.of(Button.success(server + "_" + pid + "_admreq", "Confirm"),
+                        Button.danger("decline", "Decline")))
                 .build())).subscribe();
-    }
-
-    public static <E extends Event, T> void onEvent(Class<E> eventClass, Function<E, Publisher<T>> mapper) {
-        gateway.on(eventClass, mapper)
-                .doOnError(Log::err)
-                .subscribe();
     }
 }
