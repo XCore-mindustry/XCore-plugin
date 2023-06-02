@@ -2,6 +2,7 @@ package org.xcore.plugin.modules;
 
 import arc.func.Cons;
 import arc.util.Log;
+import arc.Core;
 import lombok.SneakyThrows;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
@@ -63,7 +64,7 @@ public class Console {
             }
 
             if (!result.isEmpty() && !result.startsWith("#"))
-                serverControl.handleCommandString(result);
+                Core.app.post(() -> serverControl.handleCommandString(result));
 
             handleInput();
             return null;

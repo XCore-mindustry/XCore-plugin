@@ -1,0 +1,13 @@
+name: Clean
+
+on: [push, workflow_dispatch]
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: kolpav/purge-artifacts-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 7 day
