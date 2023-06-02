@@ -14,8 +14,8 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.SockCommunicator;
 import useful.Bundle;
 
-import static mindustry.Vars.netServer;
-import static mindustry.Vars.state;
+import static mindustry.Vars.*;
+import static mindustry.Vars.player;
 import static org.xcore.plugin.PluginVars.*;
 import static useful.Bundle.send;
 
@@ -40,6 +40,11 @@ public class PluginEvents {
 
             HexedRanks.updateRank(player, data);
             database.setCached(data);
+        });
+        Events.on(EventType.PlayerChatEvent.class, e -> {
+            if (player.con.lastReceivedClientSnapshot == -1) {
+                player.kick("VPN services forbidden!");
+            }
         });
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
