@@ -42,8 +42,8 @@ public class PluginEvents {
             database.setCached(data);
         });
         Events.on(EventType.PlayerChatEvent.class, e -> {
-            if (player.con.lastReceivedClientSnapshot == -1) {
-                player.kick("VPN services forbidden!");
+            if (e.player.con.lastReceivedClientSnapshot == -1) {
+                e.player.kick("VPN services forbidden!");
             }
         });
         Events.on(PlayerJoin.class, event -> {
