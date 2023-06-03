@@ -168,6 +168,10 @@ public class TileLogger {
             reset(path, write);
         }
     }
+
+    public static void showSubnetInfo(@Nullable Player player, String subnet) {
+        sendMessage(player, (subnetAccepted(subnet) ? "accept" : "deny") + " " + subnet);
+    }
     
     public static void showInfo(@Nullable Player player) {
         sendMessage(player, String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString()));
@@ -202,6 +206,7 @@ public class TileLogger {
     private static native void onAction2(short x, short y, String uuid, short team, short block, short rotation, short config_type, byte[] config);
     private static native TileState[] getHistory(short x1, short y1, short x2, short y2, String uuid, int teams, int time, long size);
     private static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int teams, int time, int flags);
+    private static native boolean subnetAccepted(String subnet);
     private static native long memoryUsage(long id);
     private static native String getBuildString();
     

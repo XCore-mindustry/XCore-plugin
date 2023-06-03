@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "HistoryStack.h"
+#include "SubnetFilter.h"
 #include "Cache.h"
 
 namespace std {
@@ -29,6 +30,7 @@ public:
         time_t_ duration = history_.Reset(path.replace_extension("history"), write);
         players_.Reset(path.replace_extension("players"), write);
         configs_.Reset(path.replace_extension("configs"), write);
+        subnet_filter_.reset(subnets_ / "accept.txt", subnets_ / "deny.txt");
         time_begin_ = std::chrono::steady_clock::now() - std::chrono::seconds(duration);
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
@@ -70,6 +72,10 @@ public:
         return history_.Rollback(rect, player, teams, AbsTime(time), flags);
     }
 
+    bool SubnetAccepted(const std::string& subnet) {
+        return subnet_filter_.accepted(subnet);
+    }
+
     size_t MemoryUsage(size_t id) const {
         switch (id) {
         case 2:
@@ -97,9 +103,11 @@ private:
     }
 
     static inline const std::filesystem::path tilelogs_ = "config/tilelogs";
+    static inline const std::filesystem::path subnets_ = "config/subnets";
 
     std::chrono::steady_clock::time_point time_begin_{};
     HistoryStack history_;
+    SubnetFilter subnet_filter_;
     Cache<player_t_> players_;
     Cache<config_t_> configs_;
 };

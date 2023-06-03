@@ -116,42 +116,25 @@ public class TileLoggerPlugin extends Plugin {
             switch (args_seq.pop()) {
                 case "memory", "m" -> TileLogger.showMemoryUsage(player);
                 case "select", "s" -> {
-                    if (player == null) {
-                        sendBundled(player, "error.not-allowed-from-console");
-                        return;
-                    }
+                    if (player == null) { sendBundled(player, "error.not-allowed-from-console"); return; }
                     config.select = 1;
                 }
                 case "fill", "f" -> {
-                    if (player == null) {
-                        sendBundled(player, "error.not-allowed-from-console");
-                        return;
-                    }
-                    if (!player.admin) {
-                        sendBundled(player, "error.access-denied");
-                        return;
-                    }
-                    if (args_seq.size == 0) {
-                        sendBundled(player, "error.not-enough-params");
-                        return;
-                    }
+                    if (player == null) { sendBundled(player, "error.not-allowed-from-console"); return; }
+                    if (!player.admin) { sendBundled(player, "error.access-denied"); return; }
+                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
                     Block block = Vars.content.block(args_seq.pop());
-                    if (block == null) {
-                        sendBundled(player, "error.block-not-found");
-                        return;
-                    }
+                    if (block == null) { sendBundled(player, "error.block-not-found"); return; }
                     TileLogger.fill(player, null, block, config.rect);
                 }
                 case "file" -> {
-                    if (player != null) {
-                        sendBundled(player, "error.not-allowed-from-player");
-                        return;
-                    }
-                    if (args_seq.size == 0) {
-                        sendBundled(player, "error.not-enough-params");
-                        return;
-                    }
+                    if (player != null) { sendBundled(player, "error.not-allowed-from-player"); return; }
+                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
                     TileLogger.resetHistory(args_seq.pop(), args_seq.pop(String::new).equals("w"));
+                }
+                case "subnet" -> {
+                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
+                    TileLogger.showSubnetInfo(player, args_seq.pop());
                 }
                 default -> sendBundled(player, "error.unknown-command");
             }
