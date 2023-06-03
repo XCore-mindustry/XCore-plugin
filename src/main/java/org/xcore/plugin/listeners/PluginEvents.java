@@ -3,6 +3,7 @@ package org.xcore.plugin.listeners;
 import arc.Events;
 import arc.util.Log;
 import arc.util.Strings;
+import arc.util.Time;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayerJoin;
@@ -41,13 +42,15 @@ public class PluginEvents {
             HexedRanks.updateRank(player, data);
             database.setCached(data);
         });
-        Events.on(EventType.PlayerChatEvent.class, e -> {
-            if (e.player.con.lastReceivedClientSnapshot == -1) {
-                e.player.kick("VPN services forbidden!");
-            }
-        });
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
+
+            Time.runTask(30, () -> {
+                if (player.con.lastReceivedClientSnapshot == -1) {
+                    player.kick("VPN services forbidden!");
+                }
+            });
+
             var data = database.getCached(event.player.uuid());
 
             if (player.getInfo().timesJoined < 5)

@@ -62,7 +62,7 @@ public class Database {
     }
 
     public PlayerData getCachedOrDb(String uuid) {
-        return cachedPlayerData.get(uuid, () -> playerDataExecutor.getPlayerData(uuid));
+        return Optional.ofNullable(cachedPlayerData.get(uuid)).orElseGet(() -> playerDataExecutor.getPlayerData(uuid));
     }
 
     public PlayerData getCachedOrDb(int id) {
