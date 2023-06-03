@@ -35,7 +35,9 @@ private:
         std::ifstream ifs(path);
         std::string str;
         while (std::getline(ifs, str)) {
-            subnets.push_back(parse_subnet(str));
+            trim(str);
+            if (str.size())
+                subnets.push_back(parse_subnet(str));
         }
         return subnets;
     }
@@ -75,6 +77,15 @@ private:
         }
         vec.push_back(str.substr(last));
         return vec;
+    }
+
+    static inline void trim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), s.end());
     }
 
     std::vector<Subnet> accept_;
