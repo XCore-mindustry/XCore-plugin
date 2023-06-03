@@ -105,11 +105,6 @@ public class XcorePlugin extends Plugin {
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
         Timer.schedule(() -> database.cachedPlayerData.each((uuid, data) -> {
-            if (!Groups.player.contains(p -> p.uuid().equals(uuid))) {
-                database.cachedPlayerData.remove(uuid);
-                return;
-            }
-
             var player = Find.playerByUuid(uuid);
 
             if (player == null) return;
