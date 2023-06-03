@@ -468,7 +468,7 @@ public class ClientCommands {
                 return;
             }
 
-            player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0]));
+            Core.app.post(() -> player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0])));
         });
 
         register("artv", (args, player) -> {

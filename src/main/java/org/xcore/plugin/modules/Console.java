@@ -9,6 +9,7 @@ import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.TerminalBuilder;
 import org.xcore.plugin.PluginVars;
 import reactor.util.annotation.NonNull;
@@ -29,20 +30,11 @@ public class Console {
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
-        var terminalBuilder = TerminalBuilder.builder();
-
-        try {
-            Class.forName("com.sun.jna.Library");
-            terminalBuilder.jna(true);
-
-            Log.info("JNA");
-        } catch (ClassNotFoundException ignored) {
-        }
-
-        var terminal = terminalBuilder.build();
+        var terminal = TerminalBuilder.builder().jna(true).build();
 
         lineReader = LineReaderBuilder.builder()
                 .terminal(terminal)
+                .completer(new StringsCompleter(serverControl.handler.getCommandList().map(c -> c.text)))
                 .build();
 
         terminal.enterRawMode();
