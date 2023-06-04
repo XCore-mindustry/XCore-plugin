@@ -13,6 +13,7 @@ import mindustry.gen.RotateBlockCallPacket;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
+import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -37,6 +38,7 @@ public class TileLoggerPlugin extends Plugin {
         Bundle.load(TileLoggerPlugin.class);
 
         VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1))));
+        NetEvents.setIpAcceptor(TileLogger::checkSubnetAccepted);
 
         Events.on(EventType.BuildSelectEvent.class, event -> {
             if (event.builder == null) return; // rollback recursion
