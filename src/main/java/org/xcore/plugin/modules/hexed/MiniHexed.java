@@ -161,7 +161,6 @@ public class MiniHexed {
                     }
 
                     database.getPlayerDataExecutor().setPlayerData(data);
-                    database.setCached(data);
                 }
 
                 builder.append("[orange]").append(i + 1).append(". ")
