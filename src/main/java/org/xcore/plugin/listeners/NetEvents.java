@@ -1,6 +1,7 @@
 package org.xcore.plugin.listeners;
 
 import arc.Events;
+import arc.func.Boolf;
 import arc.graphics.Color;
 import arc.graphics.Colors;
 import arc.struct.Seq;
@@ -34,7 +35,7 @@ import static useful.Bundle.send;
 
 public class NetEvents {
     public static Seq<String> bannedNames = Seq.with("valve", "tuttop");
-
+    public static Boolf<String> ipAcceptor = (ip) -> true;
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
@@ -131,6 +132,11 @@ public class NetEvents {
         con.connectTime = Time.millis();
 
         String uuid = packet.uuid;
+
+        if (!ipAcceptor.get(con.address)) {
+            con.kick(packet.name + "[accent] subnet banned");
+            return;
+        }
 
         if (bannedNames.contains(packet.name.toLowerCase())) {
             con.kick(format("kick.pirated-game", packet.locale), 0);
@@ -349,5 +355,13 @@ public class NetEvents {
             }
         }
         return str;
+    }
+
+    public static Boolf<String> getIpAcceptor() {
+        return ipAcceptor;
+    }
+
+    public static void setIpAcceptor(Boolf<String> ipAcceptor) {
+        NetEvents.ipAcceptor = ipAcceptor;
     }
 }

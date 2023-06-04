@@ -30,8 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 import static arc.Core.app;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.PluginVars.gson;
+import static org.xcore.plugin.PluginVars.*;
 
 public class ServerCommands {
     public static void register(CommandHandler handler) {
@@ -39,7 +38,7 @@ public class ServerCommands {
         handler.register("exit", "Exit the server application.", args -> {
             Log.info("Shutting down server.");
             netServer.kickAll(Packets.KickReason.serverRestarting);
-            app.exit();
+            System.exit(0);
         });
 
         handler.removeCommand("info");
@@ -271,6 +270,12 @@ public class ServerCommands {
             SockCommunicator.sock.disconnect();
             SockCommunicator.safeConnect();
             Log.info("Done");
+        });
+
+        handler.register("gg-restart", "Restart the server on GameOver", args -> {
+            gameoverRestart = !gameoverRestart;
+
+            Log.info("GameOver restart turned " + (gameoverRestart ? "on" : "off"));
         });
     }
 }
