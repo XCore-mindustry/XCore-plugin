@@ -4,6 +4,7 @@ import arc.Events;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
+import arc.util.Timer;
 import mindustry.game.EventType;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayerJoin;
@@ -11,12 +12,14 @@ import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.SockCommunicator;
 import useful.Bundle;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static mindustry.Vars.*;
-import static mindustry.Vars.player;
 import static org.xcore.plugin.PluginVars.*;
 import static useful.Bundle.send;
 
@@ -92,6 +95,17 @@ public class PluginEvents {
 
             SockCommunicator.sendEvent(
                     new SocketEvents.ServerActionEvent(message, config.server));
+
+            if (gameoverRestart) {
+                AtomicInteger secondsLeft = new AtomicInteger(10);
+                Timer.schedule(() -> {
+                    Call.announce("Restart in " + secondsLeft.get());
+                    if (secondsLeft.decrementAndGet() == 0) {
+                        netServer.kickAll(Packets.KickReason.serverRestarting);
+                        System.exit(0);
+                    }
+                }, 0, 1);
+            }
         });
     }
 }
