@@ -38,6 +38,7 @@ public class TileLogger {
             var temp = Files.createTempFile("tilelogger", OS.isWindows ? ".dll" : ".so");
 
             Files.write(temp, file.openStream().readAllBytes());
+            temp.toFile().deleteOnExit();
 
             System.load(temp.toString());
         } catch (IOException e) {
@@ -171,6 +172,10 @@ public class TileLogger {
 
     public static void showSubnetInfo(@Nullable Player player, String subnet) {
         sendMessage(player, (subnetAccepted(subnet) ? "accept" : "deny") + " " + subnet);
+    }
+
+    public static boolean checkSubnetAccepted(String subnet) {
+        return subnetAccepted(subnet);
     }
     
     public static void showInfo(@Nullable Player player) {
