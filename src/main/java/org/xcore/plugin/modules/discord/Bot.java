@@ -1,8 +1,6 @@
 package org.xcore.plugin.modules.discord;
 
-import arc.files.Fi;
 import arc.struct.Seq;
-import arc.util.Http;
 import arc.util.Strings;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
@@ -10,7 +8,6 @@ import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.component.ActionComponent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.channel.GuildMessageChannel;
@@ -21,21 +18,14 @@ import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
 import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
-import io.netty.handler.timeout.TimeoutException;
-import mindustry.io.MapIO;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.PlayerData;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-
-import static mindustry.Vars.dataDirectory;
 import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.commands.DiscordCommands.discordCommands;
 
 public class Bot {
     public static Mono<GuildMessageChannel> bansChannel, privateChannel;
@@ -92,49 +82,27 @@ public class Bot {
                 return Mono.empty();
             }).subscribe();
 
-            command("upload-map")
-                    .filter(event -> DiscordHelper.hasRole(event.getMember(), globalConfig.discordMapReviewerRoleId))
-                    .map(MessageCreateEvent::getMessage)
-                    .filter(message -> !message.getAttachments().isEmpty())
-                    .subscribe(message -> {
-                        Seq<String> maps = new Seq<>();
-                        message.getAttachments().forEach(attachment -> Http.get(attachment.getUrl())
-                                .error(err -> message.getRestChannel().createMessage(attachment.getFilename() + " is not valid map file!").subscribe())
-                                .block((response) -> {
-                                    String filename = attachment.getFilename().endsWith(".msav") ? attachment.getFilename() : attachment.getFilename() + ".msav";
-                                    var file = dataDirectory.child("tmp").child(filename);
-                                    file.writeBytes(response.getResult());
+            gateway.on(MessageCreateEvent.class)
+                    .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
+                    .subscribe(event -> {
+                        var member = event.getMember().orElse(null);
+                        var message = event.getMessage();
+                        if (member == null || member.isBot()) return;
 
-                                    MapIO.createMap(new Fi(file.toString()), true);
+                        message.getChannel()
+                                .map(channel -> new MessageContext(event.getMessage(), member, channel))
+                                .subscribe(context -> {
+                                    var response = discordCommands.handleMessage(message.getContent(), context);
 
-                                    maps.add(file.absolutePath());
-                                }));
-
-                        if (maps.isEmpty()) return;
-
-                        List<ActionComponent> servers = new ArrayList<>();
-                        for (String key : globalConfig.servers.keys()) {
-                            servers.add(Button.primary(key, key));
-                        }
-
-                        message.getChannel().flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
-                                        .content("Choose server:")
-                                        .addComponent(ActionRow.of(servers))
-                                        .build()))
-                                .doOnNext(m -> gateway.on(ButtonInteractionEvent.class)
-                                        .filter(event -> DiscordHelper.hasRole(event.getInteraction().getMember(), globalConfig.discordMapReviewerRoleId))
-                                        .filter(event -> m.getId().asLong() == event.getMessageId().asLong())
-                                        .timeout(Duration.ofMinutes(3))
-                                        .onErrorResume(TimeoutException.class, ignore -> {
-                                            maps.each(map -> new Fi(map).delete());
-                                            return Mono.empty();
-                                        })
-                                        .subscribe(e -> {
-                                            SockCommunicator.sendEvent(new SocketEvents.LoadMaps(maps.toArray(String.class), e.getCustomId()));
-                                            m.delete().subscribe();
-                                            e.reply("Successfully uploaded maps").subscribe();
-                                        }))
-                                .subscribe();
+                                    switch (response.type) {
+                                        case fewArguments ->
+                                                context.error("Too Few Arguments", "Usage: @**@** @", discordCommands.prefix, response.runCommand, response.command.paramText).subscribe();
+                                        case manyArguments ->
+                                                context.error("Too Many Arguments", "Usage: @**@** @", discordCommands.prefix, response.runCommand, response.command.paramText).subscribe();
+                                        case unknownCommand ->
+                                                context.error("Unknown Command", "To see a list of all available commands, use @**help**", discordCommands.prefix).subscribe();
+                                    }
+                                });
                     });
             gateway.on(MessageCreateEvent.class)
                     .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
@@ -162,12 +130,6 @@ public class Bot {
             XcorePlugin.err("Error while connecting to discord: ");
             e.printStackTrace();
         }
-    }
-
-    public static Flux<MessageCreateEvent> command(String name) {
-        return gateway.on(MessageCreateEvent.class)
-                .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
-                .filter(event -> event.getMessage().getContent().startsWith(globalConfig.discordCommandPrefix + name));
     }
 
     public static RestChannel getServerLogChannel(String server) {
