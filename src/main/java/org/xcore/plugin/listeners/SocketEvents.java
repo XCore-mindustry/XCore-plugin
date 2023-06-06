@@ -5,6 +5,7 @@ import arc.util.Timer;
 import mindustry.gen.Groups;
 import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.commands.DiscordCommands;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
@@ -26,6 +27,7 @@ public class SocketEvents {
     public static void init() {
         if (SockCommunicator.isSocketServer()) {
             Bot.connect();
+            DiscordCommands.init();
 
             SockCommunicator.onEvent(MessageEvent.class, e ->
                     Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));

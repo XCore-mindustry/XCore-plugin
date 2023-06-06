@@ -2,8 +2,6 @@ package org.xcore.plugin.listeners;
 
 import arc.Events;
 import arc.func.Boolf;
-import arc.graphics.Color;
-import arc.graphics.Colors;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
@@ -23,8 +21,6 @@ import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.BanData;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 import static arc.util.Strings.stripColors;
 import static mindustry.Vars.*;
@@ -225,7 +221,7 @@ public class NetEvents {
             return;
         }
 
-        boolean preventDuplicates = headless && netServer.admins.isStrict();
+        boolean preventDuplicates = netServer.admins.isStrict();
 
         if (preventDuplicates) {
             if (Groups.player.contains(p -> stripColors(p.name).trim().equalsIgnoreCase(stripColors(packet.name).trim()))) {
@@ -248,9 +244,9 @@ public class NetEvents {
             }
         }
 
-        packet.name = fixName(packet.name);
+        packet.name = netServer.fixName(packet.name);
 
-        if (packet.name.trim().length() <= 0) {
+        if (packet.name.trim().length() == 0) {
             con.kick(Packets.KickReason.nameEmpty);
             return;
         }
@@ -298,63 +294,14 @@ public class NetEvents {
     }
 
     public static void tempBanKick(NetConnection con, String locale, BanData ban) {
-        LocalDateTime date = LocalDateTime.ofInstant(ban.unbanDate.toInstant(), ZoneOffset.UTC);
+        Duration duration = Duration.ofMillis(ban.unbanDate.getTime() - Time.millis());
 
         con.kick(format("tempban.content", locale,
                 stripColors(ban.name),
                 stripColors(ban.adminName),
                 ban.reason,
-                longDateFormat.format(date),
+                duration.toDays(), duration.toHoursPart(), duration.toMinutesPart(),
                 discordUrl), 0);
-    }
-
-    public static String fixName(String name) {
-        name = name.trim().replace("\n", "").replace("\t", "");
-        if (name.equals("[") || name.equals("]")) {
-            return "";
-        }
-
-        for (int i = 0; i < name.length(); i++) {
-            if (name.charAt(i) == '[' && i != name.length() - 1 && name.charAt(i + 1) != '[' && (i == 0 || name.charAt(i - 1) != '[')) {
-                String prev = name.substring(0, i);
-                String next = name.substring(i);
-                String result = checkColor(next);
-
-                name = prev + result;
-            }
-        }
-
-        StringBuilder result = new StringBuilder();
-        int curChar = 0;
-        while (curChar < name.length() && result.toString().getBytes(Strings.utf8).length < maxNameLength) {
-            result.append(name.charAt(curChar++));
-        }
-        return result.toString();
-    }
-
-    public static String checkColor(String str) {
-        for (int i = 1; i < str.length(); i++) {
-            if (str.charAt(i) == ']') {
-                String color = str.substring(1, i);
-
-                if (Colors.get(color.toUpperCase()) != null || Colors.get(color.toLowerCase()) != null) {
-                    Color result = (Colors.get(color.toLowerCase()) == null ? Colors.get(color.toUpperCase()) : Colors.get(color.toLowerCase()));
-                    if (result.a < 1f) {
-                        return str.substring(i + 1);
-                    }
-                } else {
-                    try {
-                        Color result = Color.valueOf(color);
-                        if (result.a < 1f) {
-                            return str.substring(i + 1);
-                        }
-                    } catch (Exception e) {
-                        return str;
-                    }
-                }
-            }
-        }
-        return str;
     }
 
     public static Boolf<String> getIpAcceptor() {
