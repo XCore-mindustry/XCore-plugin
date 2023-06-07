@@ -59,7 +59,7 @@ public class AdminModIntegration {
                     .unbanDate(new Date(Time.millis() + date.toEpochMilli()))
                     .build();
             SockCommunicator.sendEvent(ban);
-            database.getBanDataExecutor().saveBan(ban);
+            ban.save();
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {

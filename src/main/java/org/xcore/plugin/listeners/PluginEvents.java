@@ -39,7 +39,7 @@ public class PluginEvents {
             var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
             if (!data.exists) {
                 data.generatePid();
-                database.getPlayerDataExecutor().setPlayerData(data);
+                data.save();
             }
 
             HexedRanks.updateRank(player, data);
