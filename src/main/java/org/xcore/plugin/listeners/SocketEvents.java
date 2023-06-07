@@ -9,7 +9,6 @@ import org.xcore.plugin.commands.DiscordCommands;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -37,7 +36,7 @@ public class SocketEvents {
                     Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
             SockCommunicator.onEvent(AdminRequestEvent.class, e ->
                     Bot.sendAdminRequestEvent(e.pid(), e.server()));
-            SockCommunicator.onEvent(BanData.class, Utils::temporaryBan);
+            SockCommunicator.onEvent(BanData.class, Bot::sendBan);
 
             Timer.schedule(() -> {
                 var datas = database.getPlayerDataExecutor().getAdmins();

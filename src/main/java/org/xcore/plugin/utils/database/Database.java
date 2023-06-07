@@ -30,7 +30,7 @@ public class Database {
     public final MongoClient mongoClient;
     public final MongoDatabase database;
 
-    public ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
+    public final ObjectMap<String, PlayerData> cachedPlayerData = new ObjectMap<>();
 
     public Database(String mongoConnectionString) {
         CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();

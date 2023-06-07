@@ -28,7 +28,6 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-import static arc.Core.app;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.*;
 

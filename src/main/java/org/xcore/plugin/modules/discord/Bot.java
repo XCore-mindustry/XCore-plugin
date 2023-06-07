@@ -3,6 +3,7 @@ package org.xcore.plugin.modules.discord;
 import arc.struct.Seq;
 import arc.util.Strings;
 import discord4j.common.util.Snowflake;
+import discord4j.common.util.TimestampFormat;
 import discord4j.core.DiscordClient;
 import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
@@ -10,7 +11,7 @@ import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
-import discord4j.core.object.entity.channel.GuildMessageChannel;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.gateway.intent.Intent;
@@ -21,6 +22,7 @@ import discord4j.rest.util.Color;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
@@ -28,7 +30,8 @@ import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.commands.DiscordCommands.discordCommands;
 
 public class Bot {
-    public static Mono<GuildMessageChannel> bansChannel, privateChannel;
+    public static MessageChannel bansChannel;
+    public static MessageChannel privateChannel;
 
     public static DiscordClient client;
     public static GatewayDiscordClient gateway;
@@ -46,8 +49,8 @@ public class Bot {
                     .blockOptional()
                     .orElseThrow();
 
-            bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(GuildMessageChannel.class);
-            privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(GuildMessageChannel.class);
+            bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(MessageChannel.class).block();
+            privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(MessageChannel.class).block();
 
             gateway.on(ButtonInteractionEvent.class, event -> {
                 var author = event.getInteraction().getMember().orElse(null);
@@ -104,6 +107,7 @@ public class Bot {
                                     }
                                 });
                     });
+
             gateway.on(MessageCreateEvent.class)
                     .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
                     .filter(event -> globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong(), false) && !event.getMessage().getContent().startsWith("/"))
@@ -159,15 +163,34 @@ public class Bot {
             embed.addField(data.nickname, Strings.format("@/@ minutes", data.playTime, data.totalPlayTime), false);
         }
 
-        privateChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+        privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(embed.build())
-                .build())).subscribe();
+                .build()).subscribe();
+    }
+
+    public static void sendBan(BanData ban) {
+        if (!isConnected) return;
+
+        PlayerData data = database.getPlayerDataExecutor().getPlayerData(ban.uuid);
+
+        bansChannel.createMessage(MessageCreateSpec.builder()
+                .addEmbed(EmbedCreateSpec.builder()
+                        .title("Ban")
+                        .color(Color.RED)
+                        .addField("ID", String.valueOf(data == null ? -1 : data.pid), false)
+                        .addField("Violator", ban.name, false)
+                        .addField("Admin", ban.adminName, false)
+                        .addField("Reason", ban.reason, false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant()), false)
+                        .build()
+                )
+                .build()).subscribe();
     }
 
     public static void sendAdminRequestEvent(int pid, String server) {
         PlayerData data = database.getPlayerDataExecutor().getPlayerDataById(pid);
 
-        privateChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+        privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")
                         .color(Color.RED)
                         .addField("Name", data.nickname, false)
@@ -175,6 +198,6 @@ public class Bot {
                         .build())
                 .addComponent(ActionRow.of(Button.success(server + "_" + pid + "_admreq", "Confirm"),
                         Button.danger("decline", "Decline")))
-                .build())).subscribe();
+                .build()).subscribe();
     }
 }

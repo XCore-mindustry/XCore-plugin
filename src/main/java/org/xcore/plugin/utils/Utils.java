@@ -5,10 +5,6 @@ import arc.func.Boolf;
 import arc.func.Cons2;
 import arc.struct.Seq;
 import arc.util.*;
-import discord4j.common.util.TimestampFormat;
-import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.core.spec.MessageCreateSpec;
-import discord4j.rest.util.Color;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.game.Team;
@@ -18,7 +14,6 @@ import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.maps.MapException;
 import mindustry.net.WorldReloader;
-import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.nio.ByteBuffer;
@@ -32,8 +27,6 @@ import static arc.util.Strings.*;
 import static mindustry.Vars.charset;
 import static mindustry.Vars.maps;
 import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.modules.discord.Bot.bansChannel;
-import static org.xcore.plugin.modules.discord.Bot.isConnected;
 import static useful.Bundle.format;
 
 public class Utils {
@@ -69,25 +62,6 @@ public class Utils {
         }
 
         return instant;
-    }
-
-    public static void temporaryBan(BanData ban) {
-        if (!isConnected) return;
-
-        PlayerData data = database.getPlayerDataExecutor().getPlayerData(ban.uuid);
-
-        bansChannel.flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
-                .addEmbed(EmbedCreateSpec.builder()
-                        .title("Ban")
-                        .color(Color.RED)
-                        .addField("ID", String.valueOf(data == null ? -1 : data.pid), false)
-                        .addField("Violator", ban.name, false)
-                        .addField("Admin", ban.adminName, false)
-                        .addField("Reason", ban.reason, false)
-                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant()), false)
-                        .build()
-                )
-                .build())).subscribe();
     }
 
     public static void getPvPLeaderboard(StringBuilder builder, Player player) {

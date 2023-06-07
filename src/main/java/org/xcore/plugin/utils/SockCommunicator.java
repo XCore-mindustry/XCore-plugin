@@ -8,8 +8,6 @@ import com.ospx.sock.ServerSock;
 import com.ospx.sock.Sock;
 import org.xcore.plugin.modules.Config;
 
-import java.util.Date;
-
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.globalConfig;
 
