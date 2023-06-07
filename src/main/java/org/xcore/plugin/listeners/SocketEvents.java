@@ -44,7 +44,7 @@ public class SocketEvents {
 
                 for (PlayerData data : datas) {
                     data.playTime = 0;
-                    database.getPlayerDataExecutor().setPlayerData(data);
+                    data.save();
                     SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
                 }
             }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)).toSeconds(), 60 * 60 * 24);

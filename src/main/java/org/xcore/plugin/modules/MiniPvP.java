@@ -40,7 +40,7 @@ public class MiniPvP {
                 send(p, "pvp.team-won", increased);
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                database.getPlayerDataExecutor().setPlayerData(data);
+                data.save();
             });
         });
 
@@ -65,7 +65,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        database.getPlayerDataExecutor().setPlayerData(data);
+                        data.save();
                     });
                 }
             }

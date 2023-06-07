@@ -119,8 +119,7 @@ public class ServerCommands {
             }
 
             PlayerData result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
-
-            database.getPlayerDataExecutor().setPlayerData(result);
+            result.save();
             Log.info("Done.");
         });
 
@@ -183,7 +182,7 @@ public class ServerCommands {
                     .build();
 
             SockCommunicator.sendEvent(result);
-            database.getBanDataExecutor().saveBan(result);
+            result.save();
             Log.info("'@' (@/@) banned", result.name, result.uuid, result.ip);
         });
 
@@ -245,7 +244,7 @@ public class ServerCommands {
 
             data.muted = Time.millis() + date.toEpochMilli();
 
-            database.getPlayerDataExecutor().setPlayerData(data);
+            data.save();
             Duration duration = Duration.ofMillis(date.toEpochMilli());
             Log.info("@ (@) muted for @:@", data.nickname, data.uuid, duration.toMinutes(), duration.toSecondsPart());
         });
@@ -261,7 +260,7 @@ public class ServerCommands {
             }
 
             data.muted = 0;
-            database.getPlayerDataExecutor().setPlayerData(data);
+            data.save();
             Log.info("@ (@) unmuted", data.nickname, data.uuid);
         });
 

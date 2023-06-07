@@ -102,7 +102,7 @@ public class ClientCommands {
             data.leaderboard = !data.leaderboard;
 
             send(player, "commands.lb.success", data.leaderboard);
-            database.getPlayerDataExecutor().setPlayerData(data);
+            data.save();
         });
 
         register("tr", (args, player) -> {
@@ -128,8 +128,7 @@ public class ClientCommands {
                 }
             }
             send(player, "commands.tr.success", translatorLanguages.get(data.translatorLanguage));
-
-            database.getPlayerDataExecutor().setPlayerData(data);
+            data.save();
         });
 
         register("maps", (args, player) -> {
@@ -370,7 +369,7 @@ public class ClientCommands {
                     .build();
 
             SockCommunicator.sendEvent(result);
-            database.getBanDataExecutor().saveBan(result);
+            result.save();
 
             send(player, "commands.ban.success", target.nickname);
         });
@@ -426,7 +425,7 @@ public class ClientCommands {
 
             target.muted = Time.millis() + date.toEpochMilli();
 
-            database.getPlayerDataExecutor().setPlayerData(target);
+            target.save();
             send(player, "commands.mute.success", target.nickname);
             Duration duration = Duration.ofMillis(date.toEpochMilli());
 
@@ -456,7 +455,7 @@ public class ClientCommands {
 
             target.muted = 0;
 
-            database.getPlayerDataExecutor().setPlayerData(target);
+            target.save();
             send(player, "commands.unmute.success", target.nickname);
         });
 

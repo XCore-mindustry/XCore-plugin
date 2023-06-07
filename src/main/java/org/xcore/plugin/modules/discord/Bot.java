@@ -73,7 +73,7 @@ public class Bot {
                     data.adminConfirmed = true;
 
                     SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
-                    database.getPlayerDataExecutor().setPlayerData(data);
+                    data.save();
                     return event.reply(author.getDisplayName() + " confirmed adminship to player " +
                             data.nickname + " on server " + server);
                 }

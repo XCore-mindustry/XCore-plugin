@@ -126,7 +126,7 @@ public class DiscordCommands {
                                     .build();
 
                             sendBan(ban);
-                            database.getBanDataExecutor().saveBan(ban);
+                            ban.save();
                             context.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
                         }
 

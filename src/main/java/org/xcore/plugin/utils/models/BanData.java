@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
+import static org.xcore.plugin.PluginVars.database;
+
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -26,5 +28,9 @@ public class BanData {
 
     public boolean expired() {
         return unbanDate.getTime() < Time.millis();
+    }
+
+    public void save() {
+        database.banDataExecutor.saveBan(this);
     }
 }

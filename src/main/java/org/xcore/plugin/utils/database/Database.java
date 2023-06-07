@@ -15,6 +15,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.PunishmentHistory;
 
 import java.util.Optional;
 
@@ -26,6 +27,7 @@ import static org.xcore.plugin.PluginVars.globalConfig;
 public class Database {
     public final PlayerDataExecutor playerDataExecutor;
     public final BanDataExecutor banDataExecutor;
+    public final PunishmentHistoryExecutor punishmentHistoryExecutor;
 
     public final MongoClient mongoClient;
     public final MongoDatabase database;
@@ -42,6 +44,8 @@ public class Database {
         playerDataExecutor = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
         banDataExecutor = new BanDataExecutor(
                 database.getCollection("bans", BanData.class));
+        punishmentHistoryExecutor = new PunishmentHistoryExecutor(
+                database.getCollection("punishments", PunishmentHistory.class));
     }
 
     public static void init() {

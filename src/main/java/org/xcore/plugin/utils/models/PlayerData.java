@@ -13,7 +13,6 @@ public class PlayerData {
     public String translatorLanguage = "off";
 
     public int pvpRating = 0;
-
     public int hexedRank = 0;
     public int hexedPoints = 0;
     public int playTime = 0;
@@ -39,6 +38,10 @@ public class PlayerData {
 
     @SuppressWarnings("unused")
     public PlayerData() {
+    }
+
+    public void save() {
+        database.playerDataExecutor.setPlayerData(this);
     }
 
     public HexedRanks.HexedRank hexedRank() {
