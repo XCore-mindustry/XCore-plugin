@@ -30,7 +30,7 @@ import static useful.Bundle.format;
 import static useful.Bundle.send;
 
 public class NetEvents {
-    public static Seq<String> bannedNames = Seq.with("valve", "tuttop");
+    public static final Seq<String> bannedNames = Seq.with("valve", "tuttop");
     public static Boolf<String> ipAcceptor = (ip) -> true;
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);

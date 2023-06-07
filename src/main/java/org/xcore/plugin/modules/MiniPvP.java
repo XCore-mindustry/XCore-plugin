@@ -15,15 +15,13 @@ import static org.xcore.plugin.PluginVars.database;
 import static useful.Bundle.send;
 
 public class MiniPvP {
-    public static Seq<String> defeatedPlayers = new Seq<>();
+    public static final Seq<String> defeatedPlayers = new Seq<>();
 
     public static void init() {
         if (!config.isMiniPvP()) return;
         Utils.showLeaderboard(Utils::getPvPLeaderboard);
 
-        Events.on(EventType.PlayEvent.class, e -> {
-            defeatedPlayers.clear();
-        });
+        Events.on(EventType.PlayEvent.class, e -> defeatedPlayers.clear());
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);

@@ -14,7 +14,7 @@ import static mindustry.Vars.world;
 import static org.xcore.plugin.modules.hexed.MiniHexed.*;
 
 public class HexMember {
-    public String uuid;
+    public final String uuid;
     public Team team;
     public Timer.Task left;
 

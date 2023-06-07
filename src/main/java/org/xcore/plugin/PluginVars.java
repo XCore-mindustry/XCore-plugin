@@ -26,18 +26,18 @@ public class PluginVars {
     public static final int mapLoadDelay = 10;
     public static boolean gameoverRestart = false;
     public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
-    public static String discordUrl = "https://discord.gg/RUMCCa9QAC";
-    public static Fi configFile = dataDirectory.child("xcconfig.json");
+    public static final String discordUrl = "https://discord.gg/RUMCCa9QAC";
+    public static final Fi configFile = dataDirectory.child("xcconfig.json");
     public static Config config;
     public static GlobalConfig globalConfig;
     public static Database database;
-    public static Gson gson = new GsonBuilder()
+    public static final Gson gson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
-    public static OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
+    public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;
 }

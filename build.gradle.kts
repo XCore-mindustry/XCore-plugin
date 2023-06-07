@@ -32,6 +32,7 @@ val metadata = ModMetadata(
 repositories {
     mavenCentral()
     maven(url = "https://maven.xpdustry.fr/snapshots")
+    maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://www.jitpack.io")
 }
 
@@ -46,7 +47,8 @@ dependencies {
 
     implementation("org.json:json:20230227")
 
-    implementation("com.discord4j:discord4j-core:3.2.3")
+    implementation("com.discord4j:discord4j-core:3.3.0-SNAPSHOT")
+    implementation("com.discord4j:discord4j-oauth2:3.3.0-SNAPSHOT")
 
     implementation("org.jline:jline-terminal-jna:3.21.0")
     implementation("org.jline:jline-reader:3.21.0")

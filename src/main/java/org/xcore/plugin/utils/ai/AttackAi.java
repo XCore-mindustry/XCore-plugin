@@ -6,7 +6,7 @@ import mindustry.ai.types.CommandAI;
 
 public class AttackAi extends CommandAI {
 
-    public static long inactivityInterval = 4_000;
+    public static final long inactivityInterval = 4_000;
 
     public long lastCommandTime = -1;
 

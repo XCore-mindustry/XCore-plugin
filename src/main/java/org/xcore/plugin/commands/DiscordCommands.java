@@ -33,9 +33,10 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.PluginVars.globalConfig;
 import static org.xcore.plugin.modules.discord.Bot.gateway;
+import static org.xcore.plugin.modules.discord.Bot.sendBan;
 
 public class DiscordCommands {
-    public static CommandHandler discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
+    public static final CommandHandler discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
 
     public static void init() {
         discordCommands.<MessageContext>register("help", "List of all commands.", (args, context) -> {
@@ -44,10 +45,7 @@ public class DiscordCommands {
             context.info("All available commands:", builder.toString()).subscribe();
         });
         discordCommands.<MessageContext>register("upload-map", "Upload map to the servers", (args, context) -> {
-            if (!DiscordHelper.hasRole(context.member(), globalConfig.discordMapReviewerRoleId)) {
-                context.error("Access denied", "You need the role \"map reviewer\"").subscribe();
-                return;
-            }
+            if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
 
             if (context.message().getAttachments().isEmpty()) {
                 context.error("Attach a file", "You need to attach a file with the extension \"msav\"").subscribe();
@@ -94,32 +92,16 @@ public class DiscordCommands {
         });
 
         discordCommands.<MessageContext>register("ban", "<player-id> <period> [reason...]", "Ban the player", (args, context) -> {
-            if (!DiscordHelper.hasRole(context.member(), globalConfig.discordAdminRoleId)) {
-                context.error("Access denied", "You need the role \"mindustry admin\"").subscribe();
-                return;
-            }
+            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
 
             int id = Strings.parseInt(args[0]);
-
-            if (id < 0) {
-                context.error("Invalid number", "'player-id' must be a positive number!").subscribe();
-                return;
-            }
+            if (DiscordHelper.checkId(context, id)) return;
 
             var data = database.getPlayerDataExecutor().getPlayerDataById(id);
-
-            if (data == null) {
-                context.error("Player not found", "Player with the player id '@' not found", id).subscribe();
-                return;
-            }
+            if (DiscordHelper.notFound(context, data)) return;
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
-
-            if (date == null) {
-                context.error("Wrong period format", "The period must be a number or in the format \"number<m/h/d/y> (minutes/hours/days/years)")
-                        .subscribe();
-                return;
-            }
+            if (DiscordHelper.checkPeriod(context, date)) return;
 
             Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
             var info = netServer.admins.getInfoOptional(data.uuid);
@@ -143,13 +125,29 @@ public class DiscordCommands {
                                     .unbanDate(unbanDate)
                                     .build();
 
-                            Utils.temporaryBan(ban);
+                            sendBan(ban);
                             database.getBanDataExecutor().saveBan(ban);
-                            context.success("Success", "Succesfully banned player '" + data.nickname + "'").subscribe();
+                            context.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
                         }
 
                         event.getInteraction().getMessage().ifPresent(message -> message.delete().subscribe());
                     }));
+        });
+
+        discordCommands.<MessageContext>register("unban", "<player-id>", "Unban player", (args, context) -> {
+            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
+
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDataExecutor().getPlayerDataById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            var info = netServer.admins.getInfoOptional(data.uuid);
+            String ip = info != null ? info.lastIP : null;
+
+            database.getBanDataExecutor().deleteBan(data.uuid, ip);
+            context.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
     }
 }

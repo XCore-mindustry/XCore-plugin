@@ -18,6 +18,9 @@ public class GlobalConfig {
     public long discordMapReviewerRoleId = 0L;
     public long discordBansChannelId = 0L;
     public long discordPrivateChannelId = 0L;
+    public long discordClientId = 0L;
+    public String discordClientSecret = "";
+    public int discordOauthPort = 0;
 
     public static void init() {
         if (globalConfigFile.exists()) {
