@@ -458,18 +458,6 @@ public class ClientCommands {
             target.save();
             send(player, "commands.unmute.success", target.nickname);
         });
-
-        register("js", (args, player) -> {
-            PlayerData data = database.getCached(player.uuid());
-
-            if (!player.admin || !data.jsAccess) {
-                send(player, "error.access-denied");
-                return;
-            }
-
-            Core.app.post(() -> player.sendMessage("[green]" + Vars.mods.getScripts().runConsole(args[0])));
-        });
-
         register("artv", (args, player) -> {
             if (!player.admin) return;
 
