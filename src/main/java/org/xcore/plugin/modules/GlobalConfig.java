@@ -13,14 +13,12 @@ public class GlobalConfig {
     public String mongoConnectionString = "";
     public String discordBotToken = "";
     public String discordCommandPrefix = "x!";
+    public String loginCommandPassword = "";
     public int sockServerPort = 2000;
     public long discordAdminRoleId = 0L;
     public long discordMapReviewerRoleId = 0L;
     public long discordBansChannelId = 0L;
     public long discordPrivateChannelId = 0L;
-    public long discordClientId = 0L;
-    public String discordClientSecret = "";
-    public int discordOauthPort = 0;
 
     public static void init() {
         if (globalConfigFile.exists()) {

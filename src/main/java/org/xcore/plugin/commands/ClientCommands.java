@@ -486,6 +486,11 @@ public class ClientCommands {
         });
 
         register("login", (args, player) -> {
+            if (!args[0].equals(globalConfig.loginCommandPassword)) {
+                send(player, "commands.login.incorrect-password");
+                return;
+            }
+
             PlayerData data = database.getCached(player.uuid());
 
             SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(data.pid, config.server));

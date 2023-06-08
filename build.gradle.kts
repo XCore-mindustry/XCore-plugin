@@ -48,7 +48,6 @@ dependencies {
     implementation("org.json:json:20230227")
 
     implementation("com.discord4j:discord4j-core:3.3.0-SNAPSHOT")
-    implementation("com.discord4j:discord4j-oauth2:3.3.0-SNAPSHOT")
 
     implementation("org.jline:jline-terminal-jna:3.21.0")
     implementation("org.jline:jline-reader:3.21.0")
