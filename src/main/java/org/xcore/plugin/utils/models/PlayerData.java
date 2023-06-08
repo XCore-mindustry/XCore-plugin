@@ -19,7 +19,6 @@ public class PlayerData {
     public int totalPlayTime = 0;
 
     public boolean leaderboard = true;
-    public boolean jsAccess = false;
     public boolean adminConfirmed = false;
 
     public long muted = 0;
