@@ -10,6 +10,7 @@ import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.object.component.ActionComponent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
+import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import io.netty.handler.timeout.TimeoutException;
 import mindustry.io.MapIO;
@@ -47,46 +48,34 @@ public class DiscordCommands {
         discordCommands.<MessageContext>register("upload-map", "Upload map to the servers", (args, context) -> {
             if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
 
-            if (context.message().getAttachments().isEmpty()) {
-                context.error("Attach a file", "You need to attach a file with the extension \"msav\"").subscribe();
+            var attachments = context.message()
+                    .getAttachments()
+                    .stream()
+                    .filter(attachment -> attachment.getFilename().endsWith(".msav"))
+                    .map(Attachment::getUrl)
+                    .toList();
+
+            if (attachments.isEmpty()) {
+                context.error("Attach a file", "You need to attach a file with the extension 'msav'").subscribe();
                 return;
             }
 
-            Seq<String> maps = new Seq<>();
-            context.message().getAttachments().forEach(attachment -> Http.get(attachment.getUrl())
-                    .error(err -> context.error("Invalid file", attachment.getFilename() + " is not valid map file!").subscribe())
-                    .block((response) -> {
-                        String filename = attachment.getFilename().endsWith(".msav") ? attachment.getFilename() : attachment.getFilename() + ".msav";
-                        var file = dataDirectory.child("tmp").child(filename);
-                        file.writeBytes(response.getResult());
-
-                        MapIO.createMap(new Fi(file.toString()), true);
-
-                        maps.add(file.absolutePath());
-                    }));
-
-            if (maps.isEmpty()) return;
-
             List<ActionComponent> servers = new ArrayList<>();
-            for (String key : globalConfig.servers.keys()) {
+            for (var key : globalConfig.servers.keys())
                 servers.add(Button.primary(key, key));
-            }
 
             context.channel().createMessage(MessageCreateSpec.builder()
                             .content("Choose server:")
                             .addComponent(ActionRow.of(servers))
                             .build())
-                    .doOnNext(m -> gateway.on(ButtonInteractionEvent.class)
-                            .filter(event -> context.member().getId().asLong() == event.getInteraction().getMember().orElseThrow().getId().asLong())
+                    .doOnNext(message -> gateway.on(ButtonInteractionEvent.class)
+                            .filter(event -> DiscordHelper.buttonFilter(event, context, message))
                             .timeout(Duration.ofMinutes(3))
-                            .onErrorResume(TimeoutException.class, ignore -> {
-                                maps.each(map -> new Fi(map).delete());
-                                return Mono.empty();
-                            })
-                            .subscribe(e -> {
-                                SockCommunicator.sendEvent(new SocketEvents.LoadMaps(maps.toArray(String.class), e.getCustomId()));
-                                m.delete().subscribe();
-                                e.reply("Successfully uploaded maps").subscribe();
+                            .onErrorResume(TimeoutException.class, exception -> Mono.empty())
+                            .subscribe(event -> {
+                                SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getCustomId()));
+                                message.delete().subscribe();
+                                event.reply("Successfully uploaded maps").subscribe();
                             }))
                     .subscribe();
         });
@@ -111,7 +100,7 @@ public class DiscordCommands {
                     .content("Are you sure you want to ban a player named '" + data.nickname + "'?")
                     .addComponent(ActionRow.of(Button.primary("yes", "Yes"), Button.danger("no", "No")))
                     .build()).subscribe(m -> gateway.on(ButtonInteractionEvent.class)
-                    .filter(event -> context.member().getId().asLong() == event.getInteraction().getMember().orElseThrow().getId().asLong())
+                    .filter(event -> DiscordHelper.buttonFilter(event, context, m))
                     .subscribe(event -> {
                         if (event.getCustomId().equals("yes")) {
                             SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(data.uuid, ip));
