@@ -11,7 +11,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "2.6.6"
-val mindustryVersion = "144"
+val mindustryVersion = "144.3"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -37,7 +37,9 @@ repositories {
 }
 
 dependencies {
-    mindustryDependencies()
+    compileOnly("com.github.anuken.arc:arc-core:v$mindustryVersion")
+    compileOnly("com.github.anuken.mindustryjitpack:core:v$mindustryVersion")
+    compileOnly("com.github.anuken.mindustryjitpack:server:v$mindustryVersion")
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
     implementation("com.github.osp54:Sock:757ccbecbf")

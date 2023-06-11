@@ -25,7 +25,6 @@ public class VoteKick extends VoteSession {
         this.target = target;
     }
 
-    @SuppressWarnings("unused")
     public static void setOnKick(Cons<Player> onKick) {
         if (onKick == null) return;
         VoteKick.onKick = onKick;

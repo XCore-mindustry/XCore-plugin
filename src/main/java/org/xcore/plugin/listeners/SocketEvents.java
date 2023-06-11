@@ -1,7 +1,10 @@
 package org.xcore.plugin.listeners;
 
 import arc.files.Fi;
+import arc.func.Cons;
+import arc.util.Http;
 import arc.util.Timer;
+import arc.util.Log;
 import mindustry.gen.Groups;
 import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
@@ -16,6 +19,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.config;
@@ -82,11 +86,20 @@ public class SocketEvents {
         SockCommunicator.onEvent(LoadMaps.class, e -> {
             if (!config.server.equals(e.server)) return;
 
-            for (String file : e.files) {
-                new Fi(file).moveTo(customMapDirectory);
-            }
+            AtomicInteger counter = new AtomicInteger();
+            for (String url : e.urls) {
+                Http.get(url)
+                    .error(error -> Log.err(error))
+                    .submit(result -> {
+                        var splitted = url.split("/");
+                        var fileName = splitted[splitted.length-1];
+                        customMapDirectory.child(fileName).writeBytes(result.getResult());
 
-            maps.reload();
+                        if (counter.incrementAndGet() == e.urls.length) {
+                            maps.reload();
+                        }
+                });
+            }
         });
 
         SockCommunicator.sendEvent(new ServerActionEvent("Server loaded", config.server));
@@ -116,7 +129,7 @@ public class SocketEvents {
     public record SyncPlayerData(PlayerData data) {
     }
 
-    public record LoadMaps(String[] files, String server) {
+    public record LoadMaps(String[] urls, String server) {
 
     }
 }
