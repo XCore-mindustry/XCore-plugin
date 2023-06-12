@@ -1,9 +1,6 @@
 package org.xcore.plugin.commands;
 
-import arc.files.Fi;
-import arc.struct.Seq;
 import arc.util.CommandHandler;
-import arc.util.Http;
 import arc.util.Strings;
 import arc.util.Time;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
@@ -13,7 +10,6 @@ import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import io.netty.handler.timeout.TimeoutException;
-import mindustry.io.MapIO;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.discord.DiscordHelper;
 import org.xcore.plugin.modules.discord.MessageContext;
@@ -29,7 +25,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static mindustry.Vars.dataDirectory;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.PluginVars.globalConfig;
