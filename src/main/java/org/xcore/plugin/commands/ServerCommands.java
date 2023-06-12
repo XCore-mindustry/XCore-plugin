@@ -29,6 +29,8 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
+import static org.xcore.plugin.utils.Utils.equalsHasNull;
+import static org.xcore.plugin.utils.Utils.deepEquals;
 import static org.xcore.plugin.PluginVars.*;
 
 public class ServerCommands {
@@ -186,9 +188,13 @@ public class ServerCommands {
             Log.info("'@' (@/@) banned", result.name, result.uuid, result.ip);
         });
 
-        handler.register("tempbans", "List all temporarily banned players.", args -> {
+        handler.register("tempbans", "[search...]", "List all temporarily banned players.", args -> {
             StringBuilder builder = new StringBuilder("Temporary banned players:");
             Seq<BanData> bans = database.getBanDataExecutor().getBanned();
+
+            if (args.length > 0) {
+                bans.filter(b -> deepEquals(b.name, args[0]) || equalsHasNull(b.ip, args[0]) || equalsHasNull(b.uuid, args[0]));
+            }
 
             bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'".replace("@", "&fb&lb@&fr"),
                     ban.uuid, ban.ip, ban.name, ban.adminName,

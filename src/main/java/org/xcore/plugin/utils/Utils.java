@@ -134,6 +134,11 @@ public class Utils {
         return first.equalsIgnoreCase(second) || first.toLowerCase().contains(second.toLowerCase());
     }
 
+    public static boolean equalsHasNull(String query, String name) {
+        if (query == null || query.isEmpty() || name == null || name.isEmpty()) return false;
+        return query.equals(name);
+    }
+
     public static Map findMap(String name) {
         return findInSeq(name, getAvailableMaps(), map -> deepEquals(map.name(), name));
     }
