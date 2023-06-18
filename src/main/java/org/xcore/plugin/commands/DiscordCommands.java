@@ -4,9 +4,11 @@ import arc.util.CommandHandler;
 import arc.util.Strings;
 import arc.util.Time;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
+import discord4j.core.event.domain.interaction.SelectMenuInteractionEvent;
 import discord4j.core.object.component.ActionComponent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
+import discord4j.core.object.component.SelectMenu;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import io.netty.handler.timeout.TimeoutException;
@@ -55,22 +57,22 @@ public class DiscordCommands {
                 return;
             }
 
-            List<ActionComponent> servers = new ArrayList<>();
-            for (var key : globalConfig.servers.keys())
-                servers.add(Button.primary(key, key));
+            List<SelectMenu.Option> servers = new ArrayList<>();
+            for (var key : globalConfig.servers.keys()) {
+                servers.add(SelectMenu.Option.of(key, key));
+            }
 
             context.channel().createMessage(MessageCreateSpec.builder()
                             .content("Choose server:")
-                            .addComponent(ActionRow.of(servers))
+                            .addComponent(ActionRow.of(SelectMenu.of(context.message().getId().asLong() + "ch", servers).withMaxValues(1).withPlaceholder("Choose server")))
                             .build())
-                    .doOnNext(message -> gateway.on(ButtonInteractionEvent.class)
-                            .filter(event -> DiscordHelper.buttonFilter(event, context, message))
-                            .timeout(Duration.ofMinutes(3))
+                    .doOnNext(message -> gateway.on(SelectMenuInteractionEvent.class)
+                            .filter(event -> event.getCustomId().equals(context.message().getId().asLong() + "ch"))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
-                                SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getCustomId()));
+                                SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
                                 message.delete().subscribe();
-                                event.reply("Successfully uploaded maps").subscribe();
+                                event.reply("Successfully uploaded maps to " + event.getValues().get(0)).subscribe();
                             }))
                     .subscribe();
         });
