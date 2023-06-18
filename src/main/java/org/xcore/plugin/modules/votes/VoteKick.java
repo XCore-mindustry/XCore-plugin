@@ -19,10 +19,12 @@ public class VoteKick extends VoteSession {
 
     public final Player starter;
     public final Player target;
+    public final String reason;
 
-    public VoteKick(Player starter, Player target) {
+    public VoteKick(Player starter, Player target, String reason) {
         this.starter = starter;
         this.target = target;
+        this.reason = reason;
     }
 
     public static void setOnKick(Cons<Player> onKick) {
@@ -33,11 +35,11 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        send("votekick.vote", player.coloredName(), target.coloredName(), votes(), votesRequired());
-        Log.info(Bundle.format("votekick.vote", "en", player.name(), target.name(), votes(), votesRequired()));
+        send("votekick.vote", player.coloredName(), target.coloredName(), reason, votes(), votesRequired());
+        Log.info(Bundle.format("votekick.vote", defaultLocale, player.plainName(), target.plainName(), reason, votes(), votesRequired()));
 
         SockCommunicator.sendEvent(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
-                player.coloredName(), target.plainName(), votes(), votesRequired())), config.server));
+                player.plainName(), target.plainName(), reason, votes(), votesRequired())), config.server));
     }
 
     @Override

@@ -20,7 +20,7 @@ import static mindustry.Vars.dataDirectory;
 public class PluginVars {
     public static final JsonReader reader = new JsonReader();
     public static final int votekickPlayTime = 60;
-    public static final long kickDuration = 30 * 60 * 1000L;
+    public static final int kickDuration = 30 * 60 * 1000;
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
