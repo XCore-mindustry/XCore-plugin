@@ -11,7 +11,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "2.6.6"
-val mindustryVersion = "144.3"
+val mindustryVersion = "145"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -49,7 +49,8 @@ dependencies {
 
     implementation("org.json:json:20230227")
 
-    implementation("com.discord4j:discord4j-core:3.3.0-SNAPSHOT")
+    implementation("com.discord4j:discord4j-core:3.2.4")
+    implementation("io.netty:netty-transport-native-epoll:4.1.89.Final:linux-aarch_64")
 
     implementation("org.jline:jline-terminal-jna:3.21.0")
     implementation("org.jline:jline-reader:3.21.0")

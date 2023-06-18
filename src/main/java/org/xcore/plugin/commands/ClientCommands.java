@@ -192,7 +192,7 @@ public class ClientCommands {
                 return;
             }
 
-            voteKick = new VoteKick(player, found);
+            voteKick = new VoteKick(player, found, args[1]);
             voteKick.vote(player, 1);
         });
 

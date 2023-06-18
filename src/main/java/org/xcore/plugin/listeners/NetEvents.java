@@ -8,11 +8,13 @@ import arc.util.Strings;
 import arc.util.Time;
 import mindustry.core.Version;
 import mindustry.game.EventType;
+import mindustry.game.Team;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
+import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.json.JSONObject;
@@ -91,21 +93,38 @@ public class NetEvents {
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
             case trace -> {
-                var info = target.getInfo();
-                var data = database.getCachedOrDb(info.id);
+                var data = database.getCachedOrDb(target.uuid());
 
                 if (data == null) {
                     Log.err("[trace] DB Data null");
                     return;
                 }
 
-                Call.traceInfo(con, target, new Administration.TraceInfo(target.ip(), String.valueOf(data.pid), target.con.modclient, target.con.mobile, info.timesJoined, info.timesKicked));
+                var trace = new TraceInfo(
+                        target.ip(),
+                        data.pid + "",
+                        target.con.modclient,
+                        target.con.mobile,
+                        target.getInfo().timesJoined,
+                        target.getInfo().timesKicked,
+                        target.getInfo().ips.toArray(String.class),
+                        target.getInfo().names.toArray(String.class)
+                );
+
+                Call.traceInfo(con, target, trace);
                 Log.info("@ has requested trace info of @.", admin.plainName(), target.plainName());
             }
             case wave -> {
                 logic.skipWave();
                 Call.sendMessage(admin.name + "[accent] has skipped the wave.");
                 Log.info("@ has skipped the wave.", admin.plainName());
+            }
+
+            case switchTeam -> {
+                if(packet.params instanceof Team team){
+                    target.team(team);
+                    Log.info("@ has switched team of @ to @", player.plainName(), target.plainName(), team.name);
+                }
             }
         }
     }
