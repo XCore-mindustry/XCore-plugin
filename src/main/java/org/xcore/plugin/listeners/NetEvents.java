@@ -123,7 +123,7 @@ public class NetEvents {
             case switchTeam -> {
                 if(packet.params instanceof Team team){
                     target.team(team);
-                    Log.info("@ has switched team of @ to @", player.plainName(), target.plainName(), team.name);
+                    Log.info("@ has switched team of @ to @", admin.plainName(), target.plainName(), team.name);
                 }
             }
         }
