@@ -64,10 +64,12 @@ public class DiscordCommands {
 
             context.channel().createMessage(MessageCreateSpec.builder()
                             .content("Choose server:")
-                            .addComponent(ActionRow.of(SelectMenu.of(context.message().getId().asLong() + "ch", servers).withMaxValues(1).withPlaceholder("Choose server")))
+                            .addComponent(ActionRow.of(SelectMenu.of("choose-server", servers).withMaxValues(1).withPlaceholder("Choose server")))
                             .build())
                     .doOnNext(message -> gateway.on(SelectMenuInteractionEvent.class)
-                            .filter(event -> event.getCustomId().equals(context.message().getId().asLong() + "ch"))
+                            .filter(event -> event.getCustomId().equals("choose-server") 
+                                && event.getMessageId().equals(message.getId())
+                                && event.getInteraction().getMember().get().equals(context.member()))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
                                 SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
