@@ -1,7 +1,5 @@
 package org.xcore.plugin.listeners;
 
-import arc.files.Fi;
-import arc.func.Cons;
 import arc.util.Http;
 import arc.util.Timer;
 import arc.util.Log;
