@@ -8,7 +8,8 @@ import static org.xcore.plugin.PluginVars.database;
 public class PlayerData {
     public int pid;
 
-    public String uuid;
+    public String uuid = "";
+    public String ip = "";
     public String nickname = "<unknown>";
     public String translatorLanguage = "off";
 
@@ -53,6 +54,11 @@ public class PlayerData {
 
     public PlayerData setNickname(String nickname) {
         this.nickname = nickname;
+        return this;
+    }
+
+    public PlayerData setIp(String ip) {
+        this.ip = ip;
         return this;
     }
 

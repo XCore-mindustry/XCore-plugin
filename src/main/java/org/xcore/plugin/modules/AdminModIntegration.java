@@ -66,7 +66,7 @@ public class AdminModIntegration {
             var data = database.getCached(player.uuid());
 
             if (data == null || data.adminModVersion != null) return;
-            Log.info("Admin @ joined with the Admin mod version '@'", player.plainName(), content);
+            Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
             if (content.isBlank() || content.isEmpty()) {
                 player.con.kick("Update Admin Mod", 0);

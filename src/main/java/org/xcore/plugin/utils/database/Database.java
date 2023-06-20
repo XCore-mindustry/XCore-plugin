@@ -62,7 +62,7 @@ public class Database {
         for (var data : cachedPlayerData.values())
             if (data.pid == id) return data;
 
-        return null;
+        return null;    
     }
 
     public PlayerData getCachedOrDb(String uuid) {
@@ -70,7 +70,7 @@ public class Database {
     }
 
     public PlayerData getCachedOrDb(int id) {
-        return Optional.ofNullable(getCached(id)).orElse(playerDataExecutor.getPlayerDataById(id));
+        return Optional.ofNullable(getCached(id)).orElseGet(() -> playerDataExecutor.getPlayerDataById(id));
     }
 
     public void setCached(PlayerData data) {

@@ -27,16 +27,18 @@ public class PluginEvents {
     public static void init() {
         Events.on(EventType.PlayerConnect.class, event -> {
             var player = event.player;
-            var info = netServer.admins.getInfo(event.player.uuid());
+            var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
 
-            Call.clientPacketReliable(event.player.con, "adm_mod_begin", "");
+            Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
-            if (!info.ips.contains(event.player.con.address)) {
-                event.player.admin = false;
-                netServer.admins.unAdminPlayer(event.player.uuid());
+            if (data.exists && !data.ip.equals(player.ip())) {
+                player.admin = false;
+                netServer.admins.unAdminPlayer(player.uuid());
+
+                data.setIp(player.ip());
+                data.save();
             }
 
-            var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
             if (!data.exists) {
                 data.generatePid();
                 data.save();
@@ -45,6 +47,7 @@ public class PluginEvents {
             HexedRanks.updateRank(player, data);
             database.setCached(data);
         });
+
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
 
@@ -66,20 +69,24 @@ public class PluginEvents {
             Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
             Bundle.send("player.joined", player.coloredName(), data.pid);
             SockCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server, true));
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
+                            true));
         });
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
             var data = database.removeCached(event.player.uuid());
 
-            if (vote != null) vote.left(event.player);
-            if (voteKick != null) voteKick.left(event.player);
+            if (vote != null)
+                vote.left(event.player);
+            if (voteKick != null)
+                voteKick.left(event.player);
 
             Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
             Bundle.send("player.left", player.coloredName(), data.pid);
             SockCommunicator.sendEvent(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server, false));
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
+                            false));
         });
 
         Events.on(GameOverEvent.class, event -> {
@@ -87,10 +94,12 @@ public class PluginEvents {
 
             if (state.rules.waves) {
                 message = Strings.format(
-                        "Game over! Reached wave @ with @ players online on map @.", state.wave, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
+                        "Game over! Reached wave @ with @ players online on map @.", state.wave, Groups.player.size(),
+                        Strings.capitalize(Strings.stripColors(state.map.name())));
             } else if (state.rules.pvp && !config.isMiniHexed()) {
                 message = Strings.format(
-                        "Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
+                        "Game over! Team @ is victorious with @ players online on map @.", event.winner.name,
+                        Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
             }
 
             SockCommunicator.sendEvent(

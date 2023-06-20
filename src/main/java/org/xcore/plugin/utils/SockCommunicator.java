@@ -28,7 +28,7 @@ public class SockCommunicator {
                     Log.info("Trying reconnect to Sock server");
                     safeConnect();
                 }
-            }, 0, 180);
+            }, 0, 120);
     }
 
     public static void safeConnect() {
