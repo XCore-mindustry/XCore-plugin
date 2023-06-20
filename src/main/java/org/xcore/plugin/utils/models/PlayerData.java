@@ -40,10 +40,6 @@ public class PlayerData {
     public PlayerData() {
     }
 
-    public void save() {
-        database.playerDataExecutor.setPlayerData(this);
-    }
-
     public HexedRanks.HexedRank hexedRank() {
         return HexedRanks.HexedRank.values()[hexedRank];
     }
@@ -64,5 +60,9 @@ public class PlayerData {
 
     public void generatePid() {
         this.pid = database.getNextSequence("player_id");
+    }
+
+    public void save() {
+        database.playerDataExecutor.setPlayerData(this);
     }
 }
