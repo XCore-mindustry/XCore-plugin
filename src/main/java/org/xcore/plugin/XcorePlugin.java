@@ -115,7 +115,7 @@ public class XcorePlugin extends Plugin {
                 data.playTime++;
             }
 
-            database.getPlayerDataExecutor().getPlayerData(data.uuid);
+            data.save();
         }), 0, 60);
 
         Console.init();
