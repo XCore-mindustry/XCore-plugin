@@ -121,10 +121,11 @@ public class NetEvents {
             }
 
             case switchTeam -> {
-                if(packet.params instanceof Team team){
-                    target.team(team);
-                    Log.info("@ has switched team of @ to @", admin.plainName(), target.plainName(), team.name);
-                }
+                //if(packet.params instanceof Team team){
+                //    target.team(team);
+                //    Log.info("@ has switched team of @ to @", admin.plainName(), target.plainName(), team.name);
+                //}
+                send(player, "error.access-denied");
             }
         }
     }
