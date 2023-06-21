@@ -5,13 +5,17 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
+import mindustry.Vars;
 import mindustry.game.EventType;
+import mindustry.game.Rules;
 import mindustry.game.EventType.GameOverEvent;
+import mindustry.game.EventType.PlayEvent;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.io.JsonIO;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.SockCommunicator;
@@ -105,6 +109,11 @@ public class PluginEvents {
             SockCommunicator.sendEvent(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
                             false));
+        });
+
+        Events.on(PlayEvent.class, event -> {
+            var mapRules = JsonIO.read(Rules.class, state.map.tags.get("rules"));
+            state.rules.bannedBlocks.addAll(mapRules.bannedBlocks);
         });
 
         Events.on(GameOverEvent.class, event -> {
