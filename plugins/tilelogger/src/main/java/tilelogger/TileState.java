@@ -10,6 +10,7 @@ import arc.math.geom.Point2;
 import arc.util.Reflect;
 import arc.util.Strings;
 import mindustry.Vars;
+import mindustry.ai.UnitCommand;
 import mindustry.game.Team;
 import mindustry.gen.Iconc;
 import mindustry.net.Administration.PlayerInfo;
@@ -43,7 +44,9 @@ public class TileState {
                         ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size)
                         : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size
                             ? Vars.content.blocks().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size)
-                            : null;
+                            : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + UnitCommand.all.size
+                                ? UnitCommand.all.get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size - Vars.content.blocks().size)
+                                : null;
             case 4 -> Point2.unpack((int) config);
             case 5 -> config;
             case 6 -> new String((byte[]) config, StandardCharsets.UTF_8);
