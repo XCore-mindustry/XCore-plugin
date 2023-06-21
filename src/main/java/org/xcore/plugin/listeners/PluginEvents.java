@@ -114,6 +114,9 @@ public class PluginEvents {
         Events.on(PlayEvent.class, event -> {
             var mapRules = JsonIO.read(Rules.class, state.map.tags.get("rules"));
             state.rules.bannedBlocks.addAll(mapRules.bannedBlocks);
+            state.rules.bannedUnits.addAll(mapRules.bannedUnits);
+            state.rules.revealedBlocks.addAll(mapRules.revealedBlocks);
+            Log.info("@ banned blocks, @ banned units, @ revealed blocks", mapRules.bannedBlocks.size, mapRules.bannedUnits.size, mapRules.revealedBlocks.size);
         });
 
         Events.on(GameOverEvent.class, event -> {

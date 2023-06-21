@@ -1,6 +1,7 @@
 package org.xcore.plugin.commands;
 
 import arc.util.CommandHandler;
+import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
@@ -12,6 +13,8 @@ import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import io.netty.handler.timeout.TimeoutException;
 import org.xcore.plugin.listeners.SocketEvents;
+import org.xcore.plugin.listeners.SocketEvents.MapsListRequest;
+import org.xcore.plugin.listeners.SocketEvents.MapsListResponse;
 import org.xcore.plugin.modules.discord.DiscordHelper;
 import org.xcore.plugin.modules.discord.MessageContext;
 import org.xcore.plugin.utils.SockCommunicator;
@@ -72,10 +75,34 @@ public class DiscordCommands {
                             .subscribe(event -> {
                                 SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
                                 message.delete().subscribe();
-                                event.reply("Successfully uploaded maps to " + event.getValues().get(0)).subscribe();
+                                context.success("Success", "Successfully uploaded maps to " + event.getValues().get(0)).subscribe();
                             }))
                     .subscribe();
         });
+
+        discordCommands.<MessageContext>register("maps", "<server>", "List of maps", (args, context) -> {
+            String server = null;
+            if (!globalConfig.servers.containsKey(args[0])) {
+                for (String s : globalConfig.servers.keys()) {
+                    if (s.startsWith(args[0]) || s.contains(args[0])) server = s;
+                }
+            } else server = args[0];
+
+            if (server == null) {
+                context.error("Invalid server name", "Server with name @ not found!\nServers: @", args[0], Strings.join(", ", globalConfig.servers.keys()))
+                    .subscribe();
+                return;
+            }
+
+            String s = server;
+            MapsListRequest.waitResponse(server, r -> {
+                context.success(s + " Map List", Strings.join("\n", r.mapNames())).subscribe();
+            });
+        });
+
+        /* discordCommands.<MessageContext>register("delete-map", "<server> <map...>", (args, context) -> {
+            
+        }); */
 
         discordCommands.<MessageContext>register("ban", "<player-id> <period> [reason...]", "Ban the player", (args, context) -> {
             if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
