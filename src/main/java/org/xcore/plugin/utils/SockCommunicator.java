@@ -6,6 +6,8 @@ import arc.util.Timer;
 import com.ospx.sock.ClientSock;
 import com.ospx.sock.ServerSock;
 import com.ospx.sock.Sock;
+import com.ospx.sock.EventBus.Subscription;
+
 import org.xcore.plugin.modules.Config;
 
 import static org.xcore.plugin.PluginVars.config;
@@ -45,8 +47,8 @@ public class SockCommunicator {
         sock.sendEvent(event);
     }
 
-    public static <T> void onEvent(Class<T> type, Cons<T> consumer) {
-        sock.onEvent(type, consumer);
+    public static <T> Subscription<T> onEvent(Class<T> type, Cons<T> consumer) {
+        return sock.bus.on(type, consumer);
     }
 
     public static boolean isSocketServer() {

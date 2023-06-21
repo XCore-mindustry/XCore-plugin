@@ -1,8 +1,11 @@
 package org.xcore.plugin.listeners;
 
+import arc.func.Cons;
+import arc.struct.Seq;
 import arc.util.Http;
 import arc.util.Timer;
 import arc.util.Log;
+import mindustry.Vars;
 import mindustry.gen.Groups;
 import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
@@ -13,10 +16,13 @@ import org.xcore.plugin.utils.SockCommunicator;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
+import com.ospx.sock.EventBus.Subscription;
+
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
@@ -30,14 +36,13 @@ public class SocketEvents {
             Bot.connect();
             DiscordCommands.init();
 
-            SockCommunicator.onEvent(MessageEvent.class, e ->
-                    Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
-            SockCommunicator.onEvent(ServerActionEvent.class, e ->
-                    Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
-            SockCommunicator.onEvent(PlayerJoinLeaveEvent.class, e ->
-                    Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
-            SockCommunicator.onEvent(AdminRequestEvent.class, e ->
-                    Bot.sendAdminRequestEvent(e.pid(), e.server()));
+            SockCommunicator.onEvent(MessageEvent.class,
+                    e -> Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
+            SockCommunicator.onEvent(ServerActionEvent.class,
+                    e -> Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
+            SockCommunicator.onEvent(PlayerJoinLeaveEvent.class,
+                    e -> Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
+            SockCommunicator.onEvent(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
             SockCommunicator.onEvent(BanData.class, Bot::sendBan);
 
             Timer.schedule(() -> {
@@ -49,23 +54,35 @@ public class SocketEvents {
                     data.save();
                     SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
                 }
-            }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)).toSeconds(), 60 * 60 * 24);
+            }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT))
+                    .toSeconds(), 60 * 60 * 24);
 
         } else {
             SockCommunicator.onEvent(DiscordMessageEvent.class, e -> {
-                if (!e.server().equals(config.server)) return;
+                if (!e.server().equals(config.server))
+                    return;
 
                 XcorePlugin.sendMessageFromDiscord(e.authorName(), e.message());
             });
         }
 
+        SockCommunicator.onEvent(MapsListRequest.class, e -> {
+            if (!e.server.equals(config.server))
+                return;
+
+            SockCommunicator.sendEvent(
+                    new MapsListResponse(e.id, maps.customMaps().map(m -> m.plainName()).toArray(String.class)));
+        });
+
         SockCommunicator.onEvent(AdminRequestConfirmEvent.class, e -> {
-            if (!e.server().equals(config.server)) return;
+            if (!e.server().equals(config.server))
+                return;
 
             var info = Find.playerInfo(e.uuid());
             var player = Find.playerByUuid(e.uuid());
 
-            if (info == null) return;
+            if (info == null)
+                return;
             if (player != null) {
                 player.admin = true;
                 send(player, "commands.login.confirmed");
@@ -74,29 +91,31 @@ public class SocketEvents {
             netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
         });
 
-        SockCommunicator.onEvent(KickBannedPlayer.class, e ->
-                Groups.player.each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
+        SockCommunicator.onEvent(KickBannedPlayer.class, e -> Groups.player
+                .each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
 
         SockCommunicator.onEvent(SyncPlayerData.class, e -> {
-            if (database.cachedPlayerData.containsKey(e.data().uuid)) database.setCached(e.data());
+            if (database.cachedPlayerData.containsKey(e.data().uuid))
+                database.setCached(e.data());
         });
 
         SockCommunicator.onEvent(LoadMaps.class, e -> {
-            if (!config.server.equals(e.server)) return;
+            if (!config.server.equals(e.server))
+                return;
 
             AtomicInteger counter = new AtomicInteger();
             for (String url : e.urls) {
                 Http.get(url)
-                    .error(error -> Log.err(error))
-                    .submit(result -> {
-                        var splitted = url.split("/");
-                        var fileName = splitted[splitted.length-1];
-                        customMapDirectory.child(fileName).writeBytes(result.getResult());
+                        .error(error -> Log.err(error))
+                        .submit(result -> {
+                            var splitted = url.split("/");
+                            var fileName = splitted[splitted.length - 1];
+                            customMapDirectory.child(fileName).writeBytes(result.getResult());
 
-                        if (counter.incrementAndGet() == e.urls.length) {
-                            maps.reload();
-                        }
-                });
+                            if (counter.incrementAndGet() == e.urls.length) {
+                                maps.reload();
+                            }
+                        });
             }
         });
 
@@ -128,6 +147,29 @@ public class SocketEvents {
     }
 
     public record LoadMaps(String[] urls, String server) {
+    }
 
+    public record MapsListRequest(String id, String server) {
+        public MapsListRequest(String server) {
+            this(UUID.randomUUID().toString(), server);
+        }
+
+        @SuppressWarnings("unchecked")
+        public static void waitResponse(String server, Cons<MapsListResponse> callback) {
+            Subscription<MapsListResponse>[] sub = new Subscription[1];
+
+            var request = new MapsListRequest(server);
+
+            sub[0] = SockCommunicator.onEvent(MapsListResponse.class, e -> {
+                if (e.id.equals(request.id)) {
+                    sub[0].unsubscribe();
+                    callback.get(e);
+                }
+            });
+            SockCommunicator.sendEvent(request);
+        }
+    }
+
+    public record MapsListResponse(String id, String[] mapNames) {
     }
 }
