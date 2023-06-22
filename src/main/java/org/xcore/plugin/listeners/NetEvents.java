@@ -212,7 +212,7 @@ public class NetEvents {
         Seq<String> missingMods = mods.getIncompatibility(extraMods);
 
         if (!extraMods.isEmpty() || !missingMods.isEmpty()) {
-            //can't easily be localized since kick reasons can't have formatted text with them
+            //can't easily be localized since kick reasons can't have formatted result with them
             StringBuilder result = new StringBuilder("[accent]Incompatible mods![]\n\n");
             if (!missingMods.isEmpty()) {
                 result.append("Missing:[lightgray]\n").append("> ").append(missingMods.toString("\n> "));

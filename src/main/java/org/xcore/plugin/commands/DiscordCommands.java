@@ -1,38 +1,25 @@
 package org.xcore.plugin.commands;
 
-import arc.util.CommandHandler;
-import arc.util.Log;
-import arc.util.Strings;
-import arc.util.Time;
-import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
-import discord4j.core.event.domain.interaction.SelectMenuInteractionEvent;
-import discord4j.core.object.component.ActionRow;
-import discord4j.core.object.component.Button;
-import discord4j.core.object.component.SelectMenu;
+import arc.util.*;
+import discord4j.core.event.domain.interaction.*;
+import discord4j.core.object.component.*;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import io.netty.handler.timeout.TimeoutException;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.listeners.SocketEvents.MapsListRequest;
-import org.xcore.plugin.listeners.SocketEvents.MapsListResponse;
-import org.xcore.plugin.modules.discord.DiscordHelper;
-import org.xcore.plugin.modules.discord.MessageContext;
-import org.xcore.plugin.utils.SockCommunicator;
-import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.listeners.SocketEvents.*;
+import org.xcore.plugin.modules.discord.*;
+import org.xcore.plugin.utils.*;
 import org.xcore.plugin.utils.models.BanData;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.PluginVars.globalConfig;
-import static org.xcore.plugin.modules.discord.Bot.gateway;
-import static org.xcore.plugin.modules.discord.Bot.sendBan;
+import static mindustry.Vars.*;
+import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.modules.discord.Bot.*;
 
 public class DiscordCommands {
     public static final CommandHandler discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
@@ -68,9 +55,9 @@ public class DiscordCommands {
                             .addComponent(ActionRow.of(SelectMenu.of("choose-server", servers).withMaxValues(1).withPlaceholder("Choose server")))
                             .build())
                     .doOnNext(message -> gateway.on(SelectMenuInteractionEvent.class)
-                            .filter(event -> event.getCustomId().equals("choose-server") 
-                                && event.getMessageId().equals(message.getId())
-                                && event.getInteraction().getMember().get().equals(context.member()))
+                            .filter(event -> event.getCustomId().equals("choose-server")
+                                    && event.getMessageId().equals(message.getId())
+                                    && event.getInteraction().getMember().get().equals(context.member()))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
                                 SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
@@ -90,15 +77,16 @@ public class DiscordCommands {
 
             if (server == null) {
                 context.error("Invalid server name", "Server with name @ not found!\nServers: @", args[0], Strings.join(", ", globalConfig.servers.keys()))
-                    .subscribe();
+                        .subscribe();
                 return;
             }
 
-            String s = server;
-            MapsListRequest.waitResponse(server, res -> {
-                context.success(s + " Map List", Strings.join("\n", res.mapNames())).subscribe();
-            }, () -> 
-                context.error("Internal Error", "The server did not respond. Perhaps the server is down or an error has occurred.").subscribe());
+            var request = new MapsListRequest(server);
+            request.send(MapsListResponse.class, response -> {
+                context.success(request.server() + " Map List", Strings.join("\n", response.maps())).subscribe();
+            }, () -> {
+                context.error("Internal Error", "The server did not respond. Perhaps the server is down or an error has occurred.").subscribe();
+            });
         });
 
         /* discordCommands.<MessageContext>register("delete-map", "<server> <map...>", (args, context) -> {

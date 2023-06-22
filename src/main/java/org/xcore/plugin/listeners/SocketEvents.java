@@ -1,12 +1,11 @@
 package org.xcore.plugin.listeners;
 
 import arc.func.Cons;
-import arc.struct.Seq;
 import arc.util.Http;
 import arc.util.Timer;
 import arc.util.Log;
-import mindustry.Vars;
 import mindustry.gen.Groups;
+import mindustry.maps.Map;
 import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.commands.DiscordCommands;
@@ -70,16 +69,31 @@ public class SocketEvents {
             if (!e.server.equals(config.server))
                 return;
 
-            SockCommunicator.sendEvent(
-                    new MapsListResponse(e.id, maps.customMaps().map(m -> m.plainName()).toArray(String.class)));
+            SockCommunicator.sendEvent(new MapsListResponse(e.id, maps.customMaps().map(Map::plainName).toArray(String.class)));
+        });
+
+        SockCommunicator.onEvent(MapRemoveRequest.class, e -> {
+            if (!e.server.equals(config.server))
+                return;
+
+            var map = maps.byName(e.mapName);
+            if (map != null) {
+                maps.removeMap(map);
+                maps.reload();
+            }
+
+            SockCommunicator.sendEvent(new MapRemoveResponse(e.id, map == null ?
+                    "net" :
+                    "da"
+            ));
         });
 
         SockCommunicator.onEvent(AdminRequestConfirmEvent.class, e -> {
-            if (!e.server().equals(config.server))
+            if (!e.server.equals(config.server))
                 return;
 
-            var info = Find.playerInfo(e.uuid());
-            var player = Find.playerByUuid(e.uuid());
+            var info = Find.playerInfo(e.uuid);
+            var player = Find.playerByUuid(e.uuid);
 
             if (info == null)
                 return;
@@ -88,11 +102,11 @@ public class SocketEvents {
                 send(player, "commands.login.confirmed");
             }
 
-            netServer.admins.adminPlayer(e.uuid(), info.adminUsid);
+            netServer.admins.adminPlayer(e.uuid, info.adminUsid);
         });
 
         SockCommunicator.onEvent(KickBannedPlayer.class, e -> Groups.player
-                .each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
+                .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
 
         SockCommunicator.onEvent(SyncPlayerData.class, e -> {
             if (database.cachedPlayerData.containsKey(e.data().uuid))
@@ -106,10 +120,10 @@ public class SocketEvents {
             AtomicInteger counter = new AtomicInteger();
             for (String url : e.urls) {
                 Http.get(url)
-                        .error(error -> Log.err(error))
+                        .error(Log::err)
                         .submit(result -> {
-                            var splitted = url.split("/");
-                            var fileName = splitted[splitted.length - 1];
+                            var split = url.split("/");
+                            var fileName = split[split.length - 1];
                             customMapDirectory.child(fileName).writeBytes(result.getResult());
 
                             if (counter.incrementAndGet() == e.urls.length) {
@@ -149,53 +163,40 @@ public class SocketEvents {
     public record LoadMaps(String[] urls, String server) {
     }
 
-    public record MapsListRequest(String id, String server) {
+    public sealed interface ExpiringRequest<T extends ExpiringResponse> permits MapsListRequest, MapRemoveRequest {
+        String id();
+        String server();
+
+        default void send(Class<T> type, Cons<T> listener, Runnable expired) {
+            var subscription = new Subscription[1];
+
+            subscription[0] = SockCommunicator.onEvent(type, event -> {
+                if (event.id().equals(id())) {
+                    subscription[0].unsubscribe();
+                    listener.get(event);
+                }
+            }).expireAfter(3000, expired);
+
+            SockCommunicator.sendEvent(this);
+        }
+    }
+
+    public record MapsListRequest(String id, String server) implements ExpiringRequest<MapsListResponse> {
         public MapsListRequest(String server) {
             this(UUID.randomUUID().toString(), server);
         }
-
-        @SuppressWarnings("unchecked")
-        public static void waitResponse(String server, Cons<MapsListResponse> callback, Runnable onExpire) {
-            Subscription<MapsListResponse>[] sub = new Subscription[1];
-
-            var request = new MapsListRequest(server);
-
-            sub[0] = SockCommunicator.onEvent(MapsListResponse.class, e -> {
-                if (e.id.equals(request.id)) {
-                    sub[0].unsubscribe();
-                    callback.get(e);
-                }
-            }).expireAfter(3000, onExpire);
-
-            SockCommunicator.sendEvent(request);
-        }
     }
 
-    public record MapsListResponse(String id, String[] mapNames) {
-    }
-
-    public record MapRemoveRequest(String id, String mapName, String server) {
+    public record MapRemoveRequest(String id, String mapName, String server) implements ExpiringRequest<MapRemoveResponse> {
         public MapRemoveRequest(String mapName, String server) {
             this(UUID.randomUUID().toString(), mapName, server);
         }
-
-        @SuppressWarnings("unchecked")
-        public static void waitResponse(String server, Cons<MapRemoveResponse> callback, Runnable onExpire) {
-            Subscription<MapRemoveResponse>[] sub = new Subscription[1];
-
-            var request = new MapsListRequest(server);
-
-            sub[0] = SockCommunicator.onEvent(MapRemoveResponse.class, e -> {
-                if (e.id.equals(request.id)) {
-                    sub[0].unsubscribe();
-                    callback.get(e);
-                }
-            }).expireAfter(3000, onExpire);
-
-            SockCommunicator.sendEvent(request);
-        }
     }
 
-    public record MapRemoveResponse(String id, String text) {
+    public sealed interface ExpiringResponse permits MapRemoveResponse, MapsListResponse {
+        String id();
     }
+
+    public record MapsListResponse(String id, String[] maps) implements ExpiringResponse { }
+    public record MapRemoveResponse(String id, String result) implements ExpiringResponse { }
 }
