@@ -8,7 +8,6 @@ import arc.util.Strings;
 import arc.util.Time;
 import mindustry.core.Version;
 import mindustry.game.EventType;
-import mindustry.game.Team;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
@@ -212,7 +211,7 @@ public class NetEvents {
         Seq<String> missingMods = mods.getIncompatibility(extraMods);
 
         if (!extraMods.isEmpty() || !missingMods.isEmpty()) {
-            //can't easily be localized since kick reasons can't have formatted result with them
+            //can't easily be localized since kick reasons can't have a formatted text with them
             StringBuilder result = new StringBuilder("[accent]Incompatible mods![]\n\n");
             if (!missingMods.isEmpty()) {
                 result.append("Missing:[lightgray]\n").append("> ").append(missingMods.toString("\n> "));
