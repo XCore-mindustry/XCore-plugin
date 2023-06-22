@@ -7,7 +7,11 @@ import discord4j.core.object.entity.Message;
 
 import org.xcore.plugin.utils.models.PlayerData;
 
+import arc.util.Strings;
+
 import java.time.Instant;
+
+import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class DiscordHelper {
     public static boolean hasRole(Member member, long roleId) {
@@ -56,5 +60,19 @@ public class DiscordHelper {
         }
 
         return false;
+    }
+
+    public static boolean notFound(MessageContext context, String server) {
+        if (server == null) {
+            context.error("Invalid server name", "Server with provided name not found!\nServers: @", Strings.join(", ", globalConfig.servers.keys()))
+                        .subscribe();
+            return true;
+        }
+
+        return false;
+    }
+
+    public static void noResponse(MessageContext context) {
+        context.error("Internal Error", "The server did not respond. Perhaps the server is down or an error has occurred.").subscribe();
     }
 }

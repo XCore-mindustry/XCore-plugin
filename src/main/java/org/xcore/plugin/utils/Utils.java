@@ -27,6 +27,7 @@ import static arc.util.Strings.*;
 import static mindustry.Vars.charset;
 import static mindustry.Vars.maps;
 import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.PluginVars.globalConfig;
 import static useful.Bundle.format;
 
 public class Utils {
@@ -37,7 +38,8 @@ public class Utils {
     }
 
     public static @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit) {
-        if (period == null) return null;
+        if (period == null)
+            return null;
         period = period.toLowerCase();
         Matcher matcher = periodPattern.matcher(period);
         Instant instant = Instant.EPOCH;
@@ -65,7 +67,8 @@ public class Utils {
     }
 
     public static void getPvPLeaderboard(StringBuilder builder, Player player) {
-        Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0).sort(d -> d.pvpRating).reverse();
+        Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0)
+                .sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
         builder.append(format("leaderboard", player.locale));
@@ -78,22 +81,26 @@ public class Utils {
     }
 
     public static void getHexedLeaderboard(StringBuilder builder, Player player) {
-        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty() && t.team != Team.derelict).sort(t -> t.cores.size).reverse();
+        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty() && t.team != Team.derelict)
+                .sort(t -> t.cores.size).reverse();
         teams.truncate(10);
 
         builder.append(format("leaderboard", player.locale));
         for (int i = 0; i < teams.size; i++) {
             var team = teams.get(i);
-            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.players.first().coloredName(), team.cores.size));
+            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.players.first().coloredName(),
+                    team.cores.size));
         }
 
     }
 
     public static void showLeaderboard(Cons2<StringBuilder, Player> cons) {
         Timer.schedule(() -> {
-            if (Groups.player.isEmpty()) return;
+            if (Groups.player.isEmpty())
+                return;
             Groups.player.each(player -> {
-                if (!database.getCached(player.uuid()).leaderboard) return;
+                if (!database.getCached(player.uuid()).leaderboard)
+                    return;
                 StringBuilder builder = new StringBuilder();
                 cons.get(builder, player);
                 Call.infoPopup(player.con, builder.toString(), 5f, 8, 0, 2, 50, 0);
@@ -135,12 +142,25 @@ public class Utils {
     }
 
     public static boolean equalsHasNull(String query, String name) {
-        if (query == null || query.isEmpty() || name == null || name.isEmpty()) return false;
+        if (query == null || query.isEmpty() || name == null || name.isEmpty())
+            return false;
         return query.equals(name);
     }
 
     public static Map findMap(String name) {
         return findInSeq(name, getAvailableMaps(), map -> deepEquals(map.name(), name));
+    }
+
+    public static String findServer(String name) {
+        String result = null;
+        if (!globalConfig.servers.containsKey(name)) {
+            for (String s : globalConfig.servers.keys()) {
+                if (s.startsWith(name) || s.contains(name)) result = s;
+            }
+        } else
+            result = name;
+
+        return result;
     }
 
     public static void reloadWorld(Runnable runnable) {
@@ -161,7 +181,8 @@ public class Utils {
     // https://github.com/Anuken/Mindustry/blob/b81e9424794ca8eccb7008a1f85ab9c2199bdbd3/core/src/mindustry/net/NetworkIO.java#L132
     public static void writeString(ByteBuffer buffer, String string, int maxlen) {
         byte[] bytes = string.getBytes(charset);
-        //todo truncating this way may lead to wierd encoding errors at the ends of strings...
+        // todo truncating this way may lead to wierd encoding errors at the ends of
+        // strings...
         if (bytes.length > maxlen) {
             bytes = Arrays.copyOfRange(bytes, 0, maxlen);
         }
