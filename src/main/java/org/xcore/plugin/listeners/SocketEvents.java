@@ -155,7 +155,7 @@ public class SocketEvents {
         }
 
         @SuppressWarnings("unchecked")
-        public static void waitResponse(String server, Cons<MapsListResponse> callback) {
+        public static void waitResponse(String server, Cons<MapsListResponse> callback, Runnable onExpire) {
             Subscription<MapsListResponse>[] sub = new Subscription[1];
 
             var request = new MapsListRequest(server);
@@ -165,11 +165,37 @@ public class SocketEvents {
                     sub[0].unsubscribe();
                     callback.get(e);
                 }
-            });
+            }).expireAfter(3000, onExpire);
+
             SockCommunicator.sendEvent(request);
         }
     }
 
     public record MapsListResponse(String id, String[] mapNames) {
+    }
+
+    public record MapRemoveRequest(String id, String mapName, String server) {
+        public MapRemoveRequest(String mapName, String server) {
+            this(UUID.randomUUID().toString(), mapName, server);
+        }
+
+        @SuppressWarnings("unchecked")
+        public static void waitResponse(String server, Cons<MapRemoveResponse> callback, Runnable onExpire) {
+            Subscription<MapRemoveResponse>[] sub = new Subscription[1];
+
+            var request = new MapsListRequest(server);
+
+            sub[0] = SockCommunicator.onEvent(MapRemoveResponse.class, e -> {
+                if (e.id.equals(request.id)) {
+                    sub[0].unsubscribe();
+                    callback.get(e);
+                }
+            }).expireAfter(3000, onExpire);
+
+            SockCommunicator.sendEvent(request);
+        }
+    }
+
+    public record MapRemoveResponse(String id, String text) {
     }
 }

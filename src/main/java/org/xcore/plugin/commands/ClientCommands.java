@@ -331,7 +331,7 @@ public class ClientCommands {
                 send(player, "error.access-denied");
                 return;
             }
-
+            
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {

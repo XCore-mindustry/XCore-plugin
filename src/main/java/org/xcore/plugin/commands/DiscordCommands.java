@@ -95,9 +95,10 @@ public class DiscordCommands {
             }
 
             String s = server;
-            MapsListRequest.waitResponse(server, r -> {
-                context.success(s + " Map List", Strings.join("\n", r.mapNames())).subscribe();
-            });
+            MapsListRequest.waitResponse(server, res -> {
+                context.success(s + " Map List", Strings.join("\n", res.mapNames())).subscribe();
+            }, () -> 
+                context.error("Internal Error", "The server did not respond. Perhaps the server is down or an error has occurred.").subscribe());
         });
 
         /* discordCommands.<MessageContext>register("delete-map", "<server> <map...>", (args, context) -> {
@@ -164,4 +165,3 @@ public class DiscordCommands {
         });
     }
 }
-
