@@ -12,6 +12,7 @@ import org.xcore.plugin.commands.DiscordCommands;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -76,15 +77,15 @@ public class SocketEvents {
             if (!e.server.equals(config.server))
                 return;
 
-            var map = maps.byName(e.mapName);
+            var map = Utils.findMap(e.mapName);
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();
             }
 
             SockCommunicator.sendEvent(new MapRemoveResponse(e.id, map == null ?
-                    "net" :
-                    "da"
+                    "Map not found" :
+                    "Succcesfully removed map " + map.plainName()
             ));
         });
 
