@@ -14,8 +14,8 @@ jobs:
       - name: Build plugin jar
         run: ./gradlew jar
       - name: Save to build branch
-        uses: sylvanld/action-storage@v1
-        with:
-          storage-branch: build
-          src: /build/libs/XCore-plugin-*.jar
-          dst: XCore-plugin-latest.jar
+        uses: planetoftheweb/copy-to-branches@v1
+        env:
+          key: main
+          files: /build/libs/XCore-plugin-*.jar
+          branches: build
