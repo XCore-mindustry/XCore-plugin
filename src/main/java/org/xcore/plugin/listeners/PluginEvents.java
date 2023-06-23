@@ -29,29 +29,6 @@ import static useful.Bundle.send;
 
 public class PluginEvents {
     public static void init() {
-        Events.on(EventType.PlayerConnect.class, event -> {
-            var player = event.player;
-            var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
-
-            Call.clientPacketReliable(player.con, "adm_mod_begin", "");
-
-            if (data.exists && !data.ip.equals(player.ip())) {
-                player.admin = false;
-                netServer.admins.unAdminPlayer(player.uuid());
-
-                data.setIp(player.ip());
-                data.save();
-            }
-
-            if (!data.exists) {
-                data.generatePid();
-                data.save();
-            }
-
-            HexedRanks.updateRank(player, data);
-            database.setCached(data);
-        });
-
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
 
