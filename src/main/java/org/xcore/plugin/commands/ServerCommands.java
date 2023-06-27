@@ -61,16 +61,16 @@ public class ServerCommands {
                 return;
             }
 
-            Log.info("Players found: " + infos.size);
+            Log.info("Players found: @", infos.size);
             int index = 0;
 
             for (PlayerInfo info : infos) {
-                Log.info("[" + index + "] Trace info for player '" + info.plainLastName() + "' / UUID " + info.id + " / RAW " + info.lastName);
-                Log.info("  all names used: " + info.names);
-                Log.info("  IP: " + info.lastIP);
-                Log.info("  all IPs used: " + info.ips);
-                Log.info("  times joined: " + info.timesJoined);
-                Log.info("  times kicked: " + info.timesKicked);
+                Log.info("[@] Trace info for player '@' / UUID @ / RAW @", index, info.plainLastName(), info.id, info.lastName);
+                Log.info("  all names used: @", info.names);
+                Log.info("  IP: @", info.lastIP);
+                Log.info("  all IPs used: @", info.ips);
+                Log.info("  times joined: @", info.timesJoined);
+                Log.info("  times kicked: @", info.timesKicked);
                 index++;
             }
         });
