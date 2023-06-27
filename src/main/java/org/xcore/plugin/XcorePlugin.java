@@ -32,9 +32,7 @@ import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.utils.Utils.writeString;
 
-@SuppressWarnings("unused")
 public class XcorePlugin extends Plugin {
-
     public XcorePlugin() {
         Config.init();
         GlobalConfig.init();

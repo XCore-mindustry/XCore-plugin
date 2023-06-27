@@ -22,6 +22,7 @@ import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
+import java.io.Writer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -90,6 +91,43 @@ public class ServerCommands {
         handler.register("reload-config", "Reload config", args -> {
             Config.init();
             GlobalConfig.init();
+        });
+
+        handler.register("xconfig", "[field] [value]", "Configure xcore plugin", args -> {
+            String json = gson.toJson(config);
+
+            if (args.length == 0) {
+                Log.info(gson.toJson(config));
+                return;
+            }
+
+            if (args.length < 2) {
+                Log.err("Missing 2 arguments.");
+                return;
+            }
+
+            String field = args[0];
+            String value = args[1];
+            
+            JsonValue reader = new JsonReader().parse(json);
+
+            if (!reader.has(field)) {
+                Log.err("Field '@' not found", field);
+                return;
+            }
+
+            JsonValue jfield = reader.get(field);
+
+            switch (jfield.type()) {
+                case stringValue -> jfield.set(value);
+                case booleanValue -> jfield.set(Boolean.parseBoolean(value));
+                case longValue -> jfield.set(Long.parseLong(value), null);
+            }
+
+            Config result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), Config.class);
+            configFile.writeString(gson.toJson(config = result));
+
+            Log.info("Done.");
         });
 
         handler.register("edit-data", "<name/uuid/ip> <perm> <value>", "Give/remove permission.", args -> {
