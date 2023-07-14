@@ -41,7 +41,7 @@ public class NetSock {
         return sock.on(type, consumer);
     }
 
-    public static <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener) {
+    public static <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
         return sock.request(request, listener);
     }
 

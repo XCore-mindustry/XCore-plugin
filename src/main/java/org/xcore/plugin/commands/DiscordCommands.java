@@ -68,24 +68,25 @@ public class DiscordCommands {
         });
 
         discordCommands.<MessageContext>register("maps", "<server>", "List of maps", (args, context) -> {
-            String server = Utils.findServer(args[0]);
+            var server = Utils.findServer(args[0]);
             if (DiscordHelper.notFound(context, server)) return;
 
-            var request = new MapsListRequest(server);
-            request.send(MapsListResponse.class, response -> {
-                context.success(request.server() + " Map List", Strings.join("\n", response.maps())).subscribe();
-            }, () -> DiscordHelper.noResponse(context));
+            NetSock.request(new MapsListRequest(server),
+                    response -> context.success(server + " Map List", Strings.join("\n", response.maps)).subscribe(),
+                    () -> DiscordHelper.noResponse(context)
+            );
         });
 
         discordCommands.<MessageContext>register("remove-map", "<server> <map...>", "Remove map", (args, context) -> {
             if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
 
-            String server = Utils.findServer(args[0]);
+            var server = Utils.findServer(args[0]);
             if (DiscordHelper.notFound(context, server)) return;
 
-            var request = new MapRemoveRequest(args[1], server);
-            request.send(MapRemoveResponse.class, response -> context.info("Result", response.result()).subscribe(),
-                () -> DiscordHelper.noResponse(context));
+            NetSock.request(new MapRemoveRequest(args[1], server),
+                    response -> context.info("Result", response.result).subscribe(),
+                    () -> DiscordHelper.noResponse(context)
+            );
         });
 
         discordCommands.<MessageContext>register("ban", "<player-id> <period> [reason...]", "Ban the player", (args, context) -> {
