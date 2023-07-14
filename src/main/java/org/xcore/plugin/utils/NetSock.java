@@ -42,7 +42,7 @@ public class NetSock {
     }
 
     public static <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
-        return sock.request(request, listener);
+        return sock.request(request, listener, timeout);
     }
 
     public static <T extends Response> void respond(Request<T> request, T response) {
