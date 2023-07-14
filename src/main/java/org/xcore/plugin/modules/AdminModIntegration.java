@@ -5,17 +5,19 @@ import arc.util.Time;
 import arc.util.Timer;
 import arc.util.serialization.JsonValue;
 import mindustry.gen.Call;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.BanRequestData;
 
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.PluginVars.reader;
+
+import static org.xcore.plugin.PluginVars.*;
+
 import static useful.Bundle.format;
 import static useful.Bundle.send;
 
@@ -24,22 +26,13 @@ public class AdminModIntegration {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;
 
-            JsonValue json = reader.parse(content);
+            BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            String uuid = json.get("uuid").asString();
-            String ip = json.get("ip").asString();
-            String name = json.get("name").asString();
-            String reason = json.get("reason").asString();
+            Instant date = Utils.parsePeriod(req.duration, TimeUnit.DAYS);
 
-            Instant date = Utils.parsePeriod(json.get("duration").asString(), TimeUnit.DAYS);
-
-            if (uuid == null || uuid.isBlank()) {
+            if (req.uuid == null || req.uuid.isBlank()) {
                 player.sendMessage("UUID cannot be blank.");
                 return;
-            }
-
-            if (reason == null || reason.isBlank()) {
-                reason = "<unknown>";
             }
 
             if (date == null) {
@@ -48,17 +41,17 @@ public class AdminModIntegration {
                 return;
             }
 
-            netServer.admins.unbanPlayerID(uuid);
+            netServer.admins.unbanPlayerID(req.uuid);
 
             var ban = BanData.builder()
-                    .name(name)
-                    .uuid(uuid)
-                    .ip(ip)
+                    .name(req.name)
+                    .uuid(req.uuid)
+                    .ip(req.ip)
                     .adminName(player.name)
-                    .reason(reason)
+                    .reason(req.reason)
                     .unbanDate(new Date(Time.millis() + date.toEpochMilli()))
                     .build();
-            SockCommunicator.sendEvent(ban);
+            NetSock.post(ban);
             ban.save();
         });
 

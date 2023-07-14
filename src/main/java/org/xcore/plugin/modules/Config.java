@@ -16,10 +16,10 @@ public class Config {
 
     public static void init() {
         if (configFile.exists()) {
-            config = gson.fromJson(configFile.reader(), Config.class);
+            config = prettyGson.fromJson(configFile.reader(), Config.class);
             XcorePlugin.info("Config loaded.");
         } else {
-            configFile.writeString(gson.toJson(config = new Config()));
+            configFile.writeString(prettyGson.toJson(config = new Config()));
             XcorePlugin.info("Config generated.");
         }
 

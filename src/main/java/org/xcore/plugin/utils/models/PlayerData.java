@@ -63,6 +63,6 @@ public class PlayerData {
     }
 
     public void save() {
-        database.playerDataExecutor.setPlayerData(this);
+        database.playerDatas.setPlayerData(this);
     }
 }

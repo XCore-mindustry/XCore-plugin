@@ -11,7 +11,7 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.commands.DiscordCommands;
 import org.xcore.plugin.modules.discord.Bot;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -32,33 +32,33 @@ import static useful.Bundle.send;
 
 public class SocketEvents {
     public static void init() {
-        if (SockCommunicator.isSocketServer()) {
+        if (NetSock.isSocketServer()) {
             Bot.connect();
             DiscordCommands.init();
 
-            SockCommunicator.onEvent(MessageEvent.class,
+            NetSock.subscribe(MessageEvent.class,
                     e -> Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
-            SockCommunicator.onEvent(ServerActionEvent.class,
+            NetSock.subscribe(ServerActionEvent.class,
                     e -> Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
-            SockCommunicator.onEvent(PlayerJoinLeaveEvent.class,
+            NetSock.subscribe(PlayerJoinLeaveEvent.class,
                     e -> Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
-            SockCommunicator.onEvent(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
-            SockCommunicator.onEvent(BanData.class, Bot::sendBan);
+            NetSock.subscribe(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
+            NetSock.subscribe(BanData.class, Bot::sendBan);
 
             Timer.schedule(() -> {
-                var datas = database.getPlayerDataExecutor().getAdmins();
+                var datas = database.getPlayerDatas().getAdmins();
                 Bot.sendAdminPlayTimeMessage(datas);
 
                 for (PlayerData data : datas) {
                     data.playTime = 0;
                     data.save();
-                    SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
+                    NetSock.post(new SocketEvents.SyncPlayerData(data));
                 }
             }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT))
                     .toSeconds(), 60 * 60 * 24);
 
         } else {
-            SockCommunicator.onEvent(DiscordMessageEvent.class, e -> {
+            NetSock.subscribe(DiscordMessageEvent.class, e -> {
                 if (!e.server().equals(config.server))
                     return;
 
@@ -66,14 +66,14 @@ public class SocketEvents {
             });
         }
 
-        SockCommunicator.onEvent(MapsListRequest.class, e -> {
+        NetSock.subscribe(MapsListRequest.class, e -> {
             if (!e.server.equals(config.server))
                 return;
 
-            SockCommunicator.sendEvent(new MapsListResponse(e.id, maps.customMaps().map(Map::plainName).toArray(String.class)));
+            NetSock.post(new MapsListResponse(e.id, maps.customMaps().map(Map::plainName).toArray(String.class)));
         });
 
-        SockCommunicator.onEvent(MapRemoveRequest.class, e -> {
+        NetSock.subscribe(MapRemoveRequest.class, e -> {
             if (!e.server.equals(config.server))
                 return;
 
@@ -83,13 +83,13 @@ public class SocketEvents {
                 maps.reload();
             }
 
-            SockCommunicator.sendEvent(new MapRemoveResponse(e.id, map == null ?
+            NetSock.post(new MapRemoveResponse(e.id, map == null ?
                     "Map not found" :
                     "Succcesfully removed map " + map.plainName()
             ));
         });
 
-        SockCommunicator.onEvent(AdminRequestConfirmEvent.class, e -> {
+        NetSock.subscribe(AdminRequestConfirmEvent.class, e -> {
             if (!e.server.equals(config.server))
                 return;
 
@@ -106,15 +106,15 @@ public class SocketEvents {
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);
         });
 
-        SockCommunicator.onEvent(KickBannedPlayer.class, e -> Groups.player
+        NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
 
-        SockCommunicator.onEvent(SyncPlayerData.class, e -> {
+        NetSock.subscribe(SyncPlayerData.class, e -> {
             if (database.cachedPlayerData.containsKey(e.data().uuid))
                 database.setCached(e.data());
         });
 
-        SockCommunicator.onEvent(LoadMaps.class, e -> {
+        NetSock.subscribe(LoadMaps.class, e -> {
             if (!config.server.equals(e.server))
                 return;
 
@@ -134,7 +134,7 @@ public class SocketEvents {
             }
         });
 
-        SockCommunicator.sendEvent(new ServerActionEvent("Server loaded", config.server));
+        NetSock.post(new ServerActionEvent("Server loaded", config.server));
     }
 
     public record MessageEvent(String authorName, String message, String server) {
@@ -171,14 +171,14 @@ public class SocketEvents {
         default void send(Class<T> type, Cons<T> listener, Runnable expired) {
             var subscription = new Subscription[1];
 
-            subscription[0] = SockCommunicator.onEvent(type, event -> {
+            subscription[0] = NetSock.subscribe(type, event -> {
                 if (event.id().equals(id())) {
                     subscription[0].unsubscribe();
                     listener.get(event);
                 }
             }).expireAfter(3000, expired);
 
-            SockCommunicator.sendEvent(this);
+            NetSock.post(this);
         }
     }
 

@@ -20,7 +20,7 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.database.Database;
 import useful.Bundle;
 
@@ -57,7 +57,7 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void init() {
-        SockCommunicator.init();
+        NetSock.init();
         Database.init();
         PluginEvents.init();
         SocketEvents.init();

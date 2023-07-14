@@ -21,7 +21,7 @@ import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
@@ -66,13 +66,13 @@ public class Bot {
                     String server = args[0];
                     PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
 
-                    SockCommunicator.sendEvent(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
+                    NetSock.post(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
 
                     message.delete().subscribe();
 
                     data.adminConfirmed = true;
 
-                    SockCommunicator.sendEvent(new SocketEvents.SyncPlayerData(data));
+                    NetSock.post(new SocketEvents.SyncPlayerData(data));
                     data.save();
                     return event.reply(author.getDisplayName() + " confirmed adminship to player " +
                             data.nickname + " on server " + server);
@@ -123,7 +123,7 @@ public class Bot {
                         if (server.equals(config.server)) {
                             XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), content);
                         } else {
-                            SockCommunicator.sendEvent(
+                            NetSock.post(
                                     new SocketEvents.DiscordMessageEvent(author.getDisplayName(), content, server)
                             );
                         }
@@ -171,7 +171,7 @@ public class Bot {
     public static void sendBan(BanData ban) {
         if (!isConnected) return;
 
-        PlayerData data = database.getPlayerDataExecutor().getPlayerData(ban.uuid);
+        PlayerData data = database.getPlayerDatas().getPlayerData(ban.uuid);
 
         bansChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder()
@@ -188,7 +188,7 @@ public class Bot {
     }
 
     public static void sendAdminRequestEvent(int pid, String server) {
-        PlayerData data = database.getPlayerDataExecutor().getPlayerDataById(pid);
+        PlayerData data = database.getPlayerDatas().getPlayerDataById(pid);
 
         privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")

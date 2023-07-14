@@ -18,8 +18,9 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.json.JSONObject;
 import org.xcore.plugin.modules.Translator;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.BanRequestData;
 
 import java.time.Duration;
 
@@ -55,7 +56,7 @@ public class NetEvents {
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
 
-        SockCommunicator.sendEvent(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
+        NetSock.post(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
         return null;
     }
 
@@ -76,18 +77,10 @@ public class NetEvents {
             case ban -> {
                 target.kick(Packets.KickReason.banned);
                 netServer.admins.banPlayerID(target.uuid());
-                Call.sendMessage(Strings.format("@[accent] banned @[].", admin.coloredName(), target.coloredName()));
+                send("tempban.player-banned", admin.coloredName(), target.coloredName());
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
-                String banJson = new JSONObject()
-                        .put("name", target.name)
-                        .put("uuid", target.uuid())
-                        .put("ip", target.ip())
-                        .put("reason", "")
-                        .put("duration", "0")
-                        .put("skip_to_discord", false)
-                        .put("global", false)
-                        .toString();
+                String banJson = rawGson.toJson(new BanRequestData(target.uuid(), target.ip(), target.name));
 
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
@@ -159,12 +152,12 @@ public class NetEvents {
         }
 
 
-        BanData ban = database.getBanDataExecutor().getBan(uuid, con.address);
+        BanData ban = database.getBanDatas().getBan(uuid, con.address);
         if (ban != null) {
             if (ban.expired()) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(con.address);
-                database.getBanDataExecutor().deleteBan(ban.uuid, con.address);
+                database.getBanDatas().deleteBan(ban.uuid, con.address);
             } else {
                 tempBanKick(con, packet.locale, ban);
                 return;
