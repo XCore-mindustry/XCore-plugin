@@ -31,6 +31,6 @@ public class BanData {
     }
 
     public void save() {
-        database.banDataExecutor.saveBan(this);
+        database.banDatas.saveBan(this);
     }
 }

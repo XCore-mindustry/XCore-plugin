@@ -19,7 +19,7 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -270,7 +270,7 @@ public class ClientCommands {
             });
 
             register("top", (args, player) -> {
-                Seq<PlayerData> leaders = database.getPlayerDataExecutor().getLeaders("hexedRank", "hexedPoints");
+                Seq<PlayerData> leaders = database.getPlayerDatas().getLeaders("hexedRank", "hexedPoints");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
@@ -311,7 +311,7 @@ public class ClientCommands {
 
         if (config.isMiniPvP()) {
             register("top", (args, player) -> {
-                Seq<PlayerData> leaders = database.getPlayerDataExecutor().getLeaders("pvpRating");
+                Seq<PlayerData> leaders = database.getPlayerDatas().getLeaders("pvpRating");
 
                 var builder = new StringBuilder();
                 if (leaders.isEmpty()) {
@@ -339,7 +339,7 @@ public class ClientCommands {
                 return;
             }
 
-            var target = database.getPlayerDataExecutor().getPlayerDataById(id);
+            var target = database.getPlayerDatas().getPlayerDataById(id);
 
             if (target == null) {
                 send(player, "error.player-not-found");
@@ -357,7 +357,7 @@ public class ClientCommands {
             var info = netServer.admins.getInfoOptional(target.uuid);
             String ip = info != null ? info.lastIP : null;
 
-            SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(target.uuid, ip));
+            NetSock.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
 
             BanData result = BanData.builder()
                     .name(target.nickname)
@@ -368,7 +368,7 @@ public class ClientCommands {
                     .unbanDate(unbanDate)
                     .build();
 
-            SockCommunicator.sendEvent(result);
+            NetSock.post(result);
             result.save();
 
             send(player, "commands.ban.success", target.nickname);
@@ -387,14 +387,14 @@ public class ClientCommands {
                 return;
             }
 
-            var target = database.getPlayerDataExecutor().getPlayerDataById(id);
+            var target = database.getPlayerDatas().getPlayerDataById(id);
 
             if (target == null) {
                 send(player, "error.player-not-found");
                 return;
             }
 
-            database.getBanDataExecutor().deleteBan(target.uuid, null);
+            database.getBanDatas().deleteBan(target.uuid, null);
             send(player, "commands.unban.success", target.nickname, target.pid);
         });
 
@@ -481,7 +481,7 @@ public class ClientCommands {
 
             PlayerData data = database.getCached(player.uuid());
 
-            SockCommunicator.sendEvent(new SocketEvents.AdminRequestEvent(data.pid, config.server));
+            NetSock.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
             send(player, "commands.login.success");
         });
     }

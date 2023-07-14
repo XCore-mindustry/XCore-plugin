@@ -31,10 +31,13 @@ public class PluginVars {
     public static Config config;
     public static GlobalConfig globalConfig;
     public static Database database;
-    public static final Gson gson = new GsonBuilder()
+    public static final Gson prettyGson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
             .disableHtmlEscaping()
+            .serializeNulls()
+            .create();
+    public static final Gson rawGson = new GsonBuilder()
             .serializeNulls()
             .create();
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();

@@ -18,7 +18,7 @@ import mindustry.gen.Player;
 import mindustry.io.JsonIO;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import useful.Bundle;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +38,7 @@ public class PluginEvents {
                 }
             });
 
-            var data = database.getPlayerDataExecutor().getPlayerData(player).setNickname(player.coloredName());
+            var data = database.getPlayerDatas().getPlayerData(player).setNickname(player.coloredName());
 
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
@@ -67,7 +67,7 @@ public class PluginEvents {
 
             Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
             Bundle.send("player.joined", player.coloredName(), data.pid);
-            SockCommunicator.sendEvent(
+            NetSock.post(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
                             true));
         });
@@ -83,7 +83,7 @@ public class PluginEvents {
 
             Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
             Bundle.send("player.left", player.coloredName(), data.pid);
-            SockCommunicator.sendEvent(
+            NetSock.post(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
                             false));
         });
@@ -109,7 +109,7 @@ public class PluginEvents {
                         Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
             }
 
-            SockCommunicator.sendEvent(
+            NetSock.post(
                     new SocketEvents.ServerActionEvent(message, config.server));
 
             if (gameoverRestart) {

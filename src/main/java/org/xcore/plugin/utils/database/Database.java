@@ -15,7 +15,6 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
-import org.xcore.plugin.utils.models.PunishmentHistory;
 
 import java.util.Optional;
 
@@ -25,9 +24,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class Database {
-    public final PlayerDataExecutor playerDataExecutor;
-    public final BanDataExecutor banDataExecutor;
-    public final PunishmentHistoryExecutor punishmentHistoryExecutor;
+    public final PlayerDataExecutor playerDatas;
+    public final BanDataExecutor banDatas;
 
     public final MongoClient mongoClient;
     public final MongoDatabase database;
@@ -41,11 +39,9 @@ public class Database {
         mongoClient = MongoClients.create(mongoConnectionString);
         database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
 
-        playerDataExecutor = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
-        banDataExecutor = new BanDataExecutor(
+        playerDatas = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
+        banDatas = new BanDataExecutor(
                 database.getCollection("bans", BanData.class));
-        punishmentHistoryExecutor = new PunishmentHistoryExecutor(
-                database.getCollection("punishments", PunishmentHistory.class));
     }
 
     public static void init() {
@@ -66,11 +62,11 @@ public class Database {
     }
 
     public PlayerData getCachedOrDb(String uuid) {
-        return Optional.ofNullable(cachedPlayerData.get(uuid)).orElseGet(() -> playerDataExecutor.getPlayerData(uuid));
+        return Optional.ofNullable(cachedPlayerData.get(uuid)).orElseGet(() -> playerDatas.getPlayerData(uuid));
     }
 
     public PlayerData getCachedOrDb(int id) {
-        return Optional.ofNullable(getCached(id)).orElseGet(() -> playerDataExecutor.getPlayerDataById(id));
+        return Optional.ofNullable(getCached(id)).orElseGet(() -> playerDatas.getPlayerDataById(id));
     }
 
     public void setCached(PlayerData data) {
@@ -81,12 +77,12 @@ public class Database {
         return cachedPlayerData.remove(uuid);
     }
 
-    public PlayerDataExecutor getPlayerDataExecutor() {
-        return playerDataExecutor;
+    public PlayerDataExecutor getPlayerDatas() {
+        return playerDatas;
     }
 
-    public BanDataExecutor getBanDataExecutor() {
-        return banDataExecutor;
+    public BanDataExecutor getBanDatas() {
+        return banDatas;
     }
 
     @SuppressWarnings("DataFlowIssue")

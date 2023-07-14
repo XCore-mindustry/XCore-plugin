@@ -6,14 +6,15 @@ import arc.util.Timer;
 import com.ospx.sock.ClientSock;
 import com.ospx.sock.ServerSock;
 import com.ospx.sock.Sock;
+import com.ospx.sock.EventBus.Request;
+import com.ospx.sock.EventBus.RequestSubscription;
+import com.ospx.sock.EventBus.Response;
 import com.ospx.sock.EventBus.Subscription;
-
-import org.xcore.plugin.modules.Config;
 
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.globalConfig;
 
-public class SockCommunicator {
+public class NetSock {
     public static Sock sock;
 
     public static void init() {
@@ -41,17 +42,21 @@ public class SockCommunicator {
         }
     }
 
-    public static void sendEvent(Object event) {
+    public static void post(Object event) {
         if (!sock.isConnected()) return;
-
-        sock.sendEvent(event);
+        sock.getBus().fire(event);
     }
 
-    public static <T> Subscription<T> onEvent(Class<T> type, Cons<T> consumer) {
+    public static <T> Subscription<T> subscribe(Class<T> type, Cons<T> consumer) {
         return sock.bus.on(type, consumer);
     }
 
+    public static <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener) {
+        if (!sock.isConnected()) return null;
+        return sock.bus.request(request, listener);
+    }
+
     public static boolean isSocketServer() {
-        return config.sockType == Config.SockType.SERVER;
+        return sock.isServer();
     }
 }

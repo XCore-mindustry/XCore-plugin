@@ -22,10 +22,10 @@ public class GlobalConfig {
 
     public static void init() {
         if (globalConfigFile.exists()) {
-            globalConfig = gson.fromJson(globalConfigFile.reader(), GlobalConfig.class);
+            globalConfig = prettyGson.fromJson(globalConfigFile.reader(), GlobalConfig.class);
             XcorePlugin.info("Global Config loaded.");
         } else {
-            globalConfigFile.writeString(gson.toJson(globalConfig = new GlobalConfig()));
+            globalConfigFile.writeString(prettyGson.toJson(globalConfig = new GlobalConfig()));
             XcorePlugin.info("Global Config generated.");
         }
         globalConfig.postInit();

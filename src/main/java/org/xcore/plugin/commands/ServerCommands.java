@@ -17,12 +17,11 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.SockCommunicator;
+import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import java.io.Writer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -94,10 +93,10 @@ public class ServerCommands {
         });
 
         handler.register("xconfig", "[field] [value]", "Configure xcore plugin", args -> {
-            String json = gson.toJson(config);
+            String json = prettyGson.toJson(config);
 
             if (args.length == 0) {
-                Log.info(gson.toJson(config));
+                Log.info(prettyGson.toJson(config));
                 return;
             }
 
@@ -124,8 +123,8 @@ public class ServerCommands {
                 case longValue -> jfield.set(Long.parseLong(value), null);
             }
 
-            Config result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), Config.class);
-            configFile.writeString(gson.toJson(config = result));
+            Config result = prettyGson.fromJson(reader.toJson(JsonWriter.OutputType.json), Config.class);
+            configFile.writeString(prettyGson.toJson(config = result));
 
             Log.info("Done.");
         });
@@ -142,7 +141,7 @@ public class ServerCommands {
 
             PlayerData data = database.getCachedOrDb(info.id);
 
-            String json = gson.toJson(data);
+            String json = prettyGson.toJson(data);
             JsonValue reader = new JsonReader().parse(json);
 
             if (!reader.has(field)) {
@@ -158,7 +157,7 @@ public class ServerCommands {
                 case longValue -> jfield.set(Long.parseLong(value), null);
             }
 
-            PlayerData result = gson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
+            PlayerData result = prettyGson.fromJson(reader.toJson(JsonWriter.OutputType.json), PlayerData.class);
             result.save();
             Log.info("Done.");
         });
@@ -173,7 +172,7 @@ public class ServerCommands {
                 return;
             }
 
-            Log.info(gson.toJson(data));
+            Log.info(prettyGson.toJson(data));
         });
 
         handler.register("tempban", "<uuid/ip/#id> <period> [reason...]", "Temporary ban player.", args -> {
@@ -189,7 +188,7 @@ public class ServerCommands {
             }
 
             if (args[0].startsWith("#")) {
-                var data = database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1)));
+                var data = database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1)));
 
                 if (data == null) {
                     Log.err("Player not found");
@@ -210,7 +209,7 @@ public class ServerCommands {
             }
 
             Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
-            SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(uuid, ip));
+            NetSock.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
             BanData result = BanData.builder()
                     .name(name)
@@ -221,14 +220,14 @@ public class ServerCommands {
                     .unbanDate(unbanDate)
                     .build();
 
-            SockCommunicator.sendEvent(result);
+            NetSock.post(result);
             result.save();
             Log.info("'@' (@/@) banned", result.name, result.uuid, result.ip);
         });
 
         handler.register("tempbans", "[search...]", "List all temporarily banned players.", args -> {
             StringBuilder builder = new StringBuilder("Temporary banned players:");
-            Seq<BanData> bans = database.getBanDataExecutor().getBanned();
+            Seq<BanData> bans = database.getBanDatas().getBanned();
 
             if (args.length > 0) {
                 bans.filter(b -> deepEquals(b.name, args[0]) || equalsHasNull(b.ip, args[0]) || equalsHasNull(b.uuid, args[0]));
@@ -265,14 +264,14 @@ public class ServerCommands {
                 default -> Log.err("Incorrect type. Example: uuid/ip/id");
             }
 
-            database.getBanDataExecutor().deleteBan(uuid, ip);
+            database.getBanDatas().deleteBan(uuid, ip);
             Log.info("Unbanned (@/@)", uuid, ip);
         });
 
 
         handler.register("mute", "<uuid/#id> <period>", "Mute player", args -> {
-            PlayerData data = args[0].startsWith("#") ? database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
-                    database.getPlayerDataExecutor().getPlayerData(args[0]);
+            PlayerData data = args[0].startsWith("#") ? database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
+                    database.getPlayerDatas().getPlayerData(args[0]);
 
             if (data == null) {
                 Log.err("Player not found.");
@@ -295,8 +294,8 @@ public class ServerCommands {
 
 
         handler.register("unmute", "<uuid/#id>", "Unmute player", (args, player) -> {
-            PlayerData data = args[0].startsWith("#") ? database.getPlayerDataExecutor().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
-                    database.getPlayerDataExecutor().getPlayerData(args[0]);
+            PlayerData data = args[0].startsWith("#") ? database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
+                    database.getPlayerDatas().getPlayerData(args[0]);
 
             if (data == null) {
                 Log.err("Player not found.");
@@ -309,8 +308,8 @@ public class ServerCommands {
         });
 
         handler.register("sock-restart", "Restart sock", args -> {
-            SockCommunicator.sock.disconnect();
-            SockCommunicator.safeConnect();
+            NetSock.sock.disconnect();
+            NetSock.safeConnect();
             Log.info("Done");
         });
 

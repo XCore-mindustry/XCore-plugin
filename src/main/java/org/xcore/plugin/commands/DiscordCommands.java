@@ -60,7 +60,7 @@ public class DiscordCommands {
                                     && event.getInteraction().getMember().get().equals(context.member()))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
-                                SockCommunicator.sendEvent(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
+                                NetSock.post(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
                                 message.delete().subscribe();
                                 context.success("Success", "Successfully uploaded maps to " + event.getValues().get(0)).subscribe();
                             }))
@@ -94,7 +94,7 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDataExecutor().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getPlayerDataById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
@@ -111,7 +111,7 @@ public class DiscordCommands {
                     .filter(event -> DiscordHelper.buttonFilter(event, context, m))
                     .subscribe(event -> {
                         if (event.getCustomId().equals("yes")) {
-                            SockCommunicator.sendEvent(new SocketEvents.KickBannedPlayer(data.uuid, ip));
+                            NetSock.post(new SocketEvents.KickBannedPlayer(data.uuid, ip));
 
                             BanData ban = BanData.builder()
                                     .name(data.nickname)
@@ -137,13 +137,13 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDataExecutor().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getPlayerDataById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             var info = netServer.admins.getInfoOptional(data.uuid);
             String ip = info != null ? info.lastIP : null;
 
-            database.getBanDataExecutor().deleteBan(data.uuid, ip);
+            database.getBanDatas().deleteBan(data.uuid, ip);
             context.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
     }
