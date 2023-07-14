@@ -49,6 +49,7 @@ public class ClientCommands {
                 send(player, "error.page-number");
                 return;
             }
+
             int commandsPerPage = 6;
             int page = args.length > 0 ? Strings.parseInt(args[0]) : 1;
             int pages = Mathf.ceil((float) netServer.clientCommands.getCommandList().size / commandsPerPage);
