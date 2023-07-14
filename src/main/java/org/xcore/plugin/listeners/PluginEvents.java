@@ -5,8 +5,6 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
-import mindustry.Vars;
-import mindustry.game.EventType;
 import mindustry.game.Rules;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
