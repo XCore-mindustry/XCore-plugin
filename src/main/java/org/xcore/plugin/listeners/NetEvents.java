@@ -16,7 +16,6 @@ import mindustry.net.Administration;
 import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
-import org.json.JSONObject;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.BanData;
@@ -94,7 +93,7 @@ public class NetEvents {
 
                 var trace = new TraceInfo(
                         target.ip(),
-                        data.pid + "",
+                        String.valueOf(data.pid),
                         target.con.modclient,
                         target.con.mobile,
                         target.getInfo().timesJoined,

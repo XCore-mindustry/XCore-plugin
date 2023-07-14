@@ -1,9 +1,11 @@
 package org.xcore.plugin.listeners;
 
-import arc.func.Cons;
 import arc.util.Http;
-import arc.util.Timer;
 import arc.util.Log;
+import arc.util.Timer;
+import com.ospx.sock.EventBus.Request;
+import com.ospx.sock.EventBus.Response;
+import lombok.AllArgsConstructor;
 import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.net.Packets;
@@ -16,13 +18,10 @@ import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import com.ospx.sock.EventBus.Subscription;
-
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
@@ -66,24 +65,24 @@ public class SocketEvents {
             });
         }
 
-        NetSock.subscribe(MapsListRequest.class, e -> {
-            if (!e.server.equals(config.server))
+        NetSock.subscribe(MapsListRequest.class, request -> {
+            if (!request.server.equals(config.server))
                 return;
 
-            NetSock.post(new MapsListResponse(e.id, maps.customMaps().map(Map::plainName).toArray(String.class)));
+            NetSock.respond(request, new MapsListResponse(maps.customMaps().map(Map::plainName).toArray(String.class)));
         });
 
-        NetSock.subscribe(MapRemoveRequest.class, e -> {
-            if (!e.server.equals(config.server))
+        NetSock.subscribe(MapRemoveRequest.class, request -> {
+            if (!request.server.equals(config.server))
                 return;
 
-            var map = Utils.findMap(e.mapName);
+            var map = Utils.findMap(request.map);
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();
             }
 
-            NetSock.post(new MapRemoveResponse(e.id, map == null ?
+            NetSock.respond(request, new MapRemoveResponse(map == null ?
                     "Map not found" :
                     "Succcesfully removed map " + map.plainName()
             ));
@@ -164,40 +163,23 @@ public class SocketEvents {
     public record LoadMaps(String[] urls, String server) {
     }
 
-    public sealed interface ExpiringRequest<T extends ExpiringResponse> permits MapsListRequest, MapRemoveRequest {
-        String id();
-        String server();
-
-        default void send(Class<T> type, Cons<T> listener, Runnable expired) {
-            var subscription = new Subscription[1];
-
-            subscription[0] = NetSock.subscribe(type, event -> {
-                if (event.id().equals(id())) {
-                    subscription[0].unsubscribe();
-                    listener.get(event);
-                }
-            }).expireAfter(3000, expired);
-
-            NetSock.post(this);
-        }
+    @AllArgsConstructor
+    public static class MapsListRequest extends Request<MapsListResponse> {
+        public String server;
     }
 
-    public record MapsListRequest(String id, String server) implements ExpiringRequest<MapsListResponse> {
-        public MapsListRequest(String server) {
-            this(UUID.randomUUID().toString(), server);
-        }
+    @AllArgsConstructor
+    public static class MapsListResponse extends Response {
+        public String[] maps;
     }
 
-    public record MapRemoveRequest(String id, String mapName, String server) implements ExpiringRequest<MapRemoveResponse> {
-        public MapRemoveRequest(String mapName, String server) {
-            this(UUID.randomUUID().toString(), mapName, server);
-        }
+    @AllArgsConstructor
+    public static class MapRemoveRequest extends Request<MapRemoveResponse> {
+        public String server, map;
     }
 
-    public sealed interface ExpiringResponse permits MapRemoveResponse, MapsListResponse {
-        String id();
+    @AllArgsConstructor
+    public static class MapRemoveResponse extends Response {
+        public String result;
     }
-
-    public record MapsListResponse(String id, String[] maps) implements ExpiringResponse { }
-    public record MapRemoveResponse(String id, String result) implements ExpiringResponse { }
 }
