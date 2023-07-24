@@ -78,7 +78,15 @@ public class ClientCommands {
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
         handler.removeCommand("t");
-        register("t", (args, player) -> sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]));
+        register("t", (args, player) -> {
+            var data = database.getCached(player.uuid());
+            if (data.muted > Time.millis()) {
+                Duration remain = Duration.ofMillis(data.muted - Time.millis());
+                send(player, "you-are-muted", remain.toMinutes(), remain.toSecondsPart());
+                return;
+            }
+            sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]);
+        });
 
         register("rtv", (args, player) -> {
             if (vote != null) {
