@@ -42,7 +42,7 @@ dependencies {
     compileOnly("com.github.anuken.mindustryjitpack:server:v$mindustryVersion")
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
-    implementation("com.github.osp54:Sock:bef9e7b")
+    implementation("com.github.osp54:Sock:aa5b552")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
