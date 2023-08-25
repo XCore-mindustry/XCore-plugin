@@ -184,7 +184,6 @@ public class ClientCommands {
             }
 
             Player found = Find.player(args[0]);
-
             if (found == null) {
                 send(player, "error.player-not-found");
                 return;
@@ -237,11 +236,14 @@ public class ClientCommands {
                 player.team(team);
                 send(player, "commands.spectate.success2");
             } else {
-                playerTeams.put(player.uuid(), player.team());
-                player.team(Team.derelict);
-
                 Call.effect(Fx.blockCrash, player.x, player.y, 0, Color.white, Blocks.thoriumReactor);
-                Time.run(Fx.blockCrash.lifetime, () -> Call.unitEnvDeath(player.unit());
+                Time.run(Fx.blockCrash.lifetime, () -> {
+                    Call.effect(Fx.unitEnvKill, player.x, player.y, 0, Color.white);
+                    player.clearUnit();
+                    
+                    playerTeams.put(player.uuid(), player.team());
+                    player.team(Team.derelict);
+                });
                 
                 send(player, "commands.spectate.success");
             }
