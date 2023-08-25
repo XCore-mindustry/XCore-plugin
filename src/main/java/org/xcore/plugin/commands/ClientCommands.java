@@ -42,8 +42,8 @@ import static org.xcore.plugin.utils.Utils.voteChoice;
 import static useful.Bundle.*;
 
 public class ClientCommands {
+    
     public static void register(CommandHandler handler) {
-        handler.removeCommand("help");
         register("help", (args, player) -> {
             if (args.length > 0 && !Strings.canParseInt(args[0])) {
                 send(player, "error.page-number");
@@ -77,7 +77,6 @@ public class ClientCommands {
 
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
-        handler.removeCommand("t");
         register("t", (args, player) -> {
             var data = database.getCached(player.uuid());
             if (data.muted > Time.millis()) {
@@ -171,7 +170,6 @@ public class ClientCommands {
             player.sendMessage(builder.toString());
         });
 
-        handler.removeCommand("votekick");
         register("votekick", (args, player) -> {
             if (voteKick != null) {
                 send(player, "error.vote-in-progress");
@@ -205,7 +203,6 @@ public class ClientCommands {
             voteKick.vote(player, 1);
         });
 
-        handler.removeCommand("vote");
         register("vote", (args, player) -> {
             if (voteKick == null) {
                 send(player, "error.no-voting");
@@ -231,20 +228,23 @@ public class ClientCommands {
             voteKick.vote(player, sign);
         });
         
-        ObjectMap<String, Team> playerTeamObjectMap = new ObjectMap<>();
+        var playerTeams = new ObjectMap<String, Team>();
         register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
-            if(!playerTeamObjectMap.containsKey(player.uuid())) playerTeamObjectMap.put(player.uuid(), player.team());
-            
-            if(player.team() != Team.derelict){
+            var team = playerTeams.remove(player.uuid());
+            if (team != null) {
+                player.team(team);
+                send(player, "commands.spectate.success2");
+            } else if (player.team != Team.derelict) {
+                playerTeams.put(player.uuid(), player.team());
+                player.unit().spawnedByCore(true);
+
                 player.team(Team.derelict);
-                Call.unitClear(player);
-                player.unit().kill();
+                player.clearUnit();
                 send(player, "commands.spectate.success");
             } else {
-                player.team(playerTeamObjectMap.get(player.uuid()));
-                send(player, "commands.spectate.success2");
+                // TODO the player is in derelict team, but isn't spectating. Wtf happened?
             }
         });
 
