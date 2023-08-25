@@ -12,6 +12,7 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.gateway.intent.Intent;
@@ -196,8 +197,9 @@ public class Bot {
                         .addField("Name", data.nickname, false)
                         .addField("Server", server, false)
                         .build())
-                .addComponent(ActionRow.of(Button.success(server + "_" + pid + "_admreq", "Confirm"),
-                        Button.danger("decline", "Decline")))
+                .addComponent(ActionRow.of(
+                        Button.success(server + "_" + pid + "_admreq", ReactionEmoji.unicode("✅"), "Confirm"),
+                        Button.danger("decline", ReactionEmoji.unicode("❌"), "Decline")))
                 .build()).subscribe();
     }
 }
