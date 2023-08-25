@@ -2,7 +2,7 @@ package org.xcore.plugin.commands;
 
 import arc.Core;
 import arc.math.Mathf;
-import arc.struct.Seq;
+import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Strings;
 import arc.util.Time;
@@ -230,11 +230,16 @@ public class ClientCommands {
 
             voteKick.vote(player, sign);
         });
-
+        
+        ObjectMap<String, Team> playerTeamObjectMap = new ObjectMap<>();
         register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
-            player.team(Team.derelict);
+            if(!playerTeamObjectMap.containsKey(player.uuid())) playerTeamObjectMap.put(player.uuid(), player.team());
+            
+            if(player.team() != Team.derelict) player.team(Team.derelict);
+            else player.team(playerTeamObjectMap.get(player.uuid()));
+            
             player.unit().kill();
             send(player, "commands.spectate.success");
         });
