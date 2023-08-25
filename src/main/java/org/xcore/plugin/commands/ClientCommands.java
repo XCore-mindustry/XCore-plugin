@@ -237,11 +237,15 @@ public class ClientCommands {
 
             if(!playerTeamObjectMap.containsKey(player.uuid())) playerTeamObjectMap.put(player.uuid(), player.team());
             
-            if(player.team() != Team.derelict) player.team(Team.derelict);
-            else player.team(playerTeamObjectMap.get(player.uuid()));
-            
-            player.unit().kill();
-            send(player, "commands.spectate.success");
+            if(player.team() != Team.derelict){
+                player.team(Team.derelict);
+                Call.unitClear(player);
+                player.unit().kill();
+                send(player, "commands.spectate.success");
+            } else {
+                player.team(playerTeamObjectMap.get(player.uuid()));
+                send(player, "commands.spectate.success2");
+            }
         });
 
         if (config.isMiniHexed()) {
