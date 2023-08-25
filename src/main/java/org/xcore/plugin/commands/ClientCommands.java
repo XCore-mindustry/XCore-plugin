@@ -229,21 +229,20 @@ public class ClientCommands {
         });
         
         var playerTeams = new ObjectMap<String, Team>();
-        var spectatingPlayers = new Seq<String>();
         register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
             var team = playerTeams.remove(player.uuid());
             if (team != null) {
                 player.team(team);
-                spectatingPlayers.add(player.uuid());
                 send(player, "commands.spectate.success2");
-            } else if (player.team() != Team.derelict && spectatingPlayers.contains(player.uuid())) {
+            } else {
                 playerTeams.put(player.uuid(), player.team());
-                player.unit().spawnedByCore(true);
-                spectatingPlayers.remove(player.uuid())
                 player.team(Team.derelict);
-                player.clearUnit();
+
+                Call.effect(Fx.blockCrash, player.x, player.y, 0, Color.white, Blocks.thoriumReactor);
+                Time.run(Fx.blockCrash.lifetime, () -> Call.unitEnvDeath(player.unit());
+                
                 send(player, "commands.spectate.success");
             }
         });
