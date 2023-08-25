@@ -229,22 +229,22 @@ public class ClientCommands {
         });
         
         var playerTeams = new ObjectMap<String, Team>();
+        var spectatingPlayers = new Seq<String>();
         register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
             var team = playerTeams.remove(player.uuid());
             if (team != null) {
                 player.team(team);
+                spectatingPlayers.add(player.uuid());
                 send(player, "commands.spectate.success2");
-            } else if (player.team != Team.derelict) {
+            } else if (player.team() != Team.derelict && spectatingPlayers.contains(player.uuid())) {
                 playerTeams.put(player.uuid(), player.team());
                 player.unit().spawnedByCore(true);
-
+                spectatingPlayers.remove(player.uuid())
                 player.team(Team.derelict);
                 player.clearUnit();
                 send(player, "commands.spectate.success");
-            } else {
-                // TODO the player is in derelict team, but isn't spectating. Wtf happened?
             }
         });
 
