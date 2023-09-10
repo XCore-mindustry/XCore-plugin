@@ -106,6 +106,28 @@ public class ClientCommands {
             vote.vote(player, 1);
         });
 
+        register("stats", (args, player) -> {
+            PlayerData data;
+            if (args.length > 0) {
+                data = database.getCachedOrDb(Strings.parseInt(args[0]));
+            } else {
+                data = database.getCached(player.uuid());
+            }
+
+
+            if (data == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
+
+            infoMessage(player, "commands.stats.content",
+                    data.nickname,
+                    data.pid,
+                    data.totalPlayTime,
+                    data.hexedRank().tag,
+                    data.hexedRank().name());
+        });
+
         register("lb", (args, player) -> {
             var data = database.getCached(player.uuid());
 
