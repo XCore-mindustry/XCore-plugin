@@ -1,5 +1,5 @@
+
 import fr.xpdustry.toxopid.Toxopid
-import fr.xpdustry.toxopid.dsl.mindustryDependencies
 import fr.xpdustry.toxopid.spec.ModMetadata
 import fr.xpdustry.toxopid.spec.ModPlatform
 import fr.xpdustry.toxopid.task.MindustryExec
@@ -11,7 +11,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "2.6.6"
-val mindustryVersion = "145"
+val mindustryVersion = "146"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -31,15 +31,16 @@ val metadata = ModMetadata(
 
 repositories {
     mavenCentral()
-    maven(url = "https://maven.xpdustry.fr/snapshots")
+    maven(url = "https://maven.xpdustry.com/snapshots")
+    maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://www.jitpack.io")
 }
 
 dependencies {
     compileOnly("com.github.anuken.arc:arc-core:v$mindustryVersion")
-    compileOnly("com.github.anuken.mindustryjitpack:core:v$mindustryVersion")
-    compileOnly("com.github.anuken.mindustryjitpack:server:v$mindustryVersion")
+    compileOnly("com.github.anuken.Mindustry:core:v$mindustryVersion")
+    compileOnly("com.github.anuken.Mindustry:server:v$mindustryVersion")
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
     implementation("com.github.osp54:Sock:9d465f7")
