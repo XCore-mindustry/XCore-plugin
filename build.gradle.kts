@@ -38,9 +38,9 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.github.anuken.arc:arc-core:v$mindustryVersion")
-    compileOnly("com.github.anuken.Mindustry:core:v$mindustryVersion")
-    compileOnly("com.github.anuken.Mindustry:server:v$mindustryVersion")
+    compileOnly("com.github.Anuken.arc:arc-core:v$mindustryVersion")
+    compileOnly("com.github.Anuken.Mindustry:core:v$mindustryVersion")
+    compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
     implementation("com.github.osp54:Sock:9d465f7")
