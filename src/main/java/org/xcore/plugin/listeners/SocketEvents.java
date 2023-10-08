@@ -8,6 +8,7 @@ import com.ospx.sock.EventBus.Response;
 import lombok.AllArgsConstructor;
 import mindustry.gen.Groups;
 import mindustry.maps.Map;
+import mindustry.net.Administration;
 import mindustry.net.Packets;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.commands.DiscordCommands;
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.config;
 import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.XcorePlugin.info;
 import static useful.Bundle.send;
 
 public class SocketEvents {
@@ -107,7 +109,15 @@ public class SocketEvents {
 
         NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
+        NetSock.subscribe(PardonPlayer.class, e -> {
+            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.uuid());
 
+            if (info != null) {
+                info.lastKicked = 0;
+                netServer.admins.kickedIPs.remove(info.lastIP);
+                info("Pardoned player: @", info.plainLastName());
+            }
+        });
         NetSock.subscribe(SyncPlayerData.class, e -> {
             if (database.cachedPlayerData.containsKey(e.data().uuid))
                 database.setCached(e.data());
@@ -161,6 +171,9 @@ public class SocketEvents {
     }
 
     public record LoadMaps(String[] urls, String server) {
+    }
+
+    public record PardonPlayer(String uuid) {
     }
 
     @AllArgsConstructor

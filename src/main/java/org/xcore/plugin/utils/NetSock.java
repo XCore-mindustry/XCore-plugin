@@ -37,8 +37,8 @@ public class NetSock {
         sock.send(event);
     }
 
-    public static <T> Subscription<T> subscribe(Class<T> type, Cons<T> consumer) {
-        return sock.on(type, consumer);
+    public static <T> Subscription<T> subscribe(Class<T> type, Cons<T> listener) {
+        return sock.on(type, listener);
     }
 
     public static <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {

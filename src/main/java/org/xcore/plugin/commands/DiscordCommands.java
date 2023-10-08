@@ -147,5 +147,18 @@ public class DiscordCommands {
             database.getBanDatas().deleteBan(data.uuid, ip);
             context.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
+
+        discordCommands.<MessageContext>register("pardon", "<player-id>", "Pardon player.", (args, context) -> {
+            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
+
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getPlayerDataById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            NetSock.post(new PardonPlayer(data.uuid));
+            context.success("Success", "'@' pardoned.", data.nickname).subscribe();
+        });
     }
 }
