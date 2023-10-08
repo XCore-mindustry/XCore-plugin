@@ -2,17 +2,19 @@ package org.xcore.plugin.commands;
 
 import arc.Core;
 import arc.math.Mathf;
-import arc.struct.Seq;
+import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
+import arc.graphics.Color; //darkness you onion 2
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
+import mindustry.content.*; //AAAAAAAAAAAAAAAAAAAAAAAAAA
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -42,8 +44,8 @@ import static org.xcore.plugin.utils.Utils.voteChoice;
 import static useful.Bundle.*;
 
 public class ClientCommands {
+    
     public static void register(CommandHandler handler) {
-        handler.removeCommand("help");
         register("help", (args, player) -> {
             if (args.length > 0 && !Strings.canParseInt(args[0])) {
                 send(player, "error.page-number");
@@ -77,8 +79,15 @@ public class ClientCommands {
 
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
-        handler.removeCommand("t");
-        register("t", (args, player) -> sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]));
+        register("t", (args, player) -> {
+            var data = database.getCached(player.uuid());
+            if (data.muted > Time.millis()) {
+                Duration remain = Duration.ofMillis(data.muted - Time.millis());
+                send(player, "you-are-muted", remain.toMinutes(), remain.toSecondsPart());
+                return;
+            }
+            sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]);
+        });
 
         register("rtv", (args, player) -> {
             if (vote != null) {
@@ -95,6 +104,28 @@ public class ClientCommands {
 
             vote = new VoteRtv(map);
             vote.vote(player, 1);
+        });
+
+        register("stats", (args, player) -> {
+            PlayerData data;
+            if (args.length > 0) {
+                data = database.getCachedOrDb(Strings.parseInt(args[0]));
+            } else {
+                data = database.getCached(player.uuid());
+            }
+
+
+            if (data == null) {
+                send(player, "error.player-not-found");
+                return;
+            }
+
+            infoMessage(player, "commands.stats.content",
+                    data.nickname,
+                    data.pid,
+                    data.totalPlayTime,
+                    data.hexedRank().tag,
+                    data.hexedRank().name());
         });
 
         register("lb", (args, player) -> {
@@ -163,7 +194,6 @@ public class ClientCommands {
             player.sendMessage(builder.toString());
         });
 
-        handler.removeCommand("votekick");
         register("votekick", (args, player) -> {
             if (voteKick != null) {
                 send(player, "error.vote-in-progress");
@@ -178,7 +208,6 @@ public class ClientCommands {
             }
 
             Player found = Find.player(args[0]);
-
             if (found == null) {
                 send(player, "error.player-not-found");
                 return;
@@ -197,7 +226,6 @@ public class ClientCommands {
             voteKick.vote(player, 1);
         });
 
-        handler.removeCommand("vote");
         register("vote", (args, player) -> {
             if (voteKick == null) {
                 send(player, "error.no-voting");
@@ -222,13 +250,27 @@ public class ClientCommands {
 
             voteKick.vote(player, sign);
         });
-
+        
+        var playerTeams = new ObjectMap<String, Team>();
         register("spectate", (args, player) -> {
             if (config.isMiniHexed()) killTeam(player.team());
 
-            player.team(Team.derelict);
-            player.unit().kill();
-            send(player, "commands.spectate.success");
+            var team = playerTeams.remove(player.uuid());
+            if (team != null) {
+                player.team(team);
+                send(player, "commands.spectate.success2");
+            } else {
+                Call.effect(Fx.blockCrash, player.x, player.y, 0, Color.white, Blocks.thoriumReactor);
+                Time.run(Fx.blockCrash.lifetime, () -> {
+                    Call.effect(Fx.unitEnvKill, player.x, player.y, 0, Color.white);
+                    player.clearUnit();
+                    
+                    playerTeams.put(player.uuid(), player.team());
+                    player.team(Team.derelict);
+                });
+                
+                send(player, "commands.spectate.success");
+            }
         });
 
         if (config.isMiniHexed()) {

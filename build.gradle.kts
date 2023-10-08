@@ -31,7 +31,8 @@ val metadata = ModMetadata(
 
 repositories {
     mavenCentral()
-    maven(url = "https://maven.xpdustry.fr/snapshots")
+    maven(url = "https://maven.xpdustry.com/snapshots")
+    maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
     maven(url = "https://www.jitpack.io")
@@ -43,7 +44,7 @@ dependencies {
     compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
 
     implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
-    implementation("com.github.osp54:Sock:93af23c")
+    implementation("com.github.osp54:Sock:9d465f7")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
