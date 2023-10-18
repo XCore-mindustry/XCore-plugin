@@ -125,7 +125,8 @@ public class ClientCommands {
                     data.pid,
                     data.totalPlayTime,
                     data.hexedRank().tag,
-                    data.hexedRank().name());
+                    data.hexedRank().name(),
+                    data.pvpRating);
         });
 
         register("lb", (args, player) -> {
