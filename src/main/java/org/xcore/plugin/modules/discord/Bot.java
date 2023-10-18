@@ -1,6 +1,7 @@
 package org.xcore.plugin.modules.discord;
 
 import arc.struct.Seq;
+import arc.util.Log;
 import arc.util.Strings;
 import discord4j.common.util.Snowflake;
 import discord4j.common.util.TimestampFormat;
@@ -143,6 +144,12 @@ public class Bot {
 
     public static void sendMessageEvent(String playerName, String message, String server) {
         if (!isConnected) return;
+
+        if (globalConfig.servers.get(server) == null) {
+            Log.err("@ server has no log channel id!", server);
+            return;
+        }
+
         getServerLogChannel(server).createMessage(
                 Strings.format("`@: @`", playerName, message)
         ).subscribe();
