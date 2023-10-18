@@ -97,6 +97,7 @@ public class ClientCommands {
             }
 
             NetSock.post(new SocketEvents.GlobalChatEvent(player.coloredName(), args[0], config.server));
+            NetSock.post(new SocketEvents.MessageEvent(player.plainName(), args[0].replace("`", "*"), "global"));
         });
 
         register("rtv", (args, player) -> {
