@@ -19,6 +19,7 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import useful.Bundle;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
@@ -87,6 +88,8 @@ public class PluginEvents {
         });
 
         Events.on(PlayEvent.class, event -> {
+            gameStarted = Time.millis();
+
             var mapRules = JsonIO.read(Rules.class, state.map.tags.get("rules"));
             state.rules.bannedBlocks.addAll(mapRules.bannedBlocks);
             state.rules.bannedUnits.addAll(mapRules.bannedUnits);

@@ -13,6 +13,7 @@ public class Config {
 
     public int playerLimit = 30;
     public String globalConfigDirectory = null;
+    public boolean gameStartedTimer = true;
 
     public static void init() {
         if (configFile.exists()) {

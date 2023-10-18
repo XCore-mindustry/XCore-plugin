@@ -25,11 +25,11 @@ import org.xcore.plugin.utils.database.Database;
 import useful.Bundle;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.writeString;
 
 public class XcorePlugin extends Plugin {
@@ -73,7 +73,11 @@ public class XcorePlugin extends Plugin {
 
         server.setDiscoveryHandler((address, handler) -> {
             String name = Administration.Config.serverName.string();
-            String description = !Administration.Config.desc.string().equals("off") ? Administration.Config.desc.string() : "";
+            String footer = config.gameStartedTimer
+                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
+                    : "";
+            String description = Administration.Config.desc.string().equals("off") ? footer : Administration.Config.desc.string() + footer;
+
             String map = state.map.name();
 
             ByteBuffer buffer = ByteBuffer.allocate(500);
@@ -89,7 +93,7 @@ public class XcorePlugin extends Plugin {
             buffer.put((byte) state.rules.mode().ordinal());
             buffer.putInt(config.playerLimit > 0 ? config.getNoAdminPlayerLimit() : 0);
 
-            writeString(buffer, description, 100);
+            writeString(buffer, description, 200);
             if (state.rules.modeName != null) {
                 writeString(buffer, state.rules.modeName, 50);
             }
