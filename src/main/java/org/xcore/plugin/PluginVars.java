@@ -12,6 +12,7 @@ import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteSession;
 import org.xcore.plugin.utils.database.Database;
 
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -24,6 +25,7 @@ public class PluginVars {
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
+    public static long gameStarted;
     public static boolean gameoverRestart = false;
     public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
     public static final String discordUrl = "https://discord.gg/RUMCCa9QAC";
