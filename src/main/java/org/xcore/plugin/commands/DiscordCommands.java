@@ -30,6 +30,22 @@ public class DiscordCommands {
             discordCommands.getCommandList().each(command -> builder.append(discordCommands.prefix).append("**").append(command.text).append("**").append(!command.paramText.isEmpty() ? " " + command.paramText : "").append(" - ").append(command.description).append("\n"));
             context.info("All available commands:", builder.toString()).subscribe();
         });
+
+        discordCommands.<MessageContext>register("stats", "<player-id>", "Show player stats.", (args, context) -> {
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getPlayerDataById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            context.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
+                            .addField("ID", String.valueOf(data.pid), false)
+                            .addField("Total playtime", String.valueOf(data.totalPlayTime), false)
+                            .addField("Hexed Rank", data.hexedRank().name(), false)
+                            .addField("MiniPvP rating", String.valueOf(data.pvpRating), true))
+                    .subscribe();
+        });
+
         discordCommands.<MessageContext>register("upload-map", "Upload map to the servers", (args, context) -> {
             if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
 
