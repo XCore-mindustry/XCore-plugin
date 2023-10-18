@@ -2,10 +2,12 @@ package org.xcore.plugin.listeners;
 
 import arc.util.Http;
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Timer;
 import com.ospx.sock.EventBus.Request;
 import com.ospx.sock.EventBus.Response;
 import lombok.AllArgsConstructor;
+import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.net.Administration;
@@ -106,7 +108,8 @@ public class SocketEvents {
 
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);
         });
-
+        NetSock.subscribe(GlobalChatEvent.class, e ->
+                Call.sendMessage(Strings.format("[royal][[[orange]GLOBAL [lightgray](from [accent]@[])[] @[]]: [white]@", e.server, e.authorName, e.message)));
         NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
         NetSock.subscribe(PardonPlayer.class, e -> {
@@ -153,6 +156,9 @@ public class SocketEvents {
     }
 
     public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) {
+    }
+
+    public record GlobalChatEvent(String authorName, String message, String server) {
     }
 
     public record DiscordMessageEvent(String authorName, String message, String server) {

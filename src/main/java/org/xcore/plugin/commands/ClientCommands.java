@@ -14,7 +14,7 @@ import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import mindustry.content.*; //AAAAAAAAAAAAAAAAAAAAAAAAAA
+import mindustry.content.*;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -87,6 +87,16 @@ public class ClientCommands {
                 return;
             }
             sendFrom(other -> other.team() == player.team(), player, args[0], "commands.t.chat", player.team().color, player.coloredName(), args[0]);
+        });
+
+        register("g", (args, player) -> {
+            var data = database.getCached(player.uuid());
+            if (data.totalPlayTime < globalChatMinutesRequired && !player.admin) {
+                send(player, "error.globalchat-total-playtime", globalChatMinutesRequired);
+                return;
+            }
+
+            NetSock.post(new SocketEvents.GlobalChatEvent(player.coloredName(), args[0], config.server));
         });
 
         register("rtv", (args, player) -> {

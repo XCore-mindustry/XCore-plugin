@@ -43,4 +43,5 @@ public class PluginVars {
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;
+    public static int globalChatMinutesRequired = 4 * 60;
 }
