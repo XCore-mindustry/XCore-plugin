@@ -71,12 +71,11 @@ public class XcorePlugin extends Plugin {
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
 
+        final String[] footer = {""};
+
         server.setDiscoveryHandler((address, handler) -> {
             String name = Administration.Config.serverName.string();
-            String footer = config.gameStartedTimer
-                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
-                    : "";
-            String description = Administration.Config.desc.string().equals("off") ? footer : Administration.Config.desc.string() + footer;
+            String description = Administration.Config.desc.string().equals("off") ? footer[0] : Administration.Config.desc.string() + footer[0];
 
             String map = state.map.name();
 
@@ -106,19 +105,24 @@ public class XcorePlugin extends Plugin {
         Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
-        Timer.schedule(() -> database.cachedPlayerData.each((uuid, data) -> {
-            var player = Find.playerByUuid(uuid);
+        Timer.schedule(() -> {
+            footer[0] = config.gameStartedTimer
+                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
+                    : "";
+            database.cachedPlayerData.each((uuid, data) -> {
+                var player = Find.playerByUuid(uuid);
 
-            if (player == null) return;
+                if (player == null) return;
 
-            data.totalPlayTime++;
+                data.totalPlayTime++;
 
-            if (player.admin) {
-                data.playTime++;
-            }
+                if (player.admin) {
+                    data.playTime++;
+                }
 
-            data.save();
-        }), 0, 60);
+                data.save();
+            });
+        }, 0, 60);
 
         Console.init();
         info("Plugin loaded");
