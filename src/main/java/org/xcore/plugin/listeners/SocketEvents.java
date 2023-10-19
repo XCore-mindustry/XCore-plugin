@@ -108,8 +108,10 @@ public class SocketEvents {
 
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);
         });
-        NetSock.subscribe(GlobalChatEvent.class, e ->
-                Call.sendMessage(Strings.format("[royal][[[orange]GLOBAL [lightgray](from [accent]@[])[] @[]]: [white]@", e.server, e.authorName, e.message)));
+        NetSock.subscribe(GlobalChatEvent.class, e -> {
+            Call.sendMessage(Strings.format("[royal][[[orange]GLOBAL [lightgray](from [accent]@[])[] @[]]: [white]@", e.server, e.authorName, e.message));
+            Log.infoTag("GLOBAL-" + e.server, Strings.stripColors(e.authorName) + ": " + e.message);
+        });
         NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
         NetSock.subscribe(PardonPlayer.class, e -> {
