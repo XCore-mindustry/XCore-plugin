@@ -71,8 +71,8 @@ public class ClientCommands {
                 result.append(format("commands.help.content",
                         player.locale,
                         command.text,
-                        format("commands." + command.text + ".params", player.locale),
-                        format("commands." + command.text + ".description", player.locale)));
+                        format("commands." + command.text + ".params", command.paramText, locale(player.locale)),
+                        format("commands." + command.text + ".description", command.description, locale(player.locale))));
             }
             player.sendMessage(result.toString());
         });
