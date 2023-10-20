@@ -5,17 +5,20 @@ import discord4j.core.event.domain.interaction.*;
 import discord4j.core.object.component.*;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
-import io.netty.handler.timeout.TimeoutException;
+import discord4j.rest.util.Color;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.listeners.SocketEvents.*;
 import org.xcore.plugin.modules.discord.*;
 import org.xcore.plugin.utils.*;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
@@ -44,6 +47,29 @@ public class DiscordCommands {
                             .addField("Hexed Rank", data.hexedRank().name(), false)
                             .addField("MiniPvP rating", String.valueOf(data.pvpRating), true))
                     .subscribe();
+        });
+        discordCommands.<MessageContext>register("search", "<player-name...>", "Search players.", (args, context) -> {
+            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
+
+            PaginationUtil.paginate(context, (embed, page) -> {
+                embed.title("Searching players '" + args[0] + "'");
+
+                var search = database.getPlayerDatas().search("nickname", args[0], 6, page);
+
+                if (search != null) {
+                    embed.color(Color.GREEN);
+                    for (PlayerData data : search.found()) {
+                        embed.addField(data.nickname, String.valueOf(data.pid), false);
+                    }
+
+                    embed.footer("Page " + page + "/" + search.totalPages() + ", " + search.total() + " players", null);
+                } else {
+                    embed.color(Color.RED);
+                    embed.description("Players not found.");
+                }
+
+                return search == null ? 0 : search.totalPages();
+            });
         });
 
         discordCommands.<MessageContext>register("upload-map", "Upload map to the servers", (args, context) -> {
@@ -74,6 +100,7 @@ public class DiscordCommands {
                             .filter(event -> event.getCustomId().equals("choose-server")
                                     && event.getMessageId().equals(message.getId())
                                     && event.getInteraction().getMember().get().equals(context.member()))
+                            .timeout(Duration.ofMinutes(10))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
                                 NetSock.post(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
