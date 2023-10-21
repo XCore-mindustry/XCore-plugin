@@ -1,6 +1,7 @@
 package org.xcore.plugin.commands;
 
 import arc.util.*;
+import discord4j.common.util.TimestampFormat;
 import discord4j.core.event.domain.interaction.*;
 import discord4j.core.object.component.*;
 import discord4j.core.object.entity.Attachment;
@@ -42,7 +43,7 @@ public class DiscordCommands {
             if (DiscordHelper.notFound(context, data)) return;
 
             context.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
-                            .addField("ID", String.valueOf(data.pid), false)
+                            .addField("ID", data.pid + " minutes", false)
                             .addField("Total playtime", String.valueOf(data.totalPlayTime), false)
                             .addField("Hexed Rank", data.hexedRank().name(), false)
                             .addField("MiniPvP rating", String.valueOf(data.pvpRating), true))
@@ -54,21 +55,24 @@ public class DiscordCommands {
             PaginationUtil.paginate(context, (embed, page) -> {
                 embed.title("Searching players '" + args[0] + "'");
 
-                var search = database.getPlayerDatas().search("nickname", args[0], 6, page);
+                var search = database.getPlayerDatas().search(args[0], 6, page);
 
                 if (search != null) {
                     embed.color(Color.GREEN);
-                    for (PlayerData data : search.found()) {
-                        embed.addField(data.nickname, String.valueOf(data.pid), false);
+                    for (PlayerData data : search.results()) {
+                        embed.addField(data.nickname, Strings.format("""
+                                ID: @
+                                Total playtime: @ minutes
+                                """, data.pid, data.totalPlayTime), false);
                     }
 
-                    embed.footer("Page " + page + "/" + search.totalPages() + ", " + search.total() + " players", null);
+                    embed.footer("Page " + page + "/" + search.pages() + ", " + search.total() + " players", null);
                 } else {
                     embed.color(Color.RED);
                     embed.description("Players not found.");
                 }
 
-                return search == null ? 0 : search.totalPages();
+                return search == null ? 0 : search.pages();
             });
         });
 
@@ -130,6 +134,37 @@ public class DiscordCommands {
                     response -> context.info("Result", response.result).subscribe(),
                     () -> DiscordHelper.noResponse(context)
             );
+        });
+
+        discordCommands.<MessageContext>register("bans", "[name]", "List/search bans.", (args, context) -> {
+            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
+
+            PaginationUtil.paginate(context, (embed, page) -> {
+                embed.title("Bans");
+
+                var bans = args.length > 0
+                        ? database.getBanDatas().search(args[0], 6, page)
+                        : database.getBanDatas().pagedData(6, page);
+
+                if (bans != null) {
+                    embed.color(Color.GREEN);
+                    for (BanData ban : bans.results()) {
+                        embed.addField(ban.name, Strings.format("""
+                                        Admin: @
+                                        Reason: @
+                                        Unban Date: @
+                                        """,
+                                ban.adminName, ban.reason, TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant())), false);
+                    }
+
+                    embed.footer("Page " + page + "/" + bans.pages() + ", " + bans.total() + " bans", null);
+                } else {
+                    embed.color(Color.RED);
+                    embed.description("Bans not found.");
+                }
+
+                return bans == null ? 0 : bans.pages();
+            });
         });
 
         discordCommands.<MessageContext>register("ban", "<player-id> <period> [reason...]", "Ban the player", (args, context) -> {
