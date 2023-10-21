@@ -1,17 +1,17 @@
 package org.xcore.plugin.utils.database;
 
 
+import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.util.Log;
 import arc.util.Time;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.*;
+import lombok.Getter;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -19,12 +19,15 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.util.Optional;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static com.mongodb.client.model.Filters.regex;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.xcore.plugin.PluginVars.globalConfig;
 
 public class Database {
+    @Getter
     public final PlayerDataExecutor playerDatas;
+    @Getter
     public final BanDataExecutor banDatas;
 
     public final MongoClient mongoClient;
@@ -77,12 +80,23 @@ public class Database {
         return cachedPlayerData.remove(uuid);
     }
 
-    public PlayerDataExecutor getPlayerDatas() {
-        return playerDatas;
+    public static <I> PagedDataResult<I> search(MongoCollection<I> collection, String field, String value, int limit, int page) {
+        var filter = regex(field, value, "i");
+
+        long matchedDocs = collection.countDocuments(filter);
+        if (matchedDocs == 0) return null;
+
+        return new PagedDataResult<>((int) matchedDocs, Mathf.ceil((float) matchedDocs / limit), pagedData(
+                filter, collection, limit, page
+        ));
     }
 
-    public BanDataExecutor getBanDatas() {
-        return banDatas;
+    public static <I> FindIterable<I> pagedData(Bson filter, MongoCollection<I> collection, int limit, int page) {
+        int skips = (page - 1) * limit;
+
+        return collection.find(filter)
+                .skip(skips)
+                .limit(limit);
     }
 
     @SuppressWarnings("DataFlowIssue")
