@@ -542,6 +542,8 @@ public class ClientCommands {
     }
 
     public static void register(String name, CommandHandler.CommandRunner<Player> runner) {
+        if (config.disabledCommands.contains(name)) return;
+
         netServer.clientCommands.register(name,
                 Bundle.get("commands." + name + ".params", "", defaultLocale),
                 Bundle.get("commands." + name + ".description", defaultLocale),

@@ -4,6 +4,9 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.plugin.XcorePlugin;
 
+import java.util.List;
+import java.util.Set;
+
 import static org.xcore.plugin.PluginVars.*;
 
 public class Config {
@@ -14,6 +17,7 @@ public class Config {
     public int playerLimit = 30;
     public String globalConfigDirectory = null;
     public boolean gameStartedTimer = true;
+    public Set<String> disabledCommands = Set.of();
 
     public static void init() {
         if (configFile.exists()) {
