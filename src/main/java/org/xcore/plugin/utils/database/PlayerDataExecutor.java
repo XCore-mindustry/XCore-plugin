@@ -9,7 +9,9 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.util.Optional;
 
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Sorts.descending;
+import static org.xcore.plugin.PluginVars.database;
 
 public class PlayerDataExecutor {
     private final MongoCollection<PlayerData> collection;
@@ -33,6 +35,20 @@ public class PlayerDataExecutor {
 
     public void setPlayerData(PlayerData data) {
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+    }
+
+    public long clearBots() {
+        var result = collection.deleteMany(lt("totalPlayTime", 2));
+
+        int pids = 0;
+        for (PlayerData data : collection.find()) {
+            pids++;
+            data.pid = pids;
+            setPlayerData(data);
+        }
+
+        database.setCounter("player_id", pids);
+        return result.getDeletedCount();
     }
 
     public PagedDataResult<PlayerData> search(String value, int limit, int page) {

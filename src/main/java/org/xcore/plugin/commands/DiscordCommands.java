@@ -42,8 +42,8 @@ public class DiscordCommands {
             if (DiscordHelper.notFound(context, data)) return;
 
             context.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
-                            .addField("ID", data.pid + " minutes", false)
-                            .addField("Total playtime", String.valueOf(data.totalPlayTime), false)
+                            .addField("ID", String.valueOf(data.pid), false)
+                            .addField("Total playtime", data.totalPlayTime + " minutes", false)
                             .addField("Hexed Rank", data.hexedRank().name(), false)
                             .addField("MiniPvP rating", String.valueOf(data.pvpRating), true))
                     .subscribe();

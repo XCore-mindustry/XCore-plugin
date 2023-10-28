@@ -3,10 +3,12 @@ package org.xcore.plugin.utils.database;
 
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Time;
 import com.mongodb.client.*;
 import lombok.Getter;
+import mindustry.gen.Groups;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
@@ -76,6 +78,11 @@ public class Database {
         cachedPlayerData.put(data.uuid, data);
     }
 
+    public void reloadCache() {
+        cachedPlayerData.clear();
+        Groups.player.copy(new Seq<>()).map(playerDatas::getPlayerData).each(data -> cachedPlayerData.put(data.uuid, data));
+    }
+
     public PlayerData removeCached(String uuid) {
         return cachedPlayerData.remove(uuid);
     }
@@ -109,5 +116,14 @@ public class Database {
         Document result = counters.findOneAndUpdate(find, update);
 
         return (int) result.get("seq");
+    }
+
+    public void setCounter(String name, int value) {
+        MongoCollection<Document> counters = database.getCollection("counters");
+
+        Document find = new Document().append("_id", name);
+        Document update = new Document("$set", new Document("seq", value));
+
+        counters.findOneAndUpdate(find, update);
     }
 }
