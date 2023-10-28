@@ -97,6 +97,10 @@ public class PluginEvents {
             Log.info("@ banned blocks, @ banned units, @ revealed blocks", mapRules.bannedBlocks.size, mapRules.bannedUnits.size, mapRules.revealedBlocks.size);
         });
 
+        Events.on(String.class, event -> {
+            if ((event.equals("rvsb_world-reload") || event.equals("hexed_world-reload")) && gameoverRestart) restart();
+        });
+
         Events.on(GameOverEvent.class, event -> {
             String message = "Game over!";
 
@@ -113,16 +117,18 @@ public class PluginEvents {
             NetSock.post(
                     new SocketEvents.ServerActionEvent(message, config.server));
 
-            if (gameoverRestart) {
-                AtomicInteger secondsLeft = new AtomicInteger(10);
-                Timer.schedule(() -> {
-                    Call.announce("Restart in " + secondsLeft.get());
-                    if (secondsLeft.decrementAndGet() == 0) {
-                        netServer.kickAll(Packets.KickReason.serverRestarting);
-                        System.exit(0);
-                    }
-                }, 0, 1);
-            }
+            if (gameoverRestart) restart();
         });
+    }
+
+    private static void restart() {
+        AtomicInteger secondsLeft = new AtomicInteger(10);
+        Timer.schedule(() -> {
+            Call.announce("Restart in " + secondsLeft.get());
+            if (secondsLeft.decrementAndGet() == 0) {
+                netServer.kickAll(Packets.KickReason.serverRestarting);
+                System.exit(0);
+            }
+        }, 0, 1);
     }
 }

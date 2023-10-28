@@ -4,7 +4,6 @@ import arc.util.*;
 import discord4j.common.util.TimestampFormat;
 import discord4j.core.event.domain.interaction.*;
 import discord4j.core.object.component.*;
-import discord4j.core.object.entity.Attachment;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
 import org.xcore.plugin.listeners.SocketEvents;
@@ -83,7 +82,7 @@ public class DiscordCommands {
                     .getAttachments()
                     .stream()
                     .filter(attachment -> attachment.getFilename().endsWith(".msav"))
-                    .map(Attachment::getUrl)
+                    .map(a -> a.getUrl().substring(0, a.getUrl().indexOf("?")))
                     .toList();
 
             if (attachments.isEmpty()) {
@@ -180,8 +179,6 @@ public class DiscordCommands {
             if (DiscordHelper.checkPeriod(context, date)) return;
 
             Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
-            var info = netServer.admins.getInfoOptional(data.uuid);
-            String ip = info != null ? info.lastIP : null;
 
             context.channel().createMessage(MessageCreateSpec.builder()
                     .content("Are you sure you want to ban a player named '" + data.nickname + "'?")
@@ -190,12 +187,12 @@ public class DiscordCommands {
                     .filter(event -> DiscordHelper.buttonFilter(event, context, m))
                     .subscribe(event -> {
                         if (event.getCustomId().equals("yes")) {
-                            NetSock.post(new SocketEvents.KickBannedPlayer(data.uuid, ip));
+                            NetSock.post(new SocketEvents.KickBannedPlayer(data.uuid, data.ip));
 
                             BanData ban = BanData.builder()
                                     .name(data.nickname)
                                     .uuid(data.uuid)
-                                    .ip(ip)
+                                    .ip(data.ip)
                                     .adminName(context.member().getDisplayName())
                                     .reason(args.length > 2 ? args[2] : "Not Specified")
                                     .unbanDate(unbanDate)

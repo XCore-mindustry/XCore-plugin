@@ -177,6 +177,7 @@ public class MiniHexed {
         NetSock.post(
                 new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
 
+        Events.fire("hexed_world-reload");
         Timer.schedule(MiniHexed::reloadMap, 10);
     }
 
