@@ -42,7 +42,7 @@ public class SocketEvents {
             NetSock.subscribe(MessageEvent.class,
                     e -> Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
             NetSock.subscribe(ServerActionEvent.class,
-                    e -> Bot.getServerLogChannel(e.server()).createMessage(e.message()).subscribe());
+                    e -> Bot.getServerLogChannel(e.server()).ifPresent(c -> c.createMessage(e.message()).subscribe()));
             NetSock.subscribe(PlayerJoinLeaveEvent.class,
                     e -> Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
             NetSock.subscribe(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
