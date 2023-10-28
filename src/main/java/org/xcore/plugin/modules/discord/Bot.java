@@ -16,6 +16,7 @@ import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
+import discord4j.discordjson.possible.Possible;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
@@ -27,6 +28,8 @@ import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
+
+import java.util.Optional;
 
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.commands.DiscordCommands.discordCommands;
@@ -138,8 +141,14 @@ public class Bot {
         }
     }
 
-    public static RestChannel getServerLogChannel(String server) {
-        return client.getChannelById(Snowflake.of(globalConfig.servers.get(server)));
+    public static Optional<RestChannel> getServerLogChannel(String server) {
+        var id = globalConfig.servers.get(server);
+        if (id == null) {
+            Log.err("@ server has no log channel id!", server);
+            return Optional.empty();
+        }
+
+        return Optional.of(client.getChannelById(Snowflake.of(id)));
     }
 
     public static void sendMessageEvent(String playerName, String message, String server) {
@@ -150,16 +159,16 @@ public class Bot {
             return;
         }
 
-        getServerLogChannel(server).createMessage(
+        getServerLogChannel(server).ifPresent(c -> c.createMessage(
                 Strings.format("`@: @`", playerName, message)
-        ).subscribe();
+        ).subscribe());
     }
 
     public static void sendJoinLeaveEventMessage(String playerName, String server, Boolean join) {
         if (!isConnected) return;
-        getServerLogChannel(server).createMessage(
+        getServerLogChannel(server).ifPresent(c -> c.createMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
-        ).subscribe();
+        ).subscribe());
     }
 
     public static void sendAdminPlayTimeMessage(Seq<PlayerData> datas) {
