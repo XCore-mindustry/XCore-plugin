@@ -90,6 +90,7 @@ public class SocketEvents {
                     "Map not found" :
                     "Succcesfully removed map " + map.plainName()
             ));
+            if (map != null) info("Removed map @", map.plainName());
         });
 
         NetSock.subscribe(AdminRequestConfirmEvent.class, e -> {
@@ -107,6 +108,7 @@ public class SocketEvents {
             }
 
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);
+            info("Confirmed admin request: @", info.plainLastName());
         });
         NetSock.subscribe(GlobalChatEvent.class, e -> {
             Call.sendMessage(Strings.format("[royal][[[orange]GLOBAL [lightgray](from [accent]@[])[] @[]]: [white]@", e.server, e.authorName, e.message));
@@ -124,8 +126,14 @@ public class SocketEvents {
             }
         });
         NetSock.subscribe(SyncPlayerData.class, e -> {
-            if (database.cachedPlayerData.containsKey(e.data().uuid))
+            if (database.cachedPlayerData.containsKey(e.data().uuid)) {
                 database.setCached(e.data());
+                info("Synced player data: @ (@)", e.data().nickname, e.data().uuid);
+            }
+        });
+        NetSock.subscribe(ReloadPlayerDataCache.class, e -> {
+            database.reloadCache();
+            info("Reloaded player data cache.");
         });
 
         NetSock.subscribe(LoadMaps.class, e -> {
@@ -143,6 +151,7 @@ public class SocketEvents {
 
                             if (counter.incrementAndGet() == e.urls.length) {
                                 maps.reload();
+                                info("Loaded @ maps.", e.urls.length);
                             }
                         });
             }
@@ -176,6 +185,9 @@ public class SocketEvents {
     }
 
     public record SyncPlayerData(PlayerData data) {
+    }
+
+    public static class ReloadPlayerDataCache {
     }
 
     public record LoadMaps(String[] urls, String server) {

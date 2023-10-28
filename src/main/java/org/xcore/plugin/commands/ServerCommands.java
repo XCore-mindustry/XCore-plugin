@@ -41,6 +41,12 @@ public class ServerCommands {
             netServer.kickAll(Packets.KickReason.serverRestarting);
             System.exit(0);
         });
+        handler.register("db-clear-bots", "Clear all bots from database, ONLY OSPX CAN USE!", args -> {
+            long deleted = database.getPlayerDatas().clearBots();
+            NetSock.post(new SocketEvents.ReloadPlayerDataCache());
+
+            Log.info("Deleted @ bots", deleted);
+        });
 
         handler.removeCommand("info");
         handler.register("info", "<IP/UUID/#id/name...>", "Find player info(s).", args -> {
