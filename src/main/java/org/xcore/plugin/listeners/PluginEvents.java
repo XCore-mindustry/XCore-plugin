@@ -14,12 +14,12 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.io.JsonIO;
+import mindustry.net.Administration;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import useful.Bundle;
 
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
@@ -37,13 +37,17 @@ public class PluginEvents {
                 }
             });
 
+            send(player, "welcome", Administration.Config.serverName.string());
             var data = database.getPlayerDatas().getPlayerData(player).setNickname(player.coloredName());
 
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
             if (data.exists && !data.ip.equals(player.ip())) {
-                player.admin = false;
-                netServer.admins.unAdminPlayer(player.uuid());
+                if (player.admin) {
+                    player.admin = false;
+                    netServer.admins.unAdminPlayer(player.uuid());
+                    send(player, "error.ip-changed");
+                }
 
                 data.setIp(player.ip());
                 data.save();
@@ -59,10 +63,6 @@ public class PluginEvents {
 
             if (player.getInfo().timesJoined < 5)
                 Call.openURI(player.con, discordUrl);
-
-            if (data.translatorLanguage.equals("off")) {
-                send(event.player, "recommendation.tr");
-            }
 
             Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
             Bundle.send("player.joined", player.coloredName(), data.pid);

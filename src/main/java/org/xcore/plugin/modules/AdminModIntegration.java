@@ -52,6 +52,18 @@ public class AdminModIntegration {
             NetSock.post(ban);
             ban.save();
         });
+        netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
+            if (!player.admin) return;
+
+            BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
+
+            if (req.uuid == null || req.uuid.isBlank()) {
+                player.sendMessage("UUID cannot be blank.");
+                return;
+            }
+
+            netServer.admins.unbanPlayerID(req.uuid);
+        });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
             var data = database.getCached(player.uuid());
