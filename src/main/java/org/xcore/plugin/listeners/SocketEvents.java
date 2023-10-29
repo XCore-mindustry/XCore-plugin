@@ -93,6 +93,18 @@ public class SocketEvents {
             if (map != null) info("Removed map @", map.plainName());
         });
 
+        NetSock.subscribe(RemoveAdmin.class, e -> {
+            var info = Find.playerInfo(e.uuid);
+            var player = Find.playerByUuid(e.uuid);
+
+            if (info == null || !info.admin)
+                return;
+            if (player != null) player.admin = false;
+
+            netServer.admins.unAdminPlayer(e.uuid);
+            info("Removed admin: @", info.plainLastName());
+        });
+
         NetSock.subscribe(AdminRequestConfirmEvent.class, e -> {
             if (!e.server.equals(config.server))
                 return;
@@ -194,6 +206,9 @@ public class SocketEvents {
     }
 
     public record PardonPlayer(String uuid) {
+    }
+
+    public record RemoveAdmin(String uuid) {
     }
 
     @AllArgsConstructor

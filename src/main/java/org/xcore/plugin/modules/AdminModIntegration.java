@@ -2,7 +2,6 @@ package org.xcore.plugin.modules;
 
 import arc.util.Log;
 import arc.util.Time;
-import arc.util.Timer;
 import mindustry.gen.Call;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
@@ -36,7 +35,7 @@ public class AdminModIntegration {
 
             if (date == null) {
                 send(player, "error.wrong-period-format", format("days", player));
-                Timer.schedule(() -> Call.clientPacketReliable(player.con, "give_ban_data", content), 5);
+                Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
 
