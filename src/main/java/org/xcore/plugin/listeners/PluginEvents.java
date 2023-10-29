@@ -55,6 +55,7 @@ public class PluginEvents {
 
             if (!data.exists) {
                 data.generatePid();
+                data.setIp(player.ip());
                 data.save();
             }
 
