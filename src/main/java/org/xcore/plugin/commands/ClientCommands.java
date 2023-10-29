@@ -33,8 +33,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static mindustry.Vars.netServer;
-import static mindustry.Vars.world;
+import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
 import static org.xcore.plugin.modules.hexed.MiniHexed.members;
@@ -381,12 +380,7 @@ public class ClientCommands {
             });
         }
 
-        register("ban", (args, player) -> {
-            if (!player.admin) {
-                send(player, "error.access-denied");
-                return;
-            }
-            
+        register("ban", true, (args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -429,12 +423,7 @@ public class ClientCommands {
             send(player, "commands.ban.success", target.nickname);
         });
 
-        register("unban", (args, player) -> {
-            if (!player.admin) {
-                send(player, "error.access-denied");
-                return;
-            }
-
+        register("unban", true, (args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -453,11 +442,7 @@ public class ClientCommands {
             send(player, "commands.unban.success", target.nickname, target.pid);
         });
 
-        register("mute", (args, player) -> {
-            if (!player.admin) {
-                send(player, "error.access-denied");
-                return;
-            }
+        register("mute", true, (args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -488,12 +473,7 @@ public class ClientCommands {
                     send(p, "you-are-muted-by", player.coloredName(), duration.toMinutes(), duration.toSecondsPart()));
         });
 
-        register("unmute", (args, player) -> {
-            if (!player.admin) {
-                send(player, "error.access-denied");
-                return;
-            }
-
+        register("unmute", true, (args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -513,9 +493,7 @@ public class ClientCommands {
             target.save();
             send(player, "commands.unmute.success", target.nickname);
         });
-        register("artv", (args, player) -> {
-            if (!player.admin) return;
-
+        register("artv", true, (args, player) -> {
             var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
             if (map == null) {
@@ -542,11 +520,22 @@ public class ClientCommands {
     }
 
     public static void register(String name, CommandHandler.CommandRunner<Player> runner) {
+        register(name, false, runner);
+    }
+
+    public static void register(String name, boolean admin, CommandHandler.CommandRunner<Player> runner) {
         if (config.disabledCommands.contains(name)) return;
 
-        netServer.clientCommands.register(name,
+        netServer.clientCommands.<Player>register(name,
                 Bundle.get("commands." + name + ".params", "", defaultLocale),
                 Bundle.get("commands." + name + ".description", defaultLocale),
-                runner);
+                (args, player) -> {
+                    if (admin && !player.admin) {
+                        send(player, "error.access-denied");
+                        return;
+                    }
+
+                    runner.accept(args, player);
+                });
     }
 }
