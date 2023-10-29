@@ -28,13 +28,13 @@ public class DiscordCommands {
     public static final CommandHandler discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
 
     public static void init() {
-        discordCommands.<MessageContext>register("help", "List of all commands.", (args, context) -> {
+        register("help", "List of all commands.", (args, context) -> {
             var builder = new StringBuilder();
             discordCommands.getCommandList().each(command -> builder.append(discordCommands.prefix).append("**").append(command.text).append("**").append(!command.paramText.isEmpty() ? " " + command.paramText : "").append(" - ").append(command.description).append("\n"));
             context.info("All available commands:", builder.toString()).subscribe();
         });
 
-        discordCommands.<MessageContext>register("stats", "<player-id>", "Show player stats.", (args, context) -> {
+        register("stats", "<player-id>", "Show player stats.", (args, context) -> {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
@@ -48,36 +48,37 @@ public class DiscordCommands {
                             .addField("MiniPvP rating", String.valueOf(data.pvpRating), true))
                     .subscribe();
         });
-        discordCommands.<MessageContext>register("search", "<player-name...>", "Search players.", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
+        register("search", "<player-name...>", "Search players.",
+                globalConfig.discordAdminRoleId,
+                (args, context) -> PaginationUtil.paginate(context, (embed, page) -> {
+                    embed.title("Searching players '" + args[0] + "'");
 
-            PaginationUtil.paginate(context, (embed, page) -> {
-                embed.title("Searching players '" + args[0] + "'");
+                    var search = database.getPlayerDatas().search(args[0], 6, page);
 
-                var search = database.getPlayerDatas().search(args[0], 6, page);
+                    if (search != null) {
+                        embed.color(Color.GREEN);
+                        for (PlayerData data : search.results()) {
+                            embed.addField(data.nickname, Strings.format("""
+                                    ID: @
+                                    Total playtime: @ minutes
+                                    """, data.pid, data.totalPlayTime), false);
+                        }
 
-                if (search != null) {
-                    embed.color(Color.GREEN);
-                    for (PlayerData data : search.results()) {
-                        embed.addField(data.nickname, Strings.format("""
-                                ID: @
-                                Total playtime: @ minutes
-                                """, data.pid, data.totalPlayTime), false);
+                        embed.footer("Page " + page + "/" + search.pages() + ", " + search.total() + " players", null);
+                    } else {
+                        embed.color(Color.RED);
+                        embed.description("Players not found.");
                     }
 
-                    embed.footer("Page " + page + "/" + search.pages() + ", " + search.total() + " players", null);
-                } else {
-                    embed.color(Color.RED);
-                    embed.description("Players not found.");
-                }
+                    return search == null ? 0 : search.pages();
+                }));
 
-                return search == null ? 0 : search.pages();
-            });
-        });
-
-        discordCommands.<MessageContext>register("upload-map", "Upload map to the servers", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
-
+        register(
+                "upload-map",
+                "",
+                "Upload map to the servers.",
+                globalConfig.discordMapReviewerRoleId,
+                (args, context) -> {
             var attachments = context.message()
                     .getAttachments()
                     .stream()
@@ -113,7 +114,7 @@ public class DiscordCommands {
                     .subscribe();
         });
 
-        discordCommands.<MessageContext>register("maps", "<server>", "List of maps", (args, context) -> {
+        register("maps", "<server>", "List of maps", (args, context) -> {
             var server = Utils.findServer(args[0]);
             if (DiscordHelper.notFound(context, server)) return;
 
@@ -123,9 +124,7 @@ public class DiscordCommands {
             );
         });
 
-        discordCommands.<MessageContext>register("remove-map", "<server> <map...>", "Remove map", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordMapReviewerRoleId)) return;
-
+        register("remove-map", "<server> <map...>", "Remove map", globalConfig.discordMapReviewerRoleId, (args, context) -> {
             var server = Utils.findServer(args[0]);
             if (DiscordHelper.notFound(context, server)) return;
 
@@ -135,9 +134,7 @@ public class DiscordCommands {
             );
         });
 
-        discordCommands.<MessageContext>register("bans", "[name]", "List/search bans.", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
-
+        register("bans", "[name]", "List/search bans.", globalConfig.discordAdminRoleId, (args, context) -> {
             PaginationUtil.paginate(context, (embed, page) -> {
                 embed.title("Bans");
 
@@ -166,9 +163,7 @@ public class DiscordCommands {
             });
         });
 
-        discordCommands.<MessageContext>register("ban", "<player-id> <period> [reason...]", "Ban the player", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
-
+        register("ban", "<player-id> <period> [reason...]", "Ban the player", globalConfig.discordAdminRoleId, (args, context) -> {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
@@ -207,9 +202,7 @@ public class DiscordCommands {
                     }));
         });
 
-        discordCommands.<MessageContext>register("unban", "<player-id>", "Unban player", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
-
+        register("unban", "<player-id>", "Unban player", globalConfig.discordAdminRoleId, (args, context) -> {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
@@ -223,9 +216,7 @@ public class DiscordCommands {
             context.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
 
-        discordCommands.<MessageContext>register("pardon", "<player-id>", "Pardon player.", (args, context) -> {
-            if (DiscordHelper.noRole(context, globalConfig.discordAdminRoleId)) return;
-
+        register("pardon", "<player-id>", "Pardon player.", globalConfig.discordAdminRoleId, (args, context) -> {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
@@ -234,6 +225,33 @@ public class DiscordCommands {
 
             NetSock.post(new PardonPlayer(data.uuid));
             context.success("Success", "'@' pardoned.", data.nickname).subscribe();
+        });
+
+        register("remove-admin", "<player-id>", "Remove the player from admin panel", globalConfig.discordGeneralAdminRoleId, (args, context) -> {
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getPlayerDataById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            NetSock.post(new SocketEvents.RemoveAdmin(data.uuid));
+            context.success("Success", "'@' removed from admin panel.", data.nickname).subscribe();
+        });
+    }
+
+    private static void register(String text, String description, CommandHandler.CommandRunner<MessageContext> runner) {
+        register(text, "", description, -1, runner);
+    }
+
+    private static void register(String text, String paramText, String description, CommandHandler.CommandRunner<MessageContext> runner) {
+        register(text, paramText, description, -1, runner);
+    }
+
+    private static void register(String text, String paramText, String description, long role, CommandHandler.CommandRunner<MessageContext> runner) {
+        discordCommands.<MessageContext>register(text, paramText, description, (args, context) -> {
+            if (role != -1 && DiscordHelper.noRole(context, role)) return;
+
+            runner.accept(args, context);
         });
     }
 }
