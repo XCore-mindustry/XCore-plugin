@@ -16,7 +16,6 @@ public class PlayerData {
     public int pvpRating = 0;
     public int hexedRank = 0;
     public int hexedPoints = 0;
-    public int playTime = 0;
     public int totalPlayTime = 0;
 
     public boolean leaderboard = true;

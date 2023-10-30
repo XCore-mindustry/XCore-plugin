@@ -31,6 +31,7 @@ import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.writeString;
+import static useful.Bundle.send;
 
 public class XcorePlugin extends Plugin {
     public XcorePlugin() {
@@ -115,9 +116,9 @@ public class XcorePlugin extends Plugin {
                 if (player == null) return;
 
                 data.totalPlayTime++;
-
-                if (player.admin) {
-                    data.playTime++;
+                switch (data.totalPlayTime) {
+                    case votekickPlayTime -> send(player, "notification.votekick-playtime", votekickPlayTime);
+                    case globalChatPlayTime -> send(player, "notification.global-chat-playtime", globalChatPlayTime);
                 }
 
                 data.save();

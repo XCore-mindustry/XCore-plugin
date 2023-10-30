@@ -90,8 +90,8 @@ public class ClientCommands {
 
         register("g", (args, player) -> {
             var data = database.getCached(player.uuid());
-            if (data.totalPlayTime < globalChatMinutesRequired && !player.admin) {
-                send(player, "error.globalchat-total-playtime", globalChatMinutesRequired);
+            if (data.totalPlayTime < globalChatPlayTime && !player.admin) {
+                send(player, "error.globalchat-total-playtime", globalChatPlayTime);
                 return;
             }
 
