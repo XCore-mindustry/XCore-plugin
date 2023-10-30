@@ -145,10 +145,9 @@ public class Bot {
         var id = globalConfig.servers.get(server);
         if (id == null) {
             Log.err("@ server has no log channel id!", server);
-            return Optional.empty();
         }
 
-        return Optional.of(client.getChannelById(Snowflake.of(id)));
+        return Optional.ofNullable(id).map(Snowflake::of).map(client::getChannelById);
     }
 
     public static void sendMessageEvent(String playerName, String message, String server) {
@@ -169,20 +168,6 @@ public class Bot {
         getServerLogChannel(server).ifPresent(c -> c.createMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)
         ).subscribe());
-    }
-
-    public static void sendAdminPlayTimeMessage(Seq<PlayerData> datas) {
-        if (!isConnected) return;
-        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder().title("Admin Activity Today")
-                .color(Color.RED);
-
-        for (PlayerData data : datas) {
-            embed.addField(data.nickname, Strings.format("@/@ minutes", data.playTime, data.totalPlayTime), false);
-        }
-
-        privateChannel.createMessage(MessageCreateSpec.builder()
-                .addEmbed(embed.build())
-                .build()).subscribe();
     }
 
     public static void sendBan(BanData ban) {
