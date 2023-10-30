@@ -12,7 +12,6 @@ import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteSession;
 import org.xcore.plugin.utils.database.Database;
 
-import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -21,6 +20,8 @@ import static mindustry.Vars.dataDirectory;
 public class PluginVars {
     public static final JsonReader reader = new JsonReader();
     public static final int votekickPlayTime = 60;
+    public static final int globalChatPlayTime = 4 * 60;
+
     public static final int kickDuration = 30 * 60 * 1000;
     public static final float voteRatio = 0.55f;
     public static final float voteDuration = 60.0f;
@@ -45,5 +46,4 @@ public class PluginVars {
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;
-    public static int globalChatMinutesRequired = 4 * 60;
 }

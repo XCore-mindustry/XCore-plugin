@@ -3,7 +3,6 @@ package org.xcore.plugin.listeners;
 import arc.util.Http;
 import arc.util.Log;
 import arc.util.Strings;
-import arc.util.Timer;
 import com.ospx.sock.EventBus.Request;
 import com.ospx.sock.EventBus.Response;
 import lombok.AllArgsConstructor;
@@ -21,10 +20,6 @@ import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.*;
@@ -47,18 +42,6 @@ public class SocketEvents {
                     e -> Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
             NetSock.subscribe(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
             NetSock.subscribe(BanData.class, Bot::sendBan);
-
-            Timer.schedule(() -> {
-                var datas = database.getPlayerDatas().getAdmins();
-                Bot.sendAdminPlayTimeMessage(datas);
-
-                for (PlayerData data : datas) {
-                    data.playTime = 0;
-                    data.save();
-                    NetSock.post(new SocketEvents.SyncPlayerData(data));
-                }
-            }, Duration.between(LocalDateTime.now(), LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT))
-                    .toSeconds(), 60 * 60 * 24);
 
         } else {
             NetSock.subscribe(DiscordMessageEvent.class, e -> {
