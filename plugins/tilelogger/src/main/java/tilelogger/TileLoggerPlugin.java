@@ -57,6 +57,11 @@ public class TileLoggerPlugin extends Plugin {
             if (event.breaking) return; // handled by BlockBuildBeginEvent
             TileLogger.build(event.tile, TileLogger.unitToPlayerInfo(event.unit));
         });
+        Events.on(EventType.BuildRotateEvent.class, event -> {
+            // need for rotate with replace
+            if (event.unit == null) return; // rollback recursion
+            TileLogger.build(event.build.tile, TileLogger.unitToPlayerInfo(event.unit));
+        });
         Events.on(EventType.ConfigEvent.class, event -> {
             TileLogger.build(event.tile.tile, event.player == null ? null : event.player.getInfo());
         });
@@ -70,11 +75,6 @@ public class TileLoggerPlugin extends Plugin {
         });
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             TileLogger.destroy(event.tile, null);
-        });
-        Vars.net.handleServer(RotateBlockCallPacket.class, (con, packet) -> {
-            packet.handled();
-            packet.handleServer(con);
-            TileLogger.build(packet.build.tile, con.player.getInfo());
         });
 
         Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null, true));
