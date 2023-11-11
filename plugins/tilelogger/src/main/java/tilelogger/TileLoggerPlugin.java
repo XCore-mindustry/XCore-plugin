@@ -1,6 +1,7 @@
 package tilelogger;
 
 import arc.Events;
+import arc.math.geom.Point2;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
@@ -13,10 +14,13 @@ import mindustry.gen.RotateBlockCallPacket;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
+import mindustry.world.blocks.power.PowerNode.PowerNodeBuild;
 import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.models.PlayerData;
+import com.alibaba.fastjson.support.geo.Point;
+
 import useful.Bundle;
 
 import static mindustry.Vars.netServer;
@@ -63,6 +67,9 @@ public class TileLoggerPlugin extends Plugin {
             TileLogger.build(event.build.tile, TileLogger.unitToPlayerInfo(event.unit));
         });
         Events.on(EventType.ConfigEvent.class, event -> {
+            if (event.tile == null) return; // rollback recursion
+            if (event.tile instanceof PowerNodeBuild && event.value instanceof Integer i)
+                TileLogger.build(Vars.world.tile(i), event.player == null ? null : event.player.getInfo());
             TileLogger.build(event.tile.tile, event.player == null ? null : event.player.getInfo());
         });
         Events.on(EventType.PickupEvent.class, event -> {
