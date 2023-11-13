@@ -6,6 +6,7 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
+import lombok.Getter;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
@@ -32,6 +33,7 @@ import static useful.Bundle.send;
 
 public class NetEvents {
     public static final Seq<String> bannedNames = Seq.with("valve", "tuttop");
+    @Getter
     public static Boolf<String> ipAcceptor = (ip) -> true;
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);
@@ -79,17 +81,13 @@ public class NetEvents {
                 send("tempban.player-banned", admin.coloredName(), target.coloredName());
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
-                String banJson = rawGson.toJson(new BanRequestData(target.uuid(), target.ip(), target.name));
+                var targetData = database.getCached(target.uuid());
+                String banJson = rawGson.toJson(new BanRequestData(targetData.pid, target.coloredName()));
 
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
             case trace -> {
                 var data = database.getCachedOrDb(target.uuid());
-
-                if (data == null) {
-                    Log.err("[trace] DB Data null");
-                    return;
-                }
 
                 var trace = new TraceInfo(
                         target.ip(),
@@ -111,13 +109,11 @@ public class NetEvents {
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
 
-            case switchTeam -> {
-                //if(packet.params instanceof Team team){
+            case switchTeam -> //if(packet.params instanceof Team team){
                 //    target.team(team);
                 //    Log.info("@ has switched team of @ to @", admin.plainName(), target.plainName(), team.name);
                 //}
-                send(player, "error.access-denied");
-            }
+                    send(player, "error.access-denied");
         }
     }
 
@@ -257,7 +253,7 @@ public class NetEvents {
 
         packet.name = netServer.fixName(packet.name);
 
-        if (packet.name.trim().length() == 0) {
+        if (packet.name.trim().isEmpty()) {
             con.kick(Packets.KickReason.nameEmpty);
             return;
         }
@@ -313,10 +309,6 @@ public class NetEvents {
                 ban.reason,
                 duration.toDays(), duration.toHoursPart(), duration.toMinutesPart(),
                 discordUrl), 0);
-    }
-
-    public static Boolf<String> getIpAcceptor() {
-        return ipAcceptor;
     }
 
     public static void setIpAcceptor(Boolf<String> ipAcceptor) {

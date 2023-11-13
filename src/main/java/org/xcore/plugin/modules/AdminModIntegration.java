@@ -1,6 +1,7 @@
 package org.xcore.plugin.modules;
 
 import arc.util.Log;
+import arc.util.Strings;
 import arc.util.Time;
 import mindustry.gen.Call;
 import org.xcore.plugin.utils.NetSock;
@@ -24,14 +25,24 @@ public class AdminModIntegration {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;
 
-            BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
-
-            Instant date = Utils.parsePeriod(req.duration, TimeUnit.DAYS);
-
-            if (req.uuid == null || req.uuid.isBlank()) {
-                player.sendMessage("UUID cannot be blank.");
+            BanRequestData req;
+            try {
+                req = rawGson.fromJson(content, BanRequestData.class);
+            } catch (Exception e) {
+                Log.err(e);
+                player.sendMessage("[scarlet]An error occurred while processing the request.");
                 return;
             }
+
+            var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
+
+            if (targetData == null) {
+                send(player, "error.player-not-found");
+                Call.clientPacketReliable(player.con, "give_ban_data", content);
+                return;
+            }
+
+            Instant date = Utils.parsePeriod(req.duration, TimeUnit.DAYS);
 
             if (date == null) {
                 send(player, "error.wrong-period-format", format("days", player));
@@ -39,12 +50,12 @@ public class AdminModIntegration {
                 return;
             }
 
-            netServer.admins.unbanPlayerID(req.uuid);
+            netServer.admins.unbanPlayerID(targetData.uuid);
 
             var ban = BanData.builder()
                     .name(req.name)
-                    .uuid(req.uuid)
-                    .ip(req.ip)
+                    .uuid(targetData.uuid)
+                    .ip(targetData.ip)
                     .adminName(player.name)
                     .reason(req.reason)
                     .unbanDate(new Date(Time.millis() + date.toEpochMilli()))
@@ -52,17 +63,15 @@ public class AdminModIntegration {
             NetSock.post(ban);
             ban.save();
         });
+
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
             if (!player.admin) return;
-
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            if (req.uuid == null || req.uuid.isBlank()) {
-                player.sendMessage("UUID cannot be blank.");
-                return;
-            }
+            var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
+            netServer.admins.unbanPlayerID(targetData.uuid);
 
-            netServer.admins.unbanPlayerID(req.uuid);
+            send(player, "ban.cancelled", targetData.nickname);
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
@@ -71,8 +80,13 @@ public class AdminModIntegration {
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
-            if (content.isBlank() || content.isEmpty()) {
-                player.con.kick("Update Admin Mod", 0);
+            if (Utils.compareVersions(content, "1.3") < 0) {
+                player.con.kick(Strings.format("""
+                        [green]The required AdminTools version: [grey]1.3[]
+                        [scarlet]Your AdminTools version: [grey]@[]
+                                                
+                        [cyan]Please update your AdminTools to join this server.
+                        """, content), 0);
                 return;
             }
             data.adminModVersion = content;
