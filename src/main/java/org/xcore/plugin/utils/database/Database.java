@@ -17,7 +17,6 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
-import org.xcore.plugin.utils.VersionComparator;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -28,6 +27,7 @@ import static com.mongodb.client.model.Filters.regex;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.xcore.plugin.PluginVars.globalConfig;
+import static org.xcore.plugin.utils.Utils.compareVersions;
 
 public class Database {
     @Getter
@@ -83,7 +83,7 @@ public class Database {
 
     public void getCachedAdminTools(String version, Boolf<Integer> versionCompare, Cons<PlayerData> cons) {
         for (var data : cachedPlayerData.values())
-            if (versionCompare.get(new VersionComparator().compare(data.adminModVersion, version))) cons.get(data);
+            if (versionCompare.get(compareVersions(data.adminModVersion, version))) cons.get(data);
     }
 
     public void reloadCache() {
