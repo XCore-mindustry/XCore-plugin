@@ -2,6 +2,7 @@ package org.xcore.plugin.modules.votes;
 
 import arc.func.Cons;
 import arc.util.Log;
+import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
@@ -37,6 +38,12 @@ public class VoteKick extends VoteSession {
         super.vote(player, sign);
         send("votekick.vote", player.coloredName(), target.coloredName(), reason, votes(), votesRequired());
         Log.info(Bundle.format("votekick.vote", defaultLocale, player.plainName(), target.plainName(), reason, votes(), votesRequired()));
+
+        if (votes() == 1) {
+            var targetData = database.getCached(target.uuid());
+            database.getCachedAdminTools("1.3", (v) -> v >= 0, data ->
+                    Call.clientPacketReliable(player.con, "adm_mod_votekick", targetData.pid + "," + targetData.nickname));
+        }
 
         NetSock.post(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
                 player.plainName(), target.plainName(), reason, votes(), votesRequired())), config.server));

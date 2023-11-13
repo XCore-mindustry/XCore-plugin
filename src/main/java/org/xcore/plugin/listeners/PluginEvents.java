@@ -38,12 +38,15 @@ public class PluginEvents {
             });
 
             send(player, "welcome", Administration.Config.serverName.string());
-            var data = database.getPlayerDatas().getPlayerData(player).setNickname(player.coloredName());
+            var data = database.getPlayerDatas().getPlayerData(player)
+                    .setNickname(player.coloredName())
+                    .setPlayer(player);
 
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
             if (data.exists && !data.ip.equals(player.ip())) {
                 if (player.admin) {
+                    data.adminConfirmed = false;
                     player.admin = false;
                     netServer.admins.unAdminPlayer(player.uuid());
                     send(player, "error.ip-changed");

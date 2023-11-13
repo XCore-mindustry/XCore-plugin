@@ -1,6 +1,5 @@
 package org.xcore.plugin.modules.discord;
 
-import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import discord4j.common.util.Snowflake;
@@ -16,7 +15,6 @@ import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
-import discord4j.discordjson.possible.Possible;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.entity.RestChannel;
@@ -76,11 +74,10 @@ public class Bot {
                     message.delete().subscribe();
 
                     data.adminConfirmed = true;
-
-                    NetSock.post(new SocketEvents.SyncPlayerData(data));
                     data.save();
-                    return event.reply(author.getDisplayName() + " confirmed adminship to player " +
-                            data.nickname + " on server " + server);
+
+                    return message.getRestChannel().createMessage(author.getDisplayName() + " confirmed adminship to player " +
+                            data.nickname + " on server " + server).then();
                 }
 
                 if (event.getCustomId().equals("decline")) {
