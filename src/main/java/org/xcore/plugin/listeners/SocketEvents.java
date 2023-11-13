@@ -99,6 +99,7 @@ public class SocketEvents {
                 return;
             if (player != null) {
                 player.admin = true;
+                database.getCached(e.uuid).adminConfirmed = true;
                 send(player, "commands.login.confirmed");
             }
 

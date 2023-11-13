@@ -49,6 +49,8 @@ dependencies {
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    implementation("org.mindrot:jbcrypt:0.4")
+
     implementation("com.discord4j:discord4j-core:3.3.0-SNAPSHOT")
     implementation("io.netty:netty-transport-native-epoll:4.1.89.Final:linux-aarch_64")
 

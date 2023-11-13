@@ -237,6 +237,18 @@ public class DiscordCommands {
             NetSock.post(new SocketEvents.RemoveAdmin(data.uuid));
             context.success("Success", "'@' removed from admin panel.", data.nickname).subscribe();
         });
+
+        register("reset-password", "<player-id>", "Resets the admin password.", globalConfig.discordGeneralAdminRoleId, (args, context) -> {
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getPlayerDataById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            data.adminPassword = "";
+            data.save();
+            context.success("Success", "Password reset for '@'.", data.nickname).subscribe();
+        });
     }
 
     private static void register(String text, String description, CommandHandler.CommandRunner<MessageContext> runner) {

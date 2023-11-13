@@ -1,6 +1,8 @@
 package org.xcore.plugin.utils.database;
 
 
+import arc.func.Boolf;
+import arc.func.Cons;
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
@@ -15,6 +17,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
+import org.xcore.plugin.utils.VersionComparator;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -76,6 +79,11 @@ public class Database {
 
     public void setCached(PlayerData data) {
         cachedPlayerData.put(data.uuid, data);
+    }
+
+    public void getCachedAdminTools(String version, Boolf<Integer> versionCompare, Cons<PlayerData> cons) {
+        for (var data : cachedPlayerData.values())
+            if (versionCompare.get(new VersionComparator().compare(data.adminModVersion, version))) cons.get(data);
     }
 
     public void reloadCache() {

@@ -67,6 +67,8 @@ public class ClientCommands {
 
             for (int i = commandsPerPage * page; i < Math.min(commandsPerPage * (page + 1), netServer.clientCommands.getCommandList().size); i++) {
                 CommandHandler.Command command = netServer.clientCommands.getCommandList().get(i);
+                if (command.text.equals("login")) continue;
+
                 result.append(format("commands.help.content",
                         player.locale,
                         command.text,
@@ -507,15 +509,33 @@ public class ClientCommands {
         });
 
         register("login", (args, player) -> {
-            if (!args[0].equals(globalConfig.loginCommandPassword)) {
-                send(player, "commands.login.incorrect-password");
+            var password = args[0];
+
+            if (password.length() < 4) {
+                send(player, "error.admin-password-too-short");
                 return;
             }
 
             PlayerData data = database.getCached(player.uuid());
+            if (data.adminPassword.isEmpty()) {
+                send(player, "commands.login.admin-password-created");
+                data.hashPassword(password);
+                data.save();
+            }
 
-            NetSock.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
-            send(player, "commands.login.success");
+            if (data.verifyPassword(password)) {
+                if (data.adminConfirmed) {
+                    player.admin(true);
+                    netServer.admins.adminPlayer(player.uuid(), player.getInfo().adminUsid);
+                    send(player, "commands.login.success");
+                } else {
+                    send(player, "commands.login.request-approval-discord");
+                    NetSock.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
+                }
+                return;
+            }
+
+            send(player, "error.wrong-admin-password");
         });
     }
 

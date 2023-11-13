@@ -45,7 +45,7 @@ public class Utils {
         Instant instant = Instant.EPOCH;
 
         while (matcher.find()) {
-            int num = Integer.parseInt(matcher.group(1));
+            int num = Strings.parseInt(matcher.group(1));
             String typ = matcher.group(2);
             switch (typ) {
                 case "m" -> instant = instant.plusMillis(TimeUnit.MINUTES.toMillis(num));

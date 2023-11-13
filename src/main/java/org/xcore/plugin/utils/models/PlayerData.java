@@ -1,15 +1,25 @@
 package org.xcore.plugin.utils.models;
 
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import mindustry.gen.Player;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
+import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 
 import static org.xcore.plugin.PluginVars.database;
 
+@Accessors(chain = true)
 public class PlayerData {
+
     public int pid;
 
     public String uuid = "";
+    @Setter
     public String ip = "";
+    public String adminPassword = "";
+
+    @Setter
     public String nickname = "<unknown>";
     public String translatorLanguage = "off";
 
@@ -24,11 +34,14 @@ public class PlayerData {
     public long muted = 0;
 
     @BsonIgnore
+    @Setter
+    public transient Player player = null;
+    @BsonIgnore
     public String adminModVersion = null;
     @BsonIgnore
     public long historySize = 0L;
     @BsonIgnore
-    public boolean exists = true;
+    public transient boolean exists = true;
 
     public PlayerData(String uuid, Boolean exists) {
         this.uuid = uuid;
@@ -47,14 +60,12 @@ public class PlayerData {
         this.hexedRank = rank.ordinal();
     }
 
-    public PlayerData setNickname(String nickname) {
-        this.nickname = nickname;
-        return this;
+    public void hashPassword(String password) {
+        this.adminPassword = BCrypt.hashpw(password, BCrypt.gensalt());
     }
 
-    public PlayerData setIp(String ip) {
-        this.ip = ip;
-        return this;
+    public boolean verifyPassword(String password) {
+        return BCrypt.checkpw(password, this.adminPassword);
     }
 
     public void generatePid() {
