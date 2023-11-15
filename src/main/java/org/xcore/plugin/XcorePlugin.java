@@ -71,7 +71,7 @@ public class XcorePlugin extends Plugin {
 
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
-
+        server.setConnectFilter(NetEvents::connectFilter);
         final String[] footer = {""};
 
         server.setDiscoveryHandler((address, handler) -> {

@@ -67,6 +67,14 @@ public class Utils {
     }
 
     public static int compareVersions(String version1, String version2) {
+        if (version1 == null && version2 == null) {
+            return 0; // Both versions are null, consider them equal
+        } else if (version1 == null) {
+            return -1; // Version1 is null, consider it smaller
+        } else if (version2 == null) {
+            return 1; // Version2 is null, consider it smaller
+        }
+
         String[] parts1 = version1.split("\\.");
         String[] parts2 = version2.split("\\.");
 
