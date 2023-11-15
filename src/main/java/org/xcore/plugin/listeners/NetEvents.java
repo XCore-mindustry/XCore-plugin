@@ -117,6 +117,10 @@ public class NetEvents {
         }
     }
 
+    public static boolean connectFilter(String address) {
+        return ipAcceptor.get(address);
+    }
+
     public static void connect(NetConnection con, Packets.Connect packet) {
         Events.fire(new EventType.ConnectionEvent(con));
 
@@ -135,11 +139,6 @@ public class NetEvents {
         con.connectTime = Time.millis();
 
         String uuid = packet.uuid;
-
-        if (!ipAcceptor.get(con.address)) {
-            con.kick(packet.name + "[accent] subnet banned");
-            return;
-        }
 
         if (bannedNames.contains(packet.name.toLowerCase())) {
             con.kick(format("kick.pirated-game", packet.locale), 0);
