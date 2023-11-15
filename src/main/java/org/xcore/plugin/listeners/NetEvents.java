@@ -35,6 +35,9 @@ public class NetEvents {
     public static final Seq<String> bannedNames = Seq.with("valve", "tuttop");
     @Getter
     public static Boolf<String> ipAcceptor = (ip) -> true;
+    public static int blockedIPs = 0;
+    public static int blockedIPsPerMinute = 0;
+
     public static String chat(Player author, String text) {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
@@ -118,7 +121,13 @@ public class NetEvents {
     }
 
     public static boolean connectFilter(String address) {
-        return ipAcceptor.get(address);
+        if (!ipAcceptor.get(address)) {
+            blockedIPs++;
+            blockedIPsPerMinute++;
+            return false;
+        }
+
+        return true;
     }
 
     public static void connect(NetConnection con, Packets.Connect packet) {
