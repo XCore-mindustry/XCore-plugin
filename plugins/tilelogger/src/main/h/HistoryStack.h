@@ -15,26 +15,28 @@ public:
         file_flags_ = static_cast<std::ios_base::openmode>(std::ios::binary | std::ios::in | (write ? std::ios::app : 0));
 
         file_.close();
-        file_.open(path_, file_flags_);
-        if (file_.peek() == std::fstream::traits_type::eof()) {
-            file_.seekg(0);
-            file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
-            file_.flush();
-        }
-        else {
-            BitStack bs;
-            bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
-            if (bs.read_bytes(header_.size()) != header_)
-                throw std::runtime_error("wrong file header");
-            if (bs.buffer_.size() % sizeof(TileState) != 0)
-                throw std::runtime_error("wrong file length");
-
-            TileState state;
-            while (bs.read_i_ / 8 < bs.buffer_.size()) {
-                state.Serialize(bs, Serialize::read);
-                stack_.push_back(state);
+        if (!path.empty()) {
+            file_.open(path_, file_flags_);
+            if (file_.peek() == std::fstream::traits_type::eof()) {
+                file_.seekg(0);
+                file_.write(std::bit_cast<const char*>(header_.data()), header_.size());
+                file_.flush();
             }
-            return state.time;
+            else {
+                BitStack bs;
+                bs.buffer_.assign(std::istreambuf_iterator<char>(file_), std::istreambuf_iterator<char>());
+                if (bs.read_bytes(header_.size()) != header_)
+                    throw std::runtime_error("wrong file header");
+                if (bs.buffer_.size() % sizeof(TileState) != 0)
+                    throw std::runtime_error("wrong file length");
+
+                TileState state;
+                while (bs.read_i_ / 8 < bs.buffer_.size()) {
+                    state.Serialize(bs, Serialize::read);
+                    stack_.push_back(state);
+                }
+                return state.time;
+            }
         }
         return 0;
     }

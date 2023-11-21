@@ -23,7 +23,7 @@ namespace std {
 class TileLogger {
 public:
     timestamp_t_ Reset(std::filesystem::path path, bool write) {
-        if (path.is_relative()) {
+        if (!path.empty() && path.is_relative()) {
             path = tilelogs_ / path;
             std::filesystem::create_directories(tilelogs_);
         }

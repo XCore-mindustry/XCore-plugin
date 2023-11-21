@@ -84,7 +84,7 @@ public class TileLoggerPlugin extends Plugin {
             TileLogger.destroy(event.tile, null);
         });
 
-        Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory(null, true));
+        Events.on(EventType.PlayEvent.class, event -> TileLogger.resetHistory("", true));
         Events.on(EventType.TapEvent.class, event -> {
             if (event.tile == null) return;
 
