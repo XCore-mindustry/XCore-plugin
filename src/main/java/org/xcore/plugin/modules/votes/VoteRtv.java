@@ -42,4 +42,12 @@ public class VoteRtv extends VoteSession {
         stop();
         send("rtv.fail", target.name());
     }
+    
+    @Override
+    public void voteEnd() {
+        if (votes() >= votesRequired())
+            success();
+        else
+            fail();
+    }
 }
