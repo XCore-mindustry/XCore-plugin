@@ -46,11 +46,17 @@ public class Bot {
             client = DiscordClientBuilder.create(globalConfig.discordBotToken)
                     .setDefaultAllowedMentions(AllowedMentions.suppressAll())
                     .build();
-            gateway = client.gateway()
-                    .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
-                    .login()
-                    .blockOptional()
-                    .orElseThrow();
+
+            try {
+                gateway = client.gateway()
+                        .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
+                        .login()
+                        .blockOptional()
+                        .orElseThrow();
+            } catch (Exception e) {
+                Log.err("Error while connecting to discord: ", e);
+                return;
+            }
 
             bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(MessageChannel.class).block();
             privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(MessageChannel.class).block();
