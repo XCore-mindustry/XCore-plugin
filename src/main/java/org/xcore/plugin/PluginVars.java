@@ -23,7 +23,7 @@ public class PluginVars {
     public static final int globalChatPlayTime = 4 * 60;
 
     public static final int kickDuration = 30 * 60 * 1000;
-    public static final float voteRatio = 0.55f;
+    public static final float voteRatio = 0.33f;
     public static final float voteDuration = 60.0f;
     public static final int mapLoadDelay = 10;
     public static long gameStarted;
