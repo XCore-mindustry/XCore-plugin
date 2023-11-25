@@ -68,7 +68,7 @@ model {
             }
             binaries.all {
                 if (toolChain in Gcc) {
-                    cppCompiler.args '-std=c++20'
+                    cppCompiler.args '-std=c++2a'
                     cppCompiler.args '-O3'
                     cppCompiler.args '-DNDEBUG'
                     cppCompiler.args '-s'
