@@ -5,14 +5,20 @@ on: [push, workflow_dispatch]
 jobs:
   build-linux-arm:
     runs-on: self-hosted
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-arm64
-    steps:
+    steps:    
     - name: Checkout
       uses: actions/checkout@v3
       with:
         submodules: 'recursive'
         token: 'REMOVED'
+
+    - name: Setup java
+      uses: actions/setup-java@v1
+      with:
+        java-version: 17
+
+    - name: Setup gradle
+      uses: gradle/gradle-build-action@v2
    
     - name: Build
       run: |
