@@ -33,7 +33,7 @@ public class PluginEvents {
 
             Time.runTask(30, () -> {
                 if (player.con.lastReceivedClientSnapshot == -1) {
-                    player.kick("VPN services forbidden!");
+                    player.kick("Maybe you are a bot. If not, try to reconnect.");
                 }
             });
 
