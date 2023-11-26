@@ -1,15 +1,18 @@
-name: Java CI
+name: Build
 
 on: [ push, workflow_dispatch ]
 
 jobs:
   buildJar:
-    permissions: write-all
     runs-on: self-hosted
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-arm64
     steps:
-      - uses: actions/checkout@v2
-      - run: chmod +x gradlew
-      - name: Build plugin jar
-        run: ./gradlew jar
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew jar
+        
+      - name: Upload artifacts
+        run: cp build/libs/XCore-plugin-*.jar ../../../build/
