@@ -20,10 +20,7 @@ jobs:
         ./gradlew packLibToJar
       
     - name: Upload artifacts
-      run: |
-        ls -la
-        pwd
-        cp TileLogger/TileLogger/build/libs/TileLoggerPacked.jar ../build/
+      run: cp build/libs/TileLoggerPacked.jar ../../../build/
     
   build-windows:
     runs-on: windows-latest
