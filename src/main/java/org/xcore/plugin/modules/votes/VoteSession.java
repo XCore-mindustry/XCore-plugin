@@ -21,7 +21,7 @@ public abstract class VoteSession {
     public final Timer.Task end;
 
     public VoteSession() {
-        end = Timer.schedule(this::voteEnd, voteDuration);
+        end = Timer.schedule(this::fail, voteDuration);
     }
 
     public void vote(Player player, int sign) {
@@ -34,10 +34,6 @@ public abstract class VoteSession {
     public abstract void success();
 
     public abstract void fail();
-    
-    public void voteEnd() {
-        fail();
-    }
 
     public void stop() {
         vote = null;
