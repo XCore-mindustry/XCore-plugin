@@ -5,8 +5,6 @@ on: [ push, workflow_dispatch ]
 jobs:
   buildJar:
     runs-on: self-hosted
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v3
