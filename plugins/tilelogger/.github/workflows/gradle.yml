@@ -19,11 +19,11 @@ jobs:
         ./gradlew build
         ./gradlew packLibToJar
       
-    # - name: Upload artifacts
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: ${{ github.event.repository.name }}-linuxarm
-    #     path: build/libs
+    - name: Upload artifacts
+      run: |
+        ls -la
+        pwd
+        cp TileLogger/TileLogger/build/libs/TileLoggerPacked.jar ../build/
     
   build-windows:
     runs-on: windows-latest
