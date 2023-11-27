@@ -23,6 +23,7 @@ import discord4j.rest.util.Color;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import reactor.core.publisher.Mono;
@@ -74,16 +75,15 @@ public class Bot {
 
                     String server = args[0];
                     PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
+                    AdminData adminData = data.getAdminData();
 
                     NetSock.post(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
 
-                    message.delete().subscribe();
-
-                    data.adminConfirmed = true;
-                    data.save();
+                    adminData.adminConfirmed = true;
+                    adminData.save();
 
                     return message.getRestChannel().createMessage(author.getDisplayName() + " confirmed adminship to player " +
-                            data.nickname + " on server " + server).then();
+                            data.nickname + " on server " + server).then(message.delete());
                 }
 
                 if (event.getCustomId().equals("decline")) {
@@ -139,8 +139,7 @@ public class Bot {
 
             isConnected = true;
         } catch (Exception e) {
-            XcorePlugin.err("Error while connecting to discord: ");
-            e.printStackTrace();
+            Log.err("Error while connecting to discord: ", e);
         }
     }
 

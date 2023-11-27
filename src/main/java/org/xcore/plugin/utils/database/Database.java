@@ -17,6 +17,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
+import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -33,6 +34,8 @@ public class Database {
     @Getter
     public final PlayerDataExecutor playerDatas;
     @Getter
+    public final AdminDataExecutor adminDatas;
+    @Getter
     public final BanDataExecutor banDatas;
 
     public final MongoClient mongoClient;
@@ -48,6 +51,7 @@ public class Database {
         database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
 
         playerDatas = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
+        adminDatas = new AdminDataExecutor(database.getCollection("admins", AdminData.class));
         banDatas = new BanDataExecutor(
                 database.getCollection("bans", BanData.class));
     }

@@ -1,10 +1,10 @@
 package org.xcore.plugin.utils.models;
 
+import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import mindustry.gen.Player;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
-import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 
 import static org.xcore.plugin.PluginVars.database;
@@ -17,7 +17,6 @@ public class PlayerData {
     public String uuid = "";
     @Setter
     public String ip = "";
-    public String adminPassword = "";
 
     @Setter
     public String nickname = "<unknown>";
@@ -29,7 +28,10 @@ public class PlayerData {
     public int totalPlayTime = 0;
 
     public boolean leaderboard = true;
-    public boolean adminConfirmed = false;
+
+    @BsonIgnore
+    @Getter(lazy = true)
+    private final AdminData adminData = database.adminDatas.getAdminData(uuid);
 
     public long muted = 0;
 
@@ -58,14 +60,6 @@ public class PlayerData {
 
     public void hexedRank(HexedRanks.HexedRank rank) {
         this.hexedRank = rank.ordinal();
-    }
-
-    public void hashPassword(String password) {
-        this.adminPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-    }
-
-    public boolean verifyPassword(String password) {
-        return BCrypt.checkpw(password, this.adminPassword);
     }
 
     public void generatePid() {

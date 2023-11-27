@@ -23,6 +23,7 @@ import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
 import useful.Bundle;
@@ -517,14 +518,15 @@ public class ClientCommands {
             }
 
             PlayerData data = database.getCached(player.uuid());
-            if (data.adminPassword.isEmpty()) {
+            AdminData adminData = data.getAdminData();
+            if (adminData.password.isEmpty()) {
                 send(player, "commands.login.admin-password-created");
-                data.hashPassword(password);
-                data.save();
+                adminData.hashPassword(password);
+                adminData.save();
             }
 
-            if (data.verifyPassword(password)) {
-                if (data.adminConfirmed) {
+            if (adminData.verifyPassword(password)) {
+                if (adminData.adminConfirmed) {
                     player.admin(true);
                     netServer.admins.adminPlayer(player.uuid(), player.getInfo().adminUsid);
                     send(player, "commands.login.success");
