@@ -10,8 +10,11 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.mod.Plugin;
 import mindustry.net.Administration;
+import mindustry.net.Administration.ActionType;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
+import mindustry.world.blocks.defense.turrets.Turret;
+
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
 import org.xcore.plugin.listeners.NetEvents;
@@ -68,6 +71,9 @@ public class XcorePlugin extends Plugin {
         MiniHexed.init();
         LastStanding.init();
         Bundle.load(XcorePlugin.class);
+
+        if (config.isMiniHexed() || config.isMiniPvP() || config.isSiege() || config.isZoneCapture())
+            Vars.netServer.admins.addActionFilter(action -> action.type != ActionType.depositItem || !(action.tile.block() instanceof Turret));
 
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
