@@ -320,7 +320,7 @@ public class ServerCommands {
         });
 
         handler.register("gg-restart", "Restart the server on GameOver", args -> {
-            gameoverRestart = !gameoverRestart;
+            gameoverRestart = true;
 
             Log.info("GameOver restart turned " + (gameoverRestart ? "on" : "off"));
         });

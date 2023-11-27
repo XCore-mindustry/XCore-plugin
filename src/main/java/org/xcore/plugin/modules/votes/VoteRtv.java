@@ -20,7 +20,7 @@ public class VoteRtv extends VoteSession {
 
     @Override
     public void vote(Player player, int sign) {
-        voted.put(player.id, sign);
+        super.vote(player, sign);
         send("rtv.vote", player.coloredName(), target.name(), votes(), votesRequired());
     }
 
@@ -41,13 +41,5 @@ public class VoteRtv extends VoteSession {
     public void fail() {
         stop();
         send("rtv.fail", target.name());
-    }
-
-    @Override
-    public void voteEnd() {
-        if (votes() >= votesRequired())
-            success();
-        else
-            fail();
     }
 }

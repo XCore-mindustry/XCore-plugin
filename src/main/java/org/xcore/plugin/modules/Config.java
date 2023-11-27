@@ -47,6 +47,14 @@ public class Config {
         return server.equals("the-last-standing");
     }
 
+    public boolean isSiege() {
+        return server.equals("siege");
+    }
+
+    public boolean isZoneCapture() {
+        return server.equals("zone-capture");
+    }
+
     public enum SockType {
         CLIENT, SERVER
     }
