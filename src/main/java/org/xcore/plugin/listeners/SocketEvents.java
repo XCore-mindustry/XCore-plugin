@@ -3,6 +3,7 @@ package org.xcore.plugin.listeners;
 import arc.util.Http;
 import arc.util.Log;
 import arc.util.Strings;
+import arc.util.Structs;
 import com.ospx.sock.EventBus.Request;
 import com.ospx.sock.EventBus.Response;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.net.Administration;
 import mindustry.net.Packets;
+import mindustry.server.ServerControl;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.commands.DiscordCommands;
 import org.xcore.plugin.modules.discord.Bot;
@@ -113,6 +115,13 @@ public class SocketEvents {
         });
         NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
+        NetSock.subscribe(ExecuteCommand.class, e -> {
+            if (e.expectServers != null && Structs.contains(e.expectServers, config.server))
+                return;
+
+            Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command);
+            ServerControl.instance.handleCommandString(e.command);
+        });
         NetSock.subscribe(PardonPlayer.class, e -> {
             Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.uuid());
 
@@ -188,6 +197,9 @@ public class SocketEvents {
     }
 
     public record LoadMaps(String[] urls, String server) {
+    }
+
+    public record ExecuteCommand(String command, String[] expectServers) {
     }
 
     public record PardonPlayer(String uuid) {
