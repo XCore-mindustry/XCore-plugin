@@ -18,6 +18,7 @@ import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.TextArgumentSplitter;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -311,6 +312,30 @@ public class ServerCommands {
             data.muted = 0;
             data.save();
             Log.info("@ (@) unmuted", data.nickname, data.uuid);
+        });
+
+        handler.register("gcmd", "<args...>", "Execute command on all servers", args -> {
+            var argsQuotes = TextArgumentSplitter.split(args[0]);
+            var expectServers = new Seq<String>();
+
+            if (argsQuotes.length == 0) {
+                Log.err("Missing arguments.");
+                return;
+            }
+
+            if (argsQuotes[0].startsWith("gcmd")) {
+                Log.err("Recursive command.");
+                return;
+            }
+
+            if (argsQuotes.length > 1) {
+                for (int i = 1; i < argsQuotes.length; i++) {
+                    expectServers.add(argsQuotes[i]);
+                }
+            }
+
+            NetSock.post(new SocketEvents.ExecuteCommand(argsQuotes[0], expectServers.toArray(String.class)));
+            Log.info("Done");
         });
 
         handler.register("sock-restart", "Restart sock", args -> {

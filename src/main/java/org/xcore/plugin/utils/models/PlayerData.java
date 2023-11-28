@@ -11,7 +11,6 @@ import static org.xcore.plugin.PluginVars.database;
 
 @Accessors(chain = true)
 public class PlayerData {
-
     public int pid;
 
     public String uuid = "";
