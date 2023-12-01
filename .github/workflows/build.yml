@@ -24,7 +24,7 @@ jobs:
       - name: Obtain version
         run: echo "PROJECT_VERSION=$(./gradlew getProjectVersion -q)" >> $GITHUB_ENV
       - name: Publish to XCore
-        if: ${{ steps.cache.outputs.cache-hit != 'true' || $PROJECT_VERSION != steps.cache.outputs.previous-version }}
+        if: ${{ steps.cache.outputs.cache-hit != 'true' || env.PROJECT_VERSION != steps.cache.outputs.previous-version }}
         run: ./gradlew publish
         env:
           ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
