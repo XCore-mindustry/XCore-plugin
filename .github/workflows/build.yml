@@ -8,7 +8,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+      - name: Cache
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: previous-version.txt
+          key: previous-version
       - name: Build
         run: |
           chmod +x gradlew
@@ -16,3 +21,15 @@ jobs:
         
       - name: Upload artifacts
         run: cp build/libs/XCore-plugin-*.jar ../../../build/
+      - name: Obtain version
+        run: echo "PROJECT_VERSION=$(./gradlew getProjectVersion -q)" >> $GITHUB_ENV
+      - name: Publish to XCore
+        if: ${{ steps.cache.outputs.cache-hit != 'true' || $PROJECT_VERSION != steps.cache.outputs.previous-version }}
+        run: ./gradlew publish
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.MAVEN_PASSWORD }}
+      - name: Cache version
+        run: echo $PROJECT_VERSION > previous-version.txt
+
+
