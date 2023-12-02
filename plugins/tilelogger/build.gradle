@@ -7,25 +7,30 @@ plugins {
 
 version '1.0'
 
-sourceCompatibility = 1.17
-
 compileJava.options.encoding = "UTF-8"
 compileTestJava.options.encoding = "UTF-8"
 
 repositories{
     mavenCentral()
-    maven{ url 'https://www.jitpack.io' }
+    maven { url "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository" }
+    maven { url 'https://www.jitpack.io' }
+
+    maven {
+        name "xcoreRepository"
+        url "https://n1.x-core.fun/maven/private"
+        credentials(org.gradle.api.credentials.PasswordCredentials)
+    }
 }
 
 ext{
-    mindustryVersion = 'v144'
+    mindustryVersion = 'v145'
 }
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
 
-    compileOnly fileTree(dir: 'xcore-plugin/build/libs', include: ['*.jar'])
+    compileOnly "org.xcore:plugin:2.7"
 }
 
 model {
@@ -88,11 +93,6 @@ model {
     }
 }
 
-tasks.register('buildXCorePlugin', GradleBuild) {
-    buildFile = 'xcore-plugin/build.gradle.kts'
-    tasks = ['jar']
-}
-
 tasks.register("packLibToJar", Jar) {
     dependsOn assemble
     archiveFileName = "TileLoggerPacked.jar"
@@ -105,7 +105,6 @@ tasks.register("packLibToJar", Jar) {
 }
 
 jar {
-    dependsOn tasks.buildXCorePlugin
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     archiveFileName = "${project.archivesBaseName}.jar"
