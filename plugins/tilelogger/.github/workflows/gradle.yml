@@ -5,12 +5,9 @@ on: [push, workflow_dispatch]
 jobs:
   build-linux-arm:
     runs-on: self-hosted
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-arm64
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-   
     - name: Build
       run: |
         chmod +x gradlew
@@ -19,12 +16,9 @@ jobs:
       env:
         ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
         ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.MAVEN_PASSWORD }}
-      
-    # - name: Upload artifacts
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: ${{ github.event.repository.name }}-linuxarm
-    #     path: build/libs
+
+    - name: Upload artifacts
+      run: cp build/libs/TileLoggerPacked.jar ../../../build/
     
   build-windows:
     runs-on: windows-latest

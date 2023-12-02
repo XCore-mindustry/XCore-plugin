@@ -23,13 +23,13 @@ namespace std {
 class TileLogger {
 public:
     timestamp_t_ Reset(std::filesystem::path path, bool write) {
-        if (path.is_relative()) {
+        if (!path.empty() && path.is_relative()) {
             path = tilelogs_ / path;
             std::filesystem::create_directories(tilelogs_);
         }
-        time_t_ duration = history_.Reset(path.replace_extension("history"), write);
-        players_.Reset(path.replace_extension("players"), write);
-        configs_.Reset(path.replace_extension("configs"), write);
+        time_t_ duration = history_.Reset(path.empty() ? path : path.replace_extension("history"), write);
+        players_.Reset(path.empty() ? path : path.replace_extension("players"), write);
+        configs_.Reset(path.empty() ? path : path.replace_extension("configs"), write);
         subnet_filter_.reset(subnets_ / "accept.txt", subnets_ / "deny.txt");
         time_begin_ = std::chrono::steady_clock::now() - std::chrono::seconds(duration);
         return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();

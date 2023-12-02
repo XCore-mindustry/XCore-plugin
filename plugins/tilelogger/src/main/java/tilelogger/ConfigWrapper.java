@@ -5,6 +5,7 @@ import java.nio.IntBuffer;
 
 import arc.math.geom.Point2;
 import mindustry.Vars;
+import mindustry.ai.UnitCommand;
 import mindustry.gen.Call;
 import mindustry.type.*;
 import mindustry.world.Block;
@@ -28,6 +29,8 @@ public class ConfigWrapper {
             set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().indexOf(unit));
         else if (config instanceof Block block)
             set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().indexOf(block));
+        else if (config instanceof UnitCommand command)
+            set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + command.id);
         else if (config instanceof Point2 point)
             set((short) 4, point.pack());
         else if (config instanceof byte[] bytes)

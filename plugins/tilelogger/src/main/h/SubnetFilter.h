@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <exception>
+#include <iostream>
 
 class SubnetFilter {
 public:
@@ -32,7 +33,9 @@ private:
 
     static std::vector<Subnet> parse_list(const std::filesystem::path& path) {
         std::vector<Subnet> subnets;
-        std::ifstream ifs(path);
+        std::ifstream ifs(std::filesystem::canonical(path));
+        if (!ifs)
+            std::cerr << "parse_list() failed: " << path << std::endl;
         std::string str;
         while (std::getline(ifs, str)) {
             trim(str);
