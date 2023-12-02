@@ -16,8 +16,9 @@ jobs:
         with:
           java-version: 17
       - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: ./gradlew publish
+        run: |
+          chmod +x gradlew
+          ./gradlew publish
         env:
           ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.XCORE_USERNAME }}
           ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.XCORE_PASSWORD }}
