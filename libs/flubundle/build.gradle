@@ -18,7 +18,7 @@ repositories {
 publishing {
     repositories {
         maven {
-            name = "XCoreRepository"
+            name = "xcoreRepository"
             url = "https://n1.x-core.fun/maven/releases"
             credentials(PasswordCredentials)
             authentication {
