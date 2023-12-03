@@ -14,16 +14,16 @@ public class BundleTests {
         var bundle = Bundle.INSTANCE;
         bundle.addSource(new Fi("src/test/resources/bundles"));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"), "hello-user",
+        assertEquals("Hello, Billy!", bundle.format(new Locale("en"), "hello-user",
                 Map.of("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-user2",
+        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-user2",
                 Map.of("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-user",
+        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-user",
                 Bundle.args("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-num-user",
+        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-num-user",
                 Bundle.numArgs("Billy")));
     }
 
