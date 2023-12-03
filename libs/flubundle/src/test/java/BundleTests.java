@@ -19,6 +19,12 @@ public class BundleTests {
 
         assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-user2",
                 Map.of("userName", "Billy")));
+
+        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-user",
+                Bundle.args("userName", "Billy")));
+
+        assertEquals("Hello, Billy!", bundle.format(new Locale("ru"),"hello-num-user",
+                Bundle.numArgs("Billy")));
     }
 
     @Test
