@@ -3,6 +3,7 @@ package org.xcore.plugin;
 import arc.Core;
 import arc.net.Server;
 import arc.util.*;
+import com.ospx.flubundle.Bundle;
 import mindustry.Vars;
 import mindustry.core.Version;
 import mindustry.gen.AdminRequestCallPacket;
@@ -21,20 +22,20 @@ import org.xcore.plugin.listeners.NetEvents;
 import org.xcore.plugin.listeners.PluginEvents;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.*;
+import org.xcore.plugin.modules.bundles.Bundles;
 import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.database.Database;
-import useful.Bundle;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.writeString;
-import static useful.Bundle.send;
 
 public class XcorePlugin extends Plugin {
     public XcorePlugin() {
@@ -70,7 +71,7 @@ public class XcorePlugin extends Plugin {
         MiniPvP.init();
         MiniHexed.init();
         LastStanding.init();
-        Bundle.load(XcorePlugin.class);
+        Bundles.init();
 
         if (config.isMiniHexed() || config.isMiniPvP() || config.isSiege() || config.isZoneCapture())
             Vars.netServer.admins.addActionFilter(action -> action.type != ActionType.depositItem || !(action.tile.block() instanceof Turret));
@@ -128,8 +129,10 @@ public class XcorePlugin extends Plugin {
 
                 data.totalPlayTime++;
                 switch (data.totalPlayTime) {
-                    case votekickPlayTime -> send(player, "notification.votekick-playtime", votekickPlayTime);
-                    case globalChatPlayTime -> send(player, "notification.global-chat-playtime", globalChatPlayTime);
+                    case votekickPlayTime -> bundle.send(player, "notification.votekick-playtime",
+                            args("votekickPlayTime", votekickPlayTime));
+                    case globalChatPlayTime -> bundle.send(player, "notification.global-chat-playtime",
+                            args("globalChatPlayTime", globalChatPlayTime));
                 }
 
                 data.save();

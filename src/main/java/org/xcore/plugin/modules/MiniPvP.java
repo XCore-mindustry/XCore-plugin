@@ -10,9 +10,8 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.utils.Utils;
 
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.database;
-import static useful.Bundle.send;
+import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.PluginVars.*;
 
 public class MiniPvP {
     public static final Seq<String> defeatedPlayers = new Seq<>();
@@ -25,7 +24,7 @@ public class MiniPvP {
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
-                send(e.player, "pvp.you-spectator");
+                bundle.send(e.player, "pvp-you-spectator", args());
             }
         });
 
@@ -37,7 +36,7 @@ public class MiniPvP {
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
-                send(p, "pvp.team-won", increased);
+                bundle.send(p, "pvp-team-won", args("increased", increased));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 data.save();
@@ -61,7 +60,7 @@ public class MiniPvP {
                         } else {
                             data.pvpRating -= reduced;
                         }
-                        send(p, "pvp.team-lose", reduced);
+                        bundle.send(p, "pvp.team-lose", args("reduced", reduced));
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 

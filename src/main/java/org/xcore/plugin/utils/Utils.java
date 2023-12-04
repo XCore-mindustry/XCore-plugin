@@ -24,11 +24,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static arc.util.Strings.*;
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.charset;
 import static mindustry.Vars.maps;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.PluginVars.globalConfig;
-import static useful.Bundle.format;
+import static org.xcore.plugin.PluginVars.*;
 
 public class Utils {
     private static final Pattern periodPattern = Pattern.compile("([0-9]+)([hdwmy])");
@@ -99,11 +98,16 @@ public class Utils {
                 .sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
-        builder.append(format("leaderboard", player.locale));
+        builder.append(bundle.format(bundle.locale(player), "leaderboard", args()))
+                .append("\n\n");
         for (int i = 0; i < sorted.size; i++) {
             var data = sorted.get(i);
 
-            builder.append(format("pvp.leaderboard.content", player.locale, i + 1, data.nickname, data.pvpRating));
+            builder.append(bundle.format(bundle.locale(player), "pvp-leaderboard-content", args(
+                            "index", i + 1,
+                            "nickname", data.nickname,
+                            "rating", data.pvpRating)))
+                    .append("\n");
         }
 
     }
@@ -113,11 +117,15 @@ public class Utils {
                 .sort(t -> t.cores.size).reverse();
         teams.truncate(10);
 
-        builder.append(format("leaderboard", player.locale));
+        builder.append(bundle.format(bundle.locale(player), "leaderboard", args()))
+                .append("\n\n");
         for (int i = 0; i < teams.size; i++) {
             var team = teams.get(i);
-            builder.append(format("hexed.leaderboard.content", player.locale, i + 1, team.players.first().coloredName(),
-                    team.cores.size));
+            builder.append(bundle.format(bundle.locale(player), "hexed-leaderboard-content", args(
+                            "index", i + 1,
+                            "nickname", team.players.first().coloredName(),
+                            "hexes", team.cores.size)))
+                    .append("\n");
         }
 
     }

@@ -6,6 +6,7 @@ import arc.util.serialization.JsonReader;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.ospx.flubundle.Bundle;
 import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.votes.VoteKick;
@@ -43,6 +44,7 @@ public class PluginVars {
     public static final Gson rawGson = new GsonBuilder()
             .serializeNulls()
             .create();
+    public static final Bundle bundle = Bundle.INSTANCE;
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;

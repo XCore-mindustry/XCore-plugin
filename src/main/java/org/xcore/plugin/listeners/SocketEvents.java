@@ -24,12 +24,10 @@ import org.xcore.plugin.utils.models.PlayerData;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.XcorePlugin.info;
-import static useful.Bundle.send;
-
 public class SocketEvents {
     public static void init() {
         if (NetSock.isSocketServer()) {
@@ -103,7 +101,7 @@ public class SocketEvents {
                 player.admin = true;
                 PlayerData data = database.getCached(e.uuid);
                 data.getAdminData().adminConfirmed = true;
-                send(player, "commands.login.confirmed");
+                bundle.send(player, "commands.login.confirmed", args());
             }
 
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);

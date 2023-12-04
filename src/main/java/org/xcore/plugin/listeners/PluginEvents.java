@@ -19,13 +19,12 @@ import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.AdminData;
-import useful.Bundle;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
-import static useful.Bundle.send;
 
 public class PluginEvents {
     public static void init() {
@@ -38,7 +37,7 @@ public class PluginEvents {
                 }
             });
 
-            send(player, "welcome", Administration.Config.serverName.string());
+            bundle.send(player, "welcome", args("serverName", Administration.Config.serverName.string()));
             var data = database.getPlayerDatas().getPlayerData(player)
                     .setNickname(player.coloredName())
                     .setPlayer(player);
@@ -53,7 +52,7 @@ public class PluginEvents {
 
                     player.admin = false;
                     netServer.admins.unAdminPlayer(player.uuid());
-                    send(player, "error.ip-changed");
+                    bundle.send(player, "error-ip-changed", args());
                 }
 
                 data.setIp(player.ip());
@@ -73,7 +72,9 @@ public class PluginEvents {
                 Call.openURI(player.con, discordUrl);
 
             Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
-            Bundle.send("player.joined", player.coloredName(), data.pid);
+            bundle.send("player-joined", args(
+                    "nickname", player.coloredName(),
+                    "pid", data.pid));
             NetSock.post(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
                             true));
@@ -89,7 +90,9 @@ public class PluginEvents {
                 voteKick.left(event.player);
 
             Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
-            Bundle.send("player.left", player.coloredName(), data.pid);
+            bundle.send("player-left", args(
+                    "nickname", player.coloredName(),
+                    "pid", data.pid));
             NetSock.post(
                     new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
                             false));

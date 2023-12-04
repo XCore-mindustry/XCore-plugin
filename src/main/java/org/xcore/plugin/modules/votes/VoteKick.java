@@ -8,11 +8,10 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
-import useful.Bundle;
 
 import static arc.util.Strings.stripColors;
+import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.PluginVars.*;
-import static useful.Bundle.*;
 
 public class VoteKick extends VoteSession {
     public static Cons<Player> onKick = (player) -> {
@@ -36,23 +35,32 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        send("votekick.vote", player.coloredName(), target.coloredName(), reason, votes(), votesRequired());
-        Log.info(Bundle.format("votekick.vote", defaultLocale, player.plainName(), target.plainName(), reason, votes(), votesRequired()));
+        var args = args(
+                "nickname", player.coloredName(),
+                "targetNickname", target.coloredName(),
+                "reason", reason,
+                "votes", votes(),
+                "votesRequired", votesRequired());
+        bundle.send("votekick.vote", args);
+        var message = bundle.format(bundle.defaultLocale, "votekick-vote", args);
+        Log.info(message);
 
         if (votes() == 1) {
             var targetData = database.getCached(target.uuid());
             database.getCachedAdminTools("1.3", (v) -> v >= 0, data ->
-                    Call.clientPacketReliable(player.con, "adm_mod_votekick", targetData.pid + "," + targetData.nickname));
+                    Call.clientPacketReliable(data.player.con, "adm_mod_votekick", targetData.pid + "," + targetData.nickname));
         }
 
-        NetSock.post(new SocketEvents.ServerActionEvent(stripColors(format("votekick.vote", defaultLocale,
-                player.plainName(), target.plainName(), reason, votes(), votesRequired())), config.server));
+        NetSock.post(new SocketEvents.ServerActionEvent(stripColors(message), config.server));
     }
 
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0)
-            send("votekick.left", player.coloredName(), votes(), votesRequired());
+            bundle.send("votekick-left", args(
+                    "nickname", player.coloredName(),
+                    "votes", votes(),
+                    "votesRequired", votesRequired()));
 
         if (target == player && votes() > 0)
             success();
@@ -61,17 +69,19 @@ public class VoteKick extends VoteSession {
     @Override
     public void success() {
         stop();
-        send("votekick.success", target.coloredName(), kickDuration / 60000);
+        var args = args(
+                "nickname", target.coloredName(),
+                "minutes", kickDuration / 60000);
+        bundle.send("votekick-success", args);
         target.kick(Packets.KickReason.vote, kickDuration);
-        NetSock.post(new SocketEvents.ServerActionEvent(format("votekick.success", defaultLocale,
-                target.plainName(), kickDuration / 60000), config.server));
+        NetSock.post(new SocketEvents.ServerActionEvent(bundle.format(bundle.defaultLocale, "votekick-success", args), config.server));
         onKick.get(target);
     }
 
     @Override
     public void fail() {
         stop();
-        send("votekick.fail", target.coloredName());
+        bundle.send("votekick-fail", args("nickname", target.coloredName()));
     }
 
     @Override
