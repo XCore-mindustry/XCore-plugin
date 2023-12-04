@@ -34,7 +34,7 @@ public class BundleTests {
 
         var start = System.currentTimeMillis();
         for (int i = 0; i < 100000; i++) {
-            bundle.format(new Locale("ru"), "hello-user",
+            bundle.format(new Locale("en"), "hello-user",
                     Map.of("userName", "Billy"));
         }
         var end = System.currentTimeMillis();
@@ -49,7 +49,7 @@ public class BundleTests {
         long[] times = new long[100];
         for (int i = 0; i < 100; i++) {
             var start = System.nanoTime();
-            bundle.format(new Locale("ru"), "hello-user",
+            bundle.format(new Locale("en"), "hello-user",
                     Map.of("userName", "Billy"));
             var end = System.nanoTime();
 

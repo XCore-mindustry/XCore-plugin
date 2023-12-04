@@ -105,7 +105,7 @@ public class Bundle {
      * @return Formatted message
      */
     public String format(Locale locale, String id, String defaultValue, Map<String, Object> args) {
-        return format(locale, id, args, (k, l) -> defaultValue);
+        return format(locale, id, args, (k, a, l) -> defaultValue);
     }
 
     /**
@@ -127,7 +127,7 @@ public class Bundle {
         if (message.isPresent()) {
             return bundle.format(id, args == null ? Collections.emptyMap() : args);
         } else {
-            return defaultValue.getDefaultValue(id, locale);
+            return defaultValue.getDefaultValue(id, args, locale);
         }
     }
 
@@ -571,18 +571,24 @@ public class Bundle {
      * @return Arguments map
      * @see #numArgs(Object...)
      */
-    public static <K,V> Map<K, V> args(Object... values) {
-        var map = new HashMap<>();
+    public static Map<String, Object> args(Object... values) {
+        if (values.length == 0) return Collections.emptyMap();
 
-        for (int i = 0; i < values.length; i += 2) {
-            if (i + 1 >= values.length) {
-                throw new IllegalArgumentException("Odd number of arguments");
-            }
-
-            map.put((K) values[i], (V) values[i + 1]);
+        if (values.length % 2 != 0) {
+            throw new IllegalArgumentException("Odd number of arguments");
         }
 
-        return (Map<K, V>) map;
+        var map = new HashMap<String, Object>();
+
+        for (int i = 0; i < values.length; i += 2) {
+            if (!(values[i] instanceof String)) {
+                throw new IllegalArgumentException("Key must be a string");
+            }
+
+            map.put((String) values[i], values[i + 1]);
+        }
+
+        return map;
     }
 
     /**
@@ -593,14 +599,14 @@ public class Bundle {
      * @return Arguments map
      * @see #args(Object...)
      */
-    public static <K,V> Map<K, V> numArgs(Object... values) {
-        var map = new HashMap<>();
+    public static Map<String, Object> numArgs(Object... values) {
+        var map = new HashMap<String, Object>();
 
         for (int i = 0; i < values.length; i++) {
-            map.put("a"+i, (V) values[i]);
+            map.put("a"+i, values[i]);
         }
 
-        return (Map<K, V>) map;
+        return map;
     }
 
     public void setDefaultValueFactory(DefaultValueFactory defaultValueFactory) {
