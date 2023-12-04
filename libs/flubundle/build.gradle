@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'ospx'
-version = '1.1'
+version = '1.2'
 ext {
     mindustryVersion = "v146"
 }
@@ -37,12 +37,12 @@ publishing {
 }
 
 dependencies {
-    implementation "com.github.Anuken.Mindustry:core:$mindustryVersion"
-    implementation "com.github.Anuken.Arc:arc-core:$mindustryVersion"
+    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
+    compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
 
-    implementation("net.xyzsd.fluent:fluent-base:0.70")
-    implementation("net.xyzsd.fluent:fluent-functions-cldr:0.70")
-    implementation("net.xyzsd.fluent:fluent-functions-icu:0.70")
+    implementation "net.xyzsd.fluent:fluent-base:0.70"
+    implementation "net.xyzsd.fluent:fluent-functions-cldr:0.70"
+    implementation "net.xyzsd.fluent:fluent-functions-icu:0.70"
 
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
