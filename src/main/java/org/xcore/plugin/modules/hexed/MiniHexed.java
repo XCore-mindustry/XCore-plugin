@@ -23,12 +23,10 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
-import static org.xcore.plugin.PluginVars.config;
-import static org.xcore.plugin.PluginVars.database;
-import static useful.Bundle.format;
-import static useful.Bundle.send;
+import static org.xcore.plugin.PluginVars.*;
 
 public class MiniHexed {
     public static final ObjectMap<String, HexMember> members = new ObjectMap<>();
@@ -60,7 +58,7 @@ public class MiniHexed {
             if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
 
-                send("hexed.eliminated", player.coloredName());
+                bundle.send("hexed-eliminated", args("nickname", player.coloredName()));
                 player.team(Team.derelict);
             }
         });
@@ -89,7 +87,9 @@ public class MiniHexed {
             int sec = winScore % 60;
             int min = (winScore / 60) % 60;
 
-            Groups.player.each(p -> Call.infoPopup(p.con(), format("hexed.popup", p.locale, min, sec),
+            Groups.player.each(p -> Call.infoPopup(p.con(), bundle.format(bundle.locale(p.locale), "hexed-popup", args(
+                            "minutes", min,
+                            "seconds", sec)),
                     1, Align.bottom, 0, 0, 0, 0));
 
             if (winScore < 1 && !gameover && !Vars.state.gameOver) {
@@ -203,7 +203,7 @@ public class MiniHexed {
 
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
-            send("hexed.eliminated", player.coloredName());
+            bundle.send("hexed-eliminated", args("nickname", player.coloredName()));
             player.team(Team.derelict);
         }
 

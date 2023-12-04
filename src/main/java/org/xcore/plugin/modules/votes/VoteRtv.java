@@ -6,10 +6,11 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.world;
+import static org.xcore.plugin.PluginVars.bundle;
 import static org.xcore.plugin.PluginVars.mapLoadDelay;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
-import static useful.Bundle.send;
 
 public class VoteRtv extends VoteSession {
     public final Map target;
@@ -21,25 +22,34 @@ public class VoteRtv extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        send("rtv.vote", player.coloredName(), target.name(), votes(), votesRequired());
+        bundle.send("rtv-vote", args(
+                "nickname", player.coloredName(),
+                "mapName", target.name(),
+                "votes", votes(),
+                "votesRequired", votesRequired()));
     }
 
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0)
-            send("rtv.left", player.coloredName(), votes(), votesRequired());
+            bundle.send("rtv-left", args(
+                    "nickname", player.coloredName(),
+                    "votes", votes(),
+                    "votesRequired", votesRequired()));
     }
 
     @Override
     public void success() {
         stop();
-        send("rtv.success", target.name(), mapLoadDelay);
+        bundle.send("rtv-success", args(
+                "mapName", target.name(),
+                "mapLoadDelay", mapLoadDelay));
         Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
     }
 
     @Override
     public void fail() {
         stop();
-        send("rtv.fail", target.name());
+        bundle.send("rtv.fail", args("mapName", target.name()));
     }
 }

@@ -53,6 +53,7 @@ publishing {
 
 repositories {
     mavenCentral()
+    maven(url = "https://n1.x-core.fun/maven/releases")
     maven(url = "https://maven.xpdustry.com/snapshots")
     maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
@@ -65,7 +66,7 @@ dependencies {
     compileOnly("com.github.Anuken.Mindustry:core:v$mindustryVersion")
     compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
 
-    implementation("com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286")
+    implementation("com.ospx:flubundle:1.2")
     implementation("com.github.osp54:Sock:9d465f7")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")

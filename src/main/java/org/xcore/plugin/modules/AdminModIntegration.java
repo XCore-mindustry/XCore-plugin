@@ -13,12 +13,10 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
 import static org.xcore.plugin.PluginVars.*;
-
-import static useful.Bundle.format;
-import static useful.Bundle.send;
 
 public class AdminModIntegration {
     public static void init() {
@@ -37,7 +35,7 @@ public class AdminModIntegration {
             var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
 
             if (targetData == null) {
-                send(player, "error.player-not-found");
+                bundle.send(player, "error-player-not-found", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
@@ -45,7 +43,7 @@ public class AdminModIntegration {
             Instant date = Utils.parsePeriod(req.duration, TimeUnit.DAYS);
 
             if (date == null) {
-                send(player, "error.wrong-period-format", format("days", player));
+                bundle.send(player, "error.wrong-period-format", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
@@ -71,7 +69,7 @@ public class AdminModIntegration {
             var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
-            send(player, "ban.cancelled", targetData.nickname);
+            bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {

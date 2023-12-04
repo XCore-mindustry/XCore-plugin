@@ -25,12 +25,10 @@ import org.xcore.plugin.utils.models.BanRequestData;
 import java.time.Duration;
 
 import static arc.util.Strings.stripColors;
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.voteChoice;
-import static useful.Bundle.format;
-import static useful.Bundle.send;
-
 public class NetEvents {
     public static final Seq<String> bannedNames = Seq.with("valve", "tuttop");
     @Getter
@@ -42,7 +40,7 @@ public class NetEvents {
         int sign = voteChoice(text);
         if (sign != 0 && vote != null) {
             if (vote.voted.containsKey(author.id)) {
-                send(author, "error.already-voted");
+                bundle.send(author, "error-already-voted", args());
                 return null;
             }
             vote.vote(author, sign);
@@ -53,7 +51,9 @@ public class NetEvents {
         var data = database.getCached(author.uuid());
         if (data.muted > Time.millis()) {
             Duration remain = Duration.ofMillis(data.muted - Time.millis());
-            send(author, "you-are-muted", remain.toMinutes(), remain.toSecondsPart());
+            bundle.send(author, "you-are-muted", args(
+                    "remainMinutes", remain.toMinutes(),
+                    "remainSeconds", remain.toSecondsPart()));
             return null;
         }
 
@@ -81,7 +81,9 @@ public class NetEvents {
             case ban -> {
                 target.kick(Packets.KickReason.banned);
                 netServer.admins.banPlayerID(target.uuid());
-                send("tempban.player-banned", admin.coloredName(), target.coloredName());
+                bundle.send("tempban-player-banned", args(
+                        "adminName", admin.coloredName(),
+                        "playerName", target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
                 var targetData = database.getCached(target.uuid());
@@ -112,11 +114,7 @@ public class NetEvents {
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
 
-            case switchTeam -> //if(packet.params instanceof Team team){
-                //    target.team(team);
-                //    Log.info("@ has switched team of @ to @", admin.plainName(), target.plainName(), team.name);
-                //}
-                    send(player, "error.access-denied");
+            case switchTeam -> bundle.send(player, "error-access-denied", args());
         }
     }
 
@@ -150,7 +148,7 @@ public class NetEvents {
         String uuid = packet.uuid;
 
         if (bannedNames.contains(packet.name.toLowerCase())) {
-            con.kick(format("kick.pirated-game", packet.locale), 0);
+            con.kick(bundle.format(bundle.locale(packet.locale), "kick-pirated-game", args()), 0);
             return;
         }
 
@@ -167,8 +165,12 @@ public class NetEvents {
             }
         }
 
-        if (netServer.admins.isIPBanned(con.address) || netServer.admins.isSubnetBanned(con.address)) {
-            con.kick(format("ban.content", packet.locale, stripColors(packet.name), discordUrl), 0);
+        if (netServer.admins.isIPBanned(con.address)
+                || netServer.admins.isSubnetBanned(con.address)
+                || netServer.admins.isIDBanned(uuid)) {
+            con.kick(bundle.format(bundle.locale(packet.locale), "ban-content", args(
+                    "nickname", stripColors(packet.name),
+                    "discordUrl", discordUrl)), 0);
             return;
         }
 
@@ -187,15 +189,12 @@ public class NetEvents {
             return;
         }
 
-        if (netServer.admins.isIDBanned(uuid)) {
-            con.kick(format("ban.content", packet.locale, stripColors(packet.name), discordUrl), 0);
-            return;
-        }
-
         long kickTime = netServer.admins.getKickTime(uuid, con.address);
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
-            con.kick(format("kick.recently-kicked", packet.locale, remain.toMinutes(), remain.toSecondsPart()), 0);
+            con.kick(bundle.format(bundle.locale(packet.locale), "kick-recently-kicked", args(
+                    "remainMinutes", remain.toMinutes(),
+                    "remainSeconds", remain.toSecondsPart())), 0);
             return;
         }
         if (!netServer.admins.isAdmin(uuid, packet.usid) && config.playerLimit > 0 && Groups.player.size() >= config.getNoAdminPlayerLimit()) {
@@ -311,12 +310,15 @@ public class NetEvents {
     public static void tempBanKick(NetConnection con, String locale, BanData ban) {
         Duration duration = Duration.ofMillis(ban.unbanDate.getTime() - Time.millis());
 
-        con.kick(format("tempban.content", locale,
-                stripColors(ban.name),
-                stripColors(ban.adminName),
-                ban.reason,
-                duration.toDays(), duration.toHoursPart(), duration.toMinutesPart(),
-                discordUrl), 0);
+        con.kick(bundle.format(bundle.locale(locale), "tempban.content", args(
+                "nickname", stripColors(ban.name),
+                "adminName", stripColors(ban.adminName),
+                "reason", ban.reason,
+                "days", duration.toDays(),
+                "hours", duration.toHoursPart(),
+                "minutes", duration.toMinutesPart(),
+                "discordUrl", discordUrl)
+        ), 0);
     }
 
     public static void setIpAcceptor(Boolf<String> ipAcceptor) {
