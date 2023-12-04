@@ -18,6 +18,7 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.models.AdminData;
 import useful.Bundle;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,7 +47,10 @@ public class PluginEvents {
 
             if (data.exists && !data.ip.equals(player.ip())) {
                 if (player.admin) {
-                    data.adminConfirmed = false;
+                    AdminData adminData = data.getAdminData();
+                    adminData.adminConfirmed = false;
+                    adminData.save();
+
                     player.admin = false;
                     netServer.admins.unAdminPlayer(player.uuid());
                     send(player, "error.ip-changed");

@@ -18,6 +18,7 @@ import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.TextArgumentSplitter;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -135,17 +136,15 @@ public class ServerCommands {
             Log.info("Done.");
         });
 
-        handler.register("edit-data", "<name/uuid/ip> <perm> <value>", "Give/remove permission.", args -> {
-            PlayerInfo info = Find.playerInfo(args[0]);
+        handler.register("edit-data", "<#id/uuid> <perm> <value>", "Give/remove permission.", args -> {
+            PlayerData data = Find.playerData(args[0]);
             String field = args[1];
             String value = args[2];
 
-            if (info == null) {
+            if (data == null) {
                 Log.info("Player not found.");
                 return;
             }
-
-            PlayerData data = database.getCachedOrDb(info.id);
 
             String json = prettyGson.toJson(data);
             JsonValue reader = new JsonReader().parse(json);
@@ -169,9 +168,7 @@ public class ServerCommands {
         });
 
         handler.register("dbinfo", "<#id/uuid>", "Info about player from db.", args -> {
-            PlayerData data = args[0].startsWith("#") ?
-                    database.getCachedOrDb(Strings.parseInt(args[0].substring(1))) :
-                    database.getCachedOrDb(args[0]);
+            PlayerData data = Find.playerData(args[0]);
 
             if (data == null) {
                 Log.err("Player not found");
@@ -276,8 +273,7 @@ public class ServerCommands {
 
 
         handler.register("mute", "<uuid/#id> <period>", "Mute player", args -> {
-            PlayerData data = args[0].startsWith("#") ? database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
-                    database.getPlayerDatas().getPlayerData(args[0]);
+            PlayerData data = Find.playerData(args[0]);
 
             if (data == null) {
                 Log.err("Player not found.");
@@ -300,8 +296,7 @@ public class ServerCommands {
 
 
         handler.register("unmute", "<uuid/#id>", "Unmute player", (args, player) -> {
-            PlayerData data = args[0].startsWith("#") ? database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1))) :
-                    database.getPlayerDatas().getPlayerData(args[0]);
+            PlayerData data = Find.playerData(args[0]);
 
             if (data == null) {
                 Log.err("Player not found.");
@@ -313,6 +308,30 @@ public class ServerCommands {
             Log.info("@ (@) unmuted", data.nickname, data.uuid);
         });
 
+        handler.register("gcmd", "<args...>", "Execute command on all servers", args -> {
+            var argsQuotes = TextArgumentSplitter.split(args[0]);
+            var expectServers = new Seq<String>();
+
+            if (argsQuotes.length == 0) {
+                Log.err("Missing arguments.");
+                return;
+            }
+
+            if (argsQuotes[0].startsWith("gcmd")) {
+                Log.err("Recursive command.");
+                return;
+            }
+
+            if (argsQuotes.length > 1) {
+                for (int i = 1; i < argsQuotes.length; i++) {
+                    expectServers.add(argsQuotes[i]);
+                }
+            }
+
+            NetSock.post(new SocketEvents.ExecuteCommand(argsQuotes[0], expectServers.toArray(String.class)));
+            Log.info("Done");
+        });
+
         handler.register("sock-restart", "Restart sock", args -> {
             NetSock.sock.disconnect();
             NetSock.safeConnect();
@@ -322,7 +341,7 @@ public class ServerCommands {
         handler.register("gg-restart", "Restart the server on GameOver", args -> {
             gameoverRestart = true;
 
-            Log.info("GameOver restart turned " + (gameoverRestart ? "on" : "off"));
+            Log.info("GameOver restart turned on");
         });
     }
 }
