@@ -43,6 +43,8 @@ public class PlayerData {
     public long historySize = 0L;
     @BsonIgnore
     public transient boolean exists = true;
+    @BsonIgnore
+    public long lastUnload = 0;
 
     public PlayerData(String uuid, Boolean exists) {
         this.uuid = uuid;
