@@ -14,7 +14,6 @@ import mindustry.net.Administration;
 import mindustry.net.Administration.ActionType;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
-import mindustry.world.blocks.defense.turrets.Turret;
 
 import org.xcore.plugin.commands.ClientCommands;
 import org.xcore.plugin.commands.ServerCommands;
@@ -27,6 +26,7 @@ import org.xcore.plugin.modules.hexed.MiniHexed;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.database.Database;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -73,8 +73,15 @@ public class XcorePlugin extends Plugin {
         LastStanding.init();
         Bundles.init();
 
-        if (config.isMiniHexed() || config.isMiniPvP() || config.isSiege() || config.isZoneCapture())
-            Vars.netServer.admins.addActionFilter(action -> action.type != ActionType.depositItem || !(action.tile.block() instanceof Turret));
+        Vars.netServer.admins.addActionFilter(action -> {
+            if (action.type == ActionType.depositItem) {
+                PlayerData playerData = database.getCached(action.player.uuid());
+                if (System.nanoTime() - playerData.lastUnload < 1_000_000_000)
+                    return false;
+                playerData.lastUnload = System.nanoTime();
+            }
+            return true;
+        });
 
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
