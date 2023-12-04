@@ -1,11 +1,14 @@
 package org.xcore.plugin.utils;
 
+import arc.util.Strings;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;
+import static org.xcore.plugin.PluginVars.database;
 import static org.xcore.plugin.PluginVars.translatorLanguages;
 import static org.xcore.plugin.utils.Utils.deepEquals;
 import static org.xcore.plugin.utils.Utils.notNullElse;
@@ -25,6 +28,11 @@ public class Find {
 
     public static Player playerByUuid(String uuid) {
         return Groups.player.find(player -> player.uuid().equals(uuid));
+    }
+
+    public static PlayerData playerData(String uuidOrPid) {
+        return uuidOrPid.startsWith("#") ? database.getCachedOrDb(Strings.parseInt(uuidOrPid.substring(1))) :
+                database.getCachedOrDb(uuidOrPid);
     }
 
     public static Administration.PlayerInfo playerInfo(String name) {

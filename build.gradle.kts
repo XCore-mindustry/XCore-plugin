@@ -6,11 +6,12 @@ import fr.xpdustry.toxopid.task.MindustryExec
 
 plugins {
     java
+    `maven-publish`
     id("fr.xpdustry.toxopid") version "3.0.0"
 } 
 
 group = "org.xcore.plugin"
-version = "2.7"
+version = "2.7.1"
 val mindustryVersion = "146"
 
 toxopid {
@@ -28,6 +29,27 @@ val metadata = ModMetadata(
     minGameVersion = mindustryVersion,
     main = "${project.group}.XcorePlugin"
 )
+
+publishing {
+    repositories {
+        maven {
+            name = "xcoreRepository"
+            url = uri("https://n1.x-core.fun/maven/private")
+            credentials(PasswordCredentials::class)
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+        }
+    }
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "org.xcore"
+            artifactId = "plugin"
+            version = version
+            from(components["java"])
+        }
+    }
+}
 
 repositories {
     mavenCentral()
