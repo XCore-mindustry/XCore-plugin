@@ -341,7 +341,7 @@ public class ClientCommands {
                     builder.append(bundle.format(bundle.locale(player), "commands-top-hexed-content", args(
                                     "index", i + 1,
                                     "nickname", data.nickname,
-                                    "rankName", bundle.format(bundle.locale(player), "hexed.ranks." + data.hexedRank().name(), args()),
+                                    "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + data.hexedRank().name(), args()),
                                     "points", data.hexedPoints)))
                             .append("\n");
                 }
