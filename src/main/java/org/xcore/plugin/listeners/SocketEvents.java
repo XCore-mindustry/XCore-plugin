@@ -101,7 +101,7 @@ public class SocketEvents {
                 player.admin = true;
                 PlayerData data = database.getCached(e.uuid);
                 data.getAdminData().adminConfirmed = true;
-                bundle.send(player, "commands.login.confirmed", args());
+                bundle.send(player, "commands-login-confirmed", args());
             }
 
             netServer.admins.adminPlayer(e.uuid, info.adminUsid);
