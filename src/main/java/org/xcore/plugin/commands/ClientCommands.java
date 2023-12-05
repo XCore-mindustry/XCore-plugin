@@ -322,7 +322,8 @@ public class ClientCommands {
                     builder.append(bundle.format(bundle.locale(player), "commands-ranks-content", args(
                             "rankTag", rank.tag,
                             "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + rank.name(), args()),
-                            "requiredPoints", rank.requirements == null ? 0 : rank.requirements.wins())));
+                            "requiredPoints", rank.requirements == null ? 0 : rank.requirements.wins())))
+                        .append("\n");
                 }
                 builder.append(bundle.format(bundle.locale(player), "commands-ranks-footer", args()));
 
