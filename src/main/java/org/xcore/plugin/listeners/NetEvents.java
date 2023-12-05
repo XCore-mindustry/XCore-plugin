@@ -310,7 +310,7 @@ public class NetEvents {
     public static void tempBanKick(NetConnection con, String locale, BanData ban) {
         Duration duration = Duration.ofMillis(ban.unbanDate.getTime() - Time.millis());
 
-        con.kick(bundle.format(bundle.locale(locale), "tempban.content", args(
+        con.kick(bundle.format(bundle.locale(locale), "tempban-content", args(
                 "nickname", stripColors(ban.name),
                 "adminName", stripColors(ban.adminName),
                 "reason", ban.reason,
