@@ -312,7 +312,7 @@ public class ClientCommands {
                         "rankTag", rank.tag,
                         "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + rank.name(), args()),
                         "points", data.hexedPoints,
-                        "reguiredPoints", rank.next.requirements.wins()));
+                        "requiredPoints", rank.next.requirements.wins()));
             });
 
             register("ranks", (args, player) -> {
