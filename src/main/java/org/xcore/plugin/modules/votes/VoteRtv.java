@@ -50,6 +50,6 @@ public class VoteRtv extends VoteSession {
     @Override
     public void fail() {
         stop();
-        bundle.send("rtv.fail", args("mapName", target.name()));
+        bundle.send("rtv-fail", args("mapName", target.name()));
     }
 }
