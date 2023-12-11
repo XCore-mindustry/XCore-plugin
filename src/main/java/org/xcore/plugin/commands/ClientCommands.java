@@ -312,7 +312,7 @@ public class ClientCommands {
                         "rankTag", rank.tag,
                         "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + rank.name(), args()),
                         "points", data.hexedPoints,
-                        "reguiredPoints", rank.next.requirements.wins()));
+                        "requiredPoints", rank.next.requirements.wins()));
             });
 
             register("ranks", (args, player) -> {
@@ -322,7 +322,8 @@ public class ClientCommands {
                     builder.append(bundle.format(bundle.locale(player), "commands-ranks-content", args(
                             "rankTag", rank.tag,
                             "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + rank.name(), args()),
-                            "requiredPoints", rank.requirements == null ? 0 : rank.requirements.wins())));
+                            "requiredPoints", rank.requirements == null ? 0 : rank.requirements.wins())))
+                        .append("\n");
                 }
                 builder.append(bundle.format(bundle.locale(player), "commands-ranks-footer", args()));
 
@@ -341,7 +342,7 @@ public class ClientCommands {
                     builder.append(bundle.format(bundle.locale(player), "commands-top-hexed-content", args(
                                     "index", i + 1,
                                     "nickname", data.nickname,
-                                    "rankName", bundle.format(bundle.locale(player), "hexed.ranks." + data.hexedRank().name(), args()),
+                                    "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + data.hexedRank().name(), args()),
                                     "points", data.hexedPoints)))
                             .append("\n");
                 }

@@ -60,7 +60,7 @@ public class MiniPvP {
                         } else {
                             data.pvpRating -= reduced;
                         }
-                        bundle.send(p, "pvp.team-lose", args("reduced", reduced));
+                        bundle.send(p, "pvp-team-lose", args("reduced", reduced));
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 

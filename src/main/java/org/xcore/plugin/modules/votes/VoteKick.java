@@ -41,7 +41,7 @@ public class VoteKick extends VoteSession {
                 "reason", reason,
                 "votes", votes(),
                 "votesRequired", votesRequired());
-        bundle.send("votekick.vote", args);
+        bundle.send("votekick-vote", args);
         var message = bundle.format(bundle.defaultLocale, "votekick-vote", args);
         Log.info(message);
 
