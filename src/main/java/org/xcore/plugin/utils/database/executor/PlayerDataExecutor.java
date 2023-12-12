@@ -1,9 +1,11 @@
-package org.xcore.plugin.utils.database;
+package org.xcore.plugin.utils.database.executor;
 
 import arc.struct.Seq;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.ReplaceOptions;
 import mindustry.gen.Player;
+import org.xcore.plugin.utils.database.Database;
+import org.xcore.plugin.utils.database.PagedDataResult;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.util.Optional;
@@ -13,27 +15,26 @@ import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Sorts.descending;
 import static org.xcore.plugin.PluginVars.database;
 
-public class PlayerDataExecutor {
-    private final MongoCollection<PlayerData> collection;
-
+public class PlayerDataExecutor extends Executor<PlayerData> {
     public PlayerDataExecutor(MongoCollection<PlayerData> collection) {
-        this.collection = collection;
+        super(collection);
     }
 
-    public PlayerData getPlayerData(Player player) {
-        return getPlayerData(player.uuid());
+    public PlayerData get(Player player) {
+        return get(player.uuid());
     }
 
-    public PlayerData getPlayerData(String uuid) {
+    public PlayerData get(String uuid) {
         return Optional.ofNullable(collection.find(eq("uuid", uuid)).first())
                 .orElse(new PlayerData(uuid, false));
     }
 
-    public PlayerData getPlayerDataById(int id) {
+    public PlayerData getById(int id) {
         return collection.find(eq("pid", id)).first();
     }
 
-    public void setPlayerData(PlayerData data) {
+    @Override
+    public void save(PlayerData data) {
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
@@ -44,7 +45,7 @@ public class PlayerDataExecutor {
         for (PlayerData data : collection.find()) {
             pids++;
             data.pid = pids;
-            setPlayerData(data);
+            save(data);
         }
 
         database.setCounter("player_id", pids);

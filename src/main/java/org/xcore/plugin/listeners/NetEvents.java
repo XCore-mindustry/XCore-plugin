@@ -48,13 +48,17 @@ public class NetEvents {
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
-        var data = database.getCached(author.uuid());
-        if (data.muted > Time.millis()) {
-            Duration remain = Duration.ofMillis(data.muted - Time.millis());
+        var muteData = database.getMuteDatas().get(author.uuid());
+        if (muteData != null && !muteData.expired()) {
+            Duration remain = Duration.ofMillis(muteData.expireDate.getTime() - Time.millis());
             bundle.send(author, "you-are-muted", args(
+                    "adminName", muteData.adminName,
+                    "reason", muteData.reason,
                     "remainMinutes", remain.toMinutes(),
                     "remainSeconds", remain.toSecondsPart()));
             return null;
+        } else if (muteData != null) {
+            database.getMuteDatas().delete(muteData.uuid);
         }
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
@@ -153,12 +157,12 @@ public class NetEvents {
         }
 
 
-        BanData ban = database.getBanDatas().getBan(uuid, con.address);
+        BanData ban = database.getBanDatas().get(uuid, con.address);
         if (ban != null) {
             if (ban.expired()) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(con.address);
-                database.getBanDatas().deleteBan(ban.uuid, con.address);
+                database.getBanDatas().delete(ban.uuid, con.address);
             } else {
                 tempBanKick(con, packet.locale, ban);
                 return;
@@ -308,7 +312,7 @@ public class NetEvents {
     }
 
     public static void tempBanKick(NetConnection con, String locale, BanData ban) {
-        Duration duration = Duration.ofMillis(ban.unbanDate.getTime() - Time.millis());
+        Duration duration = Duration.ofMillis(ban.expireDate.getTime() - Time.millis());
 
         con.kick(bundle.format(bundle.locale(locale), "tempban-content", args(
                 "nickname", stripColors(ban.name),

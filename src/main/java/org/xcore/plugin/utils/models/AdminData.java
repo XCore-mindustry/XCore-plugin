@@ -27,6 +27,6 @@ public class AdminData {
     }
 
     public void save() {
-        database.adminDatas.setAdminData(this);
+        database.adminDatas.save(this);
     }
 }

@@ -7,7 +7,6 @@ import arc.util.CommandHandler;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
-import arc.graphics.Color; //darkness you onion 2
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.game.Team;
@@ -15,7 +14,6 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import mindustry.content.*;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -26,6 +24,7 @@ import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.MuteData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Duration;
@@ -87,12 +86,18 @@ public class ClientCommands {
 
         register("t", (args, player) -> {
             var data = database.getCached(player.uuid());
-            if (data.muted > Time.millis()) {
-                Duration remain = Duration.ofMillis(data.muted - Time.millis());
+            var mute = database.getMuteDatas().get(player.uuid());
+
+            if (mute != null && !mute.expired()) {
+                Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
                 bundle.send(player, "you-are-muted",
-                        args("remainMinutes", remain.toMinutes(),
+                        args("adminName", mute.adminName,
+                                "reason", mute.reason,
+                                "remainMinutes", remain.toMinutes(),
                                 "remainSeconds", remain.toSecondsPart()));
                 return;
+            } else if (mute != null) {
+                database.getMuteDatas().delete(player.uuid());
             }
 
             Groups.player.each(
@@ -398,7 +403,7 @@ public class ClientCommands {
                 return;
             }
 
-            var target = database.getPlayerDatas().getPlayerDataById(id);
+            var target = database.getPlayerDatas().getById(id);
 
             if (target == null) {
                 bundle.send(player, "error-player-not-found", args());
@@ -424,7 +429,7 @@ public class ClientCommands {
                     .ip(ip)
                     .adminName(player.name)
                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .unbanDate(unbanDate)
+                    .expireDate(unbanDate)
                     .build();
 
             NetSock.post(result);
@@ -443,14 +448,14 @@ public class ClientCommands {
                 return;
             }
 
-            var target = database.getPlayerDatas().getPlayerDataById(id);
+            var target = database.getPlayerDatas().getById(id);
 
             if (target == null) {
                 bundle.send(player, "error-player-not-found", args());
                 return;
             }
 
-            database.getBanDatas().deleteBan(target.uuid, null);
+            database.getBanDatas().delete(target.uuid, null);
             bundle.send(player, "commands-unban-success", args(
                     "nickname", target.nickname,
                     "pid", target.pid
@@ -471,6 +476,11 @@ public class ClientCommands {
                 return;
             }
 
+            if (target.getAdminData() != null && target.getAdminData().adminConfirmed) {
+                bundle.send(player, "error-access-denied", args());
+                return;
+            }
+
             Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
             if (date == null) {
@@ -478,15 +488,24 @@ public class ClientCommands {
                 return;
             }
 
-            target.muted = Time.millis() + date.toEpochMilli();
+            String reason = args.length > 2 ? args[2] : "Not Specified";
+            database.muteDatas.save(MuteData.builder()
+                    .uuid(target.uuid)
+                    .name(target.nickname)
+                    .adminName(player.name)
+                    .reason(reason)
+                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .build());
 
             target.save();
-            bundle.send(player, "commands-mute-success", args("nickname", target.nickname));
+            bundle.send(player, "commands-mute-success", args(
+                    "nickname", target.nickname));
             Duration duration = Duration.ofMillis(date.toEpochMilli());
 
             Optional.ofNullable(Find.playerByUuid(target.uuid)).ifPresent(p ->
                     bundle.send(p, "you-are-muted-by", args(
                             "adminName", player.coloredName(),
+                            "reason", reason,
                             "remainMinutes", duration.toMinutes(),
                             "remainSeconds", duration.toSecondsPart())));
         });
@@ -506,9 +525,8 @@ public class ClientCommands {
                 return;
             }
 
-            target.muted = 0;
+            database.muteDatas.delete(target.uuid);
 
-            target.save();
             bundle.send(player, "commands-unmute-success", args("nickname", target.nickname));
         });
         register("artv", true, (args, player) -> {

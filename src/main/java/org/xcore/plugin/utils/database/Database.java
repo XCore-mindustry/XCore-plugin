@@ -17,8 +17,10 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
+import org.xcore.plugin.utils.database.executor.*;
 import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.MuteData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.util.Optional;
@@ -37,6 +39,8 @@ public class Database {
     public final AdminDataExecutor adminDatas;
     @Getter
     public final BanDataExecutor banDatas;
+    @Getter
+    public final PunishmentExecutor<MuteData> muteDatas;
 
     public final MongoClient mongoClient;
     public final MongoDatabase database;
@@ -54,6 +58,7 @@ public class Database {
         adminDatas = new AdminDataExecutor(database.getCollection("admins", AdminData.class));
         banDatas = new BanDataExecutor(
                 database.getCollection("bans", BanData.class));
+        muteDatas = new PunishmentExecutor<>(database.getCollection("mutes", MuteData.class));
     }
 
     public static void init() {
@@ -74,11 +79,11 @@ public class Database {
     }
 
     public PlayerData getCachedOrDb(String uuid) {
-        return Optional.ofNullable(cachedPlayerData.get(uuid)).orElseGet(() -> playerDatas.getPlayerData(uuid));
+        return Optional.ofNullable(cachedPlayerData.get(uuid)).orElseGet(() -> playerDatas.get(uuid));
     }
 
     public PlayerData getCachedOrDb(int id) {
-        return Optional.ofNullable(getCached(id)).orElseGet(() -> playerDatas.getPlayerDataById(id));
+        return Optional.ofNullable(getCached(id)).orElseGet(() -> playerDatas.getById(id));
     }
 
     public void setCached(PlayerData data) {
@@ -92,7 +97,7 @@ public class Database {
 
     public void reloadCache() {
         cachedPlayerData.clear();
-        Groups.player.copy(new Seq<>()).map(playerDatas::getPlayerData).each(data -> cachedPlayerData.put(data.uuid, data));
+        Groups.player.copy(new Seq<>()).map(playerDatas::get).each(data -> cachedPlayerData.put(data.uuid, data));
     }
 
     public PlayerData removeCached(String uuid) {

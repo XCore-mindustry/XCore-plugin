@@ -175,7 +175,7 @@ public class Bot {
     public static void sendBan(BanData ban) {
         if (!isConnected) return;
 
-        PlayerData data = database.getPlayerDatas().getPlayerData(ban.uuid);
+        PlayerData data = database.getPlayerDatas().get(ban.uuid);
 
         bansChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder()
@@ -185,14 +185,14 @@ public class Bot {
                         .addField("Violator", ban.name, false)
                         .addField("Admin", ban.adminName, false)
                         .addField("Reason", ban.reason, false)
-                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant()), false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.expireDate.toInstant()), false)
                         .build()
                 )
                 .build()).subscribe();
     }
 
     public static void sendAdminRequestEvent(int pid, String server) {
-        PlayerData data = database.getPlayerDatas().getPlayerDataById(pid);
+        PlayerData data = database.getPlayerDatas().getById(pid);
 
         privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")

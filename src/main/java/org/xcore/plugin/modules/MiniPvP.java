@@ -36,7 +36,7 @@ public class MiniPvP {
 
                 int increased = 150 / (e.winner.data().players.size + 1);
                 data.pvpRating += increased;
-                bundle.send(p, "pvp-team-won", args("increased", increased));
+                bundle.send(p, "pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 data.save();
@@ -60,7 +60,7 @@ public class MiniPvP {
                         } else {
                             data.pvpRating -= reduced;
                         }
-                        bundle.send(p, "pvp-team-lose", args("reduced", reduced));
+                        bundle.send(p, "pvp-team-lose", args("reduced", reduced + ""));
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
