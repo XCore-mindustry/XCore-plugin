@@ -144,14 +144,12 @@ tempban-content = {$nickname}[accent] забанен.
     Для снятия бана посетите дискорд(канал [gray]{support-channel}]):
     {""}[cyan]{$discordUrl}
 tempban-player-banned = [scarlet] Админ {$adminName}[scarlet] забанил игрока [gray]'[]{$playerName}[gray]'
-                                                        you-are-muted-by = [scarlet]Вы были заглушены администратором
-                                                        [accent]{$adminName}[blue] на {$remainMinutes}:{$remainSeconds}
-                                                        минут.
-                                                        Причина: {$reason}
-                                                        you-are-muted = [scarlet]Вы не можете писать в чат. Вы заглушены
-                                                        администратором [accent]{$adminName}[accent] на
-                                                        {$remainMinutes}:{$remainSeconds} минут.
-                                                        Причина: {$reason}
+you-are-muted-by = [scarlet]Вы были заглушены администратором [accent]{$adminName}[blue] на {$remainMinutes}:{$remainSeconds} минут.
+    Причина: {$reason}
+you-are-muted = [scarlet]Вы не можете писать в чат. Вы заглушены
+администратором [accent]{$adminName}[accent] на
+{$remainMinutes}:{$remainSeconds} минут.
+Причина: {$reason}
 success = [green]Успешно
 empty = [accent]Пусто
 leaderboard = [blue]Таблица лидеров
