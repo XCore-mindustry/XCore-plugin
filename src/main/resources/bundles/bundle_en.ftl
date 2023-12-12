@@ -143,21 +143,15 @@ tempban-content = {$nickname}[accent] have been banned-
     {""}[cyan]{$discordUrl}
 tempban-player-banned = [scarlet] Admin {$adminName}[scarlet] banned player [gray]'[]{$playerName}[gray]'
 
-                                                        you-are-muted-by = [scarlet]You were muted by administrator
-                                                        [accent]{$adminName}[blue] for {$remainMinutes}:{$remainSeconds}
-                                                        minutes,
-                                                        reason: {$reason}
-                                                        you-are-muted = [scarlet]You can't write in the chat.
-                                                        [accent]You are muted by administrator {$adminName}[blue] for
-                                                        {$remainMinutes}:{$remainSeconds} minutes,
-                                                        reason: {$reason}
+you-are-muted-by = [scarlet]You were muted by administrator [accent]{$adminName}[blue] for {$remainMinutes}:{$remainSeconds} minutes,
+    reason: {$reason}
+you-are-muted = [scarlet]You can't write in the chat. [accent]You are muted by administrator {$adminName}[blue] for {$remainMinutes}:{$remainSeconds} minutes,
+    reason: {$reason}
 success = [green]Successfully
 empty = [accent]Empty
 leaderboard = [blue]Leaderboard
-                                                        pvp-team-won = Your team has won. Your rating has been increased
-                                                        by {0}
-                                                        pvp-team-lose = Your team lost. Your rating has been reduced by
-                                                        {0}
+pvp-team-won = Your team has won. Your rating has been increased by {0}
+pvp-team-lose = Your team lost. Your rating has been reduced by {0}
 pvp-leaderboard-content = [orange]{$index}. {$nickname}[accent]:[cyan] {$rating} [accent]rating
 hexed-popup = [blue]{$minutes}:{$seconds}[] until endgame
 hexed-eliminated = {$nickname} [gold]eliminated!
@@ -168,8 +162,7 @@ hexed-ranks-advanced = Advanced
 hexed-ranks-veteran = Veteran
 hexed-ranks-davastator = Devastator
 hexed-ranks-the_legend = The Legend
-                                                        pvp-you-spectator = [scarlet]You lost. Please wait for the next
-                                                        game-
+pvp-you-spectator = [scarlet]You lost. Please wait for the next game
 kick-pirated-game = [accent]Playing on a pirated version of the game is forbidden- Install the official version of the game from [blue]Apple App Store or Google Play Store[] or [blue]https://anuke-itch-io/mindustry
 kick-recently-kicked = [accent]You were recently kicked from this server
     Wait [cyan]{$remainMinutes}:{$remainSeconds}[accent]
