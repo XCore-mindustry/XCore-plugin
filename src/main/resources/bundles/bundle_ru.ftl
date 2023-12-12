@@ -6,7 +6,7 @@ commands-t-params = <сообщение...>
 commands-t-description = Отправить сообщение только своим товарищам по команде
 commands-g-params = <сообщение...>
 commands-g-description = Отправить сообщение на все сервера
-commands-t-chat = [{"#"}{$color}][\uE872 Команде] [coral]>[accent] {$name}[coral]:[white] {$message}
+        commands-t-chat = [{"#"}{$color}][Команде] [coral]>[accent] {$name}[coral]:[white] {$message}
 commands-a-params = <сообщение...>
 commands-a-description = Отправить сообщение только администраторам
 commands-sync-params = {""}
@@ -57,7 +57,9 @@ commands-ban-success = {$nickname} [scarlet]забанен
 commands-unban-params = <id-игрока>
 commands-unban-description = Разбанить игрока. [scarlet]Только для админов
 commands-unban-success = {$nickname}[accent] ({$pid}) успешно разбанен
-commands-mute-params = <id-игрока> <период>
+                                    commands-mute-params =
+                                    <id-игрока>
+                                        <период> [причина...]
 commands-mute-description = Замьютить игрока. [scarlet]Только для админов
 commands-mute-success = [accent]Игрок {$nickname}[accent] успешно замьючен
 commands-unmute-params = <id-игрока>
@@ -144,8 +146,14 @@ tempban-content = {$nickname}[accent] забанен.
     Для снятия бана посетите дискорд(канал [gray]{support-channel}]):
     {""}[cyan]{$discordUrl}
 tempban-player-banned = [scarlet] Админ {$adminName}[scarlet] забанил игрока [gray]'[]{$playerName}[gray]'
-you-are-muted-by = [scarlet]Вы были заглушены администратором {$adminName} на {$remainMinutes}:{$remainSeconds} минут.
-you-are-muted = [scarlet]Вы не можете писать в чат. Вы заглушены на {$remainMinutes}:{$remainSeconds} минут.
+                                                        you-are-muted-by = [scarlet]Вы были заглушены администратором
+                                                        [accent]{$adminName}[blue] на {$remainMinutes}:{$remainSeconds}
+                                                        минут.
+                                                        Причина: {$reason}
+                                                        you-are-muted = [scarlet]Вы не можете писать в чат. Вы заглушены
+                                                        администратором [accent]{$adminName}[accent] на
+                                                        {$remainMinutes}:{$remainSeconds} минут.
+                                                        Причина: {$reason}
 success = [green]Успешно
 empty = [accent]Пусто
 leaderboard = [blue]Таблица лидеров

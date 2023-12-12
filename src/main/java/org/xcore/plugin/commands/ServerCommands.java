@@ -21,6 +21,7 @@ import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.TextArgumentSplitter;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.MuteData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Duration;
@@ -191,7 +192,7 @@ public class ServerCommands {
             }
 
             if (args[0].startsWith("#")) {
-                var data = database.getPlayerDatas().getPlayerDataById(Strings.parseInt(args[0].substring(1)));
+                var data = database.getPlayerDatas().getById(Strings.parseInt(args[0].substring(1)));
 
                 if (data == null) {
                     Log.err("Player not found");
@@ -220,7 +221,7 @@ public class ServerCommands {
                     .ip(ip)
                     .adminName("console")
                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .unbanDate(unbanDate)
+                    .expireDate(unbanDate)
                     .build();
 
             NetSock.post(result);
@@ -230,7 +231,7 @@ public class ServerCommands {
 
         handler.register("tempbans", "[search...]", "List all temporarily banned players.", args -> {
             StringBuilder builder = new StringBuilder("Temporary banned players:");
-            Seq<BanData> bans = database.getBanDatas().getBanned();
+            Seq<BanData> bans = database.getBanDatas().getPunished();
 
             if (args.length > 0) {
                 bans.filter(b -> deepEquals(b.name, args[0]) || equalsHasNull(b.ip, args[0]) || equalsHasNull(b.uuid, args[0]));
@@ -238,7 +239,7 @@ public class ServerCommands {
 
             bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'".replace("@", "&fb&lb@&fr"),
                     ban.uuid, ban.ip, ban.name, ban.adminName,
-                    ban.unbanDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                    ban.expireDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
                     ban.reason)));
 
             Log.info(builder.toString());
@@ -267,12 +268,12 @@ public class ServerCommands {
                 default -> Log.err("Incorrect type. Example: uuid/ip/id");
             }
 
-            database.getBanDatas().deleteBan(uuid, ip);
+            database.getBanDatas().delete(uuid, ip);
             Log.info("Unbanned (@/@)", uuid, ip);
         });
 
 
-        handler.register("mute", "<uuid/#id> <period>", "Mute player", args -> {
+        handler.register("mute", "<uuid/#id> <period> [reason...]", "Mute player", args -> {
             PlayerData data = Find.playerData(args[0]);
 
             if (data == null) {
@@ -287,9 +288,16 @@ public class ServerCommands {
                 return;
             }
 
-            data.muted = Time.millis() + date.toEpochMilli();
+            var muteData = MuteData.builder()
+                    .uuid(data.uuid)
+                    .name(data.nickname)
+                    .adminName("console")
+                    .reason(args.length > 2 ? args[2] : "Not Specified")
+                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .build();
+            database.muteDatas.save(muteData);
+            NetSock.post(muteData);
 
-            data.save();
             Duration duration = Duration.ofMillis(date.toEpochMilli());
             Log.info("@ (@) muted for @:@", data.nickname, data.uuid, duration.toMinutes(), duration.toSecondsPart());
         });
@@ -302,8 +310,7 @@ public class ServerCommands {
                 Log.err("Player not found.");
                 return;
             }
-
-            data.muted = 0;
+            database.muteDatas.delete(data.uuid);
             data.save();
             Log.info("@ (@) unmuted", data.nickname, data.uuid);
         });
@@ -338,10 +345,10 @@ public class ServerCommands {
             Log.info("Done");
         });
 
-        handler.register("gg-restart", "Restart the server on GameOver", args -> {
-            gameoverRestart = true;
+        handler.register("gg-restart", "[on/off]", "Restart the server on GameOver", args -> {
+            gameoverRestart = args.length == 0 || !args[0].equals("off");
 
-            Log.info("GameOver restart turned on");
+            Log.info("GameOver restart turned @", gameoverRestart ? "on" : "off");
         });
     }
 }

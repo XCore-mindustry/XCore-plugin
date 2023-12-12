@@ -38,7 +38,7 @@ public class PluginEvents {
             });
 
             bundle.send(player, "welcome", args("serverName", Administration.Config.serverName.string()));
-            var data = database.getPlayerDatas().getPlayerData(player)
+            var data = database.getPlayerDatas().get(player)
                     .setNickname(player.coloredName())
                     .setPlayer(player);
 

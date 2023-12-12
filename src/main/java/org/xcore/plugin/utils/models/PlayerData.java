@@ -30,9 +30,7 @@ public class PlayerData {
 
     @BsonIgnore
     @Getter(lazy = true)
-    private final AdminData adminData = database.adminDatas.getAdminData(uuid);
-
-    public long muted = 0;
+    private final AdminData adminData = database.adminDatas.get(uuid);
 
     @BsonIgnore
     @Setter
@@ -68,6 +66,6 @@ public class PlayerData {
     }
 
     public void save() {
-        database.playerDatas.setPlayerData(this);
+        database.playerDatas.save(this);
     }
 }

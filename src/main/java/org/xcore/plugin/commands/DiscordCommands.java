@@ -12,6 +12,7 @@ import org.xcore.plugin.modules.discord.*;
 import org.xcore.plugin.utils.*;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.MuteData;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -38,7 +39,7 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             context.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
@@ -150,7 +151,7 @@ public class DiscordCommands {
                                         Reason: @
                                         Unban Date: @
                                         """,
-                                ban.adminName, ban.reason, TimestampFormat.LONG_DATE.format(ban.unbanDate.toInstant())), false);
+                                ban.adminName, ban.reason, TimestampFormat.LONG_DATE.format(ban.expireDate.toInstant())), false);
                     }
 
                     embed.footer("Page " + page + "/" + bans.pages() + ", " + bans.total() + " bans", null);
@@ -167,7 +168,7 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
@@ -190,7 +191,7 @@ public class DiscordCommands {
                                     .ip(data.ip)
                                     .adminName(context.member().getDisplayName())
                                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                                    .unbanDate(unbanDate)
+                                    .expireDate(unbanDate)
                                     .build();
 
                             sendBan(ban);
@@ -206,13 +207,13 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             var info = netServer.admins.getInfoOptional(data.uuid);
             String ip = info != null ? info.lastIP : null;
 
-            database.getBanDatas().deleteBan(data.uuid, ip);
+            database.getBanDatas().delete(data.uuid, ip);
             context.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
 
@@ -220,18 +221,50 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             NetSock.post(new PardonPlayer(data.uuid));
             context.success("Success", "'@' pardoned.", data.nickname).subscribe();
+        });
+        register("mute", "<player-id> <period> [reason...]", "Mute the player", globalConfig.discordAdminRoleId, (args, context) -> {
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+            if (DiscordHelper.checkPeriod(context, date)) return;
+
+            Date unmuteDate = new Date(Time.millis() + date.toEpochMilli());
+
+            database.getMuteDatas().save(MuteData.builder()
+                    .name(data.nickname)
+                    .uuid(data.uuid)
+                    .adminName(context.member().getDisplayName())
+                    .reason(args.length > 2 ? args[2] : "Not Specified")
+                    .expireDate(unmuteDate)
+                    .build());
+
+            context.success("Success", "Successfully muted player '" + data.nickname + "'").subscribe();
+        });
+        register("unmute", "<player-id>", "Unmute player", globalConfig.discordAdminRoleId, (args, context) -> {
+            int id = Strings.parseInt(args[0]);
+            if (DiscordHelper.checkId(context, id)) return;
+
+            var data = database.getPlayerDatas().getById(id);
+            if (DiscordHelper.notFound(context, data)) return;
+
+            database.getMuteDatas().delete(data.uuid);
+            context.success("Success", "'@' unmuted", data.nickname).subscribe();
         });
 
         register("remove-admin", "<player-id>", "Remove the player from admin panel", globalConfig.discordGeneralAdminRoleId, (args, context) -> {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             NetSock.post(new SocketEvents.RemoveAdmin(data.uuid));
@@ -242,7 +275,7 @@ public class DiscordCommands {
             int id = Strings.parseInt(args[0]);
             if (DiscordHelper.checkId(context, id)) return;
 
-            var data = database.getPlayerDatas().getPlayerDataById(id);
+            var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
             var adminData = data.getAdminData();

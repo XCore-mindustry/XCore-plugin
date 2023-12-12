@@ -6,7 +6,7 @@ commands-t-params = <message...>
 commands-t-description = Send a message only to your teammates
 commands-g-params = <message...>
 commands-g-description = Send a message across all servers
-commands-t-chat = [#{$color}][uE872 Team] [coral]>[accent] {$name}[coral]:[white] {$message}
+        commands-t-chat = [{"#"}{$color}][Team] [coral]>[accent] {$name}[coral]:[white] {$message}
 commands-a-params = <message...>
 commands-a-description = Send a message only to admins-
 commands-sync-params = {""}
@@ -53,7 +53,9 @@ commands-ban-success = {$nickname} [scarlet]banned
 commands-unban-params = <player-id>
 commands-unban-description = Unban player- [scarlet]Admin only
 commands-unban-success = {$nickname}[accent] ({$pid}) successfully unbanned
-commands-mute-params = <player-id> <period>
+                                    commands-mute-params =
+                                    <player-id>
+                                        <period> [reason...]
 commands-mute-description = Mute player- [scarlet]Admin only
 commands-mute-success = [accent]Successfully muted player {$nickname}
 commands-unmute-params = <player-id>
@@ -140,13 +142,22 @@ tempban-content = {$nickname}[accent] have been banned-
     To appeal your ban, visit discord(channel [gray]{support-channel}[]):
     {""}[cyan]{$discordUrl}
 tempban-player-banned = [scarlet] Admin {$adminName}[scarlet] banned player [gray]'[]{$playerName}[gray]'
-you-are-muted-by = [scarlet]You were muted by admin {$adminName} for {$remainMinutes}:{$remainSeconds} minutes
-you-are-muted = [scarlet]You can't write in the chat- You are muted for {$remainMinutes}:{$remainSeconds} minutes
+
+                                                        you-are-muted-by = [scarlet]You were muted by administrator
+                                                        [accent]{$adminName}[blue] for {$remainMinutes}:{$remainSeconds}
+                                                        minutes,
+                                                        reason: {$reason}
+                                                        you-are-muted = [scarlet]You can't write in the chat.
+                                                        [accent]You are muted by administrator {$adminName}[blue] for
+                                                        {$remainMinutes}:{$remainSeconds} minutes,
+                                                        reason: {$reason}
 success = [green]Successfully
 empty = [accent]Empty
 leaderboard = [blue]Leaderboard
-pvp-team-won = Your team has won- Your rating has been increased by {0}
-pvp-team-lose = Your team lost- Your rating has been reduced by {0}
+                                                        pvp-team-won = Your team has won. Your rating has been increased
+                                                        by {0}
+                                                        pvp-team-lose = Your team lost. Your rating has been reduced by
+                                                        {0}
 pvp-leaderboard-content = [orange]{$index}. {$nickname}[accent]:[cyan] {$rating} [accent]rating
 hexed-popup = [blue]{$minutes}:{$seconds}[] until endgame
 hexed-eliminated = {$nickname} [gold]eliminated!
@@ -157,7 +168,8 @@ hexed-ranks-advanced = Advanced
 hexed-ranks-veteran = Veteran
 hexed-ranks-davastator = Devastator
 hexed-ranks-the_legend = The Legend
-pvp-you-spectator = [scarlet]You lost- Please wait for the next game-
+                                                        pvp-you-spectator = [scarlet]You lost. Please wait for the next
+                                                        game-
 kick-pirated-game = [accent]Playing on a pirated version of the game is forbidden- Install the official version of the game from [blue]Apple App Store or Google Play Store[] or [blue]https://anuke-itch-io/mindustry
 kick-recently-kicked = [accent]You were recently kicked from this server
     Wait [cyan]{$remainMinutes}:{$remainSeconds}[accent]

@@ -32,7 +32,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
+            var targetData = database.getPlayerDatas().getById(req.pid);
 
             if (targetData == null) {
                 bundle.send(player, "error-player-not-found", args());
@@ -56,7 +56,7 @@ public class AdminModIntegration {
                     .ip(targetData.ip)
                     .adminName(player.name)
                     .reason(req.reason)
-                    .unbanDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
                     .build();
             NetSock.post(ban);
             ban.save();
@@ -66,7 +66,7 @@ public class AdminModIntegration {
             if (!player.admin) return;
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            var targetData = database.getPlayerDatas().getPlayerDataById(req.pid);
+            var targetData = database.getPlayerDatas().getById(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
             bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));
