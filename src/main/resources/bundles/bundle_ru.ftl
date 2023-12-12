@@ -57,9 +57,7 @@ commands-ban-success = {$nickname} [scarlet]забанен
 commands-unban-params = <id-игрока>
 commands-unban-description = Разбанить игрока. [scarlet]Только для админов
 commands-unban-success = {$nickname}[accent] ({$pid}) успешно разбанен
-                                    commands-mute-params =
-                                    <id-игрока>
-                                        <период> [причина...]
+commands-mute-params=<id-игрока> <период> [причина...]
 commands-mute-description = Замьютить игрока. [scarlet]Только для админов
 commands-mute-success = [accent]Игрок {$nickname}[accent] успешно замьючен
 commands-unmute-params = <id-игрока>
