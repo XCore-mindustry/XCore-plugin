@@ -18,16 +18,6 @@ public class DiscordHelper {
         return member.getRoleIds().contains(Snowflake.of(roleId));
     }
 
-    public static boolean noRole(MessageContext context, long roleId) {
-        if (!hasRole(context.member(), roleId)) {
-            context.error("Missing permissions", "You must be at least @ to use this command.", "<@&" + roleId + ">")
-                    .subscribe();
-            return true;
-        }
-
-        return false;
-    }
-
     public static boolean buttonFilter(ButtonInteractionEvent event, MessageContext context, Message message) {
         var member = event.getInteraction().getMember().orElseThrow();
         return context.member().getId().equals(member.getId()) && message.getId().equals(event.getMessageId());
