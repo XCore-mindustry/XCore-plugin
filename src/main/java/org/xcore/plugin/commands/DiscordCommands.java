@@ -298,7 +298,7 @@ public class DiscordCommands {
     private static void register(String text, String paramText, String description, long role, CommandHandler.CommandRunner<MessageContext> runner) {
         discordCommands.<MessageContext>register(text, paramText, description, (args, context) -> {
             context.member().getBasePermissions().subscribe(x -> {
-                if (DiscordHelper.hasRole(context.member(), role) || x.contains(Permission.ADMINISTRATOR))
+                if (role == -1 || DiscordHelper.hasRole(context.member(), role) || x.contains(Permission.ADMINISTRATOR))
                     runner.accept(args, context);
                 else
                     context.error("Missing permissions", "You must be at least @ to use this command.", "<@&" + role + ">").subscribe();
