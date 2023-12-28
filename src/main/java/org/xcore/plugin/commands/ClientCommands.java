@@ -476,7 +476,7 @@ public class ClientCommands {
                 return;
             }
 
-            if (target.getAdminData() != null && target.getAdminData().adminConfirmed) {
+            if (target.adminData() != null && target.adminData().adminConfirmed) {
                 bundle.send(player, "error-access-denied", args());
                 return;
             }
@@ -551,7 +551,7 @@ public class ClientCommands {
             }
 
             PlayerData data = database.getCached(player.uuid());
-            AdminData adminData = data.getAdminData();
+            AdminData adminData = data.adminData();
             if (adminData.password.isEmpty()) {
                 bundle.send(player, "commands-login-admin-password-created", args());
                 adminData.hashPassword(password);

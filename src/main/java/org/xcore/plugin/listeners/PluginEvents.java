@@ -46,7 +46,7 @@ public class PluginEvents {
 
             if (data.exists && !data.ip.equals(player.ip())) {
                 if (player.admin) {
-                    AdminData adminData = data.getAdminData();
+                    AdminData adminData = data.adminData();
                     adminData.adminConfirmed = false;
                     adminData.save();
 

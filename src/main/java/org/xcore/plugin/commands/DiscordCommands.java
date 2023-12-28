@@ -278,7 +278,7 @@ public class DiscordCommands {
             var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
-            var adminData = data.getAdminData();
+            var adminData = data.adminData();
             adminData.password = "";
             adminData.save();
             context.success("Success", "Password reset for '@'.", data.nickname).subscribe();
