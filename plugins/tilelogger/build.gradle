@@ -90,7 +90,7 @@ model {
 }
 
 tasks.register('buildXCorePlugin', GradleBuild) {
-    buildFile = 'xcore-plugin/build.gradle.kts'
+    buildFile = 'XCore-plugin/build.gradle.kts'
     tasks = ['jar']
 }
 
