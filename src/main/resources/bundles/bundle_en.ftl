@@ -53,9 +53,7 @@ commands-ban-success = {$nickname} [scarlet]banned
 commands-unban-params = <player-id>
 commands-unban-description = Unban player- [scarlet]Admin only
 commands-unban-success = {$nickname}[accent] #{$pid} successfully unbanned
-                                    commands-mute-params =
-                                    <player-id>
-                                        <period> [reason...]
+commands-mute-params = <player-id> <period> [reason...]
 commands-mute-description = Mute player- [scarlet]Admin only
 commands-mute-success = [accent]Successfully muted player {$nickname}
 commands-unmute-params = <player-id>
