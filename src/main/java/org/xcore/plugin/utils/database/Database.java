@@ -97,7 +97,7 @@ public class Database {
 
     public void reloadCache() {
         cachedPlayerData.clear();
-        Groups.player.copy(new Seq<>()).map(playerDatas::get).each(data -> cachedPlayerData.put(data.uuid, data));
+        Groups.player.copy(new Seq<>()).map(playerDatas::get).each(data -> { if (data != null) cachedPlayerData.put(data.uuid, data);});
     }
 
     public PlayerData removeCached(String uuid) {

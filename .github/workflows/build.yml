@@ -25,12 +25,12 @@ jobs:
         run: |
           echo "PROJECT_VERSION=$(./gradlew getProjectVersion -q)" >> $GITHUB_ENV
           echo "PREVIOUS_VERSION=$(cat previous-version.txt)" >> $GITHUB_ENV
-      - name: Publish to XCore
-        if: ${{ steps.cache.outputs.cache-hit != 'true' || env.PROJECT_VERSION != env.PREVIOUS_VERSION }}
-        run: ./gradlew publish
-        env:
-          ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
-          ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.MAVEN_PASSWORD }}
+      # - name: Publish to XCore
+      #   if: ${{ steps.cache.outputs.cache-hit != 'true' || env.PROJECT_VERSION != env.PREVIOUS_VERSION }}
+      #   run: ./gradlew publish
+      #   env:
+      #     ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
+      #     ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.MAVEN_PASSWORD }}
       - name: Cache version
         run: echo $PROJECT_VERSION > previous-version.txt
 
