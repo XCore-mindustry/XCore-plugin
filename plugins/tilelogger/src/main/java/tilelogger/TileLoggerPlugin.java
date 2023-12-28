@@ -1,7 +1,6 @@
 package tilelogger;
 
 import arc.Events;
-import arc.math.geom.Point2;
 import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
@@ -10,40 +9,22 @@ import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.gen.Player;
-import mindustry.gen.RotateBlockCallPacket;
 import mindustry.mod.Plugin;
-import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
 import mindustry.world.blocks.power.PowerNode.PowerNodeBuild;
-import org.xcore.plugin.listeners.NetEvents;
-import org.xcore.plugin.modules.votes.VoteKick;
-import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.models.PlayerData;
-import com.alibaba.fastjson.support.geo.Point;
 
-import useful.Bundle;
-
-import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
-import static useful.Bundle.send;
-
-@SuppressWarnings("unused")
 public class TileLoggerPlugin extends Plugin {
 
-    private void sendBundled(@Nullable Player player, String msg) {
+    private void send(@Nullable Player player, String msg, Object... values) {
         if (player == null)
-            Log.info(msg);
+            Log.info(msg, values);
         else
-            send(player, msg);
+            //XCoreIntegration.sendBundled(player, msg, values);
+            player.sendMessage(String.format(msg, values));
     }
 
     @Override
     public void init() {
-        Bundle.load(TileLoggerPlugin.class);
-
-        VoteKick.setOnKick(player -> TileLogger.rollback(null, player.getInfo(), -1, -180, new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1))));
-        NetEvents.setIpAcceptor(TileLogger::checkSubnetAccepted);
-
         Events.on(EventType.BuildSelectEvent.class, event -> {
             if (event.builder == null) return; // rollback recursion
             if (event.breaking) return; // handled by BlockBuildBeginEvent 
@@ -91,7 +72,8 @@ public class TileLoggerPlugin extends Plugin {
             PlayerConfig config = PlayerConfig.get(event.player);
             if (config.history_size > 0) {
                 TileLogger.showHistory(event.player, (short) event.tile.centerX(), (short) event.tile.centerY(), config.history_size);
-            } else if (database.getCached(event.player.uuid()).adminModVersion != null && !event.player.con.mobile) {
+            }
+            if (XCoreIntegration.useAdminTools(event.player)) {
                 TileLogger.sendTileHistory((short) event.tile.centerX(), (short) event.tile.centerY(), event.player);
             }
 
@@ -125,104 +107,112 @@ public class TileLoggerPlugin extends Plugin {
             switch (args_seq.pop()) {
                 case "memory", "m" -> TileLogger.showMemoryUsage(player);
                 case "select", "s" -> {
-                    if (player == null) { sendBundled(player, "error.not-allowed-from-console"); return; }
+                    if (player == null) { send(player, "error.not-allowed-from-console"); return; }
                     config.select = 1;
                 }
                 case "fill", "f" -> {
-                    if (player == null) { sendBundled(player, "error.not-allowed-from-console"); return; }
-                    if (!player.admin) { sendBundled(player, "error.access-denied"); return; }
-                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
+                    if (player == null) { send(player, "error.not-allowed-from-console"); return; }
+                    if (!player.admin) { send(player, "error.access-denied"); return; }
+                    if (args_seq.size == 0) { send(player, "error.not-enough-params"); return; }
                     Block block = Vars.content.block(args_seq.pop());
-                    if (block == null) { sendBundled(player, "error.block-not-found"); return; }
+                    if (block == null) { send(player, "error.block-not-found"); return; }
                     TileLogger.fill(player, null, block, config.rect);
                 }
                 case "file" -> {
-                    if (player != null) { sendBundled(player, "error.not-allowed-from-player"); return; }
-                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
+                    if (player != null) { send(player, "error.not-allowed-from-player"); return; }
+                    if (args_seq.size == 0) { send(player, "error.not-enough-params"); return; }
                     TileLogger.resetHistory(args_seq.pop(), args_seq.pop(String::new).equals("w"));
                 }
                 case "subnet" -> {
-                    if (args_seq.size == 0) { sendBundled(player, "error.not-enough-params"); return; }
+                    if (args_seq.size == 0) { send(player, "error.not-enough-params"); return; }
                     TileLogger.showSubnetInfo(player, args_seq.pop());
                 }
-                default -> sendBundled(player, "error.unknown-command");
+                default -> send(player, "error.unknown-command");
             }
         });
-        handler.<Player>register("history", "[size] [uuid/x] [y]", "Shows tile history.", (args, player) -> {
+        handler.<Player>register("history", "[size] [name/id/uuid/x] [y]", "Shows tile history.", (args, player) -> {
             try {
+                Seq<String> args_seq = new Seq<>(args).reverse();
                 PlayerConfig config = PlayerConfig.get(player);
 
-                if (args.length == 2) {
-                    long size = Strings.parseLong(args[0], 0);
-                    if (config.history_size > 0) {
-                        TileLogger.showHistory(player, Find.playerInfo(args[1]), size);
-                    } else if (database.getCached(player.uuid()).adminModVersion != null && !player.con.mobile) {
-                        TileLogger.sendTileHistory(Find.playerInfo(args[1]), player);
+                switch (args_seq.size) {
+                    case 0: {
+                        if (config.history_size == 0) {
+                            config.history_size = 6;
+                        } else {
+                            config.history_size = 0;
+                        }
+                        send(player, "commands.history.success", config.history_size);
+                        break;
                     }
-                    return;
-                } else if (args.length == 3) {
-                    long size = Strings.parseLong(args[0], 0);
-                    short x = Short.parseShort(args[1]);
-                    short y = Short.parseShort(args[2]);
-                    TileLogger.showHistory(player, x, y, size);
-                    return;
+                    case 1: {
+                        config.history_size = Integer.parseInt(args_seq.pop());
+                        send(player, "commands.history.success", config.history_size);
+                        break;
+                    }
+                    case 2: {
+                        long size = Long.parseLong(args_seq.pop());
+                        PlayerDescriptor target = XCoreIntegration.findPlayer(args_seq.pop());
+                        if (target == null) { send(player, "error.player-not-found"); return; }
+                        if (size > 0) {
+                            TileLogger.showHistory(player, target, size);
+                        }
+                        if (XCoreIntegration.useAdminTools(player)) {
+                            TileLogger.sendTileHistory(target, player);
+                        }
+                        break;
+                    }
+                    case 3: {
+                        long size = Long.parseLong(args_seq.pop());
+                        short x = Short.parseShort(args_seq.pop());
+                        short y = Short.parseShort(args_seq.pop());
+                        TileLogger.showHistory(player, x, y, size);
+                        break;
+                    }
+                    default:
+                        send(player, "error.too-many-params");
+                        return;
                 }
-
-                if (args.length > 0) {
-                    config.history_size = Strings.parseInt(args[0], 0);
-                } else if (config.history_size == 0) {
-                    config.history_size = 6;
-                } else {
-                    config.history_size = 0;
-                }
-
-                send(player, "commands.history.success", config.history_size);
             } catch (NumberFormatException e) {
-                sendBundled(player, "error.wrong-number");
+                send(player, "error.wrong-number");
             }
         });
 
-        handler.<Player>register("rollback", "<name/uuid> [time] [flags]", "Rolls back tiles.", (args, player) -> {
+        handler.<Player>register("rollback", "<name/id/uuid> [time] [flags]", "Rolls back tiles.", (args, player) -> {
             if (player != null && !player.admin) {
-                sendBundled(player, "error.access-denied");
+                send(player, "error.access-denied");
                 return;
             }
             try {
-                PlayerConfig config = PlayerConfig.get(player);
-                Rect rect = new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1));
+                Seq<String> args_seq = new Seq<>(args).reverse();
+                
+                String name = args_seq.pop();
+                PlayerDescriptor target = player != null && name.equals("self") ? XCoreIntegration.findPlayerUuid(player.uuid()) : XCoreIntegration.findPlayer(name);
+                if (target == null) { send(player, "error.player-not-found"); return; }
+
                 int time = 0;
-                if (args.length > 1) {
-                    String[] times = args[1].split(":", 3);
+                if (args_seq.size > 0) {
+                    String time_arg = args_seq.pop();
+                    String[] times = time_arg.split(":", 3);
                     for (int i = 0; i < times.length; i++) {
                         time += Math.abs(Integer.parseInt(times[times.length - 1 - i])) * Math.pow(60, i);
                     }
-                    if (args[1].startsWith("-"))
+                    if (time_arg.startsWith("-"))
                         time *= -1;
                 }
-                String uuid = args[0].equals("all") ? null : args[0];
-                if (args.length > 2) {
-                    rect = config.rect;
+
+                Rect rect = new Rect((short) 0, (short) 0, (short) (Vars.world.width() - 1), (short) (Vars.world.height() - 1));
+                if (args_seq.size > 0) {
+                    if (args_seq.pop().equals("s")) {
+                        PlayerConfig config = PlayerConfig.get(player);
+                        rect = config.rect;
+                    }
+                    else { send(player, "error.unknown-command"); return; }
                 }
 
-                PlayerInfo target = null;
-                if (uuid != null) {
-                    if (uuid.equals("self")) {
-                        if (player != null) {
-                            target = player.getInfo();
-                        }
-                    } else {
-                        PlayerData data = database.getCachedOrDb(Strings.parseInt(uuid));
-                        target = data != null ? netServer.admins.getInfoOptional(data.uuid) : null;
-                    }
-
-                    if (target == null) {
-                        sendBundled(player, "error.player-not-found");
-                        return;
-                    }
-                }
                 TileLogger.rollback(player, target, -1, time, rect);
             } catch (NumberFormatException e) {
-                sendBundled(player, "error.wrong-number");
+                send(player, "error.wrong-number");
             }
         });
     }

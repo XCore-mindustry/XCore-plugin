@@ -61,7 +61,7 @@ public class TileLogger {
         short rotation = (short)tile.build.rotation;
         Object config = tile.build.config();
         if (tile.build instanceof ConstructBuild construct) {
-            if (construct.progress == 0) {
+            if (construct.progress == 0 && construct.prevBuild != null) {
                 for (Building building : construct.prevBuild)
                     destroy(building.tile, player_info);
                 return;
@@ -82,11 +82,11 @@ public class TileLogger {
         onAction(tile.x, tile.y, player_info == null ? "" : player_info.id, (short) tile.team().id, (short) 0, (short) 0, (short) 0, 0);
     }
 
-    public static void sendTileHistory(@Nullable PlayerInfo player_info, Player caller) {
+    public static void sendTileHistory(PlayerDescriptor target, Player caller) {
         Call.clientPacketUnreliable(caller.con, "tilelogger_history_player",
-            JsonIO.write(Arrays.stream(getHistory((short)0, (short)0, (short)-1, (short)-1, player_info == null ? "" : player_info.id, -1, 0, 100)).map(t -> {
-                var info = Vars.netServer.admins.getInfoOptional(t.uuid);
-                return new TileStatePacket(t.x, t.y, info == null ? "@" + t.team() : info.lastName,
+            JsonIO.write(Arrays.stream(getHistory((short)0, (short)0, (short)-1, (short)-1, target.uuid, -1, 0, 100)).map(t -> {
+                PlayerDescriptor desc = XCoreIntegration.findPlayerUuid(t.uuid);
+                return new TileStatePacket(t.x, t.y, desc == null ? "@" + t.team() : desc.toString(),
                             t.uuid, t.valid, t.time, t.block, t.destroy, t.rotation, t.config_type, t.getConfigAsString());
             }
         ).toArray(TileStatePacket[]::new)));
@@ -95,16 +95,16 @@ public class TileLogger {
     public static void sendTileHistory(short x, short y, Player caller) {
         Call.clientPacketUnreliable(caller.con, "tilelogger_history_tile",
             JsonIO.write(Arrays.stream(getHistory(x, y, x, y, "", -1, 0, 100)).map(t -> {
-                var info = Vars.netServer.admins.getInfoOptional(t.uuid);
-                return new TileStatePacket(t.x, t.y, info == null ? "@" + t.team() : info.lastName,
+                PlayerDescriptor desc = XCoreIntegration.findPlayerUuid(t.uuid);
+                return new TileStatePacket(t.x, t.y, desc == null ? "@" + t.team() : desc.toString(),
                             t.uuid, t.valid, t.time, t.block, t.destroy, t.rotation, t.config_type, t.getConfigAsString());
             }
         ).toArray(TileStatePacket[]::new)));
     }
 
-    public static void showHistory(@Nullable Player caller, @Nullable PlayerInfo player_info, long size) {
-        String str = String.format("Player %s [white]history. Current time: %s.", player_info == null ? "" : player_info.lastName, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
-        for (TileState state : getHistory((short)0, (short)0, (short)-1, (short)-1, player_info == null ? "" : player_info.id, -1, 0, size)) {
+    public static void showHistory(@Nullable Player caller, PlayerDescriptor target, long size) {
+        String str = String.format("Player %s [white]history. Current time: %s.", target.toString(), LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
+        for (TileState state : getHistory((short)0, (short)0, (short)-1, (short)-1, target.uuid, -1, 0, size)) {
             Object rotation = state.rotationAsString();
             str += "[white]\n    " + state.x + "," + state.y + " " + (state.valid ? "[white] " : "[gray] ")
                     + LocalTime.MIN.plusSeconds(state.time).format(DateTimeFormatter.ISO_LOCAL_TIME) + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
@@ -116,7 +116,8 @@ public class TileLogger {
         String str = String.format("Tile (%d,%d) history. Current time: %s.", x, y, LocalTime.MIN.plusSeconds(duration()).format(DateTimeFormatter.ISO_LOCAL_TIME));
         for (TileState state : getHistory(x, y, x, y, "", -1, 0, size)) {
             Object rotation = state.rotationAsString();
-            str += "\n    " + (state.playerInfo() == null ? "@" + state.team() : state.playerInfo().lastName) + "[white] " + state.timeAsString()
+            PlayerDescriptor desc = XCoreIntegration.findPlayerUuid(state.uuid);
+            str += "\n    " + (desc == null ? "@" + state.team() : desc.toString()) + "[white] " + state.timeAsString()
                     + " " + state.blockEmoji() + (rotation == null ? "" : " " + rotation) + " " + state.getConfigAsString();
         }
         sendMessage(caller, str);
@@ -126,16 +127,16 @@ public class TileLogger {
         kPreview, 
     }
 
-    public static void rollback(@Nullable Player caller, @Nullable PlayerInfo target, int teams, int time, Rect rect) {
-        TileState[] tiles = rollback(rect.x1, rect.y1, rect.x2, rect.y2, target == null ? "" : target.id, teams, time, 0);
+    public static void rollback(@Nullable Player caller, PlayerDescriptor target, int teams, int time, Rect rect) {
+        TileState[] tiles = rollback(rect.x1, rect.y1, rect.x2, rect.y2, target.uuid, teams, time, 0);
         for (TileState state : tiles) {
             if (rollback_blacklist_.contains(state.tile().block())) continue;
             Call.setTile(state.tile(), Vars.content.block(state.destroy ? 0 : state.block), state.team(), state.rotation);
             if (state.tile().build != null)
                 state.tile().build.configure(state.getConfig());
         }
-        broadcast(String.format((caller == null ? "Server" : caller.coloredName()) + "[white] initiated rollback against player %s[white], time %d, rect %d %d %d %d, tiles %d",
-                target != null ? target.lastName : "@all", time, rect.x1, rect.y1, rect.x2, rect.y2, tiles.length));
+        broadcast(String.format("%s[white] initiated rollback against player %s[white], time %d, rect %s, tiles %d",
+            caller == null ? "Server" : caller.coloredName(), target.toString(), time, rect.toString(), tiles.length));
 
         // if (caller != null) {
         //     Call.clientPacketUnreliable(caller.con, "tilelogger_rollback_preview",
@@ -177,7 +178,7 @@ public class TileLogger {
     }
     
     public static void showInfo(@Nullable Player player) {
-        sendMessage(player, String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString()));
+        sendMessage(player, "TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString());
     }
 
     public static void showMemoryUsage(@Nullable Player player) {
@@ -191,11 +192,11 @@ public class TileLogger {
         sendMessage(player, str);
     }
 
-    public static void sendMessage(@Nullable Player player, String msg) {
+    public static void sendMessage(@Nullable Player player, String msg, Object... values) {
         if (player == null)
-            Log.info(msg);
+            Log.info(msg, values);
         else
-            player.sendMessage(msg);
+            player.sendMessage(String.format(msg, values));
     }
 
     public static void broadcast(String msg) {
