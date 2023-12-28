@@ -25,8 +25,7 @@ public class PlayerDataExecutor extends Executor<PlayerData> {
     }
 
     public PlayerData get(String uuid) {
-        return Optional.ofNullable(collection.find(eq("uuid", uuid)).first())
-                .orElse(new PlayerData(uuid, false));
+        return collection.find(eq("uuid", uuid)).first();
     }
 
     public PlayerData getById(int id) {

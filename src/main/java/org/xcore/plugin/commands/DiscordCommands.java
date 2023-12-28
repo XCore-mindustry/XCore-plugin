@@ -6,6 +6,8 @@ import discord4j.core.event.domain.interaction.*;
 import discord4j.core.object.component.*;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Color;
+import discord4j.rest.util.Permission;
+
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.listeners.SocketEvents.*;
 import org.xcore.plugin.modules.discord.*;
@@ -295,9 +297,12 @@ public class DiscordCommands {
 
     private static void register(String text, String paramText, String description, long role, CommandHandler.CommandRunner<MessageContext> runner) {
         discordCommands.<MessageContext>register(text, paramText, description, (args, context) -> {
-            if (role != -1 && DiscordHelper.noRole(context, role)) return;
-
-            runner.accept(args, context);
+            context.member().getBasePermissions().subscribe(x -> {
+                if (role == -1 || DiscordHelper.hasRole(context.member(), role) || x.contains(Permission.ADMINISTRATOR))
+                    runner.accept(args, context);
+                else
+                    context.error("Missing permissions", "You must be at least @ to use this command.", "<@&" + role + ">").subscribe();
+            });
         });
     }
 }
