@@ -40,7 +40,7 @@ public class PluginEvents {
 
             bundle.send(player, "welcome", args("serverName", Administration.Config.serverName.string()));
             PlayerData data = database.getPlayerDatas().get(player);
-            if (data == null) data = new PlayerData();
+            if (data == null) data = new PlayerData(player.uuid(), false);       
             data.setNickname(player.coloredName())
                 .setPlayer(player);
 
