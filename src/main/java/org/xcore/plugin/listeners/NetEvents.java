@@ -100,7 +100,7 @@ public class NetEvents {
 
                 var trace = new TraceInfo(
                         target.ip(),
-                        String.valueOf(data.pid),
+                        String.valueOf(data == null ? -1 : data.pid),
                         target.con.modclient,
                         target.con.mobile,
                         target.getInfo().timesJoined,

@@ -19,6 +19,7 @@ import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.AdminData;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,9 +39,10 @@ public class PluginEvents {
             });
 
             bundle.send(player, "welcome", args("serverName", Administration.Config.serverName.string()));
-            var data = database.getPlayerDatas().get(player)
-                    .setNickname(player.coloredName())
-                    .setPlayer(player);
+            PlayerData data = database.getPlayerDatas().get(player);
+            if (data == null) data = new PlayerData();
+            data.setNickname(player.coloredName())
+                .setPlayer(player);
 
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
