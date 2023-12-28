@@ -75,7 +75,7 @@ public class Bot {
 
                     String server = args[0];
                     PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
-                    AdminData adminData = data.getAdminData();
+                    AdminData adminData = data.adminData();
 
                     NetSock.post(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
 

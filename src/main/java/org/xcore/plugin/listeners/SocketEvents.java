@@ -100,7 +100,7 @@ public class SocketEvents {
             if (player != null) {
                 player.admin = true;
                 PlayerData data = database.getCached(e.uuid);
-                data.getAdminData().adminConfirmed = true;
+                data.adminData().adminConfirmed = true;
                 bundle.send(player, "commands-login-confirmed", args());
             }
 

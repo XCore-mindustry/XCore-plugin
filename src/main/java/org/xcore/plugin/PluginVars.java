@@ -13,6 +13,7 @@ import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteSession;
 import org.xcore.plugin.utils.database.Database;
 
+import java.lang.reflect.Modifier;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -37,6 +38,7 @@ public class PluginVars {
     public static Database database;
     public static final Gson prettyGson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+            .excludeFieldsWithModifiers(Modifier.PRIVATE, Modifier.TRANSIENT)
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .serializeNulls()

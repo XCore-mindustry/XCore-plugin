@@ -29,6 +29,7 @@ public class PlayerData {
     public boolean leaderboard = true;
 
     @BsonIgnore
+    @Accessors(fluent = true)
     @Getter(lazy = true)
     private final AdminData adminData = database.adminDatas.get(uuid);
 
