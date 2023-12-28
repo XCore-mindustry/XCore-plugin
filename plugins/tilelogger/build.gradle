@@ -26,7 +26,7 @@ dependencies{
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
     implementation "com.github.xzxadixzx.useful-stuffs:bundle:bcf5708286"
     
-    compileOnly fileTree(dir: 'xcore-plugin/build/libs', include: ['*.jar'])
+    compileOnly fileTree(dir: 'XCore-plugin/build/libs', include: ['*.jar'])
 }
 
 model {
