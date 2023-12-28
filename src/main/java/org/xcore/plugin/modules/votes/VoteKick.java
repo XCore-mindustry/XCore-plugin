@@ -8,6 +8,7 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
@@ -35,9 +36,13 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
+        PlayerData playerData = database.getCached(player.uuid());
+        PlayerData targetData = database.getCached(target.uuid());
         var args = args(
                 "nickname", player.coloredName(),
+                "nicknameId", playerData.pid,
                 "targetNickname", target.coloredName(),
+                "targetNicknameId", targetData.pid,
                 "reason", reason,
                 "votes", votes(),
                 "votesRequired", votesRequired());
@@ -46,7 +51,6 @@ public class VoteKick extends VoteSession {
         Log.info(message);
 
         if (votes() == 1) {
-            var targetData = database.getCached(target.uuid());
             database.getCachedAdminTools("1.3", (v) -> v >= 0, data ->
                     Call.clientPacketReliable(data.player.con, "adm_mod_votekick", targetData.pid + "," + targetData.nickname));
         }

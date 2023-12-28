@@ -71,7 +71,7 @@ public class PluginEvents {
             if (player.getInfo().timesJoined < 5)
                 Call.openURI(player.con, discordUrl);
 
-            Log.info("@ (@/@) joined", player.plainName(), data.pid, player.uuid());
+            Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
             bundle.send("player-joined", args(
                     "nickname", player.coloredName(),
                     "pid", data.pid));
@@ -89,12 +89,12 @@ public class PluginEvents {
             if (voteKick != null)
                 voteKick.left(event.player);
 
-            Log.info("@ (@/@) left", player.plainName(), data.pid, player.uuid());
+            Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
             bundle.send("player-left", args(
                     "nickname", player.coloredName(),
                     "pid", data.pid));
             NetSock.post(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " #" + data.pid, config.server,
                             false));
         });
 

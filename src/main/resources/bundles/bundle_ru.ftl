@@ -23,7 +23,7 @@ commands-rtv-params = [карта...]
 commands-rtv-description = Голосование за изменение карты
 commands-stats-params = [id-игрока]
 commands-stats-description = Статистика игрока
-commands-stats-content = Статистика игрока {$nickname} [grey]({$pid})
+commands-stats-content = Статистика игрока {$nickname} [grey]#{$pid}
     {""}[brown]Время на сервере: [grey]{$totalPlayTime}[] minutes
     Ранг в MiniHexed: [grey]{$hexedRankTag} {$hexedRankName}
     MiniPvP рейтинг: {$pvpRating}
@@ -56,7 +56,7 @@ commands-ban-description = \ Забанить игрока. [scarlet]Тольк�
 commands-ban-success = {$nickname} [scarlet]забанен
 commands-unban-params = <id-игрока>
 commands-unban-description = Разбанить игрока. [scarlet]Только для админов
-commands-unban-success = {$nickname}[accent] ({$pid}) успешно разбанен
+commands-unban-success = {$nickname}[accent] #{$pid} успешно разбанен
 commands-mute-params=<id-игрока> <период> [причина...]
 commands-mute-description = Замьютить игрока. [scarlet]Только для админов
 commands-mute-success = [accent]Игрок {$nickname}[accent] успешно замьючен
@@ -98,13 +98,13 @@ rtv-vote = {$nickname}[lightgray] проголосовал за смену те�
 rtv-left = {$nickname}[lightgray] вышел с сервера. Его голос за смену карты был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы изменить текущую карту на [orange]{$mapName}[].
 rtv-success = [orange]Голосование завершено успешно. Карта [accent]{$mapName}[] будет загружена через [accent]{$mapLoadDelay}[] секунд...
-votekick-vote = {$nickname}[lightgray] проголосовал за кик {$targetNickname}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesReguired}[])
+votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосовал за кик {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesReguired}[])
     {""}[lightgray]Напиши [orange]/vote <y/n>[], чтобы проголосовать.
 votekick-left = {$nickname}[lightgray] вышел с сервера. Его голос за кик игрока был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 votekick-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы выгнать {$nickname}[lightgray] с сервера.
 votekick-success = [orange]Голосование завершено успешно. {$nickname}[orange] выгнан с сервера на [scarlet]{$minutes}[] минут.
-player-joined = {$nickname} [grey]([white]{$pid}[grey]) [accent]присоединился
-player-left = {$nickname} [grey]([white]{$pid}[grey]) [accent]вышел
+player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]присоединился
+player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вышел
 notification-votekick-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете начать голосование за кик игрока.
 notification-global-chat-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете писать в глобальный чат
     {""}[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение.

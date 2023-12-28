@@ -90,7 +90,7 @@ public class ServerCommands {
                 for (Player user : Groups.player) {
                     PlayerInfo userInfo = user.getInfo();
                     PlayerData data = database.getCached(user.uuid());
-                    Log.info(" @&lm @ / UUID: @/@ / IP: @", userInfo.admin ? "&r[A]&c" : "&b[P]&c", userInfo.plainLastName(), data.pid, userInfo.id, userInfo.lastIP, userInfo.admin);
+                    Log.info(" @&lm @ #@ / UUID: @ / IP: @", userInfo.admin ? "&r[A]&c" : "&b[P]&c", userInfo.plainLastName(), data.pid, userInfo.id, userInfo.lastIP, userInfo.admin);
                 }
             }
         });

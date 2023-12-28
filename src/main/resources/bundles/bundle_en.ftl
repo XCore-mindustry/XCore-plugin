@@ -22,7 +22,7 @@ commands-rtv-params = [map...]
 commands-rtv-description = Rock the vote to change map
 commands-stats-params = [player-id]
 commands-stats-description = Player Statistics
-commands-stats-content = {$nickname} [grey]({$pid}) Statistics
+commands-stats-content = {$nickname} [grey]#{$pid} Statistics
     {""}[brown]PlayTime: [grey]{$totalPlayTime}[] minutes
     Hexed Rank: [grey]{$hexedRankTag} {$hexedRankName}
     MiniPvP rating: {$pvpRating}
@@ -52,7 +52,7 @@ commands-ban-description = Ban player- [scarlet]Admin only
 commands-ban-success = {$nickname} [scarlet]banned
 commands-unban-params = <player-id>
 commands-unban-description = Unban player- [scarlet]Admin only
-commands-unban-success = {$nickname}[accent] ({$pid}) successfully unbanned
+commands-unban-success = {$nickname}[accent] #{$pid} successfully unbanned
                                     commands-mute-params =
                                     <player-id>
                                         <period> [reason...]
@@ -95,13 +95,13 @@ rtv-vote = {$nickname}[lightgray] voted to change the current map to [orange]{$m
 rtv-left = {$nickname}[lightgray] left- His vote to change the current map was cancelled- ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Vote failed- Not enough votes to change the current map to [orange]{$mapName}[].
 rtv-success = [orange]Vote passed- Map [accent]{$mapName}[] will be loaded in [accent]{$mapLoadDelay}[] seconds...
-votekick-vote = {$nickname}[lightgray] voted to kick {$targetNickname}[lightgray] for [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] voted to kick {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] for [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     {""}[lightgray]Type [orange]/vote <y/n>[] to vote-
 votekick-left = {$nickname}[lightgray] left- Their vote for kicking a player was cancelled- ([accent]{$votes}[]/[accent]{$votesRequired}[])
 votekick-fail = [lightgray]Vote failed- Not enough votes to kick {$nickname}[lightgray] from the server-
 votekick-success = [orange]Vote passed- {$nickname}[orange] kicked from the server for [scarlet]{$minutes}[] minutes
-player-joined = {$nickname} [grey]([white]{$pid}[grey]) [accent]has joined
-player-left = {$nickname} [grey]([white]{$pid}[grey]) [accent]has left
+player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]has joined
+player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]has left
 notification-votekick-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now start a vote-kick-
 notification-global-chat-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now send messages to global chat-
     {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message-
