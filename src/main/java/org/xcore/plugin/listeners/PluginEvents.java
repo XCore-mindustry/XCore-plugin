@@ -78,7 +78,7 @@ public class PluginEvents {
                     "nickname", player.coloredName(),
                     "pid", data.pid));
             NetSock.post(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " (" + data.pid + ")", config.server,
+                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " #" + data.pid, config.server,
                             true));
         });
         Events.on(PlayerLeave.class, event -> {
