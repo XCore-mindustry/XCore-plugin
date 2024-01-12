@@ -25,6 +25,8 @@ public class TileLoggerPlugin extends Plugin {
 
     @Override
     public void init() {
+        XCoreIntegration.init();
+        
         Events.on(EventType.BuildSelectEvent.class, event -> {
             if (event.builder == null) return; // rollback recursion
             if (event.breaking) return; // handled by BlockBuildBeginEvent 

@@ -1,3 +1,3 @@
-[submodule "xcore-plugin"]
+[submodule "XCore-plugin"]
 	path = XCore-plugin
 	url = https://github.com/XCore-mindustry/XCore-plugin.git

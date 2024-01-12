@@ -178,7 +178,7 @@ public class TileLogger {
     }
     
     public static void showInfo(@Nullable Player player) {
-        sendMessage(player, "TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString());
+        sendMessage(player, String.format("TileLogger by [white] (Горыныч#3545), thanks to kowkonya#2005.\nBuild: %s", getBuildString()));
     }
 
     public static void showMemoryUsage(@Nullable Player player) {
