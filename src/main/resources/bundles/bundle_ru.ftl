@@ -98,7 +98,7 @@ rtv-vote = {$nickname}[lightgray] проголосовал за смену те�
 rtv-left = {$nickname}[lightgray] вышел с сервера. Его голос за смену карты был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы изменить текущую карту на [orange]{$mapName}[].
 rtv-success = [orange]Голосование завершено успешно. Карта [accent]{$mapName}[] будет загружена через [accent]{$mapLoadDelay}[] секунд...
-votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосовал за кик {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesReguired}[])
+votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосовал за кик {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     {""}[lightgray]Напиши [orange]/vote <y/n>[], чтобы проголосовать.
 votekick-left = {$nickname}[lightgray] вышел с сервера. Его голос за кик игрока был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 votekick-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы выгнать {$nickname}[lightgray] с сервера.
