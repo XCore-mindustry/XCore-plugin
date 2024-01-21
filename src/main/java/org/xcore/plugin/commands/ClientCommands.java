@@ -151,13 +151,14 @@ public class ClientCommands {
                 return;
             }
 
-            bundle.infoMessage(player, "commands-stats-content", args(
-                    "nickname", data.nickname,
-                    "pid", data.pid,
-                    "totalPlayTime", data.totalPlayTime,
-                    "hexedRankTag", data.hexedRank().tag,
-                    "hexedRankName", data.hexedRank().name(),
-                    "pvpRating", data.pvpRating));
+            var msg = bundle.format(bundle.locale(player), "commands-stats-content", args(
+                "nickname", data.nickname,
+                "pid", data.pid,
+                "totalPlayTime", data.totalPlayTime,
+                "hexedRankTag", data.hexedRank().tag,
+                "hexedRankName", data.hexedRank().name(),
+                "pvpRating", data.pvpRating));
+            Call.infoMessage(player.con, msg);
         });
 
         register("lb", (args, player) -> {
