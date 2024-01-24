@@ -121,11 +121,6 @@ public class XcorePlugin extends Plugin {
         Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
         Timer.schedule(() -> {
-            // if (NetEvents.blockedIPsPerMinute > 0) {
-            //     Log.info("Blocked IPs in the last minute: @, total: @", NetEvents.blockedIPsPerMinute, NetEvents.blockedIPs);
-            //     NetEvents.blockedIPsPerMinute = 0;
-            // }
-
             footer[0] = config.gameStartedTimer
                     ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
                     : "";
@@ -136,9 +131,9 @@ public class XcorePlugin extends Plugin {
 
                 data.totalPlayTime++;
                 switch (data.totalPlayTime) {
-                    case votekickPlayTime -> bundle.send(player, "notification.votekick-playtime",
+                    case votekickPlayTime -> bundle.send(player, "notification-votekick-playtime",
                             args("votekickPlayTime", votekickPlayTime));
-                    case globalChatPlayTime -> bundle.send(player, "notification.global-chat-playtime",
+                    case globalChatPlayTime -> bundle.send(player, "notification-global-chat-playtime",
                             args("globalChatPlayTime", globalChatPlayTime));
                 }
 
