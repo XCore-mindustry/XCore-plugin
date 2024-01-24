@@ -22,4 +22,8 @@ public class AdminDataExecutor extends Executor<AdminData> {
     public void save(AdminData data) {
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
+
+    public void delete(String uuid) {
+        collection.deleteOne(eq("uuid", uuid));
+    }
 }

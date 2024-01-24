@@ -269,6 +269,7 @@ public class DiscordCommands {
             var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
+            database.adminDatas.delete(data.uuid);
             NetSock.post(new SocketEvents.RemoveAdmin(data.uuid));
             context.success("Success", "'@' removed from admin panel.", data.nickname).subscribe();
         });
