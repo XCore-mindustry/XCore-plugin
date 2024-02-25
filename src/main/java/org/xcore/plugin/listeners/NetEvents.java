@@ -30,7 +30,7 @@ import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 public class NetEvents {
-    public static final Seq<String> bannedNames = Seq.with("valve", "tuttop", "rog");
+    public static final Seq<String> bannedNames = Seq.with("valve", "tuttop", "codex", "igggames", "igg-games.com", "igruhaorg", "freetp.org", "goldberg", "rog");
     @Getter
     public static Boolf<String> ipAcceptor = (ip) -> true;
     public static int blockedIPs = 0;
