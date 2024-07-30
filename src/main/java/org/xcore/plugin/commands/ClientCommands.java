@@ -210,7 +210,7 @@ public class ClientCommands {
             int pageCount = list.size / lines + (list.size % lines == 0 ? 0 : 1);
 
             if (page < 1 || page > pageCount) {
-                bundle.send(player, "error.page-between", args("pageCount", pageCount));
+                bundle.send(player, "error-page-between", args("pageCount", pageCount));
                 return;
             }
 
@@ -580,7 +580,7 @@ public class ClientCommands {
                 return;
             }
 
-            bundle.send(player, "error.wrong-admin-password", args());
+            bundle.send(player, "error-wrong-admin-password", args());
         });
 
         register("logout", (args, player) -> {
