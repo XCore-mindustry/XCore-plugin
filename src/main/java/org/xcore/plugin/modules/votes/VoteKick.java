@@ -82,6 +82,15 @@ public class VoteKick extends VoteSession {
         onKick.get(target);
     }
 
+    public void cancelByAdmin(Player admin) {
+        stop();
+        var args = args(
+                "nickname", target.coloredName(),
+                "admin", admin.coloredName());
+        bundle.send("votekick-cancelled", args);
+        Log.info(bundle.format(bundle.defaultLocale, "votekick-cancelled", args));
+    }
+
     @Override
     public void fail() {
         stop();

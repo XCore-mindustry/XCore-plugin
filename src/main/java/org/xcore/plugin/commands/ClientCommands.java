@@ -286,6 +286,15 @@ public class ClientCommands {
                 return;
             }
 
+            if (Utils.stripFooCharacters(args[0].toLowerCase()).equals("c")) {
+                if (!player.admin) {
+                    bundle.send(player, "error-access-denied", args());
+                } else {
+                    voteKick.cancelByAdmin(player);
+                }
+                return;
+            }
+
             int sign = voteChoice(args[0]);
             if (sign == 0) {
                 bundle.send(player, "commands-vote-vote-with", args());
