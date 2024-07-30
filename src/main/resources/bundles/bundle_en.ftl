@@ -40,6 +40,9 @@ commands-login-confirmed = [green]Your admin request confirmed
 commands-login-admin-password-created = [green]Admin password created-
     {""}[red]Don't forget your password! If you forget it, you will need to ask the general admin to reset it-
 commands-login-request-approval-discord = [accent]You need to approve your admin request on discord- Channel [gray]#admin-bots[]
+commands-logout-params = {""}
+commands-logout-description = Revoke admin rights
+commands-logout-successful = [green]Admin rights revoked
 commands-tr-params = <language>
 commands-tr-description = Set the translator language
 commands-tr-success = [accent]The translator language has been successfully changed to [grey]{$translatorLanguage}[]!
