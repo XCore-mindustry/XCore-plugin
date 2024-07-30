@@ -44,6 +44,9 @@ commands-login-confirmed = [green]Права админа подтвержден
 commands-login-admin-password-created = [green]Пароль админа создан
     {""}[red]Не забудьте свой пароль! Если Вы его забудете, Вам придется обратиться к главному администратору с просьбой сбросить его.
 commands-login-request-approval-discord = [accent]Запрос на права админа. [lightgray]Подтвердите его в канале [orange]#admin-bots[] на нашем сервере discord.
+commands-logout-params = {""}
+commands-logout-description = Лишить себя прав администратора
+commands-logout-successful = [green]Вы лишены прав администратора
 commands-tr-params = <язык>
 commands-tr-description = Установить язык переводчика
 commands-tr-success = [accent]Язык переводчика был успешно изменен на [grey]{$translatorLanguage}[]!
