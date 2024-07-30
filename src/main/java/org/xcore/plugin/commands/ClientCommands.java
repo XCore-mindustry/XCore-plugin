@@ -583,10 +583,7 @@ public class ClientCommands {
             bundle.send(player, "error-wrong-admin-password", args());
         });
 
-        register("logout", (args, player) -> {
-            PlayerData data = database.getCached(player.uuid());
-            AdminData adminData = data.adminData();
-
+        register("logout", (args, player) ->  {
             if (player.admin) {
                 player.admin(false);
                 netServer.admins.unAdminPlayer(player.uuid());
