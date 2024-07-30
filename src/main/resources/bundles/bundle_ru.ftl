@@ -104,7 +104,7 @@ rtv-success = [orange]Голосование завершено успешно. 
 votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосовал за кик {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     {""}[lightgray]Напиши [orange]/vote <y/n>[], чтобы проголосовать.
 votekick-left = {$nickname}[lightgray] вышел с сервера. Его голос за кик игрока был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-votekick-cancelled = [scarlet]Голосование за кик {$nickname} было отменено администратором {$admin}[scarlet]-
+votekick-cancelled = [scarlet]Голосование за кик {$nickname}[scarlet] было отменено администратором {$admin}[scarlet]-
 votekick-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы выгнать {$nickname}[lightgray] с сервера.
 votekick-success = [orange]Голосование завершено успешно. {$nickname}[orange] выгнан с сервера на [scarlet]{$minutes}[] минут.
 player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]присоединился

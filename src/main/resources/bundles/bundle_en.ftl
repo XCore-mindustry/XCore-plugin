@@ -100,7 +100,7 @@ votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] voted to kick
     {""}[lightgray]Type [orange]/vote <y/n>[] to vote-
 votekick-left = {$nickname}[lightgray] left- Their vote for kicking a player was cancelled- ([accent]{$votes}[]/[accent]{$votesRequired}[])
 votekick-fail = [lightgray]Vote failed- Not enough votes to kick {$nickname}[lightgray] from the server
-votekick-cancelled = [scarlet]Vote to kick {$nickname} was cancelled by admin {$admin}[scarlet]
+votekick-cancelled = [scarlet]Vote to kick {$nickname}[scarlet] was cancelled by admin {$admin}[scarlet]
 votekick-success = [orange]Vote passed- {$nickname}[orange] kicked from the server for [scarlet]{$minutes}[] minutes
 player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]has joined
 player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]has left
