@@ -43,9 +43,8 @@ public class PluginVars {
             .disableHtmlEscaping()
             .serializeNulls()
             .create();
-    public static final Gson rawGson = new GsonBuilder()
-            .serializeNulls()
-            .create();
+    public static final Gson rawGson = new GsonBuilder().serializeNulls().create();
+
     public static final Bundle bundle = Bundle.INSTANCE;
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;

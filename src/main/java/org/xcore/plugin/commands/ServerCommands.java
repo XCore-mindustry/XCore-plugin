@@ -83,15 +83,17 @@ public class ServerCommands {
         });
         handler.removeCommand("players");
         handler.register("players", "List all players currently in game.", args -> {
-            if (Groups.player.size() == 0) {
+            if (Groups.player.isEmpty()) {
                 Log.info("No players are currently in the server.");
-            } else {
-                Log.info("Players: @", Groups.player.size());
-                for (Player user : Groups.player) {
-                    PlayerInfo userInfo = user.getInfo();
-                    PlayerData data = database.getCached(user.uuid());
-                    Log.info(" @&lm @ #@ / UUID: @ / IP: @", userInfo.admin ? "&r[A]&c" : "&b[P]&c", userInfo.plainLastName(), data.pid, userInfo.id, userInfo.lastIP, userInfo.admin);
-                }
+                return;
+            }
+
+            Log.info("There are @ players online.", Groups.player.size());
+
+            for (Player user : Groups.player) {
+                PlayerInfo userInfo = user.getInfo();
+                PlayerData data = database.getCached(user.uuid());
+                Log.info(" @&lm @ #@ / UUID: @ / IP: @", userInfo.admin ? "&r[A]&c" : "&b[P]&c", userInfo.plainLastName(), data.pid, userInfo.id, userInfo.lastIP, userInfo.admin);
             }
         });
 

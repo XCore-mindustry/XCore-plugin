@@ -23,14 +23,19 @@ public class LastStanding {
 
     public static void init() {
         if (!config.isLastStanding()) return;
-        Events.on(EventType.CoreChangeEvent.class, event -> app.post(() -> spawnFloors.each((team, floor) -> {
+
+        Events.on(EventType.CoreChangeEvent.class,
+            event -> app.post(() -> spawnFloors.each((team, floor) -> {
             if (team.active()) return;
+
             spawner.getSpawns().each(tile -> tile.floor() == floor, tile -> {
                 tile.setOverlayNet(Blocks.air);
                 spawner.getSpawns().remove(tile);
             });
         })));
+
         Events.on(EventType.PlayEvent.class, event -> state.rules.waves = true);
+
         content.units().each(type -> {
             var controller = type.controller;
             type.controller = unit -> unit.team == state.rules.waveTeam && unit.type.aiController.get() instanceof AIController ai ? new LastStandingAi(ai) : controller.get(unit);

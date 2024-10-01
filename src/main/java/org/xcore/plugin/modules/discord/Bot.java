@@ -165,7 +165,7 @@ public class Bot {
         ).subscribe());
     }
 
-    public static void sendJoinLeaveEventMessage(String playerName, String server, Boolean join) {
+    public static void sendConnectionEvent(String playerName, String server, Boolean join) {
         if (!isConnected) return;
         getServerLogChannel(server).ifPresent(c -> c.createMessage(
                 Strings.format("`@` " + (join ? "joined" : "left"), playerName)

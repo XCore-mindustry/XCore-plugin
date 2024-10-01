@@ -34,34 +34,34 @@ public class SocketEvents {
             Bot.connect();
             DiscordCommands.init();
 
-            NetSock.subscribe(MessageEvent.class,
-                    e -> Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
-            NetSock.subscribe(ServerActionEvent.class,
-                    e -> Bot.getServerLogChannel(e.server()).ifPresent(c -> c.createMessage(e.message()).subscribe()));
-            NetSock.subscribe(PlayerJoinLeaveEvent.class,
-                    e -> Bot.sendJoinLeaveEventMessage(e.playerName(), e.server(), e.join()));
+            NetSock.subscribe(MessageEvent.class, e -> Bot.sendMessageEvent(e.authorName(), e.message(), e.server()));
+
+            NetSock.subscribe(
+                ServerActionEvent.class,
+                e -> Bot.getServerLogChannel(e.server()).ifPresent(c -> c.createMessage(e.message()).subscribe())
+            );
+
+            NetSock.subscribe(PlayerJoinLeaveEvent.class, e -> Bot.sendConnectionEvent(e.playerName(), e.server(), e.join()));
+
             NetSock.subscribe(AdminRequestEvent.class, e -> Bot.sendAdminRequestEvent(e.pid(), e.server()));
             NetSock.subscribe(BanData.class, Bot::sendBan);
 
         } else {
             NetSock.subscribe(DiscordMessageEvent.class, e -> {
-                if (!e.server().equals(config.server))
-                    return;
+                if (!e.server().equals(config.server)) return;
 
                 XcorePlugin.sendMessageFromDiscord(e.authorName(), e.message());
             });
         }
 
         NetSock.subscribe(MapsListRequest.class, request -> {
-            if (!request.server.equals(config.server))
-                return;
+            if (!request.server.equals(config.server)) return;
 
             NetSock.respond(request, new MapsListResponse(maps.customMaps().map(Map::plainName).toArray(String.class)));
         });
 
         NetSock.subscribe(MapRemoveRequest.class, request -> {
-            if (!request.server.equals(config.server))
-                return;
+            if (!request.server.equals(config.server)) return;
 
             var map = Utils.findMap(request.map);
             if (map != null) {
@@ -69,10 +69,11 @@ public class SocketEvents {
                 maps.reload();
             }
 
-            NetSock.respond(request, new MapRemoveResponse(map == null ?
-                    "Map not found" :
-                    "Succcesfully removed map " + map.plainName()
-            ));
+            NetSock.respond(
+                request,
+                new MapRemoveResponse(map == null ? "Map not found" : "Succcesfully removed map " + map.plainName())
+            );
+
             if (map != null) info("Removed map @", map.plainName());
         });
 
@@ -80,8 +81,8 @@ public class SocketEvents {
             var info = Find.playerInfo(e.uuid);
             var player = Find.playerByUuid(e.uuid);
 
-            if (info == null || !info.admin)
-                return;
+            if (info == null || !info.admin) return;
+
             if (player != null) player.admin = false;
 
             netServer.admins.unAdminPlayer(e.uuid);
@@ -95,8 +96,8 @@ public class SocketEvents {
             var info = Find.playerInfo(e.uuid);
             var player = Find.playerByUuid(e.uuid);
 
-            if (info == null)
-                return;
+            if (info == null) return;
+
             if (player != null) {
                 player.admin = true;
                 PlayerData data = database.getCached(e.uuid);
@@ -114,8 +115,7 @@ public class SocketEvents {
         NetSock.subscribe(KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid) || p.ip().equals(e.ip), p -> p.kick(Packets.KickReason.banned)));
         NetSock.subscribe(ExecuteCommand.class, e -> {
-            if (e.expectServers != null && Structs.contains(e.expectServers, config.server))
-                return;
+            if (e.expectServers != null && Structs.contains(e.expectServers, config.server)) return;
 
             Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command);
             ServerControl.instance.handleCommandString(e.command);
@@ -141,8 +141,7 @@ public class SocketEvents {
         });
 
         NetSock.subscribe(LoadMaps.class, e -> {
-            if (!config.server.equals(e.server))
-                return;
+            if (!config.server.equals(e.server)) return;
 
             AtomicInteger counter = new AtomicInteger();
             for (String url : e.urls) {
@@ -164,47 +163,33 @@ public class SocketEvents {
         NetSock.post(new ServerActionEvent("Server loaded", config.server));
     }
 
-    public record MessageEvent(String authorName, String message, String server) {
-    }
+    public record MessageEvent(String authorName, String message, String server) {}
 
-    public record ServerActionEvent(String message, String server) {
-    }
+    public record ServerActionEvent(String message, String server) {}
 
-    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) {
-    }
+    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) {}
 
-    public record GlobalChatEvent(String authorName, String message, String server) {
-    }
+    public record GlobalChatEvent(String authorName, String message, String server) {}
 
-    public record DiscordMessageEvent(String authorName, String message, String server) {
-    }
+    public record DiscordMessageEvent(String authorName, String message, String server) {}
 
-    public record AdminRequestEvent(int pid, String server) {
-    }
+    public record AdminRequestEvent(int pid, String server) {}
 
-    public record AdminRequestConfirmEvent(String uuid, String server) {
-    }
+    public record AdminRequestConfirmEvent(String uuid, String server) {}
 
-    public record KickBannedPlayer(String uuid, String ip) {
-    }
+    public record KickBannedPlayer(String uuid, String ip) {}
 
-    public record SyncPlayerData(PlayerData data) {
-    }
+    public record SyncPlayerData(PlayerData data) {}
 
-    public static class ReloadPlayerDataCache {
-    }
+    public static class ReloadPlayerDataCache {}
 
-    public record LoadMaps(String[] urls, String server) {
-    }
+    public record LoadMaps(String[] urls, String server) {}
 
-    public record ExecuteCommand(String command, String[] expectServers) {
-    }
+    public record ExecuteCommand(String command, String[] expectServers) {}
 
-    public record PardonPlayer(String uuid) {
-    }
+    public record PardonPlayer(String uuid) {}
 
-    public record RemoveAdmin(String uuid) {
-    }
+    public record RemoveAdmin(String uuid) {}
 
     @AllArgsConstructor
     public static class MapsListRequest extends Request<MapsListResponse> {

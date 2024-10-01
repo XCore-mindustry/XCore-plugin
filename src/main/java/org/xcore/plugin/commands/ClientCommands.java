@@ -88,24 +88,34 @@ public class ClientCommands {
             var data = database.getCached(player.uuid());
             var mute = database.getMuteDatas().get(player.uuid());
 
-            if (mute != null && !mute.expired()) {
-                Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
-                bundle.send(player, "you-are-muted",
+            if(mute != null) {
+                if(!mute.expired()){
+                    Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+
+                    bundle.send(player, "you-are-muted",
                         args("adminName", mute.adminName,
-                                "reason", mute.reason,
-                                "remainMinutes", remain.toMinutes(),
-                                "remainSeconds", remain.toSecondsPart()));
-                return;
-            } else if (mute != null) {
+                            "reason", mute.reason,
+                            "remainMinutes", remain.toMinutes(),
+                            "remainSeconds", remain.toSecondsPart()
+                        )
+                    );
+                    return;
+                }
+
                 database.getMuteDatas().delete(player.uuid());
             }
 
-            Groups.player.each(
-                    other -> other.team() == player.team(),
-                    p -> p.sendMessage(bundle.format(bundle.locale(p), "commands-t-chat", args(
+            Groups.player.each(other -> other.team() == player.team(),
+                p -> p.sendMessage(
+                    bundle.format(
+                        bundle.locale(p),
+                        "commands-t-chat", args(
                             "color", player.team().color,
                             "name", player.coloredName(),
-                            "message", args[0])), player)
+                            "message", args[0]
+                        )),
+                    player
+                )
             );
         });
 
@@ -138,26 +148,25 @@ public class ClientCommands {
         });
 
         register("stats", (args, player) -> {
-            PlayerData data;
-            if (args.length > 0) {
-                data = database.getCachedOrDb(Strings.parseInt(args[0]));
-            } else {
-                data = database.getCached(player.uuid());
-            }
-
+            PlayerData data = args.length > 0 ? database.getCachedOrDb(Strings.parseInt(args[0])) : database.getCached(player.uuid());
 
             if (data == null) {
                 bundle.send(player, "error-player-not-found", args());
                 return;
             }
 
-            var msg = bundle.format(bundle.locale(player), "commands-stats-content", args(
-                "nickname", data.nickname,
-                "pid", data.pid,
-                "totalPlayTime", data.totalPlayTime,
-                "hexedRankTag", data.hexedRank().tag,
-                "hexedRankName", data.hexedRank().name(),
-                "pvpRating", data.pvpRating));
+            var msg = bundle.format(
+                bundle.locale(player),
+                "commands-stats-content", args(
+                    "nickname", data.nickname,
+                    "pid", data.pid,
+                    "totalPlayTime", data.totalPlayTime,
+                    "hexedRankTag", data.hexedRank().tag,
+                    "hexedRankName", data.hexedRank().name(),
+                    "pvpRating", data.pvpRating
+                )
+            );
+
             Call.infoMessage(player.con, msg);
         });
 
@@ -167,6 +176,7 @@ public class ClientCommands {
             data.leaderboard = !data.leaderboard;
 
             bundle.send(player, "commands-lb-success", args("leaderboardEnabled", String.valueOf(data.leaderboard)));
+
             data.save();
         });
 
@@ -192,8 +202,13 @@ public class ClientCommands {
                     data.translatorLanguage = lang;
                 }
             }
-            bundle.send(player, "commands-tr-success",
-                    args("translatorLanguage", translatorLanguages.get(data.translatorLanguage)));
+
+            bundle.send(
+                player,
+                "commands-tr-success",
+                args("translatorLanguage", translatorLanguages.get(data.translatorLanguage))
+            );
+
             data.save();
         });
 
@@ -258,7 +273,7 @@ public class ClientCommands {
             }
 
             if (found.admin) {
-                player.kick(bundle.format(bundle.locale(player), "error-player-admin", Collections.emptyMap()), 5 * 60 * 1000);
+                player.kick(bundle.format(bundle.locale(player), "error-player-admin", args()), 5 * 60 * 1000);
             }
 
             if (found.team() != player.team()) {
@@ -322,12 +337,16 @@ public class ClientCommands {
                 var data = database.getCached(target.uuid());
                 var rank = data.hexedRank();
 
-                bundle.infoMessage(player, "commands-rank-content", args(
+                bundle.infoMessage(
+                    player,
+                    "commands-rank-content", args(
                         "nickname", target.name,
                         "rankTag", rank.tag,
                         "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + rank.name(), args()),
                         "points", data.hexedPoints,
-                        "requiredPoints", rank.next.requirements.wins()));
+                        "requiredPoints", rank.next.requirements.wins()
+                    )
+                );
             });
 
             register("ranks", (args, player) -> {
@@ -354,12 +373,14 @@ public class ClientCommands {
                 } else for (int i = 0; i < leaders.size; i++) {
                     var data = leaders.get(i);
 
-                    builder.append(bundle.format(bundle.locale(player), "commands-top-hexed-content", args(
-                                    "index", i + 1,
-                                    "nickname", data.nickname,
-                                    "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + data.hexedRank().name(), args()),
-                                    "points", data.hexedPoints)))
-                            .append("\n");
+                    builder.append(bundle.format(
+                        bundle.locale(player),
+                            "commands-top-hexed-content", args(
+                                "index", i + 1,
+                                "nickname", data.nickname,
+                                "rankName", bundle.format(bundle.locale(player), "hexed-ranks-" + data.hexedRank().name(), args()),
+                                "points", data.hexedPoints)
+                    )).append("\n");
                 }
                 player.sendMessage(builder.toString());
             });
@@ -445,9 +466,11 @@ public class ClientCommands {
             NetSock.post(result);
             result.save();
 
-            bundle.send(player, "commands-ban-success", args(
-                    "nickname", target.nickname
-            ));
+            bundle.send(
+                player,
+                "commands-ban-success",
+                args("nickname", target.nickname)
+            );
         });
 
         register("unban", true, (args, player) -> {
@@ -466,10 +489,13 @@ public class ClientCommands {
             }
 
             database.getBanDatas().delete(target.uuid, null);
-            bundle.send(player, "commands-unban-success", args(
+            bundle.send(
+                player,
+                "commands-unban-success", args(
                     "nickname", target.nickname,
                     "pid", target.pid
-            ));
+                )
+            );
         });
 
         register("mute", true, (args, player) -> {
@@ -513,11 +539,15 @@ public class ClientCommands {
             Duration duration = Duration.ofMillis(date.toEpochMilli());
 
             Optional.ofNullable(Find.playerByUuid(target.uuid)).ifPresent(p ->
-                    bundle.send(p, "you-are-muted-by", args(
-                            "adminName", player.coloredName(),
-                            "reason", reason,
-                            "remainMinutes", duration.toMinutes(),
-                            "remainSeconds", duration.toSecondsPart())));
+                bundle.send(
+                    p, "you-are-muted-by", args(
+                        "adminName", player.coloredName(),
+                        "reason", reason,
+                        "remainMinutes", duration.toMinutes(),
+                        "remainSeconds", duration.toSecondsPart()
+                    )
+                )
+            );
         });
 
         register("unmute", true, (args, player) -> {
@@ -600,16 +630,17 @@ public class ClientCommands {
     public static void register(String name, boolean admin, CommandHandler.CommandRunner<Player> runner) {
         if (config.disabledCommands.contains(name)) return;
 
-        netServer.clientCommands.<Player>register(name,
-                bundle.format(bundle.defaultLocale, "commands-" + name + "-params", "", args()),
-                bundle.format(bundle.defaultLocale, "commands-" + name + "-description", "", args()),
-                (args, player) -> {
-                    if (admin && !player.admin) {
-                        bundle.send(player, "error-access-denied", args());
-                        return;
-                    }
+        netServer.clientCommands.<Player>register(
+            name,
+            bundle.format(bundle.defaultLocale, "commands-" + name + "-params", "", args()),
+            bundle.format(bundle.defaultLocale, "commands-" + name + "-description", "", args()),
+            (args, player) -> {
+                if (admin && !player.admin) {
+                    bundle.send(player, "error-access-denied", args());
+                    return;
+                }
 
-                    runner.accept(args, player);
-                });
+                runner.accept(args, player);
+            });
     }
 }
