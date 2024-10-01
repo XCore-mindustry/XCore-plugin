@@ -19,8 +19,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.utils.NetSock;
-import org.xcore.plugin.utils.models.BanData;
-import org.xcore.plugin.utils.models.BanRequestData;
+import org.xcore.plugin.utils.models.*;
 
 import java.time.Duration;
 
@@ -48,17 +47,23 @@ public class NetEvents {
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
-        var muteData = database.getMuteDatas().get(author.uuid());
-        if (muteData != null && !muteData.expired()) {
-            Duration remain = Duration.ofMillis(muteData.expireDate.getTime() - Time.millis());
-            bundle.send(author, "you-are-muted", args(
-                    "adminName", muteData.adminName,
-                    "reason", muteData.reason,
-                    "remainMinutes", remain.toMinutes(),
-                    "remainSeconds", remain.toSecondsPart()));
-            return null;
-        } else if (muteData != null) {
-            database.getMuteDatas().delete(muteData.uuid);
+        MuteData mute = database.getMuteDatas().get(author.uuid());
+
+        if(mute != null) {
+            if(!mute.expired()){
+                Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+
+                bundle.send(player, "you-are-muted",
+                    args("adminName", mute.adminName,
+                        "reason", mute.reason,
+                        "remainMinutes", remain.toMinutes(),
+                        "remainSeconds", remain.toSecondsPart()
+                    )
+                );
+                return null;
+            }
+
+            database.getMuteDatas().delete(player.uuid());
         }
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
@@ -169,12 +174,19 @@ public class NetEvents {
             }
         }
 
-        if (netServer.admins.isIPBanned(con.address)
-                || netServer.admins.isSubnetBanned(con.address)
-                || netServer.admins.isIDBanned(uuid)) {
-            con.kick(bundle.format(bundle.locale(packet.locale), "ban-content", args(
-                    "nickname", stripColors(packet.name),
-                    "discordUrl", discordUrl)), 0);
+        if (
+            netServer.admins.isIPBanned(con.address) ||
+            netServer.admins.isSubnetBanned(con.address) ||
+            netServer.admins.isIDBanned(uuid)
+        ) {
+            con.kick(
+                bundle.format(bundle.locale(packet.locale),
+                    "ban-content", args(
+                        "nickname", stripColors(packet.name),
+                        "discordUrl", discordUrl)
+                ),
+                0
+            );
             return;
         }
 
@@ -196,9 +208,14 @@ public class NetEvents {
         long kickTime = netServer.admins.getKickTime(uuid, con.address);
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
-            con.kick(bundle.format(bundle.locale(packet.locale), "kick-recently-kicked", args(
-                    "remainMinutes", remain.toMinutes(),
-                    "remainSeconds", remain.toSecondsPart())), 0);
+            con.kick(
+                bundle.format(bundle.locale(packet.locale),
+                    "kick-recently-kicked", args(
+                        "remainMinutes", remain.toMinutes(),
+                        "remainSeconds", remain.toSecondsPart())
+                ),
+                0
+            );
             return;
         }
         if (!netServer.admins.isAdmin(uuid, packet.usid) && config.playerLimit > 0 && Groups.player.size() >= config.getNoAdminPlayerLimit()) {
@@ -210,7 +227,7 @@ public class NetEvents {
         Seq<String> missingMods = mods.getIncompatibility(extraMods);
 
         if (!extraMods.isEmpty() || !missingMods.isEmpty()) {
-            //can't easily be localized since kick reasons can't have a formatted text with them
+
             StringBuilder result = new StringBuilder("[accent]Incompatible mods![]\n\n");
             if (!missingMods.isEmpty()) {
                 result.append("Missing:[lightgray]\n").append("> ").append(missingMods.toString("\n> "));

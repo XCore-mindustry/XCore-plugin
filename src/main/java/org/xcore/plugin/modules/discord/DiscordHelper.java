@@ -25,8 +25,7 @@ public class DiscordHelper {
 
     public static boolean checkId(MessageContext context, int id) {
         if (id < 0) {
-            context.error("Invalid number", "'player-id' must be a positive number!")
-                    .subscribe();
+            context.error("Invalid number", "'player-id' must be a positive number!").subscribe();
             return true;
         }
 
@@ -35,8 +34,11 @@ public class DiscordHelper {
 
     public static boolean checkPeriod(MessageContext context, Instant period) {
         if (period == null) {
-            context.error("Wrong period format", "The period must be a number or in the format \"number<m/h/d/y> (minutes/hours/days/years)")
-                    .subscribe();
+            context.error(
+                "Wrong period format",
+                "The period must be a number or in the format \"number<m/h/d/y> (minutes/hours/days/years)"
+            ).subscribe();
+
             return true;
         }
 
@@ -54,8 +56,12 @@ public class DiscordHelper {
 
     public static boolean notFound(MessageContext context, String server) {
         if (server == null) {
-            context.error("Invalid server name", "Server with provided name not found!\nServers: @", Strings.join(", ", globalConfig.servers.keys()))
-                        .subscribe();
+            context.error(
+                "Invalid server name",
+                "Server with provided name not found!\nServers: @",
+                Strings.join(", ", globalConfig.servers.keys())
+            ).subscribe();
+
             return true;
         }
 
@@ -63,6 +69,9 @@ public class DiscordHelper {
     }
 
     public static void noResponse(MessageContext context) {
-        context.error("Internal Error", "The server did not respond. Perhaps the server is down or an error has occurred.").subscribe();
+        context.error(
+            "Internal Error",
+            "The server did not respond. Perhaps the server is down or an error has occurred."
+        ).subscribe();
     }
 }

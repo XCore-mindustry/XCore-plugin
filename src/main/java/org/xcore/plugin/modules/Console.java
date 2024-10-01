@@ -40,8 +40,7 @@ public class Console {
         terminal.enterRawMode();
         System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
 
-        serverControl.serverInput = () -> {
-        };
+        serverControl.serverInput = () -> {};
 
         handleInput();
     }
@@ -55,8 +54,7 @@ public class Console {
                 return null;
             }
 
-            if (!result.isEmpty() && !result.startsWith("#"))
-                Core.app.post(() -> serverControl.handleCommandString(result));
+            if (!result.isEmpty() && !result.startsWith("#")) Core.app.post(() -> serverControl.handleCommandString(result));
 
             handleInput();
             return null;

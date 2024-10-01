@@ -40,9 +40,10 @@ public class PluginEvents {
 
             bundle.send(player, "welcome", args("serverName", Administration.Config.serverName.string()));
             PlayerData data = database.getPlayerDatas().get(player);
-            if (data == null) data = new PlayerData(player.uuid(), false);       
-            data.setNickname(player.coloredName())
-                .setPlayer(player);
+
+            if (data == null) data = new PlayerData(player.uuid(), false);
+
+            data.setNickname(player.coloredName()).setPlayer(player);
 
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
@@ -77,27 +78,33 @@ public class PluginEvents {
             bundle.send("player-joined", args(
                     "nickname", player.coloredName(),
                     "pid", data.pid));
-            NetSock.post(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " #" + data.pid, config.server,
-                            true));
+            NetSock.post(new SocketEvents.PlayerJoinLeaveEvent(
+                player.plainName() + " #" + data.pid,
+                config.server,
+                true)
+            );
         });
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
             var data = database.removeCached(event.player.uuid());
 
-            if (vote != null)
-                vote.left(event.player);
-            if (voteKick != null)
-                voteKick.left(event.player);
+            if (vote != null) vote.left(event.player);
+
+            if (voteKick != null) voteKick.left(event.player);
 
             Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
+
             bundle.send("player-left", args(
-                    "nickname", player.coloredName(),
-                    "pid", data.pid));
-            NetSock.post(
-                    new SocketEvents.PlayerJoinLeaveEvent(player.plainName() + " #" + data.pid, config.server,
-                            false));
+                "nickname", player.coloredName(),
+                "pid", data.pid)
+            );
+
+            NetSock.post(new SocketEvents.PlayerJoinLeaveEvent(
+                player.plainName() + " #" + data.pid,
+                config.server,
+                false)
+            );
         });
 
         Events.on(PlayEvent.class, event -> {
@@ -127,8 +134,7 @@ public class PluginEvents {
                         Groups.player.size(), Strings.capitalize(Strings.stripColors(state.map.name())));
             }
 
-            NetSock.post(
-                    new SocketEvents.ServerActionEvent(message, config.server));
+            NetSock.post(new SocketEvents.ServerActionEvent(message, config.server));
 
             if (gameoverRestart) restart();
         });
@@ -136,6 +142,7 @@ public class PluginEvents {
 
     private static void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
+
         Timer.schedule(() -> {
             Call.announce("Restart in " + secondsLeft.get());
             if (secondsLeft.decrementAndGet() == 0) {

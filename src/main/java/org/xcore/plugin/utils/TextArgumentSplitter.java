@@ -1,16 +1,16 @@
 package org.xcore.plugin.utils;
 
-import java.util.ArrayList;
+import arc.struct.*;
 
 public class TextArgumentSplitter {
+
     public static String[] split(String text) {
-        ArrayList<String> arguments = new ArrayList<>();
+        Seq<String> arguments = new Seq<>();
         boolean insideQuotes = false;
+
         StringBuilder currentArgument = new StringBuilder();
 
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-
+        for(var c : text.toCharArray()){
             if (c == '\"') {
                 insideQuotes = !insideQuotes;
             } else if (Character.isWhitespace(c) && !insideQuotes) {
@@ -23,11 +23,12 @@ public class TextArgumentSplitter {
             }
         }
 
+
         if (!currentArgument.isEmpty()) {
             arguments.add(currentArgument.toString());
         }
 
-        return arguments.toArray(new String[0]);
+        return arguments.toArray();
     }
 }
 
