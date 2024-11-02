@@ -29,7 +29,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -291,6 +290,15 @@ public class ClientCommands {
                 return;
             }
 
+            if (Utils.stripFooCharacters(args[0].toLowerCase()).equals("c")) {
+                if (!player.admin) {
+                    bundle.send(player, "error-access-denied", args());
+                } else {
+                    voteKick.cancelByAdmin(player);
+                }
+                return;
+            }
+
             if (voteKick.voted.containsKey(player.id)) {
                 bundle.send(player, "error-already-voted", args());
                 return;
@@ -298,15 +306,6 @@ public class ClientCommands {
 
             if (voteKick.target == player) {
                 bundle.send(player, "error-vote-yourself", args());
-                return;
-            }
-
-            if (Utils.stripFooCharacters(args[0].toLowerCase()).equals("c")) {
-                if (!player.admin) {
-                    bundle.send(player, "error-access-denied", args());
-                } else {
-                    voteKick.cancelByAdmin(player);
-                }
                 return;
             }
 

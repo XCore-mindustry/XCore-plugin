@@ -82,14 +82,14 @@ public class DiscordCommands {
                 "Upload map to the servers.",
                 globalConfig.discordMapReviewerRoleId,
                 (args, context) -> {
-            var attachments = context.message()
+            FileURL[] files = context.message()
                     .getAttachments()
                     .stream()
                     .filter(attachment -> attachment.getFilename().endsWith(".msav"))
-                    .map(a -> a.getUrl().substring(0, a.getUrl().indexOf("?")))
-                    .toList();
+                    .map(a -> new FileURL(a.getUrl(), a.getFilename()))
+                    .toArray(FileURL[]::new);
 
-            if (attachments.isEmpty()) {
+            if (files.length == 0) {
                 context.error("Attach a file", "You need to attach a file with the extension 'msav'").subscribe();
                 return;
             }
@@ -110,7 +110,7 @@ public class DiscordCommands {
                             .timeout(Duration.ofMinutes(10))
                             .onErrorResume(TimeoutException.class, exception -> Mono.empty())
                             .subscribe(event -> {
-                                NetSock.post(new SocketEvents.LoadMaps(attachments.toArray(new String[0]), event.getValues().get(0)));
+                                NetSock.post(new SocketEvents.LoadMapsV2(files, event.getValues().get(0)));
                                 message.delete().subscribe();
                                 context.success("Success", "Successfully uploaded maps to " + event.getValues().get(0)).subscribe();
                             }))
