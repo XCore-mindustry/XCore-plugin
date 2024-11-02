@@ -50,7 +50,7 @@ public class Bot {
 
             try {
                 gateway = client.gateway()
-                        .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES))
+                        .setEnabledIntents(IntentSet.of(Intent.GUILD_MEMBERS, Intent.GUILD_MESSAGES, Intent.MESSAGE_CONTENT))
                         .login()
                         .blockOptional()
                         .orElseThrow();
