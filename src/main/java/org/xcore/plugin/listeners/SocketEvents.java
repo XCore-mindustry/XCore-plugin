@@ -140,17 +140,15 @@ public class SocketEvents {
             info("Reloaded player data cache.");
         });
 
-        NetSock.subscribe(LoadMaps.class, e -> {
+        NetSock.subscribe(LoadMapsV2.class, e -> {
             if (!config.server.equals(e.server)) return;
 
             AtomicInteger counter = new AtomicInteger();
-            for (String url : e.urls) {
-                Http.get(url)
+            for (FileURL file : e.urls) {
+                Http.get(file.url)
                         .error(Log::err)
                         .submit(result -> {
-                            var split = url.split("/");
-                            var fileName = split[split.length - 1];
-                            customMapDirectory.child(fileName).writeBytes(result.getResult());
+                            customMapDirectory.child(file.filename).writeBytes(result.getResult());
 
                             if (counter.incrementAndGet() == e.urls.length) {
                                 maps.reload();
@@ -183,7 +181,11 @@ public class SocketEvents {
 
     public static class ReloadPlayerDataCache {}
 
-    public record LoadMaps(String[] urls, String server) {}
+    public record LoadMaps(String[] urls, String server) {} // deprecated, noop
+
+    public record LoadMapsV2(FileURL[] urls, String server) {}
+
+    public record FileURL(String url, String filename) {}
 
     public record ExecuteCommand(String command, String[] expectServers) {}
 
