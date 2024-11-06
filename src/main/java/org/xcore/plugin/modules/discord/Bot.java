@@ -143,13 +143,14 @@ public class Bot {
         }
     }
 
-    public static Optional<RestChannel> getServerLogChannel(String server) {
+    public static Optional<MessageChannel> getServerLogChannel(String server) {
         var id = globalConfig.servers.get(server);
         if (id == null) {
             Log.err("@ server has no log channel id!", server);
+            return Optional.empty();
         }
 
-        return Optional.ofNullable(id).map(Snowflake::of).map(client::getChannelById);
+        return Optional.ofNullable(gateway.getChannelById(Snowflake.of(id)).ofType(MessageChannel.class).block());
     }
 
     public static void sendMessageEvent(String playerName, String message, String server) {
@@ -160,16 +161,20 @@ public class Bot {
             return;
         }
 
-        getServerLogChannel(server).ifPresent(c -> c.createMessage(
-                Strings.format("`@: @`", playerName, message)
-        ).subscribe());
+        getServerLogChannel(server).ifPresent(c -> sendMessage(c, Strings.format("`@: @`", playerName, message)));
+    }
+
+    public static void sendMessage(MessageChannel channel, String message) {
+        if (!isConnected) return;
+        channel.createMessage(MessageCreateSpec.builder()
+                .content(message)
+                .allowedMentions(AllowedMentions.suppressAll())
+                .build()).subscribe();
     }
 
     public static void sendConnectionEvent(String playerName, String server, Boolean join) {
         if (!isConnected) return;
-        getServerLogChannel(server).ifPresent(c -> c.createMessage(
-                Strings.format("`@` " + (join ? "joined" : "left"), playerName)
-        ).subscribe());
+        getServerLogChannel(server).ifPresent(c -> sendMessage(c, Strings.format("`@` " + (join ? "joined" : "left"), playerName)));
     }
 
     public static void sendBan(BanData ban) {
