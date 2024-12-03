@@ -16,6 +16,10 @@ distributor = "4.0.1"
 fluent = "0.70"
 sock = "9d465f7"
 
+# database
+mongodb = "5.2.0"
+nitrite = "4.3.0"
+
 [libraries]
 # runtime
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
@@ -28,6 +32,12 @@ fluent-base = { module = "net.xyzsd.fluent:fluent-base", version.ref = "fluent" 
 fluent-functions-cldr = { module = "net.xyzsd.fluent:fluent-functions-cldr", version.ref = "fluent" }
 fluent-functions-icu = { module = "net.xyzsd.fluent:fluent-functions-icu", version.ref = "fluent" }
 sock = { module = "com.github.osp54:Sock", version.ref = "sock" }
+
+# database
+mongodb-driver = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb" }
+bson-kotlinx = { module = "org.mongodb:bson-kotlinx", version.ref = "mongodb" }
+nitrite-potassium = { module = "org.dizitart:potassium-nitrite", version.ref = "nitrite" }
+nitrite-mvstore = { module = "org.dizitart:nitrite-mvstore-adapter", version.ref = "nitrite" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

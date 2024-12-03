@@ -69,6 +69,11 @@ repositories {
 }
 
 dependencies {
+    compileOnly(kotlin("stdlib-jdk8"))
+    compileOnly(kotlin("reflect"))
+    compileOnly(libs.kotlinx.coroutines.core)
+    compileOnly(libs.kotlinx.coroutines.jdk8)
+
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
     compileOnly(toxopid.dependencies.arcCore)
@@ -82,6 +87,12 @@ dependencies {
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Database
+    implementation(libs.mongodb.driver)
+    implementation(libs.bson.kotlinx)
+    implementation(libs.nitrite.potassium)
+    implementation(libs.nitrite.mvstore)
 
     implementation("org.mindrot:jbcrypt:0.4")
 
