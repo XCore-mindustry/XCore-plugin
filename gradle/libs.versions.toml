@@ -1,0 +1,36 @@
+[versions]
+# platforms
+java = "17"
+kotlin-core = "2.1.0"
+kotlin-coroutines = "1.9.0"
+kotlin-runtime = "4.0.0"
+
+# plugins
+shadow = "8.3.5"
+toxopid = "4.1.1"
+
+# utilities
+slf4md = "1.0.1"
+slf4j = "2.0.16"
+distributor = "4.0.1"
+fluent = "0.70"
+sock = "9d465f7"
+
+[libraries]
+# runtime
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
+kotlinx-coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "kotlin-coroutines" }
+
+# utilities
+distributor-api = { module = "com.xpdustry:distributor-common-api", version.ref = "distributor" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+fluent-base = { module = "net.xyzsd.fluent:fluent-base", version.ref = "fluent" }
+fluent-functions-cldr = { module = "net.xyzsd.fluent:fluent-functions-cldr", version.ref = "fluent" }
+fluent-functions-icu = { module = "net.xyzsd.fluent:fluent-functions-icu", version.ref = "fluent" }
+sock = { module = "com.github.osp54:Sock", version.ref = "sock" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-core" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-core" }

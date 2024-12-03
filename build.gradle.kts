@@ -1,24 +1,25 @@
-
-import fr.xpdustry.toxopid.Toxopid
-import fr.xpdustry.toxopid.spec.ModMetadata
-import fr.xpdustry.toxopid.spec.ModPlatform
-import fr.xpdustry.toxopid.task.MindustryExec
+import com.xpdustry.toxopid.spec.ModMetadata
+import com.xpdustry.toxopid.spec.ModPlatform
+import com.xpdustry.toxopid.task.MindustryExec
+import com.xpdustry.toxopid.Toxopid
+import com.xpdustry.toxopid.extension.anukeJitpack
+import com.xpdustry.toxopid.extension.anukeZelaux
+import com.xpdustry.toxopid.extension.configureServer
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     java
     `maven-publish`
-    id("fr.xpdustry.toxopid") version "3.0.0"
-} 
-
-group = "org.xcore.plugin"
-version = "2.7.1"
-val mindustryVersion = "146"
-
-toxopid {
-    compileVersion.set("v$mindustryVersion")
-    runtimeVersion.set("v$mindustryVersion")
-    platforms.add(ModPlatform.HEADLESS)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.toxopid)
 }
+
+// x-core.fun is expired so using GitHub provided domain for now
+group = "io.github.xcore"
+version = "3.0.0"
 
 val metadata = ModMetadata(
     name = "xcore-plugin",
@@ -26,9 +27,14 @@ val metadata = ModMetadata(
     description = "The main plugin for XCore servers.",
     author = "osp54, OSPx#7122",
     version = project.version.toString(),
-    minGameVersion = mindustryVersion,
-    main = "${project.group}.XcorePlugin"
+    minGameVersion = "146",
+    mainClass = "${project.group}.XcorePlugin"
 )
+
+toxopid {
+    compileVersion = "v${metadata.minGameVersion}"
+    platforms = setOf(ModPlatform.SERVER)
+}
 
 publishing {
     repositories {
@@ -43,7 +49,7 @@ publishing {
     }
     publications {
         create<MavenPublication>("maven") {
-            groupId = "org.xcore"
+            groupId = "io.github.xcore"
             artifactId = "plugin"
             version = version
             from(components["java"])
@@ -53,21 +59,26 @@ publishing {
 
 repositories {
     mavenCentral()
-    maven(url = "https://n1.x-core.fun/maven/releases")
-    maven(url = "https://maven.xpdustry.com/snapshots")
-    maven(url = "https://maven.xpdustry.com/mindustry")
-    maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
-    maven(url = "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
-    maven(url = "https://www.jitpack.io")
+    anukeZelaux()
+    anukeJitpack()
+    // Repository is down
+    // maven("https://n1.x-core.fun/maven/releases")
+    maven("https://maven.xpdustry.com/mindustry")
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
+    maven("https://www.jitpack.io")
 }
 
 dependencies {
-    compileOnly("com.github.Anuken.Arc:arc-core:v$mindustryVersion")
-    compileOnly("com.github.Anuken.Mindustry:core:v$mindustryVersion")
-    compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
+    compileOnly(toxopid.dependencies.mindustryCore)
+    compileOnly(toxopid.dependencies.mindustryHeadless)
+    compileOnly(toxopid.dependencies.arcCore)
 
-    implementation("com.ospx:flubundle:1.2")
-    implementation("com.github.osp54:Sock:9d465f7")
+    implementation(libs.fluent.base)
+    implementation(libs.fluent.functions.cldr)
+    implementation(libs.fluent.functions.icu)
+    implementation(files("libs/flubundle-1.2.jar"))
+
+    implementation(libs.sock)
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
@@ -88,7 +99,7 @@ dependencies {
 tasks.jar {
     doFirst {
         val temp = temporaryDir.resolve("plugin.json")
-        temp.writeText(metadata.toJson(true))
+        temp.writeText(ModMetadata.toJson(metadata))
         from(temp)
     }
 
@@ -97,7 +108,17 @@ tasks.jar {
 }
 
 tasks.withType<JavaCompile> {
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
     options.encoding = "UTF-8"
+}
+
+kotlin {
+    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+        apiVersion = KotlinVersion.KOTLIN_2_1
+    }
 }
 
 // Required for the GitHub actions
@@ -107,18 +128,12 @@ tasks.register("getProjectVersion") {
 
 tasks.register("runMainServer", MindustryExec::class.java) {
     group = Toxopid.TASK_GROUP_NAME
-    classpath(tasks.downloadMindustryServer)
-    mainClass.convention("mindustry.server.ServerLauncher")
-    modsPath.convention("./config/mods")
-    standardInput = System.`in`
+    configureServer()
     mods.setFrom(setOf(tasks.jar))
 }
 
 tasks.register("runServer", MindustryExec::class.java) {
     group = Toxopid.TASK_GROUP_NAME
-    classpath(tasks.downloadMindustryServer)
-    mainClass.convention("mindustry.server.ServerLauncher")
-    modsPath.convention("./config/mods")
-    standardInput = System.`in`
+    configureServer()
     mods.setFrom(setOf(tasks.jar))
 }
