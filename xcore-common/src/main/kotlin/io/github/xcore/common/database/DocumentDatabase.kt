@@ -1,4 +1,4 @@
-package io.github.xcore.plugin.database
+package io.github.xcore.common.database
 
 import kotlinx.coroutines.flow.Flow
 import kotlin.reflect.KClass

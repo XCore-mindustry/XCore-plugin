@@ -1,19 +1,37 @@
-package io.github.xcore.plugin.database
+package io.github.xcore.common.database
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.mongodb.kotlin.client.coroutine.MongoCollection
-import com.mongodb.kotlin.client.coroutine.MongoDatabase
+import io.github.xcore.common.lifecycle.LifecycleListener
+import io.github.xcore.common.lifecycle.LifecycleManager
 import kotlinx.coroutines.flow.Flow
 import org.bson.conversions.Bson
 import kotlin.reflect.KClass
 
-class MongoDocumentDatabase(private val database: MongoDatabase) : DocumentDatabase {
+internal class MongoDocumentDatabase(
+    lifecycle: LifecycleManager,
+    private val config: DocumentDatabaseConfig.MongoDB
+) : DocumentDatabase, LifecycleListener {
+
+    private lateinit var client: MongoClient
+
+    init {
+        lifecycle.addInitListener {
+            client = MongoClient.create(config.uri)
+        }
+
+        lifecycle.addExitListener {
+            client.close()
+        }
+    }
+
     override fun <T : Any> getCollection(name: String, type: KClass<T>): DocumentCollection<T> =
-        MongoDocumentCollection(database.getCollection(name, type.java))
+        MongoDocumentCollection(client.getDatabase(config.database).getCollection(name, type.java))
 }
 
-class MongoDocumentCollection<T : Any>(private val collection: MongoCollection<T>) : DocumentCollection<T> {
+internal class MongoDocumentCollection<T : Any>(private val collection: MongoCollection<T>) : DocumentCollection<T> {
 
     override suspend fun select(filter: DocumentFilter): Flow<T> =
         collection.find(filter.toBson())

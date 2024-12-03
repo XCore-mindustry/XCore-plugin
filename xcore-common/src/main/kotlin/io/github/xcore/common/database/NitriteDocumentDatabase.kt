@@ -1,6 +1,6 @@
-package io.github.xcore.plugin.database
+package io.github.xcore.common.database
 
-
+import io.github.xcore.common.lifecycle.LifecycleManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -9,12 +9,31 @@ import org.dizitart.no2.Nitrite
 import org.dizitart.no2.collection.UpdateOptions
 import org.dizitart.no2.filters.Filter
 import org.dizitart.no2.filters.FluentFilter
+import org.dizitart.no2.mvstore.MVStoreModule
 import org.dizitart.no2.repository.ObjectRepository
+import java.nio.file.Path
+import kotlin.io.path.absolutePathString
 import kotlin.reflect.KClass
 
-internal class NitriteDocumentDatabase(private val database: Nitrite) : DocumentDatabase {
+internal class NitriteDocumentDatabase(lifecycle: LifecycleManager, directory: Path) : DocumentDatabase {
+    private lateinit var nitrite: Nitrite
+
+    init {
+        lifecycle.addInitListener {
+            nitrite = Nitrite.builder()
+                .loadModule(MVStoreModule.withConfig()
+                    .filePath(directory.resolve("database.nitrite.mv.db").absolutePathString())
+                    .build())
+                .openOrCreate()
+        }
+
+        lifecycle.addExitListener {
+            nitrite.close()
+        }
+    }
+
     override fun <T : Any> getCollection(name: String, type: KClass<T>): DocumentCollection<T> =
-        NitriteDocumentCollection(database.getRepository(type.java))
+        NitriteDocumentCollection(nitrite.getRepository(type.java))
 }
 
 internal class NitriteDocumentCollection<T : Any>(private val collection: ObjectRepository<T>) : DocumentCollection<T> {

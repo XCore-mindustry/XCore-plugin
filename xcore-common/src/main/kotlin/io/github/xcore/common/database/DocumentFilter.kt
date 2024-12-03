@@ -1,4 +1,4 @@
-package io.github.xcore.plugin.database
+package io.github.xcore.common.database
 
 sealed interface DocumentFilter {
     data class Eq(val key: String, val value: Any) : DocumentFilter
