@@ -17,10 +17,6 @@ subprojects {
 
     repositories {
         mavenCentral()
-        maven("https://www.jitpack.io") {
-            name = "jitpack"
-            mavenContent { releasesOnly() }
-        }
         maven("https://oss.sonatype.org/content/repositories/snapshots/") {
             name = "sonatype-snapshots"
             mavenContent { snapshotsOnly() }
@@ -44,6 +40,7 @@ subprojects {
     extensions.configure<KotlinJvmExtension> {
         jvmToolchain(17)
         compilerOptions {
+            javaParameters = true
             jvmTarget = JvmTarget.JVM_17
             apiVersion = KotlinVersion.KOTLIN_2_1
         }

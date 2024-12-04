@@ -5,7 +5,7 @@
   "author": "osp54",
   "main": "io.github.xcore.plugin.XCorePlugin",
   "minGameVersion": "146",
-  "dependencies": [ "kotlin-runtime" ],
+  "dependencies": [ "kotlin-runtime", "distributor-common" ],
   "java": true,
   "hidden": true
 }

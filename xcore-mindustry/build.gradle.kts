@@ -18,14 +18,30 @@ toxopid {
 }
 
 repositories {
+    mavenCentral()
     anukeZelaux()
+    maven("https://maven.xpdustry.com/releases") {
+        name = "xpdustry-releases"
+        mavenContent { releasesOnly() }
+    }
+    maven("https://www.jitpack.io") {
+        name = "jitpack"
+        mavenContent { releasesOnly() }
+    }
 }
 
 dependencies {
+    implementation(project(":xcore-common"))
+
+    // Mindustry
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
     compileOnly(toxopid.dependencies.arcCore)
 
+    // Other
+    compileOnly(libs.distributor.api)
+
+    // Legacy
     implementation(libs.fluent.base)
     implementation(libs.fluent.functions.cldr)
     implementation(libs.fluent.functions.icu)
@@ -35,12 +51,6 @@ dependencies {
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
     implementation("com.google.code.gson:gson:2.10.1")
-
-    // Database
-    implementation(libs.mongodb.driver)
-    implementation(libs.bson.kotlinx)
-    implementation(libs.nitrite.potassium)
-    implementation(libs.nitrite.mvstore)
 
     implementation("org.mindrot:jbcrypt:0.4")
 
@@ -53,6 +63,11 @@ dependencies {
 
     compileOnly("org.projectlombok:lombok:1.18.26")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 configurations.runtimeClasspath {
@@ -76,12 +91,26 @@ tasks.shadowJar {
 }
 
 val downloadKotlinRuntime by tasks.registering(GithubAssetDownload::class) {
-    owner.set("xpdustry")
-    repo.set("kotlin-runtime")
-    asset.set("kotlin-runtime.jar")
-    version.set("v3.2.0-k.1.9.23")
+    owner = "xpdustry"
+    repo = "kotlin-runtime"
+    asset = "kotlin-runtime.jar"
+    version = "v3.2.0-k.1.9.23"
+}
+
+val downloadDistributorCommon by tasks.registering(GithubAssetDownload::class) {
+    owner = "xpdustry"
+    repo = "distributor"
+    asset = "distributor-common.jar"
+    version = libs.versions.distributor.map { "v$it" }
+}
+
+val downloadSlf4Md by tasks.registering(GithubAssetDownload::class) {
+    owner = "xpdustry"
+    repo = "slf4md"
+    asset = "slf4md-simple.jar"
+    version = libs.versions.slf4md.map { "v$it" }
 }
 
 tasks.runMindustryServer {
-    mods.from(downloadKotlinRuntime)
+    mods.from(downloadKotlinRuntime, downloadDistributorCommon, downloadSlf4Md)
 }

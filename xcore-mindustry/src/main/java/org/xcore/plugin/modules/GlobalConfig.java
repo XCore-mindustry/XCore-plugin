@@ -25,6 +25,7 @@ public class GlobalConfig {
     public long discordPrivateChannelId = 0L;
 
     public static void init() {
+        /*
         if (globalConfigFile.exists()) {
             globalConfig = prettyGson.fromJson(globalConfigFile.reader(), GlobalConfig.class);
             XcorePlugin.info("Global Config loaded.");
@@ -32,14 +33,19 @@ public class GlobalConfig {
             globalConfigFile.writeString(prettyGson.toJson(globalConfig = new GlobalConfig()));
             XcorePlugin.info("Global Config generated.");
         }
+         */
+        // Bro this is goofy, ain't working locally
+        globalConfig = new GlobalConfig();
         globalConfig.postInit();
     }
 
     public void postInit() {
+        /*
         Jval.read(globalConfigFile.reader()).asObject().forEach(jval -> {
             if (jval.key.equals("servers")) {
                 jval.value.asObject().forEach(j -> servers.put(j.key, j.value.asLong()));
             }
         });
+         */
     }
 }
