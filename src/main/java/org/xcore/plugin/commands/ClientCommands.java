@@ -119,6 +119,26 @@ public class ClientCommands {
         });
 
         register("g", (args, player) -> {
+
+            MuteData mute = database.getMuteDatas().get(player.uuid());
+
+            if(mute != null) {
+                if(!mute.expired()){
+                    Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+
+                    bundle.send(player, "you-are-muted",
+                        args("adminName", mute.adminName,
+                            "reason", mute.reason,
+                            "remainMinutes", remain.toMinutes(),
+                            "remainSeconds", remain.toSecondsPart()
+                        )
+                    );
+                    return;
+                }
+
+                database.getMuteDatas().delete(player.uuid());
+            }
+            
             var data = database.getCached(player.uuid());
             if (data.totalPlayTime < globalChatPlayTime && !player.admin) {
                 bundle.send(player, "error-globalchat-total-playtime", args("globalChatPlayTime", globalChatPlayTime));
