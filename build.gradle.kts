@@ -34,7 +34,7 @@ publishing {
     repositories {
         maven {
             name = "xcoreRepository"
-            url = uri("https://n1.x-core.fun/maven/private")
+            url = uri("http://130.61.52.25/maven/private")
             credentials(PasswordCredentials::class)
             authentication {
                 create<BasicAuthentication>("basic")
@@ -53,7 +53,7 @@ publishing {
 
 repositories {
     mavenCentral()
-    maven(url = "https://n1.x-core.fun/maven/releases")
+    maven(url = "http://130.61.52.25/maven/releases")
     maven(url = "https://maven.xpdustry.com/snapshots")
     maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
