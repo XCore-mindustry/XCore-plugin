@@ -1,52 +1,55 @@
 name: Build
 
-on: [push, workflow_dispatch]
+on:
+  push:
+  workflow_dispatch:
 
 jobs:
-  build-linux-arm:
-    runs-on: ubuntu-24.04-arm
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-   
-    - name: Build
-      run: |
-        git submodule update --remote
-        chmod +x gradlew
-        ./gradlew build
-        ./gradlew packLibToJar
+  build:
+    strategy:
+      matrix:
+        include:
+          # Linux x64 configuration
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+          # Linux ARM configuration
+          - os: linux
+            arch: arm
+            runner: ubuntu-22.04-arm
+          # Windows x64 configuration
+          - os: windows
+            arch: x64
+            runner: windows-latest
 
-    - name: Upload artifacts
-      run: cp build/libs/TileLoggerPacked.jar ../../../build/
-    
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+    runs-on: ${{ matrix.runner }}
 
-      - name: Setup java
-        uses: actions/setup-java@v1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
           java-version: 17
 
       - name: Setup gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Build
+      - name: Make gradlew executable
+        if: runner.os != 'Windows'
+        run: chmod +x gradlew
+
+      - name: Build project
         run: |
-          git submodule update --remote
           ./gradlew build
           ./gradlew packLibToJar
 
-      # - name: Upload artifacts
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: ${{ github.event.repository.name }}-windows
-      #     path: |
-      #       build/libs/${{ github.event.repository.name }}.jar
-      #       build/libs/tileLogger/shared/${{ github.event.repository.name }}.dll
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/libs/TileLoggerPacked.jar
