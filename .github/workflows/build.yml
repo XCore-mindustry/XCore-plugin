@@ -20,7 +20,10 @@ jobs:
           ./gradlew jar
         
       - name: Upload artifacts
-        run: cp build/libs/XCore-plugin-*.jar ../../../build/
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/libs/
+
       - name: Obtain versions
         run: |
           echo "PROJECT_VERSION=$(./gradlew getProjectVersion -q)" >> $GITHUB_ENV
