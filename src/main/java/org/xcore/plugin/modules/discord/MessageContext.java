@@ -1,10 +1,12 @@
 package org.xcore.plugin.modules.discord;
 
 import arc.func.Cons;
+import discord4j.core.object.MessageReference;
 import discord4j.core.object.entity.*;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.*;
 import discord4j.core.spec.EmbedCreateSpec.Builder;
+import discord4j.discordjson.json.MessageReferenceData;
 import discord4j.rest.util.Color;
 
 import static arc.util.Strings.format;
@@ -51,6 +53,11 @@ public record MessageContext(Message message, Member member, MessageChannel chan
     }
 
     public MessageCreateMono reply(EmbedCreateSpec embed) {
-        return channel.createMessage(embed).withMessageReference(message.getId());
+        return channel.createMessage(embed).withMessageReference(
+                MessageReferenceData.builder()
+                        .type(MessageReference.Type.DEFAULT.getValue())
+                        .messageId(message.getId().asLong())
+                        .build()
+        );
     }
 }
