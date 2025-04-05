@@ -54,12 +54,12 @@ model {
     }
     components {
         TileLogger(NativeLibrarySpec) {
-            OperatingSystem os = DefaultNativePlatform.currentOperatingSystem;
-            if (os.isWindows()) {
-                targetPlatform "x64"
-            } else if (os.isLinux()) {
-                targetPlatform "aarch64"
-            }
+            // OperatingSystem os = DefaultNativePlatform.currentOperatingSystem;
+            // if (os.isWindows()) {
+            //     targetPlatform "x64"
+            // } else if (os.isLinux()) {
+            //     targetPlatform "aarch64"
+            // }
             sources.cpp {
                 source.srcDir "src/main/cpp"
                 exportedHeaders.srcDirs "${project.projectDir}/src/main/h"
