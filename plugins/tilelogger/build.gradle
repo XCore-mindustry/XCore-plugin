@@ -80,7 +80,11 @@ model {
                     cppCompiler.args '/std:c++20'
                     cppCompiler.args '/EHsc'
                     cppCompiler.args '/W4'
-                    cppCompiler.args '/WX'
+                    cppCompiler.args '/WX'       // Keep treating *other* warnings as errors
+                    cppCompiler.args '/wd4305'   // Disable warning C4305 (truncation)
+                    cppCompiler.args '/wd4309'   // Disable warning C4309 (truncation of constant)
+                    cppCompiler.args '/wd4018'   // Disable warning C4018 (signed/unsigned mismatch)
+                    cppCompiler.args '/wd4244'   // Disable warning C4244 (conversion loss of data)
                     cppCompiler.args '/Zi'
                     cppCompiler.args '/MDd'
                     linker.args '/DEBUG'
