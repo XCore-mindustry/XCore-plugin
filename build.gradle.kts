@@ -53,7 +53,7 @@ publishing {
 
 repositories {
     mavenCentral()
-    maven(url = "http://130.61.52.25/maven/releases")
+    maven(url = "https://n1.x-core.org/maven/releases")
     maven(url = "https://maven.xpdustry.com/snapshots")
     maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
