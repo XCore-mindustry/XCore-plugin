@@ -131,7 +131,7 @@ public class DiscordCommands {
             var server = Utils.findServer(args[0]);
             if (DiscordHelper.notFound(context, server)) return;
 
-            NetSock.request(new MapRemoveRequest(args[1], server),
+            NetSock.request(new MapRemoveRequest(server, args[0]),
                     response -> context.info("Result", response.result).subscribe(),
                     () -> DiscordHelper.noResponse(context)
             );
