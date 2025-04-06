@@ -318,27 +318,55 @@ public class ServerCommands {
         });
 
         handler.register("gcmd", "<args...>", "Execute command on all servers", args -> {
-            var argsQuotes = TextArgumentSplitter.split(args[0]);
-            var expectServers = new Seq<String>();
+            if (args == null || args.length == 0 || args[0] == null || args[0].isBlank()) {
+                Log.err("Usage: gcmd \"<command> [server1 server2 ...]\"");
+                Log.err("-> Please provide the command to execute, optionally followed by target server names,");
+                Log.err("-> likely enclosed in quotes if it contains spaces or needs special parsing.");
+                return;
+            }
+            String rawCommandLine = args[0];
+            String[] parsedArgs;
 
-            if (argsQuotes.length == 0) {
-                Log.err("Missing arguments.");
+            try {
+                parsedArgs = TextArgumentSplitter.split(rawCommandLine);
+            } catch (IllegalArgumentException e) {
+                // Catch parsing errors like unterminated quotes
+                Log.err("Argument parsing error: @", e.getMessage());
+                Log.err("Input: \"@\"", rawCommandLine);
                 return;
             }
 
-            if (argsQuotes[0].startsWith("gcmd")) {
-                Log.err("Recursive command.");
+            if (parsedArgs.length == 0) {
+                Log.err("Error: No command specified after parsing.");
+                Log.err("Usage: gcmd \"<command> [server1 server2 ...]\"");
                 return;
             }
 
-            if (argsQuotes.length > 1) {
-                for (int i = 1; i < argsQuotes.length; i++) {
-                    expectServers.add(argsQuotes[i]);
+            String commandToExecute = parsedArgs[0];
+
+            if (commandToExecute.equalsIgnoreCase("gcmd")) {
+                Log.err("Error: Recursive execution ('gcmd' calling 'gcmd') is not allowed.");
+                return;
+            }
+
+            Seq<String> targetServers = new Seq<>();
+            if (parsedArgs.length > 1) {
+                for (int i = 1; i < parsedArgs.length; i++) {
+                    if (!parsedArgs[i].isBlank()) {
+                        targetServers.add(parsedArgs[i]);
+                    } else {
+                        Log.warn("Ignoring blank server name argument at index @.", i);
+                    }
                 }
             }
 
-            NetSock.post(new SocketEvents.ExecuteCommand(argsQuotes[0], expectServers.toArray(String.class)));
-            Log.info("Done");
+            Log.info("Dispatching command '@' to servers: @",
+                    commandToExecute,
+                    targetServers.isEmpty() ? "[ALL]" : targetServers.toString(", ")); // More informative logging
+
+            NetSock.post(new SocketEvents.ExecuteCommand(commandToExecute, targetServers.toArray(String.class)));
+
+            Log.info("Command dispatched successfully.");
         });
 
         handler.register("sock-restart", "Restart sock", args -> {
