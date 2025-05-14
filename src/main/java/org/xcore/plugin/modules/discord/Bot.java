@@ -11,13 +11,12 @@ import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
+import discord4j.core.object.emoji.UnicodeEmoji;
 import discord4j.core.object.entity.channel.MessageChannel;
-import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
-import discord4j.rest.entity.RestChannel;
 import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
 import org.xcore.plugin.XcorePlugin;
@@ -206,8 +205,8 @@ public class Bot {
                         .addField("Server", server, false)
                         .build())
                 .addComponent(ActionRow.of(
-                        Button.success(server + "_" + pid + "_admreq", ReactionEmoji.unicode("✅"), "Confirm"),
-                        Button.danger("decline", ReactionEmoji.unicode("❌"), "Decline")))
+                        Button.success(server + "_" + pid + "_admreq", UnicodeEmoji.unicode("✅"), "Confirm"),
+                        Button.danger("decline", UnicodeEmoji.unicode("❌"), "Decline")))
                 .build()).subscribe();
     }
 }
