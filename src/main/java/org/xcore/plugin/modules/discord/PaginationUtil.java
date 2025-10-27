@@ -34,8 +34,8 @@ public class PaginationUtil {
                     content.get(edited, currentPage[0]);
 
                     return message.edit(MessageEditSpec.builder()
-                            .embeds(Collections.singletonList(edited.build()))
-                            .components(Collections.singletonList(buttons(currentPage[0] == 1, currentPage[0] == pages)))
+                            .addEmbed(edited.build())
+                            .addComponent(buttons(currentPage[0] == 1, currentPage[0] == pages))
                             .build()).and(e.deferEdit());
                 })
                 .timeout(Duration.ofMinutes(10))

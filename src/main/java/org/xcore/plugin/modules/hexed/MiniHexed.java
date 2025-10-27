@@ -133,7 +133,7 @@ public class MiniHexed {
     private static void endGame() {
         winScore = 1800;
         gameover = true;
-        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        var teams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         teams.truncate(3);
 
         var builder = new StringBuilder();
