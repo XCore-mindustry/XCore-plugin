@@ -16,7 +16,7 @@ jobs:
           key: previous-version
       - name: Build
         run: |
-          git submodule update
+          git submodule init flubundle
           chmod +x gradlew
           ./gradlew jar
         
