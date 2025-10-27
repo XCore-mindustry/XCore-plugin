@@ -16,6 +16,7 @@ jobs:
           key: previous-version
       - name: Build
         run: |
+          git submodule update
           chmod +x gradlew
           ./gradlew jar
         
