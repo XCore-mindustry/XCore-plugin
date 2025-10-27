@@ -12,7 +12,7 @@ plugins {
 
 group = "org.xcore.plugin"
 version = "2.7.1"
-val mindustryVersion = "146"
+val mindustryVersion = "152"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
@@ -54,7 +54,6 @@ publishing {
 repositories {
     mavenCentral()
     maven(url = "https://n1.x-core.org/maven/releases")
-    maven(url = "https://maven.xpdustry.com/snapshots")
     maven(url = "https://maven.xpdustry.com/mindustry")
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
@@ -66,7 +65,7 @@ dependencies {
     compileOnly("com.github.Anuken.Mindustry:core:v$mindustryVersion")
     compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
 
-    implementation("com.ospx:flubundle:1.2")
+    implementation(project(":flubundle"))
     implementation("com.github.osp54:Sock:9d465f7")
 
     implementation("org.mongodb:mongodb-driver-sync:4.9.0")
@@ -74,7 +73,7 @@ dependencies {
 
     implementation("org.mindrot:jbcrypt:0.4")
 
-    implementation("com.discord4j:discord4j-core:3.3.0-SNAPSHOT")
+    implementation("com.discord4j:discord4j-core:3.3.0")
     implementation("io.netty:netty-transport-native-epoll:4.1.89.Final:linux-aarch_64")
 
     implementation("org.jline:jline-terminal-jna:3.21.0")
