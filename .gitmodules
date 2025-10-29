@@ -1,0 +1,3 @@
+[submodule "flubundle"]
+	path = flubundle
+	url = https://github.com/XCore-mindustry/FluBundle/

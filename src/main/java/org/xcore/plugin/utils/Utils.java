@@ -94,7 +94,7 @@ public class Utils {
     }
 
     public static void getPvPLeaderboard(StringBuilder builder, Player player) {
-        Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq().filter(d -> d.pvpRating != 0)
+        Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq().select(d -> d.pvpRating != 0)
                 .sort(d -> d.pvpRating).reverse();
         sorted.truncate(10);
 
@@ -113,7 +113,7 @@ public class Utils {
     }
 
     public static void getHexedLeaderboard(StringBuilder builder, Player player) {
-        var teams = Vars.state.teams.getActive().copy().filter(t -> !t.players.isEmpty() && t.team != Team.derelict)
+        var teams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty() && t.team != Team.derelict)
                 .sort(t -> t.cores.size).reverse();
         teams.truncate(10);
 

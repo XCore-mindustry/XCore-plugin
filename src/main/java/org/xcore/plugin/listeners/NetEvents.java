@@ -106,6 +106,7 @@ public class NetEvents {
                 var trace = new TraceInfo(
                         target.ip(),
                         String.valueOf(data == null ? -1 : data.pid),
+                        target.locale(),
                         target.con.modclient,
                         target.con.mobile,
                         target.getInfo().timesJoined,
@@ -140,7 +141,7 @@ public class NetEvents {
     public static void connect(NetConnection con, Packets.Connect packet) {
         Events.fire(new EventType.ConnectionEvent(con));
 
-        var connections = Seq.with(net.getConnections()).filter(connection -> connection.address.equals(con.address));
+        var connections = Seq.with(net.getConnections()).select(connection -> connection.address.equals(con.address));
         if (connections.size >= 3) {
             netServer.admins.blacklistDos(con.address);
             connections.each(NetConnection::close);
