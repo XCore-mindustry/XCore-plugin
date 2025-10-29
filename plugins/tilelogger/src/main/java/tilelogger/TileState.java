@@ -44,8 +44,8 @@ public class TileState {
                         ? Vars.content.units().get((int) config - Vars.content.items().size - Vars.content.liquids().size)
                         : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size
                             ? Vars.content.blocks().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size)
-                            : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + UnitCommand.all.size
-                                ? UnitCommand.all.get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size - Vars.content.blocks().size)
+                            : (int)config < Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + Vars.content.unitCommands().size
+                                ? Vars.content.unitCommands().get((int) config - Vars.content.items().size - Vars.content.liquids().size - Vars.content.units().size - Vars.content.blocks().size)
                                 : null;
             case 4 -> Point2.unpack((int) config);
             case 5 -> config;
