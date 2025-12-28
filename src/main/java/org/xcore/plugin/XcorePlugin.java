@@ -23,6 +23,7 @@ import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.*;
 import org.xcore.plugin.modules.bundles.Bundles;
 import org.xcore.plugin.modules.hexed.MiniHexed;
+import org.xcore.plugin.modules.maps.SmartMapSelector;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.database.Database;
@@ -72,6 +73,9 @@ public class XcorePlugin extends Plugin {
         MiniHexed.init();
         LastStanding.init();
         Bundles.init();
+
+
+        Reflect.set(Vars.maps, "shuffler", new SmartMapSelector());
 
         Vars.netServer.admins.addActionFilter(action -> {
             if (action.type == ActionType.depositItem) {

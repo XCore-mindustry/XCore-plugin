@@ -9,6 +9,8 @@ import java.util.ArrayList;
 
 import static com.mongodb.client.model.Filters.*;
 
+import arc.struct.ObjectMap;
+
 public class MapDataExecutor extends Executor<MapData> {
 
     public MapDataExecutor(MongoCollection<MapData> collection) {
@@ -55,5 +57,19 @@ public class MapDataExecutor extends Executor<MapData> {
         if(data.id != null) {
             collection.deleteOne(eq("_id", data.id));
         }
+    }
+
+    public ObjectMap<String, MapData> getAllAsMap() {
+        ObjectMap<String, MapData> map = new ObjectMap<>();
+
+        for (MapData data : collection.find()) {
+            String key = genKey(data.name, data.author, data.gameMode);
+            map.put(key, data);
+        }
+        return map;
+    }
+
+    public static String genKey(String name, String author, String mode) {
+        return name + "|" + author + "|" + mode;
     }
 }

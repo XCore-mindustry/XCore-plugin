@@ -155,14 +155,18 @@ public class ClientCommands {
                 return;
             }
 
-            var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+            boolean isManualSelection = args.length > 0;
+
+            var map = isManualSelection
+                    ? Utils.findMap(args[0])
+                    : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
             if (map == null) {
                 bundle.send(player, "error-map-not-found", args());
                 return;
             }
 
-            vote = new VoteRtv(map);
+            vote = new VoteRtv(map, isManualSelection);
             vote.vote(player, 1);
         });
 

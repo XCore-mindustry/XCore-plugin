@@ -6,17 +6,26 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 
+import org.xcore.plugin.utils.models.MapData;
+import static org.xcore.plugin.PluginVars.database;
+
 import static com.ospx.flubundle.Bundle.args;
-import static mindustry.Vars.world;
+import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.bundle;
 import static org.xcore.plugin.PluginVars.mapLoadDelay;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
 
 public class VoteRtv extends VoteSession {
     public final Map target;
+    public final boolean isManualSelection;
+
+    public VoteRtv(Map target, boolean isManualSelection) {
+        this.target = target;
+        this.isManualSelection = isManualSelection;
+    }
 
     public VoteRtv(Map target) {
-        this.target = target;
+        this(target, false);
     }
 
     @Override
@@ -44,6 +53,26 @@ public class VoteRtv extends VoteSession {
         bundle.send("rtv-success", args(
                 "mapName", target.name(),
                 "mapLoadDelay", mapLoadDelay));
+
+        if (state.map != null && !state.isMenu()) {
+            String currentMapName = state.map.plainName();
+            String currentAuthor = state.map.author();
+            String currentMode = state.rules.mode().name();
+
+            MapData currentMapStats = database.mapDatas.get(currentMapName, currentAuthor, currentMode);
+            currentMapStats.onSkip();
+            currentMapStats.save();
+        }
+
+        if (isManualSelection) {
+            String targetMapName = target.plainName();
+            String targetAuthor = target.author();
+            String targetMode = state.rules.mode().name();
+
+            MapData targetMapStats = database.mapDatas.get(targetMapName, targetAuthor, targetMode);
+            targetMapStats.popularity += 2.0;
+            targetMapStats.save();
+        }
         Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
     }
 

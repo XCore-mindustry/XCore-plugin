@@ -20,6 +20,7 @@ import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.AdminData;
 import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.MapData;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -135,6 +136,29 @@ public class PluginEvents {
             }
 
             NetSock.post(new SocketEvents.ServerActionEvent(message, config.server));
+
+            if (state.map != null && !state.isMenu()) {
+                try {
+                    String mapName = state.map.plainName();
+                    String author = state.map.author();
+                    String modeName = state.rules.mode().name();
+
+                    long durationMillis = (long) ((state.tick / 60f) * 1000f);
+
+                    if (durationMillis > 120 * 1000) {
+
+                        MapData stats = database.getMapDatas().get(mapName, author, modeName);
+                        boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
+
+                        stats.registerGame(durationMillis, isWin, modeName, author);
+                        stats.save();
+
+                        Log.info("Map stats updated for '@'", mapName);
+                    }
+                } catch (Exception e) {
+                    Log.err("Failed to update map stats", e);
+                }
+            }
 
             if (gameoverRestart) restart();
         });
