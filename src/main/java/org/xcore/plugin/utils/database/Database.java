@@ -18,10 +18,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.utils.database.executor.*;
-import org.xcore.plugin.utils.models.AdminData;
-import org.xcore.plugin.utils.models.BanData;
-import org.xcore.plugin.utils.models.MuteData;
-import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.*;
 
 import java.util.Optional;
 
@@ -41,6 +38,8 @@ public class Database {
     public final BanDataExecutor banDatas;
     @Getter
     public final PunishmentExecutor<MuteData> muteDatas;
+    @Getter
+    public final MapDataExecutor mapDatas;
 
     public final MongoClient mongoClient;
     public final MongoDatabase database;
@@ -56,9 +55,9 @@ public class Database {
 
         playerDatas = new PlayerDataExecutor(database.getCollection("players", PlayerData.class));
         adminDatas = new AdminDataExecutor(database.getCollection("admins", AdminData.class));
-        banDatas = new BanDataExecutor(
-                database.getCollection("bans", BanData.class));
+        banDatas = new BanDataExecutor(database.getCollection("bans", BanData.class));
         muteDatas = new PunishmentExecutor<>(database.getCollection("mutes", MuteData.class));
+        mapDatas = new MapDataExecutor(database.getCollection("maps", MapData.class));
     }
 
     public static void init() {
