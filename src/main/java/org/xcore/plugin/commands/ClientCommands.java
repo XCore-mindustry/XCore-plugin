@@ -22,10 +22,7 @@ import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
-import org.xcore.plugin.utils.models.AdminData;
-import org.xcore.plugin.utils.models.BanData;
-import org.xcore.plugin.utils.models.MuteData;
-import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.utils.models.*;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -168,6 +165,66 @@ public class ClientCommands {
 
             vote = new VoteRtv(map, isManualSelection);
             vote.vote(player, 1);
+        });
+
+        register("like", (args, player) -> {
+            mindustry.maps.Map map = Vars.state.map;
+            if (map == null) return;
+
+            String mapName = map.plainName();
+            PlayerData pData = database.getCached(player.uuid());
+            Boolean previousVote = pData.mapVotes.get(mapName);
+
+            if (Boolean.TRUE.equals(previousVote)) {
+                bundle.send(player, "error-already-voted", args());
+                return;
+            }
+
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+
+            if (previousVote == null) {
+                mData.reputation += 1;
+                mData.popularity += 2.0;
+                bundle.send(player, "commands-like-success", args());
+            } else {
+                mData.reputation += 2;
+                mData.popularity += 4.0;
+                bundle.send(player, "commands-like-changed", args());
+            }
+
+            pData.mapVotes.put(mapName, true);
+            pData.save();
+            mData.save();
+        });
+
+        register("dislike", (args, player) -> {
+            mindustry.maps.Map map = Vars.state.map;
+            if (map == null) return;
+
+            String mapName = map.plainName();
+            PlayerData pData = database.getCached(player.uuid());
+            Boolean previousVote = pData.mapVotes.get(mapName);
+
+            if (Boolean.FALSE.equals(previousVote)) {
+                bundle.send(player, "error-already-voted", args());
+                return;
+            }
+
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+
+            if (previousVote == null) {
+                mData.reputation -= 1;
+                mData.popularity -= 2.0;
+                bundle.send(player, "commands-dislike-success", args());
+            } else {
+                mData.reputation -= 2;
+                mData.popularity -= 4.0;
+                bundle.send(player, "commands-dislike-changed", args());
+            }
+
+            pData.mapVotes.put(mapName, false);
+            pData.save();
+            mData.save();
         });
 
         register("stats", (args, player) -> {
@@ -341,6 +398,7 @@ public class ClientCommands {
 
             voteKick.vote(player, sign);
         });
+
         if (config.isMiniHexed()) {
             handler.removeCommand("history");
             handler.removeCommand("votekick");

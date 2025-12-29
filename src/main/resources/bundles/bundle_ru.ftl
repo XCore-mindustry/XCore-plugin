@@ -178,3 +178,11 @@ welcome = [accent]Добро пожаловать в {$serverName}!
     {""}[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение всем серверам
     {""}[lightgray]Введите [accent]/tr [gray]<язык/auto>[lightgray], чтобы включить переводчик
     {""}[lightgray]Введите [accent]/discord[lightgray], чтобы перейти наш сервер discord
+commands-like-params = {""}
+commands-like-description = Проголосовать за карту (повышает репутацию)
+commands-like-success = [green]Вы лайкнули эту карту!
+commands-like-changed = [green]Вы изменили свое мнение на Лайк!
+commands-dislike-params = {""}
+commands-dislike-description = Проголосовать против карты
+commands-dislike-success = [orange]Вы поставили дизлайк этой карте.
+commands-dislike-changed = [orange]Вы изменили свое мнение на Дизлайк.

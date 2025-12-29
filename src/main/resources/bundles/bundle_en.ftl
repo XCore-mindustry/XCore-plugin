@@ -176,3 +176,11 @@ welcome = [accent]Welcome to {$serverName}!
     {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message to all servers
     {""}[lightgray]Type [accent]/tr [gray]<language/auto>[lightgray] to enable the translator
     {""}[lightgray]Type [accent]/discord[lightgray] to redirect you to our discord server
+commands-like-params = {""}
+commands-like-description = Vote for the current map (increases reputation)
+commands-like-success = [green]You liked this map!
+commands-like-changed = [green]You changed your vote to Like!
+commands-dislike-params = {""}
+commands-dislike-description = Vote against the current map
+commands-dislike-success = [orange]You disliked this map.
+commands-dislike-changed = [orange]You changed your vote to Dislike.

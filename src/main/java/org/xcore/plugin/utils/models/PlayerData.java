@@ -1,5 +1,8 @@
 package org.xcore.plugin.utils.models;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -25,6 +28,8 @@ public class PlayerData {
     public int hexedRank = 0;
     public int hexedPoints = 0;
     public int totalPlayTime = 0;
+
+    public Map<String, Boolean> mapVotes = new HashMap<>();
 
     public boolean leaderboard = true;
 

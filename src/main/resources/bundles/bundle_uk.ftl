@@ -181,3 +181,12 @@ welcome = [accent]Ласкаво просимо на {$serverName}!
     {""}[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
     {""}[lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
     {""}[lightgray]Напишіть [accent]/discord[lightgray], щоб перейти на наш Discord сервер
+
+commands-like-params = {""}
+commands-like-description = Проголосувати за карту (підвищує репутацію)
+commands-like-success = [green]Ви вподобали цю карту!
+commands-like-changed = [green]Ви змінили свою думку на Вподобайку!
+commands-dislike-params = {""}
+commands-dislike-description = Проголосувати проти карти
+commands-dislike-success = [orange]Ви поставили не подобається цій карті.
+commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
