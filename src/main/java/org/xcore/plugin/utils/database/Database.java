@@ -164,10 +164,10 @@ public class Database {
         long lastTime = lastDecayDoc.getLong("time");
 
         if (now - lastTime >= dayMillis) {
-            Log.info("[XCore] Запуск щоденної деградації популярності карт...");
+            Log.info("[XCore] Starting daily degradation of map popularity and interest...");
             mapDatas.decayPopularity(0.1);
+            mapDatas.decayiInterest(0.1);
 
-            // Оновлюємо час останнього запуску
             counters.updateOne(Filters.eq("_id", "last_map_decay"), Updates.set("time", now));
         }
     }

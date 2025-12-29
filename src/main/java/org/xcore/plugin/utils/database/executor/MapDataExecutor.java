@@ -87,4 +87,18 @@ public class MapDataExecutor extends Executor<MapData> {
         );
         collection.updateMany(gt("popularity", 0.1), Updates.set("popularity", 0.0));
     }
+
+    public void decayiInterest(double amount) {
+        collection.updateMany(
+            gt("interest", 0),
+            Updates.inc("interest", -amount)
+        );
+        collection.updateMany(lt("interest", 0), Updates.set("interest", 0.0));
+
+        collection.updateMany(
+            lt("interest", 0),
+            Updates.inc("interest", amount)
+        );
+        collection.updateMany(gt("interest", 0.1), Updates.set("interest", 0.0));
+    }
 }
