@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.ArrayList;
 
 import static com.mongodb.client.model.Filters.*;
+import com.mongodb.client.model.Updates;
 
 import arc.struct.ObjectMap;
 
@@ -71,5 +72,19 @@ public class MapDataExecutor extends Executor<MapData> {
 
     public static String genKey(String name, String author, String mode) {
         return name + "|" + author + "|" + mode;
+    }
+
+    public void decayPopularity(double amount) {
+        collection.updateMany(
+            gt("popularity", 0),
+            Updates.inc("popularity", -amount)
+        );
+        collection.updateMany(lt("popularity", 0), Updates.set("popularity", 0.0));
+
+        collection.updateMany(
+            lt("popularity", 0),
+            Updates.inc("popularity", amount)
+        );
+        collection.updateMany(gt("popularity", 0.1), Updates.set("popularity", 0.0));
     }
 }

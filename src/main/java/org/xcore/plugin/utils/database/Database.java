@@ -9,6 +9,8 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Time;
 import com.mongodb.client.*;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import lombok.Getter;
 import mindustry.gen.Groups;
 import org.bson.Document;
@@ -145,5 +147,28 @@ public class Database {
         Document update = new Document("$set", new Document("seq", value));
 
         counters.findOneAndUpdate(find, update);
+    }
+
+    public void checkMapDecay() {
+        MongoCollection<Document> counters = database.getCollection("counters");
+        Document lastDecayDoc = counters.find(Filters.eq("_id", "last_map_decay")).first();
+
+        long now = System.currentTimeMillis();
+        long dayMillis = 24 * 60 * 60 * 1000L;
+
+        if (lastDecayDoc == null) {
+            counters.insertOne(new Document("_id", "last_map_decay").append("time", now));
+            return;
+        }
+
+        long lastTime = lastDecayDoc.getLong("time");
+
+        if (now - lastTime >= dayMillis) {
+            Log.info("[XCore] Запуск щоденної деградації популярності карт...");
+            mapDatas.decayPopularity(0.1);
+
+            // Оновлюємо час останнього запуску
+            counters.updateOne(Filters.eq("_id", "last_map_decay"), Updates.set("time", now));
+        }
     }
 }

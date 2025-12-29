@@ -76,6 +76,10 @@ public class XcorePlugin extends Plugin {
 
 
         Reflect.set(Vars.maps, "shuffler", new SmartMapSelector());
+        database.checkMapDecay();
+        Timer.schedule(() -> {
+            database.checkMapDecay();
+        }, 60 * 60, 60 * 60);
 
         Vars.netServer.admins.addActionFilter(action -> {
             if (action.type == ActionType.depositItem) {
