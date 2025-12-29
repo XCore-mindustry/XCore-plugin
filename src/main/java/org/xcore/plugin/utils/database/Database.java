@@ -126,12 +126,16 @@ public class Database {
     public int getNextSequence(String name) {
         MongoCollection<Document> counters = database.getCollection("counters");
 
-        Document find = new Document().append("_id", name);
+        Document find = new Document("_id", name);
         Document update = new Document("$inc", new Document("seq", 1));
 
-        Document result = counters.findOneAndUpdate(find, update);
+        var options = new com.mongodb.client.model.FindOneAndUpdateOptions()
+                .upsert(true)
+                .returnDocument(com.mongodb.client.model.ReturnDocument.AFTER);
 
-        return (int) result.get("seq");
+        Document result = counters.findOneAndUpdate(find, update, options);
+
+        return result.getInteger("seq");
     }
 
     public void setCounter(String name, int value) {

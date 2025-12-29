@@ -38,7 +38,7 @@ public class PluginVars {
     public static Database database;
     public static final Gson prettyGson = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-            .excludeFieldsWithModifiers(Modifier.PRIVATE, Modifier.TRANSIENT)
+            .excludeFieldsWithModifiers(Modifier.PRIVATE, Modifier.TRANSIENT, Modifier.STATIC)
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .serializeNulls()
