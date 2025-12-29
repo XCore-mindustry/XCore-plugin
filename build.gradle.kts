@@ -11,8 +11,8 @@ plugins {
 } 
 
 group = "org.xcore.plugin"
-version = "2.7.1"
-val mindustryVersion = "152"
+version = "2.8.0"
+val mindustryVersion = "154.3"
 
 toxopid {
     compileVersion.set("v$mindustryVersion")
