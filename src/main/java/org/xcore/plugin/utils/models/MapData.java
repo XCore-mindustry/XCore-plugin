@@ -59,8 +59,9 @@ public class MapData {
             this.maximumGameTime = duration;
         } else {
             this.averageGameTime = ((this.averageGameTime * this.playedTimes) + duration) / (this.playedTimes + 1);
-            if (duration < this.minimumGameTime) this.minimumGameTime = duration;
-            if (duration > this.maximumGameTime) this.maximumGameTime = duration;
+
+            this.minimumGameTime = Math.min(this.minimumGameTime, duration);
+            this.maximumGameTime = Math.max(this.maximumGameTime, duration);
         }
 
         this.playedTimes++;
