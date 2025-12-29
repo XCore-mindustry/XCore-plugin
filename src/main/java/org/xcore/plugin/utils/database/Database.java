@@ -11,6 +11,7 @@ import arc.util.Time;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
+import com.mongodb.client.model.IndexOptions;
 import lombok.Getter;
 import mindustry.gen.Groups;
 import org.bson.Document;
@@ -60,6 +61,15 @@ public class Database {
         banDatas = new BanDataExecutor(database.getCollection("bans", BanData.class));
         muteDatas = new PunishmentExecutor<>(database.getCollection("mutes", MuteData.class));
         mapDatas = new MapDataExecutor(database.getCollection("maps", MapData.class));
+
+        playerDatas.getCollection().createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
+        playerDatas.getCollection().createIndex(new Document("pid", 1));
+        playerDatas.getCollection().createIndex(new Document("nickname", 1));
+
+        mapDatas.getCollection().createIndex(new Document("popularity", -1));
+        mapDatas.getCollection().createIndex(new Document("reputation", -1));
+        mapDatas.getCollection().createIndex(new Document("interest", -1));
+        mapDatas.getCollection().createIndex(new Document("playedTimesYear", 1));
     }
 
     public static void init() {

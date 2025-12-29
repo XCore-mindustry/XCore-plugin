@@ -1,7 +1,9 @@
 package org.xcore.plugin.utils.database.executor;
 
 import com.mongodb.client.MongoCollection;
+import lombok.Getter;
 
+@Getter
 public abstract class Executor<T> {
     protected final MongoCollection<T> collection;
 
