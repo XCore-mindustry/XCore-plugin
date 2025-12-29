@@ -173,14 +173,16 @@ public class ClientCommands {
 
             String mapName = map.plainName();
             PlayerData pData = database.getCached(player.uuid());
-            Boolean previousVote = pData.mapVotes.get(mapName);
+
+
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+
+            Boolean previousVote = pData.mapVotes.get(String.valueOf(mData.id));
 
             if (Boolean.TRUE.equals(previousVote)) {
                 bundle.send(player, "error-already-voted", args());
                 return;
             }
-
-            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
 
             if (previousVote == null) {
                 mData.reputation += 1;
@@ -192,7 +194,7 @@ public class ClientCommands {
                 bundle.send(player, "commands-like-changed", args());
             }
 
-            pData.mapVotes.put(mapName, true);
+            pData.mapVotes.put(String.valueOf(mData.id), true);
             pData.save();
             mData.save();
         });
@@ -203,14 +205,15 @@ public class ClientCommands {
 
             String mapName = map.plainName();
             PlayerData pData = database.getCached(player.uuid());
-            Boolean previousVote = pData.mapVotes.get(mapName);
+
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+
+            Boolean previousVote = pData.mapVotes.get(String.valueOf(mData.id));
 
             if (Boolean.FALSE.equals(previousVote)) {
                 bundle.send(player, "error-already-voted", args());
                 return;
             }
-
-            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
 
             if (previousVote == null) {
                 mData.reputation -= 1;
@@ -222,7 +225,7 @@ public class ClientCommands {
                 bundle.send(player, "commands-dislike-changed", args());
             }
 
-            pData.mapVotes.put(mapName, false);
+            pData.mapVotes.put(String.valueOf(mData.id), false);
             pData.save();
             mData.save();
         });
