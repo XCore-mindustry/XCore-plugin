@@ -48,8 +48,11 @@ public class Bundle {
         directory.walk(fi -> {
             if (!fi.extEquals("ftl")) return;
 
-            var codes = fi.nameWithoutExtension().split("_");
-            var locale = codes.length == 2 ? new Locale(codes[1]) : new Locale(codes[1], codes[2]);
+            var name = fi.nameWithoutExtension();
+            var localeCode = name.startsWith("bundle_") ? name.substring(7) : name;
+            var codes = localeCode.split("_");
+            
+            var locale = codes.length >= 2 ? new Locale(codes[0], codes[1]) : new Locale(codes[0]);
 
             addSource(fi, locale);
         });
@@ -135,8 +138,12 @@ public class Bundle {
         return locale(player.locale);
     }
 
-    public Locale locale(String code) {
-        var locale = new Locale(code);
+public Locale locale(String code) {
+        if (code == null) return defaultLocale;
+        
+        var codes = code.split("_");
+        var locale = codes.length >= 2 ? new Locale(codes[0], codes[1]) : new Locale(codes[0]);
+        
         return sources.containsKey(locale) ? locale : defaultLocale;
     }
 
