@@ -53,7 +53,7 @@ public class NetEvents {
             if(!mute.expired()){
                 Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
 
-                bundle.send(player, "you-are-muted",
+                bundle.send(author, "you-are-muted",
                     args("adminName", mute.adminName,
                         "reason", mute.reason,
                         "remainMinutes", remain.toMinutes(),
@@ -63,7 +63,7 @@ public class NetEvents {
                 return null;
             }
 
-            database.getMuteDatas().delete(player.uuid());
+            database.getMuteDatas().delete(author.uuid());
         }
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
