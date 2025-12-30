@@ -66,11 +66,19 @@ commands-mute-success = [accent]Игрок {$nickname}[accent] успешно з
 commands-unmute-params = <id-игрока>
 commands-unmute-description = Размутить игрока. [scarlet]Только для админов
 commands-unmute-success = Успешно размучено игрока {$nickname}
+commands-map-stats-content = {""}[white]Статистика карты для [green]{$mapName}
+    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Размер:[green] {$mapWidth}x{$mapHeight}[orange]
+    {""}[white]Репутация:[green] {$mapReputation}[orange] | [white]Популярность:[green] {$mapPopularity}[orange] | [white]Интерес:[green] {$mapInterest}[orange]
+    {""}[white]Сыграно раз:[green] {$mapPlayedTimes}[orange] | [white]Сыграно за год:[green] {$mapPlayedTimesYear}[orange] | [white]Последняя игра:[green] {$mapLastPlayed}[orange]
+    {""}[white]Мин. время:[green] {$mapMin}[orange] | [white]Сред. время:[green] {$mapAvg}[orange] | [white]Макс. время:[green] {$mapMax}[orange]
+    {""}[green]{$mapDescription}[white]
+commands-map-stats-params = [название-карты]
+commands-map-stats-description = Статистика конкретной карты
 commands-maps-page-must-number = [scarlet]'page' должно быть числом
 commands-maps-start-content = [accent]Текущая карта: []{$mapName}[white]
     {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
 commands-maps-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | Автор: [sky]{$mapAuthor}
+    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | От: [sky]{$mapAuthor}
 commands-votekick-params = <ID/никнейм> <причина...>
 commands-votekick-description = Голосование за кик игрока.
 commands-vote-params = <y/n>
@@ -186,3 +194,4 @@ commands-dislike-params = {""}
 commands-dislike-description = Проголосовать против карты
 commands-dislike-success = [orange]Вы поставили дизлайк этой карте.
 commands-dislike-changed = [orange]Вы изменили свое мнение на Дизлайк.
+never = Никогда

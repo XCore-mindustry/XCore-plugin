@@ -83,7 +83,6 @@ public class ClientCommands {
         register("t", (args, player) -> {
             var data = database.getCached(player.uuid());
             var mute = database.getMuteDatas().get(player.uuid());
-
             if(mute != null) {
                 if(!mute.expired()){
                     Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
@@ -253,6 +252,58 @@ public class ClientCommands {
             Call.infoMessage(player.con, msg);
         });
 
+        register("map-stats", (args, player) -> {
+            boolean isManualSelection = args.length > 0;
+
+            var map = isManualSelection
+                    ? Utils.findMap(args[0])
+                    : Vars.state.map;
+
+            if (map == null) {
+                bundle.send(player, "error-map-not-found", args());
+                return;
+            }
+
+            MapData mapData = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+
+            long minMins = mapData.minimumGameTime / 60000;
+            long avgMins = mapData.averageGameTime / 60000;
+            long maxMins = mapData.maximumGameTime / 60000;
+
+            String lastPlayed;
+            long now = System.currentTimeMillis();
+
+            if (mapData.playedTimes == 0) {
+                lastPlayed = bundle.format(bundle.locale(player), "never", args());
+            } else {
+                long diffMins = (now - mapData.lastPlayedTime) / 60000;
+                if (diffMins < 1) lastPlayed = "<1";
+                else if (diffMins > 1440) lastPlayed = (diffMins / 1440) + "d";
+                else lastPlayed = diffMins + "m";
+            }
+
+            var msg = bundle.format(
+                bundle.locale(player), "commands-map-stats-content", args(
+                            "mapName", mapData.name,
+                            "mapAuthor", mapData.author,
+                            "mapDescription", map.description(),
+                            "mapWidth", map.width,
+                            "mapHeight", map.height,
+                            "mapReputation", mapData.reputation,
+                            "mapPopularity", mapData.popularity,
+                            "mapInterest", mapData.interest,
+                            "mapPlayedTimes", mapData.playedTimes,
+                            "mapPlayedTimesYear", mapData.playedTimesYear,
+                            "mapLastPlayed", lastPlayed,
+                            "mapMin", minMins,
+                            "mapAvg", avgMins,
+                            "mapMax", maxMins
+                    ));
+
+            Call.infoMessage(player.con, msg);
+        });
+
+
         register("lb", (args, player) -> {
             var data = database.getCached(player.uuid());
 
@@ -302,10 +353,9 @@ public class ClientCommands {
             }
 
             Seq<Map> list = Utils.getAvailableMaps();
-            int lines = 8;
+            int lines = 10;
             int page = args.length == 1 ? Strings.parseInt(args[0]) : 1;
-
-            int pageCount = list.size / lines + (list.size % lines == 0 ? 0 : 1);
+            int pageCount = Mathf.ceil((float) list.size / lines);
 
             if (page < 1 || page > pageCount) {
                 bundle.send(player, "error-page-between", args("pageCount", pageCount));
@@ -321,15 +371,32 @@ public class ClientCommands {
             int startIndex = (page - 1) * lines;
             int endIndex = Math.min(startIndex + lines, list.size);
 
+            long now = System.currentTimeMillis();
+
             for (int i = startIndex; i < endIndex; i++) {
                 Map map = list.get(i);
+                MapData mapData = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+
+                String lastPlayed;
+                if (mapData.playedTimes == 0) {
+                    lastPlayed = bundle.format(bundle.locale(player), "never", args());
+                } else {
+                    long diffMins = (now - mapData.lastPlayedTime) / 60000;
+                    if (diffMins < 1) lastPlayed = "<1";
+                    else if (diffMins > 1440) lastPlayed = (diffMins / 1440) + "d";
+                    else lastPlayed = diffMins + "m";
+                }
+
                 builder.append(
                         bundle.format(bundle.locale(player), "commands-maps-content", args(
                                 "index", i + 1,
-                                "mapName", map.name(),
+                                "mapName", mapData.name,
+                                "mapAuthor", mapData.author,
                                 "mapWidth", map.width,
                                 "mapHeight", map.height,
-                                "mapAuthor", map.author())));
+                                "mapReputation", mapData.reputation,
+                                "mapLastPlayed", lastPlayed
+                        )));
             }
 
             player.sendMessage(builder.toString());
@@ -653,6 +720,7 @@ public class ClientCommands {
 
             bundle.send(player, "commands-unmute-success", args("nickname", target.nickname));
         });
+
         register("artv", true, (args, player) -> {
             var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 

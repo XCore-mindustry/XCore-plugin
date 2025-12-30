@@ -62,11 +62,19 @@ commands-mute-success = [accent]Successfully muted {$nickname}
 commands-unmute-params = <player-id>
 commands-unmute-description = Unmute player. [scarlet]Admin only.
 commands-unmute-success = [green]Successfully unmuted []{$nickname}
+commands-map-stats-content = {""}[white]Statistics map for [green]{$mapName}
+    {""}[white]Author:[green] {$mapAuthor}[orange] | [white]Size:[green] {$mapWidth}x{$mapHeight}[orange]
+    {""}[white]Reputation:[green] {$mapReputation}[orange] | [white]Popularity:[green] {$mapPopularity}[orange] | [white]Interest:[green] {$mapInterest}[orange]
+    {""}[white]Played Times:[green] {$mapPlayedTimes}[orange] | [white]Played Times Year:[green] {$mapPlayedTimesYear}[orange] | [white]Last Played:[green] {$mapLastPlayed}[orange]
+    {""}[white]Min time:[green] {$mapMin}[orange] | [white]Avg time:[green] {$mapAvg}[orange] | [white]Max time:[green] {$mapMax}[orange]
+    {""}[green]{$mapDescription}[white]
+commands-map-stats-params = [map-name]
+commands-map-stats-description = Statistics for a specific map
 commands-maps-page-must-number = [scarlet]'page' must be a number
 commands-maps-start-content = [accent]Current map: []{$mapName}[white]
     {""}[orange][gold]Maps list [lightgray]{$page}[gray]/[lightgray]{$pageCount}
 commands-maps-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | By: [sky]{$mapAuthor}
+    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | By: [sky]{$mapAuthor}
 commands-votekick-params = <ID/name> <reason...>
 commands-votekick-description = Vote to kick a player from the server.
 commands-vote-params = <y/n>
@@ -184,3 +192,4 @@ commands-dislike-params = {""}
 commands-dislike-description = Vote against the current map
 commands-dislike-success = [orange]You disliked this map.
 commands-dislike-changed = [orange]You changed your vote to Dislike.
+never = Never

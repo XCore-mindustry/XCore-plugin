@@ -66,11 +66,19 @@ commands-mute-success = [accent]Успішно заглушено гравця {
 commands-unmute-params = <id-гравця>
 commands-unmute-description = Зняти мут з гравця. [scarlet]Тільки для адмінів.
 commands-unmute-success = [green]Успішно знято мут з гравця []{$nickname}
+commands-map-stats-content = {""}[white]Статистика карти для [green]{$mapName}
+    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Розмір:[green] {$mapWidth}x{$mapHeight}[orange]
+    {""}[white]Репутація:[green] {$mapReputation}[orange] | [white]Популярність:[green] {$mapPopularity}[orange] | [white]Цікавість:[green] {$mapInterest}[orange]
+    {""}[white]Зіграно разів:[green] {$mapPlayedTimes}[orange] | [white]Зіграно за рік:[green] {$mapPlayedTimesYear}[orange] | [white]Остання гра:[green] {$mapLastPlayed}[orange]
+    {""}[white]Мін. час:[green] {$mapMin}[orange] | [white]Сер. час:[green] {$mapAvg}[orange] | [white]Макс. час:[green] {$mapMax}[orange]
+    {""}[green]{$mapDescription}[white]
+commands-map-stats-params = [назва-карти]
+commands-map-stats-description = Статистика конкретної карти
 commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
 commands-maps-start-content = [accent]Поточна карта: []{$mapName}[white]
     {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
 commands-maps-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | Автор: [sky]{$mapAuthor}
+    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | Від: [sky]{$mapAuthor}
 commands-votekick-params = <ID/ім'я> <причина...>
 commands-votekick-description = Голосування за вигнання (кік) гравця з сервера.
 commands-vote-params = <y/n>
@@ -190,3 +198,4 @@ commands-dislike-params = {""}
 commands-dislike-description = Проголосувати проти карти
 commands-dislike-success = [orange]Ви поставили не подобається цій карті.
 commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
+never = Ніколи
