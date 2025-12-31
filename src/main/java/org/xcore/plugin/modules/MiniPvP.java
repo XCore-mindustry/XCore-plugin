@@ -1,6 +1,7 @@
 package org.xcore.plugin.modules;
 
 import arc.Events;
+import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.Log;
 import mindustry.game.EventType;
@@ -34,7 +35,9 @@ public class MiniPvP {
             e.winner.data().players.each(p -> {
                 var data = database.getCached(p.uuid());
 
-                int increased = 150 / (e.winner.data().players.size + 1);
+                int calculated = 150 / (e.winner.data().players.size + 1);
+                int increased = Mathf.clamp(calculated, 10, 60);
+
                 data.pvpRating += increased;
                 bundle.send(p, "pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
@@ -48,12 +51,18 @@ public class MiniPvP {
 
             if (event.tile.block() instanceof CoreBlock) {
                 if (team != Team.derelict && team.cores().size <= 1) {
+                    int allies = team.data().players.size;
+                    int rawEnemies = Groups.player.count(pl -> pl.team() != team && pl.team() != Team.derelict);
+                    final int enemies = Math.max(1, rawEnemies);
+
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
 
                         var data = database.getCached(p.uuid());
 
-                        int reduced = 100 / (Groups.player.count(_p -> _p.team() != team) + 1);
+                        int reduced = (int) (25f * ((float) allies / enemies));
+
+                        reduced = Mathf.clamp(reduced, 5, 50);
 
                         if ((data.pvpRating - reduced) < 0) {
                             data.pvpRating = 0;
