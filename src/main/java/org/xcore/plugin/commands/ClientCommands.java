@@ -78,6 +78,132 @@ public class ClientCommands {
             player.sendMessage(result.toString());
         });
 
+        CommandHandler.CommandRunner<Player> likeRunner = (args, player) -> {
+            mindustry.maps.Map map = Vars.state.map;
+            if (map == null) return;
+
+            String mapName = map.plainName();
+            // Спочатку отримуємо ID карти
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+            String mapIdStr = String.valueOf(mData.id);
+
+            PlayerData pData = database.getCached(player.uuid());
+            Boolean previousVote = pData.mapVotes.get(mapIdStr);
+
+            if (Boolean.TRUE.equals(previousVote)) {
+                bundle.send(player, "error-already-voted", args());
+                return;
+            }
+
+            if (previousVote == null) {
+                mData.reputation += 1;
+                mData.popularity += 2.0;
+                bundle.send(player, "commands-like-success", args());
+            } else {
+                mData.reputation += 2;
+                mData.popularity += 4.0;
+                bundle.send(player, "commands-like-changed", args());
+            }
+
+            pData.mapVotes.put(mapIdStr, true);
+            pData.save();
+            mData.save();
+        };
+
+        // 2. Створюємо логіку для ДИЗЛАЙКУ
+        CommandHandler.CommandRunner<Player> dislikeRunner = (args, player) -> {
+            mindustry.maps.Map map = Vars.state.map;
+            if (map == null) return;
+
+            String mapName = map.plainName();
+            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
+            String mapIdStr = String.valueOf(mData.id);
+
+            PlayerData pData = database.getCached(player.uuid());
+            Boolean previousVote = pData.mapVotes.get(mapIdStr);
+
+            if (Boolean.FALSE.equals(previousVote)) {
+                bundle.send(player, "error-already-voted", args());
+                return;
+            }
+
+            if (previousVote == null) {
+                mData.reputation -= 1;
+                mData.popularity -= 2.0;
+                bundle.send(player, "commands-dislike-success", args());
+            } else {
+                mData.reputation -= 2;
+                mData.popularity -= 4.0;
+                bundle.send(player, "commands-dislike-changed", args());
+            }
+
+            pData.mapVotes.put(mapIdStr, false);
+            pData.save();
+            mData.save();
+        };
+
+                CommandHandler.CommandRunner<Player> mapStatsRunner = (args, player) -> {
+            boolean isManualSelection = args.length > 0;
+
+            var map = isManualSelection
+                    ? Utils.findMap(args[0])
+                    : Vars.state.map;
+
+            if (map == null) {
+                bundle.send(player, "error-map-not-found", args());
+                return;
+            }
+
+            // Отримуємо статистику
+            MapData mapData = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+
+            // Розрахунок часу
+            long minMins = mapData.minimumGameTime / 60000;
+            long avgMins = mapData.averageGameTime / 60000;
+            long maxMins = mapData.maximumGameTime / 60000;
+
+            String lastPlayed;
+            long now = System.currentTimeMillis();
+
+            if (mapData.playedTimes == 0) {
+                lastPlayed = bundle.format(bundle.locale(player), "never", args());
+            } else {
+                long diffMins = (now - mapData.lastPlayedTime) / 60000;
+                if (diffMins < 1) lastPlayed = "<1m";
+                else if (diffMins > 1440) lastPlayed = (diffMins / 1440) + "d";
+                else lastPlayed = diffMins + "m";
+            }
+
+            var msg = bundle.format(
+                bundle.locale(player), "commands-map-stats-content", args(
+                            "mapName", map.name(),
+                            "mapAuthor", map.author(),
+                            "mapDescription", map.description(),
+                            "mapWidth", map.width,
+                            "mapHeight", map.height,
+                            "mapReputation", mapData.reputation,
+                            "mapPopularity", String.format("%.1f", mapData.popularity),
+                            "mapInterest", String.format("%.1f", mapData.interest),
+                            "mapPlayedTimes", mapData.playedTimes,
+                            "mapPlayedTimesYear", mapData.playedTimesYear,
+                            "mapLastPlayed", lastPlayed,
+                            "mapMin", minMins,
+                            "mapAvg", avgMins,
+                            "mapMax", maxMins
+                    ));
+
+            Call.infoMessage(player.con, msg);
+        };
+
+        register("like", likeRunner);
+        registerAlias("like", "+", false, likeRunner);
+
+        register("dislike", dislikeRunner);
+        registerAlias("dislike", "-", false, dislikeRunner);
+
+        register("map-stats", mapStatsRunner);
+        registerAlias("map-stats", "map", false, mapStatsRunner);
+
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
         register("t", (args, player) -> {
@@ -166,69 +292,6 @@ public class ClientCommands {
             vote.vote(player, 1);
         });
 
-        register("like", (args, player) -> {
-            mindustry.maps.Map map = Vars.state.map;
-            if (map == null) return;
-
-            String mapName = map.plainName();
-            PlayerData pData = database.getCached(player.uuid());
-
-
-            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
-
-            Boolean previousVote = pData.mapVotes.get(String.valueOf(mData.id));
-
-            if (Boolean.TRUE.equals(previousVote)) {
-                bundle.send(player, "error-already-voted", args());
-                return;
-            }
-
-            if (previousVote == null) {
-                mData.reputation += 1;
-                mData.popularity += 2.0;
-                bundle.send(player, "commands-like-success", args());
-            } else {
-                mData.reputation += 2;
-                mData.popularity += 4.0;
-                bundle.send(player, "commands-like-changed", args());
-            }
-
-            pData.mapVotes.put(String.valueOf(mData.id), true);
-            pData.save();
-            mData.save();
-        });
-
-        register("dislike", (args, player) -> {
-            mindustry.maps.Map map = Vars.state.map;
-            if (map == null) return;
-
-            String mapName = map.plainName();
-            PlayerData pData = database.getCached(player.uuid());
-
-            MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
-
-            Boolean previousVote = pData.mapVotes.get(String.valueOf(mData.id));
-
-            if (Boolean.FALSE.equals(previousVote)) {
-                bundle.send(player, "error-already-voted", args());
-                return;
-            }
-
-            if (previousVote == null) {
-                mData.reputation -= 1;
-                mData.popularity -= 2.0;
-                bundle.send(player, "commands-dislike-success", args());
-            } else {
-                mData.reputation -= 2;
-                mData.popularity -= 4.0;
-                bundle.send(player, "commands-dislike-changed", args());
-            }
-
-            pData.mapVotes.put(String.valueOf(mData.id), false);
-            pData.save();
-            mData.save();
-        });
-
         register("stats", (args, player) -> {
             PlayerData data = args.length > 0 ? database.getCachedOrDb(Strings.parseInt(args[0])) : database.getCached(player.uuid());
 
@@ -302,7 +365,6 @@ public class ClientCommands {
 
             Call.infoMessage(player.con, msg);
         });
-
 
         register("lb", (args, player) -> {
             var data = database.getCached(player.uuid());
@@ -780,18 +842,21 @@ public class ClientCommands {
     }
 
     public static void register(String name, boolean admin, CommandHandler.CommandRunner<Player> runner) {
-        if (config.disabledCommands.contains(name)) return;
+        registerAlias(name, name, admin, runner);
+    }
+
+    public static void registerAlias(String originalName, String alias, boolean admin, CommandHandler.CommandRunner<Player> runner) {
+        if (config.disabledCommands.contains(alias)) return;
 
         netServer.clientCommands.<Player>register(
-            name,
-            bundle.format(bundle.defaultLocale, "commands-" + name + "-params", "", args()),
-            bundle.format(bundle.defaultLocale, "commands-" + name + "-description", "", args()),
+            alias,
+            bundle.format(bundle.defaultLocale, "commands-" + originalName + "-params", "", args()),
+            bundle.format(bundle.defaultLocale, "commands-" + originalName + "-description", "", args()),
             (args, player) -> {
                 if (admin && !player.admin) {
                     bundle.send(player, "error-access-denied", args());
                     return;
                 }
-
                 runner.accept(args, player);
             });
     }
