@@ -193,3 +193,14 @@ commands-dislike-description = Vote against the current map
 commands-dislike-success = [orange]You disliked this map.
 commands-dislike-changed = [orange]You changed your vote to Dislike.
 never = Never
+map-vote-title = [scarlet]GAME OVER!
+map-vote-content = {""}
+    {""}Next map: [accent]{$mapName}[] by [accent]{$author}[].
+    {""}New game starts in [accent]{$seconds}[] seconds.
+    {""}
+    {""}[cyan]Did you like this map?
+map-vote-like = [green]👍 Like
+map-vote-dislike = [red]👎 Dislike
+map-vote-like-selected = [gray]You liked it
+map-vote-dislike-selected = [gray]You disliked it
+map-vote-close = Close

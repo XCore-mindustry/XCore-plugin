@@ -199,3 +199,14 @@ commands-dislike-description = Проголосувати проти карти
 commands-dislike-success = [orange]Ви поставили не подобається цій карті.
 commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
 never = Ніколи
+map-vote-title = [scarlet]ГРА ЗАКІНЧЕНА!
+map-vote-content = {""}
+    {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[].
+    {""}Нова гра почнеться через [accent]{$seconds}[] секунд.
+    {""}
+    {""}[cyan]Чи сподобалась ця карта?
+map-vote-like = [green]👍 Подобається
+map-vote-dislike = [red]👎 Не подобається
+map-vote-like-selected = [gray]Вам вже подобається
+map-vote-dislike-selected = [gray]Вам вже не подобається
+map-vote-close = Закрити
