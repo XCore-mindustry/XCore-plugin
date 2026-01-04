@@ -107,9 +107,11 @@ public class PluginEvents {
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
 
-            Time.runTask(30, () -> {
-                if (player.con.lastReceivedClientSnapshot == -1) {
-                    player.kick("Maybe you are a bot. If not, try to reconnect.");
+            Time.runTask(120, () -> {
+                if (player != null && player.con != null && player.con.isConnected()) {
+                    if (player.con.lastReceivedClientSnapshot == -1) {
+                        player.kick("Maybe you are a bot. If not, try to reconnect.");
+                    }
                 }
             });
 
