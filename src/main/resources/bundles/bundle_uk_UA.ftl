@@ -201,8 +201,8 @@ commands-dislike-changed = [orange]Ви змінили свою думку на 
 never = Ніколи
 map-vote-title = [scarlet]ГРА ЗАКІНЧЕНА!
 map-vote-content = {""}
-    {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[].
-    {""}Нова гра почнеться через [accent]{$seconds}[] секунд.
+    {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[white].
+    {""}Нова гра почнеться через [accent]{$seconds}[white] секунд.
     {""}
     {""}[cyan]Чи сподобалась ця карта?
 map-vote-like = [green]👍 Подобається

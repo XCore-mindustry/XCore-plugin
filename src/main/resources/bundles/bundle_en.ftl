@@ -195,8 +195,8 @@ commands-dislike-changed = [orange]You changed your vote to Dislike.
 never = Never
 map-vote-title = [scarlet]GAME OVER!
 map-vote-content = {""}
-    {""}Next map: [accent]{$mapName}[] by [accent]{$author}[].
-    {""}New game starts in [accent]{$seconds}[] seconds.
+    {""}Next map: [accent]{$mapName}[] by [accent]{$author}[white].
+    {""}New game starts in [accent]{$seconds}[white] seconds.
     {""}
     {""}[cyan]Did you like this map?
 map-vote-like = [green]👍 Like
