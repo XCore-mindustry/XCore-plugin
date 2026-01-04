@@ -5,6 +5,7 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
+import mindustry.ui.Menus;
 import mindustry.game.Rules;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
@@ -14,6 +15,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.io.JsonIO;
+import mindustry.maps.Map;
 import mindustry.net.Administration;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -29,7 +31,49 @@ import static mindustry.Vars.*;
 import static org.xcore.plugin.PluginVars.*;
 
 public class PluginEvents {
+    private static int mapVoteMenuId;
+
     public static void init() {
+        mapVoteMenuId = Menus.registerMenu((player, selection) -> {
+            if (selection == -1) return;
+
+            var map = state.map;
+            if (map == null) return;
+
+            String mapName = map.plainName();
+            PlayerData pData = database.getCached(player.uuid());
+
+            MapData mData = database.mapDatas.get(mapName, map.author(), state.rules.mode().name());
+            String mapIdStr = String.valueOf(mData.id);
+
+            Boolean previousVote = pData.mapVotes.get(mapIdStr);
+
+            if (selection == 0) {
+                if (Boolean.TRUE.equals(previousVote)) return;
+                if (previousVote == null) {
+                    mData.reputation += 1; mData.popularity += 2.0;
+                    bundle.send(player, "commands-like-success", args());
+                } else {
+                    mData.reputation += 2; mData.popularity += 4.0;
+                    bundle.send(player, "commands-like-changed", args());
+                }
+                pData.mapVotes.put(mapIdStr, true);
+            } else if (selection == 1) {
+                if (Boolean.FALSE.equals(previousVote)) return;
+                if (previousVote == null) {
+                    mData.reputation -= 1; mData.popularity -= 2.0;
+                    bundle.send(player, "commands-dislike-success", args());
+                } else {
+                    mData.reputation -= 2; mData.popularity -= 4.0;
+                    bundle.send(player, "commands-dislike-changed", args());
+                }
+                pData.mapVotes.put(mapIdStr, false);
+            }
+
+            pData.save();
+            mData.save();
+        });
+
         Events.on(PlayerJoin.class, event -> {
             var player = event.player;
 
@@ -123,6 +167,10 @@ public class PluginEvents {
         });
 
         Events.on(GameOverEvent.class, event -> {
+            Map nextMap = maps.getNextMap(state.rules.mode(), state.map);
+            String nextName = (nextMap != null) ? nextMap.plainName() : "Unknown";
+            String nextAuthor = (nextMap != null) ? nextMap.author() : "Unknown";
+
             String message = "Game over!";
 
             if (state.rules.waves) {
@@ -159,6 +207,26 @@ public class PluginEvents {
                     Log.err("Failed to update map stats", e);
                 }
             }
+
+            Groups.player.each(p -> {
+                String menuTitle = bundle.format(bundle.locale(p), "map-vote-title", args());
+
+                String menuContent = bundle.format(bundle.locale(p), "map-vote-content", args(
+                    "mapName", nextName,
+                    "author", nextAuthor,
+                    "seconds", 10
+                ));
+
+                Call.menu(p.con, mapVoteMenuId, menuTitle, menuContent, new String[][]{
+                    {
+                        bundle.format(bundle.locale(p), "map-vote-like", args()),
+                        bundle.format(bundle.locale(p), "map-vote-dislike", args())
+                    },
+                    {
+                        bundle.format(bundle.locale(p), "map-vote-close", args())
+                    }
+                });
+            });
 
             if (gameoverRestart) restart();
         });
