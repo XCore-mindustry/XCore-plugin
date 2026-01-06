@@ -2,19 +2,16 @@ package org.xcore.plugin.listeners;
 
 import arc.Events;
 import arc.func.Cons;
-import arc.struct.ObjectMap;
-import arc.struct.Seq;
+import arc.func.Cons2;
 import arc.util.Log;
 import arc.util.Reflect;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
-import mindustry.core.GameState;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
-import mindustry.game.Gamemode;
 import mindustry.game.Rules;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
@@ -22,8 +19,8 @@ import mindustry.gen.Player;
 import mindustry.io.JsonIO;
 import mindustry.maps.Map;
 import mindustry.net.Administration;
+import mindustry.net.NetConnection;
 import mindustry.net.Packets;
-import mindustry.net.WorldReloader;
 import mindustry.ui.Menus;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
@@ -41,21 +38,6 @@ public class PluginEvents {
     private static int mapVoteMenuId;
 
     public static void init() {
-        try {
-            ObjectMap<Object, Seq<Cons<?>>> eventsMap = Reflect.get(Events.class, "events");
-            if (eventsMap.containsKey(GameOverEvent.class)) {
-                Seq<Cons<?>> listeners = eventsMap.get(GameOverEvent.class);
-                for (Cons<?> listener : listeners.copy()) {
-                    if (listener.getClass().getName().contains("ServerControl")) {
-                        listeners.remove(listener);
-                        Log.info("[XCore] Removed standard ServerControl GameOver listener.");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.err("[XCore] Failed to remove standard listener!", e);
-        }
-
         mapVoteMenuId = Menus.registerMenu((player, selection) -> {
             if (selection == -1) return;
 
@@ -219,9 +201,6 @@ public class PluginEvents {
 
             if (state.map != null && !state.isMenu()) {
                 try {
-                    state.gameOver = true;
-                    Call.updateGameOver(event.winner);
-
                     String mapName = state.map.plainName();
                     String author = state.map.author();
                     String modeName = state.rules.mode().name();
@@ -270,47 +249,8 @@ public class PluginEvents {
                 });
             });
 
-            runRestartSequence(nextMap);
+            if (gameoverRestart) restart();
         });
-    }
-
-    private static void runRestartSequence(Map nextMap) {
-        AtomicInteger secondsLeft = new AtomicInteger(10);
-
-        Timer.schedule(() -> {
-            if (secondsLeft.decrementAndGet() == 0) {
-                if (gameoverRestart) {
-                    netServer.kickAll(Packets.KickReason.serverRestarting);
-                    System.exit(0);
-                } else {
-                    if (nextMap != null) {
-                        try {
-                            WorldReloader reloader = new WorldReloader();
-                            reloader.begin();
-
-                            logic.reset();
-                            Gamemode mode = state.rules.mode();
-                            world.loadMap(nextMap, nextMap.applyRules(mode));
-                            state.rules = state.map.applyRules(mode);
-                            logic.play();
-
-                            reloader.end();
-                            state.set(GameState.State.playing);
-
-                            Log.info("Map loaded successfully: " + nextMap.plainName());
-                        } catch (Exception e) {
-                            Log.err("Failed to load next map", e);
-                            netServer.kickAll(Packets.KickReason.serverRestarting);
-                            System.exit(0);
-                        }
-                    } else {
-                        netServer.kickAll(Packets.KickReason.gameover);
-                        state.set(GameState.State.menu);
-                        net.closeServer();
-                    }
-                }
-            }
-        }, 0, 1);
     }
 
     private static void restart() {

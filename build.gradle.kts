@@ -11,7 +11,7 @@ plugins {
 } 
 
 group = "org.xcore.plugin"
-version = "2.8.2"
+version = "2.8.3"
 val mindustryVersion = "154.3"
 
 toxopid {
