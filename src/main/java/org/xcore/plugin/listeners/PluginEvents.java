@@ -1,13 +1,12 @@
 package org.xcore.plugin.listeners;
 
 import arc.Events;
-import arc.func.Cons;
-import arc.func.Cons2;
 import arc.util.Log;
-import arc.util.Reflect;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
+
+import mindustry.core.GameState;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
 import mindustry.game.EventType.PlayerJoin;
@@ -19,9 +18,10 @@ import mindustry.gen.Player;
 import mindustry.io.JsonIO;
 import mindustry.maps.Map;
 import mindustry.net.Administration;
-import mindustry.net.NetConnection;
 import mindustry.net.Packets;
+import mindustry.server.ServerControl;
 import mindustry.ui.Menus;
+
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.AdminData;
@@ -179,6 +179,26 @@ public class PluginEvents {
         Events.on(String.class, event -> {
             if ((event.equals("rvsb_world-reload") || event.equals("hexed_world-reload")) && gameoverRestart) restart();
         });
+
+        ServerControl.instance.gameOverListener = event -> {
+            if(state.rules.waves) {
+                Log.info("Game over! Reached wave @ with @ players online on map @.", state.wave, Groups.player.size(), Strings.capitalize(state.map.plainName()));
+            } else{
+                Log.info("Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(state.map.plainName()));
+            }
+
+            Map map = maps.getNextMap(ServerControl.instance.lastMode, state.map);
+            if(map != null){
+                state.gameOver = true;
+                Call.updateGameOver(event.winner);
+
+                ServerControl.instance.play(() -> world.loadMap(map, map.applyRules(ServerControl.instance.lastMode)));
+            }else{
+                netServer.kickAll(Packets.KickReason.gameover);
+                state.set(GameState.State.menu);
+                net.closeServer();
+            }
+        };
 
         Events.on(GameOverEvent.class, event -> {
             Map nextMap = maps.getNextMap(state.rules.mode(), state.map);
