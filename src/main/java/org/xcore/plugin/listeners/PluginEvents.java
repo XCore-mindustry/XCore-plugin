@@ -187,12 +187,42 @@ public class PluginEvents {
                 Log.info("Game over! Team @ is victorious with @ players online on map @.", event.winner.name, Groups.player.size(), Strings.capitalize(state.map.plainName()));
             }
 
-            Map map = maps.getNextMap(ServerControl.instance.lastMode, state.map);
-            if(map != null){
+            Map nextMap = maps.getNextMap(ServerControl.instance.lastMode, state.map);
+            String nextName = (nextMap != null) ? nextMap.plainName() : "Unknown";
+            String nextAuthor = (nextMap != null) ? nextMap.author() : "Unknown";
+
+            if(nextMap != null){
                 state.gameOver = true;
                 Call.updateGameOver(event.winner);
 
-                ServerControl.instance.play(() -> world.loadMap(map, map.applyRules(ServerControl.instance.lastMode)));
+                Groups.player.each(p -> {
+                    String menuTitle = bundle.format(bundle.locale(p), "map-vote-title", args());
+
+                    String menuContent = bundle.format(bundle.locale(p), "map-vote-content", args(
+                        "mapName", nextName,
+                        "author", nextAuthor,
+                        "seconds", 10
+                    ));
+
+                    PlayerData pData = database.getCached(p.uuid());
+                    String mapIdStr = String.valueOf(database.mapDatas.get(state.map.plainName(), state.map.author(), state.rules.mode().name()).id);
+                    Boolean currentVote = pData.mapVotes.get(mapIdStr);
+
+                    String likeBtn = Boolean.TRUE.equals(currentVote) ? bundle.format(bundle.locale(p), "map-vote-like-selected", args()) : bundle.format(bundle.locale(p), "map-vote-like", args());
+                    String dislikeBtn = Boolean.FALSE.equals(currentVote) ? bundle.format(bundle.locale(p), "map-vote-dislike-selected", args()) : bundle.format(bundle.locale(p), "map-vote-dislike", args())  ;
+
+                    Call.menu(p.con, mapVoteMenuId, menuTitle, menuContent, new String[][]{
+                        {
+                            likeBtn,
+                            dislikeBtn
+                        },
+                        {
+                            bundle.format(bundle.locale(p), "map-vote-close", args())
+                        }
+                    });
+                });
+
+                ServerControl.instance.play(() -> world.loadMap(nextMap, nextMap.applyRules(ServerControl.instance.lastMode)));
             }else{
                 netServer.kickAll(Packets.KickReason.gameover);
                 state.set(GameState.State.menu);
@@ -201,10 +231,6 @@ public class PluginEvents {
         };
 
         Events.on(GameOverEvent.class, event -> {
-            Map nextMap = maps.getNextMap(state.rules.mode(), state.map);
-            String nextName = (nextMap != null) ? nextMap.plainName() : "Unknown";
-            String nextAuthor = (nextMap != null) ? nextMap.author() : "Unknown";
-
             String message = "Game over!";
 
             if (state.rules.waves) {
@@ -241,33 +267,6 @@ public class PluginEvents {
                     Log.err("Failed to update map stats", e);
                 }
             }
-
-            Groups.player.each(p -> {
-                String menuTitle = bundle.format(bundle.locale(p), "map-vote-title", args());
-
-                String menuContent = bundle.format(bundle.locale(p), "map-vote-content", args(
-                    "mapName", nextName,
-                    "author", nextAuthor,
-                    "seconds", 10
-                ));
-
-                PlayerData pData = database.getCached(p.uuid());
-                String mapIdStr = String.valueOf(database.mapDatas.get(state.map.plainName(), state.map.author(), state.rules.mode().name()).id);
-                Boolean currentVote = pData.mapVotes.get(mapIdStr);
-
-                String likeBtn = Boolean.TRUE.equals(currentVote) ? bundle.format(bundle.locale(p), "map-vote-like-selected", args()) : bundle.format(bundle.locale(p), "map-vote-like", args());
-                String dislikeBtn = Boolean.FALSE.equals(currentVote) ? bundle.format(bundle.locale(p), "map-vote-dislike-selected", args()) : bundle.format(bundle.locale(p), "map-vote-dislike", args())  ;
-
-                Call.menu(p.con, mapVoteMenuId, menuTitle, menuContent, new String[][]{
-                    {
-                        likeBtn,
-                        dislikeBtn
-                    },
-                    {
-                        bundle.format(bundle.locale(p), "map-vote-close", args())
-                    }
-                });
-            });
 
             if (gameoverRestart) restart();
         });

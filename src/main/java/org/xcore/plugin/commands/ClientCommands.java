@@ -178,7 +178,7 @@ public class ClientCommands {
                 bundle.locale(player), "commands-map-stats-content", args(
                             "mapName", mapData.name,
                             "mapAuthor", mapData.author,
-                            "mapDescription", map.description().equals("Unknown") ? "" : map.description(),
+                            "mapDescription", map.description().equals("unknown") ? "" : map.description(),
                             "mapWidth", map.width,
                             "mapHeight", map.height,
                             "mapReputation", mapData.reputation,
