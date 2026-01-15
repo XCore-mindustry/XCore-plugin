@@ -217,7 +217,7 @@ public class PluginEvents {
                             dislikeBtn
                         },
                         {
-                            bundle.format(bundle.locale(p), "map-vote-close", args())
+                            bundle.format(bundle.locale(p), "close", args())
                         }
                     });
                 });

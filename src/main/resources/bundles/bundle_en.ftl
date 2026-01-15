@@ -203,4 +203,9 @@ map-vote-like = [green]👍 Like
 map-vote-dislike = [red]👎 Dislike
 map-vote-like-selected = [gray]You liked it
 map-vote-dislike-selected = [gray]You disliked it
-map-vote-close = Close
+close = Close
+commands-information-description = Show information about the server
+commands-info-title = [orange]XCore Server
+commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
+    {""}
+    {""}XCore Version — [accent]{$xcoreVersion}[white]

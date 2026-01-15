@@ -14,6 +14,8 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
+import mindustry.ui.Menus;
+
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -40,8 +42,28 @@ import static org.xcore.plugin.utils.Utils.reloadWorld;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
 public class ClientCommands {
+    private int infoMenuId;
     
     public static void register(CommandHandler handler) {
+        int infoMenuId = Menus.registerMenu((player, option) -> {
+            switch (option) {
+                case 0:
+                    Call.openURI(player.con, discordUrl);
+                    break;
+                case 1:
+                    Call.openURI(player.con, githubUrl);
+                    break;
+                case 2:
+                    Call.openURI(player.con, donatelloUrl);
+                    break;
+                case 3:
+                    Call.openURI(player.con, discordRedVSBlueUrl);
+                    break;
+                default:
+                    break;
+            }
+        });
+
         register("help", (args, player) -> {
             if (args.length > 0 && !Strings.canParseInt(args[0])) {
                 bundle.send(player, "error-page-number", args());
@@ -83,7 +105,6 @@ public class ClientCommands {
             if (map == null) return;
 
             String mapName = map.plainName();
-            // Спочатку отримуємо ID карти
             MapData mData = database.mapDatas.get(mapName, map.author(), Vars.state.rules.mode().name());
             String mapIdStr = String.valueOf(mData.id);
 
@@ -110,7 +131,6 @@ public class ClientCommands {
             mData.save();
         };
 
-        // 2. Створюємо логіку для ДИЗЛАЙКУ
         CommandHandler.CommandRunner<Player> dislikeRunner = (args, player) -> {
             mindustry.maps.Map map = Vars.state.map;
             if (map == null) return;
@@ -142,7 +162,7 @@ public class ClientCommands {
             mData.save();
         };
 
-                CommandHandler.CommandRunner<Player> mapStatsRunner = (args, player) -> {
+        CommandHandler.CommandRunner<Player> mapStatsRunner = (args, player) -> {
             boolean isManualSelection = args.length > 0;
 
             var map = isManualSelection
@@ -154,10 +174,8 @@ public class ClientCommands {
                 return;
             }
 
-            // Отримуємо статистику
             MapData mapData = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
 
-            // Розрахунок часу
             long minMins = mapData.minimumGameTime / 60000;
             long avgMins = mapData.averageGameTime / 60000;
             long maxMins = mapData.maximumGameTime / 60000;
@@ -195,6 +213,18 @@ public class ClientCommands {
             Call.infoMessage(player.con, msg);
         };
 
+        CommandHandler.CommandRunner<Player> infoRunner = (args, player) -> {
+            Call.menu(player.con, infoMenuId,
+                    bundle.format(bundle.locale(player), "commands-info-title", args()),
+                    bundle.format(bundle.locale(player), "commands-info-text", args("xcoreVersion", xcoreVersion)),
+                    new String[][]{
+                            {"Discord", "GitHub", "Donatello"},
+                            {"RedVSBlue"},
+                            {bundle.format(bundle.locale(player), "close", args())}
+                    }
+            );
+        };
+
         register("like", likeRunner);
         registerAlias("like", "+", false, likeRunner);
 
@@ -203,6 +233,10 @@ public class ClientCommands {
 
         register("map-stats", mapStatsRunner);
         registerAlias("map-stats", "map", false, mapStatsRunner);
+
+        register("information", infoRunner);
+        registerAlias("information", "info", false, infoRunner);
+
 
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 

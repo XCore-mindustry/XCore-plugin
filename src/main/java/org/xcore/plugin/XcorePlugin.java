@@ -74,6 +74,15 @@ public class XcorePlugin extends Plugin {
         LastStanding.init();
         Bundles.init();
 
+        try {
+            var myMod = Vars.mods.getMod(getClass());
+
+            if (myMod != null && myMod.meta != null) {
+                xcoreVersion = myMod.meta.version;
+            }
+        } catch (Exception e) {
+            Log.err("Failed to load plugin version", e);
+        }
 
         Reflect.set(Vars.maps, "shuffler", new SmartMapSelector());
         database.checkMapDecay();

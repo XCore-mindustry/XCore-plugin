@@ -209,4 +209,9 @@ map-vote-like = [green]👍 Подобається
 map-vote-dislike = [red]👎 Не подобається
 map-vote-like-selected = [gray]Вам вже подобається
 map-vote-dislike-selected = [gray]Вам вже не подобається
-map-vote-close = Закрити
+close = Закрити
+commands-information-description = Показати інформацію про сервер
+commands-info-title = [orange]XCore сервер
+commands-info-text = [accent]XCore[white] це [cyan]безплатний[white] сервер для гри у [accent]Mindustry[white].
+    {""}
+    {""}Версія XCore — [accent]{$xcoreVersion}[white]
