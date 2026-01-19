@@ -153,7 +153,7 @@ public class DiscordCommands {
                                         Reason: @
                                         Unban Date: @
                                         """,
-                                ban.adminName, ban.reason, TimestampFormat.LONG_DATE.format(ban.expireDate.toInstant())), false);
+                                ban.adminName, ban.reason, TimestampFormat.LONG_DATE.format(ban.expireDate)), false);
                     }
 
                     embed.footer("Page " + page + "/" + bans.pages() + ", " + bans.total() + " bans", null);
@@ -173,10 +173,10 @@ public class DiscordCommands {
             var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
-            if (DiscordHelper.checkPeriod(context, date)) return;
+            Instant period = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+            if (DiscordHelper.checkPeriod(context, period)) return;
 
-            Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
+            Instant unbanDate = Instant.now().plusMillis(period.toEpochMilli());
 
             context.channel().createMessage(MessageCreateSpec.builder()
                     .content("Are you sure you want to ban a player named '" + data.nickname + "'?")
@@ -236,10 +236,10 @@ public class DiscordCommands {
             var data = database.getPlayerDatas().getById(id);
             if (DiscordHelper.notFound(context, data)) return;
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
-            if (DiscordHelper.checkPeriod(context, date)) return;
+            Instant period = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+            if (DiscordHelper.checkPeriod(context, period)) return;
 
-            Date unmuteDate = new Date(Time.millis() + date.toEpochMilli());
+            Instant unmuteDate = Instant.now().plusMillis(period.toEpochMilli());
 
             database.getMuteDatas().save(MuteData.builder()
                     .name(data.nickname)

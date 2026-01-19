@@ -5,7 +5,6 @@ import arc.struct.Seq;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
-import arc.util.Time;
 import arc.util.serialization.JsonReader;
 import arc.util.serialization.JsonValue;
 import arc.util.serialization.JsonWriter;
@@ -27,7 +26,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
@@ -207,14 +205,14 @@ public class ServerCommands {
                 ip = info != null ? info.lastIP : null;
             }
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+            Instant period = Utils.parsePeriod(args[1], TimeUnit.DAYS);
 
-            if (date == null) {
+            if (period == null) {
                 Log.err("Invalid period format. Example: 1h30m, 30 (days)");
                 return;
             }
 
-            Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
+            Instant expireDate = Instant.now().plusMillis(period.toEpochMilli());
             NetSock.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
             BanData result = BanData.builder()
@@ -223,12 +221,12 @@ public class ServerCommands {
                     .ip(ip)
                     .adminName("console")
                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .expireDate(unbanDate)
+                    .expireDate(expireDate)
                     .build();
 
             NetSock.post(result);
             result.save();
-            Log.info("'@' (@/@) banned", result.name, result.uuid, result.ip);
+            Log.info("'@' (@/@) banned until @", result.name, result.uuid, result.ip, expireDate);
         });
 
         handler.register("tempbans", "[search...]", "List all temporarily banned players.", args -> {
@@ -241,7 +239,7 @@ public class ServerCommands {
 
             bans.each(ban -> builder.append(Strings.format("\n'@/@' / Name: @ / Admin: @ / Unban date: @ / Reason: '@'".replace("@", "&fb&lb@&fr"),
                     ban.uuid, ban.ip, ban.name, ban.adminName,
-                    ban.expireDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                    ban.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(),
                     ban.reason)));
 
             Log.info(builder.toString());
@@ -283,24 +281,26 @@ public class ServerCommands {
                 return;
             }
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
+            Instant period = org.xcore.plugin.utils.Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
-            if (date == null) {
+            if (period == null) {
                 Log.err("Invalid period format. Example: 1h30m, 30 (hours)");
                 return;
             }
+
+            Instant expireDate = Instant.now().plusMillis(period.toEpochMilli());
 
             var muteData = MuteData.builder()
                     .uuid(data.uuid)
                     .name(data.nickname)
                     .adminName("console")
                     .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .expireDate(expireDate)
                     .build();
             database.muteDatas.save(muteData);
             NetSock.post(muteData);
 
-            Duration duration = Duration.ofMillis(date.toEpochMilli());
+            Duration duration = Duration.ofMillis(period.toEpochMilli());
             Log.info("@ (@) muted for @:@", data.nickname, data.uuid, duration.toMinutes(), duration.toSecondsPart());
         });
 

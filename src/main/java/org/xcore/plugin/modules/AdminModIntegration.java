@@ -2,7 +2,6 @@ package org.xcore.plugin.modules;
 
 import arc.util.Log;
 import arc.util.Strings;
-import arc.util.Time;
 import mindustry.gen.Call;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.Utils;
@@ -10,12 +9,10 @@ import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.BanRequestData;
 
 import java.time.Instant;
-import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
-
 import static org.xcore.plugin.PluginVars.*;
 
 public class AdminModIntegration {
@@ -27,7 +24,7 @@ public class AdminModIntegration {
             try {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
-                Log.err(e);
+                Log.err("Error processing ban request from @: @", player.name, e.getMessage());
                 player.sendMessage("[scarlet]An error occurred while processing the request.");
                 return;
             }
@@ -56,7 +53,7 @@ public class AdminModIntegration {
                     .ip(targetData.ip)
                     .adminName(player.name)
                     .reason(req.reason)
-                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .expireDate(Instant.now().plusMillis(date.toEpochMilli()))
                     .build();
             NetSock.post(ban);
             ban.save();
@@ -82,9 +79,9 @@ public class AdminModIntegration {
                 player.con.kick(Strings.format("""
                         [green]The required AdminTools version: [grey]1.3[]
                         [scarlet]Your AdminTools version: [grey]@[]
-                                                
+
                         [cyan]Please update your AdminTools to join this server.
-                        """, content), 0);
+                       \s""", content), 0);
                 return;
             }
             data.adminModVersion = content;

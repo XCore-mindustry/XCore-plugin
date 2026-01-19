@@ -22,6 +22,7 @@ import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.*;
 
 import java.time.Duration;
+import java.time.Instant;
 
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
@@ -51,14 +52,14 @@ public class NetEvents {
 
         if(mute != null) {
             if(!mute.expired()){
-                Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+                Duration remain = Duration.between(Instant.now(), mute.expireDate);
 
                 bundle.send(author, "you-are-muted",
-                    args("adminName", mute.adminName,
-                        "reason", mute.reason,
-                        "remainMinutes", remain.toMinutes(),
-                        "remainSeconds", remain.toSecondsPart()
-                    )
+                        args("adminName", mute.adminName,
+                                "reason", mute.reason,
+                                "remainMinutes", remain.toMinutes(),
+                                "remainSeconds", remain.toSecondsPart()
+                        )
                 );
                 return null;
             }
@@ -176,17 +177,17 @@ public class NetEvents {
         }
 
         if (
-            netServer.admins.isIPBanned(con.address) ||
-            netServer.admins.isSubnetBanned(con.address) ||
-            netServer.admins.isIDBanned(uuid)
+                netServer.admins.isIPBanned(con.address) ||
+                        netServer.admins.isSubnetBanned(con.address) ||
+                        netServer.admins.isIDBanned(uuid)
         ) {
             con.kick(
-                bundle.format(bundle.locale(packet.locale),
-                    "ban-content", args(
-                        "nickname", stripColors(packet.name),
-                        "discordUrl", discordUrl)
-                ),
-                0
+                    bundle.format(bundle.locale(packet.locale),
+                            "ban-content", args(
+                                    "nickname", stripColors(packet.name),
+                                    "discordUrl", discordUrl)
+                    ),
+                    0
             );
             return;
         }
@@ -210,12 +211,12 @@ public class NetEvents {
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
             con.kick(
-                bundle.format(bundle.locale(packet.locale),
-                    "kick-recently-kicked", args(
-                        "remainMinutes", remain.toMinutes(),
-                        "remainSeconds", remain.toSecondsPart())
-                ),
-                0
+                    bundle.format(bundle.locale(packet.locale),
+                            "kick-recently-kicked", args(
+                                    "remainMinutes", remain.toMinutes(),
+                                    "remainSeconds", remain.toSecondsPart())
+                    ),
+                    0
             );
             return;
         }
@@ -330,7 +331,7 @@ public class NetEvents {
     }
 
     public static void tempBanKick(NetConnection con, String locale, BanData ban) {
-        Duration duration = Duration.ofMillis(ban.expireDate.getTime() - Time.millis());
+        Duration duration = Duration.between(Instant.now(), ban.expireDate);
 
         con.kick(bundle.format(bundle.locale(locale), "tempban-content", args(
                 "nickname", stripColors(ban.name),
@@ -343,6 +344,8 @@ public class NetEvents {
         ), 0);
     }
 
+
+    @SuppressWarnings("unused")
     public static void setIpAcceptor(Boolf<String> ipAcceptor) {
         NetEvents.ipAcceptor = ipAcceptor;
     }

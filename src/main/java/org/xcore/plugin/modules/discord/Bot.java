@@ -64,7 +64,6 @@ public class Bot {
                 return;
             }
 
-            // Используем безопасный метод получения каналов
             bansChannel = safeGetChannel(globalConfig.discordBansChannelId, "Bans");
             privateChannel = safeGetChannel(globalConfig.discordPrivateChannelId, "Private/Admin");
 
@@ -149,9 +148,6 @@ public class Bot {
         }
     }
 
-    /**
-     * Безопасное получение канала. Не кидает стектрейс, если канал не найден или ID = 0.
-     */
     private static MessageChannel safeGetChannel(long id, String name) {
         if (id == 0L) {
             Log.warn("Discord channel '@' ID is not configured (0). Feature disabled.", name);
@@ -229,7 +225,7 @@ public class Bot {
                         .addField("Violator", ban.name, false)
                         .addField("Admin", ban.adminName, false)
                         .addField("Reason", ban.reason, false)
-                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.expireDate.toInstant()), false)
+                        .addField("Unban Date", TimestampFormat.LONG_DATE.format(ban.expireDate), false)
                         .build()
                 )
                 .build()).subscribe();

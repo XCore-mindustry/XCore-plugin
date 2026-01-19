@@ -5,7 +5,6 @@ import arc.math.Mathf;
 import arc.struct.*;
 import arc.util.CommandHandler;
 import arc.util.Strings;
-import arc.util.Time;
 import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
@@ -28,7 +27,6 @@ import org.xcore.plugin.utils.models.*;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -213,17 +211,15 @@ public class ClientCommands {
             Call.infoMessage(player.con, msg);
         };
 
-        CommandHandler.CommandRunner<Player> infoRunner = (args, player) -> {
-            Call.menu(player.con, infoMenuId,
-                    bundle.format(bundle.locale(player), "commands-info-title", args()),
-                    bundle.format(bundle.locale(player), "commands-info-text", args("xcoreVersion", xcoreVersion)),
-                    new String[][]{
-                            {"Discord", "GitHub", "Donatello"},
-                            {"RedVSBlue"},
-                            {bundle.format(bundle.locale(player), "close", args())}
-                    }
-            );
-        };
+        CommandHandler.CommandRunner<Player> infoRunner = (args, player) -> Call.menu(player.con, infoMenuId,
+                bundle.format(bundle.locale(player), "commands-info-title", args()),
+                bundle.format(bundle.locale(player), "commands-info-text", args("xcoreVersion", xcoreVersion)),
+                new String[][]{
+                        {"Discord", "GitHub", "Donatello"},
+                        {"RedVSBlue"},
+                        {bundle.format(bundle.locale(player), "close", args())}
+                }
+        );
 
         register("like", likeRunner);
         registerAlias("like", "+", false, likeRunner);
@@ -241,18 +237,17 @@ public class ClientCommands {
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
         register("t", (args, player) -> {
-            var data = database.getCached(player.uuid());
             var mute = database.getMuteDatas().get(player.uuid());
-            if(mute != null) {
-                if(!mute.expired()){
-                    Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+            if (mute != null) {
+                if (!mute.expired()) {
+                    Duration remain = Duration.between(Instant.now(), mute.expireDate);
 
                     bundle.send(player, "you-are-muted",
-                        args("adminName", mute.adminName,
-                            "reason", mute.reason,
-                            "remainMinutes", remain.toMinutes(),
-                            "remainSeconds", remain.toSecondsPart()
-                        )
+                            args("adminName", mute.adminName,
+                                    "reason", mute.reason,
+                                    "remainMinutes", remain.toMinutes(),
+                                    "remainSeconds", remain.toSecondsPart()
+                            )
                     );
                     return;
                 }
@@ -261,40 +256,39 @@ public class ClientCommands {
             }
 
             Groups.player.each(other -> other.team() == player.team(),
-                p -> p.sendMessage(
-                    bundle.format(
-                        bundle.locale(p),
-                        "commands-t-chat", args(
-                            "color", player.team().color,
-                            "name", player.coloredName(),
-                            "message", args[0]
-                        )),
-                    player
-                )
+                    p -> p.sendMessage(
+                            bundle.format(
+                                    bundle.locale(p),
+                                    "commands-t-chat", args(
+                                            "color", player.team().color,
+                                            "name", player.coloredName(),
+                                            "message", args[0]
+                                    )),
+                            player
+                    )
             );
         });
 
         register("g", (args, player) -> {
-
             MuteData mute = database.getMuteDatas().get(player.uuid());
 
-            if(mute != null) {
-                if(!mute.expired()){
-                    Duration remain = Duration.ofMillis(mute.expireDate.getTime() - Time.millis());
+            if (mute != null) {
+                if (!mute.expired()) {
+                    Duration remain = Duration.between(Instant.now(), mute.expireDate);
 
                     bundle.send(player, "you-are-muted",
-                        args("adminName", mute.adminName,
-                            "reason", mute.reason,
-                            "remainMinutes", remain.toMinutes(),
-                            "remainSeconds", remain.toSecondsPart()
-                        )
+                            args("adminName", mute.adminName,
+                                    "reason", mute.reason,
+                                    "remainMinutes", remain.toMinutes(),
+                                    "remainSeconds", remain.toSecondsPart()
+                            )
                     );
                     return;
                 }
 
                 database.getMuteDatas().delete(player.uuid());
             }
-            
+
             var data = database.getCached(player.uuid());
             if (data.totalPlayTime < globalChatPlayTime && !player.admin) {
                 bundle.send(player, "error-globalchat-total-playtime", args("globalChatPlayTime", globalChatPlayTime));
@@ -688,14 +682,14 @@ public class ClientCommands {
                 return;
             }
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.DAYS);
+            Instant period = Utils.parsePeriod(args[1], TimeUnit.DAYS);
 
-            if (date == null) {
+            if (period == null) {
                 bundle.send(player, "error-wrong-period-format", args());
                 return;
             }
 
-            Date unbanDate = new Date(Time.millis() + date.toEpochMilli());
+            Instant unbanDate = Instant.now().plusMillis(period.toEpochMilli());
             var info = netServer.admins.getInfoOptional(target.uuid);
             String ip = info != null ? info.lastIP : null;
 
@@ -714,9 +708,9 @@ public class ClientCommands {
             result.save();
 
             bundle.send(
-                player,
-                "commands-ban-success",
-                args("nickname", target.nickname)
+                    player,
+                    "commands-ban-success",
+                    args("nickname", target.nickname)
             );
         });
 
@@ -764,36 +758,38 @@ public class ClientCommands {
                 return;
             }
 
-            Instant date = Utils.parsePeriod(args[1], TimeUnit.HOURS);
+            Instant period = Utils.parsePeriod(args[1], TimeUnit.HOURS);
 
-            if (date == null) {
+            if (period == null) {
                 bundle.send(player, "error-wrong-period-format", args());
                 return;
             }
 
             String reason = args.length > 2 ? args[2] : "Not Specified";
+            Instant expireDate = Instant.now().plusMillis(period.toEpochMilli());
+
             database.muteDatas.save(MuteData.builder()
                     .uuid(target.uuid)
                     .name(target.nickname)
                     .adminName(player.name)
                     .reason(reason)
-                    .expireDate(new Date(Time.millis() + date.toEpochMilli()))
+                    .expireDate(expireDate)
                     .build());
 
             target.save();
             bundle.send(player, "commands-mute-success", args(
                     "nickname", target.nickname));
-            Duration duration = Duration.ofMillis(date.toEpochMilli());
+            Duration duration = Duration.ofMillis(period.toEpochMilli());
 
             Optional.ofNullable(Find.playerByUuid(target.uuid)).ifPresent(p ->
-                bundle.send(
-                    p, "you-are-muted-by", args(
-                        "adminName", player.coloredName(),
-                        "reason", reason,
-                        "remainMinutes", duration.toMinutes(),
-                        "remainSeconds", duration.toSecondsPart()
+                    bundle.send(
+                            p, "you-are-muted-by", args(
+                                    "adminName", player.coloredName(),
+                                    "reason", reason,
+                                    "remainMinutes", duration.toMinutes(),
+                                    "remainSeconds", duration.toSecondsPart()
+                            )
                     )
-                )
             );
         });
 

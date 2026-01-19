@@ -1,12 +1,11 @@
 package org.xcore.plugin.utils.models;
 
-import arc.util.Time;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.Date;
+import java.time.Instant;
 
 @SuperBuilder
 @AllArgsConstructor
@@ -20,13 +19,12 @@ public class Punishment {
     @Builder.Default
     public String reason = "Not Specified";
 
-    public Date expireDate;
+    public Instant expireDate;
 
     public boolean expired() {
-        return expireDate.getTime() < Time.millis();
+        return expireDate != null && expireDate.isBefore(Instant.now());
     }
 
     public void save() {
     }
-
 }
