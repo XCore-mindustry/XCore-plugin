@@ -17,6 +17,7 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
+import discord4j.rest.http.client.ClientException;
 import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
 import org.xcore.plugin.XcorePlugin;
@@ -43,6 +44,11 @@ public class Bot {
 
     public static void connect() {
         try {
+            if (globalConfig.discordBotToken.isEmpty()) {
+                Log.warn("Discord bot token is not set. Discord integration disabled.");
+                return;
+            }
+
             client = DiscordClientBuilder.create(globalConfig.discordBotToken)
                     .setDefaultAllowedMentions(AllowedMentions.suppressAll())
                     .build();
@@ -54,12 +60,13 @@ public class Bot {
                         .blockOptional()
                         .orElseThrow();
             } catch (Exception e) {
-                Log.err("Error while connecting to discord: ", e);
+                Log.err("Error while connecting to discord gateway: ", e);
                 return;
             }
 
-            bansChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordBansChannelId)).ofType(MessageChannel.class).block();
-            privateChannel = gateway.getChannelById(Snowflake.of(globalConfig.discordPrivateChannelId)).ofType(MessageChannel.class).block();
+            // Используем безопасный метод получения каналов
+            bansChannel = safeGetChannel(globalConfig.discordBansChannelId, "Bans");
+            privateChannel = safeGetChannel(globalConfig.discordPrivateChannelId, "Private/Admin");
 
             gateway.on(ButtonInteractionEvent.class, event -> {
                 var author = event.getInteraction().getMember().orElse(null);
@@ -138,7 +145,35 @@ public class Bot {
 
             isConnected = true;
         } catch (Exception e) {
-            Log.err("Error while connecting to discord: ", e);
+            Log.err("Error inside discord module logic: ", e);
+        }
+    }
+
+    /**
+     * Безопасное получение канала. Не кидает стектрейс, если канал не найден или ID = 0.
+     */
+    private static MessageChannel safeGetChannel(long id, String name) {
+        if (id == 0L) {
+            Log.warn("Discord channel '@' ID is not configured (0). Feature disabled.", name);
+            return null;
+        }
+
+        try {
+            return gateway.getChannelById(Snowflake.of(id))
+                    .ofType(MessageChannel.class)
+                    .block();
+        } catch (ClientException e) {
+            if (e.getStatus().code() == 404) {
+                Log.warn("Discord channel '@' (ID: @) not found (404). Check your config.", name, id);
+            } else if (e.getStatus().code() == 403) {
+                Log.warn("Discord bot has no access to channel '@' (ID: @).", name, id);
+            } else {
+                Log.warn("Could not fetch Discord channel '@' (ID: @): @", name, id, e.getMessage());
+            }
+            return null;
+        } catch (Exception e) {
+            Log.warn("Unexpected error fetching Discord channel '@': @", name, e.getMessage());
+            return null;
         }
     }
 
@@ -149,7 +184,12 @@ public class Bot {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(gateway.getChannelById(Snowflake.of(id)).ofType(MessageChannel.class).block());
+        try {
+            return Optional.ofNullable(gateway.getChannelById(Snowflake.of(id)).ofType(MessageChannel.class).block());
+        } catch (Exception e) {
+            Log.warn("Failed to get log channel for server '@' (ID: @): @", server, id, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     public static void sendMessageEvent(String playerName, String message, String server) {
@@ -164,7 +204,7 @@ public class Bot {
     }
 
     public static void sendMessage(MessageChannel channel, String message) {
-        if (!isConnected) return;
+        if (!isConnected || channel == null) return; // Null check
         channel.createMessage(MessageCreateSpec.builder()
                 .content(message)
                 .allowedMentions(AllowedMentions.suppressAll())
@@ -177,7 +217,7 @@ public class Bot {
     }
 
     public static void sendBan(BanData ban) {
-        if (!isConnected) return;
+        if (!isConnected || bansChannel == null) return;
 
         PlayerData data = database.getPlayerDatas().get(ban.uuid);
 
@@ -196,6 +236,8 @@ public class Bot {
     }
 
     public static void sendAdminRequestEvent(int pid, String server) {
+        if (!isConnected || privateChannel == null) return;
+
         PlayerData data = database.getPlayerDatas().getById(pid);
 
         privateChannel.createMessage(MessageCreateSpec.builder()

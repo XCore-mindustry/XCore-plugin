@@ -3,7 +3,6 @@ package org.xcore.plugin.modules;
 import arc.func.Cons;
 import arc.util.Log;
 import arc.Core;
-import lombok.SneakyThrows;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -15,7 +14,6 @@ import org.xcore.plugin.PluginVars;
 import reactor.util.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -26,23 +24,38 @@ public class Console {
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static LineReader lineReader;
 
-    @SneakyThrows(IOException.class)
+    //@SneakyThrows(IOException.class)
     public static void init() {
         if (!PluginVars.config.consoleEnabled) return;
 
-        var terminal = TerminalBuilder.builder().jna(true).build();
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader myCustomClassLoader = Console.class.getClassLoader();
 
-        lineReader = LineReaderBuilder.builder()
-                .terminal(terminal)
-                .completer(new StringsCompleter(serverControl.handler.getCommandList().map(c -> c.text)))
-                .build();
+        try {
+            Thread.currentThread().setContextClassLoader(myCustomClassLoader);
 
-        terminal.enterRawMode();
-        System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
+            var terminal = TerminalBuilder.builder()
+                    .system(true)
+                    .build();
 
-        serverControl.serverInput = () -> {};
 
-        handleInput();
+            lineReader = LineReaderBuilder.builder()
+                    .terminal(terminal)
+                    .completer(new StringsCompleter(serverControl.handler.getCommandList().map(c -> c.text)))
+                    .build();
+
+            terminal.enterRawMode();
+            System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
+
+            serverControl.serverInput = () -> {
+            };
+
+            handleInput();
+        } catch (Exception e) {
+            Log.err(e);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
     }
 
     public static void handleInput() {

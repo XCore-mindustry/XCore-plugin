@@ -4,72 +4,89 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A utility class for splitting a string into arguments, respecting quoted sections
- * and handling escape characters (\).
+ * A utility class for splitting a string into command arguments.
+ * <p>
+ * Features:
+ * - Supports double quotes (") for arguments with spaces.
+ * - Supports escaping (\) for quotes and backslashes.
+ * - Handles empty quoted strings ("") correctly as empty arguments.
+ * - Robust: malformed input (e.g., unterminated quotes) does not throw exceptions.
  */
 public final class TextArgumentSplitter {
+
     private TextArgumentSplitter() {}
 
     /**
-     * Splits the input text into an array of arguments based on shell-like quoting and escaping rules.
-     * Handles quoted sections and escapes (\", \\).
+     * Splits the raw command string into parsed arguments.
      *
-     * @param text The input string to split. Cannot be null.
-     * @return An array of strings representing the arguments. Returns an empty array if the input is empty or contains only whitespace.
-     * @throws IllegalArgumentException if the input string contains an unterminated quote.
+     * @param text The input string (e.g., 'kick "Player Name" "Spamming chat"').
+     * @return An array of parsed arguments. Returns empty array if input is null/blank.
      */
-    public static String[] split(final String text) {
-        if (text == null) {
-            throw new IllegalArgumentException("Input text cannot be null");
+    public static String[] split(String text) {
+        if (text == null || text.isBlank()) {
+            return new String[0];
         }
 
-        final List<String> arguments = new ArrayList<>();
-        final StringBuilder currentArgument = new StringBuilder();
-        boolean insideQuotes = false;
-        boolean escaped = false; // Tracks if the previous character was '\'
+        List<String> tokens = new ArrayList<>();
+        StringBuilder currentToken = new StringBuilder();
+
+        boolean inQuote = false;
+        boolean escaped = false;
+        boolean hasToken = false; // Tracks if we are currently building a token (even an empty one)
 
         for (int i = 0; i < text.length(); i++) {
-            final char c = text.charAt(i);
+            char c = text.charAt(i);
 
+            // 1. Handle Escaping
             if (escaped) {
-                // Previous char was '\', append current char literally
-                currentArgument.append(c);
+                currentToken.append(c);
                 escaped = false;
-            } else if (c == '\\') {
-                // Found escape character, mark for next iteration
-                escaped = true;
-                // Don't append the backslash itself yet
-            } else if (c == '"') {
-                // Toggle quote state; don't append the quote char itself
-                insideQuotes = !insideQuotes;
-            } else if (Character.isWhitespace(c) && !insideQuotes) {
-                // Whitespace outside quotes: finalize current argument if non-empty
-                if (currentArgument.length() > 0) {
-                    arguments.add(currentArgument.toString());
-                    currentArgument.setLength(0);
-                }
-                // Skip the whitespace character
-            } else {
-                // Regular character, or whitespace inside quotes: append it
-                currentArgument.append(c);
+                hasToken = true;
+                continue;
             }
+
+            if (c == '\\') {
+                escaped = true;
+                // We don't set hasToken = true here yet, because a trailing backslash
+                // shouldn't necessarily create a token if it's the only char (though rare case).
+                // Actually, standard CLI usually treats a backslash as a start of a token sequence.
+                hasToken = true;
+                continue;
+            }
+
+            // 2. Handle Quotes
+            if (c == '"') {
+                inQuote = !inQuote;
+                hasToken = true; // Seeing a quote means we have a token, e.g. "" is an empty token
+                continue;
+            }
+
+            // 3. Handle Whitespace
+            if (Character.isWhitespace(c)) {
+                if (inQuote) {
+                    currentToken.append(c);
+                    hasToken = true;
+                } else {
+                    // Whitespace outside quotes marks the end of a token
+                    if (hasToken) {
+                        tokens.add(currentToken.toString());
+                        currentToken.setLength(0);
+                        hasToken = false;
+                    }
+                }
+                continue;
+            }
+
+            // 4. Normal Characters
+            currentToken.append(c);
+            hasToken = true;
         }
 
-        // Check for errors after parsing
-        if (insideQuotes) {
-            throw new IllegalArgumentException("Unterminated quote in input string: " + text);
+        // Add the final token if one exists
+        if (hasToken) {
+            tokens.add(currentToken.toString());
         }
 
-        // Handle a dangling backslash at the very end of the input
-        if (escaped) {
-            currentArgument.append('\\'); // Treat dangling backslash literally
-        }
-
-        // Add the last argument if it exists
-        if (currentArgument.length() > 0) {
-            arguments.add(currentArgument.toString());
-        }
-
-        return arguments.toArray(new String[0]);
+        return tokens.toArray(new String[0]);
     }
 }

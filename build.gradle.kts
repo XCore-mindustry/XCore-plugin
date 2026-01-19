@@ -1,123 +1,134 @@
-
-import fr.xpdustry.toxopid.Toxopid
-import fr.xpdustry.toxopid.spec.ModMetadata
-import fr.xpdustry.toxopid.spec.ModPlatform
-import fr.xpdustry.toxopid.task.MindustryExec
+import com.xpdustry.toxopid.Toxopid
+import com.xpdustry.toxopid.extension.anukeXpdustry
+import com.xpdustry.toxopid.task.MindustryExec
+import com.xpdustry.toxopid.spec.ModMetadata
+import com.xpdustry.toxopid.spec.ModPlatform
 
 plugins {
     java
-    `maven-publish`
-    id("fr.xpdustry.toxopid") version "3.0.0"
-} 
+    id("com.xpdustry.toxopid") version "4.1.2"
+    id("com.gradleup.shadow") version "8.3.5"
+}
 
 group = "org.xcore.plugin"
 version = "2.8.1"
 val mindustryVersion = "154.3"
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
 toxopid {
     compileVersion.set("v$mindustryVersion")
     runtimeVersion.set("v$mindustryVersion")
-    platforms.add(ModPlatform.HEADLESS)
+    platforms = setOf(ModPlatform.SERVER)
 }
 
 val metadata = ModMetadata(
     name = "xcore-plugin",
     displayName = "XCore-plugin",
     description = "The main plugin for XCore servers.",
-    author = "osp54, OSPx#7122",
+    author = "osp54, ",
     version = project.version.toString(),
     minGameVersion = mindustryVersion,
-    main = "${project.group}.XcorePlugin"
+    mainClass = "${project.group}.XcorePlugin"
 )
-
-publishing {
-    repositories {
-        maven {
-            name = "xcoreRepository"
-            url = uri("http://130.61.52.25/maven/private")
-            credentials(PasswordCredentials::class)
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
-        }
-    }
-    publications {
-        create<MavenPublication>("maven") {
-            groupId = "org.xcore"
-            artifactId = "plugin"
-            version = version
-            from(components["java"])
-        }
-    }
-}
 
 repositories {
     mavenCentral()
-    maven(url = "https://n1.x-core.org/maven/releases")
-    maven(url = "https://maven.xpdustry.com/mindustry")
+    anukeXpdustry()
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
-    maven(url = "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
     maven(url = "https://www.jitpack.io")
 }
 
 dependencies {
-    compileOnly("com.github.Anuken.Arc:arc-core:v$mindustryVersion")
-    compileOnly("com.github.Anuken.Mindustry:core:v$mindustryVersion")
-    compileOnly("com.github.Anuken.Mindustry:server:v$mindustryVersion")
+    compileOnly(toxopid.dependencies.mindustryCore)
+    compileOnly(toxopid.dependencies.arcCore)
+    compileOnly(toxopid.dependencies.mindustryHeadless)
 
     implementation(project(":flubundle"))
+
     implementation("com.github.osp54:Sock:9d465f7")
-
-    implementation("org.mongodb:mongodb-driver-sync:4.9.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.6.2")
     implementation("com.google.code.gson:gson:2.10.1")
-
     implementation("org.mindrot:jbcrypt:0.4")
-
     implementation("com.discord4j:discord4j-core:3.3.0")
-    implementation("io.netty:netty-transport-native-epoll:4.1.89.Final:linux-aarch_64")
 
-    implementation("org.jline:jline-terminal-jna:3.21.0")
-    implementation("org.jline:jline-reader:3.21.0")
-    implementation("org.jline:jline-console:3.21.0")
+    implementation("io.netty:netty-transport-native-epoll:4.1.107.Final:linux-x86_64")
 
-    compileOnly("org.projectlombok:lombok:1.18.26")
-    annotationProcessor("org.projectlombok:lombok:1.18.26")
+    implementation("org.jline:jline-terminal-jna:3.30.6")
+
+    implementation("org.jline:jline-reader:3.30.6")
+    implementation("org.jline:jline-console:3.30.6")
+
+    compileOnly("org.projectlombok:lombok:1.18.30")
+    annotationProcessor("org.projectlombok:lombok:1.18.30")
+
+}
+
+val generateModInfo by tasks.registering {
+    val modFile = temporaryDir.resolve("plugin.json")
+    inputs.property("metadata", ModMetadata.toJson(metadata, true))
+    outputs.file(modFile)
+
+    doLast {
+        modFile.writeText(ModMetadata.toJson(metadata, true))
+    }
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("")
+
+    from(generateModInfo)
+
+    mergeServiceFiles()
+
+    minimize {
+        exclude(dependency("com.discord4j:.*:.*"))
+        exclude(dependency("org.jline:.*:.*"))
+    }
+
+    val shadowPrefix = "org.xcore.plugin.shadow"
+
+    relocate("com.google.gson", "$shadowPrefix.gson")
+    relocate("com.mongodb", "$shadowPrefix.mongo")
+    relocate("org.bson", "$shadowPrefix.bson")
+    relocate("org.mindrot.jbcrypt", "$shadowPrefix.jbcrypt")
+
+    relocate("discord4j", "$shadowPrefix.discord4j")
+    relocate("reactor", "$shadowPrefix.reactor")
+    relocate("io.netty", "$shadowPrefix.netty")
+
+    relocate("com.ospx.sock", "$shadowPrefix.sock")
+
+    // relocate("org.jline", "$shadowPrefix.jline") fucking jline
+
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
 }
 
 tasks.jar {
-    doFirst {
-        val temp = temporaryDir.resolve("plugin.json")
-        temp.writeText(metadata.toJson(true))
-        from(temp)
-    }
-
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    enabled = false
 }
 
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
+tasks.assemble {
+    dependsOn(tasks.shadowJar)
 }
 
-// Required for the GitHub actions
 tasks.register("getProjectVersion") {
     doLast { println(project.version.toString()) }
 }
 
-tasks.register("runMainServer", MindustryExec::class.java) {
+tasks.withType<MindustryExec> {
     group = Toxopid.TASK_GROUP_NAME
     classpath(tasks.downloadMindustryServer)
-    mainClass.convention("mindustry.server.ServerLauncher")
-    modsPath.convention("./config/mods")
+    mainClass.set("mindustry.server.ServerLauncher")
+    modsDirPath.convention("./config/mods")
     standardInput = System.`in`
-    mods.setFrom(setOf(tasks.jar))
+    mods.setFrom(tasks.shadowJar.map { it.archiveFile })
 }
 
-tasks.register("runServer", MindustryExec::class.java) {
-    group = Toxopid.TASK_GROUP_NAME
-    classpath(tasks.downloadMindustryServer)
-    mainClass.convention("mindustry.server.ServerLauncher")
-    modsPath.convention("./config/mods")
-    standardInput = System.`in`
-    mods.setFrom(setOf(tasks.jar))
-}
+tasks.register("runMainServer", MindustryExec::class)
+tasks.register("runServer", MindustryExec::class)
