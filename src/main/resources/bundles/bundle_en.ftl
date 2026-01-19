@@ -193,3 +193,19 @@ commands-dislike-description = Vote against the current map
 commands-dislike-success = [orange]You disliked this map.
 commands-dislike-changed = [orange]You changed your vote to Dislike.
 never = Never
+map-vote-title = [scarlet]GAME OVER!
+map-vote-content = {""}
+    {""}Next map: [accent]{$mapName}[] by [accent]{$author}[white].
+    {""}New game starts in [accent]{$seconds}[white] seconds.
+    {""}
+    {""}[cyan]Did you like this map?
+map-vote-like = [green]👍 Like
+map-vote-dislike = [red]👎 Dislike
+map-vote-like-selected = [gray]You liked it
+map-vote-dislike-selected = [gray]You disliked it
+close = Close
+commands-information-description = Show information about the server
+commands-info-title = [orange]XCore Server
+commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
+    {""}
+    {""}XCore Version — [accent]{$xcoreVersion}[white]

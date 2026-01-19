@@ -195,3 +195,19 @@ commands-dislike-description = Проголосовать против карт�
 commands-dislike-success = [orange]Вы поставили дизлайк этой карте.
 commands-dislike-changed = [orange]Вы изменили свое мнение на Дизлайк.
 never = Никогда
+map-vote-title = [scarlet]ИГРА ОКОНЧЕНА!
+map-vote-content = {""}
+    {""}Следующая карта: [accent]{$mapName}[] от [accent]{$author}[white].
+    {""}Новая игра начнется через [accent]{$seconds}[white] секунд.
+    {""}
+    {""}[cyan]Понравилась эта карта?
+map-vote-like = [green]👍 Нравится
+map-vote-dislike = [red]👎 Не нравится
+map-vote-like-selected = [gray]Вам нравится
+map-vote-dislike-selected = [gray]Вам не нравится
+close = Закрыть
+commands-information-description = Показать информацию о сервере
+commands-info-title = [orange]XCore сервер
+commands-info-text = [accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
+    {""}
+    {""}Версия XCore — [accent]{$xcoreVersion}[white]

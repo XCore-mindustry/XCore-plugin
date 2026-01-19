@@ -32,6 +32,10 @@ public class PluginVars {
     public static boolean gameoverRestart = false;
     public static final DateTimeFormatter longDateFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
     public static final String discordUrl = "https://discord.gg/RUMCCa9QAC";
+    public static final String githubUrl = "https://github.com/XCore-mindustry/";
+    public static final String donatelloUrl = "https://donatello.to/xcore";
+    public static final String discordRedVSBlueUrl = "https://discord.gg/UdnuFetcNt";
+
     public static final Fi configFile = dataDirectory.child("xcconfig.json");
     public static Config config;
     public static GlobalConfig globalConfig;
@@ -49,4 +53,6 @@ public class PluginVars {
     public static final OrderedMap<String, String> translatorLanguages = new OrderedMap<>();
     public static VoteSession vote;
     public static VoteKick voteKick;
+
+    public static String xcoreVersion = "Unknown";
 }

@@ -199,3 +199,19 @@ commands-dislike-description = Проголосувати проти карти
 commands-dislike-success = [orange]Ви поставили не подобається цій карті.
 commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
 never = Ніколи
+map-vote-title = [scarlet]ГРА ЗАКІНЧЕНА!
+map-vote-content = {""}
+    {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[white].
+    {""}Нова гра почнеться через [accent]{$seconds}[white] секунд.
+    {""}
+    {""}[cyan]Чи сподобалась ця карта?
+map-vote-like = [green]👍 Подобається
+map-vote-dislike = [red]👎 Не подобається
+map-vote-like-selected = [gray]Вам вже подобається
+map-vote-dislike-selected = [gray]Вам вже не подобається
+close = Закрити
+commands-information-description = Показати інформацію про сервер
+commands-info-title = [orange]XCore сервер
+commands-info-text = [accent]XCore[white] це [cyan]безплатний[white] сервер для гри у [accent]Mindustry[white].
+    {""}
+    {""}Версія XCore — [accent]{$xcoreVersion}[white]
