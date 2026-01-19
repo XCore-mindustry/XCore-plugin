@@ -15,6 +15,7 @@ import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.ui.Menus;
 
+import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.hexed.HexMember;
 import org.xcore.plugin.modules.hexed.HexedRanks;
@@ -36,6 +37,7 @@ import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.modules.hexed.MiniHexed.killTeam;
 import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 import static org.xcore.plugin.utils.Find.findTranslatorLanguage;
+import static org.xcore.plugin.utils.Security.*;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
@@ -222,39 +224,21 @@ public class ClientCommands {
         );
 
         register("like", likeRunner);
-        registerAlias("like", "+", false, likeRunner);
+        registerAlias("like", "+", likeRunner);
 
         register("dislike", dislikeRunner);
-        registerAlias("dislike", "-", false, dislikeRunner);
+        registerAlias("dislike", "-", dislikeRunner);
 
         register("map-stats", mapStatsRunner);
-        registerAlias("map-stats", "map", false, mapStatsRunner);
+        registerAlias("map-stats", "map", mapStatsRunner);
 
         register("information", infoRunner);
-        registerAlias("information", "info", false, infoRunner);
+        registerAlias("information", "info", infoRunner);
 
 
         register("discord", (args, player) -> Call.openURI(player.con, discordUrl));
 
-        register("t", (args, player) -> {
-            var mute = database.getMuteDatas().get(player.uuid());
-            if (mute != null) {
-                if (!mute.expired()) {
-                    Duration remain = Duration.between(Instant.now(), mute.expireDate);
-
-                    bundle.send(player, "you-are-muted",
-                            args("adminName", mute.adminName,
-                                    "reason", mute.reason,
-                                    "remainMinutes", remain.toMinutes(),
-                                    "remainSeconds", remain.toSecondsPart()
-                            )
-                    );
-                    return;
-                }
-
-                database.getMuteDatas().delete(player.uuid());
-            }
-
+        register("t", withMuteCheck((args, player) -> {
             Groups.player.each(other -> other.team() == player.team(),
                     p -> p.sendMessage(
                             bundle.format(
@@ -267,37 +251,15 @@ public class ClientCommands {
                             player
                     )
             );
-        });
+        }));
 
-        register("g", (args, player) -> {
-            MuteData mute = database.getMuteDatas().get(player.uuid());
-
-            if (mute != null) {
-                if (!mute.expired()) {
-                    Duration remain = Duration.between(Instant.now(), mute.expireDate);
-
-                    bundle.send(player, "you-are-muted",
-                            args("adminName", mute.adminName,
-                                    "reason", mute.reason,
-                                    "remainMinutes", remain.toMinutes(),
-                                    "remainSeconds", remain.toSecondsPart()
-                            )
-                    );
-                    return;
-                }
-
-                database.getMuteDatas().delete(player.uuid());
-            }
-
-            var data = database.getCached(player.uuid());
-            if (data.totalPlayTime < globalChatPlayTime && !player.admin) {
-                bundle.send(player, "error-globalchat-total-playtime", args("globalChatPlayTime", globalChatPlayTime));
-                return;
-            }
+        register("g", withMuteCheck(
+                withPlayTimeCheck(PluginVars.globalChatPlayTime,
+                        "error-globalchat-total-playtime", (args, player) -> {
 
             NetSock.post(new SocketEvents.GlobalChatEvent(player.coloredName(), args[0], config.server));
             NetSock.post(new SocketEvents.MessageEvent(player.plainName(), "[" + config.server + "] " + args[0].replace("`", "*"), "global"));
-        });
+        })));
 
         register("rtv", (args, player) -> {
             if (vote != null) {
@@ -492,17 +454,10 @@ public class ClientCommands {
             player.sendMessage(builder.toString());
         });
 
-        register("votekick", (args, player) -> {
+        register("votekick", withPlayTimeCheck(PluginVars.votekickPlayTime,
+                "error-votekick-total-playtime", (args, player) -> {
             if (voteKick != null) {
                 bundle.send(player, "error-vote-in-progress", args());
-                return;
-            }
-
-            PlayerData data = database.getCached(player.uuid());
-
-            if (data.totalPlayTime < votekickPlayTime) {
-                bundle.send(player, "error-votekick-total-playtime", args(
-                        "votekickPlayTime", votekickPlayTime));
                 return;
             }
 
@@ -523,7 +478,7 @@ public class ClientCommands {
 
             voteKick = new VoteKick(player, found, args[1]);
             voteKick.vote(player, 1);
-        });
+        }));
 
         register("vote", (args, player) -> {
             if (voteKick == null) {
@@ -667,7 +622,7 @@ public class ClientCommands {
             });
         }
 
-        register("ban", true, (args, player) -> {
+        register("ban", withAdminCheck((args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -712,9 +667,9 @@ public class ClientCommands {
                     "commands-ban-success",
                     args("nickname", target.nickname)
             );
-        });
+        }));
 
-        register("unban", true, (args, player) -> {
+        register("unban", withAdminCheck((args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -737,9 +692,9 @@ public class ClientCommands {
                     "pid", target.pid
                 )
             );
-        });
+        }));
 
-        register("mute", true, (args, player) -> {
+        register("mute", withAdminCheck((args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -791,9 +746,9 @@ public class ClientCommands {
                             )
                     )
             );
-        });
+        }));
 
-        register("unmute", true, (args, player) -> {
+        register("unmute", withAdminCheck((args, player) -> {
             var id = Strings.parseInt(args[0]);
 
             if (id < 1) {
@@ -811,9 +766,9 @@ public class ClientCommands {
             database.muteDatas.delete(target.uuid);
 
             bundle.send(player, "commands-unmute-success", args("nickname", target.nickname));
-        });
+        }));
 
-        register("artv", true, (args, player) -> {
+        register("artv", withAdminCheck((args, player) -> {
             var map = args.length > 0 ? Utils.findMap(args[0]) : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
             if (map == null) {
@@ -824,7 +779,7 @@ public class ClientCommands {
             Timer.schedule(() -> reloadWorld(() -> world.loadMap(map, map.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
 
             bundle.send("commands-artv-map-skipped", args("nickname", player.coloredName()));
-        });
+        }));
 
         register("login", (args, player) -> {
             var password = args[0];
@@ -868,26 +823,16 @@ public class ClientCommands {
     }
 
     public static void register(String name, CommandHandler.CommandRunner<Player> runner) {
-        register(name, false, runner);
+        registerAlias(name, name, runner);
     }
 
-    public static void register(String name, boolean admin, CommandHandler.CommandRunner<Player> runner) {
-        registerAlias(name, name, admin, runner);
-    }
-
-    public static void registerAlias(String originalName, String alias, boolean admin, CommandHandler.CommandRunner<Player> runner) {
+    public static void registerAlias(String originalName, String alias, CommandHandler.CommandRunner<Player> runner) {
         if (config.disabledCommands.contains(alias)) return;
 
         netServer.clientCommands.<Player>register(
             alias,
             bundle.format(bundle.defaultLocale, "commands-" + originalName + "-params", "", args()),
             bundle.format(bundle.defaultLocale, "commands-" + originalName + "-description", "", args()),
-            (args, player) -> {
-                if (admin && !player.admin) {
-                    bundle.send(player, "error-access-denied", args());
-                    return;
-                }
-                runner.accept(args, player);
-            });
+            runner);
     }
 }

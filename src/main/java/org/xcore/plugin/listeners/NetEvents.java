@@ -19,6 +19,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.Translator;
 import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.utils.Security;
 import org.xcore.plugin.utils.models.*;
 
 import java.time.Duration;
@@ -48,24 +49,7 @@ public class NetEvents {
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
-        MuteData mute = database.getMuteDatas().get(author.uuid());
-
-        if(mute != null) {
-            if(!mute.expired()){
-                Duration remain = Duration.between(Instant.now(), mute.expireDate);
-
-                bundle.send(author, "you-are-muted",
-                        args("adminName", mute.adminName,
-                                "reason", mute.reason,
-                                "remainMinutes", remain.toMinutes(),
-                                "remainSeconds", remain.toSecondsPart()
-                        )
-                );
-                return null;
-            }
-
-            database.getMuteDatas().delete(author.uuid());
-        }
+        if (Security.isMuted(author)) return null;
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
         Translator.translate(author, text);
