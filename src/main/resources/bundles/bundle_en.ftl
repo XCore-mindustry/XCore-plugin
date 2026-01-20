@@ -2,6 +2,12 @@ commands-help-params = [page]
 commands-help-description = Lists all commands.
 commands-help-start-content = [orange]-- Commands Page[lightgray] {$page}[gray]/[lightgray]{$totalPages}[orange] --
 commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgray] - {$commandDescription}
+commands-information-params = {""}
+commands-information-description = Show information about the server
+commands-info-title = [orange]XCore Server
+commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
+    {""}
+    {""}XCore Version — [accent]{$xcoreVersion}[white]
 commands-t-params = <message...>
 commands-t-description = Send a message only to your teammates.
 commands-g-params = <message...>
@@ -204,8 +210,3 @@ map-vote-dislike = [red]👎 Dislike
 map-vote-like-selected = [gray]You liked it
 map-vote-dislike-selected = [gray]You disliked it
 close = Close
-commands-information-description = Show information about the server
-commands-info-title = [orange]XCore Server
-commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
-    {""}
-    {""}XCore Version — [accent]{$xcoreVersion}[white]

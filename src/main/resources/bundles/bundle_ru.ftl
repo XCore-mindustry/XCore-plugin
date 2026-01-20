@@ -2,6 +2,12 @@ commands-help-params = [страница]
 commands-help-description = Перечисляет все команды
 commands-help-start-content = [orange]-- Страница Команд[lightgray] {$page}[gray]/[lightgray]{$totalPages}[orange] --
 commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgray] - {$commandDescription}
+commands-information-params = ${""}
+commands-information-description = Показать информацию о сервере
+commands-info-title = [orange]XCore сервер
+commands-info-text = [accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
+    {""}
+    {""}Версия XCore — [accent]{$xcoreVersion}[white]
 commands-t-params = <сообщение...>
 commands-t-description = Отправить сообщение только своим товарищам по команде
 commands-g-params = <сообщение...>
@@ -206,8 +212,3 @@ map-vote-dislike = [red]👎 Не нравится
 map-vote-like-selected = [gray]Вам нравится
 map-vote-dislike-selected = [gray]Вам не нравится
 close = Закрыть
-commands-information-description = Показать информацию о сервере
-commands-info-title = [orange]XCore сервер
-commands-info-text = [accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
-    {""}
-    {""}Версия XCore — [accent]{$xcoreVersion}[white]

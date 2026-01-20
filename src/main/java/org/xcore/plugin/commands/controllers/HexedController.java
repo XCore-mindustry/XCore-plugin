@@ -1,0 +1,84 @@
+package org.xcore.plugin.commands.controllers;
+
+import mindustry.game.Team;
+import mindustry.gen.Call;
+import mindustry.gen.Player;
+import org.xcore.plugin.infra.commands.annotation.*;
+import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.modules.hexed.HexedRanks;
+import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.utils.Utils;
+
+import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.PluginVars.database;
+import static org.xcore.plugin.modules.hexed.MiniHexed.members;
+
+@SuppressWarnings("unused")
+public class HexedController {
+
+    @Command(name = "spectate")
+    public void spectate(CommandContext<Player> ctx) {
+        org.xcore.plugin.modules.hexed.MiniHexed.killTeam(ctx.player().team());
+        ctx.send("commands-spectate-success", args());
+    }
+
+    @Command(name = "rank", params = "[player...]")
+    public void rank(CommandContext<Player> ctx) {
+        Player target = ctx.args().length > 0
+                ? Find.player(ctx.arg(0))
+                : ctx.player();
+
+        if (target == null) {
+            ctx.send("error-player-not-found", args());
+            return;
+        }
+
+        var data = database.getCached(target.uuid());
+        var rank = data.hexedRank();
+
+        ctx.player().sendMessage(ctx.format("commands-rank-content", args(
+                "nickname", target.name,
+                "rankTag", rank.tag,
+                "rankName", ctx.format("hexed-ranks-" + rank.name(), args()),
+                "points", data.hexedPoints,
+                "requiredPoints", rank.next != null ? rank.next.requirements.wins() : 0
+        )));
+    }
+
+    @Command(name = "ranks")
+    public void ranks(CommandContext<Player> ctx) {
+        StringBuilder sb = new StringBuilder();
+
+        for (HexedRanks.HexedRank r : HexedRanks.HexedRank.values()) {
+            sb.append(ctx.format("commands-ranks-content", args(
+                    "rankTag", r.tag,
+                    "rankName", ctx.format("hexed-ranks-" + r.name(), args()),
+                    "requiredPoints", r.requirements != null ? r.requirements.wins() : 0
+            ))).append("\n");
+        }
+
+        sb.append(ctx.format("commands-ranks-footer", args()));
+        Call.infoMessage(ctx.player().con, sb.toString());
+    }
+
+    @Command(name = "ai", params = "<attack/idle>")
+    public void ai(CommandContext<Player> ctx) {
+        var member = members.get(ctx.player().uuid());
+
+        if (ctx.player().team() == Team.derelict) {
+            ctx.send("error-spectator", args());
+            return;
+        }
+
+        if (ctx.arg(0).startsWith("a")) {
+            member.setUnitState(Utils.UnitState.ATTACK);
+        } else if (ctx.arg(0).startsWith("i")) {
+            member.setUnitState(Utils.UnitState.IDLE);
+        } else {
+            ctx.send("commands-ai-usage", args());
+            return;
+        }
+
+        ctx.send("success", args());
+    }
+}
