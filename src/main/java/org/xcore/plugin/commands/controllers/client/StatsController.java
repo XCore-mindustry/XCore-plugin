@@ -1,10 +1,9 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import arc.struct.Seq;
 import mindustry.gen.Call;
-import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.Command;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -14,7 +13,7 @@ import static org.xcore.plugin.PluginVars.database;
 public class StatsController {
 
     @Command(name = "stats", params = "[player-id]")
-    public void stats(CommandContext<Player> ctx) {
+    public void stats(ClientContext ctx) {
         PlayerData data = ctx.args().length > 0
                 ? database.getCachedOrDb(ctx.argInt(0, -1))
                 : database.getCached(ctx.player().uuid());
@@ -35,7 +34,7 @@ public class StatsController {
     }
 
     @Command(name = "lb")
-    public void leaderboard(CommandContext<Player> ctx) {
+    public void leaderboard(ClientContext ctx) {
         var data = database.getCached(ctx.player().uuid());
         data.leaderboard = !data.leaderboard;
 
@@ -47,7 +46,7 @@ public class StatsController {
     }
 
     @Command(name = "top")
-    public void top(CommandContext<Player> ctx) {
+    public void top(ClientContext ctx) {
         boolean isHexed = org.xcore.plugin.PluginVars.config.isMiniHexed();
 
         Seq<PlayerData> leaders = isHexed

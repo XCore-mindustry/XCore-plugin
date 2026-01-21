@@ -1,10 +1,9 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.*;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
 
@@ -17,7 +16,7 @@ public class SocialController {
 
     @MuteCheck
     @Command(name = "t", params = "<message...>")
-    public void teamChat(CommandContext<Player> ctx) {
+    public void teamChat(ClientContext ctx) {
         Groups.player.each(
                 other -> other.team() == ctx.player().team(),
                 p -> p.sendMessage(ctx.format("commands-t-chat", args(
@@ -31,7 +30,7 @@ public class SocialController {
     @MuteCheck
     @MinPlayTime(minutes = 240, errorKey = "error-globalchat-total-playtime")
     @Command(name = "g", params = "<message...>")
-    public void globalChat(CommandContext<Player> ctx) {
+    public void globalChat(ClientContext ctx) {
         String message = ctx.args()[0];
 
         NetSock.post(new SocketEvents.GlobalChatEvent(
@@ -48,12 +47,12 @@ public class SocialController {
     }
 
     @Command(name = "discord")
-    public void discord(CommandContext<Player> ctx) {
+    public void discord(ClientContext ctx) {
         Call.openURI(ctx.player().con, discordUrl);
     }
 
     @Command(name = "tr", params = "<language/auto/off>")
-    public void translator(CommandContext<Player> ctx) {
+    public void translator(ClientContext ctx) {
         var data = database.getCached(ctx.player().uuid());
         String input = ctx.arg(0).toLowerCase();
 

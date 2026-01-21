@@ -1,4 +1,4 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import arc.Core;
 import arc.math.Mathf;
@@ -7,11 +7,10 @@ import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.gen.Call;
-import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.infra.commands.annotation.AdminOnly;
 import org.xcore.plugin.infra.commands.annotation.Command;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.votes.VoteRtv;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.MapData;
@@ -24,7 +23,7 @@ import static org.xcore.plugin.PluginVars.*;
 public class MapController {
 
     @Command(name = "rtv", params = "[map...]")
-    public void rtv(CommandContext<Player> ctx) {
+    public void rtv(ClientContext ctx) {
         if (vote != null) {
             ctx.send("error-vote-in-progress", args());
             return;
@@ -45,7 +44,7 @@ public class MapController {
     }
 
     @Command(name = "maps", params = "[page]")
-    public void maps(CommandContext<Player> ctx) {
+    public void maps(ClientContext ctx) {
         Seq<Map> list = Utils.getAvailableMaps();
         int lines = 10;
         int pageCount = Mathf.ceil((float) list.size / lines);
@@ -85,7 +84,7 @@ public class MapController {
     }
 
     @Command(name = "map-stats", params = "[map-name]", aliases = {"map"})
-    public void mapStats(CommandContext<Player> ctx) {
+    public void mapStats(ClientContext ctx) {
         Map map = ctx.args().length > 0 ? Utils.findMap(ctx.arg(0)) : Vars.state.map;
         if (map == null) {
             ctx.send("error-map-not-found", args());
@@ -117,7 +116,7 @@ public class MapController {
 
     @AdminOnly
     @Command(name = "artv", params = "[map...]")
-    public void adminRtv(CommandContext<Player> ctx) {
+    public void adminRtv(ClientContext ctx) {
         Map map = ctx.args().length > 0
                 ? Utils.findMap(ctx.arg(0))
                 : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
@@ -127,12 +126,10 @@ public class MapController {
             return;
         }
 
-        Timer.schedule(() -> {
-            Utils.reloadWorld(() -> {
-                Gamemode mode = Gamemode.valueOf(Core.settings.getString("lastServerMode"));
-                Vars.world.loadMap(map, map.applyRules(mode));
-            });
-        }, mapLoadDelay);
+        Timer.schedule(() -> Utils.reloadWorld(() -> {
+            Gamemode mode = Gamemode.valueOf(Core.settings.getString("lastServerMode"));
+            Vars.world.loadMap(map, map.applyRules(mode));
+        }), mapLoadDelay);
 
         bundle.send("commands-artv-map-skipped", args(
                 "nickname", ctx.player().coloredName()
@@ -140,16 +137,16 @@ public class MapController {
     }
 
     @Command(name = "like", aliases = {"+"})
-    public void like(CommandContext<Player> ctx) {
+    public void like(ClientContext ctx) {
         handleReputation(ctx, true);
     }
 
     @Command(name = "dislike", aliases = {"-"})
-    public void dislike(CommandContext<Player> ctx) {
+    public void dislike(ClientContext ctx) {
         handleReputation(ctx, false);
     }
 
-    private void handleReputation(CommandContext<Player> ctx, boolean like) {
+    private void handleReputation(ClientContext ctx, boolean like) {
         Map map = Vars.state.map;
         if (map == null) return;
 

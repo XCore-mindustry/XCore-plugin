@@ -7,5 +7,6 @@ import java.lang.annotation.*;
 public @interface Command {
     String name();
     String params() default "";
+    String description() default "";
     String[] aliases() default {};
 }

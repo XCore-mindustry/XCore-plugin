@@ -1,12 +1,11 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import arc.math.Mathf;
 import arc.util.CommandHandler;
 import mindustry.gen.Call;
-import mindustry.gen.Player;
 import mindustry.ui.Menus;
 import org.xcore.plugin.infra.commands.annotation.Command;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.PluginVars.*;
@@ -29,7 +28,7 @@ public class InformationController {
     }
 
     @Command(name = "help", params = "[page]")
-    public void help(CommandContext<Player> ctx) {
+    public void help(ClientContext ctx) {
         int commandsPerPage = 6;
         int pageCount = Mathf.ceil((float) handler.getCommandList().size / commandsPerPage);
         int page = ctx.argInt(0, 1) - 1;
@@ -60,7 +59,7 @@ public class InformationController {
     }
 
     @Command(name = "information", aliases = {"info"})
-    public void info(CommandContext<Player> ctx) {
+    public void info(ClientContext ctx) {
         Call.menu(ctx.player().con, infoMenuId,
                 ctx.format("commands-info-title", args()),
                 ctx.format("commands-info-text", args("xcoreVersion", xcoreVersion)),

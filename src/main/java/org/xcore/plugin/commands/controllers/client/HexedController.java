@@ -1,10 +1,11 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.*;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
+
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.Utils;
@@ -17,13 +18,13 @@ import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 public class HexedController {
 
     @Command(name = "spectate")
-    public void spectate(CommandContext<Player> ctx) {
+    public void spectate(ClientContext ctx) {
         org.xcore.plugin.modules.hexed.MiniHexed.killTeam(ctx.player().team());
         ctx.send("commands-spectate-success", args());
     }
 
     @Command(name = "rank", params = "[player...]")
-    public void rank(CommandContext<Player> ctx) {
+    public void rank(ClientContext ctx) {
         Player target = ctx.args().length > 0
                 ? Find.player(ctx.arg(0))
                 : ctx.player();
@@ -46,7 +47,7 @@ public class HexedController {
     }
 
     @Command(name = "ranks")
-    public void ranks(CommandContext<Player> ctx) {
+    public void ranks(ClientContext ctx) {
         StringBuilder sb = new StringBuilder();
 
         for (HexedRanks.HexedRank r : HexedRanks.HexedRank.values()) {
@@ -62,7 +63,7 @@ public class HexedController {
     }
 
     @Command(name = "ai", params = "<attack/idle>")
-    public void ai(CommandContext<Player> ctx) {
+    public void ai(ClientContext ctx) {
         var member = members.get(ctx.player().uuid());
 
         if (ctx.player().team() == Team.derelict) {

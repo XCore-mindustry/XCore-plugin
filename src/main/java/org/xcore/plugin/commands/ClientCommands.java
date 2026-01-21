@@ -3,14 +3,20 @@ package org.xcore.plugin.commands;
 import arc.util.CommandHandler;
 import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.commands.controllers.HexedController;
+import org.xcore.plugin.commands.controllers.client.*;
 import org.xcore.plugin.infra.commands.CommandBus;
-
-import org.xcore.plugin.commands.controllers.*;
+import org.xcore.plugin.infra.commands.interceptor.AdminInterceptor;
+import org.xcore.plugin.infra.commands.interceptor.MuteInterceptor;
+import org.xcore.plugin.infra.commands.interceptor.PlayTimeInterceptor;
 
 public class ClientCommands {
     public static void register(CommandHandler handler) {
         CommandBus bus = new CommandBus(handler);
+
+        bus.addInterceptor(new AdminInterceptor());
+        bus.addInterceptor(new MuteInterceptor());
+        bus.addInterceptor(new PlayTimeInterceptor());
+
         bus.register(
                 new InformationController(handler),
                 new SocialController(),

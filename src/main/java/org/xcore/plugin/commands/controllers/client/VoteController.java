@@ -1,9 +1,9 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.Utils;
@@ -16,7 +16,7 @@ public class VoteController {
 
     @MinPlayTime(minutes = 60, errorKey = "error-votekick-total-playtime")
     @Command(name = "votekick", params = "<id/name> <reason...>")
-    public void votekick(CommandContext<Player> ctx) {
+    public void votekick(ClientContext ctx) {
         if (voteKick != null) {
             ctx.send("error-vote-in-progress", args());
             return;
@@ -43,7 +43,7 @@ public class VoteController {
     }
 
     @Command(name = "vote", params = "<y/n/c>")
-    public void vote(CommandContext<Player> ctx) {
+    public void vote(ClientContext ctx) {
         if (voteKick == null) {
             ctx.send("error-no-voting", args());
             return;

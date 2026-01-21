@@ -1,8 +1,7 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
-import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.Command;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.NetSock;
 import org.xcore.plugin.utils.models.AdminData;
@@ -16,7 +15,7 @@ import static org.xcore.plugin.PluginVars.database;
 public class AuthController {
 
     @Command(name = "login", params = "<password>")
-    public void login(CommandContext<Player> ctx) {
+    public void login(ClientContext ctx) {
         String password = ctx.args()[0];
 
         if (password.length() < 4) {
@@ -49,7 +48,7 @@ public class AuthController {
     }
 
     @Command(name = "logout")
-    public void logout(CommandContext<Player> ctx) {
+    public void logout(ClientContext ctx) {
         if (ctx.player().admin) {
             ctx.player().admin(false);
             netServer.admins.unAdminPlayer(ctx.player().uuid());

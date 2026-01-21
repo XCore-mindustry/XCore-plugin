@@ -1,8 +1,8 @@
-package org.xcore.plugin.commands.controllers;
+package org.xcore.plugin.commands.controllers.client;
 
 import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.*;
-import org.xcore.plugin.infra.commands.context.CommandContext;
+import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.utils.Find;
 import org.xcore.plugin.utils.NetSock;
@@ -22,7 +22,7 @@ import static org.xcore.plugin.PluginVars.*;
 public class ModerationController {
 
     @Command(name = "ban", params = "<id> <period> [reason...]")
-    public void ban(CommandContext<Player> ctx) {
+    public void ban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
         var target = database.getPlayerDatas().getById(id);
 
@@ -61,7 +61,7 @@ public class ModerationController {
     }
 
     @Command(name = "unban", params = "<id>")
-    public void unban(CommandContext<Player> ctx) {
+    public void unban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
         var target = database.getPlayerDatas().getById(id);
 
@@ -79,7 +79,7 @@ public class ModerationController {
     }
 
     @Command(name = "mute", params = "<id> <period> [reason...]")
-    public void mute(CommandContext<Player> ctx) {
+    public void mute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
         var target = database.getCachedOrDb(id);
 
@@ -121,7 +121,7 @@ public class ModerationController {
     }
 
     @Command(name = "unmute", params = "<id>")
-    public void unmute(CommandContext<Player> ctx) {
+    public void unmute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
         var target = database.getCachedOrDb(id);
 
