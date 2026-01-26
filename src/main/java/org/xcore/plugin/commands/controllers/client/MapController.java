@@ -4,6 +4,8 @@ import arc.Core;
 import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.Timer;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.gen.Call;
@@ -11,7 +13,10 @@ import mindustry.maps.Map;
 import org.xcore.plugin.infra.commands.annotation.AdminOnly;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
-import org.xcore.plugin.modules.votes.VoteRtv;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.votes.VoteFactory;
+import org.xcore.plugin.modules.votes.VoteService;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.MapData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -19,12 +24,26 @@ import org.xcore.plugin.utils.models.PlayerData;
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.PluginVars.*;
 
-@SuppressWarnings("unused")
+@Singleton
 public class MapController {
+
+    private final DatabaseService database;
+    private final BundleService bundle;
+    private final VoteService voteService;
+    private final VoteFactory voteFactory;
+
+    @Inject
+    public MapController(DatabaseService database, BundleService bundle,
+                         VoteService voteService, VoteFactory voteFactory) {
+        this.database = database;
+        this.bundle = bundle;
+        this.voteService = voteService;
+        this.voteFactory = voteFactory;
+    }
 
     @Command(name = "rtv", params = "[map...]")
     public void rtv(ClientContext ctx) {
-        if (vote != null) {
+        if (voteService.isVoting()) {
             ctx.send("error-vote-in-progress", args());
             return;
         }
@@ -39,7 +58,8 @@ public class MapController {
             return;
         }
 
-        vote = new VoteRtv(target, isManual);
+        var vote = voteFactory.createRtv(target, isManual);
+        voteService.startVote(vote);
         vote.vote(ctx.player(), 1);
     }
 
@@ -64,7 +84,7 @@ public class MapController {
         long now = System.currentTimeMillis();
         for (int i = (page - 1) * lines; i < Math.min(page * lines, list.size); i++) {
             Map map = list.get(i);
-            MapData m = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+            MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
 
             String last = m.playedTimes == 0
                     ? ctx.format("never", args())
@@ -91,7 +111,7 @@ public class MapController {
             return;
         }
 
-        MapData m = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
         String last = m.playedTimes == 0
                 ? ctx.format("never", args())
                 : (System.currentTimeMillis() - m.lastPlayedTime) / 60000 + "m";
@@ -150,7 +170,7 @@ public class MapController {
         Map map = Vars.state.map;
         if (map == null) return;
 
-        MapData m = database.mapDatas.get(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
         PlayerData p = database.getCached(ctx.player().uuid());
         String id = String.valueOf(m.id);
         Boolean prev = p.mapVotes.get(id);
@@ -172,7 +192,8 @@ public class MapController {
         }
 
         p.mapVotes.put(id, like);
-        p.save();
-        m.save();
+
+        database.getPlayerDataRepository().save(p);
+        database.getMapDataRepository().save(m);
     }
 }

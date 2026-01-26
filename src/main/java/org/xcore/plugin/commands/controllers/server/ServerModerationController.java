@@ -3,11 +3,18 @@ package org.xcore.plugin.commands.controllers.server;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ServerContext;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.*;
-import org.xcore.plugin.utils.models.*;
+import org.xcore.plugin.modules.common.TimeService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.network.NetworkService;
+import org.xcore.plugin.utils.FindService;
+import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.MuteData;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -15,40 +22,61 @@ import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.utils.Utils.*;
+import static org.xcore.plugin.utils.Utils.deepEquals;
+import static org.xcore.plugin.utils.Utils.equalsHasNull;
 
-@SuppressWarnings("unused")
-public class ModerationController {
+@Singleton
+public class ServerModerationController {
+
+    private final DatabaseService database;
+    private final NetworkService network;
+    private final FindService find;
+    private final TimeService time;
+
+    @Inject
+    public ServerModerationController(DatabaseService database, NetworkService network, FindService find,
+                                      TimeService timeService) {
+        this.database = database;
+        this.network = network;
+        this.find = find;
+        this.time = timeService;
+    }
 
     @Command(name = "tempban", params = "<uuid/ip/#id> <period> [reason...]", description = "Temp-ban a player.")
     public void tempBan(ServerContext ctx) {
-        var target = Find.playerInfo(ctx.arg(0));
+        var target = find.playerInfo(ctx.arg(0));
         String uuid = (target != null) ? target.id : (ctx.arg(0).startsWith("#") ? null : ctx.arg(0));
         String ip = (target != null) ? target.lastIP : null;
         String name = (target != null) ? target.lastName : "Unknown";
 
         if (ctx.arg(0).startsWith("#")) {
-            var data = database.getPlayerDatas().getById(Strings.parseInt(ctx.arg(0).substring(1)));
-            if (data == null) { Log.err("Player not found"); return; }
-            uuid = data.uuid; name = data.nickname;
+            var data = database.getPlayerDataRepository().findById(Strings.parseInt(ctx.arg(0).substring(1)));
+            if (data == null) {
+                Log.err("Player not found");
+                return;
+            }
+            uuid = data.uuid;
+            name = data.nickname;
             var info = netServer.admins.getInfoOptional(uuid);
             if (info != null) ip = info.lastIP;
         }
 
-        Instant period = Utils.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
-        if (period == null) { Log.err("Invalid period format."); return; }
+        Instant period = time.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
+        if (period == null) {
+            Log.err("Invalid period format.");
+            return;
+        }
 
         Instant expire = Instant.now().plusMillis(period.toEpochMilli());
-        NetSock.post(new SocketEvents.KickBannedPlayer(uuid, ip));
+        network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
         BanData ban = BanData.builder()
                 .name(name).uuid(uuid).ip(ip).adminName("console")
                 .reason(ctx.args().length > 2 ? ctx.arg(2) : "Not Specified")
                 .expireDate(expire).build();
 
-        NetSock.post(ban);
-        ban.save();
+        network.post(ban);
+        database.getBanDataRepository().save(ban);
         Log.info("Banned @ until @", name, expire);
     }
 
@@ -63,39 +91,41 @@ public class ModerationController {
                 if (d != null) uuid = d.uuid;
             }
         }
-        database.getBanDatas().delete(uuid, ip);
+        database.getBanDataRepository().delete(uuid, ip);
         Log.info("Unbanned: UUID=@ / IP=@", uuid, ip);
     }
 
     @Command(name = "tempbans", params = "[search...]", description = "List current temp bans.")
     public void tempBans(ServerContext ctx) {
-        Seq<BanData> bans = database.getBanDatas().getPunished();
+        // todo: paged
+        Seq<BanData> bans = Seq.with(database.getBanDataRepository().findAll());
         if (ctx.args().length > 0) {
             String q = ctx.arg(0);
             bans.select(b -> deepEquals(b.name, q) || equalsHasNull(b.ip, q) || equalsHasNull(b.uuid, q));
         }
-        bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid, b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(), b.reason));
+        bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
+                b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(), b.reason));
     }
 
     @Command(name = "mute", params = "<uuid/#id> <period> [reason...]", description = "Mute player.")
     public void mute(ServerContext ctx) {
-        PlayerData data = Find.playerData(ctx.arg(0));
+        PlayerData data = find.playerData(ctx.arg(0));
         if (data == null) return;
-        Instant period = Utils.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
+        Instant period = time.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
         if (period == null) return;
 
         MuteData m = MuteData.builder().uuid(data.uuid).name(data.nickname).adminName("console")
                 .reason(ctx.args().length > 2 ? ctx.arg(2) : "Not Specified")
                 .expireDate(Instant.now().plusMillis(period.toEpochMilli())).build();
-        database.muteDatas.save(m);
-        NetSock.post(m);
+        database.getMuteDataRepository().save(m);
+        network.post(m);
         Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toEpochMilli()).toMinutes());
     }
 
     @Command(name = "unmute", params = "<uuid/#id>", description = "Unmute player.")
     public void unmute(ServerContext ctx) {
-        PlayerData data = Find.playerData(ctx.arg(0));
-        if (data != null) database.muteDatas.delete(data.uuid);
+        PlayerData data = find.playerData(ctx.arg(0));
+        if (data != null) database.getMuteDataRepository().delete(data.uuid);
         Log.info("Unmuted @", data != null ? data.nickname : "unknown");
     }
 }

@@ -1,12 +1,11 @@
 package org.xcore.plugin.modules.hexed;
 
 import mindustry.gen.Player;
+import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import static org.xcore.plugin.PluginVars.config;
-
 public class HexedRanks {
-    public static void updateRank(Player player, PlayerData data) {
+    public static void updateRank(Player player, PlayerData data, Config config) {
         if (!config.isMiniHexed()) return;
         player.name = data.hexedRank().tag + " " + player.getInfo().lastName;
     }

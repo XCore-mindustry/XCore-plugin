@@ -7,6 +7,9 @@ import arc.util.Align;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
+import io.avaje.inject.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.UnitTypes;
@@ -20,27 +23,65 @@ import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.NetSock;
-import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.common.LeaderboardService;
+import org.xcore.plugin.modules.network.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
-import static org.xcore.plugin.PluginVars.*;
 
-public class MiniHexed {
-    public static final ObjectMap<String, HexMember> members = new ObjectMap<>();
-    public static final ObjectMap<HexedRanks.HexedRank, Seq<String>> rankings = new ObjectMap<>();
-    public static Schematic startBase;
-    private static int greenCores = 0;
+@Singleton
+public class MiniHexedService {
+    public final ObjectMap<String, HexMember> members = new ObjectMap<>();
+    public final ObjectMap<HexedRanks.HexedRank, Seq<String>> rankings = new ObjectMap<>();
+    public Schematic startBase;
+    private int greenCores = 0;
 
     private static int winScore = 1800;
 
-    private static boolean gameover = false;
+    private final Config config;
+    private final DatabaseService database;
+    private final NetworkService network;
+    private final BundleService bundle;
+    private final LeaderboardService leaderboardService;
 
-    public static void init() {
+    private static boolean gameover = false;
+    @Inject
+    public MiniHexedService(Config config, DatabaseService database,NetworkService networkService,
+                            BundleService bundle, LeaderboardService leaderboardService) {
+        this.config = config;
+        this.database = database;
+        this.network = networkService;
+        this.bundle = bundle;
+        this.leaderboardService = leaderboardService;
+    }
+
+    @PostConstruct
+    public void init() {
         if (!config.isMiniHexed()) return;
-        Utils.showLeaderboard(Utils::getHexedLeaderboard);
+
+        leaderboardService.start((builder, player, locale) -> {
+            var teams = Vars.state.teams.getActive().copy()
+                    .select(t -> !t.players.isEmpty() && t.team != Team.derelict)
+                    .sort(t -> t.cores.size)
+                    .reverse();
+
+            teams.truncate(10);
+            builder.append(bundle.format(locale, "leaderboard", args())).append("\n\n");
+            for (int i = 0; i < teams.size; i++) {
+                var team = teams.get(i);
+                String nickname = team.players.isEmpty() ? "Unknown" : team.players.first().coloredName();
+
+                builder.append(bundle.format(locale, "hexed-leaderboard-content", args(
+                        "index", i + 1,
+                        "nickname", nickname,
+                        "hexes", team.cores.size
+                ))).append("\n");
+            }
+        });
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
@@ -98,7 +139,7 @@ public class MiniHexed {
         }, 0f, 1);
 
         netServer.assigner = (player, players) -> {
-            var member = new HexMember(player.uuid());
+            var member = new HexMember(player.uuid(), this);
 
             if (members.containsKey(player.uuid())) member = members.get(player.uuid());
             members.put(player.uuid(), member);
@@ -108,7 +149,7 @@ public class MiniHexed {
         XcorePlugin.info("MiniHexed loaded.");
     }
 
-    private static void applyRules() {
+    private void applyRules() {
         UnitTypes.risso.flying = true;
         UnitTypes.minke.flying = true;
         UnitTypes.bryde.flying = true;
@@ -130,7 +171,7 @@ public class MiniHexed {
         Vars.state.rules.pvpAutoPause = false;
     }
 
-    private static void endGame() {
+    private void endGame() {
         winScore = 1800;
         gameover = true;
         var teams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
@@ -151,13 +192,13 @@ public class MiniHexed {
                             rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
                         data.hexedPoints++;
                         if (data.hexedRank().checkNext(data.hexedPoints)) {
-                            HexedRanks.updateRank(player, data);
+                            HexedRanks.updateRank(player, data, config);
                             data.hexedPoints = 0;
                             data.hexedRank(data.hexedRank().next);
                         }
                     }
 
-                    data.save();
+                    database.getPlayerDataRepository().save(data);
                 }
 
                 builder.append("[orange]").append(i + 1).append(". ")
@@ -171,14 +212,14 @@ public class MiniHexed {
         builder.append("\nNew game in 10 seconds...");
         Call.infoMessage(builder.toString());
 
-        NetSock.post(
+        network.post(
                 new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
 
         Events.fire("hexed_world-reload");
-        Timer.schedule(MiniHexed::reloadMap, 10);
+        Timer.schedule(this::reloadMap, 10);
     }
 
-    private static void reloadMap() {
+    private void reloadMap() {
         try {
             var map = Vars.maps.getNextMap(Gamemode.pvp, Vars.state.map);
             var reloader = new WorldReloader();
@@ -198,7 +239,7 @@ public class MiniHexed {
         }
     }
 
-    public static void killTeam(Team team) {
+    public void killTeam(Team team) {
         if (team == Team.derelict || team == Team.green || !team.data().active()) return;
 
         if (!team.data().players.isEmpty()) {

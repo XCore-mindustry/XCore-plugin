@@ -1,30 +1,36 @@
 package org.xcore.plugin.infra.commands;
 
+import arc.func.Cons;
 import arc.util.CommandHandler;
 import arc.util.Log;
-import arc.func.Cons;
 import lombok.Getter;
 import mindustry.gen.Player;
-import org.xcore.plugin.PluginVars;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.infra.commands.context.CommandContext;
 import org.xcore.plugin.infra.commands.context.ServerContext;
 import org.xcore.plugin.infra.commands.interceptor.CommandInterceptor;
+import org.xcore.plugin.modules.bundles.BundleService;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import static com.ospx.flubundle.Bundle.args;
+
 public class CommandBus {
+
     private final CommandHandler handler;
+    private final BundleService bundleService;
     private final List<CommandInterceptor> interceptors = new ArrayList<>();
+
     @Getter
     private int totalCommands = 0;
 
-    public CommandBus(CommandHandler handler) {
+    public CommandBus(CommandHandler handler, BundleService bundleService) {
         this.handler = handler;
+        this.bundleService = bundleService;
     }
 
     public void addInterceptor(CommandInterceptor interceptor) {
@@ -48,28 +54,34 @@ public class CommandBus {
 
         String description = meta.description();
         if (description.isEmpty() && isClient) {
-            description = PluginVars.bundle.format(PluginVars.bundle.defaultLocale, "commands-" + meta.name() + "-description", com.ospx.flubundle.Bundle.args());
+            description = bundleService.format(bundleService.getDefaultLocale(),
+                    "commands-" + meta.name() + "-description", args());
         }
 
         if (isClient) {
             CommandHandler.CommandRunner<Player> runner = (args, player) ->
-                    invoke(controller, method, new ClientContext(player, args), (ctx, e) -> {
+                    invoke(controller, method, new ClientContext(player, args, bundleService), (ctx, e) -> {
                         Log.err("Client command error: " + meta.name(), e);
                         player.sendMessage("[scarlet]Internal error");
                     });
             handler.register(meta.name(), meta.params(), description, runner);
-            for (String alias : meta.aliases()) handler.register(alias, meta.params(), description, runner);
+            for (String alias : meta.aliases()) {
+                handler.register(alias, meta.params(), description, runner);
+            }
         } else {
             Cons<String[]> runner = (args) ->
                     invoke(controller, method, new ServerContext(args), (ctx, e) ->
                             Log.err("Server command error: " + meta.name(), e));
             handler.register(meta.name(), meta.params(), description, runner);
-            for (String alias : meta.aliases()) handler.register(alias, meta.params(), description, runner);
+            for (String alias : meta.aliases()) {
+                handler.register(alias, meta.params(), description, runner);
+            }
         }
         totalCommands++;
     }
 
-    private void invoke(Object controller, Method method, CommandContext ctx, BiConsumer<CommandContext, Exception> errorHandler) {
+    private void invoke(Object controller, Method method, CommandContext ctx,
+                        BiConsumer<CommandContext, Exception> errorHandler) {
         try {
             for (CommandInterceptor interceptor : interceptors) {
                 if (!interceptor.intercept(ctx, method)) return;

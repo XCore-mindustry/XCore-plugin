@@ -3,20 +3,32 @@ package org.xcore.plugin.commands.controllers.server;
 import arc.struct.ObjectSet;
 import arc.util.Log;
 import arc.util.Strings;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ServerContext;
+import org.xcore.plugin.modules.database.DatabaseService;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.database;
 
-@SuppressWarnings("unused")
-public class InformationController {
+@Singleton
+public class ServerInformationController {
+
+    private final DatabaseService database;
+
+    @Inject
+    public ServerInformationController(DatabaseService database) {
+        this.database = database;
+    }
 
     @Command(name = "players", description = "List online players with status.")
     public void players(ServerContext ctx) {
-        if (Groups.player.isEmpty()) { Log.info("No players online."); return; }
+        if (Groups.player.isEmpty()) {
+            Log.info("No players online.");
+            return;
+        }
         Log.info("Online players (@):", Groups.player.size());
         Groups.player.each(p -> {
             PlayerInfo i = p.getInfo();
@@ -32,9 +44,14 @@ public class InformationController {
         if (q.startsWith("#")) {
             var d = database.getCachedOrDb(Strings.parseInt(q.substring(1)));
             set = (d != null) ? ObjectSet.with(netServer.admins.getInfoOptional(d.uuid)) : new ObjectSet<>();
-        } else set = netServer.admins.findByName(q);
+        } else {
+            set = netServer.admins.findByName(q);
+        }
 
-        if (set.isEmpty()) { Log.info("Nobody found."); return; }
+        if (set.isEmpty()) {
+            Log.info("Nobody found.");
+            return;
+        }
         set.each(i -> {
             Log.info("[@] Trace for '@' / UUID: @", set.size, i.plainLastName(), i.id);
             Log.info("  Names: @ | IPs: @ | Joined: @", i.names, i.ips, i.timesJoined);

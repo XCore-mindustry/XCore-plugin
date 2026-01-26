@@ -6,7 +6,10 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import lombok.Getter;
+import lombok.Setter;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
@@ -17,10 +20,15 @@ import mindustry.net.Administration;
 import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
-import org.xcore.plugin.modules.Translator;
-import org.xcore.plugin.utils.NetSock;
-import org.xcore.plugin.utils.Security;
-import org.xcore.plugin.utils.models.*;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.TranslatorService;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.network.NetworkService;
+import org.xcore.plugin.modules.votes.VoteService;
+import org.xcore.plugin.utils.SecurityService;
+import org.xcore.plugin.utils.models.BanData;
+import org.xcore.plugin.utils.models.BanRequestData;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -28,37 +36,64 @@ import java.time.Instant;
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.discordUrl;
+import static org.xcore.plugin.PluginVars.rawGson;
 import static org.xcore.plugin.utils.Utils.voteChoice;
-public class NetEvents {
-    public static final Seq<String> bannedNames = Seq.with("valve", "tuttop", "codex", "igggames", "igg-games.com", "igruhaorg", "freetp.org", "goldberg", "rog");
-    @Getter
-    public static Boolf<String> ipAcceptor = (ip) -> true;
-    public static int blockedIPs = 0;
-    public static int blockedIPsPerMinute = 0;
 
-    public static String chat(Player author, String text) {
+@Singleton
+public class NetEventService {
+    public final Seq<String> bannedNames = Seq.with("valve", "tuttop", "codex", "igggames", "igg-games.com", "igruhaorg", "freetp.org", "goldberg", "rog");
+
+    @Getter @Setter
+    public Boolf<String> ipAcceptor = (ip) -> true;
+    public int blockedIPs = 0;
+    public int blockedIPsPerMinute = 0;
+
+    private final DatabaseService database;
+    private final Config config;
+    private final TranslatorService translatorService;
+    private final NetworkService network;
+    private final BundleService bundle;
+    private final VoteService voteService;
+    private final SecurityService securityService;
+
+    @Inject
+    public NetEventService(DatabaseService database, Config config,
+                           TranslatorService translatorService, NetworkService network,
+                           BundleService bundle, VoteService voteService,
+                           SecurityService securityService) {
+        this.database = database;
+        this.config = config;
+        this.translatorService = translatorService;
+        this.network = network;
+        this.bundle = bundle;
+        this.voteService = voteService;
+        this.securityService = securityService;
+    }
+
+    public String chat(Player author, String text) {
         int sign = voteChoice(text);
-        if (sign != 0 && vote != null) {
-            if (vote.voted.containsKey(author.id)) {
+        if (sign != 0 && voteService.isVoting()) {
+            var currentVote = voteService.getCurrentSession();
+            if (currentVote.voted.containsKey(author.id)) {
                 bundle.send(author, "error-already-voted", args());
                 return null;
             }
-            vote.vote(author, sign);
+            currentVote.vote(author, sign);
         }
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
-        if (Security.isMuted(author)) return null;
+        if (securityService.isMuted(author)) return null;
 
         author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
-        Translator.translate(author, text);
+        translatorService.translate(author, text);
 
-        NetSock.post(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
+        network.post(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));
         return null;
     }
 
-    public static void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
+    public void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
         Player admin = con.player, target = packet.other;
         var action = packet.action;
 
@@ -109,21 +144,20 @@ public class NetEvents {
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
 
-            case switchTeam -> bundle.send(player, "error-access-denied", args());
+            case switchTeam -> bundle.send(con.player, "error-access-denied", args());
         }
     }
 
-    public static boolean connectFilter(String address) {
+    public boolean connectFilter(String address) {
         if (!ipAcceptor.get(address)) {
             blockedIPs++;
             blockedIPsPerMinute++;
             return false;
         }
-
         return true;
     }
 
-    public static void connect(NetConnection con, Packets.Connect packet) {
+    public void connect(NetConnection con, Packets.Connect packet) {
         Events.fire(new EventType.ConnectionEvent(con));
 
         var connections = Seq.with(net.getConnections()).select(connection -> connection.address.equals(con.address));
@@ -133,13 +167,12 @@ public class NetEvents {
         }
     }
 
-    public static void connectPacket(NetConnection con, Packets.ConnectPacket packet) {
+    public void connectPacket(NetConnection con, Packets.ConnectPacket packet) {
         if (con.kicked) return;
 
         Events.fire(new EventType.ConnectPacketEvent(con, packet));
 
         con.connectTime = Time.millis();
-
         String uuid = packet.uuid;
 
         if (bannedNames.contains(packet.name.toLowerCase())) {
@@ -147,24 +180,21 @@ public class NetEvents {
             return;
         }
 
-
-        BanData ban = database.getBanDatas().get(uuid, con.address);
+        BanData ban = database.getBanDataRepository().find(uuid, con.address);
         if (ban != null) {
             if (ban.expired()) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(con.address);
-                database.getBanDatas().delete(ban.uuid, con.address);
+                database.getBanDataRepository().delete(ban.uuid, con.address);
             } else {
                 tempBanKick(con, packet.locale, ban);
                 return;
             }
         }
 
-        if (
-                netServer.admins.isIPBanned(con.address) ||
-                        netServer.admins.isSubnetBanned(con.address) ||
-                        netServer.admins.isIDBanned(uuid)
-        ) {
+        if (netServer.admins.isIPBanned(con.address) ||
+                netServer.admins.isSubnetBanned(con.address) ||
+                netServer.admins.isIDBanned(uuid)) {
             con.kick(
                     bundle.format(bundle.locale(packet.locale),
                             "ban-content", args(
@@ -182,7 +212,6 @@ public class NetEvents {
         }
 
         Administration.PlayerInfo info = netServer.admins.getInfo(uuid);
-
         con.hasBegunConnecting = true;
         con.mobile = packet.mobile;
 
@@ -204,6 +233,7 @@ public class NetEvents {
             );
             return;
         }
+
         if (!netServer.admins.isAdmin(uuid, packet.usid) && config.playerLimit > 0 && Groups.player.size() >= config.getNoAdminPlayerLimit()) {
             con.kick(Packets.KickReason.playerLimit);
             return;
@@ -213,17 +243,16 @@ public class NetEvents {
         Seq<String> missingMods = mods.getIncompatibility(extraMods);
 
         if (!extraMods.isEmpty() || !missingMods.isEmpty()) {
-
             StringBuilder result = new StringBuilder("[accent]Incompatible mods![]\n\n");
             if (!missingMods.isEmpty()) {
                 result.append("Missing:[lightgray]\n").append("> ").append(missingMods.toString("\n> "));
                 result.append("[]\n");
             }
-
             if (!extraMods.isEmpty()) {
                 result.append("Unnecessary mods:[lightgray]\n").append("> ").append(extraMods.toString("\n> "));
             }
             con.kick(result.toString(), 0);
+            return;
         }
 
         if (!netServer.admins.isWhitelisted(packet.uuid, packet.usid)) {
@@ -276,9 +305,7 @@ public class NetEvents {
             packet.locale = "en";
         }
 
-        String ip = con.address;
-
-        netServer.admins.updatePlayerJoined(uuid, ip, packet.name);
+        netServer.admins.updatePlayerJoined(uuid, con.address, packet.name);
 
         if (packet.version != Version.build && Version.build != -1 && packet.version != -1) {
             con.kick(packet.version > Version.build ? Packets.KickReason.serverOutdated : Packets.KickReason.clientOutdated, 0);
@@ -299,22 +326,17 @@ public class NetEvents {
         player.locale = packet.locale;
         player.color.set(packet.color).a(1f);
 
-        //save admin ID but don't overwrite it
         if (!player.admin && !info.admin) {
             info.adminUsid = packet.usid;
         }
 
         con.player = player;
-
-        //playing in pvp mode automatically assigns players to teams
         player.team(netServer.assignTeam(player));
-
         netServer.sendWorldData(player);
-
         Events.fire(new EventType.PlayerConnect(player));
     }
 
-    public static void tempBanKick(NetConnection con, String locale, BanData ban) {
+    public void tempBanKick(NetConnection con, String locale, BanData ban) {
         Duration duration = Duration.between(Instant.now(), ban.expireDate);
 
         con.kick(bundle.format(bundle.locale(locale), "tempban-content", args(
@@ -326,11 +348,5 @@ public class NetEvents {
                 "minutes", duration.toMinutesPart(),
                 "discordUrl", discordUrl)
         ), 0);
-    }
-
-
-    @SuppressWarnings("unused")
-    public static void setIpAcceptor(Boolf<String> ipAcceptor) {
-        NetEvents.ipAcceptor = ipAcceptor;
     }
 }

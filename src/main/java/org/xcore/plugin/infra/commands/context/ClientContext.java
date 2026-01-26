@@ -1,18 +1,20 @@
 package org.xcore.plugin.infra.commands.context;
 
-import com.ospx.flubundle.Bundle;
 import mindustry.gen.Player;
-import org.xcore.plugin.PluginVars;
+import org.xcore.plugin.modules.bundles.BundleService;
 
 import java.util.Locale;
 import java.util.Map;
 
 public final class ClientContext extends CommandContext {
-    private final Player player;
 
-    public ClientContext(Player player, String[] args) {
+    private final Player player;
+    private final BundleService bundleService;
+
+    public ClientContext(Player player, String[] args, BundleService bundleService) {
         super(args);
         this.player = player;
+        this.bundleService = bundleService;
     }
 
     public Player player() {
@@ -20,27 +22,18 @@ public final class ClientContext extends CommandContext {
     }
 
     public Locale locale() {
-        return PluginVars.bundle.locale(player);
+        return bundleService.locale(player);
     }
 
     public void send(String key, Map<String, Object> argsMap) {
-        PluginVars.bundle.send(player, key, argsMap);
+        bundleService.send(player, key, argsMap);
     }
 
     public void send(String key) {
         send(key, Map.of());
     }
 
-    public void send(String key, Object... args) {
-        PluginVars.bundle.send(player, key, Bundle.args(args));
-    }
-
-
     public String format(String key, Map<String, Object> argsMap) {
-        return PluginVars.bundle.format(locale(), key, argsMap);
-    }
-
-    public String format(String key, Object... args) {
-        return PluginVars.bundle.format(locale(), key, Bundle.args(args));
+        return bundleService.format(locale(), key, argsMap);
     }
 }

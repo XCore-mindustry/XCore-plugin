@@ -3,6 +3,9 @@ package org.xcore.plugin.modules;
 import arc.func.Cons;
 import arc.util.Log;
 import arc.Core;
+import io.avaje.inject.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.server.ServerControl;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -10,7 +13,6 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.TerminalBuilder;
-import org.xcore.plugin.PluginVars;
 import reactor.util.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
@@ -19,14 +21,22 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@Singleton
 public class Console {
     private static final ServerControl serverControl = ServerControl.instance;
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static LineReader lineReader;
 
-    //@SneakyThrows(IOException.class)
-    public static void init() {
-        if (!PluginVars.config.consoleEnabled) return;
+    private final Config config;
+
+    @Inject
+    public Console(Config config) {
+        this.config = config;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (!config.consoleEnabled) return;
 
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         ClassLoader myCustomClassLoader = Console.class.getClassLoader();

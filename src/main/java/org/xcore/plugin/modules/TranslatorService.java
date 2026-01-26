@@ -4,57 +4,33 @@ import arc.func.Cons;
 import arc.struct.StringMap;
 import arc.util.Http;
 import arc.util.Strings;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.modules.database.DatabaseService;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.reader;
 
-public class Translator {
-    public static void init() {
-        translatorLanguages.putAll(
-                "ca", "Català",
-                "id", "Indonesian",
-                "da", "Dansk",
-                "de", "Deutsch",
-                "et", "Eesti",
-                "en", "English",
-                "es", "Español",
-                "eu", "Euskara",
-                "fil", "Filipino",
-                "fr", "Français",
-                "it", "Italiano",
-                "lt", "Lietuvių",
-                "hu", "Magyar",
-                "nl", "Nederlands",
-                "pl", "Polski",
-                "pt", "Português",
-                "ro", "Română",
-                "fi", "Suomi",
-                "sv", "Svenska",
-                "vi", "Tiếng Việt",
-                "tk", "Türkmen dili",
-                "tr", "Türkçe",
-                "cs", "Čeština",
-                "be", "Беларуская",
-                "bg", "Български",
-                "ru", "Русский",
-                "sr", "Српски",
-                "uk", "Українська",
-                "th", "ไทย",
-                "zh", "简体中文",
-                "ja", "日本語",
-                "ko", "한국어"
-        );
+@Singleton
+public class TranslatorService {
+
+    private final DatabaseService database;
+
+    @Inject
+    public TranslatorService(DatabaseService database) {
+        this.database = database;
     }
 
     public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
-        Http.post("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&dt=t", "tl=" + to + "&sl=" + from + "&q=" + Strings.encode(text))
+        Http.post("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&dt=t",
+                        "tl=" + to + "&sl=" + from + "&q=" + Strings.encode(text))
                 .error(throwable -> error.run())
                 .submit(response -> result.get(reader.parse(response.getResultAsString()).get(0).get(0).asString()));
     }
 
-    public static void translate(Player author, String text) {
+    public void translate(Player author, String text) {
         var cache = new StringMap();
         var message = netServer.chatFormatter.format(author, text);
 

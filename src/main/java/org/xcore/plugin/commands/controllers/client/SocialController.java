@@ -1,18 +1,36 @@
 package org.xcore.plugin.commands.controllers.client;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import org.xcore.plugin.infra.commands.annotation.*;
+import org.xcore.plugin.infra.commands.annotation.Command;
+import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
+import org.xcore.plugin.infra.commands.annotation.MuteCheck;
 import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.network.NetworkService;
 
-import static com.ospx.flubundle.Bundle.*;
-import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.utils.Find.findTranslatorLanguage;
+import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.PluginVars.discordUrl;
 
-@SuppressWarnings("unused")
+@Singleton
 public class SocialController {
+
+    private final DatabaseService database;
+    private final NetworkService network;
+    private final Config config;
+    private final TranslatorLanguagesProvider translatorLanguagesProvider;
+
+    @Inject
+    public SocialController(DatabaseService database, NetworkService network, Config config, TranslatorLanguagesProvider translatorLanguagesProvider) {
+        this.database = database;
+        this.network = network;
+        this.config = config;
+        this.translatorLanguagesProvider = translatorLanguagesProvider;
+    }
 
     @MuteCheck
     @Command(name = "t", params = "<message...>")
@@ -33,13 +51,13 @@ public class SocialController {
     public void globalChat(ClientContext ctx) {
         String message = ctx.args()[0];
 
-        NetSock.post(new SocketEvents.GlobalChatEvent(
+        network.post(new SocketEvents.GlobalChatEvent(
                 ctx.player().coloredName(),
                 message,
                 config.server
         ));
 
-        NetSock.post(new SocketEvents.MessageEvent(
+        network.post(new SocketEvents.MessageEvent(
                 ctx.player().plainName(),
                 "[" + config.server + "] " + message.replace("`", "*"),
                 "global"
@@ -71,10 +89,16 @@ public class SocialController {
             data.translatorLanguage = lang;
         }
 
+        String langName = translatorLanguagesProvider.getLanguages().get(data.translatorLanguage);
         ctx.send("commands-tr-success", args(
-                "translatorLanguage", translatorLanguages.get(data.translatorLanguage)
+                "translatorLanguage", langName != null ? langName : data.translatorLanguage
         ));
 
-        data.save();
+        database.getPlayerDataRepository().save(data);
+    }
+
+    private String findTranslatorLanguage(String locale) {
+        if (locale == null) return null;
+        return translatorLanguagesProvider.getLanguages().orderedKeys().find(locale::startsWith);
     }
 }

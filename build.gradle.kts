@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "2.9.0"
+version = "3.0.0-beta.1"
 val mindustryVersion = "154.3"
 
 java {
@@ -63,8 +63,11 @@ dependencies {
     implementation("org.jline:jline-reader:3.30.6")
     implementation("org.jline:jline-console:3.30.6")
 
+    implementation("io.avaje:avaje-inject:12.2")
+
     compileOnly("org.projectlombok:lombok:1.18.30")
     annotationProcessor("org.projectlombok:lombok:1.18.30")
+    annotationProcessor("io.avaje:avaje-inject-generator:12.2")
 
 }
 
@@ -84,11 +87,12 @@ tasks.shadowJar {
     from(generateModInfo)
 
     mergeServiceFiles()
-
-    minimize {
-        exclude(dependency("com.discord4j:.*:.*"))
-        exclude(dependency("org.jline:.*:.*"))
-    }
+//
+//    minimize {
+//        exclude(dependency("com.discord4j:.*:.*"))
+//        exclude(dependency("org.jline:.*:.*"))
+//        exclude(dependency("io.avaje:.*:.*"))
+//    }
 
     val shadowPrefix = "org.xcore.plugin.shadow"
 

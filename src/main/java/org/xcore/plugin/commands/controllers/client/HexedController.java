@@ -1,32 +1,44 @@
 package org.xcore.plugin.commands.controllers.client;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
-import org.xcore.plugin.infra.commands.annotation.*;
+import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
-
+import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.hexed.HexedRanks;
-import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.modules.hexed.MiniHexedService;
+import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.Utils;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.database;
-import static org.xcore.plugin.modules.hexed.MiniHexed.members;
 
-@SuppressWarnings("unused")
+@Singleton
 public class HexedController {
+
+    private final DatabaseService database;
+    private final MiniHexedService hexedService;
+    private final FindService findService;
+
+    @Inject
+    public HexedController(DatabaseService database, MiniHexedService hexedService, FindService findService) {
+        this.database = database;
+        this.hexedService = hexedService;
+        this.findService = findService;
+    }
 
     @Command(name = "spectate")
     public void spectate(ClientContext ctx) {
-        org.xcore.plugin.modules.hexed.MiniHexed.killTeam(ctx.player().team());
+        hexedService.killTeam(ctx.player().team());
         ctx.send("commands-spectate-success", args());
     }
 
     @Command(name = "rank", params = "[player...]")
     public void rank(ClientContext ctx) {
         Player target = ctx.args().length > 0
-                ? Find.player(ctx.arg(0))
+                ? findService.player(ctx.arg(0))
                 : ctx.player();
 
         if (target == null) {
@@ -49,7 +61,6 @@ public class HexedController {
     @Command(name = "ranks")
     public void ranks(ClientContext ctx) {
         StringBuilder sb = new StringBuilder();
-
         for (HexedRanks.HexedRank r : HexedRanks.HexedRank.values()) {
             sb.append(ctx.format("commands-ranks-content", args(
                     "rankTag", r.tag,
@@ -57,14 +68,13 @@ public class HexedController {
                     "requiredPoints", r.requirements != null ? r.requirements.wins() : 0
             ))).append("\n");
         }
-
         sb.append(ctx.format("commands-ranks-footer", args()));
         Call.infoMessage(ctx.player().con, sb.toString());
     }
 
     @Command(name = "ai", params = "<attack/idle>")
     public void ai(ClientContext ctx) {
-        var member = members.get(ctx.player().uuid());
+        var member = hexedService.members.get(ctx.player().uuid());
 
         if (ctx.player().team() == Team.derelict) {
             ctx.send("error-spectator", args());
@@ -79,7 +89,6 @@ public class HexedController {
             ctx.send("commands-ai-usage", args());
             return;
         }
-
         ctx.send("success", args());
     }
 }

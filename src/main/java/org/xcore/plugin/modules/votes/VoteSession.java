@@ -7,17 +7,11 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 
 import static arc.Core.app;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.voteDuration;
 
 public abstract class VoteSession {
-    /**
-     * Список id проголосовавших игроков и их голоса.
-     */
-    public final IntIntMap voted = new IntIntMap();
 
-    /**
-     * Задача на завершение голосования.
-     */
+    public final IntIntMap voted = new IntIntMap();
     public final Timer.Task end;
 
     public VoteSession() {
@@ -36,7 +30,6 @@ public abstract class VoteSession {
     public abstract void fail();
 
     public void stop() {
-        vote = null;
         end.cancel();
     }
 
@@ -45,6 +38,6 @@ public abstract class VoteSession {
     }
 
     public int votesRequired() {
-        return Groups.player.size() > 2 ? Mathf.ceil(Groups.player.size() * voteRatio) : Groups.player.size();
+        return Groups.player.size() > 2 ? Mathf.ceil(Groups.player.size() * 0.55f) : Groups.player.size();
     }
 }

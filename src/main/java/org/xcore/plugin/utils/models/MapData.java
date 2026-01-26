@@ -1,12 +1,10 @@
 package org.xcore.plugin.utils.models;
 
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.types.ObjectId;
-
-import static org.xcore.plugin.PluginVars.database;
 
 @Data
 @NoArgsConstructor
@@ -14,7 +12,6 @@ import static org.xcore.plugin.PluginVars.database;
 public class MapData {
     @BsonId
     public ObjectId id;
-
 
     public String name = "Unknown";
     public String author = "Unknown";
@@ -32,21 +29,11 @@ public class MapData {
     public long averageGameTime = 0;
     public long maximumGameTime = 0;
 
-
-    public MapData(String name) {
+    public MapData(String name, String author, String gameMode) {
         this.name = name;
-        this.lastPlayedTime = System.currentTimeMillis();
-    }
-
-    public MapData(String mapName, String author, String gameMode) {
-        this.name = mapName;
         this.author = author;
         this.gameMode = gameMode;
         this.lastPlayedTime = System.currentTimeMillis();
-    }
-
-    public void save() {
-        database.mapDatas.save(this);
     }
 
     public void registerGame(long duration, boolean isWin, String currentMode, String currentAuthor) {
@@ -59,7 +46,6 @@ public class MapData {
             this.maximumGameTime = duration;
         } else {
             this.averageGameTime = ((this.averageGameTime * this.playedTimes) + duration) / (this.playedTimes + 1);
-
             this.minimumGameTime = Math.min(this.minimumGameTime, duration);
             this.maximumGameTime = Math.max(this.maximumGameTime, duration);
         }
@@ -70,16 +56,6 @@ public class MapData {
 
         this.popularity += (isWin ? 2.0 : 0.5);
         this.interest -= (isWin ? 2 : 0.5);
-    }
-
-    public void addReputation() {
-        this.reputation++;
-        this.popularity += 2.0;
-    }
-
-    public void removeReputation() {
-        this.reputation--;
-        this.popularity -= 2.0;
     }
 
     public void onSkip() {

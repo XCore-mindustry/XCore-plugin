@@ -3,7 +3,7 @@ package org.xcore.plugin;
 import arc.Core;
 import arc.net.Server;
 import arc.util.*;
-import com.ospx.flubundle.Bundle;
+import io.avaje.inject.BeanScope;
 import mindustry.Vars;
 import mindustry.core.Version;
 import mindustry.gen.AdminRequestCallPacket;
@@ -14,19 +14,15 @@ import mindustry.net.Administration;
 import mindustry.net.Administration.ActionType;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
-
-import org.xcore.plugin.commands.ClientCommands;
-import org.xcore.plugin.commands.ServerCommands;
-import org.xcore.plugin.listeners.NetEvents;
-import org.xcore.plugin.listeners.PluginEvents;
-import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.*;
-import org.xcore.plugin.modules.bundles.Bundles;
-import org.xcore.plugin.modules.hexed.MiniHexed;
+import mindustry.server.ServerControl;
+import org.xcore.plugin.infra.CommandRegistrar;
+import org.xcore.plugin.listeners.NetEventService;
+import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.maps.SmartMapSelector;
-import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.NetSock;
-import org.xcore.plugin.utils.database.Database;
+import org.xcore.plugin.modules.network.NetworkService;
+import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import java.nio.ByteBuffer;
@@ -39,10 +35,15 @@ import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.writeString;
 
 public class XcorePlugin extends Plugin {
-    public XcorePlugin() {
-        Config.init();
-        GlobalConfig.init();
-    }
+    private BeanScope beanScope;
+
+    private CommandRegistrar commandRegistrar;
+    private NetEventService netEvents;
+    private DatabaseService database;
+    private Config config;
+    private BundleService bundleService;
+    private NetworkService network;
+    private FindService find;
 
     public static void info(String text, Object... values) {
         Log.infoTag("XCore", Strings.format(text, values));
@@ -63,32 +64,41 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void init() {
-        NetSock.init();
-        Database.init();
-        PluginEvents.init();
-        SocketEvents.init();
-        AdminModIntegration.init();
-        Translator.init();
-        MiniPvP.init();
-        MiniHexed.init();
-        LastStanding.init();
-        Bundles.init();
+        beanScope = BeanScope.builder()
+                .classLoader(getClass().getClassLoader())
+                .build();
+
+        commandRegistrar = beanScope.get(CommandRegistrar.class);
+        netEvents = beanScope.get(NetEventService.class);
+        database = beanScope.get(DatabaseService.class);
+        config = beanScope.get(Config.class);
+        bundleService = beanScope.get(BundleService.class);
+        network = beanScope.get(NetworkService.class);
+        find = beanScope.get(FindService.class);
+
+        Reflect.set(Vars.maps, "shuffler", new SmartMapSelector(database));
+
+        try {
+            database.checkMapDecay();
+        } catch (Exception e) {
+            Log.err("Failed to check map decay on init", e);
+        }
+        Timer.schedule(() -> {
+            try {
+                database.checkMapDecay();
+            } catch (Exception e) {
+                Log.err("Failed to check map decay", e);
+            }
+        }, 60 * 60, 60 * 60);
 
         try {
             var myMod = Vars.mods.getMod(getClass());
-
             if (myMod != null && myMod.meta != null) {
                 xcoreVersion = myMod.meta.version;
             }
         } catch (Exception e) {
             Log.err("Failed to load plugin version", e);
         }
-
-        Reflect.set(Vars.maps, "shuffler", new SmartMapSelector());
-        database.checkMapDecay();
-        Timer.schedule(() -> {
-            database.checkMapDecay();
-        }, 60 * 60, 60 * 60);
 
         Vars.netServer.admins.addActionFilter(action -> {
             if (action.type == ActionType.depositItem) {
@@ -102,12 +112,15 @@ public class XcorePlugin extends Plugin {
 
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
-        server.setConnectFilter(NetEvents::connectFilter);
-        final String[] footer = {""};
 
+        server.setConnectFilter(netEvents::connectFilter);
+
+        final String[] footer = {""};
         server.setDiscoveryHandler((address, handler) -> {
             String name = Administration.Config.serverName.string();
-            String description = Administration.Config.desc.string().equals("off") ? footer[0] : Administration.Config.desc.string() + footer[0];
+            String description = Administration.Config.desc.string().equals("off")
+                    ? footer[0]
+                    : Administration.Config.desc.string() + footer[0];
 
             String map = state.map.name();
 
@@ -132,43 +145,34 @@ public class XcorePlugin extends Plugin {
             buffer.position(0);
             handler.respond(buffer);
         });
-        netServer.admins.addChatFilter(NetEvents::chat);
-        Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
-        Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
-        Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
+        netServer.admins.addChatFilter(netEvents::chat);
+
+        Vars.net.handleServer(AdminRequestCallPacket.class, netEvents::adminRequest);
+        Vars.net.handleServer(Packets.Connect.class, netEvents::connect);
+        Vars.net.handleServer(Packets.ConnectPacket.class, netEvents::connectPacket);
 
         Timer.schedule(() -> {
             footer[0] = config.gameStartedTimer
                     ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
                     : "";
             database.cachedPlayerData.each((uuid, data) -> {
-                var player = Find.playerByUuid(uuid);
+                var player = find.playerByUuid(uuid);
 
                 if (player == null) return;
 
                 data.totalPlayTime++;
                 switch (data.totalPlayTime) {
-                    case votekickPlayTime -> bundle.send(player, "notification-votekick-playtime",
+                    case votekickPlayTime -> bundleService.send(player, "notification-votekick-playtime",
                             args("votekickPlayTime", votekickPlayTime));
-                    case globalChatPlayTime -> bundle.send(player, "notification-global-chat-playtime",
+                    case globalChatPlayTime -> bundleService.send(player, "notification-global-chat-playtime",
                             args("globalChatPlayTime", globalChatPlayTime));
                 }
 
-                data.save();
+                database.getPlayerDataRepository().save(data);
             });
         }, 0, 60);
 
-        Console.init();
-        info("Plugin loaded");
-    }
-
-    @Override
-    public void registerClientCommands(CommandHandler handler) {
-        ClientCommands.register(handler);
-    }
-
-    @Override
-    public void registerServerCommands(CommandHandler handler) {
-        ServerCommands.register(handler);
+        commandRegistrar.registerClient(netServer.clientCommands);
+        commandRegistrar.registerServer(ServerControl.instance.handler);
     }
 }

@@ -4,14 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.mindrot.jbcrypt.BCrypt;
 
-import static org.xcore.plugin.PluginVars.database;
-
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminData {
     public String uuid = "";
     public String password = "";
-
     public boolean adminConfirmed = false;
 
     public AdminData(String uuid) {
@@ -24,9 +21,5 @@ public class AdminData {
 
     public boolean verifyPassword(String password) {
         return BCrypt.checkpw(password, this.password);
-    }
-
-    public void save() {
-        database.adminDatas.save(this);
     }
 }

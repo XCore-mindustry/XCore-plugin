@@ -4,6 +4,7 @@ import arc.struct.Seq;
 import arc.util.Timer;
 import mindustry.Vars;
 import mindustry.content.UnitTypes;
+import mindustry.game.Schematic;
 import mindustry.game.Team;
 import mindustry.gen.Unit;
 import mindustry.world.blocks.storage.CoreBlock;
@@ -11,22 +12,22 @@ import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.ai.AttackAi;
 
 import static mindustry.Vars.world;
-import static org.xcore.plugin.modules.hexed.MiniHexed.*;
 
 public class HexMember {
     public final String uuid;
     public Team team;
     public Timer.Task left;
-
     public Utils.UnitState state = Utils.UnitState.IDLE;
 
-    public HexMember(String uuid) {
+    private final MiniHexedService service;
+
+    public HexMember(String uuid, MiniHexedService service) {
         this.uuid = uuid;
+        this.service = service;
     }
 
     public int controlled() {
         if (team == null) return 0;
-
         return team.data().cores.size;
     }
 
@@ -59,12 +60,12 @@ public class HexMember {
             return Team.derelict;
         }
 
+        Schematic startBase = service.startBase; // Access from service instance
         int x = spawnCore.tileX() - startBase.width / 2, y = spawnCore.tileY() - startBase.height / 2;
 
         startBase.tiles.each(st -> {
             var tile = world.tile(st.x + x, st.y + y);
             if (tile == null) return;
-
             tile.setNet(st.block, team, st.rotation);
             tile.build.configureAny(st.config);
         });
@@ -78,16 +79,14 @@ public class HexMember {
                 .select(team -> team.team != Team.green)
                 .flatMap(team -> team.cores);
 
-        if (allCores.isEmpty())
-            return Team.green.cores().random();
-
+        if (allCores.isEmpty()) return Team.green.cores().random();
         return Team.green.cores().copy().sort(core -> -core.dst(allCores.min(other -> core.dst(other)))).firstOpt();
     }
 
     public void leave() {
         left = Timer.schedule(() -> {
-            if (team != null) killTeam(team);
-            members.remove(uuid);
+            if (team != null) service.killTeam(team);
+            service.members.remove(uuid);
         }, 120f);
     }
 

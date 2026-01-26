@@ -24,7 +24,4 @@ public class Punishment {
     public boolean expired() {
         return expireDate != null && expireDate.isBefore(Instant.now());
     }
-
-    public void save() {
-    }
 }

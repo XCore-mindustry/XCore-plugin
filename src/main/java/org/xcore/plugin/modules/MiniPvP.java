@@ -4,22 +4,61 @@ import arc.Events;
 import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.Log;
+import io.avaje.inject.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.XcorePlugin;
-import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.LeaderboardService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.utils.models.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.*;
 
+@Singleton
 public class MiniPvP {
-    public static final Seq<String> defeatedPlayers = new Seq<>();
+    public final Seq<String> defeatedPlayers = new Seq<>();
 
-    public static void init() {
+    private final Config config;
+    private final DatabaseService database;
+    private final BundleService bundle;
+    private final LeaderboardService leaderboardService;
+
+    @Inject
+    public MiniPvP(Config config, DatabaseService database, BundleService bundle,
+                   LeaderboardService leaderboardService) {
+        this.config = config;
+        this.database = database;
+        this.bundle = bundle;
+        this.leaderboardService = leaderboardService;
+    }
+
+    @PostConstruct
+    public void init() {
         if (!config.isMiniPvP()) return;
-        Utils.showLeaderboard(Utils::getPvPLeaderboard);
+
+        leaderboardService.start((builder, player, locale) -> {
+            Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq()
+                    .select(d -> d.pvpRating != 0)
+                    .sort(d -> d.pvpRating)
+                    .reverse();
+
+            sorted.truncate(10);
+            builder.append(bundle.format(locale, "leaderboard", args())).append("\n\n");
+
+            for (int i = 0; i < sorted.size; i++) {
+                var data = sorted.get(i);
+                builder.append(bundle.format(locale, "pvp-leaderboard-content", args(
+                        "index", i + 1,
+                        "nickname", data.nickname, // Важно: в базе храним цветной ник
+                        "rating", data.pvpRating
+                ))).append("\n");
+            }
+        });
 
         Events.on(EventType.PlayEvent.class, e -> defeatedPlayers.clear());
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
@@ -42,7 +81,7 @@ public class MiniPvP {
                 bundle.send(p, "pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                data.save();
+                database.getPlayerDataRepository().save(data);
             });
         });
 
@@ -73,7 +112,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        data.save();
+                        database.getPlayerDataRepository().save(data);
                     });
                 }
             }

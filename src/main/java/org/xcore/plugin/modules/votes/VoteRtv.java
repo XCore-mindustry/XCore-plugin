@@ -5,27 +5,33 @@ import arc.util.Timer;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.utils.models.MapData;
-import static org.xcore.plugin.PluginVars.database;
 
 import static com.ospx.flubundle.Bundle.args;
-import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.bundle;
-import static org.xcore.plugin.PluginVars.mapLoadDelay;
+import static mindustry.Vars.state;
+import static mindustry.Vars.world;
+import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
 
 public class VoteRtv extends VoteSession {
+
     public final Map target;
     public final boolean isManualSelection;
 
-    public VoteRtv(Map target, boolean isManualSelection) {
+    private final DatabaseService database;
+    private final BundleService bundle;
+    private final VoteService voteService;
+
+    public VoteRtv(Map target, boolean isManualSelection,
+                   DatabaseService database, BundleService bundleService,
+                   VoteService voteService) {
         this.target = target;
         this.isManualSelection = isManualSelection;
-    }
-
-    public VoteRtv(Map target) {
-        this(target, false);
+        this.database = database;
+        this.bundle = bundleService;
+        this.voteService = voteService;
     }
 
     @Override
@@ -40,11 +46,12 @@ public class VoteRtv extends VoteSession {
 
     @Override
     public void left(Player player) {
-        if (voted.remove(player.id) != 0)
+        if (voted.remove(player.id) != 0) {
             bundle.send("rtv-left", args(
                     "nickname", player.coloredName(),
                     "votes", votes(),
                     "votesRequired", votesRequired()));
+        }
     }
 
     @Override
@@ -59,9 +66,9 @@ public class VoteRtv extends VoteSession {
             String currentAuthor = state.map.author();
             String currentMode = state.rules.mode().name();
 
-            MapData currentMapStats = database.mapDatas.get(currentMapName, currentAuthor, currentMode);
+            MapData currentMapStats = database.getMapDataRepository().find(currentMapName, currentAuthor, currentMode);
             currentMapStats.onSkip();
-            currentMapStats.save();
+            database.getMapDataRepository().save(currentMapStats);
         }
 
         if (isManualSelection) {
@@ -69,16 +76,25 @@ public class VoteRtv extends VoteSession {
             String targetAuthor = target.author();
             String targetMode = state.rules.mode().name();
 
-            MapData targetMapStats = database.mapDatas.get(targetMapName, targetAuthor, targetMode);
+            MapData targetMapStats = database.getMapDataRepository().find(targetMapName, targetAuthor, targetMode);
             targetMapStats.popularity += 2.0;
-            targetMapStats.save();
+            database.getMapDataRepository().save(targetMapStats);
         }
-        Timer.schedule(() -> reloadWorld(() -> world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))), mapLoadDelay);
+
+        Timer.schedule(() -> reloadWorld(() ->
+                        world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))),
+                mapLoadDelay);
     }
 
     @Override
     public void fail() {
         stop();
         bundle.send("rtv-fail", args("mapName", target.name()));
+    }
+
+    @Override
+    public void stop() {
+        voteService.endVote();
+        end.cancel();
     }
 }

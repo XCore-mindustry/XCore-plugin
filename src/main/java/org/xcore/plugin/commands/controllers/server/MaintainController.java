@@ -2,20 +2,30 @@ package org.xcore.plugin.commands.controllers.server;
 
 import arc.struct.Seq;
 import arc.util.Log;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.net.Packets;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ServerContext;
 import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.network.NetworkService;
 import org.xcore.plugin.utils.TextArgumentSplitter;
 
-import static org.xcore.plugin.PluginVars.*;
 import static mindustry.Vars.netServer;
+import static org.xcore.plugin.PluginVars.gameoverRestart;
 
-@SuppressWarnings("unused")
+@Singleton
 public class MaintainController {
+
+    private final NetworkService network;
+    private final DatabaseService database;
+
+    @Inject
+    public MaintainController(NetworkService network, DatabaseService database) {
+        this.network = network;
+        this.database = database;
+    }
 
     @Command(name = "exit", description = "Exit the server application safely.")
     public void exit(ServerContext ctx) {
@@ -24,17 +34,10 @@ public class MaintainController {
         System.exit(0);
     }
 
-    @Command(name = "reload-config", description = "Reload local and global configurations.")
-    public void reload(ServerContext ctx) {
-        Config.init();
-        GlobalConfig.init();
-        Log.info("Configurations reloaded.");
-    }
-
     @Command(name = "sock-restart", description = "Restart the NetSock connection.")
     public void sockRestart(ServerContext ctx) {
-        NetSock.sock.disconnect();
-        NetSock.safeConnect();
+        network.disconnect();
+        network.safeConnect();
         Log.info("NetSock restarted.");
     }
 
@@ -44,10 +47,10 @@ public class MaintainController {
         Log.info("GameOver restart turned @", gameoverRestart ? "on" : "off");
     }
 
-    @Command(name = "db-clear-bots", description = "Clear low-playtime players from DB")
-    public void clearBots(ServerContext ctx) {
-        long deleted = database.getPlayerDatas().clearBots();
-        NetSock.post(new SocketEvents.ReloadPlayerDataCache());
+    @Command(name = "db-delete-bots", description = "Delete low-playtime players from DB")
+    public void deleteBots(ServerContext ctx) {
+        long deleted = database.getPlayerDataRepository().deleteBots();
+        network.post(new SocketEvents.ReloadPlayerDataCache());
         Log.info("Deleted @ bots from database.", deleted);
     }
 
@@ -64,6 +67,6 @@ public class MaintainController {
         for (int i = 1; i < parsed.length; i++) targets.add(parsed[i]);
 
         Log.info("Dispatching '@' to @", cmd, targets.isEmpty() ? "[ALL]" : targets);
-        NetSock.post(new SocketEvents.ExecuteCommand(cmd, targets.toArray(String.class)));
+        network.post(new SocketEvents.ExecuteCommand(cmd, targets.toArray(String.class)));
     }
 }

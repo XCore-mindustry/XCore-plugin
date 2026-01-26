@@ -2,8 +2,14 @@ package org.xcore.plugin.modules;
 
 import arc.util.Log;
 import arc.util.Strings;
+import io.avaje.inject.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Call;
-import org.xcore.plugin.utils.NetSock;
+import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.TimeService;
+import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.network.NetworkService;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.BanRequestData;
@@ -13,10 +19,27 @@ import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.*;
+import static org.xcore.plugin.PluginVars.rawGson;
 
+@Singleton
 public class AdminModIntegration {
-    public static void init() {
+
+    private final DatabaseService database;
+    private final NetworkService network;
+    private final BundleService bundle;
+    private final TimeService time;
+
+    @Inject
+    public AdminModIntegration(DatabaseService database, NetworkService network, BundleService bundle,
+                               TimeService timeService) {
+        this.database = database;
+        this.network = network;
+        this.bundle = bundle;
+        this.time = timeService;
+    }
+
+    @PostConstruct
+    public void init() {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;
 
@@ -29,7 +52,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            var targetData = database.getPlayerDatas().getById(req.pid);
+            var targetData = database.getPlayerDataRepository().findById(req.pid);
 
             if (targetData == null) {
                 bundle.send(player, "error-player-not-found", args());
@@ -37,7 +60,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            Instant date = Utils.parsePeriod(req.duration, TimeUnit.DAYS);
+            Instant date = time.parsePeriod(req.duration, TimeUnit.DAYS);
 
             if (date == null) {
                 bundle.send(player, "error.wrong-period-format", args());
@@ -55,15 +78,15 @@ public class AdminModIntegration {
                     .reason(req.reason)
                     .expireDate(Instant.now().plusMillis(date.toEpochMilli()))
                     .build();
-            NetSock.post(ban);
-            ban.save();
+            network.post(ban);
+            database.getBanDataRepository().save(ban);
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
             if (!player.admin) return;
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            var targetData = database.getPlayerDatas().getById(req.pid);
+            var targetData = database.getPlayerDataRepository().findById(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
             bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));

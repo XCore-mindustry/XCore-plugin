@@ -2,21 +2,30 @@ package org.xcore.plugin.commands.controllers.client;
 
 import arc.math.Mathf;
 import arc.util.CommandHandler;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.ui.Menus;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
+import org.xcore.plugin.modules.bundles.BundleService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.PluginVars.*;
 
-@SuppressWarnings("unused")
+@Singleton
 public class InformationController {
-    private final CommandHandler handler;
-    private final int infoMenuId;
 
-    public InformationController(CommandHandler handler) {
-        this.handler = handler;
+    private final BundleService bundle;
+    private CommandHandler handler;
+    private int infoMenuId;
+
+    @Inject
+    public InformationController(BundleService bundle) {
+        this.bundle = bundle;
+    }
+
+    public void initMenu() {
         this.infoMenuId = Menus.registerMenu((player, option) -> {
             switch (option) {
                 case 0 -> Call.openURI(player.con, discordUrl);
@@ -25,6 +34,11 @@ public class InformationController {
                 case 3 -> Call.openURI(player.con, discordRedVSBlueUrl);
             }
         });
+    }
+
+    public void setHandler(CommandHandler handler) {
+        this.handler = handler;
+        initMenu();
     }
 
     @Command(name = "help", params = "[page]")

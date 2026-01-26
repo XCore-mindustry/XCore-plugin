@@ -1,28 +1,41 @@
 package org.xcore.plugin.commands.controllers.client;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
 import org.xcore.plugin.infra.commands.context.ClientContext;
+import org.xcore.plugin.modules.votes.VoteFactory;
 import org.xcore.plugin.modules.votes.VoteKick;
-import org.xcore.plugin.utils.Find;
+import org.xcore.plugin.modules.votes.VoteService;
+import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.Utils;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.voteKick;
 
-@SuppressWarnings("unused")
+@Singleton
 public class VoteController {
+    private final FindService findService;
+    private final VoteService voteService;
+    private final VoteFactory voteFactory;
+
+    @Inject
+    public VoteController(FindService findService, VoteService voteService, VoteFactory voteFactory) {
+        this.findService = findService;
+        this.voteService = voteService;
+        this.voteFactory = voteFactory;
+    }
 
     @MinPlayTime(minutes = 60, errorKey = "error-votekick-total-playtime")
     @Command(name = "votekick", params = "<id/name> <reason...>")
     public void votekick(ClientContext ctx) {
-        if (voteKick != null) {
+        if (voteService.getCurrentVoteKick() != null) {
             ctx.send("error-vote-in-progress", args());
             return;
         }
 
-        Player found = Find.player(ctx.arg(0));
+        Player found = findService.player(ctx.arg(0));
         if (found == null) {
             ctx.send("error-player-not-found", args());
             return;
@@ -38,13 +51,16 @@ public class VoteController {
             return;
         }
 
-        voteKick = new VoteKick(ctx.player(), found, ctx.args()[1]);
-        voteKick.vote(ctx.player(), 1);
+        VoteKick kick = voteFactory.createKick(ctx.player(), found, ctx.args()[1]);
+        voteService.startVote(kick);
+        kick.vote(ctx.player(), 1);
     }
 
     @Command(name = "vote", params = "<y/n/c>")
     public void vote(ClientContext ctx) {
-        if (voteKick == null) {
+        VoteKick current = voteService.getCurrentVoteKick();
+
+        if (current == null) {
             ctx.send("error-no-voting", args());
             return;
         }
@@ -55,17 +71,17 @@ public class VoteController {
             if (!ctx.player().admin) {
                 ctx.send("error-access-denied", args());
             } else {
-                voteKick.cancelByAdmin(ctx.player());
+                current.cancelByAdmin(ctx.player());
             }
             return;
         }
 
-        if (voteKick.voted.containsKey(ctx.player().id)) {
+        if (current.voted.containsKey(ctx.player().id)) {
             ctx.send("error-already-voted", args());
             return;
         }
 
-        if (voteKick.target == ctx.player()) {
+        if (current.target == ctx.player()) {
             ctx.send("error-vote-yourself", args());
             return;
         }
@@ -76,6 +92,6 @@ public class VoteController {
             return;
         }
 
-        voteKick.vote(ctx.player(), sign);
+        current.vote(ctx.player(), sign);
     }
 }
