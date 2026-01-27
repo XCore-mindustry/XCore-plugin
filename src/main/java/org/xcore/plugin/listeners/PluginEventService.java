@@ -20,7 +20,9 @@ import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import mindustry.ui.Menus;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.PluginState;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.network.NetworkService;
@@ -32,7 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.*;
 
 @Singleton
 public class PluginEventService {
@@ -42,17 +43,22 @@ public class PluginEventService {
     private final DatabaseService database;
     private final NetworkService network;
     private final Config config;
+    private final GlobalConfig globalConfig;
     private final BundleService bundleService;
     private final VoteService voteService;
+    private final PluginState pluginState;
 
     @Inject
     public PluginEventService(DatabaseService database, NetworkService network, Config config,
-                              BundleService bundleService, VoteService voteService) {
+                              GlobalConfig globalConfig, BundleService bundleService, VoteService voteService,
+                              PluginState pluginState) {
         this.database = database;
         this.network = network;
         this.config = config;
+        this.globalConfig = globalConfig;
         this.bundleService = bundleService;
         this.voteService = voteService;
+        this.pluginState = pluginState;
     }
 
     @PostConstruct
@@ -154,7 +160,7 @@ public class PluginEventService {
             database.setCached(data);
 
             if (player.getInfo().timesJoined < 5) {
-                Call.openURI(player.con, discordUrl);
+                Call.openURI(player.con, globalConfig.discordUrl);
             }
 
             Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
@@ -191,7 +197,7 @@ public class PluginEventService {
         });
 
         Events.on(PlayEvent.class, event -> {
-            gameStarted = Time.millis();
+            pluginState.gameStartTime = Time.millis();
 
             var mapRules = JsonIO.read(Rules.class, state.map.tags.get("rules"));
             if (mapRules != null) {
@@ -204,7 +210,7 @@ public class PluginEventService {
         });
 
         Events.on(String.class, event -> {
-            if ((event.equals("rvsb_world-reload") || event.equals("hexed_world-reload")) && gameoverRestart) {
+            if ((event.equals("rvsb_world-reload") || event.equals("hexed_world-reload")) && pluginState.restartOnGameOver) {
                 restart();
             }
         });
@@ -302,7 +308,7 @@ public class PluginEventService {
                 }
             }
 
-            if (gameoverRestart) restart();
+            if (pluginState.restartOnGameOver) restart();
         });
     }
 

@@ -6,7 +6,9 @@ import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
+import com.google.gson.Gson;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +23,7 @@ import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.TranslatorService;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
@@ -36,8 +39,6 @@ import java.time.Instant;
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.PluginVars.discordUrl;
-import static org.xcore.plugin.PluginVars.rawGson;
 import static org.xcore.plugin.utils.Utils.voteChoice;
 
 @Singleton
@@ -51,24 +52,28 @@ public class NetEventService {
 
     private final DatabaseService database;
     private final Config config;
+    private final GlobalConfig globalConfig;
     private final TranslatorService translatorService;
     private final NetworkService network;
     private final BundleService bundle;
     private final VoteService voteService;
     private final SecurityService securityService;
+    private final Gson rawGson;
 
     @Inject
-    public NetEventService(DatabaseService database, Config config,
+    public NetEventService(DatabaseService database, Config config, GlobalConfig globalConfig,
                            TranslatorService translatorService, NetworkService network,
                            BundleService bundle, VoteService voteService,
-                           SecurityService securityService) {
+                           SecurityService securityService, @Named("raw") Gson rawGson) {
         this.database = database;
         this.config = config;
+        this.globalConfig = globalConfig;
         this.translatorService = translatorService;
         this.network = network;
         this.bundle = bundle;
         this.voteService = voteService;
         this.securityService = securityService;
+        this.rawGson = rawGson;
     }
 
     public String chat(Player author, String text) {
@@ -199,7 +204,7 @@ public class NetEventService {
                     bundle.format(bundle.locale(packet.locale),
                             "ban-content", args(
                                     "nickname", stripColors(packet.name),
-                                    "discordUrl", discordUrl)
+                                    "discordUrl", globalConfig.discordUrl)
                     ),
                     0
             );
@@ -346,7 +351,7 @@ public class NetEventService {
                 "days", duration.toDays(),
                 "hours", duration.toHoursPart(),
                 "minutes", duration.toMinutesPart(),
-                "discordUrl", discordUrl)
+                "discordUrl", globalConfig.discordUrl)
         ), 0);
     }
 }

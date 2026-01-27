@@ -8,6 +8,7 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
@@ -15,7 +16,6 @@ import org.xcore.plugin.utils.models.PlayerData;
 
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.*;
 
 public class VoteKick extends VoteSession {
 
@@ -30,10 +30,12 @@ public class VoteKick extends VoteSession {
     private final BundleService bundle;
     private final VoteService voteService;
     private final Config config;
+    private final GlobalConfig globalConfig;
 
     public VoteKick(Player starter, Player target, String reason, DatabaseService database,
                     NetworkService network, BundleService bundleService, VoteService voteService,
-                    Config config) {
+                    Config config, GlobalConfig globalConfig) {
+        super(globalConfig);
         this.starter = starter;
         this.target = target;
         this.reason = reason;
@@ -42,6 +44,7 @@ public class VoteKick extends VoteSession {
         this.bundle = bundleService;
         this.voteService = voteService;
         this.config = config;
+        this.globalConfig = globalConfig;
     }
 
     public static void setOnKick(Cons<Player> onKick) {
@@ -96,9 +99,9 @@ public class VoteKick extends VoteSession {
         stop();
         var bundleArgs = args(
                 "nickname", target.coloredName(),
-                "minutes", kickDuration / 60000);
+                "minutes", globalConfig.voteKickBanDurationMinutes / 60000);
         bundle.send("votekick-success", bundleArgs);
-        target.kick(Packets.KickReason.vote, kickDuration);
+        target.kick(Packets.KickReason.vote, globalConfig.voteKickBanDurationMinutes);
 
         if (network != null) {
             network.post(new SocketEvents.ServerActionEvent(

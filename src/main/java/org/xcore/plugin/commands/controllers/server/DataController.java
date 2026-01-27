@@ -1,10 +1,13 @@
 package org.xcore.plugin.commands.controllers.server;
 
+import arc.files.Fi;
 import arc.util.Log;
 import arc.util.serialization.JsonReader;
 import arc.util.serialization.JsonValue;
 import arc.util.serialization.JsonWriter;
+import com.google.gson.Gson;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ServerContext;
@@ -13,20 +16,23 @@ import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.models.PlayerData;
 
-import static org.xcore.plugin.PluginVars.configFile;
-import static org.xcore.plugin.PluginVars.prettyGson;
-
 @Singleton
 public class DataController {
 
     private final DatabaseService database;
+    private final Fi configFile;
     private Config config;
+    private final Gson prettyGson;
     private final FindService find;
 
     @Inject
-    public DataController(DatabaseService database, Config config, FindService find) {
+    public DataController(DatabaseService database, @Named("xcConfigFile") Fi configFile,
+                          Config config, @Named("pretty") Gson prettyGson,
+                          FindService find) {
         this.database = database;
+        this.configFile = configFile;
         this.config = config;
+        this.prettyGson = prettyGson;
         this.find = find;
     }
 

@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
@@ -16,12 +17,13 @@ public class VoteFactory {
     @Inject BundleService bundle;
     @Inject VoteService voteService;
     @Inject Config config;
+    @Inject GlobalConfig globalConfig;
 
     public VoteKick createKick(Player starter, Player target, String reason) {
-        return new VoteKick(starter, target, reason, database, network, bundle, voteService, config);
+        return new VoteKick(starter, target, reason, database, network, bundle, voteService, config, globalConfig);
     }
 
     public VoteRtv createRtv(Map target, boolean isManual) {
-        return new VoteRtv(target, isManual, database, bundle, voteService);
+        return new VoteRtv(target, isManual, database, globalConfig, bundle, voteService);
     }
 }

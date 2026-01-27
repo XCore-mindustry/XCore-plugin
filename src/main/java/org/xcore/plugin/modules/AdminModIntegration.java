@@ -2,8 +2,10 @@ package org.xcore.plugin.modules;
 
 import arc.util.Log;
 import arc.util.Strings;
+import com.google.gson.Gson;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import org.xcore.plugin.modules.bundles.BundleService;
@@ -19,21 +21,22 @@ import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.rawGson;
 
 @Singleton
 public class AdminModIntegration {
 
     private final DatabaseService database;
     private final NetworkService network;
+    private final Gson rawGson;
     private final BundleService bundle;
     private final TimeService time;
 
     @Inject
-    public AdminModIntegration(DatabaseService database, NetworkService network, BundleService bundle,
-                               TimeService timeService) {
+    public AdminModIntegration(DatabaseService database, NetworkService network, @Named("raw") Gson rawGson,
+                               BundleService bundle, TimeService timeService) {
         this.database = database;
         this.network = network;
+        this.rawGson = rawGson;
         this.bundle = bundle;
         this.time = timeService;
     }

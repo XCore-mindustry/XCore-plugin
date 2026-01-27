@@ -8,23 +8,25 @@ import mindustry.net.Packets;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ServerContext;
 import org.xcore.plugin.listeners.SocketEvents;
+import org.xcore.plugin.modules.common.PluginState;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
 import org.xcore.plugin.utils.TextArgumentSplitter;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.gameoverRestart;
 
 @Singleton
 public class MaintainController {
 
     private final NetworkService network;
     private final DatabaseService database;
+    private final PluginState pluginState;
 
     @Inject
-    public MaintainController(NetworkService network, DatabaseService database) {
+    public MaintainController(NetworkService network, DatabaseService database, PluginState pluginState) {
         this.network = network;
         this.database = database;
+        this.pluginState = pluginState;
     }
 
     @Command(name = "exit", description = "Exit the server application safely.")
@@ -43,8 +45,8 @@ public class MaintainController {
 
     @Command(name = "gg-restart", params = "[on/off]", description = "Toggle server restart on GameOver.")
     public void ggRestart(ServerContext ctx) {
-        gameoverRestart = ctx.args().length == 0 || !ctx.arg(0).equals("off");
-        Log.info("GameOver restart turned @", gameoverRestart ? "on" : "off");
+        pluginState.restartOnGameOver = ctx.args().length == 0 || !ctx.arg(0).equals("off");
+        Log.info("GameOver restart turned @", pluginState.restartOnGameOver ? "on" : "off");
     }
 
     @Command(name = "db-delete-bots", description = "Delete low-playtime players from DB")

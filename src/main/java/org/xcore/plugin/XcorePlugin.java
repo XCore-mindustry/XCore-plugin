@@ -18,10 +18,12 @@ import mindustry.server.ServerControl;
 import org.xcore.plugin.infra.CommandRegistrar;
 import org.xcore.plugin.listeners.NetEventService;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.BuildInfo;
+import org.xcore.plugin.modules.common.PluginState;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.maps.SmartMapSelector;
-import org.xcore.plugin.modules.network.NetworkService;
 import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -31,7 +33,6 @@ import java.time.Duration;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
-import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.writeString;
 
 public class XcorePlugin extends Plugin {
@@ -41,9 +42,11 @@ public class XcorePlugin extends Plugin {
     private NetEventService netEvents;
     private DatabaseService database;
     private Config config;
+    private GlobalConfig globalConfig;
     private BundleService bundleService;
-    private NetworkService network;
     private FindService find;
+    private BuildInfo buildInfo;
+    private PluginState pluginState;
 
     public static void info(String text, Object... values) {
         Log.infoTag("XCore", Strings.format(text, values));
@@ -72,9 +75,11 @@ public class XcorePlugin extends Plugin {
         netEvents = beanScope.get(NetEventService.class);
         database = beanScope.get(DatabaseService.class);
         config = beanScope.get(Config.class);
+        globalConfig = beanScope.get(GlobalConfig.class);
         bundleService = beanScope.get(BundleService.class);
-        network = beanScope.get(NetworkService.class);
         find = beanScope.get(FindService.class);
+        buildInfo = beanScope.get(BuildInfo.class);
+        pluginState = beanScope.get(PluginState.class);
 
         Reflect.set(Vars.maps, "shuffler", new SmartMapSelector(database));
 
@@ -94,7 +99,7 @@ public class XcorePlugin extends Plugin {
         try {
             var myMod = Vars.mods.getMod(getClass());
             if (myMod != null && myMod.meta != null) {
-                xcoreVersion = myMod.meta.version;
+                buildInfo.setVersion(myMod.meta.version);
             }
         } catch (Exception e) {
             Log.err("Failed to load plugin version", e);
@@ -153,7 +158,7 @@ public class XcorePlugin extends Plugin {
 
         Timer.schedule(() -> {
             footer[0] = config.gameStartedTimer
-                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
+                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - pluginState.gameStartTime).toMinutes() + "[] minutes ago."
                     : "";
             database.cachedPlayerData.each((uuid, data) -> {
                 var player = find.playerByUuid(uuid);
@@ -161,11 +166,13 @@ public class XcorePlugin extends Plugin {
                 if (player == null) return;
 
                 data.totalPlayTime++;
-                switch (data.totalPlayTime) {
-                    case votekickPlayTime -> bundleService.send(player, "notification-votekick-playtime",
-                            args("votekickPlayTime", votekickPlayTime));
-                    case globalChatPlayTime -> bundleService.send(player, "notification-global-chat-playtime",
-                            args("globalChatPlayTime", globalChatPlayTime));
+
+                if (data.totalPlayTime == globalConfig.minPlayTimeForVotekick) {
+                    bundleService.send(player, "notification-votekick-playtime",
+                            args("votekickPlayTime", globalConfig.minPlayTimeForVotekick));
+                } else if (data.totalPlayTime == globalConfig.minPlayTimeForGlobalChat) {
+                    bundleService.send(player, "notification-global-chat-playtime",
+                            args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
                 }
 
                 database.getPlayerDataRepository().save(data);

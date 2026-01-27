@@ -5,17 +5,17 @@ import arc.struct.IntIntMap;
 import arc.util.Timer;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.modules.GlobalConfig;
 
 import static arc.Core.app;
-import static org.xcore.plugin.PluginVars.voteDuration;
 
 public abstract class VoteSession {
 
     public final IntIntMap voted = new IntIntMap();
     public final Timer.Task end;
 
-    public VoteSession() {
-        end = Timer.schedule(this::fail, voteDuration);
+    public VoteSession(GlobalConfig config) {
+        end = Timer.schedule(this::fail, config.voteDurationSeconds);
     }
 
     public void vote(Player player, int sign) {

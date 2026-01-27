@@ -4,6 +4,7 @@ import arc.func.Cons;
 import arc.struct.StringMap;
 import arc.util.Http;
 import arc.util.Strings;
+import arc.util.serialization.JsonReader;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
@@ -11,11 +12,10 @@ import mindustry.gen.Player;
 import org.xcore.plugin.modules.database.DatabaseService;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.PluginVars.reader;
 
 @Singleton
 public class TranslatorService {
-
+    private static final JsonReader reader = new JsonReader();
     private final DatabaseService database;
 
     @Inject

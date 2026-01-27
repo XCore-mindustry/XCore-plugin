@@ -8,30 +8,33 @@ import mindustry.gen.Call;
 import mindustry.ui.Menus;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
-import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.GlobalConfig;
+import org.xcore.plugin.modules.common.BuildInfo;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.*;
 
 @Singleton
 public class InformationController {
 
-    private final BundleService bundle;
     private CommandHandler handler;
     private int infoMenuId;
 
+    private final GlobalConfig globalConfig;
+    private final BuildInfo buildInfo;
+
     @Inject
-    public InformationController(BundleService bundle) {
-        this.bundle = bundle;
+    public InformationController(GlobalConfig globalConfig, BuildInfo buildInfo) {
+        this.globalConfig = globalConfig;
+        this.buildInfo = buildInfo;
     }
 
     public void initMenu() {
         this.infoMenuId = Menus.registerMenu((player, option) -> {
             switch (option) {
-                case 0 -> Call.openURI(player.con, discordUrl);
-                case 1 -> Call.openURI(player.con, githubUrl);
-                case 2 -> Call.openURI(player.con, donatelloUrl);
-                case 3 -> Call.openURI(player.con, discordRedVSBlueUrl);
+                case 0 -> Call.openURI(player.con, globalConfig.discordUrl);
+                case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
+                case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
+                case 3 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
             }
         });
     }
@@ -76,7 +79,7 @@ public class InformationController {
     public void info(ClientContext ctx) {
         Call.menu(ctx.player().con, infoMenuId,
                 ctx.format("commands-info-title", args()),
-                ctx.format("commands-info-text", args("xcoreVersion", xcoreVersion)),
+                ctx.format("commands-info-text", args("xcoreVersion", buildInfo.getVersion())),
                 new String[][]{
                         {"Discord", "GitHub", "Donatello"},
                         {"RedVSBlue"},

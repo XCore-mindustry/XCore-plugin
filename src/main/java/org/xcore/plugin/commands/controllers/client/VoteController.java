@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
+import org.xcore.plugin.infra.commands.annotation.PlayTimeLimit;
 import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.votes.VoteFactory;
 import org.xcore.plugin.modules.votes.VoteKick;
@@ -27,7 +28,7 @@ public class VoteController {
         this.voteFactory = voteFactory;
     }
 
-    @MinPlayTime(minutes = 60, errorKey = "error-votekick-total-playtime")
+    @MinPlayTime(value = PlayTimeLimit.VOTE_KICK, errorKey = "error-votekick-total-playtime")
     @Command(name = "votekick", params = "<id/name> <reason...>")
     public void votekick(ClientContext ctx) {
         if (voteService.getCurrentVoteKick() != null) {

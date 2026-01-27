@@ -5,6 +5,7 @@ import arc.util.Timer;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.utils.models.MapData;
@@ -12,7 +13,6 @@ import org.xcore.plugin.utils.models.MapData;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
 import static mindustry.Vars.world;
-import static org.xcore.plugin.PluginVars.*;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
 
 public class VoteRtv extends VoteSession {
@@ -21,15 +21,19 @@ public class VoteRtv extends VoteSession {
     public final boolean isManualSelection;
 
     private final DatabaseService database;
+    private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
 
-    public VoteRtv(Map target, boolean isManualSelection,
-                   DatabaseService database, BundleService bundleService,
+    public VoteRtv(Map target, boolean isManualSelection, DatabaseService database,
+                   GlobalConfig globalConfig, BundleService bundleService,
                    VoteService voteService) {
+        super(globalConfig);
+
         this.target = target;
         this.isManualSelection = isManualSelection;
         this.database = database;
+        this.globalConfig = globalConfig;
         this.bundle = bundleService;
         this.voteService = voteService;
     }
@@ -59,7 +63,7 @@ public class VoteRtv extends VoteSession {
         stop();
         bundle.send("rtv-success", args(
                 "mapName", target.name(),
-                "mapLoadDelay", mapLoadDelay));
+                "mapLoadDelay", globalConfig.mapSwitchDelaySeconds));
 
         if (state.map != null && !state.isMenu()) {
             String currentMapName = state.map.plainName();
@@ -83,7 +87,7 @@ public class VoteRtv extends VoteSession {
 
         Timer.schedule(() -> reloadWorld(() ->
                         world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))),
-                mapLoadDelay);
+                globalConfig.mapSwitchDelaySeconds);
     }
 
     @Override

@@ -7,14 +7,15 @@ import mindustry.gen.Groups;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
 import org.xcore.plugin.infra.commands.annotation.MuteCheck;
+import org.xcore.plugin.infra.commands.annotation.PlayTimeLimit;
 import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.listeners.SocketEvents;
 import org.xcore.plugin.modules.Config;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.discordUrl;
 
 @Singleton
 public class SocialController {
@@ -22,13 +23,16 @@ public class SocialController {
     private final DatabaseService database;
     private final NetworkService network;
     private final Config config;
+    private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
 
     @Inject
-    public SocialController(DatabaseService database, NetworkService network, Config config, TranslatorLanguagesProvider translatorLanguagesProvider) {
+    public SocialController(DatabaseService database, NetworkService network, Config config,
+                            GlobalConfig globalConfig, TranslatorLanguagesProvider translatorLanguagesProvider) {
         this.database = database;
         this.network = network;
         this.config = config;
+        this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
     }
 
@@ -46,7 +50,7 @@ public class SocialController {
     }
 
     @MuteCheck
-    @MinPlayTime(minutes = 240, errorKey = "error-globalchat-total-playtime")
+    @MinPlayTime(value = PlayTimeLimit.GLOBAL_CHAT, errorKey = "error-globalchat-total-playtime")
     @Command(name = "g", params = "<message...>")
     public void globalChat(ClientContext ctx) {
         String message = ctx.args()[0];
@@ -66,7 +70,7 @@ public class SocialController {
 
     @Command(name = "discord")
     public void discord(ClientContext ctx) {
-        Call.openURI(ctx.player().con, discordUrl);
+        Call.openURI(ctx.player().con, globalConfig.discordUrl);
     }
 
     @Command(name = "tr", params = "<language/auto/off>")

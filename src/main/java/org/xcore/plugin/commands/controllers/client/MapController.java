@@ -13,6 +13,7 @@ import mindustry.maps.Map;
 import org.xcore.plugin.infra.commands.annotation.AdminOnly;
 import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
+import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.votes.VoteFactory;
@@ -22,20 +23,21 @@ import org.xcore.plugin.utils.models.MapData;
 import org.xcore.plugin.utils.models.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
-import static org.xcore.plugin.PluginVars.*;
 
 @Singleton
 public class MapController {
 
     private final DatabaseService database;
+    private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
     private final VoteFactory voteFactory;
 
     @Inject
-    public MapController(DatabaseService database, BundleService bundle,
+    public MapController(DatabaseService database, GlobalConfig globalConfig, BundleService bundle,
                          VoteService voteService, VoteFactory voteFactory) {
         this.database = database;
+        this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.voteService = voteService;
         this.voteFactory = voteFactory;
@@ -149,7 +151,7 @@ public class MapController {
         Timer.schedule(() -> Utils.reloadWorld(() -> {
             Gamemode mode = Gamemode.valueOf(Core.settings.getString("lastServerMode"));
             Vars.world.loadMap(map, map.applyRules(mode));
-        }), mapLoadDelay);
+        }), globalConfig.mapSwitchDelaySeconds);
 
         bundle.send("commands-artv-map-skipped", args(
                 "nickname", ctx.player().coloredName()
