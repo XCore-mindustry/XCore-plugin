@@ -2,6 +2,9 @@ package org.xcore.plugin.modules.votes;
 
 import arc.Core;
 import arc.util.Timer;
+import io.avaje.inject.AssistFactory;
+import io.avaje.inject.Assisted;
+import jakarta.inject.Inject;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
@@ -15,8 +18,8 @@ import static mindustry.Vars.state;
 import static mindustry.Vars.world;
 import static org.xcore.plugin.utils.Utils.reloadWorld;
 
+@AssistFactory(VoteRtvFactory.class)
 public class VoteRtv extends VoteSession {
-
     public final Map target;
     public final boolean isManualSelection;
 
@@ -25,11 +28,16 @@ public class VoteRtv extends VoteSession {
     private final BundleService bundle;
     private final VoteService voteService;
 
-    public VoteRtv(Map target, boolean isManualSelection, DatabaseService database,
-                   GlobalConfig globalConfig, BundleService bundleService,
-                   VoteService voteService) {
-        super(globalConfig);
+    @Inject
+    public VoteRtv(
+            @Assisted Map target,
+            @Assisted boolean isManualSelection,
 
+            DatabaseService database,
+            GlobalConfig globalConfig,
+            BundleService bundleService,
+            VoteService voteService) {
+        super(globalConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
         this.database = database;

@@ -7,8 +7,8 @@ import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
 import org.xcore.plugin.infra.commands.annotation.PlayTimeLimit;
 import org.xcore.plugin.infra.commands.context.ClientContext;
-import org.xcore.plugin.modules.votes.VoteFactory;
 import org.xcore.plugin.modules.votes.VoteKick;
+import org.xcore.plugin.modules.votes.VoteKickFactory;
 import org.xcore.plugin.modules.votes.VoteService;
 import org.xcore.plugin.utils.FindService;
 import org.xcore.plugin.utils.Utils;
@@ -19,13 +19,13 @@ import static com.ospx.flubundle.Bundle.args;
 public class VoteController {
     private final FindService findService;
     private final VoteService voteService;
-    private final VoteFactory voteFactory;
+    private final VoteKickFactory voteKickFactory;
 
     @Inject
-    public VoteController(FindService findService, VoteService voteService, VoteFactory voteFactory) {
+    public VoteController(FindService findService, VoteService voteService, VoteKickFactory voteKickFactory) {
         this.findService = findService;
         this.voteService = voteService;
-        this.voteFactory = voteFactory;
+        this.voteKickFactory = voteKickFactory;
     }
 
     @MinPlayTime(value = PlayTimeLimit.VOTE_KICK, errorKey = "error-votekick-total-playtime")
@@ -52,7 +52,7 @@ public class VoteController {
             return;
         }
 
-        VoteKick kick = voteFactory.createKick(ctx.player(), found, ctx.args()[1]);
+        VoteKick kick = voteKickFactory.create(ctx.player(), found, ctx.args()[1]);
         voteService.startVote(kick);
         kick.vote(ctx.player(), 1);
     }

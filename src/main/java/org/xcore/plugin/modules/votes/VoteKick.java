@@ -2,6 +2,9 @@ package org.xcore.plugin.modules.votes;
 
 import arc.func.Cons;
 import arc.util.Log;
+import io.avaje.inject.AssistFactory;
+import io.avaje.inject.Assisted;
+import jakarta.inject.Inject;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
@@ -17,6 +20,7 @@ import org.xcore.plugin.utils.models.PlayerData;
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
 
+@AssistFactory(VoteKickFactory.class)
 public class VoteKick extends VoteSession {
 
     public static Cons<Player> onKick = (player) -> {};
@@ -32,9 +36,18 @@ public class VoteKick extends VoteSession {
     private final Config config;
     private final GlobalConfig globalConfig;
 
-    public VoteKick(Player starter, Player target, String reason, DatabaseService database,
-                    NetworkService network, BundleService bundleService, VoteService voteService,
-                    Config config, GlobalConfig globalConfig) {
+    @Inject
+    public VoteKick(
+            @Assisted Player starter,
+            @Assisted Player target,
+            @Assisted String reason,
+
+            DatabaseService database,
+            NetworkService network,
+            BundleService bundleService,
+            VoteService voteService,
+            Config config,
+            GlobalConfig globalConfig) {
         super(globalConfig);
         this.starter = starter;
         this.target = target;
@@ -130,7 +143,6 @@ public class VoteKick extends VoteSession {
         if (end != null) {
             end.cancel();
         }
-
         voteService.endVote();
     }
 

@@ -16,7 +16,7 @@ import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
-import org.xcore.plugin.modules.votes.VoteFactory;
+import org.xcore.plugin.modules.votes.VoteRtvFactory;
 import org.xcore.plugin.modules.votes.VoteService;
 import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.MapData;
@@ -31,16 +31,16 @@ public class MapController {
     private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
-    private final VoteFactory voteFactory;
+    private final VoteRtvFactory voteRtvFactory;
 
     @Inject
     public MapController(DatabaseService database, GlobalConfig globalConfig, BundleService bundle,
-                         VoteService voteService, VoteFactory voteFactory) {
+                         VoteService voteService, VoteRtvFactory voteRtvFactory) {
         this.database = database;
         this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.voteService = voteService;
-        this.voteFactory = voteFactory;
+        this.voteRtvFactory = voteRtvFactory;
     }
 
     @Command(name = "rtv", params = "[map...]")
@@ -60,7 +60,7 @@ public class MapController {
             return;
         }
 
-        var vote = voteFactory.createRtv(target, isManual);
+        var vote = voteRtvFactory.create(target, isManual);
         voteService.startVote(vote);
         vote.vote(ctx.player(), 1);
     }
