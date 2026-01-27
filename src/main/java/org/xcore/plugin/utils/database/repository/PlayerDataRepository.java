@@ -21,7 +21,6 @@ public class PlayerDataRepository {
         this.collection = database.getCollection("players", PlayerData.class);
         this.counters = database.getCollection("counters");
 
-        // Индексы
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
         collection.createIndex(new Document("nickname", 1));

@@ -12,6 +12,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 import io.avaje.inject.PostConstruct;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.Getter;
@@ -33,8 +34,9 @@ import static org.xcore.plugin.utils.Utils.compareVersions;
 public class DatabaseService {
 
     private final GlobalConfig globalConfig;
-    @Getter
-    private MongoDatabase database;
+
+    @Getter private MongoDatabase database;
+    @Getter private MongoClient client;
 
     @Getter private PlayerDataRepository playerDataRepository;
     @Getter private AdminDataRepository adminDataRepository;
@@ -56,8 +58,8 @@ public class DatabaseService {
         CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
         CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
 
-        MongoClient mongoClient = MongoClients.create(globalConfig.mongoConnectionString);
-        database = mongoClient.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
+        client = MongoClients.create(globalConfig.mongoConnectionString);
+        database = client.getDatabase("xcore").withCodecRegistry(pojoCodecRegistry);
 
         playerDataRepository = new PlayerDataRepository(database);
         adminDataRepository = new AdminDataRepository(database);
@@ -129,5 +131,10 @@ public class DatabaseService {
 
             counters.updateOne(Filters.eq("_id", "last_map_decay"), Updates.set("time", now));
         }
+    }
+
+    @PreDestroy
+    public void close() {
+        client.close();
     }
 }
