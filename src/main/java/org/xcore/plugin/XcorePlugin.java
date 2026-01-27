@@ -47,6 +47,7 @@ public class XcorePlugin extends Plugin {
     private FindService find;
     private BuildInfo buildInfo;
     private PluginState pluginState;
+    private SmartMapSelector mapSelector;
 
     public static void info(String text, Object... values) {
         Log.infoTag("XCore", Strings.format(text, values));
@@ -80,8 +81,9 @@ public class XcorePlugin extends Plugin {
         find = beanScope.get(FindService.class);
         buildInfo = beanScope.get(BuildInfo.class);
         pluginState = beanScope.get(PluginState.class);
+        mapSelector = beanScope.get(SmartMapSelector.class);
 
-        Reflect.set(Vars.maps, "shuffler", new SmartMapSelector(database));
+        Reflect.set(Vars.maps, "shuffler", mapSelector);
 
         try {
             database.checkMapDecay();

@@ -3,6 +3,8 @@ package org.xcore.plugin.modules.maps;
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.maps.Map;
@@ -11,6 +13,7 @@ import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.utils.database.repository.MapDataRepository;
 import org.xcore.plugin.utils.models.MapData;
 
+@Singleton
 public class SmartMapSelector implements MapProvider {
 
     private final Seq<Map> recentMaps = new Seq<>();
@@ -18,13 +21,13 @@ public class SmartMapSelector implements MapProvider {
 
     private final DatabaseService database;
 
+    @Inject
     public SmartMapSelector(DatabaseService database) {
         this.database = database;
     }
 
     @Override
     public Map next(Gamemode mode, Map previous) {
-        // 1. Оновлюємо історію
         if (previous != null) {
             recentMaps.add(previous);
             if (recentMaps.size > HISTORY_SIZE) {
