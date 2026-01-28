@@ -28,6 +28,7 @@ import org.xcore.plugin.modules.TranslatorService;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
+import org.xcore.plugin.modules.votes.VoteChoice;
 import org.xcore.plugin.modules.votes.VoteService;
 import org.xcore.plugin.utils.SecurityService;
 import org.xcore.plugin.utils.models.BanData;
@@ -39,7 +40,6 @@ import java.time.Instant;
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.utils.Utils.voteChoice;
 
 @Singleton
 public class NetEventService {
@@ -77,14 +77,15 @@ public class NetEventService {
     }
 
     public String chat(Player author, String text) {
-        int sign = voteChoice(text);
-        if (sign != 0 && voteService.isVoting()) {
+        VoteChoice choice = VoteChoice.parse(text);
+
+        if (choice.isValid() && voteService.isVoting()) {
             var currentVote = voteService.getCurrentSession();
             if (currentVote.voted.containsKey(author.id)) {
                 bundle.send(author, "error-already-voted", args());
                 return null;
             }
-            currentVote.vote(author, sign);
+            currentVote.vote(author, choice.sign());
         }
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);

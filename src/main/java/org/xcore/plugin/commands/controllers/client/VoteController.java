@@ -7,11 +7,12 @@ import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.annotation.MinPlayTime;
 import org.xcore.plugin.infra.commands.annotation.PlayTimeLimit;
 import org.xcore.plugin.infra.commands.context.ClientContext;
+import org.xcore.plugin.modules.votes.VoteChoice;
 import org.xcore.plugin.modules.votes.VoteKick;
 import org.xcore.plugin.modules.votes.VoteKickFactory;
 import org.xcore.plugin.modules.votes.VoteService;
 import org.xcore.plugin.utils.FindService;
-import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.TextUtils;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -66,7 +67,7 @@ public class VoteController {
             return;
         }
 
-        String choice = Utils.stripFooCharacters(ctx.arg(0).toLowerCase());
+        String choice = TextUtils.stripFooCharacters(ctx.arg(0).toLowerCase());
 
         if (choice.equals("c")) {
             if (!ctx.player().admin) {
@@ -87,12 +88,12 @@ public class VoteController {
             return;
         }
 
-        int sign = Utils.voteChoice(choice);
-        if (sign == 0) {
+        VoteChoice sign = VoteChoice.parse(choice);
+        if (!sign.isValid()) {
             ctx.send("commands-vote-vote-with", args());
             return;
         }
 
-        current.vote(ctx.player(), sign);
+        current.vote(ctx.player(), sign.sign());
     }
 }

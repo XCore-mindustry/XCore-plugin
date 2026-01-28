@@ -18,9 +18,9 @@ import org.xcore.plugin.modules.Config;
 import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.discord.DiscordService;
+import org.xcore.plugin.modules.maps.MapService;
 import org.xcore.plugin.modules.network.NetworkService;
 import org.xcore.plugin.utils.FindService;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,10 +38,12 @@ public class SocketService {
     private final FindService find;
     private final DiscordService discordService;
     private final BundleService bundleService;
+    private final MapService mapService;
 
     @Inject
     public SocketService(DatabaseService database, NetworkService network, Config config,
-                         FindService find, DiscordService discordService, BundleService bundleService
+                         FindService find, DiscordService discordService, BundleService bundleService,
+                         MapService mapService
     ) {
         this.database = database;
         this.network = network;
@@ -49,6 +51,7 @@ public class SocketService {
         this.find = find;
         this.discordService = discordService;
         this.bundleService = bundleService;
+        this.mapService = mapService;
     }
 
     @PostConstruct
@@ -84,7 +87,7 @@ public class SocketService {
         network.subscribe(SocketEvents.MapRemoveRequest.class, request -> {
             if (!request.server.equals(config.server)) return;
 
-            var map = Utils.findMap(request.map);
+            var map = mapService.findMap(request.map);
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();

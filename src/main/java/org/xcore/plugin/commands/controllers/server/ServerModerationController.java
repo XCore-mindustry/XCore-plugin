@@ -22,8 +22,8 @@ import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.utils.Utils.deepEquals;
-import static org.xcore.plugin.utils.Utils.equalsHasNull;
+import static org.xcore.plugin.utils.TextUtils.deepEquals;
+import static org.xcore.plugin.utils.TextUtils.equalsNonEmpty;
 
 @Singleton
 public class ServerModerationController {
@@ -101,7 +101,7 @@ public class ServerModerationController {
         Seq<BanData> bans = Seq.with(database.getBanDataRepository().findAll());
         if (ctx.args().length > 0) {
             String q = ctx.arg(0);
-            bans.select(b -> deepEquals(b.name, q) || equalsHasNull(b.ip, q) || equalsHasNull(b.uuid, q));
+            bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
         }
         bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
                 b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(), b.reason));

@@ -18,7 +18,6 @@ import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.common.TimeService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.MuteData;
 import org.xcore.plugin.utils.models.PlayerData;
@@ -146,7 +145,7 @@ public class DiscordCommandRegistry {
         });
 
         register("maps", "<server>", "List of maps", (args, ctx) -> {
-            var server = Utils.findServer(args[0], globalConfig.servers.keys());
+            var server = network.findServer(args[0]);
             if (ctx.serverNotFound(server)) return;
 
             network.request(new SocketEvents.MapsListRequest(server),
@@ -156,7 +155,7 @@ public class DiscordCommandRegistry {
         });
 
         register("remove-map", "<server> <map...>", "Remove map", globalConfig.discordMapReviewerRoleId, (args, ctx) -> {
-            var server = Utils.findServer(args[0], globalConfig.servers.keys());
+            var server = network.findServer(args[0]);
             if (ctx.serverNotFound(server)) return;
 
             network.request(new SocketEvents.MapRemoveRequest(server, args[0]),

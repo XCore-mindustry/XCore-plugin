@@ -10,8 +10,8 @@ import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.hexed.HexedRanks;
 import org.xcore.plugin.modules.hexed.MiniHexedService;
+import org.xcore.plugin.modules.hexed.UnitState;
 import org.xcore.plugin.utils.FindService;
-import org.xcore.plugin.utils.Utils;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -82,9 +82,9 @@ public class HexedController {
         }
 
         if (ctx.arg(0).startsWith("a")) {
-            member.setUnitState(Utils.UnitState.ATTACK);
+            member.setUnitState(UnitState.ATTACK);
         } else if (ctx.arg(0).startsWith("i")) {
-            member.setUnitState(Utils.UnitState.IDLE);
+            member.setUnitState(UnitState.IDLE);
         } else {
             ctx.send("commands-ai-usage", args());
             return;

@@ -12,7 +12,7 @@ import org.xcore.plugin.modules.bundles.BundleService;
 import org.xcore.plugin.modules.common.TimeService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.modules.network.NetworkService;
-import org.xcore.plugin.utils.Utils;
+import org.xcore.plugin.utils.VersionComparator;
 import org.xcore.plugin.utils.models.BanData;
 import org.xcore.plugin.utils.models.BanRequestData;
 
@@ -101,7 +101,7 @@ public class AdminModIntegration {
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
-            if (Utils.compareVersions(content, "1.3") < 0) {
+            if (VersionComparator.compareVersions(content, "1.3") < 0) {
                 player.con.kick(Strings.format("""
                         [green]The required AdminTools version: [grey]1.3[]
                         [scarlet]Your AdminTools version: [grey]@[]

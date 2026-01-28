@@ -8,7 +8,6 @@ import mindustry.game.Schematic;
 import mindustry.game.Team;
 import mindustry.gen.Unit;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.ai.AttackAi;
 
 import static mindustry.Vars.world;
@@ -17,7 +16,7 @@ public class HexMember {
     public final String uuid;
     public Team team;
     public Timer.Task left;
-    public Utils.UnitState state = Utils.UnitState.IDLE;
+    public UnitState state = UnitState.IDLE;
 
     private final MiniHexedService service;
 
@@ -31,7 +30,7 @@ public class HexMember {
         return team.data().cores.size;
     }
 
-    public void setUnitState(Utils.UnitState state) {
+    public void setUnitState(UnitState state) {
         if (team != null) {
             this.state = state;
             team.data().units.each(this::handleUnit);
@@ -41,7 +40,7 @@ public class HexMember {
     public void handleUnit(Unit unit) {
         if (unit == null || unit.team != team || unit.type == UnitTypes.mono || unit.type == UnitTypes.poly || unit.type == UnitTypes.mega || unit.isPlayer())
             return;
-        if (state == Utils.UnitState.ATTACK) unit.controller(new AttackAi());
+        if (state == UnitState.ATTACK) unit.controller(new AttackAi());
         else unit.controller(unit.type.createController(unit));
     }
 

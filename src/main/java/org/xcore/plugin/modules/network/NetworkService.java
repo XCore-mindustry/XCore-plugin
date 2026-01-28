@@ -70,4 +70,12 @@ public class NetworkService {
     public boolean isSocketServer() {
         return sock.isServer();
     }
+
+    public String findServer(String query) {
+        for (String server : globalConfig.servers.keys()) {
+            if (server.equals(query)) return query;
+            if (server.startsWith(query) || server.contains(query)) return server;
+        }
+        return null;
+    }
 }

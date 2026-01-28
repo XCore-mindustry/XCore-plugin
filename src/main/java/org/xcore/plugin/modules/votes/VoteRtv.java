@@ -10,13 +10,13 @@ import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.GameStateService;
 import org.xcore.plugin.modules.database.DatabaseService;
 import org.xcore.plugin.utils.models.MapData;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
 import static mindustry.Vars.world;
-import static org.xcore.plugin.utils.Utils.reloadWorld;
 
 @AssistFactory(VoteRtvFactory.class)
 public class VoteRtv extends VoteSession {
@@ -27,6 +27,7 @@ public class VoteRtv extends VoteSession {
     private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
+    private final GameStateService gameStateService;
 
     @Inject
     public VoteRtv(
@@ -36,7 +37,8 @@ public class VoteRtv extends VoteSession {
             DatabaseService database,
             GlobalConfig globalConfig,
             BundleService bundleService,
-            VoteService voteService) {
+            VoteService voteService,
+            GameStateService gameStateService) {
         super(globalConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
@@ -44,6 +46,7 @@ public class VoteRtv extends VoteSession {
         this.globalConfig = globalConfig;
         this.bundle = bundleService;
         this.voteService = voteService;
+        this.gameStateService = gameStateService;
     }
 
     @Override
@@ -93,7 +96,7 @@ public class VoteRtv extends VoteSession {
             database.getMapDataRepository().save(targetMapStats);
         }
 
-        Timer.schedule(() -> reloadWorld(() ->
+        Timer.schedule(() -> gameStateService.reloadWorld(() ->
                         world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))),
                 globalConfig.mapSwitchDelaySeconds);
     }

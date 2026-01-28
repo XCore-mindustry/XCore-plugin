@@ -15,10 +15,11 @@ import org.xcore.plugin.infra.commands.annotation.Command;
 import org.xcore.plugin.infra.commands.context.ClientContext;
 import org.xcore.plugin.modules.GlobalConfig;
 import org.xcore.plugin.modules.bundles.BundleService;
+import org.xcore.plugin.modules.common.GameStateService;
 import org.xcore.plugin.modules.database.DatabaseService;
+import org.xcore.plugin.modules.maps.MapService;
 import org.xcore.plugin.modules.votes.VoteRtvFactory;
 import org.xcore.plugin.modules.votes.VoteService;
-import org.xcore.plugin.utils.Utils;
 import org.xcore.plugin.utils.models.MapData;
 import org.xcore.plugin.utils.models.PlayerData;
 
@@ -32,15 +33,20 @@ public class MapController {
     private final BundleService bundle;
     private final VoteService voteService;
     private final VoteRtvFactory voteRtvFactory;
+    private final MapService mapService;
+    private final GameStateService gameStateService;
 
     @Inject
     public MapController(DatabaseService database, GlobalConfig globalConfig, BundleService bundle,
-                         VoteService voteService, VoteRtvFactory voteRtvFactory) {
+                         VoteService voteService, VoteRtvFactory voteRtvFactory, MapService mapService,
+                         GameStateService gameStateService) {
         this.database = database;
         this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.voteService = voteService;
         this.voteRtvFactory = voteRtvFactory;
+        this.mapService = mapService;
+        this.gameStateService = gameStateService;
     }
 
     @Command(name = "rtv", params = "[map...]")
@@ -52,7 +58,7 @@ public class MapController {
 
         boolean isManual = ctx.args().length > 0;
         Map target = isManual
-                ? Utils.findMap(ctx.arg(0))
+                ? mapService.findMap(ctx.arg(0))
                 : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
         if (target == null) {
@@ -67,7 +73,7 @@ public class MapController {
 
     @Command(name = "maps", params = "[page]")
     public void maps(ClientContext ctx) {
-        Seq<Map> list = Utils.getAvailableMaps();
+        Seq<Map> list = mapService.getAvailableMaps();
         int lines = 10;
         int pageCount = Mathf.ceil((float) list.size / lines);
         int page = ctx.argInt(0, 1);
@@ -107,7 +113,7 @@ public class MapController {
 
     @Command(name = "map-stats", params = "[map-name]", aliases = {"map"})
     public void mapStats(ClientContext ctx) {
-        Map map = ctx.args().length > 0 ? Utils.findMap(ctx.arg(0)) : Vars.state.map;
+        Map map = ctx.args().length > 0 ? mapService.findMap(ctx.arg(0)) : Vars.state.map;
         if (map == null) {
             ctx.send("error-map-not-found", args());
             return;
@@ -140,7 +146,7 @@ public class MapController {
     @Command(name = "artv", params = "[map...]")
     public void adminRtv(ClientContext ctx) {
         Map map = ctx.args().length > 0
-                ? Utils.findMap(ctx.arg(0))
+                ? mapService.findMap(ctx.arg(0))
                 : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
 
         if (map == null) {
@@ -148,7 +154,7 @@ public class MapController {
             return;
         }
 
-        Timer.schedule(() -> Utils.reloadWorld(() -> {
+        Timer.schedule(() -> gameStateService.reloadWorld(() -> {
             Gamemode mode = Gamemode.valueOf(Core.settings.getString("lastServerMode"));
             Vars.world.loadMap(map, map.applyRules(mode));
         }), globalConfig.mapSwitchDelaySeconds);

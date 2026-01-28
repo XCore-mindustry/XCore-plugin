@@ -22,13 +22,13 @@ import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.modules.GlobalConfig;
+import org.xcore.plugin.utils.VersionComparator;
 import org.xcore.plugin.utils.database.repository.*;
 import org.xcore.plugin.utils.models.*;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
-import static org.xcore.plugin.utils.Utils.compareVersions;
 
 @Singleton
 public class DatabaseService {
@@ -104,7 +104,7 @@ public class DatabaseService {
 
     public void getCachedAdminTools(String version, Boolf<Integer> versionCompare, Cons<PlayerData> cons) {
         for (var data : cachedPlayerData.values()) {
-            if (versionCompare.get(compareVersions(data.adminModVersion, version))) {
+            if (versionCompare.get(VersionComparator.compareVersions(data.adminModVersion, version))) {
                 cons.get(data);
             }
         }

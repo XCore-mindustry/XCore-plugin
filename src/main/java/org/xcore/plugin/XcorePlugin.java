@@ -33,7 +33,7 @@ import java.time.Duration;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
-import static org.xcore.plugin.utils.Utils.writeString;
+import static org.xcore.plugin.utils.PacketUtils.writeString;
 
 public class XcorePlugin extends Plugin {
     private BeanScope beanScope;

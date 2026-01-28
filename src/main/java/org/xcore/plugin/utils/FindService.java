@@ -12,8 +12,8 @@ import org.xcore.plugin.utils.models.PlayerData;
 
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;
-import static org.xcore.plugin.utils.Utils.deepEquals;
-import static org.xcore.plugin.utils.Utils.notNullElse;
+import static org.xcore.plugin.utils.NullSafe.orElse;
+import static org.xcore.plugin.utils.TextUtils.deepEquals;
 
 @Singleton
 public class FindService {
@@ -28,7 +28,7 @@ public class FindService {
     }
 
     public Player player(String nameOrId) {
-        return notNullElse(playerById(nameOrId), playerByName(nameOrId));
+        return orElse(playerById(nameOrId), playerByName(nameOrId));
     }
 
     public Player playerById(String id) {
@@ -52,7 +52,7 @@ public class FindService {
     public Administration.PlayerInfo playerInfo(String name) {
         var player = player(name);
         if (player != null) return player.getInfo();
-        return notNullElse(netServer.admins.getInfoOptional(name), netServer.admins.findByIP(name));
+        return orElse(netServer.admins.getInfoOptional(name), netServer.admins.findByIP(name));
     }
 
     public String findTranslatorLanguage(String locale) {
