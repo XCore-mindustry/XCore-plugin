@@ -15,17 +15,17 @@ import mindustry.net.Administration.ActionType;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
-import org.xcore.plugin.infra.CommandRegistrar;
-import org.xcore.plugin.listeners.NetEventService;
-import org.xcore.plugin.modules.Config;
-import org.xcore.plugin.modules.GlobalConfig;
-import org.xcore.plugin.modules.bundles.BundleService;
-import org.xcore.plugin.modules.common.BuildInfo;
-import org.xcore.plugin.modules.common.PluginState;
-import org.xcore.plugin.modules.database.DatabaseService;
-import org.xcore.plugin.modules.maps.SmartMapSelector;
-import org.xcore.plugin.utils.FindService;
-import org.xcore.plugin.utils.models.PlayerData;
+import org.xcore.plugin.command.core.CommandRegistrar;
+import org.xcore.plugin.event.NetEventService;
+import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.common.BuildInfo;
+import org.xcore.plugin.common.PluginState;
+import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.map.SmartMapSelector;
+import org.xcore.plugin.service.FindService;
+import org.xcore.plugin.model.PlayerData;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -33,7 +33,7 @@ import java.time.Duration;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.state;
-import static org.xcore.plugin.utils.PacketUtils.writeString;
+import static org.xcore.plugin.common.PacketUtils.writeString;
 
 public class XcorePlugin extends Plugin {
     private BeanScope beanScope;
