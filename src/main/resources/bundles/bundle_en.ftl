@@ -4,7 +4,7 @@ commands-help-start-content = [orange]-- Commands Page[lightgray] {$page}[gray]/
 commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgray] - {$commandDescription}
 commands-information-params = {""}
 commands-information-description = Show information about the server
-commands-info-title = [orange]XCore Server
+commands-info-title = [orange]XCore Server — {$xcorServerName}
 commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
     {""}
     {""}XCore Version — [accent]{$xcoreVersion}[white]

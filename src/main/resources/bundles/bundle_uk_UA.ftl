@@ -4,10 +4,10 @@ commands-help-start-content = [orange]-- Сторінка Команд[lightgray
 commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgray] - {$commandDescription}
 commands-information-params = ${""}
 commands-information-description = Показати інформацію про сервер
-commands-info-title = [orange]XCore сервер
+commands-info-title = [orange]XCore сервер — {$xcorServerName}
 commands-info-text = [accent]XCore[white] це [cyan]безплатний[white] сервер для гри у [accent]Mindustry[white].
     {""}
-    {""}Версія XCore — [accent]{$xcoreVersion}[white
+    {""}Версія XCore — [accent]{$xcoreVersion}[white]
 commands-t-params = <повідомлення...>
 commands-t-description = Надіслати повідомлення тільки своїм союзникам по команді.
 commands-g-params = <повідомлення...>
@@ -215,4 +215,4 @@ map-vote-like = [green]👍 Подобається
 map-vote-dislike = [red]👎 Не подобається
 map-vote-like-selected = [gray]Вам вже подобається
 map-vote-dislike-selected = [gray]Вам вже не подобається
-close = Закрити]
+close = Закрити

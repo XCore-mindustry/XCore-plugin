@@ -8,6 +8,7 @@ import mindustry.gen.Call;
 import mindustry.ui.Menus;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.common.BuildInfo;
 
@@ -19,11 +20,13 @@ public class InformationController {
     private CommandHandler handler;
     private int infoMenuId;
 
+    private final Config config;
     private final GlobalConfig globalConfig;
     private final BuildInfo buildInfo;
 
     @Inject
-    public InformationController(GlobalConfig globalConfig, BuildInfo buildInfo) {
+    public InformationController(Config config, GlobalConfig globalConfig, BuildInfo buildInfo) {
+        this.config = config;
         this.globalConfig = globalConfig;
         this.buildInfo = buildInfo;
     }
@@ -78,7 +81,7 @@ public class InformationController {
     @Command(name = "information", aliases = {"info"})
     public void info(ClientContext ctx) {
         Call.menu(ctx.player().con, infoMenuId,
-                ctx.format("commands-info-title", args()),
+                ctx.format("commands-info-title", args("xcorServerName", config.server)),
                 ctx.format("commands-info-text", args("xcoreVersion", buildInfo.getVersion())),
                 new String[][]{
                         {"Discord", "GitHub", "Donatello"},
