@@ -21,7 +21,6 @@ import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
@@ -32,6 +31,7 @@ import org.xcore.plugin.service.NetworkService;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
+import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
 public class MiniHexedService {
@@ -88,7 +88,7 @@ public class MiniHexedService {
             applyRules();
             Timer.schedule(() -> {
                 greenCores = Team.green.cores().size;
-                XcorePlugin.info("Found @ green cores.", greenCores);
+                info("Found @ green cores.", greenCores);
             }, 5);
         });
         Events.on(EventType.PlayerLeave.class, event -> members.get(event.player.uuid()).leave());
@@ -146,7 +146,7 @@ public class MiniHexedService {
             return member.join();
         };
 
-        XcorePlugin.info("MiniHexed loaded.");
+        info("MiniHexed loaded.");
     }
 
     private void applyRules() {

@@ -13,7 +13,6 @@ import mindustry.maps.Map;
 import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
-import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.database.DatabaseService;
@@ -27,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
-import static org.xcore.plugin.XcorePlugin.info;
+import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
 public class SocketService {
@@ -74,7 +73,7 @@ public class SocketService {
         } else {
             network.subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
                 if (!e.server().equals(config.server)) return;
-                XcorePlugin.sendMessageFromDiscord(e.authorName(), e.message());
+                discordService.sendMessageToGameFromDiscord(e.authorName(), e.message());
             });
         }
 

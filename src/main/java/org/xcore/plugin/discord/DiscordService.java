@@ -23,7 +23,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.Getter;
-import org.xcore.plugin.XcorePlugin;
+import mindustry.gen.Call;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
@@ -170,7 +170,7 @@ public class DiscordService {
                     if (server == null) return;
 
                     if (server.equals(config.server)) {
-                        XcorePlugin.sendMessageFromDiscord(author.getDisplayName(), content);
+                        sendMessageToGameFromDiscord(author.getDisplayName(), content);
                     } else {
                         network.post(
                                 new SocketEvents.DiscordMessageEvent(author.getDisplayName(), content, server)
@@ -237,6 +237,12 @@ public class DiscordService {
                 .allowedMentions(AllowedMentions.suppressAll())
                 .build()).subscribe();
     }
+
+    public void sendMessageToGameFromDiscord(String authorName, String message) {
+        Log.infoTag("Discord", Strings.format("@: @", authorName, message));
+        Call.sendMessage(Strings.format("[blue][Discord][] @: @", authorName, message));
+    }
+
 
     public void sendConnectionEvent(String playerName, String server, Boolean join) {
         if (!isConnected) return;

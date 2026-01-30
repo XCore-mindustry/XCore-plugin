@@ -11,7 +11,6 @@ import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.LeaderboardService;
@@ -19,6 +18,7 @@ import org.xcore.plugin.database.DatabaseService;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
 public class MiniPvP {
@@ -119,6 +119,6 @@ public class MiniPvP {
             }
         });
 
-        XcorePlugin.info("MiniPvP loaded.");
+        info("MiniPvP loaded.");
     }
 }
