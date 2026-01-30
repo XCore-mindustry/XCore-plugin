@@ -14,16 +14,16 @@ public class BundleTests {
         var bundle = Bundle.INSTANCE;
         bundle.addSource(new Fi("src/test/resources/bundles"));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("en"), "hello-user",
+        assertEquals("Hello, Billy!", bundle.format(Locale.of("en"), "hello-user",
                 Map.of("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-user2",
+        assertEquals("Hello, Billy!", bundle.format(Locale.of("en"),"hello-user2",
                 Map.of("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-user",
+        assertEquals("Hello, Billy!", bundle.format(Locale.of("en"),"hello-user",
                 Bundle.args("userName", "Billy")));
 
-        assertEquals("Hello, Billy!", bundle.format(new Locale("en"),"hello-num-user",
+        assertEquals("Hello, Billy!", bundle.format(Locale.of("en"),"hello-num-user",
                 Bundle.numArgs("Billy")));
     }
 
@@ -34,7 +34,7 @@ public class BundleTests {
 
         var start = System.currentTimeMillis();
         for (int i = 0; i < 100000; i++) {
-            bundle.format(new Locale("en"), "hello-user",
+            bundle.format(Locale.of("en"), "hello-user",
                     Map.of("userName", "Billy"));
         }
         var end = System.currentTimeMillis();
@@ -49,7 +49,7 @@ public class BundleTests {
         long[] times = new long[100];
         for (int i = 0; i < 100; i++) {
             var start = System.nanoTime();
-            bundle.format(new Locale("en"), "hello-user",
+            bundle.format(Locale.of("en"), "hello-user",
                     Map.of("userName", "Billy"));
             var end = System.nanoTime();
 

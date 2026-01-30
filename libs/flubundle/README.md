@@ -1,7 +1,7 @@
 # FluBundle
 [![Javadoc](https://img.shields.io/badge/JavaDoc-Online-green)](https://osp54.github.io/FluBundle/javadoc/)
 ## Installation
-Java 17 is required.
+Java 25 is required.
 ### 1. Add gradle repository
 ```groovy
 repositories {
