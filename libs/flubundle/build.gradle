@@ -47,7 +47,6 @@ dependencies {
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
 
     implementation "net.xyzsd.fluent:fluent-base:0.72"
-    implementation "net.xyzsd.fluent:fluent-functions-cldr:0.72"
     implementation "net.xyzsd.fluent:fluent-functions-icu:0.72"
 
     testImplementation platform('org.junit:junit-bom:6.0.2')
