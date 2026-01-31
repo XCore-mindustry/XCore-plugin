@@ -58,8 +58,6 @@ commands-tr-description = Встановити мову перекладача.
 commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{$translatorLanguage}[]!
 commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
-commands-maps-params = [сторінка]
-commands-maps-description = Список усіх карт на цьому сервері.
 commands-ban-params = <id-гравця> <період> [причина...]
 commands-ban-description = Забанити гравця. [scarlet]Тільки для адмінів.
 commands-ban-success = {$nickname} [scarlet]забанений
@@ -72,18 +70,25 @@ commands-mute-success = [accent]Успішно заглушено гравця {
 commands-unmute-params = <id-гравця>
 commands-unmute-description = Зняти мут з гравця. [scarlet]Тільки для адмінів.
 commands-unmute-success = [green]Успішно знято мут з гравця []{$nickname}
-commands-map-stats-content = {""}[white]Статистика карти для [green]{$mapName}
+commands-map-title = [orange]XCore сервер — Статистика
+commands-map-content = {""}[white]Статистика карти для [green]{$mapName}
     {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Розмір:[green] {$mapWidth}x{$mapHeight}[orange]
     {""}[white]Репутація:[green] {$mapReputation}[orange] | [white]Популярність:[green] {$mapPopularity}[orange] | [white]Цікавість:[green] {$mapInterest}[orange]
     {""}[white]Зіграно разів:[green] {$mapPlayedTimes}[orange] | [white]Зіграно за рік:[green] {$mapPlayedTimesYear}[orange] | [white]Остання гра:[green] {$mapLastPlayed}[orange]
     {""}[white]Мін. час:[green] {$mapMin}[orange] | [white]Сер. час:[green] {$mapAvg}[orange] | [white]Макс. час:[green] {$mapMax}[orange]
     {""}[green]{$mapDescription}[white]
-commands-map-stats-params = [назва-карти]
-commands-map-stats-description = Статистика конкретної карти
+commands-map-params = [назва-карти]
+commands-map-description = Статистика конкретної карти
+commands-maps-params = [сторінка]
+commands-maps-description = Список усіх мап на цьому сервері.
+commands-maps-title = [orange]XCore сервер — Список мап
+commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$pageCount}[]
+commands-maps-text-params = [сторінка]
+commands-maps-text-description = Список усіх карт на цьому сервері.
 commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
-commands-maps-start-content = [accent]Поточна карта: []{$mapName}[white]
+commands-maps-text-start-content = [accent]Поточна карта: []{$mapName}[white]
     {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
-commands-maps-content = {""}
+commands-maps-text-content = {""}
     {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | Від: [sky]{$mapAuthor}
 commands-votekick-params = <ID/ім'я> <причина...>
 commands-votekick-description = Голосування за вигнання (кік) гравця з сервера.
@@ -205,7 +210,7 @@ commands-dislike-description = Проголосувати проти карти
 commands-dislike-success = [orange]Ви поставили не подобається цій карті.
 commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
 never = Ніколи
-map-vote-title = [scarlet]ГРА ЗАКІНЧЕНА!
+map-vote-title = [orange]XCore сервер — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content = {""}
     {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[white].
     {""}Нова гра почнеться через [accent]{$seconds}[white] секунд.
@@ -215,4 +220,9 @@ map-vote-like = [green]👍 Подобається
 map-vote-dislike = [red]👎 Не подобається
 map-vote-like-selected = [gray]Вам вже подобається
 map-vote-dislike-selected = [gray]Вам вже не подобається
+map-rtv = [orange]Голосування
+map-artv = [red]Миттєва зміна
+map-maps = Мапи
 close = Закрити
+previous = <- Попередня
+next = Наступна ->

@@ -58,8 +58,6 @@ commands-tr-description = Установить язык переводчика
 commands-tr-success = [accent]Язык переводчика был успешно изменен на [grey]{$translatorLanguage}[]!
 commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = [scarlet]⚠ Нет такого языка
-commands-maps-params = [страница]
-commands-maps-description = Список всех карт на сервере
 commands-ban-params = <id-игрока> <период> [причина...]
 commands-ban-description = \ Забанить игрока. [scarlet]Только для админов
 commands-ban-success = {$nickname} [scarlet]забанен
@@ -72,20 +70,32 @@ commands-mute-success = [accent]Игрок {$nickname}[accent] успешно з
 commands-unmute-params = <id-игрока>
 commands-unmute-description = Размутить игрока. [scarlet]Только для админов
 commands-unmute-success = Успешно размучено игрока {$nickname}
-commands-map-stats-content = {""}[white]Статистика карты для [green]{$mapName}
+commands-map-title = [orange]XCore сервер — Статистика
+commands-map-content = {""}[white]Статистика карты для [green]{$mapName}
+    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Размер:[green] {$mapWidth}x{$mapHeight}[orange]
+    {""}[white]Репутация:[green] {$mapReputation}[orange] | [white]Популярность:[green] {$mapPopularity}[orange] | [white]Интерес:[green] {$mapInterest}[orange]
+    {""}[white]Сыграно раз:[green] {$mapPlayedTimes}[orange] | [white]Сыграно за год:[green] {$mapPlayedTimesYear}[orange] | [white]Последняя игра:[green] {$mapLastPlayed}[orange]
+    {""}[white]Мин. время:[green] {$mapMin}[orange] | [white]Ср. время:[green] {$mapAvg}[orange] | [white]Макс. время:[green] {$mapMax}[orange]
+    {""}[green]{$mapDescription}[white]
+commands-map-params = [название-карты]
+commands-map-description = Статистика конкретной карты
+commands-maps-params = [страница]
+commands-maps-description = Список всех карт на этом сервере.
+commands-maps-title = [orange]XCore сервер — Список карт
+commands-maps-content = {""}[white]Страница [green]{$page}[] из [green]{$pageCount}[]
+commands-maps-text-params = [страница]
+commands-maps-text-description = Список всех карт на этом сервере.
+commands-maps-page-must-number = [scarlet]'страница' должна быть числом
+commands-maps-text-start-content = [accent]Текущая карта: []{$mapName}[white]
+    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
+commands-maps-text-content = {""}
+    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | От: [sky]{$mapAuthor}
+commands-map-content = {""}[white]Статистика карты для [green]{$mapName}
     {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Размер:[green] {$mapWidth}x{$mapHeight}[orange]
     {""}[white]Репутация:[green] {$mapReputation}[orange] | [white]Популярность:[green] {$mapPopularity}[orange] | [white]Интерес:[green] {$mapInterest}[orange]
     {""}[white]Сыграно раз:[green] {$mapPlayedTimes}[orange] | [white]Сыграно за год:[green] {$mapPlayedTimesYear}[orange] | [white]Последняя игра:[green] {$mapLastPlayed}[orange]
     {""}[white]Мин. время:[green] {$mapMin}[orange] | [white]Сред. время:[green] {$mapAvg}[orange] | [white]Макс. время:[green] {$mapMax}[orange]
     {""}[green]{$mapDescription}[white]
-commands-map-stats-params = [название-карты]
-commands-map-stats-description = Статистика конкретной карты
-commands-maps-page-must-number = [scarlet]'page' должно быть числом
-commands-maps-start-content = [accent]Текущая карта: []{$mapName}[white]
-    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
-commands-maps-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | От: [sky]{$mapAuthor}
-commands-votekick-params = <ID/никнейм> <причина...>
 commands-votekick-description = Голосование за кик игрока.
 commands-vote-params = <y/n>
 commands-vote-description = Проголосовать за кик текущего игрока
@@ -201,7 +211,7 @@ commands-dislike-description = Проголосовать против карт�
 commands-dislike-success = [orange]Вы поставили дизлайк этой карте.
 commands-dislike-changed = [orange]Вы изменили свое мнение на Дизлайк.
 never = Никогда
-map-vote-title = [scarlet]ИГРА ОКОНЧЕНА!
+map-vote-title = [orange]XCore сервер — [scarlet]ИГРА ОКОНЧЕНА!
 map-vote-content = {""}
     {""}Следующая карта: [accent]{$mapName}[] от [accent]{$author}[white].
     {""}Новая игра начнется через [accent]{$seconds}[white] секунд.
@@ -211,4 +221,9 @@ map-vote-like = [green]👍 Нравится
 map-vote-dislike = [red]👎 Не нравится
 map-vote-like-selected = [gray]Вам нравится
 map-vote-dislike-selected = [gray]Вам не нравится
+map-rtv = [orange]Голосование
+map-artv = [red]Мгновенная смена
+map-maps = Карты
 close = Закрыть
+previous = <- Предыдущая
+next = Следующая ->

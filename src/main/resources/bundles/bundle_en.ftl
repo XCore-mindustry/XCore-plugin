@@ -54,8 +54,6 @@ commands-tr-description = Set the translator language.
 commands-tr-success = [accent]The translator language has been successfully changed to [grey]{$translatorLanguage}[]!
 commands-tr-off = [accent]Translator is [scarlet]off[]!
 commands-tr-not-found = [scarlet]⚠ There is no such language.
-commands-maps-params = [page]
-commands-maps-description = List all the maps on this server.
 commands-ban-params = <player-id> <period> [reason...]
 commands-ban-description = Ban a player. [scarlet]Admin only
 commands-ban-success = {$nickname} [scarlet]banned
@@ -68,18 +66,25 @@ commands-mute-success = [accent]Successfully muted {$nickname}
 commands-unmute-params = <player-id>
 commands-unmute-description = Unmute player. [scarlet]Admin only.
 commands-unmute-success = [green]Successfully unmuted []{$nickname}
-commands-map-stats-content = {""}[white]Statistics map for [green]{$mapName}
+commands-map-title = [orange]XCore server — Statistics
+commands-map-content = {""}[white]Map statistics for [green]{$mapName}
     {""}[white]Author:[green] {$mapAuthor}[orange] | [white]Size:[green] {$mapWidth}x{$mapHeight}[orange]
     {""}[white]Reputation:[green] {$mapReputation}[orange] | [white]Popularity:[green] {$mapPopularity}[orange] | [white]Interest:[green] {$mapInterest}[orange]
-    {""}[white]Played Times:[green] {$mapPlayedTimes}[orange] | [white]Played Times Year:[green] {$mapPlayedTimesYear}[orange] | [white]Last Played:[green] {$mapLastPlayed}[orange]
+    {""}[white]Times played:[green] {$mapPlayedTimes}[orange] | [white]Played this year:[green] {$mapPlayedTimesYear}[orange] | [white]Last played:[green] {$mapLastPlayed}[orange]
     {""}[white]Min time:[green] {$mapMin}[orange] | [white]Avg time:[green] {$mapAvg}[orange] | [white]Max time:[green] {$mapMax}[orange]
     {""}[green]{$mapDescription}[white]
-commands-map-stats-params = [map-name]
-commands-map-stats-description = Statistics for a specific map
+commands-map-params = [map-name]
+commands-map-description = Statistics of a specific map
+commands-maps-params = [page]
+commands-maps-description = List of all maps on this server.
+commands-maps-title = [orange]XCore server — Map List
+commands-maps-content = {""}[white]Page [green]{$page}[] of [green]{$pageCount}[]
+commands-maps-text-params = [page]
+commands-maps-text-description = List of all maps on this server.
 commands-maps-page-must-number = [scarlet]'page' must be a number
-commands-maps-start-content = [accent]Current map: []{$mapName}[white]
-    {""}[orange][gold]Maps list [lightgray]{$page}[gray]/[lightgray]{$pageCount}
-commands-maps-content = {""}
+commands-maps-text-start-content = [accent]Current map: []{$mapName}[white]
+    {""}[orange][gold]Map list [lightgray]{$page}[gray]/[lightgray]{$pageCount}
+commands-maps-text-content = {""}
     {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | By: [sky]{$mapAuthor}
 commands-votekick-params = <ID/name> <reason...>
 commands-votekick-description = Vote to kick a player from the server.
@@ -199,7 +204,7 @@ commands-dislike-description = Vote against the current map
 commands-dislike-success = [orange]You disliked this map.
 commands-dislike-changed = [orange]You changed your vote to Dislike.
 never = Never
-map-vote-title = [scarlet]GAME OVER!
+map-vote-title = [orange]XCore server — [scarlet]GAME OVER!
 map-vote-content = {""}
     {""}Next map: [accent]{$mapName}[] by [accent]{$author}[white].
     {""}New game starts in [accent]{$seconds}[white] seconds.
@@ -209,4 +214,9 @@ map-vote-like = [green]👍 Like
 map-vote-dislike = [red]👎 Dislike
 map-vote-like-selected = [gray]You liked it
 map-vote-dislike-selected = [gray]You disliked it
+map-rtv = [orange]Voting
+map-artv = [red]Instant Change
+map-maps = Maps
 close = Close
+previous = <- Previous
+next = Next ->

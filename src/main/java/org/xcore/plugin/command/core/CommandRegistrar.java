@@ -91,6 +91,7 @@ public class CommandRegistrar {
         bus.addInterceptor(playTimeInterceptor);
 
         informationController.setHandler(handler);
+        mapController.initMenu();
 
         bus.register(
                 informationController,
