@@ -7,7 +7,7 @@ import com.xpdustry.toxopid.spec.ModPlatform
 plugins {
     java
     id("com.xpdustry.toxopid") version "4.1.2"
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 group = "org.xcore.plugin"
@@ -16,7 +16,7 @@ val mindustryVersion = "154.3"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -65,8 +65,8 @@ dependencies {
 
     implementation("io.avaje:avaje-inject:12.2")
 
-    compileOnly("org.projectlombok:lombok:1.18.30")
-    annotationProcessor("org.projectlombok:lombok:1.18.30")
+    compileOnly("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
     annotationProcessor("io.avaje:avaje-inject-generator:12.2")
 
 }
@@ -83,6 +83,8 @@ val generateModInfo by tasks.registering {
 
 tasks.shadowJar {
     archiveClassifier.set("")
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from(generateModInfo)
 
