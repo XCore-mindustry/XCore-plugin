@@ -9,7 +9,10 @@ import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.BanDataRepository;
+import org.xcore.plugin.database.repository.MuteDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.model.BanData;
@@ -25,16 +28,28 @@ import static com.ospx.flubundle.Bundle.args;
 @AdminOnly
 public class ModerationController {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final BanDataRepository banDataRepository;
+    private final MuteDataRepository muteDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final BundleService bundle;
     private final FindService find;
     private final TimeService time;
 
     @Inject
-    public ModerationController(DatabaseService database, NetworkService network, BundleService bundle,
-                                FindService find, TimeService timeService) {
-        this.database = database;
+    public ModerationController(PlayerDataRepository playerDataRepository,
+                                BanDataRepository banDataRepository,
+                                MuteDataRepository muteDataRepository,
+                                PlayerSessionService playerSessionService,
+                                NetworkService network,
+                                BundleService bundle,
+                                FindService find,
+                                TimeService timeService) {
+        this.playerDataRepository = playerDataRepository;
+        this.banDataRepository = banDataRepository;
+        this.muteDataRepository = muteDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.bundle = bundle;
         this.find = find;
@@ -44,7 +59,7 @@ public class ModerationController {
     @Command(name = "ban", params = "<id> <period> [reason...]")
     public void ban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = database.getPlayerDataRepository().findById(id);
+        var target = playerDataRepository.findById(id);
 
         if (target == null) {
             ctx.send("error-player-not-found", args());
@@ -73,7 +88,7 @@ public class ModerationController {
                 .build();
 
         network.post(ban);
-        database.getBanDataRepository().save(ban);
+        banDataRepository.save(ban);
 
         ctx.send("commands-ban-success", args("nickname", target.nickname));
     }
@@ -81,14 +96,14 @@ public class ModerationController {
     @Command(name = "unban", params = "<id>")
     public void unban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = database.getPlayerDataRepository().findById(id);
+        var target = playerDataRepository.findById(id);
 
         if (target == null) {
             ctx.send("error-player-not-found", args());
             return;
         }
 
-        database.getBanDataRepository().delete(target.uuid, null);
+        banDataRepository.delete(target.uuid, null);
 
         ctx.send("commands-unban-success", args(
                 "nickname", target.nickname,
@@ -99,7 +114,7 @@ public class ModerationController {
     @Command(name = "mute", params = "<id> <period> [reason...]")
     public void mute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = database.getCachedOrDb(id);
+        var target = playerSessionService.getOrLoadFromDb(id);
 
         if (target == null) {
             ctx.send("error-player-not-found", args());
@@ -115,7 +130,7 @@ public class ModerationController {
         String reason = (ctx.args().length > 2) ? ctx.args()[2] : "Not Specified";
         Instant expireDate = Instant.now().plusMillis(period.toEpochMilli());
 
-        database.getMuteDataRepository().save(MuteData.builder()
+        muteDataRepository.save(MuteData.builder()
                 .uuid(target.uuid)
                 .name(target.nickname)
                 .adminName(ctx.player().name)
@@ -139,14 +154,14 @@ public class ModerationController {
     @Command(name = "unmute", params = "<id>")
     public void unmute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = database.getCachedOrDb(id);
+        var target = playerSessionService.getOrLoadFromDb(id);
 
         if (target == null) {
             ctx.send("error-player-not-found", args());
             return;
         }
 
-        database.getMuteDataRepository().delete(target.uuid);
+        muteDataRepository.delete(target.uuid);
 
         ctx.send("commands-unmute-success", args("nickname", target.nickname));
     }

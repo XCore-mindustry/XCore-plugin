@@ -23,7 +23,10 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.common.PluginState;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.AdminDataRepository;
+import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.vote.VoteService;
@@ -41,7 +44,10 @@ public class PluginEventService {
 
     private int mapVoteMenuId;
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
+    private final PlayerDataRepository playerDataRepository;
+    private final MapDataRepository mapDataRepository;
+    private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
     private final Config config;
     private final GlobalConfig globalConfig;
@@ -50,10 +56,20 @@ public class PluginEventService {
     private final PluginState pluginState;
 
     @Inject
-    public PluginEventService(DatabaseService database, NetworkService network, Config config,
-                              GlobalConfig globalConfig, BundleService bundleService, VoteService voteService,
+    public PluginEventService(PlayerSessionService playerSessionService,
+                              PlayerDataRepository playerDataRepository,
+                              MapDataRepository mapDataRepository,
+                              AdminDataRepository adminDataRepository,
+                              NetworkService network,
+                              Config config,
+                              GlobalConfig globalConfig,
+                              BundleService bundleService,
+                              VoteService voteService,
                               PluginState pluginState) {
-        this.database = database;
+        this.playerSessionService = playerSessionService;
+        this.playerDataRepository = playerDataRepository;
+        this.mapDataRepository = mapDataRepository;
+        this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
@@ -71,9 +87,9 @@ public class PluginEventService {
             if (map == null) return;
 
             String mapName = map.plainName();
-            PlayerData pData = database.getCached(player.uuid());
+            PlayerData pData = playerSessionService.get(player.uuid());
 
-            MapData mData = database.getMapDataRepository().find(mapName, map.author(), state.rules.mode().name());
+            MapData mData = mapDataRepository.find(mapName, map.author(), state.rules.mode().name());
             String mapIdStr = String.valueOf(mData.id);
 
             Boolean previousVote = pData.mapVotes.get(mapIdStr);
@@ -112,8 +128,8 @@ public class PluginEventService {
                 pData.mapVotes.put(mapIdStr, false);
             }
 
-            database.getPlayerDataRepository().save(pData);
-            database.getMapDataRepository().save(mData);
+            playerDataRepository.save(pData);
+            mapDataRepository.save(mData);
         });
 
         Events.on(PlayerJoin.class, event -> {
@@ -129,7 +145,7 @@ public class PluginEventService {
             });
 
             bundleService.send(player, "welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
-            PlayerData data = database.getPlayerDataRepository().findByPlayer(player);
+            PlayerData data = playerDataRepository.findByPlayer(player);
 
             if (data == null) data = new PlayerData(player.uuid(), false);
 
@@ -139,9 +155,9 @@ public class PluginEventService {
 
             if (data.exists && !data.ip.equals(player.ip())) {
                 if (player.admin) {
-                    var adminData = database.getAdminDataRepository().findByUuid(data.uuid);
+                    var adminData = adminDataRepository.findByUuid(data.uuid);
                     adminData.adminConfirmed = false;
-                    database.getAdminDataRepository().save(adminData);
+                    adminDataRepository.save(adminData);
 
                     player.admin = false;
                     netServer.admins.unAdminPlayer(player.uuid());
@@ -149,17 +165,17 @@ public class PluginEventService {
                 }
 
                 data.setIp(player.ip());
-                database.getPlayerDataRepository().save(data);
+                playerDataRepository.save(data);
             }
 
             if (!data.exists) {
                 // data.generatePid(); now, automatically generated
                 data.setIp(player.ip());
-                database.getPlayerDataRepository().save(data);
+                playerDataRepository.save(data);
             }
 
             HexedRanks.updateRank(player, data, config);
-            database.setCached(data);
+            playerSessionService.update(data);
 
             if (player.getInfo().timesJoined < 5) {
                 Call.openURI(player.con, globalConfig.discordUrl);
@@ -179,7 +195,7 @@ public class PluginEventService {
         Events.on(PlayerLeave.class, event -> {
             Player player = event.player;
 
-            var data = database.removeCached(event.player.uuid());
+            var data = playerSessionService.registerLogout(event.player.uuid());
 
             voteService.handleLeave(event.player);
 
@@ -243,8 +259,8 @@ public class PluginEventService {
                             "seconds", 10
                     ));
 
-                    PlayerData pData = database.getCached(p.uuid());
-                    String mapIdStr = String.valueOf(database.getMapDataRepository()
+                    PlayerData pData = playerSessionService.get(p.uuid());
+                    String mapIdStr = String.valueOf(mapDataRepository
                             .find(state.map.plainName(), state.map.author(), state.rules.mode().name()).id);
                     Boolean currentVote = pData.mapVotes.get(mapIdStr);
 
@@ -297,11 +313,11 @@ public class PluginEventService {
                     long durationMillis = (long) ((state.tick / 60f) * 1000f);
 
                     if (durationMillis > 120 * 1000) {
-                        MapData stats = database.getMapDataRepository().find(mapName, author, modeName);
+                        MapData stats = mapDataRepository.find(mapName, author, modeName);
                         boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
 
                         stats.registerGame(durationMillis, isWin, modeName, author);
-                        database.getMapDataRepository().save(stats);
+                        mapDataRepository.save(stats);
 
                         Log.info("Map stats updated for '@'", mapName);
                     }

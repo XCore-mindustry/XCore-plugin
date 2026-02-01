@@ -3,8 +3,7 @@ package org.xcore.plugin.service;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.model.MuteData;
 
 import java.time.Duration;
@@ -15,17 +14,17 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class SecurityService {
 
-    private final DatabaseService database;
+    private final MuteDataRepository muteDataRepository;
     private final BundleService bundle;
 
     @Inject
-    public SecurityService(DatabaseService database, BundleService bundle) {
-        this.database = database;
+    public SecurityService(MuteDataRepository muteDataRepository, BundleService bundle) {
+        this.muteDataRepository = muteDataRepository;
         this.bundle = bundle;
     }
 
     public boolean isMuted(Player player) {
-        MuteData mute = database.getMuteDataRepository().findByUuid(player.uuid());
+        MuteData mute = muteDataRepository.findByUuid(player.uuid());
 
         if (mute == null) return false;
 
@@ -42,7 +41,7 @@ public class SecurityService {
             return true;
         }
 
-        database.getMuteDataRepository().delete(player.uuid());
+        muteDataRepository.delete(player.uuid());
         return false;
     }
 }

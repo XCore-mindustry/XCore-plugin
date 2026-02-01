@@ -5,24 +5,29 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class PlayerActivityService {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
+    private final PlayerDataRepository playerDataRepository;
     private final BundleService bundleService;
     private final FindService findService;
     private final GlobalConfig globalConfig;
     private final ServerDiscoveryService discoveryService;
 
     @Inject
-    public PlayerActivityService(DatabaseService database, BundleService bundleService,
-                                 FindService findService, GlobalConfig globalConfig,
+    public PlayerActivityService(PlayerSessionService playerSessionService,
+                                 PlayerDataRepository playerDataRepository,
+                                 BundleService bundleService,
+                                 FindService findService,
+                                 GlobalConfig globalConfig,
                                  ServerDiscoveryService discoveryService) {
-        this.database = database;
+        this.playerSessionService = playerSessionService;
+        this.playerDataRepository = playerDataRepository;
         this.bundleService = bundleService;
         this.findService = findService;
         this.globalConfig = globalConfig;
@@ -34,9 +39,9 @@ public class PlayerActivityService {
         Timer.schedule(() -> {
             discoveryService.updateFooter();
 
-            database.cachedPlayerData.each((uuid, data) -> {
-                var player = findService.playerByUuid(uuid);
-                if (player == null) return;
+            for (var data : playerSessionService.getAllCached()) {
+                var player = findService.playerByUuid(data.uuid);
+                if (player == null) continue;
 
                 data.totalPlayTime++;
 
@@ -48,8 +53,8 @@ public class PlayerActivityService {
                             args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
                 }
 
-                database.getPlayerDataRepository().save(data);
-            });
+                playerDataRepository.save(data);
+            }
         }, 0, 60);
     }
 }

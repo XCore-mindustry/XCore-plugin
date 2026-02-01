@@ -14,7 +14,8 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.LeaderboardService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -25,15 +26,20 @@ public class MiniPvP {
     public final Seq<String> defeatedPlayers = new Seq<>();
 
     private final Config config;
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
+    private final PlayerDataRepository playerDataRepository;
     private final BundleService bundle;
     private final LeaderboardService leaderboardService;
 
     @Inject
-    public MiniPvP(Config config, DatabaseService database, BundleService bundle,
+    public MiniPvP(Config config,
+                   PlayerSessionService playerSessionService,
+                   PlayerDataRepository playerDataRepository,
+                   BundleService bundle,
                    LeaderboardService leaderboardService) {
         this.config = config;
-        this.database = database;
+        this.playerSessionService = playerSessionService;
+        this.playerDataRepository = playerDataRepository;
         this.bundle = bundle;
         this.leaderboardService = leaderboardService;
     }
@@ -43,10 +49,14 @@ public class MiniPvP {
         if (!config.isMiniPvP()) return;
 
         leaderboardService.start((builder, player, locale) -> {
-            Seq<PlayerData> sorted = database.cachedPlayerData.copy().values().toSeq()
-                    .select(d -> d.pvpRating != 0)
-                    .sort(d -> d.pvpRating)
-                    .reverse();
+            Seq<PlayerData> sorted = new Seq<>();
+            for (var d : playerSessionService.getAllCached()) {
+                if (d.pvpRating != 0) {
+                    sorted.add(d);
+                }
+            }
+            sorted.sort(d -> d.pvpRating);
+            sorted.reverse();
 
             sorted.truncate(10);
             builder.append(bundle.format(locale, "leaderboard", args())).append("\n\n");
@@ -73,7 +83,7 @@ public class MiniPvP {
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
-                var data = database.getCached(p.uuid());
+                var data = playerSessionService.get(p.uuid());
 
                 int calculated = 150 / (e.winner.data().players.size + 1);
                 int increased = Mathf.clamp(calculated, 10, 60);
@@ -82,7 +92,7 @@ public class MiniPvP {
                 bundle.send(p, "pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                database.getPlayerDataRepository().save(data);
+                playerDataRepository.save(data);
             });
         });
 
@@ -98,7 +108,7 @@ public class MiniPvP {
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
 
-                        var data = database.getCached(p.uuid());
+                        var data = playerSessionService.get(p.uuid());
 
                         int reduced = (int) (25f * ((float) allies / enemies));
 
@@ -113,7 +123,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        database.getPlayerDataRepository().save(data);
+                        playerDataRepository.save(data);
                     });
                 }
             }

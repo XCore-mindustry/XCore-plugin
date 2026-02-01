@@ -77,7 +77,7 @@ commands-unban-params = <id-игрока>
 commands-unban-description = Разбанить игрока. [scarlet]Только для админов
 commands-unban-success = {$nickname}[accent] #{$pid} успешно разбанен
 
-commands-mute-params=<id-игрока> <период> [причина...]
+commands-mute-params = <id-игрока> <период> [причина...]
 commands-mute-description = Замьютить игрока. [scarlet]Только для админов
 commands-mute-success = [accent]Игрок {$nickname}[accent] успешно замьючен
 
@@ -107,10 +107,9 @@ kick-pirated-game = [accent]Вход с неофициальных клиент�
 kick-recently-kicked = [accent]Вы были недавно кикнуты с этого сервера. Подождите [cyan]{$remainMinutes}:{$remainSeconds}[accent]
 kick-bot-protection = Возможно вы бот. Если нет, попробуйте перезайти.
 kick-admintools-outdated = [green]Требуемая версия AdminTools: [grey]{$requiredVersion}[]
-    [scarlet]Ваша версия AdminTools: [grey]{$version}[]
+    {""}[scarlet]Ваша версия AdminTools: [grey]{$version}[]
     {""}
-    [cyan]Пожалуйста, обновите AdminTools для входа на сервер.
-
+    {""}[cyan]Пожалуйста, обновите AdminTools для входа на сервер.
 
 support-channel = #reports-appeals
 
@@ -133,7 +132,7 @@ votekick-success = [orange]Голосование успешно. {$target}[oran
     [one] минуту
     [few] минуты
     *[many] минут
-}.
+    }.
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
@@ -210,8 +209,8 @@ commands-stats-content = Статистика игрока {$nickname} [grey]#{$
 commands-lb-params = {""}
 commands-lb-description = Включить/выключить таблицу лидеров
 commands-lb-success = { $leaderboardEnabled ->
-[true] [accent]Таблица лидеров [scarlet]включена
-*[other] [accent]Таблица лидеров [scarlet]выключена
+    [true] [accent]Таблица лидеров [scarlet]включена
+    *[other] [accent]Таблица лидеров [scarlet]выключена
     }
 leaderboard = [blue]Таблица лидеров
 
@@ -258,10 +257,10 @@ hexed-ranks-the_legend = Легенда
 
 hexed-game-over-header = Игра окончена. Победители:
 hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
-[one] гекс
-[few] гекса
-*[many] гексов
-}
+    [one] гекс
+    [few] гекса
+    *[many] гексов
+    }
 hexed-game-over-no-winners = Игра окончена. К сожалению, победители не найдены.
 hexed-game-over-restart = Новая игра через 10 секунд...
 

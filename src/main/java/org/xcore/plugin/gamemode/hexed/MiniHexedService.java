@@ -25,7 +25,8 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
 
@@ -46,7 +47,8 @@ public class MiniHexedService {
     private static int winScore = 1800;
 
     private final Config config;
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
+    private final PlayerDataRepository playerDataRepository;
     private final NetworkService network;
     private final BundleService bundle;
     private final LeaderboardService leaderboardService;
@@ -54,10 +56,15 @@ public class MiniHexedService {
     private static boolean gameover = false;
 
     @Inject
-    public MiniHexedService(Config config, DatabaseService database, NetworkService networkService,
-                            BundleService bundle, LeaderboardService leaderboardService) {
+    public MiniHexedService(Config config,
+                            PlayerSessionService playerSessionService,
+                            PlayerDataRepository playerDataRepository,
+                            NetworkService networkService,
+                            BundleService bundle,
+                            LeaderboardService leaderboardService) {
         this.config = config;
-        this.database = database;
+        this.playerSessionService = playerSessionService;
+        this.playerDataRepository = playerDataRepository;
         this.network = networkService;
         this.bundle = bundle;
         this.leaderboardService = leaderboardService;
@@ -109,7 +116,7 @@ public class MiniHexedService {
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
-            var data = database.getCached(member.uuid);
+            var data = playerSessionService.get(member.uuid);
 
             if (member.controlled() > 1 && data != null) {
                 var ranked = rankings.get(data.hexedRank());
@@ -184,7 +191,7 @@ public class MiniHexedService {
         if (!teams.isEmpty()) {
             var winnerTeam = teams.get(0);
             var player = winnerTeam.players.first();
-            var data = database.getCached(player.uuid());
+            var data = playerSessionService.get(player.uuid());
 
             var ranked = rankings.get(data.hexedRank());
             if (ranked != null && ranked.size > 1 ||
@@ -196,7 +203,7 @@ public class MiniHexedService {
                     data.hexedRank(data.hexedRank().next);
                 }
             }
-            database.getPlayerDataRepository().save(data);
+            playerDataRepository.save(data);
         }
 
         Func<Locale, String> generateMessage = locale -> {

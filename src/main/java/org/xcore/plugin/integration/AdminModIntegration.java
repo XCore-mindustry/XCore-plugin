@@ -1,7 +1,6 @@
 package org.xcore.plugin.integration;
 
 import arc.util.Log;
-import arc.util.Strings;
 import com.google.gson.Gson;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
@@ -10,7 +9,9 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.database.repository.BanDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.model.BanData;
@@ -25,16 +26,25 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class AdminModIntegration {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final BanDataRepository banDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final Gson rawGson;
     private final BundleService bundle;
     private final TimeService time;
 
     @Inject
-    public AdminModIntegration(DatabaseService database, NetworkService network, @Named("raw") Gson rawGson,
-                               BundleService bundle, TimeService timeService) {
-        this.database = database;
+    public AdminModIntegration(PlayerDataRepository playerDataRepository,
+                               BanDataRepository banDataRepository,
+                               PlayerSessionService playerSessionService,
+                               NetworkService network,
+                               @Named("raw") Gson rawGson,
+                               BundleService bundle,
+                               TimeService timeService) {
+        this.playerDataRepository = playerDataRepository;
+        this.banDataRepository = banDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.rawGson = rawGson;
         this.bundle = bundle;
@@ -55,7 +65,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            var targetData = database.getPlayerDataRepository().findById(req.pid);
+            var targetData = playerDataRepository.findById(req.pid);
 
             if (targetData == null) {
                 bundle.send(player, "error-player-not-found", args());
@@ -82,21 +92,21 @@ public class AdminModIntegration {
                     .expireDate(Instant.now().plusMillis(date.toEpochMilli()))
                     .build();
             network.post(ban);
-            database.getBanDataRepository().save(ban);
+            banDataRepository.save(ban);
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
             if (!player.admin) return;
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            var targetData = database.getPlayerDataRepository().findById(req.pid);
+            var targetData = playerDataRepository.findById(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
             bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
-            var data = database.getCached(player.uuid());
+            var data = playerSessionService.get(player.uuid());
 
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);

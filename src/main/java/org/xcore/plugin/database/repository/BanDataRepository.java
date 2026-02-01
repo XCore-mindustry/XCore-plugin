@@ -3,6 +3,8 @@ package org.xcore.plugin.database.repository;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
+import jakarta.inject.Singleton;
+import jakarta.inject.Inject;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.BanData;
@@ -10,9 +12,11 @@ import org.xcore.plugin.model.BanData;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
 
+@Singleton
 public class BanDataRepository {
     private final MongoCollection<BanData> collection;
 
+    @Inject
     public BanDataRepository(MongoDatabase database) {
         this.collection = database.getCollection("bans", BanData.class);
     }

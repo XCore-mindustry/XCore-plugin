@@ -5,7 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
@@ -25,13 +25,13 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class BanCheck implements IngressCheck {
 
-    private final DatabaseService database;
+    private final BanDataRepository banDataRepository;
     private final BundleService bundle;
     private final GlobalConfig globalConfig;
 
     @Inject
-    public BanCheck(DatabaseService database, BundleService bundle, GlobalConfig globalConfig) {
-        this.database = database;
+    public BanCheck(BanDataRepository banDataRepository, BundleService bundle, GlobalConfig globalConfig) {
+        this.banDataRepository = banDataRepository;
         this.bundle = bundle;
         this.globalConfig = globalConfig;
     }
@@ -41,13 +41,13 @@ public class BanCheck implements IngressCheck {
         String uuid = packet.uuid;
         String ip = con.address;
 
-        BanData ban = database.getBanDataRepository().find(uuid, ip);
+        BanData ban = banDataRepository.find(uuid, ip);
 
         if (ban != null) {
             if (ban.expired()) {
                 netServer.admins.unbanPlayerID(uuid);
                 netServer.admins.unbanPlayerIP(ip);
-                database.getBanDataRepository().delete(ban.uuid, ip);
+                banDataRepository.delete(ban.uuid, ip);
                 return AccessResult.Allowed.INSTANCE;
             }
 

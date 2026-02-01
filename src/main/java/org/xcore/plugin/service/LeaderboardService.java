@@ -7,20 +7,18 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.database.DatabaseService;
 
 import java.util.Locale;
 
 @Singleton
 public class LeaderboardService {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final BundleService bundle;
 
     @Inject
-    public LeaderboardService(DatabaseService database, BundleService bundle) {
-        this.database = database;
+    public LeaderboardService(PlayerSessionService playerSessionService, BundleService bundle) {
+        this.playerSessionService = playerSessionService;
         this.bundle = bundle;
     }
 
@@ -29,7 +27,7 @@ public class LeaderboardService {
             if (Groups.player.isEmpty()) return;
 
             Groups.player.each(player -> {
-                var data = database.getCached(player.uuid());
+                var data = playerSessionService.get(player.uuid());
                 if (data == null || !data.leaderboard) return;
 
                 StringBuilder builder = new StringBuilder();

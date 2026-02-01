@@ -4,6 +4,8 @@ import arc.struct.Seq;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.*;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.bson.Document;
 import org.xcore.plugin.database.MongoUtils;
@@ -13,10 +15,12 @@ import org.xcore.plugin.model.PlayerData;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
 
+@Singleton
 public class PlayerDataRepository {
     private final MongoCollection<PlayerData> collection;
     private final MongoCollection<Document> counters;
 
+    @Inject
     public PlayerDataRepository(MongoDatabase database) {
         this.collection = database.getCollection("players", PlayerData.class);
         this.counters = database.getCollection("counters");

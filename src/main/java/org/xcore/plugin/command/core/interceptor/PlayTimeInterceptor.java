@@ -6,7 +6,7 @@ import org.xcore.plugin.command.core.annotation.MinPlayTime;
 import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.command.core.context.CommandContext;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 
 import java.lang.reflect.Method;
 
@@ -15,12 +15,12 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class PlayTimeInterceptor implements CommandInterceptor {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final GlobalConfig globalConfig;
 
     @Inject
-    public PlayTimeInterceptor(DatabaseService database, GlobalConfig globalConfig) {
-        this.database = database;
+    public PlayTimeInterceptor(PlayerSessionService playerSessionService, GlobalConfig globalConfig) {
+        this.playerSessionService = playerSessionService;
         this.globalConfig = globalConfig;
     }
 
@@ -42,7 +42,7 @@ public class PlayTimeInterceptor implements CommandInterceptor {
             case CUSTOM -> annotation.minutes();
         };
 
-        var data = database.getCached(player.uuid());
+        var data = playerSessionService.get(player.uuid());
 
         if (data != null && data.totalPlayTime < requiredMinutes) {
             clientCtx.send(annotation.errorKey(), args("time", requiredMinutes));

@@ -9,18 +9,17 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.database.DatabaseService;
 
 import static mindustry.Vars.netServer;
 
 @Singleton
 public class TranslatorService {
     private static final JsonReader reader = new JsonReader();
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
 
     @Inject
-    public TranslatorService(DatabaseService database) {
-        this.database = database;
+    public TranslatorService(PlayerSessionService playerSessionService) {
+        this.playerSessionService = playerSessionService;
     }
 
     public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
@@ -34,14 +33,13 @@ public class TranslatorService {
         var cache = new StringMap();
         var message = netServer.chatFormatter.format(author, text);
 
-        database.cachedPlayerData.forEach(entry -> {
-            var data = entry.value;
+        for (var data : playerSessionService.getAllCached()) {
             var player = Groups.player.find(p -> p.uuid().equals(data.uuid));
-            if (player == null || player == author) return;
+            if (player == null || player == author) continue;
 
             if (data.translatorLanguage.equals("off")) {
                 player.sendMessage(message, author, text);
-                return;
+                continue;
             }
 
             if (cache.containsKey(data.translatorLanguage)) {
@@ -50,6 +48,6 @@ public class TranslatorService {
                 cache.put(data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
                 player.sendMessage(cache.get(data.translatorLanguage), author, text);
             }, () -> player.sendMessage(message, author, text));
-        });
+        }
     }
 }

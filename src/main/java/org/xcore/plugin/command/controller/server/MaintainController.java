@@ -9,7 +9,7 @@ import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ServerContext;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.common.PluginState;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.common.TextArgumentSplitter;
 
@@ -19,13 +19,15 @@ import static mindustry.Vars.netServer;
 public class MaintainController {
 
     private final NetworkService network;
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
     private final PluginState pluginState;
 
     @Inject
-    public MaintainController(NetworkService network, DatabaseService database, PluginState pluginState) {
+    public MaintainController(NetworkService network,
+                              PlayerDataRepository playerDataRepository,
+                              PluginState pluginState) {
         this.network = network;
-        this.database = database;
+        this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
     }
 
@@ -51,7 +53,7 @@ public class MaintainController {
 
     @Command(name = "db-delete-bots", description = "Delete low-playtime players from DB")
     public void deleteBots(ServerContext ctx) {
-        long deleted = database.getPlayerDataRepository().deleteBots();
+        long deleted = playerDataRepository.deleteBots();
         network.post(new SocketEvents.ReloadPlayerDataCache());
         Log.info("Deleted @ bots from database.", deleted);
     }

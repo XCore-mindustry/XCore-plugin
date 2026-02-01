@@ -9,7 +9,6 @@ import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
-import org.xcore.plugin.database.DatabaseService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 
@@ -19,11 +18,11 @@ public class SmartMapSelector implements MapProvider {
     private final Seq<Map> recentMaps = new Seq<>();
     private static final int HISTORY_SIZE = 5;
 
-    private final DatabaseService database;
+    private final MapDataRepository mapDataRepository;
 
     @Inject
-    public SmartMapSelector(DatabaseService database) {
-        this.database = database;
+    public SmartMapSelector(MapDataRepository mapDataRepository) {
+        this.mapDataRepository = mapDataRepository;
     }
 
     @Override
@@ -40,7 +39,7 @@ public class SmartMapSelector implements MapProvider {
         if (candidates.isEmpty()) candidates = Vars.maps.customMaps();
         if (candidates.isEmpty()) return null;
 
-        ObjectMap<String, MapData> statsMap = database.getMapDataRepository().findAllAsMap();
+        ObjectMap<String, MapData> statsMap = mapDataRepository.findAllAsMap();
 
         arc.func.Func<Map, MapData> getStat = map -> {
             String key = MapDataRepository.genKey(map.plainName(), map.author(), mode.name());

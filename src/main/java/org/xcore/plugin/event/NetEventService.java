@@ -1,10 +1,8 @@
-// src/main/java/org/xcore/plugin/event/NetEventService.java (обновлённая версия)
 package org.xcore.plugin.event;
 
 import arc.Events;
 import arc.func.Boolf;
 import arc.util.Log;
-import arc.util.Strings;
 import arc.util.Time;
 import com.google.gson.Gson;
 import jakarta.inject.Inject;
@@ -22,7 +20,7 @@ import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.model.BanRequestData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressService;
@@ -44,7 +42,7 @@ public class NetEventService {
     public int blockedIPs = 0;
     public int blockedIPsPerMinute = 0;
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final Config config;
     private final TranslatorService translatorService;
     private final NetworkService network;
@@ -55,13 +53,13 @@ public class NetEventService {
     private final Gson rawGson;
 
     @Inject
-    public NetEventService(DatabaseService database, Config config,
+    public NetEventService(PlayerSessionService playerSessionService, Config config,
                            TranslatorService translatorService, NetworkService network,
                            BundleService bundle, VoteService voteService,
                            SecurityService securityService,
                            IngressService ingressService,
                            @Named("raw") Gson rawGson) {
-        this.database = database;
+        this.playerSessionService = playerSessionService;
         this.config = config;
         this.translatorService = translatorService;
         this.network = network;
@@ -123,13 +121,13 @@ public class NetEventService {
                         "playerName", target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
-                var targetData = database.getCached(target.uuid());
+                var targetData = playerSessionService.get(target.uuid());
                 String banJson = rawGson.toJson(new BanRequestData(targetData.pid, target.coloredName()));
 
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
             case trace -> {
-                var data = database.getCachedOrDb(target.uuid());
+                var data = playerSessionService.getOrLoadFromDb(target.uuid());
 
                 var trace = new TraceInfo(
                         target.ip(),

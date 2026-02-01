@@ -7,7 +7,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.gamemode.hexed.MiniHexedService;
 import org.xcore.plugin.gamemode.hexed.UnitState;
@@ -18,13 +18,15 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class HexedController {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final MiniHexedService hexedService;
     private final FindService findService;
 
     @Inject
-    public HexedController(DatabaseService database, MiniHexedService hexedService, FindService findService) {
-        this.database = database;
+    public HexedController(PlayerSessionService playerSessionService,
+                           MiniHexedService hexedService,
+                           FindService findService) {
+        this.playerSessionService = playerSessionService;
         this.hexedService = hexedService;
         this.findService = findService;
     }
@@ -46,7 +48,7 @@ public class HexedController {
             return;
         }
 
-        var data = database.getCached(target.uuid());
+        var data = playerSessionService.get(target.uuid());
         var rank = data.hexedRank();
 
         ctx.player().sendMessage(ctx.format("commands-rank-content", args(

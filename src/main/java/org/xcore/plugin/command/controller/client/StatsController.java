@@ -7,7 +7,8 @@ import mindustry.gen.Call;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -15,20 +16,24 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class StatsController {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final Config config;
 
     @Inject
-    public StatsController(DatabaseService database, Config config) {
-        this.database = database;
+    public StatsController(PlayerDataRepository playerDataRepository,
+                           PlayerSessionService playerSessionService,
+                           Config config) {
+        this.playerDataRepository = playerDataRepository;
+        this.playerSessionService = playerSessionService;
         this.config = config;
     }
 
     @Command(name = "stats", params = "[player-id]")
     public void stats(ClientContext ctx) {
         PlayerData data = ctx.args().length > 0
-                ? database.getCachedOrDb(ctx.argInt(0, -1))
-                : database.getCached(ctx.player().uuid());
+                ? playerSessionService.getOrLoadFromDb(ctx.argInt(0, -1))
+                : playerSessionService.get(ctx.player().uuid());
 
         if (data == null) {
             ctx.send("error-player-not-found", args());
@@ -47,14 +52,14 @@ public class StatsController {
 
     @Command(name = "lb")
     public void leaderboard(ClientContext ctx) {
-        var data = database.getCached(ctx.player().uuid());
+        var data = playerSessionService.get(ctx.player().uuid());
         data.leaderboard = !data.leaderboard;
 
         ctx.send("commands-lb-success", args(
                 "leaderboardEnabled", String.valueOf(data.leaderboard)
         ));
 
-        database.getPlayerDataRepository().save(data);
+        playerDataRepository.save(data);
     }
 
     @Command(name = "top")
@@ -62,8 +67,8 @@ public class StatsController {
         boolean isHexed = config.isMiniHexed();
 
         Seq<PlayerData> leaders = isHexed
-                ? database.getPlayerDataRepository().findLeaders("hexedRank", "hexedPoints")
-                : database.getPlayerDataRepository().findLeaders("pvpRating");
+                ? playerDataRepository.findLeaders("hexedRank", "hexedPoints")
+                : playerDataRepository.findLeaders("pvpRating");
 
         if (leaders.isEmpty()) {
             ctx.send("empty", args());

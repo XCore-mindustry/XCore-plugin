@@ -11,7 +11,7 @@ import mindustry.maps.Map;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -23,7 +23,7 @@ public class VoteRtv extends VoteSession {
     public final Map target;
     public final boolean isManualSelection;
 
-    private final DatabaseService database;
+    private final MapDataRepository mapDataRepository;
     private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
@@ -34,7 +34,7 @@ public class VoteRtv extends VoteSession {
             @Assisted Map target,
             @Assisted boolean isManualSelection,
 
-            DatabaseService database,
+            MapDataRepository mapDataRepository,
             GlobalConfig globalConfig,
             BundleService bundleService,
             VoteService voteService,
@@ -42,7 +42,7 @@ public class VoteRtv extends VoteSession {
         super(globalConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
-        this.database = database;
+        this.mapDataRepository = mapDataRepository;
         this.globalConfig = globalConfig;
         this.bundle = bundleService;
         this.voteService = voteService;
@@ -81,9 +81,9 @@ public class VoteRtv extends VoteSession {
             String currentAuthor = state.map.author();
             String currentMode = state.rules.mode().name();
 
-            MapData currentMapStats = database.getMapDataRepository().find(currentMapName, currentAuthor, currentMode);
+            MapData currentMapStats = mapDataRepository.find(currentMapName, currentAuthor, currentMode);
             currentMapStats.onSkip();
-            database.getMapDataRepository().save(currentMapStats);
+            mapDataRepository.save(currentMapStats);
         }
 
         if (isManualSelection) {
@@ -91,9 +91,9 @@ public class VoteRtv extends VoteSession {
             String targetAuthor = target.author();
             String targetMode = state.rules.mode().name();
 
-            MapData targetMapStats = database.getMapDataRepository().find(targetMapName, targetAuthor, targetMode);
+            MapData targetMapStats = mapDataRepository.find(targetMapName, targetAuthor, targetMode);
             targetMapStats.popularity += 2.0;
-            database.getMapDataRepository().save(targetMapStats);
+            mapDataRepository.save(targetMapStats);
         }
 
         Timer.schedule(() -> gameStateService.reloadWorld(() ->

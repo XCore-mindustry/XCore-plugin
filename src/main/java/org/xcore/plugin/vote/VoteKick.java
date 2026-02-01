@@ -13,7 +13,7 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.PlayerData;
 
@@ -29,7 +29,7 @@ public class VoteKick extends VoteSession {
     public final Player target;
     public final String reason;
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final BundleService bundle;
     private final VoteService voteService;
@@ -42,7 +42,7 @@ public class VoteKick extends VoteSession {
             @Assisted Player target,
             @Assisted String reason,
 
-            DatabaseService database,
+            PlayerSessionService playerSessionService,
             NetworkService network,
             BundleService bundleService,
             VoteService voteService,
@@ -52,7 +52,7 @@ public class VoteKick extends VoteSession {
         this.starter = starter;
         this.target = target;
         this.reason = reason;
-        this.database = database;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.bundle = bundleService;
         this.voteService = voteService;
@@ -68,8 +68,8 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        PlayerData playerData = database.getCached(player.uuid());
-        PlayerData targetData = database.getCached(target.uuid());
+        PlayerData playerData = playerSessionService.get(player.uuid());
+        PlayerData targetData = playerSessionService.get(target.uuid());
         var bundleArgs = args(
                 "starter", player.coloredName(),
                 "starterId", playerData.pid,
@@ -83,7 +83,7 @@ public class VoteKick extends VoteSession {
         Log.info(message);
 
         if (votes() == 1) {
-            database.getCachedAdminTools("1.3", (v) -> v >= 0, data ->
+            playerSessionService.getCachedAdminTools((v) -> v >= 0, data ->
                     Call.clientPacketReliable(data.player.con, "adm_mod_votekick",
                             targetData.pid + "," + targetData.nickname));
         }

@@ -108,10 +108,9 @@ kick-recently-kicked = [accent]Ви були нещодавно вигнані �
     Зачекайте [cyan]{$remainMinutes}:{$remainSeconds}[accent] перед повторним входом.
 kick-bot-protection = Можливо ви бот. Якщо ні, спробуйте перезайти.
 kick-admintools-outdated = [green]Необхідна версія AdminTools: [grey]1.3[]
-    [scarlet]Ваша версія AdminTools: [grey]{$version}[]
+    {""}[scarlet]Ваша версія AdminTools: [grey]{$version}[]
     {""}
-    [cyan]Будь ласка, оновіть AdminTools для входу на сервер.
-
+    {""}[cyan]Будь ласка, оновіть AdminTools для входу на сервер.
 
 support-channel = #reports-appeals
 
@@ -131,10 +130,10 @@ votekick-left = {$player}[lightgray] покинув гру. Голос анул�
 votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання {$target}[lightgray].
 votekick-cancelled = [scarlet]Голосування за вигнання {$target}[scarlet] скасовано адміністратором {$admin}.
 votekick-success = [orange]Голосування успішне. {$target}[orange] вигнаний на [scarlet]{$minutes}[] { $minutes ->
-[one] хвилину
-[few] хвилини
-*[many] хвилин
-}.
+    [one] хвилину
+    [few] хвилини
+    *[many] хвилин
+    }.
 
 # ==============================================================================
 # Maps & RTV
@@ -212,9 +211,9 @@ commands-stats-content = Статистика гравця {$nickname} [grey]#{$
 commands-lb-params = {""}
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success = { $leaderboardEnabled ->
-[true] [accent]Таблиця лідерів [green]увімкнена
-*[other] [accent]Таблиця лідерів [scarlet]вимкнена
-}
+    [true] [accent]Таблиця лідерів [green]увімкнена
+    *[other] [accent]Таблиця лідерів [scarlet]вимкнена
+    }
 leaderboard = [blue]Таблиця лідерів
 
 commands-rank-params = [гравець...]
@@ -261,13 +260,12 @@ hexed-ranks-the_legend = Легенда
 
 hexed-game-over-header = Гру закінчено. Переможці:
 hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
-[one] гекс
-[few] гекси
-*[many] гексів
-}
+    [one] гекс
+    [few] гекси
+    *[many] гексів
+    }
 hexed-game-over-no-winners = Гру закінчено. На жаль, переможців не знайдено.
 hexed-game-over-restart = Нова гра через 10 секунд...
-
 
 pvp-team-won = Ваша команда перемогла. Ваш рейтинг зріс на {$increased}
 pvp-team-lose = Ваша команда програла. Ваш рейтинг знизився на {$reduced}

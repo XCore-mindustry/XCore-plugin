@@ -108,10 +108,9 @@ kick-recently-kicked = [accent]You were recently kicked from this server.
     Wait [cyan]{$remainMinutes}:{$remainSeconds}[accent] before joining again.
 kick-bot-protection = Maybe you are a bot. If not, try to reconnect.
 kick-admintools-outdated = [green]The required AdminTools version: [grey]{$requiredVersion}[]
-    [scarlet]Your AdminTools version: [grey]{$version}[]
+    {""}[scarlet]Your AdminTools version: [grey]{$version}[]
     {""}
-    [cyan]Please update your AdminTools to join this server.
-
+    {""}[cyan]Please update your AdminTools to join this server.
 
 support-channel = #reports-appeals
 
@@ -134,7 +133,7 @@ votekick-cancelled = [scarlet]Vote to kick {$target}[scarlet] was cancelled by {
 votekick-success = [orange]Vote passed. {$target}[orange] kicked for [scarlet]{$minutes}[] { $minutes ->
     [one] minute
     *[other] minutes
-}.
+    }.
 
 # ==============================================================================
 # Maps & RTV
@@ -212,9 +211,9 @@ commands-stats-content = {$nickname} [grey]#{$pid} Statistics
 commands-lb-params = {""}
 commands-lb-description = Enable/disable leaderboard
 commands-lb-success = { $leaderboardEnabled ->
-[true] [accent]Leaderboard [green]enabled
-*[other] [accent]Leaderboard [scarlet]disabled
-}
+    [true] [accent]Leaderboard [green]enabled
+    *[other] [accent]Leaderboard [scarlet]disabled
+    }
 leaderboard = [blue]Leaderboard
 
 commands-rank-params = [player...]
@@ -257,9 +256,9 @@ hexed-ranks-the_legend = The Legend
 
 hexed-game-over-header = Game Over. Winners:
 hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
-[one] hex
-*[other] hexes
-}
+    [one] hex
+    *[other] hexes
+    }
 hexed-game-over-no-winners = Game Over. Unfortunately, I couldn't find the winning players.
 hexed-game-over-restart = New game in 10 seconds...
 

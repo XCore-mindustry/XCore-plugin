@@ -12,7 +12,8 @@ import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -20,16 +21,22 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class SocialController {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final Config config;
     private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
 
     @Inject
-    public SocialController(DatabaseService database, NetworkService network, Config config,
-                            GlobalConfig globalConfig, TranslatorLanguagesProvider translatorLanguagesProvider) {
-        this.database = database;
+    public SocialController(PlayerDataRepository playerDataRepository,
+                            PlayerSessionService playerSessionService,
+                            NetworkService network,
+                            Config config,
+                            GlobalConfig globalConfig,
+                            TranslatorLanguagesProvider translatorLanguagesProvider) {
+        this.playerDataRepository = playerDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
@@ -75,7 +82,7 @@ public class SocialController {
 
     @Command(name = "tr", params = "<language/auto/off>")
     public void translator(ClientContext ctx) {
-        var data = database.getCached(ctx.player().uuid());
+        var data = playerSessionService.get(ctx.player().uuid());
         String input = ctx.arg(0).toLowerCase();
 
         if (input.equals("off")) {
@@ -98,7 +105,7 @@ public class SocialController {
                 "translatorLanguage", langName != null ? langName : data.translatorLanguage
         ));
 
-        database.getPlayerDataRepository().save(data);
+        playerDataRepository.save(data);
     }
 
     private String findTranslatorLanguage(String locale) {

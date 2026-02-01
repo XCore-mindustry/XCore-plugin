@@ -20,7 +20,9 @@ import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
@@ -39,7 +41,9 @@ public class MapController {
 
     private final ObjectMap<String, MenuSession> playerSessionContext = new ObjectMap<>();
 
-    private final DatabaseService database;
+    private final MapDataRepository mapDataRepository;
+    private final PlayerDataRepository playerDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
@@ -58,10 +62,18 @@ public class MapController {
     }
 
     @Inject
-    public MapController(DatabaseService database, GlobalConfig globalConfig, BundleService bundle,
-                         VoteService voteService, VoteRtvFactory voteRtvFactory, MapService mapService,
+    public MapController(MapDataRepository mapDataRepository,
+                         PlayerDataRepository playerDataRepository,
+                         PlayerSessionService playerSessionService,
+                         GlobalConfig globalConfig,
+                         BundleService bundle,
+                         VoteService voteService,
+                         VoteRtvFactory voteRtvFactory,
+                         MapService mapService,
                          GameStateService gameStateService) {
-        this.database = database;
+        this.mapDataRepository = mapDataRepository;
+        this.playerDataRepository = playerDataRepository;
+        this.playerSessionService = playerSessionService;
         this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.voteService = voteService;
@@ -121,7 +133,7 @@ public class MapController {
             return;
         }
 
-        MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = mapDataRepository.find(map.plainName(), map.author(), Vars.state.rules.mode().name());
         handleMap(ctx.player(), m);
     }
 
@@ -159,7 +171,7 @@ public class MapController {
                 .gather(CustomGatherers.indexedPage(globalConfig.mapsPerPage, requestedPage))
                 .forEach(indexed -> {
                     Map map = indexed.value();
-                    MapData mapData = database.getMapDataRepository()
+                    MapData mapData = mapDataRepository
                             .find(map.plainName(), map.author(), gameMode);
                     String lastPlayed = mapData.playedTimes == 0
                             ? ctx.format("never", args())
@@ -262,7 +274,7 @@ public class MapController {
                 "max", m.maximumGameTime / 60000
         ));
 
-        PlayerData pData = database.getCached(player.uuid());
+        PlayerData pData = playerSessionService.get(player.uuid());
         Boolean currentVote = pData.mapVotes.get(m.name);
 
         String likeButtonText = Boolean.TRUE.equals(currentVote)
@@ -342,7 +354,7 @@ public class MapController {
                 .flatMap(List::stream)
                 .forEach(map -> rows.add(List.of(
                         session.add(map.name(), () -> {
-                            MapData data = database.getMapDataRepository()
+                            MapData data = mapDataRepository
                                     .find(map.plainName(), map.author(), gameMode);
                             handleMap(player, data);
                         })
@@ -358,12 +370,12 @@ public class MapController {
     private void handleReputation(Player player, boolean like) {
         Map map = Vars.state.map;
         if (map == null) return;
-        MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = mapDataRepository.find(map.plainName(), map.author(), Vars.state.rules.mode().name());
         handleReputation(player, like, m);
     }
 
     private void handleReputation(Player player, boolean like, MapData m) {
-        PlayerData p = database.getCached(player.uuid());
+        PlayerData p = playerSessionService.get(player.uuid());
         String id = String.valueOf(m.id);
         Boolean prev = p.mapVotes.get(id);
 
@@ -385,8 +397,8 @@ public class MapController {
 
         p.mapVotes.put(id, like);
 
-        database.getPlayerDataRepository().save(p);
-        database.getMapDataRepository().save(m);
+        playerDataRepository.save(p);
+        mapDataRepository.save(m);
     }
 
     private String[][] convertListToArray(List<List<String>> rows) {

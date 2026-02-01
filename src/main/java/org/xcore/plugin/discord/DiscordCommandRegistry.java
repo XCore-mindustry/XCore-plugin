@@ -15,8 +15,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.*;
 import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.database.DatabaseService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
@@ -36,7 +36,10 @@ import static mindustry.Vars.netServer;
 public class DiscordCommandRegistry {
 
     private final GlobalConfig globalConfig;
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final BanDataRepository banDataRepository;
+    private final MuteDataRepository muteDataRepository;
+    private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
     private final TimeService time;
 
@@ -45,12 +48,18 @@ public class DiscordCommandRegistry {
     @Inject
     public DiscordCommandRegistry(
             GlobalConfig globalConfig,
-            DatabaseService database,
+            PlayerDataRepository playerDataRepository,
+            BanDataRepository banDataRepository,
+            MuteDataRepository muteDataRepository,
+            AdminDataRepository adminDataRepository,
             NetworkService network,
             TimeService timeService
     ) {
         this.globalConfig = globalConfig;
-        this.database = database;
+        this.playerDataRepository = playerDataRepository;
+        this.banDataRepository = banDataRepository;
+        this.muteDataRepository = muteDataRepository;
+        this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.time = timeService;
         this.discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
@@ -74,7 +83,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
             ctx.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
@@ -90,7 +99,7 @@ public class DiscordCommandRegistry {
                 (args, ctx) -> ctx.paginate((embed, page) -> {
                     embed.title("Searching players '" + args[0] + "'");
 
-                    var search = database.getPlayerDataRepository().search(args[0], 6, page);
+                    var search = playerDataRepository.search(args[0], 6, page);
 
                     if (search != null) {
                         embed.color(Color.GREEN);
@@ -168,8 +177,8 @@ public class DiscordCommandRegistry {
             ctx.paginate((embed, page) -> {
                 embed.title("Bans");
                 var bans = args.length > 0
-                        ? database.getBanDataRepository().search(args[0], 6, page)
-                        : database.getBanDataRepository().findAllPaged(6, page);
+                        ? banDataRepository.search(args[0], 6, page)
+                        : banDataRepository.findAllPaged(6, page);
 
                 if (bans != null) {
                     embed.color(Color.GREEN);
@@ -194,7 +203,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
             Instant period = time.parsePeriod(args[1], TimeUnit.DAYS);
@@ -221,7 +230,7 @@ public class DiscordCommandRegistry {
                                     .build();
 
                             discordService.sendBan(ban);
-                            database.getBanDataRepository().save(ban);
+                            banDataRepository.save(ban);
                             ctx.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
                         }
                         event.getInteraction().getMessage().ifPresent(message -> message.delete().subscribe());
@@ -232,13 +241,13 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
             var info = netServer.admins.getInfoOptional(data.uuid);
             String ip = info != null ? info.lastIP : null;
 
-            database.getBanDataRepository().delete(data.uuid, ip);
+            banDataRepository.delete(data.uuid, ip);
             ctx.success("Success", "'@' unbanned", data.nickname).subscribe();
         });
 
@@ -246,7 +255,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
             Instant period = time.parsePeriod(args[1], TimeUnit.DAYS);
@@ -254,7 +263,7 @@ public class DiscordCommandRegistry {
 
             Instant unmuteDate = Instant.now().plusMillis(period.toEpochMilli());
 
-            database.getMuteDataRepository().save(MuteData.builder()
+            muteDataRepository.save(MuteData.builder()
                     .name(data.nickname)
                     .uuid(data.uuid)
                     .adminName(ctx.member().getDisplayName())
@@ -269,10 +278,10 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
-            database.getMuteDataRepository().delete(data.uuid);
+            muteDataRepository.delete(data.uuid);
             ctx.success("Success", "'@' unmuted", data.nickname).subscribe();
         });
 
@@ -280,10 +289,10 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
-            database.getAdminDataRepository().delete(data.uuid);
+            adminDataRepository.delete(data.uuid);
             network.post(new SocketEvents.RemoveAdmin(data.uuid));
             ctx.success("Success", "'@' removed from admin panel.", data.nickname).subscribe();
         });
@@ -292,12 +301,12 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = database.getPlayerDataRepository().findById(id);
+            var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
-            var adminData = database.getAdminDataRepository().findByUuid(data.uuid);
+            var adminData = adminDataRepository.findByUuid(data.uuid);
             adminData.password = "";
-            database.getAdminDataRepository().save(adminData);
+            adminDataRepository.save(adminData);
             ctx.success("Success", "Password reset for '@'.", data.nickname).subscribe();
         });
     }

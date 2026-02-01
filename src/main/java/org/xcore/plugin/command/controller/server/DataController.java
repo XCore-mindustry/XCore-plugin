@@ -12,24 +12,26 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ServerContext;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.model.PlayerData;
 
 @Singleton
 public class DataController {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
     private final Fi configFile;
     private Config config;
     private final Gson prettyGson;
     private final FindService find;
 
     @Inject
-    public DataController(DatabaseService database, @Named("xcConfigFile") Fi configFile,
-                          Config config, @Named("pretty") Gson prettyGson,
+    public DataController(PlayerDataRepository playerDataRepository,
+                          @Named("xcConfigFile") Fi configFile,
+                          Config config,
+                          @Named("pretty") Gson prettyGson,
                           FindService find) {
-        this.database = database;
+        this.playerDataRepository = playerDataRepository;
         this.configFile = configFile;
         this.config = config;
         this.prettyGson = prettyGson;
@@ -82,7 +84,7 @@ public class DataController {
 
         modifyJson(root.get(field), value);
         PlayerData result = prettyGson.fromJson(root.toJson(JsonWriter.OutputType.json), PlayerData.class);
-        database.getPlayerDataRepository().save(result);
+        playerDataRepository.save(result);
         Log.info("PlayerData for @ updated. Field '@' -> '@'.", data.nickname, field, value);
     }
 

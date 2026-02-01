@@ -9,7 +9,10 @@ import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ServerContext;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.BanDataRepository;
+import org.xcore.plugin.database.repository.MuteDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.model.BanData;
@@ -28,15 +31,26 @@ import static org.xcore.plugin.common.TextUtils.equalsNonEmpty;
 @Singleton
 public class ServerModerationController {
 
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final BanDataRepository banDataRepository;
+    private final MuteDataRepository muteDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final FindService find;
     private final TimeService time;
 
     @Inject
-    public ServerModerationController(DatabaseService database, NetworkService network, FindService find,
+    public ServerModerationController(PlayerDataRepository playerDataRepository,
+                                      BanDataRepository banDataRepository,
+                                      MuteDataRepository muteDataRepository,
+                                      PlayerSessionService playerSessionService,
+                                      NetworkService network,
+                                      FindService find,
                                       TimeService timeService) {
-        this.database = database;
+        this.playerDataRepository = playerDataRepository;
+        this.banDataRepository = banDataRepository;
+        this.muteDataRepository = muteDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.find = find;
         this.time = timeService;
@@ -50,7 +64,7 @@ public class ServerModerationController {
         String name = (target != null) ? target.lastName : "Unknown";
 
         if (ctx.arg(0).startsWith("#")) {
-            var data = database.getPlayerDataRepository().findById(Strings.parseInt(ctx.arg(0).substring(1)));
+            var data = playerDataRepository.findById(Strings.parseInt(ctx.arg(0).substring(1)));
             if (data == null) {
                 Log.err("Player not found");
                 return;
@@ -76,7 +90,7 @@ public class ServerModerationController {
                 .expireDate(expire).build();
 
         network.post(ban);
-        database.getBanDataRepository().save(ban);
+        banDataRepository.save(ban);
         Log.info("Banned @ until @", name, expire);
     }
 
@@ -87,18 +101,18 @@ public class ServerModerationController {
             case "uuid", "uid" -> uuid = ctx.arg(1);
             case "ip" -> ip = ctx.arg(1);
             case "id" -> {
-                var d = database.getCachedOrDb(Strings.parseInt(ctx.arg(1)));
+                var d = playerSessionService.getOrLoadFromDb(Strings.parseInt(ctx.arg(1)));
                 if (d != null) uuid = d.uuid;
             }
         }
-        database.getBanDataRepository().delete(uuid, ip);
+        banDataRepository.delete(uuid, ip);
         Log.info("Unbanned: UUID=@ / IP=@", uuid, ip);
     }
 
     @Command(name = "tempbans", params = "[search...]", description = "List current temp bans.")
     public void tempBans(ServerContext ctx) {
         // todo: paged
-        Seq<BanData> bans = Seq.with(database.getBanDataRepository().findAll());
+        Seq<BanData> bans = Seq.with(banDataRepository.findAll());
         if (ctx.args().length > 0) {
             String q = ctx.arg(0);
             bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
@@ -117,7 +131,7 @@ public class ServerModerationController {
         MuteData m = MuteData.builder().uuid(data.uuid).name(data.nickname).adminName("console")
                 .reason(ctx.args().length > 2 ? ctx.arg(2) : "Not Specified")
                 .expireDate(Instant.now().plusMillis(period.toEpochMilli())).build();
-        database.getMuteDataRepository().save(m);
+        muteDataRepository.save(m);
         network.post(m);
         Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toEpochMilli()).toMinutes());
     }
@@ -125,7 +139,7 @@ public class ServerModerationController {
     @Command(name = "unmute", params = "<uuid/#id>", description = "Unmute player.")
     public void unmute(ServerContext ctx) {
         PlayerData data = find.playerData(ctx.arg(0));
-        if (data != null) database.getMuteDataRepository().delete(data.uuid);
+        if (data != null) muteDataRepository.delete(data.uuid);
         Log.info("Unmuted @", data != null ? data.nickname : "unknown");
     }
 }

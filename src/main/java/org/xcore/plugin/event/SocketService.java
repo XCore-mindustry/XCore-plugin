@@ -14,7 +14,7 @@ import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.discord.DiscordService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
@@ -30,7 +30,7 @@ import static org.xcore.plugin.common.PLog.info;
 @Singleton
 public class SocketService {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final Config config;
     private final FindService find;
@@ -39,11 +39,14 @@ public class SocketService {
     private final MapService mapService;
 
     @Inject
-    public SocketService(DatabaseService database, NetworkService network, Config config,
-                         FindService find, DiscordService discordService, BundleService bundleService,
-                         MapService mapService
-    ) {
-        this.database = database;
+    public SocketService(PlayerSessionService playerSessionService,
+                         NetworkService network,
+                         Config config,
+                         FindService find,
+                         DiscordService discordService,
+                         BundleService bundleService,
+                         MapService mapService) {
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.config = config;
         this.find = find;
@@ -156,14 +159,14 @@ public class SocketService {
         });
 
         network.subscribe(SocketEvents.SyncPlayerData.class, e -> {
-            if (database.cachedPlayerData.containsKey(e.data().uuid)) {
-                database.setCached(e.data());
+            if (playerSessionService.get(e.data().uuid) != null) {
+                playerSessionService.update(e.data());
                 info("Synced player data: @ (@)", e.data().nickname, e.data().uuid);
             }
         });
 
         network.subscribe(SocketEvents.ReloadPlayerDataCache.class, e -> {
-            database.reloadCache();
+            playerSessionService.reloadCache();
             info("Reloaded player data cache.");
         });
 

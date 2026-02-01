@@ -6,7 +6,8 @@ import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.AdminDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -15,13 +16,18 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class AuthController {
 
-    private final DatabaseService database;
+    private final AdminDataRepository adminDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final Config config;
 
     @Inject
-    public AuthController(DatabaseService database, NetworkService network, Config config) {
-        this.database = database;
+    public AuthController(AdminDataRepository adminDataRepository,
+                          PlayerSessionService playerSessionService,
+                          NetworkService network,
+                          Config config) {
+        this.adminDataRepository = adminDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.config = config;
     }
@@ -35,12 +41,12 @@ public class AuthController {
             return;
         }
 
-        var data = database.getCached(ctx.player().uuid());
-        var adminData = database.getAdminDataRepository().findByUuid(data.uuid);
+        var data = playerSessionService.get(ctx.player().uuid());
+        var adminData = adminDataRepository.findByUuid(data.uuid);
 
         if (adminData.password.isEmpty()) {
             adminData.hashPassword(password);
-            database.getAdminDataRepository().save(adminData);
+            adminDataRepository.save(adminData);
             ctx.send("commands-login-admin-password-created", args());
         }
 

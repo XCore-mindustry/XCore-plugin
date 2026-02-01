@@ -23,11 +23,12 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.Getter;
-import mindustry.gen.Call;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.database.repository.AdminDataRepository;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.BanData;
@@ -43,7 +44,9 @@ public class DiscordService {
 
     private final GlobalConfig globalConfig;
     private final Config config;
-    private final DatabaseService database;
+    private final PlayerDataRepository playerDataRepository;
+    private final AdminDataRepository adminDataRepository;
+    private final PlayerSessionService playerSessionService;
     private final NetworkService network;
     private final DiscordCommandRegistry commandRegistry;
     private final BundleService bundleService;
@@ -56,12 +59,19 @@ public class DiscordService {
     private boolean isConnected = false;
 
     @Inject
-    public DiscordService(GlobalConfig globalConfig, Config config, DatabaseService database,
-                          NetworkService network, DiscordCommandRegistry commandRegistry,
+    public DiscordService(GlobalConfig globalConfig,
+                          Config config,
+                          PlayerDataRepository playerDataRepository,
+                          AdminDataRepository adminDataRepository,
+                          PlayerSessionService playerSessionService,
+                          NetworkService network,
+                          DiscordCommandRegistry commandRegistry,
                           BundleService bundleService) {
         this.globalConfig = globalConfig;
         this.config = config;
-        this.database = database;
+        this.playerDataRepository = playerDataRepository;
+        this.adminDataRepository = adminDataRepository;
+        this.playerSessionService = playerSessionService;
         this.network = network;
         this.commandRegistry = commandRegistry;
         this.bundleService = bundleService;
@@ -117,13 +127,13 @@ public class DiscordService {
                 String[] args = event.getCustomId().split("_");
 
                 String server = args[0];
-                PlayerData data = database.getCachedOrDb(Strings.parseInt(args[1]));
-                var adminData = database.getAdminDataRepository().findByUuid(data.uuid);
+                PlayerData data = playerSessionService.getOrLoadFromDb(Strings.parseInt(args[1]));
+                var adminData = adminDataRepository.findByUuid(data.uuid);
 
                 network.post(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));
 
                 adminData.adminConfirmed = true;
-                database.getAdminDataRepository().save(adminData);
+                adminDataRepository.save(adminData);
 
                 return message.getRestChannel().createMessage(author.getDisplayName() + " confirmed adminship to player " +
                         data.nickname + " on server " + server).then(message.delete());
@@ -261,7 +271,7 @@ public class DiscordService {
     public void sendBan(BanData ban) {
         if (!isConnected || bansChannel == null) return;
 
-        PlayerData data = database.getPlayerDataRepository().findByUuid(ban.uuid);
+        PlayerData data = playerDataRepository.findByUuid(ban.uuid);
 
         bansChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder()
@@ -280,7 +290,7 @@ public class DiscordService {
     public void sendAdminRequestEvent(int pid, String server) {
         if (!isConnected || privateChannel == null) return;
 
-        PlayerData data = database.getPlayerDataRepository().findById(pid);
+        PlayerData data = playerDataRepository.findById(pid);
 
         privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")

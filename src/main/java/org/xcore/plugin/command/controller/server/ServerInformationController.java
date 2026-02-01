@@ -9,18 +9,18 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ServerContext;
-import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.PlayerSessionService;
 
 import static mindustry.Vars.netServer;
 
 @Singleton
 public class ServerInformationController {
 
-    private final DatabaseService database;
+    private final PlayerSessionService playerSessionService;
 
     @Inject
-    public ServerInformationController(DatabaseService database) {
-        this.database = database;
+    public ServerInformationController(PlayerSessionService playerSessionService) {
+        this.playerSessionService = playerSessionService;
     }
 
     @Command(name = "players", description = "List online players with status.")
@@ -32,7 +32,7 @@ public class ServerInformationController {
         Log.info("Online players (@):", Groups.player.size());
         Groups.player.each(p -> {
             PlayerInfo i = p.getInfo();
-            var d = database.getCached(p.uuid());
+            var d = playerSessionService.get(p.uuid());
             Log.info(" @&lm @ #@ / IP: @", i.admin ? "&r[A]&c" : "&b[P]&c", i.plainLastName(), d.pid, i.lastIP);
         });
     }
@@ -42,7 +42,7 @@ public class ServerInformationController {
         ObjectSet<PlayerInfo> set;
         String q = ctx.arg(0);
         if (q.startsWith("#")) {
-            var d = database.getCachedOrDb(Strings.parseInt(q.substring(1)));
+            var d = playerSessionService.getOrLoadFromDb(Strings.parseInt(q.substring(1)));
             set = (d != null) ? ObjectSet.with(netServer.admins.getInfoOptional(d.uuid)) : new ObjectSet<>();
         } else {
             set = netServer.admins.findByName(q);
