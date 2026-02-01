@@ -22,16 +22,13 @@ public enum VoteChoice {
     }
 
     public static VoteChoice parse(String input) {
-        if (input == null || input.isBlank()) {
-            return ABSTAIN;
-        }
-
-        String sanitized = TextUtils.stripFooCharacters(input.toLowerCase().trim());
-
-        return switch (sanitized) {
-            case "y", "yes", "1", "+" -> YES;
-            case "n", "no", "-1", "-" -> NO;
-            default -> ABSTAIN;
+        return switch (input) {
+            case String s when s.isBlank() -> ABSTAIN;
+            case String s -> switch (TextUtils.stripFooCharacters(s.toLowerCase().trim())) {
+                case "y", "yes", "1", "+" -> YES;
+                case "n", "no", "-1", "-" -> NO;
+                default -> ABSTAIN;
+            };
         };
     }
 }

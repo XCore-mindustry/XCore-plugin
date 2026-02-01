@@ -19,9 +19,6 @@ commands-sync-params = {""}
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних юнітів).
 commands-discord-params = {""}
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
-commands-js-params = <код...>
-commands-js-description = Виконати JavaScript. [scarlet]Тільки для користувачів з доступом до JS.
-commands-js-denied = [scarlet]⚠ Доступ заборонено
 commands-artv-params = [карта...]
 commands-artv-description = Примусово змінити карту. [scarlet]Тільки для адмінів.
 commands-artv-map-skipped = {$nickname}[accent] пропустив карту.
@@ -71,25 +68,25 @@ commands-unmute-params = <id-гравця>
 commands-unmute-description = Зняти мут з гравця. [scarlet]Тільки для адмінів.
 commands-unmute-success = [green]Успішно знято мут з гравця []{$nickname}
 commands-map-title = [orange]XCore сервер — Статистика
-commands-map-content = {""}[white]Статистика карти для [green]{$mapName}
-    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Розмір:[green] {$mapWidth}x{$mapHeight}[orange]
-    {""}[white]Репутація:[green] {$mapReputation}[orange] | [white]Популярність:[green] {$mapPopularity}[orange] | [white]Цікавість:[green] {$mapInterest}[orange]
-    {""}[white]Зіграно разів:[green] {$mapPlayedTimes}[orange] | [white]Зіграно за рік:[green] {$mapPlayedTimesYear}[orange] | [white]Остання гра:[green] {$mapLastPlayed}[orange]
-    {""}[white]Мін. час:[green] {$mapMin}[orange] | [white]Сер. час:[green] {$mapAvg}[orange] | [white]Макс. час:[green] {$mapMax}[orange]
-    {""}[green]{$mapDescription}[white]
+commands-map-content = {""}[white]Статистика карти [green]{$name}
+    {""}[white]Автор:[green] {$author}[orange] | [white]Розмір:[green] {$width}x{$height}[orange]
+    {""}[white]Репутація:[green] {$reputation}[orange] | [white]Популярність:[green] {$popularity}[orange] | [white]Інтерес:[green] {$interest}[orange]
+    {""}[white]Зіграно разів:[green] {$played}[orange] | [white]Зіграно за рік:[green] {$playedYear}[orange] | [white]Остання гра:[green] {$lastPlayed}[orange]
+    {""}[white]Мін. час:[green] {$min}[orange] | [white]Сер. час:[green] {$avg}[orange] | [white]Макс. час:[green] {$max}[orange]
+    {""}[green]{$desc}[white]
 commands-map-params = [назва-карти]
 commands-map-description = Статистика конкретної карти
 commands-maps-params = [сторінка]
 commands-maps-description = Список усіх мап на цьому сервері.
 commands-maps-title = [orange]XCore сервер — Список мап
-commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$pageCount}[]
+commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
 commands-maps-text-params = [сторінка]
 commands-maps-text-description = Список усіх карт на цьому сервері.
 commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
-commands-maps-text-start-content = [accent]Поточна карта: []{$mapName}[white]
-    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
+commands-maps-text-start-content = [accent]Поточна карта: []{$name}[white]
+    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$total}
 commands-maps-text-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | Від: [sky]{$mapAuthor}
+    {$index}. [orange] - [white]{$name}[orange] | [green]{$reputation}[orange] | [white]{$width}x{$height}[orange] | [white]{$lastPlayed}[orange] | Від: [sky]{$author}
 commands-votekick-params = <ID/ім'я> <причина...>
 commands-votekick-description = Голосування за вигнання (кік) гравця з сервера.
 commands-vote-params = <y/n>
@@ -110,9 +107,8 @@ commands-top-description = Топ гравців.
 commands-top-hexed-content = [orange]{$index}. {$nickname}[accent]: [blue]{$rankName} [cyan]{$points} []перемог
 commands-top-pvp-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$rating}
 commands-spectate-params = {""}
-commands-spectate-description = Перейти в режим спостерігача. Це видалить вашого юніта. Напишіть ще раз, щоб повернутися в команду.
+commands-spectate-description = Перейти в режим спостерігача. Це видалить вашого юніта.
 commands-spectate-success = [green]Тепер ви спостерігаєте за грою
-commands-spectate-success2 = [green]Ви більше не спостерігач
 commands-ai-params = <idle/i/attack/a>
 commands-ai-description = Керування ШІ (AI)
 commands-ai-usage = [red]attack(i) []або [accent]idle(i)
@@ -121,12 +117,12 @@ rtv-vote = {$nickname}[lightgray] проголосував за зміну по�
 rtv-left = {$nickname}[lightgray] вийшов. Його голос за зміну карти скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни карти на [orange]{$mapName}[].
 rtv-success = [orange]Голосування пройшло. Карта [accent]{$mapName}[] буде завантажена через [accent]{$mapLoadDelay}[] секунд...
-votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосував за вигнання {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] через [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] хоче вигнати {$target} [grey]#[white]{$targetId}[lightgray]. Причина: [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$required}[])
     {""}[lightgray]Напишіть [orange]/vote <y/n>[], щоб проголосувати.
-votekick-left = {$nickname}[lightgray] вийшов. Його голос за вигнання гравця скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-votekick-cancelled = [scarlet]Голосування за вигнання {$nickname}[scarlet] було скасовано адміністратором {$admin}
-votekick-fail = [lightgray]Голосування не пройшло. Недостатньо голосів, щоб вигнати {$nickname}[lightgray] з сервера.
-votekick-success = [orange]Голосування пройшло. {$nickname}[orange] вигнаний з сервера на [scarlet]{$minutes}[] хвилин.
+votekick-left = {$player}[lightgray] покинув гру. Голос анульовано. ([accent]{$votes}[]/[accent]{$required}[])
+votekick-cancelled = [scarlet]Голосування за вигнання {$target}[scarlet] скасовано адміністратором {$admin}.
+votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання {$target}[lightgray].
+votekick-success = [orange]Голосування успішне. {$target}[orange] вигнаний на [scarlet]{$minutes}[] хвилин.
 player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]приєднався.
 player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вийшов.
 notification-votekick-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{0}[] хвилин і тепер можете почати голосування за вигнання.
@@ -189,7 +185,7 @@ hexed-ranks-veteran = Ветеран
 hexed-ranks-davastator = Руйнівник
 hexed-ranks-the_legend = Легенда
 pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зачекайте наступної гри.
-kick-pirated-game = [accent]Грати на піратській версії гри [scarlet]заборонено[]. Встановіть [lime]офіційну[] версію гри з [blue]App Store[], [blue]Google Play[] або [blue]itch.io: https://anuke-itch-io/mindustry
+kick-pirated-game = [accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked = [accent]Ви були нещодавно вигнані з цього сервера.
     Зачекайте [cyan]{$remainMinutes}:{$remainSeconds}[accent] перед повторним входом.
 welcome = [accent]Ласкаво просимо на {$serverName}!

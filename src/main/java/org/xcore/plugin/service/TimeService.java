@@ -4,43 +4,47 @@ import arc.util.Strings;
 import arc.util.Nullable;
 import jakarta.inject.Singleton;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Singleton
 public class TimeService {
-    private static final Pattern periodPattern = Pattern.compile("([0-9]+)([hdwmy])");
-
+    private static final Pattern PERIOD_PATTERN = Pattern.compile("(\\d+)([mhdwy])");
     public @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit) {
-        if (period == null) return null;
-        period = period.toLowerCase();
-        Matcher matcher = periodPattern.matcher(period);
-        Instant instant = Instant.EPOCH;
+        if (period == null || period.isBlank()) {
+            return null;
+        }
 
+        String normalized = period.toLowerCase().strip();
+
+        if (Strings.canParsePositiveInt(normalized)) {
+            long millis = defaultUnit.toMillis(Strings.parseInt(normalized));
+            return Instant.ofEpochMilli(millis);
+        }
+
+        var matcher = PERIOD_PATTERN.matcher(normalized);
+        Duration total = Duration.ZERO;
         boolean found = false;
+
         while (matcher.find()) {
             found = true;
-            int num = Strings.parseInt(matcher.group(1));
-            String typ = matcher.group(2);
-            switch (typ) {
-                case "m" -> instant = instant.plusMillis(TimeUnit.MINUTES.toMillis(num));
-                case "h" -> instant = instant.plusMillis(TimeUnit.HOURS.toMillis(num));
-                case "d" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(num));
-                case "w" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(7L * num));
-                case "y" -> instant = instant.plusMillis(TimeUnit.DAYS.toMillis(365L * num));
-            }
+            int value = Integer.parseInt(matcher.group(1));
+            String unit = matcher.group(2);
+
+            Duration duration = switch (unit) {
+                case "m" -> Duration.ofMinutes(value);
+                case "h" -> Duration.ofHours(value);
+                case "d" -> Duration.ofDays(value);
+                case "w" -> Duration.ofDays(7L * value);
+                case "y" -> Duration.ofDays(365L * value);
+                default -> Duration.ZERO;
+            };
+
+            total = total.plus(duration);
         }
 
-        if (!found && Strings.canParsePositiveInt(period)) {
-            return Instant.now().plusMillis(defaultUnit.toMillis(Strings.parseInt(period)));
-        }
-
-        if (found) {
-            return instant;
-        }
-
-        return null;
+        return found ? Instant.ofEpochMilli(total.toMillis()) : null;
     }
 }

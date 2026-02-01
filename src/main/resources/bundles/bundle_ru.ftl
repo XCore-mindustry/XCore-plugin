@@ -19,9 +19,6 @@ commands-sync-params = {""}
 commands-sync-description = Пересинхронизировать состояние мира
 commands-discord-params = {""}
 commands-discord-description = Перенаправляет вас на сервер discord
-commands-js-params = <код...>
-commands-js-description = Выполнить javascript- [scarlet]Тольки игрокам с доступом к JS
-commands-js-denied = [scarlet]⚠ Доступ запрещен
 commands-artv-params = [карта...]
 commands-artv-description = Изменить карту. [scarlet]Только для админов
 commands-artv-map-skipped = {$nickname}[accent] пропустил карту
@@ -59,7 +56,7 @@ commands-tr-success = [accent]Язык переводчика был успеш�
 commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = [scarlet]⚠ Нет такого языка
 commands-ban-params = <id-игрока> <период> [причина...]
-commands-ban-description = \ Забанить игрока. [scarlet]Только для админов
+commands-ban-description = Забанить игрока. [scarlet]Только для админов
 commands-ban-success = {$nickname} [scarlet]забанен
 commands-unban-params = <id-игрока>
 commands-unban-description = Разбанить игрока. [scarlet]Только для админов
@@ -71,26 +68,29 @@ commands-unmute-params = <id-игрока>
 commands-unmute-description = Размутить игрока. [scarlet]Только для админов
 commands-unmute-success = Успешно размучено игрока {$nickname}
 commands-map-title = [orange]XCore сервер — Статистика
-commands-map-content = {""}[white]Статистика карты для [green]{$mapName}
-    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Размер:[green] {$mapWidth}x{$mapHeight}[orange]
-    {""}[white]Репутация:[green] {$mapReputation}[orange] | [white]Популярность:[green] {$mapPopularity}[orange] | [white]Интерес:[green] {$mapInterest}[orange]
-    {""}[white]Сыграно раз:[green] {$mapPlayedTimes}[orange] | [white]Сыграно за год:[green] {$mapPlayedTimesYear}[orange] | [white]Последняя игра:[green] {$mapLastPlayed}[orange]
-    {""}[white]Мин. время:[green] {$mapMin}[orange] | [white]Ср. время:[green] {$mapAvg}[orange] | [white]Макс. время:[green] {$mapMax}[orange]
-    {""}[green]{$mapDescription}[white]
+commands-map-content = {""}[white]Статистика карты [green]{$name}
+    {""}[white]Автор:[green] {$author}[orange] | [white]Размер:[green] {$width}x{$height}[orange]
+    {""}[white]Репутация:[green] {$reputation}[orange] | [white]Популярность:[green] {$popularity}[orange] | [white]Интерес:[green] {$interest}[orange]
+    {""}[white]Сыграно раз:[green] {$played}[orange] | [white]Сыграно за год:[green] {$playedYear}[orange] | [white]Последняя игра:[green] {$lastPlayed}[orange]
+    {""}[white]Мин. время:[green] {$min}[orange] | [white]Ср. время:[green] {$avg}[orange] | [white]Макс. время:[green] {$max}[orange]
+    {""}[green]{$desc}[white]
 commands-map-params = [название-карты]
 commands-map-description = Статистика конкретной карты
 commands-maps-params = [страница]
 commands-maps-description = Список всех карт на этом сервере.
 commands-maps-title = [orange]XCore сервер — Список карт
-commands-maps-content = {""}[white]Страница [green]{$page}[] из [green]{$pageCount}[]
+commands-maps-content = {""}[white]Страница [green]{$page}[] из [green]{$total}[]
 commands-maps-text-params = [страница]
 commands-maps-text-description = Список всех карт на этом сервере.
 commands-maps-page-must-number = [scarlet]'страница' должна быть числом
-commands-maps-text-start-content = [accent]Текущая карта: []{$mapName}[white]
-    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
+commands-maps-text-start-content = [accent]Текущая карта: []{$name}[white]
+    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$total}
 commands-maps-text-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | От: [sky]{$mapAuthor}
+    {$index}. [orange] - [white]{$name}[orange] | [green]{$reputation}[orange] | [white]{$width}x{$height}[orange] | [white]{$lastPlayed}[orange] | От: [sky]{$author}
+
+commands-votekick-params = <ID/имя> <причина...>
 commands-votekick-description = Голосование за кик игрока.
+
 commands-vote-params = <y/n>
 commands-vote-description = Проголосовать за кик текущего игрока
 commands-vote-vote-with = [scarlet]⚠ Голосуйте с помощью [orange]/vote <y/n/c>
@@ -98,7 +98,7 @@ commands-rank-params = [игрок...]
 commands-rank-description = Показывает информацию о вашем ранге/ранге игрока
 commands-rank-content = {$nickname}
     {$rankTag} [accent]{$rankName}
-    {""}[gold]Побед: {$points}/{$reguirePoints}
+    {""}[gold]Побед: {$points}/{$requiredPoints}
 commands-ranks-params = {""}
 commands-ranks-description = Показывает информацию о рангах
 commands-ranks-content = {$rankTag} [accent]{$rankName}
@@ -110,21 +110,20 @@ commands-top-pvp-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$rating
 commands-spectate-params = {""}
 commands-spectate-description = Переключить режим наблюдателя. Это очистит вашего юнита.
 commands-spectate-success = [green]Теперь вы наблюдаете за игрой
-commands-spectate-success2 = [green]Вы больше не наблюдаете за игрой
 commands-ai-params = <idle/i/attack/a>
 commands-ai-description = Контролировать ИИ
 commands-ai-usage = [red]attack(i) []или [accent]idle(i)
 rtv-vote = {$nickname}[lightgray] проголосовал за смену текущей карты на [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     Напишите [orange]y[] или [orange]n[], чтобы проголосовать.
-rtv-left = {$nickname}[lightgray] вышел с сервера. Его голос за смену карты был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+rtv-left = {$nickname}[lightgray] покинул игру. Голос за смену карты аннулирован. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы изменить текущую карту на [orange]{$mapName}[].
 rtv-success = [orange]Голосование завершено успешно. Карта [accent]{$mapName}[] будет загружена через [accent]{$mapLoadDelay}[] секунд...
-votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] проголосовал за кик {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] по причине [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-    {""}[lightgray]Напиши [orange]/vote <y/n>[], чтобы проголосовать.
-votekick-left = {$nickname}[lightgray] вышел с сервера. Его голос за кик игрока был отменен. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-votekick-cancelled = [scarlet]Голосование за кик {$nickname}[scarlet] было отменено администратором {$admin}[scarlet]-
-votekick-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы выгнать {$nickname}[lightgray] с сервера.
-votekick-success = [orange]Голосование завершено успешно. {$nickname}[orange] выгнан с сервера на [scarlet]{$minutes}[] минут.
+votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] хочет выгнать {$target} [grey]#[white]{$targetId}[lightgray]. Причина: [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$required}[])
+    {""}[lightgray]Напишите [orange]/vote <y/n>[], чтобы проголосовать.
+votekick-left = {$player}[lightgray] покинул игру. Голос аннулирован. ([accent]{$votes}[]/[accent]{$required}[])
+votekick-cancelled = [scarlet]Голосование за кик {$target}[scarlet] отменено администратором {$admin}[scarlet].
+votekick-fail = [lightgray]Голосование не состоялось. Недостаточно голосов для изгнания {$target}[lightgray].
+votekick-success = [orange]Голосование успешно. {$target}[orange] изгнан на [scarlet]{$minutes}[] минут.
 player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]присоединился
 player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вышел
 notification-votekick-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете начать голосование за кик игрока.
@@ -186,7 +185,7 @@ hexed-ranks-veteran = Ветеран
 hexed-ranks-davastator = Разрушитель
 hexed-ranks-the_legend = Легенда
 pvp-you-spectator = [scarlet]Ты проиграл. Подождите следующей игры.
-kick-pirated-game = [accent]Играть на пиратской версии игры запрещено. Установите официальную версию игры из [blue]Play Market[] или [blue]https://anuke-itch-io/mindustry-
+kick-pirated-game = [accent]Вход с неофициальных клиентов [scarlet]запрещен[]. Пожалуйста, используйте [lime]официальную[] версию игры (Steam, Google Play, itch.io).
 kick-recently-kicked = [accent]Вы были недавно кикнуты с этого сервера. Подождите [cyan]{$remainMinutes}:{$remainSeconds}[accent]
 welcome = [accent]Добро пожаловать в {$serverName}!
     {""}[lightgray]Введите [accent]/help[lightgray], чтобы увидеть список команд

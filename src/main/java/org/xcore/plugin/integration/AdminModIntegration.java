@@ -66,7 +66,7 @@ public class AdminModIntegration {
             Instant date = time.parsePeriod(req.duration, TimeUnit.DAYS);
 
             if (date == null) {
-                bundle.send(player, "error.wrong-period-format", args());
+                bundle.send(player, "error-wrong-period-format", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }

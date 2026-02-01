@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.Core;
-import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Timer;
@@ -148,9 +147,9 @@ public class MapController {
             return;
         }
         var builder = new StringBuilder(ctx.format("commands-maps-text-start-content", args(
-                "mapName", Vars.state.map.name(),
+                "name", Vars.state.map.name(),
                 "page", requestedPage,
-                "pageCount", pagination.totalPages()
+                "total", pagination.totalPages()
         )));
 
         long now = System.currentTimeMillis();
@@ -167,12 +166,12 @@ public class MapController {
                             : (now - mapData.lastPlayedTime) / 60000 + "m";
                     builder.append(ctx.format("commands-maps-text-content", args(
                             "index", indexed.index(),
-                            "mapName", mapData.name,
-                            "mapAuthor", mapData.author,
-                            "mapWidth", map.width,
-                            "mapHeight", map.height,
-                            "mapReputation", mapData.reputation,
-                            "mapLastPlayed", lastPlayed
+                            "name", mapData.name,
+                            "author", mapData.author,
+                            "width", map.width,
+                            "height", map.height,
+                            "reputation", mapData.reputation,
+                            "lastPlayed", lastPlayed
                     )));
                 });
         ctx.player().sendMessage(builder.toString());
@@ -247,21 +246,21 @@ public class MapController {
 
         String menuTitle = bundle.format(bundle.locale(player),"commands-map-title", args());
         String menuContent = bundle.format(bundle.locale(player), "commands-map-content", args(
-                "mapName", m.name,
-                "mapAuthor", m.author,
-                "mapDescription", map.description(),
-                "mapWidth", map.width,
-                "mapHeight", map.height,
-                "mapReputation", m.reputation,
-                "mapPopularity", String.format("%.1f", m.popularity),
-                "mapInterest", String.format("%.1f", m.interest),
-                "mapPlayedTimes", m.playedTimes,
-                "mapPlayedTimesYear", m.playedTimesYear,
-                "mapLastPlayed", last,
-                "mapMin", m.minimumGameTime / 60000,
-                "mapAvg", m.averageGameTime / 60000,
-                "mapMax", m.maximumGameTime / 60000
-            ));
+                "name", m.name,
+                "author", m.author,
+                "desc", map.description(),
+                "width", map.width,
+                "height", map.height,
+                "reputation", m.reputation,
+                "popularity", String.format("%.1f", m.popularity),
+                "interest", String.format("%.1f", m.interest),
+                "played", m.playedTimes,
+                "playedYear", m.playedTimesYear,
+                "lastPlayed", last,
+                "min", m.minimumGameTime / 60000,
+                "avg", m.averageGameTime / 60000,
+                "max", m.maximumGameTime / 60000
+        ));
 
         PlayerData pData = database.getCached(player.uuid());
         Boolean currentVote = pData.mapVotes.get(m.name);
@@ -313,7 +312,7 @@ public class MapController {
         String menuTitle = bundle.format(bundle.locale(player), "commands-maps-title", args());
         String menuContent = bundle.format(bundle.locale(player), "commands-maps-content", args(
                 "page", validPage,
-                "pageCount", pagination.totalPages()
+                "total", pagination.totalPages()
         ));
         MenuSession session = new MenuSession();
         List<List<String>> rows = new ArrayList<>();
@@ -341,15 +340,13 @@ public class MapController {
         SeqStream.of(maps)
                 .gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage))
                 .flatMap(List::stream)
-                .forEach(map -> {
-                    rows.add(List.of(
-                            session.add(map.name(), () -> {
-                                MapData data = database.getMapDataRepository()
-                                        .find(map.plainName(), map.author(), gameMode);
-                                handleMap(player, data);
-                            })
-                    ));
-                });
+                .forEach(map -> rows.add(List.of(
+                        session.add(map.name(), () -> {
+                            MapData data = database.getMapDataRepository()
+                                    .find(map.plainName(), map.author(), gameMode);
+                            handleMap(player, data);
+                        })
+                )));
 
         rows.add(List.of(
                 session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})

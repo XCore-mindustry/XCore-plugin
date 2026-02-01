@@ -71,13 +71,13 @@ public class VoteKick extends VoteSession {
         PlayerData playerData = database.getCached(player.uuid());
         PlayerData targetData = database.getCached(target.uuid());
         var bundleArgs = args(
-                "nickname", player.coloredName(),
-                "nicknameId", playerData.pid,
-                "targetNickname", target.coloredName(),
-                "targetNicknameId", targetData.pid,
+                "starter", player.coloredName(),
+                "starterId", playerData.pid,
+                "target", target.coloredName(),
+                "targetId", targetData.pid,
                 "reason", reason,
                 "votes", votes(),
-                "votesRequired", votesRequired());
+                "required", votesRequired());
         bundle.send("votekick-vote", bundleArgs);
         var message = bundle.format(bundle.getDefaultLocale(), "votekick-vote", bundleArgs);
         Log.info(message);
@@ -97,9 +97,9 @@ public class VoteKick extends VoteSession {
     public void left(Player player) {
         if (voted.remove(player.id) != 0) {
             bundle.send("votekick-left", args(
-                    "nickname", player.coloredName(),
+                    "player", player.coloredName(),
                     "votes", votes(),
-                    "votesRequired", votesRequired()));
+                    "required", votesRequired()));
         }
 
         if (target == player && votes() > 0) {
