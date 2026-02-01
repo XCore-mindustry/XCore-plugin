@@ -1,0 +1,93 @@
+package org.xcore.plugin.security.ingress.checks;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import mindustry.net.NetConnection;
+import mindustry.net.Packets.ConnectPacket;
+import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.security.ingress.AccessResult;
+import org.xcore.plugin.security.ingress.IngressCheck;
+import org.xcore.plugin.service.BundleService;
+
+import java.time.Duration;
+import java.time.Instant;
+
+import static arc.util.Strings.stripColors;
+import static com.ospx.flubundle.Bundle.args;
+import static mindustry.Vars.netServer;
+
+/**
+ * Checks if player is banned (temporary or permanent).
+ * Priority 0: Database lookup, runs in parallel.
+ */
+@Singleton
+public class BanCheck implements IngressCheck {
+
+    private final DatabaseService database;
+    private final BundleService bundle;
+    private final GlobalConfig globalConfig;
+
+    @Inject
+    public BanCheck(DatabaseService database, BundleService bundle, GlobalConfig globalConfig) {
+        this.database = database;
+        this.bundle = bundle;
+        this.globalConfig = globalConfig;
+    }
+
+    @Override
+    public AccessResult check(NetConnection con, ConnectPacket packet) {
+        String uuid = packet.uuid;
+        String ip = con.address;
+
+        BanData ban = database.getBanDataRepository().find(uuid, ip);
+
+        if (ban != null) {
+            if (ban.expired()) {
+                netServer.admins.unbanPlayerID(uuid);
+                netServer.admins.unbanPlayerIP(ip);
+                database.getBanDataRepository().delete(ban.uuid, ip);
+                return AccessResult.Allowed.INSTANCE;
+            }
+
+            Duration duration = Duration.between(Instant.now(), ban.expireDate);
+
+            String reason = bundle.format(bundle.locale(packet.locale), "tempban-content", args(
+                    "nickname", stripColors(ban.name),
+                    "adminName", stripColors(ban.adminName),
+                    "reason", ban.reason,
+                    "days", duration.toDays(),
+                    "hours", duration.toHoursPart(),
+                    "minutes", duration.toMinutesPart(),
+                    "discordUrl", globalConfig.discordUrl
+            ));
+
+            return new AccessResult.Denied(reason, false, 0);
+        }
+
+        if (netServer.admins.isIPBanned(ip) ||
+                netServer.admins.isSubnetBanned(ip) ||
+                netServer.admins.isIDBanned(uuid)) {
+
+            String reason = bundle.format(bundle.locale(packet.locale), "ban-content", args(
+                    "nickname", stripColors(packet.name),
+                    "discordUrl", globalConfig.discordUrl
+            ));
+
+            return new AccessResult.Denied(reason, false, 0);
+        }
+
+        return AccessResult.Allowed.INSTANCE;
+    }
+
+    @Override
+    public int priority() {
+        return 0;
+    }
+
+    @Override
+    public String name() {
+        return "BanCheck";
+    }
+}
