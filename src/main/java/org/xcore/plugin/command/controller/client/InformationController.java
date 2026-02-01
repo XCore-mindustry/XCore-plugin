@@ -1,6 +1,5 @@
 package org.xcore.plugin.command.controller.client;
 
-import arc.math.Mathf;
 import arc.util.CommandHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -11,6 +10,9 @@ import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.common.BuildInfo;
+import org.xcore.plugin.common.CustomGatherers;
+
+import java.util.stream.IntStream;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -49,31 +51,34 @@ public class InformationController {
 
     @Command(name = "help", params = "[page]")
     public void help(ClientContext ctx) {
-        int commandsPerPage = 6;
-        int pageCount = Mathf.ceil((float) handler.getCommandList().size / commandsPerPage);
-        int page = ctx.argInt(0, 1) - 1;
+        var commands = handler.getCommandList();
+        var pagination = CustomGatherers.calculatePagination(commands.size, globalConfig.commandsPerPage);
 
-        if (page >= pageCount || page < 0) {
-            ctx.send("error-page-between", args("totalPages", pageCount));
+        int requestedPage = ctx.argInt(0, 1);
+
+        if (!pagination.isValidPage(requestedPage)) {
+            ctx.send("error-page-between", args("totalPages", pagination.totalPages()));
             return;
         }
 
-        StringBuilder result = new StringBuilder();
+        var result = new StringBuilder();
         result.append(ctx.format("commands-help-start-content", args(
-                "page", page + 1,
-                "totalPages", pageCount
+                "page", requestedPage,
+                "totalPages", pagination.totalPages()
         ))).append("\n\n");
 
-        for (int i = commandsPerPage * page; i < Math.min(commandsPerPage * (page + 1), handler.getCommandList().size); i++) {
-            var command = handler.getCommandList().get(i);
-            if (command.text.equals("login")) continue;
-
-            result.append(ctx.format("commands-help-content", args(
-                    "commandName", command.text,
-                    "commandParams", ctx.format("commands-" + command.text + "-params", args()),
-                    "commandDescription", ctx.format("commands-" + command.text + "-description", args())
-            ))).append("\n");
-        }
+        IntStream.range(0, commands.size)
+                .mapToObj(commands::get)
+                .filter(command -> !command.text.equals("login"))
+                .gather(CustomGatherers.indexedPage(globalConfig.commandsPerPage, requestedPage))
+                .forEach(indexed -> {
+                    var command = indexed.value();
+                    result.append(ctx.format("commands-help-content", args(
+                            "commandName", command.text,
+                            "commandParams", ctx.format("commands-" + command.text + "-params", args()),
+                            "commandDescription", ctx.format("commands-" + command.text + "-description", args())
+                    ))).append("\n");
+                });
 
         ctx.player().sendMessage(result.toString());
     }

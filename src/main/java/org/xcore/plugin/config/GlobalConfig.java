@@ -31,7 +31,8 @@ public class GlobalConfig {
     public float voteDurationSeconds = 60.0f;
     public int mapSwitchDelaySeconds = 10;
 
-    public int MapsPageLines  = 10;
+    public int mapsPerPage = 10;
+    public int commandsPerPage = 6;
 
     public void postInit(Fi globalConfigFile) {
         Jval.read(globalConfigFile.reader()).asObject().forEach(jval -> {

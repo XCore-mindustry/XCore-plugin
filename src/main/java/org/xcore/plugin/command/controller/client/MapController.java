@@ -16,6 +16,8 @@ import mindustry.ui.Menus;
 import org.xcore.plugin.command.core.annotation.AdminOnly;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
+import org.xcore.plugin.common.CustomGatherers;
+import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
@@ -131,43 +133,51 @@ public class MapController {
 
     @Command(name = "maps-text", params = "[page]")
     public void mapsText(ClientContext ctx) {
-        Seq<Map> list = mapService.getAvailableMaps();
-        int lines = globalConfig.MapsPageLines;
-        int pageCount = Mathf.ceil((float) list.size / lines);
-        int page = ctx.argInt(0, 1);
+        Seq<Map> maps = mapService.getAvailableMaps();
+        var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 
-        if (page < 1 || page > pageCount) {
-            ctx.send("error-page-between", args("pageCount", pageCount));
+        if (pagination.totalPages() == 0) {
+            ctx.send("empty", args());
             return;
         }
 
-        StringBuilder builder = new StringBuilder(ctx.format("commands-maps-text-start-content", args(
+        int requestedPage = ctx.argInt(0, 1);
+
+        if (!pagination.isValidPage(requestedPage)) {
+            ctx.send("error-page-between", args("totalPages", pagination.totalPages()));
+            return;
+        }
+        var builder = new StringBuilder(ctx.format("commands-maps-text-start-content", args(
                 "mapName", Vars.state.map.name(),
-                "page", page,
-                "pageCount", pageCount
+                "page", requestedPage,
+                "pageCount", pagination.totalPages()
         )));
 
         long now = System.currentTimeMillis();
-        for (int i = (page - 1) * lines; i < Math.min(page * lines, list.size); i++) {
-            Map map = list.get(i);
-            MapData m = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        String gameMode = Vars.state.rules.mode().name();
 
-            String last = m.playedTimes == 0
-                    ? ctx.format("never", args())
-                    : (now - m.lastPlayedTime) / 60000 + "m";
-
-            builder.append(ctx.format("commands-maps-text-content", args(
-                    "index", i + 1,
-                    "mapName", m.name,
-                    "mapAuthor", m.author,
-                    "mapWidth", map.width,
-                    "mapHeight", map.height,
-                    "mapReputation", m.reputation,
-                    "mapLastPlayed", last
-            )));
-        }
+        SeqStream.of(maps)
+                .gather(CustomGatherers.indexedPage(globalConfig.mapsPerPage, requestedPage))
+                .forEach(indexed -> {
+                    Map map = indexed.value();
+                    MapData mapData = database.getMapDataRepository()
+                            .find(map.plainName(), map.author(), gameMode);
+                    String lastPlayed = mapData.playedTimes == 0
+                            ? ctx.format("never", args())
+                            : (now - mapData.lastPlayedTime) / 60000 + "m";
+                    builder.append(ctx.format("commands-maps-text-content", args(
+                            "index", indexed.index(),
+                            "mapName", mapData.name,
+                            "mapAuthor", mapData.author,
+                            "mapWidth", map.width,
+                            "mapHeight", map.height,
+                            "mapReputation", mapData.reputation,
+                            "mapLastPlayed", lastPlayed
+                    )));
+                });
         ctx.player().sendMessage(builder.toString());
     }
+
 
     @Command(name = "rtv", params = "[map...]")
     public void rtv(ClientContext ctx) {
@@ -291,48 +301,59 @@ public class MapController {
     }
 
     private void handleMaps(Player player, int page) {
-        Seq<Map> list = mapService.getAvailableMaps();
-        int lines = globalConfig.MapsPageLines;
-        int pageCount = Mathf.ceil((float) list.size / lines);
+        Seq<Map> maps = mapService.getAvailableMaps();
+        var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 
-        if (page < 1) page = 1;
-        if (page > pageCount) page = pageCount;
+        if (pagination.totalPages() == 0) {
+            bundle.send(player, "empty", args());
+            return;
+        }
 
+        int validPage = pagination.clampPage(page);
         String menuTitle = bundle.format(bundle.locale(player), "commands-maps-title", args());
-        String menuContent = bundle.format(bundle.locale(player), "commands-maps-content", args("page", page, "pageCount", pageCount));
-
-        String previousButtonText = bundle.format(bundle.locale(player), "previous", args());
-        String nextButtonText = bundle.format(bundle.locale(player), "next", args());
-        String closeButtonText = bundle.format(bundle.locale(player), "close", args());
-
+        String menuContent = bundle.format(bundle.locale(player), "commands-maps-content", args(
+                "page", validPage,
+                "pageCount", pagination.totalPages()
+        ));
         MenuSession session = new MenuSession();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> navRow = new ArrayList<>();
-        if (page > 1) {
-            final int prevPage = page - 1;
-            navRow.add(session.add(bundle.format(bundle.locale(player), previousButtonText, args()), () -> handleMaps(player, prevPage)));
+        if (validPage > 1) {
+            final int prevPage = validPage - 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "previous", args()),
+                    () -> handleMaps(player, prevPage)
+            ));
         }
-        if (page < pageCount) {
-            final int nextPage = page + 1;
-            navRow.add(session.add(bundle.format(bundle.locale(player), nextButtonText, args()), () -> handleMaps(player, nextPage)));
+        if (validPage < pagination.totalPages()) {
+            final int nextPage = validPage + 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "next", args()),
+                    () -> handleMaps(player, nextPage)
+            ));
         }
-        if (!navRow.isEmpty()) rows.add(navRow);
-
-        for (int i = (page - 1) * lines; i < Math.min(page * lines, list.size); i++) {
-            Map map = list.get(i);
-            List<String> mapRow = new ArrayList<>();
-            mapRow.add(session.add(map.name(), () -> {
-                MapData data = database.getMapDataRepository().find(map.plainName(), map.author(), Vars.state.rules.mode().name());
-                handleMap(player, data);
-            }));
-            rows.add(mapRow);
+        if (!navRow.isEmpty()) {
+            rows.add(navRow);
         }
+        String gameMode = Vars.state.rules.mode().name();
 
-        List<String> closeRow = new ArrayList<>();
-        closeRow.add(session.add(bundle.format(bundle.locale(player), closeButtonText, args()), () -> {}));
-        rows.add(closeRow);
+        SeqStream.of(maps)
+                .gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage))
+                .flatMap(List::stream)
+                .forEach(map -> {
+                    rows.add(List.of(
+                            session.add(map.name(), () -> {
+                                MapData data = database.getMapDataRepository()
+                                        .find(map.plainName(), map.author(), gameMode);
+                                handleMap(player, data);
+                            })
+                    ));
+                });
 
+        rows.add(List.of(
+                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
+        ));
         playerSessionContext.put(player.uuid(), session);
         Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
     }

@@ -90,12 +90,6 @@ commands-maps-text-start-content = [accent]Текущая карта: []{$mapNam
     {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$pageCount}
 commands-maps-text-content = {""}
     {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | От: [sky]{$mapAuthor}
-commands-map-content = {""}[white]Статистика карты для [green]{$mapName}
-    {""}[white]Автор:[green] {$mapAuthor}[orange] | [white]Размер:[green] {$mapWidth}x{$mapHeight}[orange]
-    {""}[white]Репутация:[green] {$mapReputation}[orange] | [white]Популярность:[green] {$mapPopularity}[orange] | [white]Интерес:[green] {$mapInterest}[orange]
-    {""}[white]Сыграно раз:[green] {$mapPlayedTimes}[orange] | [white]Сыграно за год:[green] {$mapPlayedTimesYear}[orange] | [white]Последняя игра:[green] {$mapLastPlayed}[orange]
-    {""}[white]Мин. время:[green] {$mapMin}[orange] | [white]Сред. время:[green] {$mapAvg}[orange] | [white]Макс. время:[green] {$mapMax}[orange]
-    {""}[green]{$mapDescription}[white]
 commands-votekick-description = Голосование за кик игрока.
 commands-vote-params = <y/n>
 commands-vote-description = Проголосовать за кик текущего игрока
@@ -150,7 +144,7 @@ error-vote-yourself = [scarlet]⚠ Вы не можете голосовать �
 error-vote-in-progress = [scarlet]⚠ Голосование уже идет
 error-no-voting = [scarlet]⚠ На данный момент голосование не проводится.
 error-map-not-found = [scarlet]⚠ Карта не найдена! [accent]Используйте [cyan]/maps[] для просмотра списка всех доступных карт
-error-page-between = [scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{$pageCount}[]
+error-page-between = [scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{$totalPages}[]
 error-page-number = [scarlet]⚠ 'страница' должна быть числом
 error-wrong-number = [scarlet]⚠ Неправильный формат числа
 error-wrong-period-format = ⚠ Неправильный формат периода. Пример: 1h 30h, 30 ({hours})
