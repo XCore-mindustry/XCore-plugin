@@ -17,7 +17,7 @@ public class BundleService {
     @PostConstruct
     public void init() {
         bundle.addSource(XcorePlugin.class);
-        bundle.setDefaultValueFactory(new DVByDLocaleFactory(bundle));
+        bundle.setDefaultValueFactory(new FallbackDefaultValueFactory(bundle));
     }
 
     public Bundle getBundle() {

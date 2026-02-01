@@ -6,16 +6,20 @@ import com.ospx.flubundle.DefaultValueFactory;
 import java.util.Locale;
 import java.util.Map;
 
-public class DVByDLocaleFactory implements DefaultValueFactory {
+public class FallbackDefaultValueFactory implements DefaultValueFactory {
 
     private final Bundle bundle;
 
-    public DVByDLocaleFactory(Bundle bundle) {
+    public FallbackDefaultValueFactory(Bundle bundle) {
         this.bundle = bundle;
     }
 
     @Override
     public String getDefaultValue(String key, Map<String, Object> args, Locale locale) {
-        return locale.equals(bundle.defaultLocale) ? key : bundle.format(bundle.defaultLocale, key, args);
+        if (locale.equals(bundle.defaultLocale)) {
+            return key;
+        }
+
+        return bundle.format(bundle.defaultLocale, key, args);
     }
 }
