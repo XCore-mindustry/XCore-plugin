@@ -7,7 +7,6 @@ import arc.util.Structs;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.net.Administration;
@@ -128,7 +127,11 @@ public class SocketService {
         });
 
         network.subscribe(SocketEvents.GlobalChatEvent.class, e -> {
-            Call.sendMessage(Strings.format("[royal][[[orange]GLOBAL [lightgray](from [accent]@[])[] @[]]: [white]@", e.server(), e.authorName(), e.message()));
+            bundleService.send("global-chat-format", args(
+                    "server", e.server(),
+                    "author", e.authorName(),
+                    "message", e.message()
+            ));
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 

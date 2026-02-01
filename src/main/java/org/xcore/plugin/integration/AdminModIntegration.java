@@ -51,7 +51,7 @@ public class AdminModIntegration {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
                 Log.err("Error processing ban request from @: @", player.name, e.getMessage());
-                player.sendMessage("[scarlet]An error occurred while processing the request.");
+                bundle.send(player, "error-processing-request", args());
                 return;
             }
 
@@ -101,13 +101,12 @@ public class AdminModIntegration {
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
+            var requiredVersion = "1.3";
             if (VersionComparator.compareVersions(content, "1.3") < 0) {
-                player.con.kick(Strings.format("""
-                        [green]The required AdminTools version: [grey]1.3[]
-                        [scarlet]Your AdminTools version: [grey]@[]
-
-                        [cyan]Please update your AdminTools to join this server.
-                       \s""", content), 0);
+                String kickMsg = bundle.format(bundle.locale(player), "kick-admintools-outdated", args(
+                        "version", content,
+                        "requiredVersion", requiredVersion));
+                player.con.kick(kickMsg, 0);
                 return;
             }
             data.adminModVersion = content;

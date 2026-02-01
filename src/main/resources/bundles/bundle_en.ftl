@@ -47,6 +47,9 @@ commands-tr-success = [accent]The translator language has been successfully chan
 commands-tr-off = [accent]Translator is [scarlet]off[]!
 commands-tr-not-found = [scarlet]⚠ There is no such language.
 
+chat-discord-format = [blue][Discord][] {$author}: {$message}
+chat-global-format = [royal][[[orange]GLOBAL [lightgray](from [accent]{$server}[])[] {$author}[]]: [white]{$message}
+
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -103,6 +106,12 @@ you-are-muted = [scarlet]You can't write in the chat. [accent]You have been mute
 kick-pirated-game = [accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
 kick-recently-kicked = [accent]You were recently kicked from this server.
     Wait [cyan]{$remainMinutes}:{$remainSeconds}[accent] before joining again.
+kick-bot-protection = Maybe you are a bot. If not, try to reconnect.
+kick-admintools-outdated = [green]The required AdminTools version: [grey]{$requiredVersion}[]
+    [scarlet]Your AdminTools version: [grey]{$version}[]
+    {""}
+    [cyan]Please update your AdminTools to join this server.
+
 
 support-channel = #reports-appeals
 
@@ -121,7 +130,11 @@ votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] voted to kick {
 votekick-left = {$player}[lightgray] left. Their vote was cancelled. ([accent]{$votes}[]/[accent]{$required}[])
 votekick-fail = [lightgray]Vote failed. Not enough votes to kick {$target}[lightgray].
 votekick-cancelled = [scarlet]Vote to kick {$target}[scarlet] was cancelled by {$admin}.
-votekick-success = [orange]Vote passed. {$target}[orange] kicked for [scarlet]{$minutes}[] minutes.
+
+votekick-success = [orange]Vote passed. {$target}[orange] kicked for [scarlet]{$minutes}[] { $minutes ->
+    [one] minute
+    *[other] minutes
+}.
 
 # ==============================================================================
 # Maps & RTV
@@ -242,6 +255,14 @@ hexed-ranks-veteran = Veteran
 hexed-ranks-davastator = Devastator
 hexed-ranks-the_legend = The Legend
 
+hexed-game-over-header = Game Over. Winners:
+hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
+[one] hex
+*[other] hexes
+}
+hexed-game-over-no-winners = Game Over. Unfortunately, I couldn't find the winning players.
+hexed-game-over-restart = New game in 10 seconds...
+
 pvp-team-won = Your team has won. Your rating has been increased by {$increased}
 pvp-team-lose = Your team has lost. Your rating has been reduced by {$reduced}
 pvp-leaderboard-content = [orange]{$index}. {$nickname}[accent]:[cyan] {$rating} [accent]rating
@@ -256,6 +277,10 @@ player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]has left.
 notification-votekick-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now start a vote-kick.
 notification-global-chat-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now send messages to global chat.
     {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message.
+notification-admin-kick = {$admin}[accent] kicked {$target}[].
+notification-admin-wave-skip = {$admin}[accent] has skipped the wave.
+
+notification-server-restart = Restart in {$seconds}
 
 # ==============================================================================
 # Errors
@@ -281,6 +306,8 @@ error-invalid-id = [scarlet]⚠ Invalid player-id
 error-spectator = [scarlet]⚠ You are a spectator. Run /spectate to return.
 error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 4 characters long
 error-wrong-admin-password = [scarlet]⚠ Incorrect admin password
+error-internal = [scarlet]Internal error
+error-processing-request = [scarlet]An error occurred while processing the request.
 
 # ==============================================================================
 # Miscellaneous

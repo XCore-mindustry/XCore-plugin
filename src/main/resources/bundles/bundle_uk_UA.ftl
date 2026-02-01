@@ -9,12 +9,12 @@ commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgr
 commands-information-params = ${""}
 commands-information-description = Показати інформацію про сервер
 commands-info-title = [orange]XCore сервер — {$xcorServerName}
-commands-info-text = [accent]XCore[white] це [cyan]безплатний[white] сервер для гри у [accent]Mindustry[white].
+commands-info-text = [accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     {""}
     {""}Версія XCore — [accent]{$xcoreVersion}[white]
 
 commands-sync-params = {""}
-commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних юнітів).
+commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
 
 commands-discord-params = {""}
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
@@ -47,53 +47,56 @@ commands-tr-success = [accent]Мову перекладача успішно з�
 commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
 
+chat-discord-format = [blue][Discord][] {$author}: {$message}
+chat-global-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{$server}[])[] {$author}[]]: [white]{$message}
+
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
 commands-login-params = <пароль>
-commands-login-description = Запит на права адміна. Не використовуйте, якщо не знаєте, що робите.
+commands-login-description = Запит на права адміністратора. Не використовуйте, якщо не знаєте, що робите.
 commands-login-incorrect-password = [scarlet]⚠ Невірний пароль!
-commands-login-success = [green]Права адміна отримано.
-commands-login-confirmed = [green]Права адміна підтверджено.
-commands-login-admin-password-created = [green]Пароль адміна створено.
+commands-login-success = [green]Права адміністратора отримано.
+commands-login-confirmed = [green]Права адміністратора підтверджено.
+commands-login-admin-password-created = [green]Пароль адміністратора створено.
     {""}[red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
-commands-login-request-approval-discord = [accent]Вам потрібно підтвердити запит на права адміна в каналі [orange]#admin-bots[] на нашому Discord сервері.
+commands-login-request-approval-discord = [accent]Вам потрібно підтвердити запит на права адміністратора в каналі [orange]#admin-bots[] на нашому Discord сервері.
 
 commands-logout-params = {""}
-commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші права адміна.
-commands-logout-successful = [green]Права адміна відкликано.
+commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші права адміністратора.
+commands-logout-successful = [green]Права адміністратора відкликано.
 
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
 commands-ban-params = <id-гравця> <період> [причина...]
-commands-ban-description = Забанити гравця. [scarlet]Тільки для адмінів.
-commands-ban-success = {$nickname} [scarlet]забанений
+commands-ban-description = Заблокувати гравця. [scarlet]Тільки для адміністраторів.
+commands-ban-success = {$nickname} [scarlet]заблокований
 
 commands-unban-params = <id-гравця>
-commands-unban-description = Розбанити гравця. [scarlet]Тільки для адмінів.
-commands-unban-success = {$nickname}[accent] #{$pid} [green]успішно розбанений.
+commands-unban-description = Розблокувати гравця. [scarlet]Тільки для адміністраторів.
+commands-unban-success = {$nickname}[accent] #{$pid} [green]успішно розблокований.
 
 commands-mute-params = <id-гравця> <період> [причина...]
-commands-mute-description = Заглушити (змутити) гравця. [scarlet]Тільки для адмінів.
+commands-mute-description = Заглушити гравця. [scarlet]Тільки для адміністраторів.
 commands-mute-success = [accent]Успішно заглушено гравця {$nickname}
 
 commands-unmute-params = <id-гравця>
-commands-unmute-description = Зняти мут з гравця. [scarlet]Тільки для адмінів.
-commands-unmute-success = [green]Успішно знято мут з гравця []{$nickname}
+commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
+commands-unmute-success = [green]Успішно знято заглушення з гравця []{$nickname}
 
-ban-content = {$nickname} [accent]був [scarlet]забанений[].
-    Щоб оскаржити бан, відвідайте Discord (канал [gray]{support-channel}[]):
+ban-content = {$nickname} [accent]був [scarlet]заблокований[].
+    Щоб оскаржити блокування, відвідайте Discord (канал [gray]{support-channel}[]):
     {""}[cyan]{$discordUrl}
-ban-cancelled = [accent]Бан гравця [scarlet]{$nickname}[accent] було скасовано
+ban-cancelled = [accent]Блокування гравця [scarlet]{$nickname}[accent] було скасовано
 
-tempban-content = {$nickname}[accent] був забанений.
-    Адмін: {$adminName}[accent]
+tempban-content = {$nickname}[accent] був заблокований.
+    Адміністратор: {$adminName}[accent]
     Причина: "[gold]{$reason}[]"
-    Ви будете розбанені через: {$days} днів, {$hours} годин та {$minutes} хвилин
-    Щоб оскаржити бан, відвідайте Discord (канал [gray]{support-channel}[]):
+    Ви будете розблоковані через: {$days} днів, {$hours} годин та {$minutes} хвилин
+    Щоб оскаржити блокування, відвідайте Discord (канал [gray]{support-channel}[]):
     {""}[cyan]{$discordUrl}
-tempban-player-banned = [scarlet] Адмін {$adminName}[scarlet] забанив гравця [gray]'[]{$playerName}[gray]'
+tempban-player-banned = [scarlet] Адміністратор {$adminName}[scarlet] заблокував гравця [gray]'[]{$playerName}[gray]'
 
 you-are-muted-by = [scarlet]Ви були заглушені адміністратором [accent]{$adminName}[blue] на {$remainMinutes}:{$remainSeconds} хвилин,
     причина: {$reason}
@@ -103,6 +106,12 @@ you-are-muted = [scarlet]Ви не можете писати в чат. [accent]
 kick-pirated-game = [accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked = [accent]Ви були нещодавно вигнані з цього сервера.
     Зачекайте [cyan]{$remainMinutes}:{$remainSeconds}[accent] перед повторним входом.
+kick-bot-protection = Можливо ви бот. Якщо ні, спробуйте перезайти.
+kick-admintools-outdated = [green]Необхідна версія AdminTools: [grey]1.3[]
+    [scarlet]Ваша версія AdminTools: [grey]{$version}[]
+    {""}
+    [cyan]Будь ласка, оновіть AdminTools для входу на сервер.
+
 
 support-channel = #reports-appeals
 
@@ -110,7 +119,7 @@ support-channel = #reports-appeals
 # Voting (VoteKick)
 # ==============================================================================
 commands-votekick-params = <ID/ім'я> <причина...>
-commands-votekick-description = Голосування за вигнання (кік) гравця з сервера.
+commands-votekick-description = Голосування за вигнання гравця з сервера.
 
 commands-vote-params = <y/n>
 commands-vote-description = Проголосувати у поточному голосуванні.
@@ -121,15 +130,19 @@ votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] хоче виг
 votekick-left = {$player}[lightgray] покинув гру. Голос анульовано. ([accent]{$votes}[]/[accent]{$required}[])
 votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання {$target}[lightgray].
 votekick-cancelled = [scarlet]Голосування за вигнання {$target}[scarlet] скасовано адміністратором {$admin}.
-votekick-success = [orange]Голосування успішне. {$target}[orange] вигнаний на [scarlet]{$minutes}[] хвилин.
+votekick-success = [orange]Голосування успішне. {$target}[orange] вигнаний на [scarlet]{$minutes}[] { $minutes ->
+[one] хвилину
+[few] хвилини
+*[many] хвилин
+}.
 
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
-commands-map-params = [назва-карти]
-commands-map-description = Статистика конкретної карти
+commands-map-params = [назва-мапи]
+commands-map-description = Статистика конкретної мапи
 commands-map-title = [orange]XCore сервер — Статистика
-commands-map-content = {""}[white]Статистика карти [green]{$name}
+commands-map-content = {""}[white]Статистика мапи [green]{$name}
     {""}[white]Автор:[green] {$author}[orange] | [white]Розмір:[green] {$width}x{$height}[orange]
     {""}[white]Репутація:[green] {$reputation}[orange] | [white]Популярність:[green] {$popularity}[orange] | [white]Інтерес:[green] {$interest}[orange]
     {""}[white]Зіграно разів:[green] {$played}[orange] | [white]Зіграно за рік:[green] {$playedYear}[orange] | [white]Остання гра:[green] {$lastPlayed}[orange]
@@ -143,35 +156,35 @@ commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{
 commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
 
 commands-maps-text-params = [сторінка]
-commands-maps-text-description = Список усіх карт на цьому сервері.
-commands-maps-text-start-content = [accent]Поточна карта: []{$name}[white]
-    {""}[orange][gold]Список карт [lightgray]{$page}[gray]/[lightgray]{$total}
+commands-maps-text-description = Список усіх мап на цьому сервері.
+commands-maps-text-start-content = [accent]Поточна мапа: []{$name}[white]
+    {""}[orange][gold]Список мап [lightgray]{$page}[gray]/[lightgray]{$total}
 commands-maps-text-content = {""}
     {$index}. [orange] - [white]{$name}[orange] | [green]{$reputation}[orange] | [white]{$width}x{$height}[orange] | [white]{$lastPlayed}[orange] | Від: [sky]{$author}
 
-commands-artv-params = [карта...]
-commands-artv-description = Примусово змінити карту. [scarlet]Тільки для адмінів.
-commands-artv-map-skipped = {$nickname}[accent] пропустив карту.
+commands-artv-params = [мапа...]
+commands-artv-description = Примусово змінити мапу. [scarlet]Тільки для адміністраторів.
+commands-artv-map-skipped = {$nickname}[accent] пропустив мапу.
 
-commands-rtv-params = [карта...]
-commands-rtv-description = Голосування за зміну карти (Rock the vote).
+commands-rtv-params = [мапа...]
+commands-rtv-description = Голосування за зміну мапи (Rock the vote).
 
 commands-like-params = {""}
-commands-like-description = Проголосувати за карту (підвищує репутацію)
-commands-like-success = [green]Ви вподобали цю карту!
+commands-like-description = Проголосувати за мапу (підвищує репутацію)
+commands-like-success = [green]Ви вподобали цю мапу!
 commands-like-changed = [green]Ви змінили свою думку на Вподобайку!
 
 commands-dislike-params = {""}
-commands-dislike-description = Проголосувати проти карти
-commands-dislike-success = [orange]Ви поставили не подобається цій карті.
+commands-dislike-description = Проголосувати проти мапи
+commands-dislike-success = [orange]Ви поставили "Не подобається" цій мапі.
 commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
 
 map-vote-title = [orange]XCore сервер — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content = {""}
-    {""}Наступна карта: [accent]{$mapName}[] від [accent]{$author}[white].
+    {""}Наступна мапа: [accent]{$mapName}[] від [accent]{$author}[white].
     {""}Нова гра почнеться через [accent]{$seconds}[white] секунд.
     {""}
-    {""}[cyan]Чи сподобалась ця карта?
+    {""}[cyan]Чи сподобалась ця мапа?
 map-vote-like = [green]👍 Подобається
 map-vote-dislike = [red]👎 Не подобається
 map-vote-like-selected = [gray]Вам вже подобається
@@ -180,11 +193,11 @@ map-rtv = [orange]Голосування
 map-artv = [red]Миттєва зміна
 map-maps = Мапи
 
-rtv-vote = {$nickname}[lightgray] проголосував за зміну поточної карти на [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+rtv-vote = {$nickname}[lightgray] проголосував за зміну поточної мапи на [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
-rtv-left = {$nickname}[lightgray] вийшов. Його голос за зміну карти скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни карти на [orange]{$mapName}[].
-rtv-success = [orange]Голосування пройшло. Карта [accent]{$mapName}[] буде завантажена через [accent]{$mapLoadDelay}[] секунд...
+rtv-left = {$nickname}[lightgray] вийшов. Його голос за зміну мапи скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{$mapName}[].
+rtv-success = [orange]Голосування пройшло. Мапа [accent]{$mapName}[] буде завантажена через [accent]{$mapLoadDelay}[] секунд...
 
 # ==============================================================================
 # Statistics & Ranks
@@ -225,7 +238,7 @@ commands-top-pvp-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$rating
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
 commands-spectate-params = {""}
-commands-spectate-description = Перейти в режим спостерігача. Це видалить вашого юніта.
+commands-spectate-description = Перейти в режим спостерігача. Це видалить вашу одиницю.
 commands-spectate-success = [green]Тепер ви спостерігаєте за грою
 
 commands-ai-params = <idle/i/attack/a>
@@ -238,13 +251,23 @@ commands-history-success = [accent]Історію блоків встановл�
 
 hexed-popup = [blue]{$minutes}:{$seconds}[] до кінця гри.
 hexed-eliminated = {$nickname} [gold]був [scarlet]знищений[]!
-hexed-leaderboard-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$hexes} [accent]хексів
+hexed-leaderboard-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$hexes} [accent]гексів
 hexed-ranks-newbie = Новачок
 hexed-ranks-regular = Звичайний
 hexed-ranks-advanced = Досвідчений
 hexed-ranks-veteran = Ветеран
 hexed-ranks-davastator = Руйнівник
 hexed-ranks-the_legend = Легенда
+
+hexed-game-over-header = Гру закінчено. Переможці:
+hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
+[one] гекс
+[few] гекси
+*[many] гексів
+}
+hexed-game-over-no-winners = Гру закінчено. На жаль, переможців не знайдено.
+hexed-game-over-restart = Нова гра через 10 секунд...
+
 
 pvp-team-won = Ваша команда перемогла. Ваш рейтинг зріс на {$increased}
 pvp-team-lose = Ваша команда програла. Ваш рейтинг знизився на {$reduced}
@@ -260,6 +283,10 @@ player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вийшов.
 notification-votekick-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{0}[] хвилин і тепер можете почати голосування за вигнання.
 notification-global-chat-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{0}[] хвилин і тепер можете писати в глобальний чат.
     {""}[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення.
+notification-admin-kick = {$admin}[accent] вигнав(ла) {$target}[].
+notification-admin-wave-skip = {$admin}[accent] пропустив(ла) хвилю.
+
+notification-server-restart = Перезавантаження через {$seconds}
 
 # ==============================================================================
 # Errors
@@ -276,7 +303,7 @@ error-votekick-total-playtime = [scarlet]⚠ Щоб почати голосув�
 error-vote-yourself = [scarlet]⚠ Ви не можете голосувати у власному голосуванні.
 error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
 error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
-error-map-not-found = [scarlet]⚠ Карту не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних карт.
+error-map-not-found = [scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
 error-page-between = [scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{$totalPages}[]
 error-page-number = [scarlet]'сторінка' має бути числом
 error-wrong-number = [scarlet]⚠ Неправильний формат числа
@@ -285,6 +312,8 @@ error-invalid-id = [scarlet]⚠ Невірний ID гравця
 error-spectator = [scarlet]⚠ Ви спостерігач. Напишіть /spectate, щоб повернутися.
 error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи
 error-wrong-admin-password = [scarlet]⚠ Невірний пароль адміністратора
+error-internal = [scarlet]Внутрішня помилка сервера
+error-processing-request = [scarlet]Виникла помилка під час обробки запиту.
 
 # ==============================================================================
 # Miscellaneous

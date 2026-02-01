@@ -47,6 +47,9 @@ commands-tr-success = [accent]Язык переводчика был успеш�
 commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = [scarlet]⚠ Нет такого языка
 
+chat-discord-format = [blue][Discord][] {$author}: {$message}
+chat-global-format = [royal][[[orange]GLOBAL [lightgray](из [accent]{$server}[])[] {$author}[]]: [white]{$message}
+
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -102,6 +105,12 @@ you-are-muted = [scarlet]Вы не можете писать в чат. Вы з�
 
 kick-pirated-game = [accent]Вход с неофициальных клиентов [scarlet]запрещен[]. Пожалуйста, используйте [lime]официальную[] версию игры (Steam, Google Play, itch.io).
 kick-recently-kicked = [accent]Вы были недавно кикнуты с этого сервера. Подождите [cyan]{$remainMinutes}:{$remainSeconds}[accent]
+kick-bot-protection = Возможно вы бот. Если нет, попробуйте перезайти.
+kick-admintools-outdated = [green]Требуемая версия AdminTools: [grey]{$requiredVersion}[]
+    [scarlet]Ваша версия AdminTools: [grey]{$version}[]
+    {""}
+    [cyan]Пожалуйста, обновите AdminTools для входа на сервер.
+
 
 support-channel = #reports-appeals
 
@@ -120,8 +129,11 @@ votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] хочет вы
 votekick-left = {$player}[lightgray] покинул игру. Голос аннулирован. ([accent]{$votes}[]/[accent]{$required}[])
 votekick-fail = [lightgray]Голосование не состоялось. Недостаточно голосов для изгнания {$target}[lightgray].
 votekick-cancelled = [scarlet]Голосование за кик {$target}[scarlet] отменено администратором {$admin}[scarlet].
-votekick-success = [orange]Голосование успешно. {$target}[orange] изгнан на [scarlet]{$minutes}[] минут.
-
+votekick-success = [orange]Голосование успешно. {$target}[orange] изгнан на [scarlet]{$minutes}[] { $minutes ->
+    [one] минуту
+    [few] минуты
+    *[many] минут
+}.
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
@@ -244,6 +256,15 @@ hexed-ranks-veteran = Ветеран
 hexed-ranks-davastator = Разрушитель
 hexed-ranks-the_legend = Легенда
 
+hexed-game-over-header = Игра окончена. Победители:
+hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
+[one] гекс
+[few] гекса
+*[many] гексов
+}
+hexed-game-over-no-winners = Игра окончена. К сожалению, победители не найдены.
+hexed-game-over-restart = Новая игра через 10 секунд...
+
 pvp-team-won = Ваша команда победила. Ваш рейтинг увеличился на {$increased}
 pvp-team-lose = Ваша команда проиграла. Ваш рейтинг снижен на {$reduced}
 pvp-leaderboard-content = [orange]{$index}. {$nickname}[accent]:[cyan] {$rating} [accent]рейтинг
@@ -258,6 +279,10 @@ player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вышел
 notification-votekick-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете начать голосование за кик игрока.
 notification-global-chat-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете писать в глобальный чат
     {""}[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение.
+notification-admin-kick = {$admin}[accent] кикнул {$target}[].
+notification-admin-wave-skip = {$admin}[accent] пропустил волну.
+
+notification-server-restart = Перезагрузка через {$seconds}
 
 # ==============================================================================
 # Errors
@@ -283,6 +308,9 @@ error-invalid-id = [scarlet]⚠ Неккоректное player-id
 error-spectator = [scarlet]⚠ Вы наблюдатель
 error-admin-password-too-short = [scarlet]⚠ Пароль должен быть длиннее 4 символов
 error-wrong-admin-password = [scarlet]⚠ Неправильный пароль
+error-internal = [scarlet]Внутренняя ошибка сервера
+error-processing-request = [scarlet]Произошла ошибка при обработке запроса.
+
 
 # ==============================================================================
 # Miscellaneous

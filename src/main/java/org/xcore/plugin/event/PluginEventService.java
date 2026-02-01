@@ -30,6 +30,7 @@ import org.xcore.plugin.vote.VoteService;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -121,7 +122,8 @@ public class PluginEventService {
             Time.runTask(120, () -> {
                 if (player != null && player.con != null && player.con.isConnected()) {
                     if (player.con.lastReceivedClientSnapshot == -1) {
-                        player.kick("Maybe you are a bot. If not, try to reconnect.");
+                        String kickMsg = bundleService.format(bundleService.locale(player), "kick-bot-protection", args());
+                        player.kick(kickMsg);
                     }
                 }
             });
@@ -312,11 +314,12 @@ public class PluginEventService {
         });
     }
 
-    private static void restart() {
+    private void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
-
         Timer.schedule(() -> {
-            Call.announce("Restart in " + secondsLeft.get());
+            Groups.player.each((p) -> Call.announce(p.con, bundleService.format(Locale.of(p.locale),
+                            "server-restart-countdown",
+                            args("seconds", secondsLeft.get()))));
             if (secondsLeft.decrementAndGet() == 0) {
                 netServer.kickAll(Packets.KickReason.serverRestarting);
                 System.exit(0);

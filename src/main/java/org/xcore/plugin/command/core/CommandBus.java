@@ -62,7 +62,7 @@ public class CommandBus {
             CommandHandler.CommandRunner<Player> runner = (args, player) ->
                     invoke(controller, method, new ClientContext(player, args, bundleService), (ctx, e) -> {
                         Log.err("Client command error: " + meta.name(), e);
-                        player.sendMessage("[scarlet]Internal error");
+                        bundleService.send(player, "error-internal", args());
                     });
             handler.register(meta.name(), meta.params(), description, runner);
             for (String alias : meta.aliases()) {

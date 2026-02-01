@@ -107,7 +107,12 @@ public class NetEventService {
         switch (action) {
             case kick -> {
                 target.kick(Packets.KickReason.kick);
-                Call.sendMessage(Strings.format("@[accent] kicked @[].", admin.coloredName(), target.coloredName()));
+
+                bundle.send("notification-admin-kick", args(
+                        "admin", admin.coloredName(),
+                        "target", target.coloredName()
+                ));
+
                 Log.info("@ kicked @ (@)", admin.plainName(), target.plainName(), target.uuid());
             }
             case ban -> {
@@ -143,7 +148,9 @@ public class NetEventService {
             }
             case wave -> {
                 Vars.logic.skipWave();
-                Call.sendMessage(admin.name + "[accent] has skipped the wave.");
+                bundle.send("notification-admin-wave-skip", args(
+                        "admin", admin.coloredName()
+                ));
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
             case switchTeam -> bundle.send(con.player, "error-access-denied", args());

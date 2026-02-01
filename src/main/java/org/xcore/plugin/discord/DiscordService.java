@@ -28,12 +28,15 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.DatabaseService;
+import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.PlayerData;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
+
+import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class DiscordService {
@@ -43,6 +46,7 @@ public class DiscordService {
     private final DatabaseService database;
     private final NetworkService network;
     private final DiscordCommandRegistry commandRegistry;
+    private final BundleService bundleService;
 
     private MessageChannel bansChannel;
     private MessageChannel privateChannel;
@@ -53,12 +57,14 @@ public class DiscordService {
 
     @Inject
     public DiscordService(GlobalConfig globalConfig, Config config, DatabaseService database,
-                          NetworkService network, DiscordCommandRegistry commandRegistry) {
+                          NetworkService network, DiscordCommandRegistry commandRegistry,
+                          BundleService bundleService) {
         this.globalConfig = globalConfig;
         this.config = config;
         this.database = database;
         this.network = network;
         this.commandRegistry = commandRegistry;
+        this.bundleService = bundleService;
     }
 
     @PostConstruct
@@ -240,7 +246,10 @@ public class DiscordService {
 
     public void sendMessageToGameFromDiscord(String authorName, String message) {
         Log.infoTag("Discord", Strings.format("@: @", authorName, message));
-        Call.sendMessage(Strings.format("[blue][Discord][] @: @", authorName, message));
+        bundleService.send("discord-message-format", args(
+                "author", authorName,
+                "message", message
+        ));
     }
 
 

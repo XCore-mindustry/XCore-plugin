@@ -1,6 +1,7 @@
 package org.xcore.plugin.gamemode.hexed;
 
 import arc.Events;
+import arc.func.Func;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Align;
@@ -28,6 +29,8 @@ import org.xcore.plugin.database.DatabaseService;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
 
+import java.util.Locale;
+
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static mindustry.Vars.world;
@@ -49,8 +52,9 @@ public class MiniHexedService {
     private final LeaderboardService leaderboardService;
 
     private static boolean gameover = false;
+
     @Inject
-    public MiniHexedService(Config config, DatabaseService database,NetworkService networkService,
+    public MiniHexedService(Config config, DatabaseService database, NetworkService networkService,
                             BundleService bundle, LeaderboardService leaderboardService) {
         this.config = config;
         this.database = database;
@@ -177,43 +181,49 @@ public class MiniHexedService {
         var teams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         teams.truncate(3);
 
-        var builder = new StringBuilder();
         if (!teams.isEmpty()) {
-            builder.append("GameOver. Winners:").append("\n");
-            for (int i = 0; i < teams.size; i++) {
-                var team = teams.get(i);
-                var player = team.players.first();
+            var winnerTeam = teams.get(0);
+            var player = winnerTeam.players.first();
+            var data = database.getCached(player.uuid());
 
-                if (i == 0) {
-                    var data = database.getCached(player.uuid());
-
-                    var ranked = rankings.get(data.hexedRank());
-                    if (ranked != null && ranked.size > 1 ||
-                            rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
-                        data.hexedPoints++;
-                        if (data.hexedRank().checkNext(data.hexedPoints)) {
-                            HexedRanks.updateRank(player, data, config);
-                            data.hexedPoints = 0;
-                            data.hexedRank(data.hexedRank().next);
-                        }
-                    }
-
-                    database.getPlayerDataRepository().save(data);
+            var ranked = rankings.get(data.hexedRank());
+            if (ranked != null && ranked.size > 1 ||
+                    rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
+                data.hexedPoints++;
+                if (data.hexedRank().checkNext(data.hexedPoints)) {
+                    HexedRanks.updateRank(player, data, config);
+                    data.hexedPoints = 0;
+                    data.hexedRank(data.hexedRank().next);
                 }
-
-                builder.append("[orange]").append(i + 1).append(". ")
-                        .append(player.coloredName()).append("[][accent]: [cyan]")
-                        .append(team.cores.size).append("\n");
             }
-        } else {
-            builder.append("GameOver. Unfortunately, I couldn't find the winning players.");
+            database.getPlayerDataRepository().save(data);
         }
 
-        builder.append("\nNew game in 10 seconds...");
-        Call.infoMessage(builder.toString());
+        Func<Locale, String> generateMessage = locale -> {
+            StringBuilder builder = new StringBuilder();
+            if (!teams.isEmpty()) {
+                builder.append(bundle.format(locale, "hexed-game-over-header", args())).append("\n");
+                for (int i = 0; i < teams.size; i++) {
+                    var team = teams.get(i);
+                    var player = team.players.first();
 
-        network.post(
-                new SocketEvents.ServerActionEvent(Strings.stripColors(builder.toString()), config.server));
+                    builder.append(bundle.format(locale, "hexed-game-over-winner-row", args(
+                            "index", i + 1,
+                            "name", player.coloredName(),
+                            "cores", team.cores.size
+                    ))).append("\n");
+                }
+            } else {
+                builder.append(bundle.format(locale, "hexed-game-over-no-winners", args()));
+            }
+            builder.append("\n").append(bundle.format(locale, "hexed-game-over-restart", args()));
+            return builder.toString();
+        };
+
+        Groups.player.each(p -> Call.infoMessage(p.con, generateMessage.get(bundle.locale(p))));
+
+        String rawMessage = generateMessage.get(bundle.getDefaultLocale());
+        network.post(new SocketEvents.ServerActionEvent(Strings.stripColors(rawMessage), config.server));
 
         Events.fire("hexed_world-reload");
         Timer.schedule(this::reloadMap, 10);
