@@ -15,8 +15,10 @@ import org.xcore.plugin.service.FindService;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class HexedController {
+public class HexedController implements ClientController {
 
     private final PlayerSessionService playerSessionService;
     private final MiniHexedService hexedService;
@@ -29,6 +31,11 @@ public class HexedController {
         this.playerSessionService = playerSessionService;
         this.hexedService = hexedService;
         this.findService = findService;
+    }
+
+    @Override
+    public int priority() {
+        return 5;
     }
 
     @Command(name = "spectate")

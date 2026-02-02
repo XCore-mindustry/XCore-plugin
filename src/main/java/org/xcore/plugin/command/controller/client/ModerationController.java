@@ -24,9 +24,11 @@ import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
 @AdminOnly
-public class ModerationController {
+public class ModerationController implements ClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
@@ -54,6 +56,11 @@ public class ModerationController {
         this.bundle = bundle;
         this.find = find;
         this.time = timeService;
+    }
+
+    @Override
+    public int priority() {
+        return 10;
     }
 
     @Command(name = "ban", params = "<id> <period> [reason...]")

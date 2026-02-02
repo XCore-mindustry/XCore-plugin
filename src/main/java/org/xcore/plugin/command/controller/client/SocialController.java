@@ -18,8 +18,10 @@ import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class SocialController {
+public class SocialController implements ClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
@@ -41,6 +43,11 @@ public class SocialController {
         this.config = config;
         this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
+    }
+
+    @Override
+    public int priority() {
+        return 90;
     }
 
     @MuteCheck

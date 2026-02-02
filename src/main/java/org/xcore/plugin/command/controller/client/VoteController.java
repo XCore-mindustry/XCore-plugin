@@ -16,8 +16,10 @@ import org.xcore.plugin.common.TextUtils;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class VoteController {
+public class VoteController implements ClientController {
     private final FindService findService;
     private final VoteService voteService;
     private final VoteKickFactory voteKickFactory;
@@ -27,6 +29,11 @@ public class VoteController {
         this.findService = findService;
         this.voteService = voteService;
         this.voteKickFactory = voteKickFactory;
+    }
+
+    @Override
+    public int priority() {
+        return 70;
     }
 
     @MinPlayTime(value = PlayTimeLimit.VOTE_KICK, errorKey = "error-votekick-total-playtime")

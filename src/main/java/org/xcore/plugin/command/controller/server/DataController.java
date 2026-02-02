@@ -16,8 +16,9 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.model.PlayerData;
 
+import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class DataController {
+public class DataController implements ServerController {
 
     private final PlayerDataRepository playerDataRepository;
     private final Fi configFile;

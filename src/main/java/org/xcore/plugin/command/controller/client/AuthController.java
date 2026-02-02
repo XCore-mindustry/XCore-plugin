@@ -13,8 +13,10 @@ import org.xcore.plugin.service.NetworkService;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class AuthController {
+public class AuthController implements ClientController {
 
     private final AdminDataRepository adminDataRepository;
     private final PlayerSessionService playerSessionService;
@@ -30,6 +32,11 @@ public class AuthController {
         this.playerSessionService = playerSessionService;
         this.network = network;
         this.config = config;
+    }
+
+    @Override
+    public int priority() {
+        return 50;
     }
 
     @Command(name = "login", params = "<password>")

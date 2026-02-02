@@ -28,8 +28,9 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.TextUtils.deepEquals;
 import static org.xcore.plugin.common.TextUtils.equalsNonEmpty;
 
+import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class ServerModerationController {
+public class ServerModerationController implements ServerController {
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;

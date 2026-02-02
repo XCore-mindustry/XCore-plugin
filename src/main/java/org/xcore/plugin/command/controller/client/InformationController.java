@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.ui.Menus;
+import org.xcore.plugin.command.core.ClientController;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.config.Config;
@@ -17,7 +18,7 @@ import java.util.stream.IntStream;
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
-public class InformationController {
+public class InformationController implements ClientController {
 
     private CommandHandler handler;
     private int infoMenuId;
@@ -33,6 +34,17 @@ public class InformationController {
         this.buildInfo = buildInfo;
     }
 
+    @Override
+    public void setup(CommandHandler handler) {
+        this.handler = handler;
+        initMenu();
+    }
+
+    @Override
+    public int priority() {
+        return 100;
+    }
+
     public void initMenu() {
         this.infoMenuId = Menus.registerMenu((player, option) -> {
             switch (option) {
@@ -42,11 +54,6 @@ public class InformationController {
                 case 3 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
             }
         });
-    }
-
-    public void setHandler(CommandHandler handler) {
-        this.handler = handler;
-        initMenu();
     }
 
     @Command(name = "help", params = "[page]")
