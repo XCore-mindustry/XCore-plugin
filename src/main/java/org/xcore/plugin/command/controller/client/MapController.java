@@ -82,40 +82,6 @@ public class MapController {
         this.gameStateService = gameStateService;
     }
 
-//    public void initMenu() {
-//        this.mapMenuId = Menus.registerMenu((player, option) -> {
-//            MapData map = playerMapContext.get(player.uuid());
-//
-//            if (map == null) return;
-//
-//            if (player.admin) {
-//                switch (option) {
-//                case 0 -> handleReputation(player, true, map);
-//                case 1 -> handleReputation(player, false, map);
-//                case 2 -> startRtvSession(player, mapService.findMap(map.name), true, false);
-//                case 3 -> startRtvSession(player, mapService.findMap(map.name), true, true);
-//                case 4 -> {} // close
-//                case 5 -> {} // handleMaps
-//                }
-//            } else {
-//                switch (option) {
-//                case 0 -> handleReputation(player, true, map);
-//                case 1 -> handleReputation(player, false, map);
-//                case 2 -> startRtvSession(player, mapService.findMap(map.name), true, false);
-//                case 3 -> {} // close
-//                case 4 -> {} // handleMaps
-//                }
-//            }
-//
-//        });
-//
-//        this.mapsMenuId = Menus.registerMenu((player, option) -> {
-//            switch (option) {
-//                case 0 -> Call.openURI(player.con, globalConfig.discordUrl);
-//            }
-//        });
-//    }
-
     public void initMenu() {
         this.genericMenuId = Menus.registerMenu((player, option) -> {
             MenuSession session = playerSessionContext.get(player.uuid());
