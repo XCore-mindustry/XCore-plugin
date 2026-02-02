@@ -44,7 +44,7 @@ public class MongoFactory {
                 fromProviders(PojoCodecProvider.builder().automatic(true).build())
         );
 
-        return client.getDatabase("mindustry")
+        return client.getDatabase("xcore")
                 .withCodecRegistry(pojoCodecRegistry);
     }
 
