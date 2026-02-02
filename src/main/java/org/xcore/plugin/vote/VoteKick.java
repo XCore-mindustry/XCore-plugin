@@ -123,6 +123,7 @@ public class VoteKick extends VoteSession {
         onKick.get(target);
     }
 
+    @Override
     public void cancelByAdmin(Player admin) {
         stop();
         var bundleArgs = args(

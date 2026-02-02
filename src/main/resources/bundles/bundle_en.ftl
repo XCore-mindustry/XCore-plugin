@@ -195,8 +195,9 @@ map-maps = Maps
 rtv-vote = {$nickname}[lightgray] voted to change the current map to [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     Type [orange]y[] or [orange]n[] to vote.
 rtv-left = {$nickname}[lightgray] left. Their vote to change the current map was cancelled. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-rtv-fail = [lightgray]Vote failed- Not enough votes to change the current map to [orange]{$mapName}[].
-rtv-success = [orange]Vote passed- Map [accent]{$mapName}[] will be loaded in [accent]{$mapLoadDelay}[] seconds...
+rtv-fail = [lightgray]Vote failed. Not enough votes to change the current map to [orange]{$mapName}[].
+rtv-success = [orange]Vote passed. Map [accent]{$mapName}[] will be loaded in [accent]{$mapLoadDelay}[] seconds...
+rtv-cancelled = [lightgray]Vote to change the current map to [orange]{$mapName}[lightgray] was cancelled by {$admin}.
 
 # ==============================================================================
 # Statistics & Ranks

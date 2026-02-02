@@ -195,6 +195,7 @@ rtv-vote = {$nickname}[lightgray] проголосовал за смену те�
 rtv-left = {$nickname}[lightgray] покинул игру. Голос за смену карты аннулирован. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосование провалилось. Не хватило голосов, чтобы изменить текущую карту на [orange]{$mapName}[].
 rtv-success = [orange]Голосование завершено успешно. Карта [accent]{$mapName}[] будет загружена через [accent]{$mapLoadDelay}[] секунд...
+rtv-cancelled = [lightgray]Голосование за смену карты на [orange]{$mapName}[lightgray] было отменено администратором {$admin}.
 
 # ==============================================================================
 # Statistics & Ranks
