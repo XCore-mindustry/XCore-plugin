@@ -42,6 +42,7 @@ public class DiscordCommandRegistry {
     private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
     private final TimeService time;
+    private final DiscordLogBridge discordLogBridge;
 
     private final CommandHandler discordCommands;
 
@@ -53,7 +54,8 @@ public class DiscordCommandRegistry {
             MuteDataRepository muteDataRepository,
             AdminDataRepository adminDataRepository,
             NetworkService network,
-            TimeService timeService
+            TimeService timeService,
+            DiscordLogBridge discordLogBridge
     ) {
         this.globalConfig = globalConfig;
         this.playerDataRepository = playerDataRepository;
@@ -62,6 +64,7 @@ public class DiscordCommandRegistry {
         this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.time = timeService;
+        this.discordLogBridge = discordLogBridge;
         this.discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
     }
 
@@ -229,7 +232,7 @@ public class DiscordCommandRegistry {
                                     .expireDate(unbanDate)
                                     .build();
 
-                            discordService.sendBan(ban);
+                            discordLogBridge.sendBan(ban);
                             banDataRepository.save(ban);
                             ctx.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
                         }

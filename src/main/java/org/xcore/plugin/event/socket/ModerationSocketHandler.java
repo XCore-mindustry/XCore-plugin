@@ -9,7 +9,7 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.discord.DiscordService;
+import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.FindService;
@@ -26,7 +26,7 @@ public class ModerationSocketHandler {
     private final NetworkService network;
     private final PlayerSessionService playerSessionService;
     private final FindService find;
-    private final DiscordService discordService;
+    private final DiscordLogBridge discordLogBridge;
     private final Config config;
     private final org.xcore.plugin.service.BundleService bundleService;
 
@@ -34,13 +34,13 @@ public class ModerationSocketHandler {
     public ModerationSocketHandler(NetworkService network,
                                    PlayerSessionService playerSessionService,
                                    FindService find,
-                                   DiscordService discordService,
+                                   DiscordLogBridge discordLogBridge,
                                    Config config,
                                    org.xcore.plugin.service.BundleService bundleService) {
         this.network = network;
         this.playerSessionService = playerSessionService;
         this.find = find;
-        this.discordService = discordService;
+        this.discordLogBridge = discordLogBridge;
         this.config = config;
         this.bundleService = bundleService;
     }
@@ -108,16 +108,16 @@ public class ModerationSocketHandler {
         });
 
         if (network.isSocketServer()) {
-            network.subscribe(BanData.class, discordService::sendBan);
+            network.subscribe(BanData.class, discordLogBridge::sendBan);
 
             network.subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
-                    discordService.sendConnectionEvent(e.playerName(), e.server(), e.join()));
+                    discordLogBridge.sendConnectionEvent(e.playerName(), e.server(), e.join()));
 
             network.subscribe(SocketEvents.ServerActionEvent.class, e ->
-                    discordService.getServerLogChannel(e.server()).ifPresent(c -> discordService.sendMessage(c, e.message())));
+                    discordLogBridge.getServerLogChannel(e.server()).ifPresent(c -> discordLogBridge.sendMessage(c, e.message())));
 
             network.subscribe(SocketEvents.AdminRequestEvent.class, e ->
-                    discordService.sendAdminRequestEvent(e.pid(), e.server()));
+                    discordLogBridge.sendAdminRequestEvent(e.pid(), e.server()));
         }
     }
 }
