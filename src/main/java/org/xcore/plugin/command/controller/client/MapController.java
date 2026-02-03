@@ -24,6 +24,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.MapService;
+import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
 import org.xcore.plugin.model.MapData;
@@ -99,7 +100,7 @@ public class MapController {
             return;
         }
 
-        MapData m = mapDataRepository.find(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name());
         handleMap(ctx.player(), m);
     }
 
@@ -138,7 +139,7 @@ public class MapController {
                 .forEach(indexed -> {
                     Map map = indexed.value();
                     MapData mapData = mapDataRepository
-                            .find(map.plainName(), map.author(), gameMode);
+                            .findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
                     String lastPlayed = mapData.playedTimes == 0
                             ? ctx.format("never", args())
                             : (now - mapData.lastPlayedTime) / 60000 + "m";
@@ -186,7 +187,9 @@ public class MapController {
     }
 
     private void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
-        if (voteService.isVoting() && !forced) {
+        if (!(voteService.getCurrentSession() instanceof VoteRtv)) {
+            return;
+        } else if (voteService.isVoting() && !forced) {
             bundle.send("error-vote-in-progress", args());
             return;
         } else if (voteService.isVoting() && forced) {
@@ -205,6 +208,7 @@ public class MapController {
             }), globalConfig.mapSwitchDelaySeconds);
 
             bundle.send("commands-artv-map-skipped", args(
+                    "name", target.name(),
                     "nickname", player.coloredName()
             ));
         } else {
@@ -215,7 +219,7 @@ public class MapController {
 
     }
 
-    private void handleMap(Player player, MapData m) {
+    public void handleMap(Player player, MapData m) {
         Map map = mapService.findMap(m.name);
 
         String last = m.playedTimes == 0
@@ -241,7 +245,7 @@ public class MapController {
         ));
 
         PlayerData pData = playerSessionService.get(player.uuid());
-        Boolean currentVote = pData.mapVotes.get(m.name);
+        Boolean currentVote = pData.mapVotes.get(m.id);
 
         String likeButtonText = Boolean.TRUE.equals(currentVote)
                 ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
@@ -320,8 +324,7 @@ public class MapController {
                 .flatMap(List::stream)
                 .forEach(map -> rows.add(List.of(
                         session.add(map.name(), () -> {
-                            MapData data = mapDataRepository
-                                    .find(map.plainName(), map.author(), gameMode);
+                            MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
                             handleMap(player, data);
                         })
                 )));
@@ -336,14 +339,13 @@ public class MapController {
     private void handleReputation(Player player, boolean like) {
         Map map = Vars.state.map;
         if (map == null) return;
-        MapData m = mapDataRepository.find(map.plainName(), map.author(), Vars.state.rules.mode().name());
+        MapData m = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name());
         handleReputation(player, like, m);
     }
 
     private void handleReputation(Player player, boolean like, MapData m) {
         PlayerData p = playerSessionService.get(player.uuid());
-        String id = String.valueOf(m.id);
-        Boolean prev = p.mapVotes.get(id);
+        Boolean prev = p.mapVotes.get(m.id);
 
         if (Boolean.valueOf(like).equals(prev)) {
             bundle.send("error-already-voted", args());
@@ -354,14 +356,18 @@ public class MapController {
         if (like) {
             m.reputation += mod;
             m.popularity += (mod * 2.0);
+            m.like += 1;
+            if (prev != null) {m.dislike -= 1; }
             bundle.send("commands-like-success", args());
         } else {
             m.reputation -= mod;
             m.popularity -= (mod * 2.0);
+            m.dislike += 1;
+            if (prev != null) {m.like -= 1; }
             bundle.send("commands-dislike-success", args());
         }
 
-        p.mapVotes.put(id, like);
+        p.mapVotes.put(m.id, like);
 
         playerDataRepository.save(p);
         mapDataRepository.save(m);

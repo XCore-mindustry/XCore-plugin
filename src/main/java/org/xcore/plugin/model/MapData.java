@@ -14,8 +14,12 @@ public class MapData {
     public ObjectId id;
 
     public String name = "Unknown";
+    public String fileName = "Unknown";
     public String author = "Unknown";
     public String gameMode = "Unknown";
+
+    public int like = 0;
+    public double dislike = 0;
 
     public int reputation = 0;
     public double popularity = 0;
@@ -29,8 +33,9 @@ public class MapData {
     public long averageGameTime = 0;
     public long maximumGameTime = 0;
 
-    public MapData(String name, String author, String gameMode) {
+    public MapData(String name, String fileName, String author, String gameMode) {
         this.name = name;
+        this.fileName = fileName;
         this.author = author;
         this.gameMode = gameMode;
         this.lastPlayedTime = System.currentTimeMillis();

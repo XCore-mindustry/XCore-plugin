@@ -13,6 +13,7 @@ import org.bson.types.ObjectId;
 import org.xcore.plugin.model.MapData;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 import static com.mongodb.client.model.Filters.*;
 
@@ -26,36 +27,46 @@ public class MapDataRepository {
         this.database = database;
         this.collection = database.getCollection("maps", MapData.class);
 
+        collection.createIndex(new Document("name", -1));
+        collection.createIndex(new Document("author", -1));
+        collection.createIndex(new Document("gameMode", -1));
         collection.createIndex(new Document("popularity", -1));
         collection.createIndex(new Document("reputation", -1));
         collection.createIndex(new Document("interest", -1));
         collection.createIndex(new Document("playedTimesYear", 1));
     }
 
-    public MapData find(String mapName, String author, String gameMode) {
-        var candidates = collection.find(and(eq("name", mapName), eq("gameMode", gameMode)))
-                .into(new ArrayList<>());
+    public Optional<MapData> find(String name, String author, String gameMode) {
+    return Optional.ofNullable(
+        collection.find(and(
+            eq("name", name),
+            eq("author", author),
+            eq("gameMode", gameMode)
+        )).first()
+    );
+}
 
-        if (candidates.isEmpty()) {
-            return new MapData(mapName, author, gameMode);
-        }
+    public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
+        return find(name, author, gameMode).orElseGet(() -> {
 
-        if (candidates.size() == 1) {
-            MapData found = candidates.get(0);
-            if (!found.author.equals(author)) {
-                found.author = author;
-                save(found);
+            MapData existing = collection.find(and(eq("name", name), eq("gameMode", gameMode))).first();
+
+            if (existing != null) {
+                existing.author = author;
+                existing.fileName = fileName;
+                save(existing);
+                return existing;
             }
-            return found;
-        }
 
-        for (MapData data : candidates) {
-            if (data.author.equals(author)) {
-                return data;
-            }
-        }
+            MapData newData = new MapData(name, fileName, author, gameMode);
+            save(newData);
+            return newData;
+        });
+    }
 
-        return new MapData(mapName, author, gameMode);
+    public MapData findById(ObjectId id) {
+        if (id == null) return null;
+        return collection.find(eq("_id", id)).first();
     }
 
     public void save(MapData data) {

@@ -19,6 +19,7 @@ import mindustry.maps.Map;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import mindustry.ui.Menus;
+import org.bson.types.ObjectId;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
@@ -89,10 +90,9 @@ public class PluginEventService {
             String mapName = map.plainName();
             PlayerData pData = playerSessionService.get(player.uuid());
 
-            MapData mData = mapDataRepository.find(mapName, map.author(), state.rules.mode().name());
-            String mapIdStr = String.valueOf(mData.id);
+            MapData mData = mapDataRepository.findOrCreate(mapName, map.file.name(), map.author(), state.rules.mode().name());
 
-            Boolean previousVote = pData.mapVotes.get(mapIdStr);
+            Boolean previousVote = pData.mapVotes.get(mData.id);
 
             if (selection == 0) {
                 if (Boolean.TRUE.equals(previousVote)) {
@@ -109,7 +109,7 @@ public class PluginEventService {
                     mData.popularity += 4.0;
                     bundleService.send(player, "commands-like-changed", args());
                 }
-                pData.mapVotes.put(mapIdStr, true);
+                pData.mapVotes.put(mData.id, true);
             } else if (selection == 1) {
                 if (Boolean.FALSE.equals(previousVote)) {
                     bundleService.send(player, "error-already-voted", args());
@@ -125,7 +125,7 @@ public class PluginEventService {
                     mData.popularity -= 4.0;
                     bundleService.send(player, "commands-dislike-changed", args());
                 }
-                pData.mapVotes.put(mapIdStr, false);
+                pData.mapVotes.put(mData.id, false);
             }
 
             playerDataRepository.save(pData);
@@ -260,9 +260,8 @@ public class PluginEventService {
                     ));
 
                     PlayerData pData = playerSessionService.get(p.uuid());
-                    String mapIdStr = String.valueOf(mapDataRepository
-                            .find(state.map.plainName(), state.map.author(), state.rules.mode().name()).id);
-                    Boolean currentVote = pData.mapVotes.get(mapIdStr);
+                    ObjectId mapID = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name()).id;
+                    Boolean currentVote = pData.mapVotes.get(mapID);
 
                     String likeBtn = Boolean.TRUE.equals(currentVote)
                             ? bundleService.format(bundleService.locale(p), "map-vote-like-selected", args())
@@ -307,13 +306,14 @@ public class PluginEventService {
             if (state.map != null && !state.isMenu()) {
                 try {
                     String mapName = state.map.plainName();
+                    String mapFileName = state.map.file.name();
                     String author = state.map.author();
                     String modeName = state.rules.mode().name();
 
                     long durationMillis = (long) ((state.tick / 60f) * 1000f);
 
                     if (durationMillis > 120 * 1000) {
-                        MapData stats = mapDataRepository.find(mapName, author, modeName);
+                        MapData stats = mapDataRepository.findOrCreate(mapName, mapFileName, author, modeName);
                         boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
 
                         stats.registerGame(durationMillis, isWin, modeName, author);

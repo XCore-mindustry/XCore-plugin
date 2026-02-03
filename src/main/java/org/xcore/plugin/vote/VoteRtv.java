@@ -78,20 +78,22 @@ public class VoteRtv extends VoteSession {
 
         if (state.map != null && !state.isMenu()) {
             String currentMapName = state.map.plainName();
+            String currentMapFileName = state.map.file.name();
             String currentAuthor = state.map.author();
             String currentMode = state.rules.mode().name();
 
-            MapData currentMapStats = mapDataRepository.find(currentMapName, currentAuthor, currentMode);
+            MapData currentMapStats = mapDataRepository.findOrCreate(currentMapName, currentMapFileName, currentAuthor, currentMode);
             currentMapStats.onSkip();
             mapDataRepository.save(currentMapStats);
         }
 
         if (isManualSelection) {
             String targetMapName = target.plainName();
+            String targetMapFileName = state.map.file.name();
             String targetAuthor = target.author();
             String targetMode = state.rules.mode().name();
 
-            MapData targetMapStats = mapDataRepository.find(targetMapName, targetAuthor, targetMode);
+            MapData targetMapStats = mapDataRepository.findOrCreate(targetMapName, targetMapFileName, targetAuthor, targetMode);
             targetMapStats.popularity += 2.0;
             mapDataRepository.save(targetMapStats);
         }
