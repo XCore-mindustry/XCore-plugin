@@ -516,7 +516,6 @@ public class EventController {
             return;
         }
 
-        int mod = (prev == null) ? 1 : 2;
         if (like) {
             event.like += 1;
             if (prev != null) {event.dislike -= 1; }
