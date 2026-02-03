@@ -82,13 +82,14 @@ public class GameLifecycleHandler {
         if (state.map != null && !state.isMenu()) {
             try {
                 String mapName = state.map.plainName();
+                String fileName = state.map.file.name();
                 String author = state.map.author();
                 String modeName = state.rules.mode().name();
 
                 long durationMillis = (long) ((state.tick / 60f) * 1000f);
 
                 if (durationMillis > 120 * 1000) {
-                    MapData stats = mapDataRepository.find(mapName, author, modeName);
+                    MapData stats = mapDataRepository.findOrCreate(mapName, fileName, author, modeName);
                     boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
 
                     stats.registerGame(durationMillis, isWin, modeName, author);

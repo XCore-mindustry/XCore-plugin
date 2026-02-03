@@ -70,6 +70,14 @@ public class VoteEvent extends VoteSession {
     }
 
     @Override
+    public void cancelByAdmin(Player admin) {
+        stop();
+        bundle.send("vote-event-cancelled", args(
+                "name", target.name,
+                "admin", admin.coloredName()));
+    }
+
+    @Override
     public void stop() {
         voteService.endVote();
         if (end != null) end.cancel();

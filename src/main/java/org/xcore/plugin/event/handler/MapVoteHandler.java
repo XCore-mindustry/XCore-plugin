@@ -59,10 +59,9 @@ public class MapVoteHandler {
         String mapName = map.plainName();
         PlayerData pData = playerSessionService.get(player.uuid());
 
-        MapData mData = mapDataRepository.find(mapName, map.author(), state.rules.mode().name());
-        String mapIdStr = String.valueOf(mData.id);
+        MapData mData = mapDataRepository.findOrCreate(mapName, map.file.name(), map.author(), state.rules.mode().name());
 
-        Boolean previousVote = pData.mapVotes.get(mapIdStr);
+        Boolean previousVote = pData.mapVotes.get(mData.id);
 
         if (selection == 0) {
             if (Boolean.TRUE.equals(previousVote)) {
@@ -79,7 +78,7 @@ public class MapVoteHandler {
                 mData.popularity += 4.0;
                 bundleService.send(player, "commands-like-changed", args());
             }
-            pData.mapVotes.put(mapIdStr, true);
+            pData.mapVotes.put(mData.id, true);
         } else if (selection == 1) {
             if (Boolean.FALSE.equals(previousVote)) {
                 bundleService.send(player, "error-already-voted", args());
@@ -95,7 +94,7 @@ public class MapVoteHandler {
                 mData.popularity -= 4.0;
                 bundleService.send(player, "commands-dislike-changed", args());
             }
-            pData.mapVotes.put(mapIdStr, false);
+            pData.mapVotes.put(mData.id, false);
         }
 
         playerDataRepository.save(pData);
@@ -130,9 +129,8 @@ public class MapVoteHandler {
                     ));
 
                     PlayerData pData = playerSessionService.get(p.uuid());
-                    String mapIdStr = String.valueOf(mapDataRepository
-                            .find(state.map.plainName(), state.map.author(), state.rules.mode().name()).id);
-                    Boolean currentVote = pData.mapVotes.get(mapIdStr);
+                    MapData map = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
+                    Boolean currentVote = pData.mapVotes.get(map.id);
 
                     String likeBtn = Boolean.TRUE.equals(currentVote)
                             ? bundleService.format(bundleService.locale(p), "map-vote-like-selected", args())
@@ -147,9 +145,8 @@ public class MapVoteHandler {
                     });
                 });
 
-                Map finalNextMap = nextMap;
-                ServerControl.instance.play(() -> world.loadMap(finalNextMap,
-                        finalNextMap.applyRules(ServerControl.instance.lastMode)));
+                ServerControl.instance.play(() -> world.loadMap(nextMap,
+                        nextMap.applyRules(ServerControl.instance.lastMode)));
             } else {
                 netServer.kickAll(Packets.KickReason.gameover);
                 state.set(GameState.State.menu);
