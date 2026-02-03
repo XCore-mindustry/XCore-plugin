@@ -1,0 +1,10 @@
+{
+  "name": "example-plugin",
+  "displayName": "Example Cloud Plugin",
+  "author": "xcore",
+  "main": "org.xcore.example.ExamplePlugin",
+  "description": "A Mindustry plugin using Cloud v2",
+  "version": "1.0.0",
+  "minGameVersion": "146",
+  "java": true
+}

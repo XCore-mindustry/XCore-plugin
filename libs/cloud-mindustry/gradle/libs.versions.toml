@@ -1,0 +1,17 @@
+[versions]
+cloud = "2.0.0"
+mindustry = "v154.3"
+shadow = "9.3.0"
+toxopid = "4.2.0"
+junit-jupiter = "5.12.1"
+
+[libraries]
+cloud-core = { module = "org.incendo:cloud-core", version.ref = "cloud" }
+cloud-annotations = { module = "org.incendo:cloud-annotations", version.ref = "cloud" }
+mindustry-core = { module = "com.github.Anuken.Mindustry:core", version.ref = "mindustry" }
+arc-core = { module = "com.github.Anuken.Arc:arc-core", version.ref = "mindustry" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
