@@ -1,0 +1,568 @@
+package org.xcore.plugin.command.controller.client;
+
+import arc.struct.ObjectMap;
+import arc.struct.Seq;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import mindustry.Vars;
+import mindustry.gen.Call;
+import mindustry.gen.Player;
+import mindustry.maps.Map;
+import mindustry.ui.Menus;
+import org.xcore.plugin.command.core.annotation.Command;
+import org.xcore.plugin.command.core.context.ClientContext;
+import org.xcore.plugin.common.CustomGatherers;
+import org.xcore.plugin.common.SeqStream;
+import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.EventDataRepository;
+import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.model.EventData;
+import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.service.MapService;
+import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.vote.VoteEvent;
+import org.xcore.plugin.vote.VoteEventFactory;
+import org.xcore.plugin.vote.VoteService;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static com.ospx.flubundle.Bundle.args;
+
+@Singleton
+public class EventController {
+
+    private int genericMenuId;
+    private int genericTextId;
+
+    private final ObjectMap<String, MenuSession> playerSessionContext = new ObjectMap<>();
+
+    private final EventDataRepository eventDataRepository;
+    private final MapDataRepository mapDataRepository;
+    private final PlayerDataRepository playerDataRepository;
+    private final PlayerSessionService playerSessionService;
+    private final GlobalConfig globalConfig;
+    private final BundleService bundle;
+    private final VoteService voteService;
+    private final VoteEventFactory voteEventFactory;
+    private final MapService mapService;
+    private final MapController mapController;
+
+
+    private static class MenuSession {
+        final List<Runnable> actions = new ArrayList<>();
+
+        EventData draftEvent;
+
+        java.util.function.Consumer<String> textHandler;
+
+        String add(String buttonName, Runnable action) {
+            actions.add(action);
+            return buttonName;
+        }
+    }
+
+    @Inject
+    public EventController(EventDataRepository eventDataRepository, MapDataRepository mapDataRepository, PlayerDataRepository playerDataRepository,
+                           PlayerSessionService playerSessionService,
+                           GlobalConfig globalConfig,
+                           BundleService bundle, VoteService voteService, VoteEventFactory voteEventFactory,
+                           MapService mapService, MapController mapController) {
+        this.eventDataRepository = eventDataRepository;
+        this.mapDataRepository = mapDataRepository;
+        this.playerDataRepository = playerDataRepository;
+        this.playerSessionService = playerSessionService;
+        this.globalConfig = globalConfig;
+        this.bundle = bundle;
+        this.voteService = voteService;
+        this.voteEventFactory = voteEventFactory;
+        this.mapService = mapService;
+        this.mapController = mapController;
+    }
+
+    public void initMenu() {
+        this.genericMenuId = Menus.registerMenu((player, option) -> {
+            MenuSession session = playerSessionContext.get(player.uuid());
+            if (session != null && option >= 0 && option < session.actions.size()) {
+                session.actions.get(option).run();
+            }
+        });
+
+        this.genericTextId = Menus.registerTextInput((player, text) -> {
+            MenuSession session = playerSessionContext.get(player.uuid());
+            if (session != null && session.textHandler != null && text != null) {
+                session.textHandler.accept(text);
+            }
+        });
+    }
+
+    private Optional<EventData> currentEvent() {
+        return this.eventDataRepository.findActive();
+    }
+
+    @Command(name = "event")
+    public void event(ClientContext ctx) {
+        handleMain(ctx.player());
+    }
+
+    @Command(name = "events", params = "[page]")
+    public void events(ClientContext ctx) {
+        handleEvents(ctx.player(), ctx.argInt(0, 1));
+    }
+
+    private void handleMain(Player player) {
+        EventData event = currentEvent().orElse(null);
+        String menuTitle = bundle.format(bundle.locale(player), "event-menu-main-title", args());
+        String menuContent = bundle.format(bundle.locale(player), "event-menu-main-content", args());
+        MenuSession session = new MenuSession();
+        List<List<String>> rows = new ArrayList<>();
+
+        List<String> row1 = new ArrayList<>();
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-create-start", args()), () -> handleCreateStart(player)));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()), () -> handleEvents(player, 1)));
+        rows.add(row1);
+
+        if (event != null) {
+            List<String> row2 = new ArrayList<>();
+
+            PlayerData pData = playerSessionService.get(player.uuid());
+            Boolean currentVote = pData.eventVotes.get(event.id);
+
+            String likeButtonText = Boolean.TRUE.equals(currentVote)
+                ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
+                : bundle.format(bundle.locale(player), "map-vote-like", args());
+            String dislikeButtonText = Boolean.FALSE.equals(currentVote)
+                ? bundle.format(bundle.locale(player), "map-vote-dislike-selected", args())
+                : bundle.format(bundle.locale(player), "map-vote-dislike", args());
+
+            row2.add(session.add(likeButtonText, () -> handleReputation(player, true, event)));
+            row2.add(session.add(dislikeButtonText, () -> handleReputation(player, false, event)));
+            rows.add(row2);
+        }
+
+        List<String> row3 = new ArrayList<>();
+
+        if (voteService.getCurrentSession() instanceof VoteEvent && player.admin()) {
+            row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-vote-stop", args()), voteService::endVote));
+        }
+        if (event != null && event.isActive && player.admin()) {
+            row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-stop", args()), eventDataRepository::finishActiveEvent));
+        }
+
+        rows.add(row3);
+
+        rows.add(List.of(
+                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
+        ));
+
+        playerSessionContext.put(player.uuid(), session);
+        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+    }
+
+    private void handleCreateStart(Player player) {
+        String title = bundle.format(bundle.locale(player), "event-menu-create-start-title", args());
+        String message = bundle.format(bundle.locale(player), "event-menu-create-start-message", args());
+        String defaultText = bundle.format(bundle.locale(player), "event-menu-create-start-default", args("playerName", player.name));
+
+        MenuSession session = new MenuSession();
+        session.draftEvent = new EventData();
+        playerSessionContext.put(player.uuid(), session);
+
+        session.textHandler = (text) -> {
+            session.draftEvent.name = text;
+            handleEdit(player);
+        };
+
+        Call.textInput(player.con, genericTextId, title, message, 20, defaultText, false);
+    }
+
+    private void handleEdit(Player player) {
+        MenuSession session = playerSessionContext.get(player.uuid());
+        if (session == null || session.draftEvent == null) return;
+
+        EventData draft = session.draftEvent;
+        MapData mapData = mapDataRepository.findById(session.draftEvent.map);
+
+        String menuTitle = bundle.format(bundle.locale(player), "event-menu-edit-title", args());
+        String menuContent = bundle.format(bundle.locale(player), "event-menu-edit-content", args(
+                "name", session.draftEvent.name,
+                "description", session.draftEvent.description,
+                "author", session.draftEvent.author,
+                "mapName", (mapData == null) ? "" : mapData.name,
+                "isMajor", session.draftEvent.isMajor,
+                "isTemporary", session.draftEvent.isTemporary,
+                "plannedStartTime", session.draftEvent.plannedStartTime,
+                "plannedEndTime", session.draftEvent.plannedEndTime
+        ));
+
+
+        session.actions.clear();
+        List<List<String>> rows = new ArrayList<>();
+
+        List<String> row1 = new ArrayList<>();
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-name", args()), () -> {
+            session.textHandler = text -> { draft.name = text; handleEdit(player); };
+            Call.textInput(player.con, genericTextId,
+                    bundle.format(bundle.locale(player), "event-menu-edit-name-title", args()),
+                    bundle.format(bundle.locale(player), "event-menu-edit-name-message", args()),
+                    24, draft.name, false);
+        }));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-description", args()), () -> {
+            session.textHandler = text -> { draft.description = text; handleEdit(player); };
+            Call.textInput(player.con, genericTextId,
+                    bundle.format(bundle.locale(player), "event-menu-edit-description-title", args()),
+                    bundle.format(bundle.locale(player), "event-menu-edit-description-message", args()),
+                    1000, draft.description, false);
+        }));
+        rows.add(row1);
+
+        List<String> row2 = new ArrayList<>();
+        row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-map", args()), () -> handleMapSelection(player, 1)));
+        row2.add(session.add(bundle.format(bundle.locale(player),
+            draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive", args()), () -> {
+            draft.isTemporary = !draft.isTemporary;
+            handleEdit(player);
+        }));
+        rows.add(row2);
+
+        List<String> row3 = new ArrayList<>();
+        row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-planned-start", args()), () -> {
+            session.textHandler = text -> {
+                draft.plannedStartTime = parseTime(text);
+                handleEdit(player);
+            };
+            Call.textInput(player.con, genericTextId,
+                    bundle.format(bundle.locale(player), "event-menu-edit-planned-start-title", args()),
+                    bundle.format(bundle.locale(player), "event-menu-edit-planned-start-message", args()),
+                    64, "", false);
+        }));
+        row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-planned-end", args()), () -> {
+            session.textHandler = text -> { draft.plannedEndTime = parseTime(text); handleEdit(player); };
+            Call.textInput(player.con, genericTextId,
+                    bundle.format(bundle.locale(player), "event-menu-edit-planned-end-title", args()),
+                    bundle.format(bundle.locale(player), "event-menu-edit-planned-end-message", args()),
+                    10, "", false);
+        }));
+        rows.add(row3);
+
+        List<String> row4 = new ArrayList<>();
+        row4.add(session.add(bundle.format(bundle.locale(player), "save", args()), () -> {
+            if (draft.map == null) {
+                bundle.send(player, "error-no-map", args());
+                return;
+            }
+            eventDataRepository.save(draft);
+            playerSessionContext.remove(player.uuid());
+            handleEvents(player, 1);
+        }));
+        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> playerSessionContext.remove(player.uuid())));
+        rows.add(row4);
+
+        if (player.admin) {
+            rows.add(List.of(session.add(bundle.format(bundle.locale(player),
+                draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive", args()), () -> {
+                draft.isMajor = !draft.isMajor;
+                handleEdit(player);
+            })));
+        }
+
+        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+    }
+
+    private void handleEvent(Player player, EventData event) {
+        MenuSession session = new MenuSession();
+        List<List<String>> rows = new ArrayList<>();
+
+        MapData mapData = mapDataRepository.findById(session.draftEvent.map);
+
+        String menuTitle = bundle.format(bundle.locale(player), "event-menu-event-title", args());
+        String menuContent = bundle.format(bundle.locale(player), "event-menu-event-content", args(
+                "name", session.draftEvent.name,
+                "description", session.draftEvent.description,
+                "author", session.draftEvent.author,
+                "mapName", (mapData == null) ? "" : mapData.name,
+                "isMajor", session.draftEvent.isMajor,
+                "isConducted", session.draftEvent.isConducted,
+                "isActive", session.draftEvent.isActive,
+                "isTemporary", session.draftEvent.isTemporary,
+                "createdEventTime", session.draftEvent.createdEventTime,
+                "plannedStartTime", session.draftEvent.plannedStartTime,
+                "plannedEndTime", session.draftEvent.plannedEndTime,
+                "like", session.draftEvent.like,
+                "dislike", session.draftEvent.dislike
+        ));
+
+        PlayerData pData = playerSessionService.get(player.uuid());
+        Boolean currentVote = pData.eventVotes.get(event.id);
+
+        String likeButtonText = Boolean.TRUE.equals(currentVote)
+                ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
+                : bundle.format(bundle.locale(player), "map-vote-like", args());
+        String dislikeButtonText = Boolean.FALSE.equals(currentVote)
+                ? bundle.format(bundle.locale(player), "map-vote-dislike-selected", args())
+                : bundle.format(bundle.locale(player), "map-vote-dislike", args());
+
+        List<String> row1 = new ArrayList<>();
+        row1.add(session.add(likeButtonText, () -> handleReputation(player, true, event)));
+        row1.add(session.add(dislikeButtonText, () -> handleReputation(player, false, event)));
+        rows.add(row1);
+
+        List<String> row2 = new ArrayList<>();
+        row2.add(session.add(bundle.format(bundle.locale(player), "event-vote", args()),
+                () -> startVoteSession(player, event, false)));
+        if (player.admin) {
+             row2.add(session.add(bundle.format(bundle.locale(player), "event-avote", args()),
+                     () -> startVoteSession(player, event, true)));
+        }
+        rows.add(row2);
+
+        boolean isOwner = pData.id != null && pData.id.equals(event.author);
+        if (!event.isConducted && !event.isActive && (!event.isMajor || player.admin) && (isOwner || player.admin)) {
+            List<String> row3 = new ArrayList<>();
+            row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit", args()), () -> {
+                session.draftEvent = event;
+                handleEdit(player);
+            }));
+            rows.add(row3);
+        }
+
+        List<String> row4 = new ArrayList<>();
+        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
+        row4.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()),
+                 () -> handleEvents(player, 1)));
+        rows.add(row4);
+
+        if (mapData != null) {
+            List<String> row5 = new ArrayList<>();
+            row5.add(session.add(bundle.format(bundle.locale(player), "event-menu-event-map", args()),
+                     () ->  mapController.handleMap(player, mapData)));
+            rows.add(row5);
+        }
+
+
+        playerSessionContext.put(player.uuid(), session);
+        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+    }
+
+    private void handleEvents(Player player, int page) {
+        int totalEvents = (int) eventDataRepository.count();
+
+        int perPage = globalConfig.eventsPerPage;
+        var pagination = CustomGatherers.calculatePagination(totalEvents, perPage);
+
+        if (totalEvents == 0) {
+            bundle.send(player, "events-empty", args());
+            return;
+        }
+
+        int validPage = pagination.clampPage(page);
+        String menuTitle = bundle.format(bundle.locale(player), "event-menu-events-title", args());
+        String menuContent = bundle.format(bundle.locale(player), "event-menu-events-content", args(
+                "page", validPage,
+                "total", pagination.totalPages()
+        ));
+
+        MenuSession session = new MenuSession();
+        List<List<String>> rows = new ArrayList<>();
+
+        List<String> navRow = new ArrayList<>();
+        if (validPage > 1) {
+            final int prevPage = validPage - 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "previous", args()),
+                    () -> handleMapSelection(player, prevPage)
+            ));
+        }
+        if (validPage < pagination.totalPages()) {
+            final int nextPage = validPage + 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "next", args()),
+                    () -> handleMapSelection(player, nextPage)
+            ));
+        }
+        if (!navRow.isEmpty()) {
+            rows.add(navRow);
+        }
+
+        int skip = (validPage - 1) * perPage;
+        List<EventData> events = eventDataRepository.findPage(skip, perPage);
+
+        for (EventData event : events) {
+            String buttonText = event.isActive ? "[green]●[] " + event.name : event.name;
+            rows.add(List.of(
+                    session.add(buttonText, () -> handleEvent(player, event))
+            ));
+        }
+
+
+        List<String> row1 = new ArrayList<>();
+        row1.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-main", args()),
+                 () -> handleMain(player)));
+        rows.add(row1);
+
+        playerSessionContext.put(player.uuid(), session);
+        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+    }
+
+    private void handleMapSelection(Player player, int page) {
+        Seq<Map> maps = mapService.getAvailableMaps();
+        var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
+
+        if (pagination.totalPages() == 0) {
+            bundle.send(player, "empty", args());
+            return;
+        }
+
+        int validPage = pagination.clampPage(page);
+        String menuTitle = bundle.format(bundle.locale(player), "event-menu-maps-title", args());
+        String menuContent = bundle.format(bundle.locale(player), "event-menu-maps-content", args(
+                "page", validPage,
+                "total", pagination.totalPages()
+        ));
+        MenuSession session = playerSessionContext.get(player.uuid());
+        if (session == null) {
+            handleMain(player);
+            return;
+        }
+
+        session.actions.clear();
+        List<List<String>> rows = new ArrayList<>();
+
+        List<String> navRow = new ArrayList<>();
+        if (validPage > 1) {
+            final int prevPage = validPage - 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "previous", args()),
+                    () -> handleMapSelection(player, prevPage)
+            ));
+        }
+        if (validPage < pagination.totalPages()) {
+            final int nextPage = validPage + 1;
+            navRow.add(session.add(
+                    bundle.format(bundle.locale(player), "next", args()),
+                    () -> handleMapSelection(player, nextPage)
+            ));
+        }
+        if (!navRow.isEmpty()) {
+            rows.add(navRow);
+        }
+        String gameMode = Vars.state.rules.mode().name();
+
+        SeqStream.of(maps)
+                .gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage))
+                .flatMap(List::stream)
+                .forEach(map -> rows.add(List.of(
+                        session.add(map.name(), () -> {
+                            MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
+
+                            if (data.id == null) {
+                                mapDataRepository.save(data);
+                            }
+
+                            session.draftEvent.map = data.id;
+                            handleEdit(player);
+                        })
+                )));
+
+        rows.add(List.of(
+                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
+        ));
+        playerSessionContext.put(player.uuid(), session);
+        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+    }
+
+    private void startVoteSession(Player player, EventData target, boolean forced) {
+        if (!(voteService.getCurrentSession() instanceof VoteEvent)) {
+            return;
+        } else if (voteService.isVoting() && !forced) {
+            bundle.send("error-vote-in-progress", args());
+            return;
+        } else if (voteService.isVoting() && forced) {
+            voteService.endVote();
+        }
+
+        if (target == null) {
+            bundle.send("error-event-not-found", args());
+            return;
+        }
+
+        if (forced) {
+            eventDataRepository.activateEvent(target);
+
+            bundle.send("event-vote-skipped", args(
+                    "name", target.name,
+                    "nickname", player.coloredName()
+            ));
+        } else {
+            var vote = voteEventFactory.create(target);
+            voteService.startVote(vote);
+            vote.vote(player, 1);
+        }
+
+    }
+
+
+    private void handleReputation(Player player, boolean like, EventData event) {
+        PlayerData p = playerSessionService.get(player.uuid());
+        Boolean prev = p.eventVotes.get(event.id);
+
+        if (Boolean.valueOf(like).equals(prev)) {
+            bundle.send("error-already-voted", args());
+            return;
+        }
+
+        int mod = (prev == null) ? 1 : 2;
+        if (like) {
+            event.like += 1;
+            if (prev != null) {event.dislike -= 1; }
+            bundle.send("commands-like-success", args());
+        } else {
+            event.dislike += 1;
+            if (prev != null) {event.like -= 1; }
+            bundle.send("commands-dislike-success", args());
+        }
+
+        p.eventVotes.put(event.id, like);
+
+        playerDataRepository.save(p);
+        eventDataRepository.save(event);
+    }
+
+    private String[][] convertListToArray(List<List<String>> rows) {
+        String[][] result = new String[rows.size()][];
+
+        for (int i = 0; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+
+            result[i] = row.toArray(new String[0]);
+        }
+
+        return result;
+    }
+
+    private long parseTime(String input) {
+        try {
+            if (input.startsWith("+")) {
+                long now = System.currentTimeMillis();
+                String value = input.substring(1, input.length() - 1);
+                char unit = input.charAt(input.length() - 1);
+                long num = Long.parseLong(value);
+
+                return switch (unit) {
+                    case 'h' -> now + (num * 3600000L);
+                    case 'd' -> now + (num * 86400000L);
+                    case 'm' -> now + (num * 60000L);
+                    default -> now;
+                };
+            }
+            return Long.parseLong(input);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+}

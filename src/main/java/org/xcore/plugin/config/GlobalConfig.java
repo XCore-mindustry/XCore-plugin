@@ -31,6 +31,7 @@ public class GlobalConfig {
     public float voteDurationSeconds = 60.0f;
     public int mapSwitchDelaySeconds = 10;
 
+    public int eventsPerPage = 10;
     public int mapsPerPage = 10;
     public int commandsPerPage = 6;
 

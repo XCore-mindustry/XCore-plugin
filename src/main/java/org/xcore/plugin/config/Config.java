@@ -30,6 +30,13 @@ public class Config {
         return server.equals("the-last-standing");
     }
 
+    public boolean isEvent() {
+        return server.equals("event");
+    }
+
+    public boolean isEventHubMap = false;
+    public String eventHubMapID = "";
+
     public enum SockType {
         CLIENT, SERVER
     }

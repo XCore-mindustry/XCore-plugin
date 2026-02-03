@@ -3,13 +3,18 @@ package org.xcore.plugin.map;
 import arc.math.Mathf;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
+import org.bson.types.ObjectId;
+import org.xcore.plugin.config.Config;
+import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 
 @Singleton
@@ -18,15 +23,46 @@ public class SmartMapSelector implements MapProvider {
     private final Seq<Map> recentMaps = new Seq<>();
     private static final int HISTORY_SIZE = 5;
 
+    private final Config config;
+
+    private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
 
     @Inject
-    public SmartMapSelector(MapDataRepository mapDataRepository) {
+    public SmartMapSelector(Config config, EventDataRepository eventDataRepository, MapDataRepository mapDataRepository) {
+        this.config = config;
+        this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
     }
 
     @Override
     public Map next(Gamemode mode, Map previous) {
+        if (config.isEvent()) {
+            var activeEventOpt = eventDataRepository.findActive();
+            if (activeEventOpt.isPresent()) {
+                Map map = findMindustryMap(activeEventOpt.get().map);
+                if (map != null) return map;
+            }
+
+            var nextEventOpt = eventDataRepository.findNextScheduled();
+            if (nextEventOpt.isPresent()) {
+                EventData nextEvent = nextEventOpt.get();
+                eventDataRepository.activateEvent(nextEvent);
+
+                Map map = findMindustryMap(nextEvent.map);
+                if (map != null) return map;
+            }
+
+            if (config.isEventHubMap && config.eventHubMapID != null && !config.eventHubMapID.isEmpty()) {
+                if (ObjectId.isValid(config.eventHubMapID)) {
+                    Map map = findMindustryMap(new ObjectId(config.eventHubMapID));
+                    if (map != null) return map;
+                } else {
+                    Log.err("Invalid eventHubMapID");
+                }
+            }
+        }
+
         if (previous != null) {
             recentMaps.add(previous);
             if (recentMaps.size > HISTORY_SIZE) {
@@ -43,7 +79,7 @@ public class SmartMapSelector implements MapProvider {
 
         arc.func.Func<Map, MapData> getStat = map -> {
             String key = MapDataRepository.genKey(map.plainName(), map.author(), mode.name());
-            return statsMap.get(key, new MapData(map.plainName(), map.author(), mode.name()));
+            return statsMap.get(key, new MapData(map.plainName(), map.file.name(), map.author(), mode.name()));
         };
 
         Seq<Map> poolA = candidates.copy().sort(m -> {
@@ -80,5 +116,17 @@ public class SmartMapSelector implements MapProvider {
         }
 
         return selectedMap;
+    }
+
+    private Map findMindustryMap(ObjectId mapId) {
+        if (mapId == null) return null;
+
+        MapData data = mapDataRepository.findById(mapId);
+        if (data == null) return null;
+
+        return Vars.maps.all().find(m ->
+                m.plainName().equals(data.name) &&
+                m.author().equals(data.author)
+        );
     }
 }

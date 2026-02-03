@@ -33,6 +33,7 @@ public class CommandRegistrar {
     private final AuthController authController;
     private final ModerationController moderationController;
     private final HexedController hexedController;
+    private final EventController eventController;
 
     // Server Controllers
     private final ServerInformationController serverInformationController;
@@ -56,6 +57,7 @@ public class CommandRegistrar {
             AuthController authController,
             ModerationController moderationController,
             HexedController hexedController,
+            EventController eventController,
             // Server
             ServerInformationController serverInformationController,
             DataController dataController,
@@ -76,6 +78,7 @@ public class CommandRegistrar {
         this.authController = authController;
         this.moderationController = moderationController;
         this.hexedController = hexedController;
+        this.eventController = eventController;
 
         this.serverInformationController = serverInformationController;
         this.dataController = dataController;
@@ -92,6 +95,7 @@ public class CommandRegistrar {
 
         informationController.setHandler(handler);
         mapController.initMenu();
+        eventController.initMenu();
 
         bus.register(
                 informationController,
@@ -105,6 +109,10 @@ public class CommandRegistrar {
 
         if (config.isMiniHexed()) {
             bus.register(hexedController);
+        }
+
+        if (config.isEvent()) {
+            bus.register(eventController);
         }
     }
 
