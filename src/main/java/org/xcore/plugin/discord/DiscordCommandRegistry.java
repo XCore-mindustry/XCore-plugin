@@ -162,9 +162,9 @@ public class DiscordCommandRegistry {
             var server = network.findServer(args[0]);
             if (ctx.serverNotFound(server)) return;
 
-            network.request(new SocketEvents.MapRemoveRequest(server, args[0]),
+            network.request(new SocketEvents.MapRemoveRequest(server, args[1]),
                     response -> ctx.info("Result", response.result).subscribe(),
-                    () -> ctx.noResponse()
+                    ctx::noResponse
             );
         });
 
