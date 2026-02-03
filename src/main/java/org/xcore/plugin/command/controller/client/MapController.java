@@ -3,6 +3,7 @@ package org.xcore.plugin.command.controller.client;
 import arc.Core;
 import arc.struct.ObjectMap;
 import arc.struct.Seq;
+import arc.util.CommandHandler;
 import arc.util.Timer;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -12,6 +13,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import mindustry.ui.Menus;
+import org.xcore.plugin.command.core.ClientController;
 import org.xcore.plugin.command.core.annotation.AdminOnly;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
@@ -36,7 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
-public class MapController {
+public class MapController implements ClientController {
 
     private int genericMenuId;
 
@@ -81,6 +83,16 @@ public class MapController {
         this.voteRtvFactory = voteRtvFactory;
         this.mapService = mapService;
         this.gameStateService = gameStateService;
+    }
+
+    @Override
+    public void setup(CommandHandler handler) {
+        initMenu();
+    }
+
+    @Override
+    public int priority() {
+        return 80;
     }
 
     public void initMenu() {

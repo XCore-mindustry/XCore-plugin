@@ -112,9 +112,9 @@ public class VoteKick extends VoteSession {
         stop();
         var bundleArgs = args(
                 "nickname", target.coloredName(),
-                "minutes", globalConfig.voteKickBanDurationMinutes / 60000);
+                "minutes", globalConfig.voteKickBanDurationMinutes);
         bundle.send("votekick-success", bundleArgs);
-        target.kick(Packets.KickReason.vote, globalConfig.voteKickBanDurationMinutes);
+        target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
 
         if (network != null) {
             network.post(new SocketEvents.ServerActionEvent(
@@ -123,6 +123,7 @@ public class VoteKick extends VoteSession {
         onKick.get(target);
     }
 
+    @Override
     public void cancelByAdmin(Player admin) {
         stop();
         var bundleArgs = args(

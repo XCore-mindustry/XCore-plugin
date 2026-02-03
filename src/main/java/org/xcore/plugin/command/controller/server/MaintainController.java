@@ -15,8 +15,9 @@ import org.xcore.plugin.common.TextArgumentSplitter;
 
 import static mindustry.Vars.netServer;
 
+import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class MaintainController {
+public class MaintainController implements ServerController {
 
     private final NetworkService network;
     private final PlayerDataRepository playerDataRepository;

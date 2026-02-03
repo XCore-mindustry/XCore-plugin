@@ -29,6 +29,8 @@ public abstract class VoteSession {
 
     public abstract void fail();
 
+    public abstract void cancelByAdmin(Player admin);
+
     public void stop() {
         end.cancel();
     }

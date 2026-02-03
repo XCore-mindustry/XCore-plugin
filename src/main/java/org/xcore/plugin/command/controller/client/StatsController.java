@@ -13,8 +13,10 @@ import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class StatsController {
+public class StatsController implements ClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
@@ -27,6 +29,11 @@ public class StatsController {
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.config = config;
+    }
+
+    @Override
+    public int priority() {
+        return 60;
     }
 
     @Command(name = "stats", params = "[player-id]")

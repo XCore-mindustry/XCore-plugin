@@ -6,163 +6,116 @@ import mindustry.gen.Player;
 import org.xcore.plugin.command.core.annotation.AdminOnly;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
-import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.database.repository.BanDataRepository;
-import org.xcore.plugin.database.repository.MuteDataRepository;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.service.PlayerSessionService;
-import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.FindService;
-import org.xcore.plugin.model.BanData;
-import org.xcore.plugin.model.MuteData;
+import org.xcore.plugin.service.moderation.ModerationService;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
 @AdminOnly
-public class ModerationController {
+public class ModerationController implements ClientController {
 
-    private final PlayerDataRepository playerDataRepository;
-    private final BanDataRepository banDataRepository;
-    private final MuteDataRepository muteDataRepository;
-    private final PlayerSessionService playerSessionService;
-    private final NetworkService network;
+    private final ModerationService moderationService;
     private final BundleService bundle;
     private final FindService find;
-    private final TimeService time;
 
     @Inject
-    public ModerationController(PlayerDataRepository playerDataRepository,
-                                BanDataRepository banDataRepository,
-                                MuteDataRepository muteDataRepository,
-                                PlayerSessionService playerSessionService,
-                                NetworkService network,
+    public ModerationController(ModerationService moderationService,
                                 BundleService bundle,
-                                FindService find,
-                                TimeService timeService) {
-        this.playerDataRepository = playerDataRepository;
-        this.banDataRepository = banDataRepository;
-        this.muteDataRepository = muteDataRepository;
-        this.playerSessionService = playerSessionService;
-        this.network = network;
+                                FindService find) {
+        this.moderationService = moderationService;
         this.bundle = bundle;
         this.find = find;
-        this.time = timeService;
+    }
+
+    @Override
+    public int priority() {
+        return 10;
     }
 
     @Command(name = "ban", params = "<id> <period> [reason...]")
     public void ban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = playerDataRepository.findById(id);
 
-        if (target == null) {
-            ctx.send("error-player-not-found", args());
-            return;
-        }
-
-        Instant period = time.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
+        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
         if (period == null) {
             ctx.send("error-wrong-period-format", args());
             return;
         }
 
-        Instant unbanDate = Instant.now().plusMillis(period.toEpochMilli());
-        var info = mindustry.Vars.netServer.admins.getInfoOptional(target.uuid);
-        String ip = (info != null) ? info.lastIP : null;
+        String reason = ctx.args().length > 2 ? ctx.args()[2] : null;
+        var result = moderationService.banById(id, ctx.player().name, reason, period, true);
 
-        network.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
-
-        BanData ban = BanData.builder()
-                .name(target.nickname)
-                .uuid(target.uuid)
-                .ip(ip)
-                .adminName(ctx.player().name)
-                .reason(ctx.args().length > 2 ? ctx.args()[2] : "Not Specified")
-                .expireDate(unbanDate)
-                .build();
-
-        network.post(ban);
-        banDataRepository.save(ban);
-
-        ctx.send("commands-ban-success", args("nickname", target.nickname));
+        if (result.isSuccess()) {
+            ctx.send("commands-ban-success", args("nickname", result.getData().get().name));
+        } else {
+            ctx.send("error-player-not-found", args());
+        }
     }
 
     @Command(name = "unban", params = "<id>")
     public void unban(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = playerDataRepository.findById(id);
 
-        if (target == null) {
+        var result = moderationService.unbanById(id);
+
+        if (result.isSuccess()) {
+            var target = result.getData().get();
+            ctx.send("commands-unban-success", args(
+                    "nickname", target.nickname,
+                    "pid", target.pid
+            ));
+        } else {
             ctx.send("error-player-not-found", args());
-            return;
         }
-
-        banDataRepository.delete(target.uuid, null);
-
-        ctx.send("commands-unban-success", args(
-                "nickname", target.nickname,
-                "pid", target.pid
-        ));
     }
 
     @Command(name = "mute", params = "<id> <period> [reason...]")
     public void mute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = playerSessionService.getOrLoadFromDb(id);
 
-        if (target == null) {
-            ctx.send("error-player-not-found", args());
-            return;
-        }
-
-        Instant period = time.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
+        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
         if (period == null) {
             ctx.send("error-wrong-period-format", args());
             return;
         }
 
-        String reason = (ctx.args().length > 2) ? ctx.args()[2] : "Not Specified";
-        Instant expireDate = Instant.now().plusMillis(period.toEpochMilli());
+        String reason = (ctx.args().length > 2) ? ctx.args()[2] : null;
+        var result = moderationService.muteById(id, ctx.player().name, reason, period);
 
-        muteDataRepository.save(MuteData.builder()
-                .uuid(target.uuid)
-                .name(target.nickname)
-                .adminName(ctx.player().name)
-                .reason(reason)
-                .expireDate(expireDate)
-                .build()
-        );
+        if (result.isSuccess()) {
+            var mute = result.getData().get();
+            ctx.send("commands-mute-success", args("nickname", mute.name));
 
-        ctx.send("commands-mute-success", args("nickname", target.nickname));
-
-        Player p = find.playerByUuid(target.uuid);
-        if (p != null) {
-            bundle.send(p, "you-are-muted-by", args(
-                    "adminName", ctx.player().coloredName(),
-                    "reason", reason,
-                    "remainMinutes", Duration.ofMillis(period.toEpochMilli()).toMinutes()
-            ));
+            Player p = find.playerByUuid(mute.uuid);
+            if (p != null) {
+                bundle.send(p, "you-are-muted-by", args(
+                        "adminName", ctx.player().coloredName(),
+                        "reason", mute.reason,
+                        "remainMinutes", Duration.ofMillis(period.toEpochMilli()).toMinutes()
+                ));
+            }
+        } else {
+            ctx.send("error-player-not-found", args());
         }
     }
 
     @Command(name = "unmute", params = "<id>")
     public void unmute(ClientContext ctx) {
         int id = ctx.argInt(0, -1);
-        var target = playerSessionService.getOrLoadFromDb(id);
 
-        if (target == null) {
+        var result = moderationService.unmuteById(id);
+
+        if (result.isSuccess()) {
+            ctx.send("commands-unmute-success", args("nickname", result.getData().get().nickname));
+        } else {
             ctx.send("error-player-not-found", args());
-            return;
         }
-
-        muteDataRepository.delete(target.uuid);
-
-        ctx.send("commands-unmute-success", args("nickname", target.nickname));
     }
 }

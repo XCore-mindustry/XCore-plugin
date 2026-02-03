@@ -3,43 +3,28 @@ package org.xcore.plugin.command.core;
 import arc.util.CommandHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.command.controller.client.*;
-import org.xcore.plugin.command.controller.server.DataController;
-import org.xcore.plugin.command.controller.server.MaintainController;
-import org.xcore.plugin.command.controller.server.ServerInformationController;
-import org.xcore.plugin.command.controller.server.ServerModerationController;
+import org.xcore.plugin.command.controller.client.HexedController;
 import org.xcore.plugin.command.core.interceptor.AdminInterceptor;
 import org.xcore.plugin.command.core.interceptor.MuteInterceptor;
 import org.xcore.plugin.command.core.interceptor.PlayTimeInterceptor;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.BundleService;
 
+import java.util.Comparator;
+import java.util.List;
+
+
 @Singleton
 public class CommandRegistrar {
     private final BundleService bundleService;
     private final Config config;
 
-    // Interceptors
     private final AdminInterceptor adminInterceptor;
     private final MuteInterceptor muteInterceptor;
     private final PlayTimeInterceptor playTimeInterceptor;
 
-    // Client Controllers
-    private final InformationController informationController;
-    private final SocialController socialController;
-    private final VoteController voteController;
-    private final MapController mapController;
-    private final StatsController statsController;
-    private final AuthController authController;
-    private final ModerationController moderationController;
-    private final HexedController hexedController;
-    private final EventController eventController;
-
-    // Server Controllers
-    private final ServerInformationController serverInformationController;
-    private final DataController dataController;
-    private final ServerModerationController serverModerationController;
-    private final MaintainController maintainController;
+    private final List<ClientController> clientControllers;
+    private final List<ServerController> serverControllers;
 
     @Inject
     public CommandRegistrar(
@@ -48,44 +33,23 @@ public class CommandRegistrar {
             AdminInterceptor adminInterceptor,
             MuteInterceptor muteInterceptor,
             PlayTimeInterceptor playTimeInterceptor,
-            // Client
-            InformationController informationController,
-            SocialController socialController,
-            VoteController voteController,
-            MapController mapController,
-            StatsController statsController,
-            AuthController authController,
-            ModerationController moderationController,
-            HexedController hexedController,
-            EventController eventController,
-            // Server
-            ServerInformationController serverInformationController,
-            DataController dataController,
-            ServerModerationController serverModerationController,
-            MaintainController maintainController
+            List<ClientController> clientControllers,
+            List<ServerController> serverControllers
     ) {
         this.bundleService = bundleService;
         this.config = config;
         this.adminInterceptor = adminInterceptor;
         this.muteInterceptor = muteInterceptor;
         this.playTimeInterceptor = playTimeInterceptor;
-
-        this.informationController = informationController;
-        this.socialController = socialController;
-        this.voteController = voteController;
-        this.mapController = mapController;
-        this.statsController = statsController;
-        this.authController = authController;
-        this.moderationController = moderationController;
-        this.hexedController = hexedController;
-        this.eventController = eventController;
-
-        this.serverInformationController = serverInformationController;
-        this.dataController = dataController;
-        this.serverModerationController = serverModerationController;
-        this.maintainController = maintainController;
+        this.clientControllers = clientControllers;
+        this.serverControllers = serverControllers;
     }
 
+    /**
+     * Register client commands with automatic controller discovery.
+     * Controllers are sorted by priority (higher first) and filtered based on configuration.
+     * Filters out HexedController if mini-hexed mode is disabled.
+     */
     public void registerClient(CommandHandler handler) {
         CommandBus bus = new CommandBus(handler, bundleService);
 
@@ -93,37 +57,24 @@ public class CommandRegistrar {
         bus.addInterceptor(muteInterceptor);
         bus.addInterceptor(playTimeInterceptor);
 
-        informationController.setHandler(handler);
-        mapController.initMenu();
-        eventController.initMenu();
-
-        bus.register(
-                informationController,
-                socialController,
-                voteController,
-                mapController,
-                statsController,
-                authController,
-                moderationController
-        );
-
-        if (config.isMiniHexed()) {
-            bus.register(hexedController);
-        }
-
-        if (config.isEvent()) {
-            bus.register(eventController);
-        }
+        clientControllers.stream()
+                .sorted(Comparator.comparingInt(ClientController::priority).reversed())
+                .filter(this::shouldRegisterController)
+                .forEach(controller -> {
+                    controller.setup(handler);
+                    bus.register(controller);
+                });
     }
 
     public void registerServer(CommandHandler handler) {
         CommandBus bus = new CommandBus(handler, bundleService);
 
-        bus.register(
-                serverInformationController,
-                dataController,
-                serverModerationController,
-                maintainController
-        );
+        serverControllers.stream()
+                .sorted(Comparator.comparingInt(ServerController::priority).reversed())
+                .forEach(bus::register);
+    }
+
+    private boolean shouldRegisterController(ClientController controller) {
+        return !(controller instanceof HexedController) || config.isMiniHexed();
     }
 }

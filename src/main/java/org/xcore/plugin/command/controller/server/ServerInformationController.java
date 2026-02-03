@@ -13,8 +13,9 @@ import org.xcore.plugin.service.PlayerSessionService;
 
 import static mindustry.Vars.netServer;
 
+import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class ServerInformationController {
+public class ServerInformationController implements ServerController {
 
     private final PlayerSessionService playerSessionService;
 

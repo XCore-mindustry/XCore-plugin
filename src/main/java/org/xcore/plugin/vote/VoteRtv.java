@@ -110,6 +110,14 @@ public class VoteRtv extends VoteSession {
     }
 
     @Override
+    public void cancelByAdmin(Player admin) {
+        stop();
+        bundle.send("rtv-cancelled", args(
+                "mapName", target.name(),
+                "admin", admin.coloredName()));
+    }
+
+    @Override
     public void stop() {
         voteService.endVote();
         end.cancel();

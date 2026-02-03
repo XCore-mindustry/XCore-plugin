@@ -197,6 +197,7 @@ rtv-vote = {$nickname}[lightgray] проголосував за зміну по�
 rtv-left = {$nickname}[lightgray] вийшов. Його голос за зміну мапи скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
 rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{$mapName}[].
 rtv-success = [orange]Голосування пройшло. Мапа [accent]{$mapName}[] буде завантажена через [accent]{$mapLoadDelay}[] секунд...
+rtv-cancelled = [lightgray]Голосування за зміну мапи на [orange]{$mapName}[lightgray] було скасовано адміністратором {$admin}.
 
 # ==============================================================================
 # Statistics & Ranks

@@ -11,13 +11,16 @@ import org.xcore.plugin.vote.VoteChoice;
 import org.xcore.plugin.vote.VoteKick;
 import org.xcore.plugin.vote.VoteKickFactory;
 import org.xcore.plugin.vote.VoteService;
+import org.xcore.plugin.vote.VoteSession;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.common.TextUtils;
 
 import static com.ospx.flubundle.Bundle.args;
 
+import org.xcore.plugin.command.core.ClientController;
+
 @Singleton
-public class VoteController {
+public class VoteController implements ClientController {
     private final FindService findService;
     private final VoteService voteService;
     private final VoteKickFactory voteKickFactory;
@@ -27,6 +30,11 @@ public class VoteController {
         this.findService = findService;
         this.voteService = voteService;
         this.voteKickFactory = voteKickFactory;
+    }
+
+    @Override
+    public int priority() {
+        return 70;
     }
 
     @MinPlayTime(value = PlayTimeLimit.VOTE_KICK, errorKey = "error-votekick-total-playtime")
@@ -60,9 +68,9 @@ public class VoteController {
 
     @Command(name = "vote", params = "<y/n/c>")
     public void vote(ClientContext ctx) {
-        VoteKick current = voteService.getCurrentVoteKick();
+        VoteSession currentSession = voteService.getCurrentSession();
 
-        if (current == null) {
+        if (currentSession == null) {
             ctx.send("error-no-voting", args());
             return;
         }
@@ -72,18 +80,18 @@ public class VoteController {
         if (choice.equals("c")) {
             if (!ctx.player().admin) {
                 ctx.send("error-access-denied", args());
-            } else {
-                current.cancelByAdmin(ctx.player());
+                return;
             }
+            currentSession.cancelByAdmin(ctx.player());
             return;
         }
 
-        if (current.voted.containsKey(ctx.player().id)) {
+        if (currentSession.voted.containsKey(ctx.player().id)) {
             ctx.send("error-already-voted", args());
             return;
         }
 
-        if (current.target == ctx.player()) {
+        if (currentSession instanceof VoteKick voteKick && voteKick.target == ctx.player()) {
             ctx.send("error-vote-yourself", args());
             return;
         }
@@ -94,6 +102,6 @@ public class VoteController {
             return;
         }
 
-        current.vote(ctx.player(), sign.sign());
+        currentSession.vote(ctx.player(), sign.sign());
     }
 }

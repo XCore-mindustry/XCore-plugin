@@ -16,21 +16,16 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.*;
-import org.xcore.plugin.service.TimeService;
-import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.BanData;
-import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.moderation.ModerationService;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static mindustry.Vars.netServer;
 
 @Singleton
 public class DiscordCommandRegistry {
@@ -38,10 +33,10 @@ public class DiscordCommandRegistry {
     private final GlobalConfig globalConfig;
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
-    private final MuteDataRepository muteDataRepository;
     private final AdminDataRepository adminDataRepository;
-    private final NetworkService network;
-    private final TimeService time;
+    private final ModerationService moderationService;
+    private final DiscordLogBridge discordLogBridge;
+    private final org.xcore.plugin.service.NetworkService network;
 
     private final CommandHandler discordCommands;
 
@@ -50,18 +45,18 @@ public class DiscordCommandRegistry {
             GlobalConfig globalConfig,
             PlayerDataRepository playerDataRepository,
             BanDataRepository banDataRepository,
-            MuteDataRepository muteDataRepository,
             AdminDataRepository adminDataRepository,
-            NetworkService network,
-            TimeService timeService
+            ModerationService moderationService,
+            DiscordLogBridge discordLogBridge,
+            org.xcore.plugin.service.NetworkService network
     ) {
         this.globalConfig = globalConfig;
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
-        this.muteDataRepository = muteDataRepository;
         this.adminDataRepository = adminDataRepository;
+        this.moderationService = moderationService;
+        this.discordLogBridge = discordLogBridge;
         this.network = network;
-        this.time = timeService;
         this.discordCommands = new CommandHandler(globalConfig.discordCommandPrefix);
     }
 
@@ -167,9 +162,9 @@ public class DiscordCommandRegistry {
             var server = network.findServer(args[0]);
             if (ctx.serverNotFound(server)) return;
 
-            network.request(new SocketEvents.MapRemoveRequest(server, args[0]),
+            network.request(new SocketEvents.MapRemoveRequest(server, args[1]),
                     response -> ctx.info("Result", response.result).subscribe(),
-                    () -> ctx.noResponse()
+                    ctx::noResponse
             );
         });
 
@@ -206,10 +201,8 @@ public class DiscordCommandRegistry {
             var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
-            Instant period = time.parsePeriod(args[1], TimeUnit.DAYS);
+            var period = moderationService.parsePeriod(args[1], TimeUnit.DAYS);
             if (ctx.checkPeriod(period)) return;
-
-            Instant unbanDate = Instant.now().plusMillis(period.toEpochMilli());
 
             ctx.channel().createMessage(MessageCreateSpec.builder()
                     .content("Are you sure you want to ban a player named '" + data.nickname + "'?")
@@ -218,20 +211,15 @@ public class DiscordCommandRegistry {
                     .filter(event -> ctx.buttonFilter(event, m))
                     .subscribe(event -> {
                         if (event.getCustomId().equals("yes")) {
-                            network.post(new SocketEvents.KickBannedPlayer(data.uuid, data.ip));
+                            String reason = args.length > 2 ? args[2] : null;
+                            var result = moderationService.banById(id, ctx.member().getDisplayName(), reason, period, true);
 
-                            BanData ban = BanData.builder()
-                                    .name(data.nickname)
-                                    .uuid(data.uuid)
-                                    .ip(data.ip)
-                                    .adminName(ctx.member().getDisplayName())
-                                    .reason(args.length > 2 ? args[2] : "Not Specified")
-                                    .expireDate(unbanDate)
-                                    .build();
-
-                            discordService.sendBan(ban);
-                            banDataRepository.save(ban);
-                            ctx.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
+                            if (result.isSuccess()) {
+                                discordLogBridge.sendBan(result.getData().get());
+                                ctx.success("Success", "Successfully banned player '" + data.nickname + "'").subscribe();
+                            } else {
+                                ctx.error("Error", result.getMessage().orElse("Failed to ban player")).subscribe();
+                            }
                         }
                         event.getInteraction().getMessage().ifPresent(message -> message.delete().subscribe());
                     }));
@@ -241,14 +229,13 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
-            if (ctx.playerNotFound(data)) return;
+            var result = moderationService.unbanById(id);
 
-            var info = netServer.admins.getInfoOptional(data.uuid);
-            String ip = info != null ? info.lastIP : null;
-
-            banDataRepository.delete(data.uuid, ip);
-            ctx.success("Success", "'@' unbanned", data.nickname).subscribe();
+            if (result.isSuccess()) {
+                ctx.success("Success", "'" + result.getData().get().nickname + "' unbanned").subscribe();
+            } else {
+                ctx.error("Error", result.getMessage().orElse("Player not found")).subscribe();
+            }
         });
 
         register("mute", "<player-id> <period> [reason...]", "Mute the player", globalConfig.discordAdminRoleId, (args, ctx) -> {
@@ -258,31 +245,30 @@ public class DiscordCommandRegistry {
             var data = playerDataRepository.findById(id);
             if (ctx.playerNotFound(data)) return;
 
-            Instant period = time.parsePeriod(args[1], TimeUnit.DAYS);
+            var period = moderationService.parsePeriod(args[1], TimeUnit.DAYS);
             if (ctx.checkPeriod(period)) return;
 
-            Instant unmuteDate = Instant.now().plusMillis(period.toEpochMilli());
+            String reason = args.length > 2 ? args[2] : null;
+            var result = moderationService.muteById(id, ctx.member().getDisplayName(), reason, period);
 
-            muteDataRepository.save(MuteData.builder()
-                    .name(data.nickname)
-                    .uuid(data.uuid)
-                    .adminName(ctx.member().getDisplayName())
-                    .reason(args.length > 2 ? args[2] : "Not Specified")
-                    .expireDate(unmuteDate)
-                    .build());
-
-            ctx.success("Success", "Successfully muted player '" + data.nickname + "'").subscribe();
+            if (result.isSuccess()) {
+                ctx.success("Success", "Successfully muted player '" + data.nickname + "'").subscribe();
+            } else {
+                ctx.error("Error", result.getMessage().orElse("Failed to mute player")).subscribe();
+            }
         });
 
         register("unmute", "<player-id>", "Unmute player", globalConfig.discordAdminRoleId, (args, ctx) -> {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
-            if (ctx.playerNotFound(data)) return;
+            var result = moderationService.unmuteById(id);
 
-            muteDataRepository.delete(data.uuid);
-            ctx.success("Success", "'@' unmuted", data.nickname).subscribe();
+            if (result.isSuccess()) {
+                ctx.success("Success", "'" + result.getData().get().nickname + "' unmuted").subscribe();
+            } else {
+                ctx.error("Error", result.getMessage().orElse("Player not found")).subscribe();
+            }
         });
 
         register("remove-admin", "<player-id>", "Remove the player from admin panel", globalConfig.discordGeneralAdminRoleId, (args, ctx) -> {
