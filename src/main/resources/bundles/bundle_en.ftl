@@ -375,6 +375,7 @@ event-menu-vote-stop = Stop voting
 
 event-menu-stop = Stop event
 
+event-menu-this-event = [orange]Current Event
 
 # ==============================================================================
 # Errors
@@ -392,6 +393,7 @@ error-vote-yourself = [scarlet]⚠ You cannot vote on your own vote session.
 error-vote-in-progress = [scarlet]⚠ A vote session is already in progress.
 error-no-voting = [scarlet]⚠ There is no vote session at the moment.
 error-no-map = [scarlet]⚠ Map not set
+error-map-not-event = [scarlet]⚠ Map is not part of the current event.
 error-map-not-found = [scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
 error-maps-empty = [scarlet]⚠ Map list is empty
 error-event-not-found = [scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.

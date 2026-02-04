@@ -140,19 +140,7 @@ public class EventController implements ClientController {
 
         if (event != null) {
             List<String> row2 = new ArrayList<>();
-
-            PlayerData pData = playerSessionService.get(player.uuid());
-            Boolean currentVote = pData.eventVotes.get(event.id.toString());
-
-            String likeButtonText = Boolean.TRUE.equals(currentVote)
-                ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
-                : bundle.format(bundle.locale(player), "map-vote-like", args());
-            String dislikeButtonText = Boolean.FALSE.equals(currentVote)
-                ? bundle.format(bundle.locale(player), "map-vote-dislike-selected", args())
-                : bundle.format(bundle.locale(player), "map-vote-dislike", args());
-
-            row2.add(session.add(likeButtonText, () -> handleReputation(player, true, event)));
-            row2.add(session.add(dislikeButtonText, () -> handleReputation(player, false, event)));
+            row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-this-event", args()), () -> handleEvent(player, event)));
             rows.add(row2);
         }
 
@@ -504,6 +492,7 @@ public class EventController implements ClientController {
 
     private void startVoteSession(Player player, EventData target, boolean forced) {
         if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteEvent)) {
+            bundle.send(player, "error-vote-in-progress", args());
             return;
         } else if (voteService.isVoting() && !forced) {
             bundle.send("error-vote-in-progress", args());

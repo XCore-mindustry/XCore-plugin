@@ -19,7 +19,10 @@ import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.EventDataRepository;
+import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -33,6 +36,7 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
+import static mindustry.Vars.state;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,9 +48,11 @@ public class MapController implements ClientController {
 
     private final ObjectMap<String, MenuSession> playerSessionContext = new ObjectMap<>();
 
+    private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
     private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
+    private final Config config;
     private final GlobalConfig globalConfig;
     private final BundleService bundle;
     private final VoteService voteService;
@@ -65,18 +71,20 @@ public class MapController implements ClientController {
     }
 
     @Inject
-    public MapController(MapDataRepository mapDataRepository,
+    public MapController(EventDataRepository eventDataRepository, MapDataRepository mapDataRepository,
                          PlayerDataRepository playerDataRepository,
-                         PlayerSessionService playerSessionService,
+                         PlayerSessionService playerSessionService, Config config,
                          GlobalConfig globalConfig,
                          BundleService bundle,
                          VoteService voteService,
                          VoteRtvFactory voteRtvFactory,
                          MapService mapService,
                          GameStateService gameStateService) {
+        this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
+        this.config = config;
         this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.voteService = voteService;
@@ -200,6 +208,7 @@ public class MapController implements ClientController {
 
     private void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
         if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteRtv)) {
+            bundle.send(player, "error-vote-in-progress", args());
             return;
         } else if (voteService.isVoting() && !forced) {
             bundle.send("error-vote-in-progress", args());
@@ -211,6 +220,19 @@ public class MapController implements ClientController {
         if (target == null) {
             bundle.send("error-map-not-found", args());
             return;
+        }
+
+        if (config.isEvent()) {
+            EventData event = eventDataRepository.findActive().orElse(null);
+
+            if (event != null && event.isActive) {
+                MapData mapData = mapDataRepository.findOrCreate(target.name(), target.file.name(), target.author(), state.rules.mode().name());
+
+                if (!event.map.equals(mapData.id)) {
+                    bundle.send(player, "error-map-not-event", args());
+                    return;
+                }
+            }
         }
 
         if (forced) {
@@ -276,14 +298,18 @@ public class MapController implements ClientController {
         row1.add(session.add(dislikeButtonText, () -> handleReputation(player, false, m)));
         rows.add(row1);
 
-        List<String> row2 = new ArrayList<>();
-        row2.add(session.add(bundle.format(bundle.locale(player), "map-rtv", args()),
-                () -> startRtvSession(player, map, true, false)));
-        if (player.admin) {
-             row2.add(session.add(bundle.format(bundle.locale(player), "map-artv", args()),
-                     () -> startRtvSession(player, map, true, true)));
+
+        EventData event = eventDataRepository.findActive().orElse(null);
+        if (!config.isEvent() || (event == null || !event.isActive) || event.map.equals(m.id)) {
+            List<String> row2 = new ArrayList<>();
+            row2.add(session.add(bundle.format(bundle.locale(player), "map-rtv", args()),
+                    () -> startRtvSession(player, map, true, false)));
+            if (player.admin) {
+                 row2.add(session.add(bundle.format(bundle.locale(player), "map-artv", args()),
+                         () -> startRtvSession(player, map, true, true)));
+            }
+            rows.add(row2);
         }
-        rows.add(row2);
 
         List<String> row3 = new ArrayList<>();
         row3.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));

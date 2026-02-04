@@ -384,6 +384,8 @@ event-menu-vote-stop = Зупинити голосування
 
 event-menu-stop = Зупинити подію
 
+event-menu-this-event = [orange]Теперішна подія
+
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -400,6 +402,7 @@ error-vote-yourself = [scarlet]⚠ Ви не можете голосувати �
 error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
 error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
 error-no-map = [scarlet]⚠ Мапу не задано
+error-map-not-event = [scarlet]⚠ Мапа не входить у теперішню подію.
 error-map-not-found = [scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
 error-maps-empty = [scarlet]⚠ Список мап порожний
 error-event-not-found = [scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
