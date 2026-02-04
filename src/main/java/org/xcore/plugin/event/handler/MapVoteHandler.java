@@ -78,7 +78,7 @@ public class MapVoteHandler {
                 mData.popularity += 4.0;
                 bundleService.send(player, "commands-like-changed", args());
             }
-            pData.mapVotes.put(mData.id, true);
+            pData.mapVotes.put(mData.id.toString(), true);
         } else if (selection == 1) {
             if (Boolean.FALSE.equals(previousVote)) {
                 bundleService.send(player, "error-already-voted", args());
@@ -94,7 +94,7 @@ public class MapVoteHandler {
                 mData.popularity -= 4.0;
                 bundleService.send(player, "commands-dislike-changed", args());
             }
-            pData.mapVotes.put(mData.id, false);
+            pData.mapVotes.put(mData.id.toString(), false);
         }
 
         playerDataRepository.save(pData);

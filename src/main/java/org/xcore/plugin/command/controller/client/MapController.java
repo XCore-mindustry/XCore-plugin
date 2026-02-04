@@ -389,7 +389,7 @@ public class MapController implements ClientController {
             }
         }
 
-        p.mapVotes.put(map.id, like);
+        p.mapVotes.put(map.id.toString(), like);
 
         playerDataRepository.save(p);
         mapDataRepository.save(map);

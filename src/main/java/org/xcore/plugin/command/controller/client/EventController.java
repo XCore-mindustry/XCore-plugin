@@ -559,7 +559,7 @@ public class EventController implements ClientController {
             }
         }
 
-        p.eventVotes.put(event.id, like);
+        p.eventVotes.put(event.id.toString(), like);
 
         playerDataRepository.save(p);
         eventDataRepository.save(event);

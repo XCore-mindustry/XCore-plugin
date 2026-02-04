@@ -30,8 +30,8 @@ public class PlayerData {
     public int hexedPoints = 0;
     public int totalPlayTime = 0;
 
-    public Map<ObjectId, Boolean> eventVotes = new HashMap<>();
-    public Map<ObjectId, Boolean> mapVotes = new HashMap<>();
+    public Map<String, Boolean> eventVotes = new HashMap<>();
+    public Map<String, Boolean> mapVotes = new HashMap<>();
 
     public boolean leaderboard = true;
 
