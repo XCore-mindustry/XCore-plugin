@@ -182,7 +182,12 @@ public class EventController implements ClientController {
 
         MenuSession session = new MenuSession();
         session.draftEvent = new EventData();
-        session.draftEvent.author = playerDataRepository.findByPlayer(player).id;
+
+        PlayerData playerData =  playerSessionService.get(player.uuid());
+        if  (playerData != null) {
+            session.draftEvent.author = playerData.id;
+        }
+
         playerSessionContext.put(player.uuid(), session);
 
         session.textHandler = (text) -> {
