@@ -340,7 +340,7 @@ event-menu-edit = Редагувати
 event-menu-edit-title = [orange]{ -xcore } — Редагування подій
 event-menu-edit-content = {""}[white]Статистика події [green]{$name}
     {""}[white]Автор:[green] {$author}[orange] | [white]Мапа:[green] {$mapName}[orange]
-    {""}[white]Чи масштабна?:[green] {$isMajor}[orange] | [white]Чи проходила?:[green] {$isConducted}[orange]
+    {""}[white]Чи масштабна?:[green] {$isMajor}[orange] | [white]Чи тимчасова?:[green] {$isTemporary}[orange]
     {""}[green]{$description}[white]
 
 event-menu-edit-name = Назва

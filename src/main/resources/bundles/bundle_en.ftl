@@ -331,7 +331,7 @@ event-menu-edit = Edit
 event-menu-edit-title = [orange]{ -xcore } — Edit Event
 event-menu-edit-content = {""}[white]Event statistics [green]{$name}
     {""}[white]Author:[green] {$author}[orange] | [white]Map:[green] {$mapName}[orange]
-    {""}[white]Is Major?:[green] {$isMajor}[orange] | [white]Conducted?:[green] {$isConducted}[orange]
+    {""}[white]Is Major?:[green] {$isMajor}[orange] | [white]Is Temporary?:[green] {$isTemporary}[orange]
     {""}[green]{$description}[white]
 
 event-menu-edit-name = Name
