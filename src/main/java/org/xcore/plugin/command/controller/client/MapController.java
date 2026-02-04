@@ -355,9 +355,9 @@ public class MapController implements ClientController {
         handleReputation(player, like, m);
     }
 
-    private void handleReputation(Player player, boolean like, MapData m) {
+    private void handleReputation(Player player, boolean like, MapData map) {
         PlayerData p = playerSessionService.get(player.uuid());
-        Boolean prev = p.mapVotes.get(m.id);
+        Boolean prev = p.mapVotes.get(map.id);
 
         if (Boolean.valueOf(like).equals(prev)) {
             bundle.send("error-already-voted", args());
@@ -366,23 +366,31 @@ public class MapController implements ClientController {
 
         int mod = (prev == null) ? 1 : 2;
         if (like) {
-            m.reputation += mod;
-            m.popularity += (mod * 2.0);
-            m.like += 1;
-            if (prev != null) {m.dislike -= 1; }
-            bundle.send("commands-like-success", args());
+            map.reputation += mod;
+            map.popularity += (mod * 2.0);
+            map.like += 1;
+            if (prev != null) {
+                map.dislike -= 1;
+                bundle.send("like-map-changed", args());
+            } else {
+                bundle.send("like-map-success", args());
+            }
         } else {
-            m.reputation -= mod;
-            m.popularity -= (mod * 2.0);
-            m.dislike += 1;
-            if (prev != null) {m.like -= 1; }
-            bundle.send("commands-dislike-success", args());
+            map.reputation -= mod;
+            map.popularity -= (mod * 2.0);
+            map.dislike += 1;
+            if (prev != null) {
+                map.like -= 1;
+                bundle.send("dislike-map-changed", args());
+            } else {
+                bundle.send("dislike-map-success", args());
+            }
         }
 
-        p.mapVotes.put(m.id, like);
+        p.mapVotes.put(map.id, like);
 
         playerDataRepository.save(p);
-        mapDataRepository.save(m);
+        mapDataRepository.save(map);
     }
 
     private String[][] convertListToArray(List<List<String>> rows) {

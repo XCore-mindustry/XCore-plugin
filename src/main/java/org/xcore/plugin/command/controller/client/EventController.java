@@ -367,7 +367,7 @@ public class EventController implements ClientController {
         var pagination = CustomGatherers.calculatePagination(totalEvents, perPage);
 
         if (totalEvents == 0) {
-            bundle.send(player, "events-empty", args());
+            bundle.send(player, "event-menu-events-empty", args());
             return;
         }
 
@@ -404,7 +404,7 @@ public class EventController implements ClientController {
         List<EventData> events = eventDataRepository.findPage(skip, perPage);
 
         for (EventData event : events) {
-            String buttonText = event.isActive ? "[green]●[] " + event.name : event.name;
+            String buttonText = event.isActive ? bundle.format(bundle.locale(player), "event-menu-events-selected", args("name", event.name)) : event.name;
             rows.add(List.of(
                     session.add(buttonText, () -> handleEvent(player, event))
             ));
@@ -426,7 +426,7 @@ public class EventController implements ClientController {
         var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 
         if (pagination.totalPages() == 0) {
-            bundle.send(player, "empty", args());
+            bundle.send(player, "error-maps-empty", args());
             return;
         }
 
@@ -506,7 +506,7 @@ public class EventController implements ClientController {
         if (forced) {
             eventDataRepository.activateEvent(target);
 
-            bundle.send("event-vote-skipped", args(
+            bundle.send("commands-artv-event-skipped", args(
                     "name", target.name,
                     "nickname", player.coloredName()
             ));
@@ -517,7 +517,6 @@ public class EventController implements ClientController {
         }
 
     }
-
 
     private void handleReputation(Player player, boolean like, EventData event) {
         PlayerData p = playerSessionService.get(player.uuid());
@@ -530,12 +529,20 @@ public class EventController implements ClientController {
 
         if (like) {
             event.like += 1;
-            if (prev != null) {event.dislike -= 1; }
-            bundle.send("commands-like-success", args());
+            if (prev != null) {
+                event.dislike -= 1;
+                bundle.send("like-event-changed", args());
+            } else {
+                bundle.send("like-event-success", args());
+            }
         } else {
             event.dislike += 1;
-            if (prev != null) {event.like -= 1; }
-            bundle.send("commands-dislike-success", args());
+            if (prev != null) {
+                event.like -= 1;
+                bundle.send("dislike-event-changed", args());
+            } else {
+                bundle.send("dislike-event-success", args());
+            }
         }
 
         p.eventVotes.put(event.id, like);
