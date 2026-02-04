@@ -242,7 +242,7 @@ public class MapController implements ClientController {
         String menuContent = bundle.format(bundle.locale(player), "commands-map-content", args(
                 "name", m.name,
                 "author", m.author,
-                "desc", map.description(),
+                "description", map.description(),
                 "width", map.width,
                 "height", map.height,
                 "reputation", m.reputation,
@@ -251,6 +251,8 @@ public class MapController implements ClientController {
                 "played", m.playedTimes,
                 "playedYear", m.playedTimesYear,
                 "lastPlayed", last,
+                "like", m.like,
+                "dislike", m.dislike,
                 "min", m.minimumGameTime / 60000,
                 "avg", m.averageGameTime / 60000,
                 "max", m.maximumGameTime / 60000
