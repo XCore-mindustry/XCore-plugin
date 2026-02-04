@@ -1,4 +1,9 @@
 # ==============================================================================
+# Terms
+# ==============================================================================
+-xcore = XCore сервер
+
+# ==============================================================================
 # General & Help
 # ==============================================================================
 commands-help-params = [page]
@@ -8,7 +13,7 @@ commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgr
 
 commands-information-params = {""}
 commands-information-description = Show information about the server
-commands-info-title = [orange]XCore Server — {$xcorServerName}
+commands-info-title = [orange]{ -xcore } — {$xcorServerName}
 commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
     {""}
     {""}XCore Version — [accent]{$xcoreVersion}[white]
@@ -140,7 +145,7 @@ votekick-success = [orange]Vote passed. {$target}[orange] kicked for [scarlet]{$
 # ==============================================================================
 commands-map-params = [map-name]
 commands-map-description = Statistics of a specific map
-commands-map-title = [orange]XCore server — Statistics
+commands-map-title = [orange]{ -xcore } — Statistics
 commands-map-content = {""}[white]Map statistics for [green]{$name}
     {""}[white]Author:[green] {$author}[orange] | [white]Size:[green] {$width}x{$height}[orange]
     {""}[white]Reputation:[green] {$reputation}[orange] | [white]Popularity:[green] {$popularity}[orange] | [white]Interest:[green] {$interest}[orange]
@@ -150,9 +155,8 @@ commands-map-content = {""}[white]Map statistics for [green]{$name}
 
 commands-maps-params = [page]
 commands-maps-description = List of all maps on this server.
-commands-maps-title = [orange]XCore server — Map List
+commands-maps-title = [orange]{ -xcore } — Map List
 commands-maps-content = {""}[white]Page [green]{$page}[] of [green]{$total}[]
-commands-maps-page-must-number = [scarlet]'page' must be a number
 
 commands-maps-text-params = [page]
 commands-maps-text-description = List of all maps on this server.
@@ -170,15 +174,11 @@ commands-rtv-description = Rock the vote to change map
 
 commands-like-params = {""}
 commands-like-description = Vote for the current map (increases reputation)
-commands-like-success = [green]You liked this map!
-commands-like-changed = [green]You changed your vote to Like!
 
 commands-dislike-params = {""}
 commands-dislike-description = Vote against the current map
-commands-dislike-success = [orange]You disliked this map.
-commands-dislike-changed = [orange]You changed your vote to Dislike.
 
-map-vote-title = [orange]XCore server — [scarlet]GAME OVER!
+map-vote-title = [orange]{ -xcore } — [scarlet]GAME OVER!
 map-vote-content = {""}
     {""}Next map: [accent]{$mapName}[] by [accent]{$author}[white].
     {""}New game starts in [accent]{$seconds}[white] seconds.
@@ -282,6 +282,100 @@ notification-admin-wave-skip = {$admin}[accent] has skipped the wave.
 
 notification-server-restart = Restart in {$seconds}
 
+like-map-success = [green]You liked this map!
+like-map-changed = [green]You changed your mind to a Like!
+dislike-map-success = [orange]You disliked this map.
+dislike-map-changed = [orange]You changed your mind to a Dislike.
+
+like-event-success = [green]You liked this event!
+like-event-changed = [green]You changed your mind to a Like!
+dislike-event-success = [orange]You disliked this event.
+dislike-event-changed = [orange]You changed your mind to a Dislike.
+
+# ==============================================================================
+# Events (Server)
+# ==============================================================================
+
+commands-event-params = {""}
+commands-event-description = Event management menu
+
+commands-events-params = [page]
+commands-events-description = List of all events on the servers.
+
+event-menu-main = Main
+event-menu-main-title = [orange]{ -xcore } — Events
+event-menu-main-content = Main events page
+
+event-menu-event = Event
+event-menu-event-title = [orange]{ -xcore } — Event
+event-menu-event-content = {""}[white]Event statistics [green]{$name}
+    {""}[white]Author:[green] {$author}[orange] | [white]Map:[green] {$mapName}[orange]
+    {""}[white]Is Major?:[green] {$isMajor}[orange] | [white]Conducted?:[green] {$isConducted}[orange]
+    {""}[white]Is Active?:[green] {$isActive}[orange] | [white]Is Temporary?:[green] {$isTemporary}[orange]
+    {""}[white]Likes:[green] {$like}[orange] | [white]Dislikes:[green] {$dislike}[orange]
+    {""}[green]{$description}[white]
+event-menu-event-map = View map
+
+event-menu-events = Events list
+event-menu-events-title = [orange]{ -xcore } — Events List
+event-menu-events-content = {""}[white]Page [green]{$page}[] of [green]{$total}[]
+event-menu-events-empty = No events found
+event-menu-events-selected = [green]●[] {$name}
+
+event-menu-create-start = Create
+event-menu-create-start-title = [orange]{ -xcore } — Event Creation
+event-menu-create-start-message = Enter the name of the future event
+event-menu-create-start-default = {$playerName}'s Event
+
+event-menu-edit = Edit
+event-menu-edit-title = [orange]{ -xcore } — Edit Event
+event-menu-edit-content = {""}[white]Event statistics [green]{$name}
+    {""}[white]Author:[green] {$author}[orange] | [white]Map:[green] {$mapName}[orange]
+    {""}[white]Is Major?:[green] {$isMajor}[orange] | [white]Conducted?:[green] {$isConducted}[orange]
+    {""}[green]{$description}[white]
+
+event-menu-edit-name = Name
+event-menu-edit-name-title = [orange]{ -xcore } — Edit Event
+event-menu-edit-name-message = Edit name:
+
+event-menu-edit-description = Description
+event-menu-edit-description-title = [orange]{ -xcore } — Edit Event
+event-menu-edit-description-message = Edit description:
+
+event-menu-edit-map = Edit map
+
+event-menu-edit-temporary-active = [green]Temporary
+event-menu-edit-temporary-inactive = [gray]Temporary
+
+event-menu-edit-major-active = [green]Major
+event-menu-edit-major-inactive = [gray]Major
+
+event-menu-edit-planned-start = Event start
+event-menu-edit-planned-start-title = [orange]{ -xcore } — Edit Event
+event-menu-edit-planned-start-message = Enter start time in ms or using m/h/d:
+
+event-menu-edit-planned-end = Event end
+event-menu-edit-planned-end-title = [orange]{ -xcore } — Edit Event
+event-menu-edit-planned-end-message = Enter end time in ms or using m/h/d:
+
+event-menu-maps = Maps
+event-menu-maps-title = [orange]{ -xcore } — Select Map
+event-menu-maps-content = {""}[white]Page [green]{$page}[] of [green]{$total}[]
+
+vote-event-vote = {$nickname}[lightgray] voted to change the current event to [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+    Type [orange]y[] or [orange]n[] to vote.
+vote-event-left = {$nickname}[lightgray] left. Their vote to change the event has been cancelled. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+vote-event-fail = [lightgray]Vote failed. Not enough votes to change the event to [orange]{$mapName}[].
+vote-event-success = [orange]Vote passed. The event [accent]{$mapName}[] will be loaded upon the next map change.
+vote-event-cancelled = [lightgray]The vote to change the event to [orange]{$mapName}[lightgray] was cancelled by administrator {$admin}.
+
+event-vote = [orange]Vote
+event-avote = [red]Instant Change
+event-menu-vote-stop = Stop voting
+
+event-menu-stop = Stop event
+
+
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -297,7 +391,10 @@ error-votekick-total-playtime = [scarlet]⚠ In order to start a vote-kick you n
 error-vote-yourself = [scarlet]⚠ You cannot vote on your own vote session.
 error-vote-in-progress = [scarlet]⚠ A vote session is already in progress.
 error-no-voting = [scarlet]⚠ There is no vote session at the moment.
+error-no-map = [scarlet]⚠ Map not set
 error-map-not-found = [scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
+error-maps-empty = [scarlet]⚠ Map list is empty
+error-event-not-found = [scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
 error-page-between = [scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{$totalPages}[]
 error-page-number = [scarlet]'page' must be a number
 error-wrong-number = [scarlet]⚠ Wrong number format
@@ -318,7 +415,11 @@ days = days
 success = [green]Successfully
 empty = [accent]Empty
 never = Never
+save = Save
 
 close = Close
 previous = <- Previous
 next = Next ->
+
+yes = Yes
+no = No

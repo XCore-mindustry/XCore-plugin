@@ -160,7 +160,6 @@ commands-maps-params = [сторінка]
 commands-maps-description = Список усіх мап на цьому сервері.
 commands-maps-title = [orange]{ -xcore } — Список мап
 commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
-commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
 
 commands-maps-text-params = [сторінка]
 commands-maps-text-description = Список усіх мап на цьому сервері.
