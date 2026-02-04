@@ -371,12 +371,12 @@ event-menu-maps = Мапи
 event-menu-maps-title = [orange]{ -xcore } — Вибір мапи
 event-menu-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
 
-vote-event-vote = {$nickname}[lightgray] проголосував за зміну поточної події на [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+vote-event-vote = {$nickname}[lightgray] проголосував за зміну поточної події на [orange]{$name}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
 vote-event-left = {$nickname}[lightgray] вийшов. Його голос за зміну події скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-vote-event-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{$mapName}[].
-vote-event-success = [orange]Голосування пройшло. Подія [accent]{$mapName}[] буде завантажена при наступній зміни мапи.
-vote-event-cancelled = [lightgray]Голосування за зміну події на [orange]{$mapName}[lightgray] було скасовано адміністратором {$admin}.
+vote-event-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{$name}[].
+vote-event-success = [orange]Голосування пройшло. Подія [accent]{$name}[] буде завантажена при наступній зміни мапи.
+vote-event-cancelled = [lightgray]Голосування за зміну події на [orange]{$name}[lightgray] було скасовано адміністратором {$admin}.
 
 event-vote = [orange]Голосування
 event-avote = [red]Миттєва зміна

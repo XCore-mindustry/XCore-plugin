@@ -199,7 +199,7 @@ public class MapController implements ClientController {
     }
 
     private void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
-        if (!(voteService.getCurrentSession() instanceof VoteRtv)) {
+        if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteRtv)) {
             return;
         } else if (voteService.isVoting() && !forced) {
             bundle.send("error-vote-in-progress", args());
@@ -259,7 +259,7 @@ public class MapController implements ClientController {
         ));
 
         PlayerData pData = playerSessionService.get(player.uuid());
-        Boolean currentVote = pData.mapVotes.get(m.id);
+        Boolean currentVote = pData.mapVotes.get(m.id.toString());
 
         String likeButtonText = Boolean.TRUE.equals(currentVote)
                 ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
@@ -359,7 +359,7 @@ public class MapController implements ClientController {
 
     private void handleReputation(Player player, boolean like, MapData map) {
         PlayerData p = playerSessionService.get(player.uuid());
-        Boolean prev = p.mapVotes.get(map.id);
+        Boolean prev = p.mapVotes.get(map.id.toString());
 
         if (Boolean.valueOf(like).equals(prev)) {
             bundle.send("error-already-voted", args());

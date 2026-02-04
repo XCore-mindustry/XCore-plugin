@@ -142,7 +142,7 @@ public class EventController implements ClientController {
             List<String> row2 = new ArrayList<>();
 
             PlayerData pData = playerSessionService.get(player.uuid());
-            Boolean currentVote = pData.eventVotes.get(event.id);
+            Boolean currentVote = pData.eventVotes.get(event.id.toString());
 
             String likeButtonText = Boolean.TRUE.equals(currentVote)
                 ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
@@ -323,7 +323,7 @@ public class EventController implements ClientController {
         ));
 
         PlayerData pData = playerSessionService.get(player.uuid());
-        Boolean currentVote = pData.eventVotes.get(event.id);
+        Boolean currentVote = pData.eventVotes.get(event.id.toString());
 
         String likeButtonText = Boolean.TRUE.equals(currentVote)
                 ? bundle.format(bundle.locale(player), "map-vote-like-selected", args())
@@ -503,7 +503,7 @@ public class EventController implements ClientController {
     }
 
     private void startVoteSession(Player player, EventData target, boolean forced) {
-        if (!(voteService.getCurrentSession() instanceof VoteEvent)) {
+        if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteEvent)) {
             return;
         } else if (voteService.isVoting() && !forced) {
             bundle.send("error-vote-in-progress", args());
@@ -534,7 +534,7 @@ public class EventController implements ClientController {
 
     private void handleReputation(Player player, boolean like, EventData event) {
         PlayerData p = playerSessionService.get(player.uuid());
-        Boolean prev = p.eventVotes.get(event.id);
+        Boolean prev = p.eventVotes.get(event.id.toString());
 
         if (Boolean.valueOf(like).equals(prev)) {
             bundle.send("error-already-voted", args());

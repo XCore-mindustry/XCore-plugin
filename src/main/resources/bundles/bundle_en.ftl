@@ -362,12 +362,12 @@ event-menu-maps = Maps
 event-menu-maps-title = [orange]{ -xcore } — Select Map
 event-menu-maps-content = {""}[white]Page [green]{$page}[] of [green]{$total}[]
 
-vote-event-vote = {$nickname}[lightgray] voted to change the current event to [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+vote-event-vote = {$nickname}[lightgray] voted to change the current event to [orange]{$name}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
     Type [orange]y[] or [orange]n[] to vote.
 vote-event-left = {$nickname}[lightgray] left. Their vote to change the event has been cancelled. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-vote-event-fail = [lightgray]Vote failed. Not enough votes to change the event to [orange]{$mapName}[].
-vote-event-success = [orange]Vote passed. The event [accent]{$mapName}[] will be loaded upon the next map change.
-vote-event-cancelled = [lightgray]The vote to change the event to [orange]{$mapName}[lightgray] was cancelled by administrator {$admin}.
+vote-event-fail = [lightgray]Vote failed. Not enough votes to change the event to [orange]{$name}[].
+vote-event-success = [orange]Vote passed. The event [accent]{$name}[] will be loaded upon the next map change.
+vote-event-cancelled = [lightgray]The vote to change the event to [orange]{$name}[lightgray] was cancelled by administrator {$admin}.
 
 event-vote = [orange]Vote
 event-avote = [red]Instant Change
