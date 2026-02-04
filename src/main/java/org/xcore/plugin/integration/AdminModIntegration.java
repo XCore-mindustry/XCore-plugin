@@ -65,7 +65,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            var targetData = playerDataRepository.findById(req.pid);
+            var targetData = playerDataRepository.findByPid(req.pid);
 
             if (targetData == null) {
                 bundle.send(player, "error-player-not-found", args());
@@ -99,7 +99,7 @@ public class AdminModIntegration {
             if (!player.admin) return;
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
-            var targetData = playerDataRepository.findById(req.pid);
+            var targetData = playerDataRepository.findByPid(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
             bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));

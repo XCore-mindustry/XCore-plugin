@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.PlayerData;
@@ -54,8 +55,12 @@ public class PlayerDataRepository {
         return collection.find(eq("uuid", uuid)).first();
     }
 
-    public PlayerData findById(int id) {
+    public PlayerData findByPid(int id) {
         return collection.find(eq("pid", id)).first();
+    }
+
+    public PlayerData findById(ObjectId id) {
+        return collection.find(eq("_id", id)).first();
     }
 
     public long deleteBots() {

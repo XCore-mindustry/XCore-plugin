@@ -78,7 +78,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
+            var data = playerDataRepository.findByPid(id);
             if (ctx.playerNotFound(data)) return;
 
             ctx.success((embed) -> embed.title(Strings.stripColors(data.nickname) + " Stats")
@@ -198,7 +198,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
+            var data = playerDataRepository.findByPid(id);
             if (ctx.playerNotFound(data)) return;
 
             var period = moderationService.parsePeriod(args[1], TimeUnit.DAYS);
@@ -242,7 +242,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
+            var data = playerDataRepository.findByPid(id);
             if (ctx.playerNotFound(data)) return;
 
             var period = moderationService.parsePeriod(args[1], TimeUnit.DAYS);
@@ -275,7 +275,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
+            var data = playerDataRepository.findByPid(id);
             if (ctx.playerNotFound(data)) return;
 
             adminDataRepository.delete(data.uuid);
@@ -287,7 +287,7 @@ public class DiscordCommandRegistry {
             int id = Strings.parseInt(args[0]);
             if (ctx.checkId(id)) return;
 
-            var data = playerDataRepository.findById(id);
+            var data = playerDataRepository.findByPid(id);
             if (ctx.playerNotFound(data)) return;
 
             var adminData = adminDataRepository.findByUuid(data.uuid);

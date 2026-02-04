@@ -99,7 +99,7 @@ public class DiscordLogBridge {
     public void sendAdminRequestEvent(int pid, String server) {
         if (!isConnected || privateChannel == null) return;
 
-        PlayerData data = playerDataRepository.findById(pid);
+        PlayerData data = playerDataRepository.findByPid(pid);
 
         privateChannel.createMessage(MessageCreateSpec.builder()
                 .addEmbed(EmbedCreateSpec.builder().title("Admin Request")

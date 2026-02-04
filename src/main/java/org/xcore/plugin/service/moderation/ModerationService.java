@@ -62,7 +62,7 @@ public class ModerationService {
      * @return Result containing BanData if successful
      */
     public ModerationResult<BanData> banById(int id, String adminName, String reason, Instant duration, boolean kickOnline) {
-        var target = playerDataRepository.findById(id);
+        var target = playerDataRepository.findByPid(id);
         if (target == null) {
             return ModerationResult.failure("Player not found");
         }
@@ -97,7 +97,7 @@ public class ModerationService {
      * @return Result containing PlayerData if successful
      */
     public ModerationResult<PlayerData> unbanById(int id) {
-        var target = playerDataRepository.findById(id);
+        var target = playerDataRepository.findByPid(id);
         if (target == null) {
             return ModerationResult.failure("Player not found");
         }

@@ -85,7 +85,7 @@ public class PlayerSessionService {
             }
         }
 
-        return playerDataRepository.findById(pid);
+        return playerDataRepository.findByPid(pid);
     }
 
     /**
