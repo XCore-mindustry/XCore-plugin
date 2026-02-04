@@ -32,3 +32,15 @@ dependencies {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+
+            groupId = "org.xcore"
+            artifactId = "cloud-mindustry"
+            version = "0.1.0"
+        }
+    }
+}
