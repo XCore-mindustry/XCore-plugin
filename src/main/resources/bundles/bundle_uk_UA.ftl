@@ -309,8 +309,8 @@ dislike-event-changed = [orange]Ви змінили свою думку на "Н
 commands-event-params = {""}
 commands-event-description = Меню керуванням подій
 
-commands-maps-params = [сторінка]
-commands-maps-description = Список усіх подій на серверах.
+commands-events-params = [сторінка]
+commands-events-description = Список усіх подій на серверах.
 
 event-menu-main = Головна
 event-menu-main-title = [orange]{ -xcore } — Події
