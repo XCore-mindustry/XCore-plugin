@@ -329,7 +329,7 @@ event-menu-event-map = Подивитися мапу
 event-menu-events = Список подій
 event-menu-events-title = [orange]{ -xcore } — Список Подій
 event-menu-events-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
-event-menu-events-empty = = Немає подій
+event-menu-events-empty = Немає подій
 event-menu-events-selected = [green]●[] {$name}
 
 event-menu-create-start = Створити
@@ -384,6 +384,7 @@ event-avote = [red]Миттєва зміна
 event-menu-vote-stop = Зупинити голосування
 
 event-menu-stop = Зупинити подію
+
 # ==============================================================================
 # Errors
 # ==============================================================================

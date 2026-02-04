@@ -182,6 +182,7 @@ public class EventController implements ClientController {
 
         MenuSession session = new MenuSession();
         session.draftEvent = new EventData();
+        session.draftEvent.author = playerDataRepository.findByPlayer(player).id;
         playerSessionContext.put(player.uuid(), session);
 
         session.textHandler = (text) -> {
@@ -197,7 +198,8 @@ public class EventController implements ClientController {
         if (session == null || session.draftEvent == null) return;
 
         EventData draft = session.draftEvent;
-        MapData mapData = mapDataRepository.findById(session.draftEvent.map);
+        MapData mapData = mapDataRepository.findById(draft.map);
+        PlayerData playerData = playerDataRepository.findById(draft.author);
 
         String yes = bundle.format(bundle.locale(player), "yes", args());
         String no = bundle.format(bundle.locale(player), "no", args());
@@ -206,7 +208,7 @@ public class EventController implements ClientController {
         String menuContent = bundle.format(bundle.locale(player), "event-menu-edit-content", args(
                 "name", session.draftEvent.name,
                 "description", session.draftEvent.description,
-                "author", session.draftEvent.author,
+                "author", (playerData == null) ? "" : playerData.nickname,
                 "mapName", (mapData == null) ? "" : mapData.name,
                 "isMajor", session.draftEvent.isMajor ? yes : no,
                 "isTemporary", session.draftEvent.isTemporary ? yes : no,
@@ -292,26 +294,27 @@ public class EventController implements ClientController {
         MenuSession session = new MenuSession();
         List<List<String>> rows = new ArrayList<>();
 
-        MapData mapData = mapDataRepository.findById(session.draftEvent.map);
+        MapData mapData = mapDataRepository.findById(event.map);
+        PlayerData playerData = playerDataRepository.findById(event.author);
 
         String yes = bundle.format(bundle.locale(player), "yes", args());
         String no = bundle.format(bundle.locale(player), "no", args());
 
         String menuTitle = bundle.format(bundle.locale(player), "event-menu-event-title", args());
         String menuContent = bundle.format(bundle.locale(player), "event-menu-event-content", args(
-                "name", session.draftEvent.name,
-                "description", session.draftEvent.description,
-                "author", session.draftEvent.author,
+                "name", event.name,
+                "description", event.description,
+                "author", (playerData == null) ? "" : playerData.nickname,
                 "mapName", (mapData == null) ? "" : mapData.name,
-                "isMajor", session.draftEvent.isMajor ? yes : no,
-                "isConducted", session.draftEvent.isConducted ? yes : no,
-                "isActive", session.draftEvent.isActive ? yes : no,
-                "isTemporary", session.draftEvent.isTemporary ? yes : no,
-                "createdEventTime", session.draftEvent.createdEventTime,
-                "plannedStartTime", session.draftEvent.plannedStartTime,
-                "plannedEndTime", session.draftEvent.plannedEndTime,
-                "like", session.draftEvent.like,
-                "dislike", session.draftEvent.dislike
+                "isMajor", event.isMajor ? yes : no,
+                "isConducted", event.isConducted ? yes : no,
+                "isActive", event.isActive ? yes : no,
+                "isTemporary", event.isTemporary ? yes : no,
+                "createdEventTime", event.createdEventTime,
+                "plannedStartTime", event.plannedStartTime,
+                "plannedEndTime", event.plannedEndTime,
+                "like", event.like,
+                "dislike", event.dislike
         ));
 
         PlayerData pData = playerSessionService.get(player.uuid());
