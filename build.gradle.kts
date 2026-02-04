@@ -3,6 +3,7 @@ import com.xpdustry.toxopid.extension.anukeXpdustry
 import com.xpdustry.toxopid.task.MindustryExec
 import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
@@ -81,14 +82,31 @@ val generateModInfo by tasks.registering {
     }
 }
 
-tasks.shadowJar {
+tasks.jar {
+    enabled = false
+}
+
+tasks.assemble {
+    dependsOn(tasks.shadowJar)
+}
+
+fun ShadowJar.applyCommonSettings() {
     archiveClassifier.set("")
-
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
     from(generateModInfo)
-
     mergeServiceFiles()
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    applyCommonSettings()
+}
+
+tasks.register<ShadowJar>("shadowJarRelease") {
+    applyCommonSettings()
+    archiveClassifier.set("release")
+
 //
 //    minimize {
 //        exclude(dependency("com.discord4j:.*:.*"))
@@ -110,17 +128,6 @@ tasks.shadowJar {
     relocate("com.ospx.sock", "$shadowPrefix.sock")
 
     // relocate("org.jline", "$shadowPrefix.jline") fucking jline
-
-    isReproducibleFileOrder = true
-    isPreserveFileTimestamps = false
-}
-
-tasks.jar {
-    enabled = false
-}
-
-tasks.assemble {
-    dependsOn(tasks.shadowJar)
 }
 
 tasks.register("getProjectVersion") {
