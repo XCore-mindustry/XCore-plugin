@@ -1,3 +1,10 @@
+# VERDION OF: 04.02.2026
+
+# ==============================================================================
+# Terms
+# ==============================================================================
+-xcore = XCore сервер
+
 # ==============================================================================
 # General & Help
 # ==============================================================================
@@ -8,7 +15,7 @@ commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgr
 
 commands-information-params = ${""}
 commands-information-description = Показати інформацію про сервер
-commands-info-title = [orange]XCore сервер — {$xcorServerName}
+commands-info-title = [orange]{ -xcore } — {$xcorServerName}
 commands-info-text = [accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     {""}
     {""}Версія XCore — [accent]{$xcoreVersion}[white]
@@ -139,18 +146,19 @@ votekick-success = [orange]Голосування успішне. {$target}[oran
 # Maps & RTV
 # ==============================================================================
 commands-map-params = [назва-мапи]
-commands-map-description = Статистика конкретної мапи
-commands-map-title = [orange]XCore сервер — Статистика
+commands-map-description = Статистика конкретної мапи та швидкі дії
+commands-map-title = [orange]{ -xcore } — Мапа
 commands-map-content = {""}[white]Статистика мапи [green]{$name}
     {""}[white]Автор:[green] {$author}[orange] | [white]Розмір:[green] {$width}x{$height}[orange]
     {""}[white]Репутація:[green] {$reputation}[orange] | [white]Популярність:[green] {$popularity}[orange] | [white]Інтерес:[green] {$interest}[orange]
     {""}[white]Зіграно разів:[green] {$played}[orange] | [white]Зіграно за рік:[green] {$playedYear}[orange] | [white]Остання гра:[green] {$lastPlayed}[orange]
+    {""}[white]Подобається:[green] {$like}[orange] | [white]Не подобається:[green] {$dislike}[orange]
     {""}[white]Мін. час:[green] {$min}[orange] | [white]Сер. час:[green] {$avg}[orange] | [white]Макс. час:[green] {$max}[orange]
-    {""}[green]{$desc}[white]
+    {""}[green]{$description}[white]
 
 commands-maps-params = [сторінка]
 commands-maps-description = Список усіх мап на цьому сервері.
-commands-maps-title = [orange]XCore сервер — Список мап
+commands-maps-title = [orange]{ -xcore } — Список мап
 commands-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
 commands-maps-page-must-number = [scarlet]'сторінка' має бути числом
 
@@ -163,22 +171,19 @@ commands-maps-text-content = {""}
 
 commands-artv-params = [мапа...]
 commands-artv-description = Примусово змінити мапу. [scarlet]Тільки для адміністраторів.
-commands-artv-map-skipped = {$nickname}[accent] пропустив мапу.
+commands-artv-map-skipped = {$nickname}[accent] пропустив мапу. Наступна мапа: {$name}
+commands-artv-event-skipped = {$nickname}[accent] пропустив подію. Наступна подія: {$name}
 
 commands-rtv-params = [мапа...]
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
 
 commands-like-params = {""}
 commands-like-description = Проголосувати за мапу (підвищує репутацію)
-commands-like-success = [green]Ви вподобали цю мапу!
-commands-like-changed = [green]Ви змінили свою думку на Вподобайку!
 
 commands-dislike-params = {""}
 commands-dislike-description = Проголосувати проти мапи
-commands-dislike-success = [orange]Ви поставили "Не подобається" цій мапі.
-commands-dislike-changed = [orange]Ви змінили свою думку на "Не подобається".
 
-map-vote-title = [orange]XCore сервер — [scarlet]ГРУ ЗАКІНЧЕНО!
+map-vote-title = [orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content = {""}
     {""}Наступна мапа: [accent]{$mapName}[] від [accent]{$author}[white].
     {""}Нова гра почнеться через [accent]{$seconds}[white] секунд.
@@ -287,6 +292,98 @@ notification-admin-wave-skip = {$admin}[accent] пропустив(ла) хви�
 
 notification-server-restart = Перезавантаження через {$seconds}
 
+like-map-success = [green]Ви вподобали цю мапу!
+like-map-changed = [green]Ви змінили свою думку на Вподобайку!
+dislike-map-success = [orange]Ви поставили "Не подобається" цій мапі.
+dislike-map-changed = [orange]Ви змінили свою думку на "Не подобається".
+
+like-event-success = [green]Ви вподобали цю подію!
+like-event-changed = [green]Ви змінили свою думку на Вподобайку!
+dislike-event-success = [orange]Ви поставили "Не подобається" цій події.
+dislike-event-changed = [orange]Ви змінили свою думку на "Не подобається".
+
+# ==============================================================================
+# Events (Server)
+# ==============================================================================
+
+commands-event-params = {""}
+commands-event-description = Меню керуванням подій
+
+commands-maps-params = [сторінка]
+commands-maps-description = Список усіх подій на серверах.
+
+event-menu-main = Головна
+event-menu-main-title = [orange]{ -xcore } — Події
+event-menu-main-content = Головна сторінка подій
+
+event-menu-event = Подія
+event-menu-event-title = [orange]{ -xcore } — Подія
+event-menu-event-content = {""}[white]Статистика події [green]{$name}
+    {""}[white]Автор:[green] {$author}[orange] | [white]Мапа:[green] {$mapName}[orange]
+    {""}[white]Чи масштабна?:[green] {$isMajor}[orange] | [white]Чи проходила?:[green] {$isConducted}[orange]
+    {""}[white]Чи активна?:[green] {$isActive}[orange] | [white]Чи тимчасова?:[green] {$isTemporary}[orange]
+    {""}[white]Подобається:[green] {$like}[orange] | [white]Не подобається:[green] {$dislike}[orange]
+    {""}[green]{$description}[white]
+event-menu-event-map = Подивитися мапу
+
+event-menu-events = Список подій
+event-menu-events-title = [orange]{ -xcore } — Список Подій
+event-menu-events-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
+event-menu-events-empty = = Немає подій
+event-menu-events-selected = [green]●[] {$name}
+
+event-menu-create-start = Створити
+event-menu-create-start-title = [orange]{ -xcore } — Створення подій
+event-menu-create-start-message = Ведіть назву майбутьної події
+event-menu-create-start-default = {$playerName} Подія
+
+event-menu-edit = Редагувати
+event-menu-edit-title = [orange]{ -xcore } — Редагування подій
+event-menu-edit-content = {""}[white]Статистика події [green]{$name}
+    {""}[white]Автор:[green] {$author}[orange] | [white]Мапа:[green] {$mapName}[orange]
+    {""}[white]Чи масштабна?:[green] {$isMajor}[orange] | [white]Чи проходила?:[green] {$isConducted}[orange]
+    {""}[green]{$description}[white]
+
+event-menu-edit-name = Назва
+event-menu-edit-name-title = [orange]{ -xcore } — Редагування події
+event-menu-edit-name-message = Редагування назви:
+
+event-menu-edit-description = Опис
+event-menu-edit-description-title = [orange]{ -xcore } — Редагування події
+event-menu-edit-description-message = Редагування опису:
+
+event-menu-edit-map = Редагувати мапу
+
+event-menu-edit-temporary-active = [green]Тимчасова
+event-menu-edit-temporary-inactive = [gray]Тимчасова
+
+event-menu-edit-major-active = [green]Масштабна
+event-menu-edit-major-inactive = [gray]Масштабна
+
+event-menu-edit-planned-start = Початок події
+event-menu-edit-planned-start-title = [orange]{ -xcore } — Редагування події
+event-menu-edit-planned-start-message = Напишіть початковий час у мс або з використанням m/h/d:
+
+event-menu-edit-planned-end = Кінець події
+event-menu-edit-planned-end-title = [orange]{ -xcore } — Редагування події
+event-menu-edit-planned-end-message = Напишіть кінцевий час у мс або з використанням m/h/d:
+
+event-menu-maps = Мапи
+event-menu-maps-title = [orange]{ -xcore } — Вибір мапи
+event-menu-maps-content = {""}[white]Сторінка [green]{$page}[] з [green]{$total}[]
+
+vote-event-vote = {$nickname}[lightgray] проголосував за зміну поточної події на [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+    Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
+vote-event-left = {$nickname}[lightgray] вийшов. Його голос за зміну події скасовано. ([accent]{$votes}[]/[accent]{$votesRequired}[])
+vote-event-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{$mapName}[].
+vote-event-success = [orange]Голосування пройшло. Подія [accent]{$mapName}[] буде завантажена при наступній зміни мапи.
+vote-event-cancelled = [lightgray]Голосування за зміну події на [orange]{$mapName}[lightgray] було скасовано адміністратором {$admin}.
+
+event-vote = [orange]Голосування
+event-avote = [red]Миттєва зміна
+event-menu-vote-stop = Зупинити голосування
+
+event-menu-stop = Зупинити подію
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -302,7 +399,10 @@ error-votekick-total-playtime = [scarlet]⚠ Щоб почати голосув�
 error-vote-yourself = [scarlet]⚠ Ви не можете голосувати у власному голосуванні.
 error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
 error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
+error-no-map = [scarlet]⚠ Мапу не задано
 error-map-not-found = [scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
+error-maps-empty = [scarlet]⚠ Список мап порожний
+error-event-not-found = [scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
 error-page-between = [scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{$totalPages}[]
 error-page-number = [scarlet]'сторінка' має бути числом
 error-wrong-number = [scarlet]⚠ Неправильний формат числа
@@ -320,10 +420,14 @@ error-processing-request = [scarlet]Виникла помилка під час 
 hours = годин
 days = днів
 
-success = [green]Успішно
-empty = [accent]Порожньо
+success = [green]Успішно[]
+empty = [accent]Порожньо[]
 never = Ніколи
+save = Зберегти
 
 close = Закрити
 previous = <- Попередня
 next = Наступна ->
+
+yes = Так
+no = Ні
