@@ -321,7 +321,7 @@ public class MapController implements ClientController {
         Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
     }
 
-    private void handleMaps(Player player, int page) {
+    public void handleMaps(Player player, int page) {
         Seq<Map> maps = mapService.getAvailableMaps();
         var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 

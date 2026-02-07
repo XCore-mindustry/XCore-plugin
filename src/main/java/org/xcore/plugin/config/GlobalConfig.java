@@ -22,6 +22,7 @@ public class GlobalConfig {
     public String discordUrl = "https://discord.gg/RUMCCa9QAC";
     public String githubUrl = "https://github.com/XCore-mindustry/";
     public String donatelloUrl = "https://donatello.to/xcore";
+    public String weblateUrl = "https://xcore.eradication.fun/";
     public String discordRedVSBlueUrl = "https://discord.gg/UdnuFetcNt";
 
     public int minPlayTimeForVotekick = 60;

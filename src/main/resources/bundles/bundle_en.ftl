@@ -273,6 +273,7 @@ commands-event-params = { "" }
 commands-event-description = Event management menu
 commands-events-params = { "[" }page]
 commands-events-description = List of all events on the servers.
+event-events = Events
 event-menu-main = Main
 event-menu-main-title = { "[" }orange]{ -xcore } — Events
 event-menu-main-content = Main events page

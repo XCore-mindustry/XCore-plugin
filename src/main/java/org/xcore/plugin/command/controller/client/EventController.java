@@ -163,7 +163,7 @@ public class EventController implements ClientController {
         Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
     }
 
-    private void handleCreateStart(Player player) {
+    public void handleCreateStart(Player player) {
         String title = bundle.format(bundle.locale(player), "event-menu-create-start-title", args());
         String message = bundle.format(bundle.locale(player), "event-menu-create-start-message", args());
         String defaultText = bundle.format(bundle.locale(player), "event-menu-create-start-default", args("playerName", player.name));
@@ -362,7 +362,7 @@ public class EventController implements ClientController {
         Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
     }
 
-    private void handleEvents(Player player, int page) {
+    public void handleEvents(Player player, int page) {
         int totalEvents = (int) eventDataRepository.count();
 
         int perPage = globalConfig.eventsPerPage;

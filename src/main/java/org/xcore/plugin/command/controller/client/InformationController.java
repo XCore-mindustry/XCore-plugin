@@ -27,11 +27,16 @@ public class InformationController implements ClientController {
     private final GlobalConfig globalConfig;
     private final BuildInfo buildInfo;
 
+    private final MapController mapController;
+    private final EventController eventController;
+
     @Inject
-    public InformationController(Config config, GlobalConfig globalConfig, BuildInfo buildInfo) {
+    public InformationController(Config config, GlobalConfig globalConfig, BuildInfo buildInfo, MapController mapController, EventController eventController) {
         this.config = config;
         this.globalConfig = globalConfig;
         this.buildInfo = buildInfo;
+        this.mapController = mapController;
+        this.eventController = eventController;
     }
 
     @Override
@@ -47,11 +52,25 @@ public class InformationController implements ClientController {
 
     public void initMenu() {
         this.infoMenuId = Menus.registerMenu((player, option) -> {
-            switch (option) {
-                case 0 -> Call.openURI(player.con, globalConfig.discordUrl);
-                case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
-                case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
-                case 3 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+            if (config.isEvent()) {
+                switch (option) {
+                    case 0 -> Call.openURI(player.con, globalConfig.discordUrl);
+                    case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
+                    case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
+                    case 3 -> Call.openURI(player.con, globalConfig.weblateUrl);
+                    case 4 -> mapController.handleMaps(player, 1);
+                    case 5 -> eventController.handleEvents(player, 1);
+                    case 6 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                }
+            } else {
+                switch (option) {
+                    case 0 -> Call.openURI(player.con, globalConfig.discordUrl);
+                    case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
+                    case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
+                    case 3 -> Call.openURI(player.con, globalConfig.weblateUrl);
+                    case 4 -> mapController.handleMaps(player, 1);
+                    case 6 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                }
             }
         });
     }
@@ -92,14 +111,30 @@ public class InformationController implements ClientController {
 
     @Command(name = "information", aliases = {"info"})
     public void info(ClientContext ctx) {
-        Call.menu(ctx.player().con, infoMenuId,
-                ctx.format("commands-info-title", args("xcorServerName", config.server)),
-                ctx.format("commands-info-text", args("xcoreVersion", buildInfo.getVersion())),
-                new String[][]{
-                        {"Discord", "GitHub", "Donatello"},
-                        {"RedVSBlue"},
-                        {ctx.format("close", args())}
-                }
-        );
+        if (config.isEvent()) {
+            Call.menu(ctx.player().con, infoMenuId,
+                    ctx.format("commands-info-title", args("xcorServerName", config.server)),
+                    ctx.format("commands-info-text", args("xcoreVersion", buildInfo.getVersion())),
+                    new String[][]{
+                            {"Discord", "GitHub",},
+                            {"Donatello", "Weblate"},
+                            {"RedVSBlue"},
+                            {ctx.format("map-maps", args()), ctx.format("event-events", args())},
+                            {ctx.format("close", args())}
+                    }
+            );
+        } else {
+            Call.menu(ctx.player().con, infoMenuId,
+                    ctx.format("commands-info-title", args("xcorServerName", config.server)),
+                    ctx.format("commands-info-text", args("xcoreVersion", buildInfo.getVersion())),
+                    new String[][]{
+                            {"Discord", "GitHub",},
+                            {"Donatello", "Weblate"},
+                            {"RedVSBlue"},
+                            {ctx.format("map-maps", args())},
+                            {ctx.format("close", args())}
+                    }
+            );
+        }
     }
 }
