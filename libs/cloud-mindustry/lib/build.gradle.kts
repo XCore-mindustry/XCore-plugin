@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "org.xcore"
-version = "0.1.0"
+version = "0.2.0"
 
 java {
     toolchain {
@@ -40,7 +40,7 @@ publishing {
 
             groupId = "org.xcore"
             artifactId = "cloud-mindustry"
-            version = "0.1.0"
+            version = "0.2.0"
         }
     }
 }

@@ -3,7 +3,7 @@ package org.xcore.cloud.mindustry;
 import arc.util.CommandHandler;
 import mindustry.gen.Player;
 
-final class MindustryCloudCommand<C> extends CommandHandler.Command {
+public final class MindustryCloudCommand<C> extends CommandHandler.Command {
     MindustryCloudCommand(String registeredName, String inputName, String description, MindustryCommandManager<C> manager) {
         super(registeredName, "[args...]", description, (args, player) -> {
             MindustrySender rawSender = (player == null)
