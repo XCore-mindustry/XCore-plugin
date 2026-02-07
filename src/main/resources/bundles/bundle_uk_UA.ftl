@@ -387,3 +387,5 @@ previous = <- Попередня
 next = Наступна ->
 yes = Так
 no = Ні
+event-events = Події
+test = Тест
