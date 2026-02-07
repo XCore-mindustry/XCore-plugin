@@ -58,9 +58,9 @@ public class InformationController implements ClientController {
                     case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
                     case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
                     case 3 -> Call.openURI(player.con, globalConfig.weblateUrl);
-                    case 4 -> mapController.handleMaps(player, 1);
-                    case 5 -> eventController.handleEvents(player, 1);
-                    case 6 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                    case 4 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                    case 5 -> mapController.handleMaps(player, 1);
+                    case 6 -> eventController.handleEvents(player, 1);
                 }
             } else {
                 switch (option) {
@@ -68,8 +68,8 @@ public class InformationController implements ClientController {
                     case 1 -> Call.openURI(player.con, globalConfig.githubUrl);
                     case 2 -> Call.openURI(player.con, globalConfig.donatelloUrl);
                     case 3 -> Call.openURI(player.con, globalConfig.weblateUrl);
-                    case 4 -> mapController.handleMaps(player, 1);
-                    case 6 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                    case 4 -> Call.openURI(player.con, globalConfig.discordRedVSBlueUrl);
+                    case 5 -> mapController.handleMaps(player, 1);
                 }
             }
         });
