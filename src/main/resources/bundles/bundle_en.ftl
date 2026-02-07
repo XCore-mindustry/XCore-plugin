@@ -378,3 +378,4 @@ previous = <- Previous
 next = Next ->
 yes = Yes
 no = No
+test = Test
