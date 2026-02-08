@@ -183,9 +183,9 @@ rtv-cancelled = { "[" }lightgray]Голосование за смену карт
 # ==============================================================================
 # Statistics & Ranks
 # ==============================================================================
-commands-stats-params = { "[" }id-игрока]
-commands-stats-description = Статистика игрока
-commands-stats-content =
+commands-player-params = { "[" }id-игрока]
+commands-player-description = Статистика игрока
+player-menu-player-content =
     Статистика игрока { $nickname } [grey]#{ $pid }
     { "" }[brown]Время на сервере: [grey]{ $totalPlayTime }[] minutes
     Ранг в MiniHexed: [grey]{ $hexedRankTag } { $hexedRankName }

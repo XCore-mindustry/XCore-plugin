@@ -181,11 +181,12 @@ rtv-fail = { "[" }lightgray]Vote failed. Not enough votes to change the current 
 rtv-success = { "[" }orange]Vote passed. Map [accent]{ $mapName }[] will be loaded in [accent]{ $mapLoadDelay }[] seconds…
 rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $mapName }[lightgray] was cancelled by { $admin }.
 # ==============================================================================
-# Statistics & Ranks
+# Statistics & Ranks & Players
 # ==============================================================================
-commands-stats-params = { "[" }player-id]
-commands-stats-description = View a player's Statistics
-commands-stats-content =
+commands-player-params = { "[" }player-id]
+commands-player-description = View a player's Statistics
+player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
+player-menu-player-content =
     { $nickname } [grey]#{ $pid } Statistics
     { "" }[brown]PlayTime: [grey]{ $totalPlayTime }[] minutes
     Hexed Rank: [grey]{ $hexedRankTag } { $hexedRankName }
@@ -375,6 +376,7 @@ empty = { "[" }accent]Empty
 never = Never
 save = Save
 close = Close
+back = Back
 previous = <- Previous
 next = Next ->
 yes = Yes

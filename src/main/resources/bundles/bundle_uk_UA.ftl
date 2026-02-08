@@ -188,9 +188,9 @@ rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи
 # ==============================================================================
 # Statistics & Ranks
 # ==============================================================================
-commands-stats-params = { "[" }id-гравця]
-commands-stats-description = Переглянути статистику гравця.
-commands-stats-content =
+commands-player-params = { "[" }id-гравця]
+commands-player-description = Переглянути статистику гравця.
+player-menu-player-content =
     Статистика гравця { $nickname } [grey]#{ $pid }
     { "" }[brown]Час у грі: [grey]{ $totalPlayTime }[] хвилин
     Ранг у Hexed: [grey]{ $hexedRankTag } { $hexedRankName }
