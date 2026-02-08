@@ -4,6 +4,7 @@ import arc.func.Cons;
 import arc.util.Log;
 import arc.util.Strings;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.core.GameState;
 import mindustry.game.EventType.GameOverEvent;
@@ -14,12 +15,18 @@ import mindustry.maps.Map;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import mindustry.ui.Menus;
+import org.xcore.plugin.command.controller.client.MapController;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.ui.MenuSession;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
@@ -27,78 +34,24 @@ import static mindustry.Vars.*;
 @Singleton
 public class MapVoteHandler {
 
-    private int mapVoteMenuId;
-
     private final MapDataRepository mapDataRepository;
-    private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
     private final BundleService bundleService;
+    private final MenuService menuService;
+    private final Provider<MapController> mapController;
+
 
     @Inject
     public MapVoteHandler(MapDataRepository mapDataRepository,
-                          PlayerDataRepository playerDataRepository,
                           PlayerSessionService playerSessionService,
-                          BundleService bundleService) {
+                          BundleService bundleService,
+                          MenuService menuService,
+                          Provider<MapController> mapController) {
         this.mapDataRepository = mapDataRepository;
-        this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.bundleService = bundleService;
-    }
-
-    public int initMenu() {
-        mapVoteMenuId = Menus.registerMenu(this::onMapVote);
-        return mapVoteMenuId;
-    }
-
-    public void onMapVote(Player player, int selection) {
-        if (selection == -1) return;
-
-        var map = state.map;
-        if (map == null) return;
-
-        String mapName = map.plainName();
-        PlayerData pData = playerSessionService.get(player.uuid());
-
-        MapData mData = mapDataRepository.findOrCreate(mapName, map.file.name(), map.author(), state.rules.mode().name());
-
-        Boolean previousVote = pData.mapVotes.get(mData.id);
-
-        if (selection == 0) {
-            if (Boolean.TRUE.equals(previousVote)) {
-                bundleService.send(player, "error-already-voted", args());
-                return;
-            }
-
-            if (previousVote == null) {
-                mData.reputation += 1;
-                mData.popularity += 2.0;
-                bundleService.send(player, "commands-like-success", args());
-            } else {
-                mData.reputation += 2;
-                mData.popularity += 4.0;
-                bundleService.send(player, "commands-like-changed", args());
-            }
-            pData.mapVotes.put(mData.id.toString(), true);
-        } else if (selection == 1) {
-            if (Boolean.FALSE.equals(previousVote)) {
-                bundleService.send(player, "error-already-voted", args());
-                return;
-            }
-
-            if (previousVote == null) {
-                mData.reputation -= 1;
-                mData.popularity -= 2.0;
-                bundleService.send(player, "commands-dislike-success", args());
-            } else {
-                mData.reputation -= 2;
-                mData.popularity -= 4.0;
-                bundleService.send(player, "commands-dislike-changed", args());
-            }
-            pData.mapVotes.put(mData.id.toString(), false);
-        }
-
-        playerDataRepository.save(pData);
-        mapDataRepository.save(mData);
+        this.menuService = menuService;
+        this.mapController = mapController;
     }
 
     public Cons<GameOverEvent> getGameOverListener() {
@@ -129,20 +82,40 @@ public class MapVoteHandler {
                     ));
 
                     PlayerData pData = playerSessionService.get(p.uuid());
-                    MapData map = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
-                    Boolean currentVote = pData.mapVotes.get(map.id);
+                    MapData mapData = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
+                    MapData nextMapData = mapDataRepository.findOrCreate(nextMap.plainName(), nextMap.file.name(), nextMap.author(), state.rules.mode().name());
+                    Boolean currentVote = pData.mapVotes.get(mapData.id.toString());
 
-                    String likeBtn = Boolean.TRUE.equals(currentVote)
+                    String likeButtonText = Boolean.TRUE.equals(currentVote)
                             ? bundleService.format(bundleService.locale(p), "map-vote-like-selected", args())
                             : bundleService.format(bundleService.locale(p), "map-vote-like", args());
-                    String dislikeBtn = Boolean.FALSE.equals(currentVote)
+                    String dislikeButtonText = Boolean.FALSE.equals(currentVote)
                             ? bundleService.format(bundleService.locale(p), "map-vote-dislike-selected", args())
                             : bundleService.format(bundleService.locale(p), "map-vote-dislike", args());
 
-                    Call.menu(p.con, mapVoteMenuId, menuTitle, menuContent, new String[][]{
-                            {likeBtn, dislikeBtn},
-                            {bundleService.format(bundleService.locale(p), "close", args())}
-                    });
+                    MenuSession session = menuService.get(p.uuid());
+                    session.actions.clear();
+                    List<List<String>> rows = new ArrayList<>();
+
+                    List<String> row1 = new ArrayList<>();
+                    row1.add(session.add(likeButtonText, () -> mapController.get().handleReputation(p, true, mapData)));
+                    row1.add(session.add(dislikeButtonText, () -> mapController.get().handleReputation(p, false, mapData)));
+                    rows.add(row1);
+
+                    List<String> row2 = new ArrayList<>();
+                    row2.add(session.add(bundleService.format(bundleService.locale(p), "current-map", args()), () -> {
+                        session.clearHistory();
+                        mapController.get().handleMap(p, mapData);
+                    }));
+                    row2.add(session.add(bundleService.format(bundleService.locale(p), "next-map", args()), () -> {
+                        session.clearHistory();
+                        mapController.get().handleMap(p, nextMapData);
+                    }));
+                    rows.add(row2);
+
+                    menuService.addNavigationRow(p, session, rows);
+
+                    Call.menu(p.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
                 });
 
                 ServerControl.instance.play(() -> world.loadMap(nextMap,

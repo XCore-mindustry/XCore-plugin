@@ -4,6 +4,7 @@ import arc.Core;
 import arc.struct.Seq;
 import arc.util.Timer;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
@@ -54,6 +55,7 @@ public class MapController implements ClientController {
     private final VoteRtvFactory voteRtvFactory;
     private final MapService mapService;
     private final GameStateService gameStateService;
+    private final Provider<EventController> eventController;
     private final MenuService menuService;
 
     @Inject
@@ -65,6 +67,7 @@ public class MapController implements ClientController {
                          VoteService voteService,
                          VoteRtvFactory voteRtvFactory,
                          MapService mapService,
+                         Provider<EventController> eventController,
                          GameStateService gameStateService, MenuService menuService) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
@@ -77,6 +80,7 @@ public class MapController implements ClientController {
         this.voteRtvFactory = voteRtvFactory;
         this.mapService = mapService;
         this.gameStateService = gameStateService;
+        this.eventController = eventController;
         this.menuService = menuService;
     }
 
@@ -285,13 +289,25 @@ public class MapController implements ClientController {
             rows.add(row2);
         }
 
+        menuService.addNavigationRow(player, session, rows);
+
         List<String> row3 = new ArrayList<>();
-        row3.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
-        row3.add(session.add(bundle.format(bundle.locale(player), "map-maps", args()),
-                 () -> handleMaps(player, 1)));
+        row3.add(session.add(bundle.format(bundle.locale(player), "map-maps", args()), () -> {
+            session.clearHistory();
+            handleMaps(player, 1);
+        }));
         rows.add(row3);
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        if (config.isEvent()) {
+            List<String> row4 = new ArrayList<>();
+            row4.add(session.add(bundle.format(bundle.locale(player), "event-menu-create-start-map", args()), () -> {
+                session.pushHistory(() -> handleMap(player, m));
+                eventController.get().handleCreateStart(player, m);
+            }));
+            rows.add(row4);
+        }
+
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     public void handleMaps(Player player, int page) {
@@ -316,15 +332,13 @@ public class MapController implements ClientController {
         List<String> navRow = new ArrayList<>();
         if (validPage > 1) {
             final int prevPage = validPage - 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "previous", args()),
+            navRow.add(session.add(bundle.format(bundle.locale(player), "previous", args()),
                     () -> handleMaps(player, prevPage)
             ));
         }
         if (validPage < pagination.totalPages()) {
             final int nextPage = validPage + 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "next", args()),
+            navRow.add(session.add(bundle.format(bundle.locale(player), "next", args()),
                     () -> handleMaps(player, nextPage)
             ));
         }
@@ -338,15 +352,14 @@ public class MapController implements ClientController {
                 .flatMap(List::stream)
                 .forEach(map -> rows.add(List.of(
                         session.add(map.name(), () -> {
+                            session.pushHistory(() -> handleMaps(player, validPage));
                             MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
                             handleMap(player, data);
                         })
                 )));
 
-        rows.add(List.of(
-                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
-        ));
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        menuService.addNavigationRow(player, session, rows);
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     private void handleReputation(Player player, boolean like) {
@@ -356,7 +369,7 @@ public class MapController implements ClientController {
         handleReputation(player, like, m);
     }
 
-    private void handleReputation(Player player, boolean like, MapData map) {
+    public void handleReputation(Player player, boolean like, MapData map) {
         PlayerData p = playerSessionService.get(player.uuid());
         Boolean prev = p.mapVotes.get(map.id.toString());
 
@@ -392,17 +405,5 @@ public class MapController implements ClientController {
 
         playerDataRepository.save(p);
         mapDataRepository.save(map);
-    }
-
-    private String[][] convertListToArray(List<List<String>> rows) {
-        String[][] result = new String[rows.size()][];
-
-        for (int i = 0; i < rows.size(); i++) {
-            List<String> row = rows.get(i);
-
-            result[i] = row.toArray(new String[0]);
-        }
-
-        return result;
     }
 }

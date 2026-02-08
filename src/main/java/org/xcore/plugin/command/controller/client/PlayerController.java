@@ -117,22 +117,8 @@ public class PlayerController implements ClientController {
         session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
-        List<String> row1 = new ArrayList<>();
-        row1.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
-        rows.add(row1);
+        menuService.addNavigationRow(player, session, rows);
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
-    }
-
-    private String[][] convertListToArray(List<List<String>> rows) {
-        String[][] result = new String[rows.size()][];
-
-        for (int i = 0; i < rows.size(); i++) {
-            List<String> row = rows.get(i);
-
-            result[i] = row.toArray(new String[0]);
-        }
-
-        return result;
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 }

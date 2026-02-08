@@ -36,6 +36,8 @@ public class GlobalConfig {
     public int mapsPerPage = 10;
     public int commandsPerPage = 6;
 
+    public int maxHistory = 16;
+
     public void postInit(Fi globalConfigFile) {
         Jval.read(globalConfigFile.reader()).asObject().forEach(jval -> {
             if (jval.key.equals("servers")) {

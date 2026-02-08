@@ -34,7 +34,6 @@ public class PluginEventService {
         Events.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
         Events.on(String.class, gameLifecycleHandler::onWorldReload);
 
-        mapVoteHandler.initMenu();
         ServerControl.instance.gameOverListener = mapVoteHandler.getGameOverListener();
     }
 }

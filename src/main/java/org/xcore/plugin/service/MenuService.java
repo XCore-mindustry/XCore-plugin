@@ -1,19 +1,37 @@
 package org.xcore.plugin.service;
 
 import arc.struct.ObjectMap;
+import io.avaje.inject.PostConstruct;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import mindustry.gen.Player;
 import mindustry.ui.Menus;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.ui.MenuSession;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class MenuService {
+
+    private final BundleService bundle;
+    private final GlobalConfig globalConfig;
 
     private final ObjectMap<String, MenuSession> sessions = new ObjectMap<>();
 
     private int globalMenuId;
     private int globalTextId;
 
+    @Inject
+    public MenuService(BundleService bundle,  GlobalConfig globalConfig) {
+        this.bundle = bundle;
+        this.globalConfig = globalConfig;
+    }
 
+    @PostConstruct
     public void init() {
         this.globalMenuId = Menus.registerMenu((player, option) -> {
             MenuSession session = get(player.uuid());
@@ -30,17 +48,51 @@ public class MenuService {
         });
     }
 
-    public int getMenuId() { return globalMenuId; }
-    public int getTextId() { return globalTextId; }
+    public int getMenuId() {
+        return globalMenuId;
+    }
+
+    public int getTextId() {
+        return globalTextId;
+    }
 
     public MenuSession get(String uuid) {
         if (!sessions.containsKey(uuid)) {
-            sessions.put(uuid, new MenuSession());
+            sessions.put(uuid, new MenuSession(globalConfig));
         }
         return sessions.get(uuid);
     }
 
     public void clear(String uuid) {
         sessions.remove(uuid);
+    }
+
+    public void addNavigationRow(Player player, MenuSession session, List<List<String>> rows) {
+        List<String> navRow = new ArrayList<>();
+
+        if (session.hasHistory()) {
+            navRow.add(session.add(bundle.format(bundle.locale(player), "back", args()), () -> {
+                Runnable previousMenu = session.popHistory();
+                if (previousMenu != null) previousMenu.run();
+            }));
+        }
+
+        navRow.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {
+            clear(player.uuid());
+        }));
+
+        rows.add(navRow);
+    }
+
+    public String[][] convertListToArray(List<List<String>> rows) {
+        String[][] result = new String[rows.size()][];
+
+        for (int i = 0; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+
+            result[i] = row.toArray(new String[0]);
+        }
+
+        return result;
     }
 }

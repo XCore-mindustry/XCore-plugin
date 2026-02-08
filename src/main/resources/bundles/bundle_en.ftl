@@ -173,6 +173,8 @@ map-vote-dislike-selected = { "[" }gray]You disliked it
 map-rtv = { "[" }orange]Voting
 map-artv = { "[" }red]Instant Change
 map-maps = Maps
+current-map = Current map
+next-map = Next map
 rtv-vote =
     { $nickname }[lightgray] voted to change the current map to [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Type [orange]y[] or [orange]n[] to vote.
@@ -297,6 +299,7 @@ event-menu-create-start = Create
 event-menu-create-start-title = { "[" }orange]{ -xcore } — Event Creation
 event-menu-create-start-message = Enter the name of the future event
 event-menu-create-start-default = { $playerName }'s Event
+event-menu-create-start-map = Create event for this map
 event-menu-edit = Edit
 event-menu-edit-title = { "[" }orange]{ -xcore } — Edit Event
 event-menu-edit-content =
@@ -376,6 +379,7 @@ empty = { "[" }accent]Empty
 never = Never
 save = Save
 close = Close
+cancel = Cancel
 back = Back
 previous = <- Previous
 next = Next ->
@@ -383,3 +387,9 @@ yes = Yes
 no = No
 test = Test
 no-description = No description
+
+discord = Discord
+github = Github
+donatello = Donatello
+weblate = Weblate
+discord-red-vs-blue = RedVSBlue

@@ -1,15 +1,26 @@
 package org.xcore.plugin.ui;
 
+import org.xcore.plugin.config.GlobalConfig;
+
 import java.util.ArrayList;
 import java.util.*;
 import java.util.function.Consumer;
 
 public class MenuSession {
+
+    private final GlobalConfig globalConfig;
+
     public final List<Runnable> actions = new ArrayList<>();
+
+    private final Deque<Runnable> history = new ArrayDeque<>();
 
     private final Map<Class<?>, Object> drafts = new HashMap<>();
 
     public Consumer<String> textHandler;
+
+    public MenuSession(GlobalConfig globalConfig) {
+        this.globalConfig = globalConfig;
+    }
 
     public String add(String buttonName, Runnable action) {
         actions.add(action);
@@ -44,5 +55,24 @@ public class MenuSession {
 
     public void clearAllDrafts() {
         drafts.clear();
+    }
+
+    public void pushHistory(Runnable menuLoader) {
+        if (history.size() >= globalConfig.maxHistory) {
+            history.removeFirst();
+        }
+        history.addLast(menuLoader);
+    }
+
+    public Runnable popHistory() {
+        return history.pollLast();
+    }
+
+    public boolean hasHistory() {
+        return !history.isEmpty();
+    }
+
+    public void clearHistory() {
+        history.clear();
     }
 }

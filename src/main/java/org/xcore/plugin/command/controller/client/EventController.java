@@ -1,6 +1,7 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.struct.Seq;
+import jakarta.inject.Provider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -46,7 +47,7 @@ public class EventController implements ClientController {
     private final VoteService voteService;
     private final VoteEventFactory voteEventFactory;
     private final MapService mapService;
-    private final MapController mapController;
+    private final Provider<MapController> mapController;
     private final MenuService menuService;
 
     @Inject
@@ -54,7 +55,7 @@ public class EventController implements ClientController {
                            PlayerSessionService playerSessionService,
                            GlobalConfig globalConfig,
                            BundleService bundle, VoteService voteService, VoteEventFactory voteEventFactory,
-                           MapService mapService, MapController mapController, MenuService menuService) {
+                           MapService mapService, Provider<MapController> mapController, MenuService menuService) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
@@ -96,13 +97,22 @@ public class EventController implements ClientController {
         List<List<String>> rows = new ArrayList<>();
 
         List<String> row1 = new ArrayList<>();
-        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-create-start", args()), () -> handleCreateStart(player)));
-        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()), () -> handleEvents(player, 1)));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-create-start", args()), () -> {
+            session.pushHistory(() -> handleMain(player));
+            handleCreateStart(player, null);
+        }));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()), () -> {
+            session.pushHistory(() -> handleMain(player));
+            handleEvents(player, 1);
+        }));
         rows.add(row1);
 
         if (event != null) {
             List<String> row2 = new ArrayList<>();
-            row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-this-event", args()), () -> handleEvent(player, event)));
+            row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-this-event", args()), () -> {
+                session.pushHistory(() -> handleMain(player));
+                handleEvent(player, event);
+            }));
             rows.add(row2);
         }
 
@@ -117,14 +127,12 @@ public class EventController implements ClientController {
 
         rows.add(row3);
 
-        rows.add(List.of(
-                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
-        ));
+        menuService.addNavigationRow(player, session, rows);
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
-    public void handleCreateStart(Player player) {
+    public void handleCreateStart(Player player, MapData map) {
         String title = bundle.format(bundle.locale(player), "event-menu-create-start-title", args());
         String message = bundle.format(bundle.locale(player), "event-menu-create-start-message", args());
         String defaultText = bundle.format(bundle.locale(player), "event-menu-create-start-default", args("playerName", player.name));
@@ -141,6 +149,9 @@ public class EventController implements ClientController {
 
         session.textHandler = (text) -> {
             session.getDraft(EventData.class).name = text;
+            if (map != null) {
+                session.getDraft(EventData.class).map = map.id;
+            }
             handleEdit(player);
         };
 
@@ -195,7 +206,10 @@ public class EventController implements ClientController {
         rows.add(row1);
 
         List<String> row2 = new ArrayList<>();
-        row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-map", args()), () -> handleMapSelection(player, 1)));
+        row2.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-map", args()), () -> {
+            session.pushHistory(() -> handleEdit(player));
+            handleMapSelection(player, 1);
+        }));
         row2.add(session.add(bundle.format(bundle.locale(player),
             draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive", args()), () -> {
             draft.isTemporary = !draft.isTemporary;
@@ -234,7 +248,7 @@ public class EventController implements ClientController {
 
             handleEvents(player, 1);
         }));
-        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {
+        row4.add(session.add(bundle.format(bundle.locale(player), "cancel", args()), () -> {
             menuService.clear(player.uuid());
         }));
         rows.add(row4);
@@ -247,7 +261,7 @@ public class EventController implements ClientController {
             })));
         }
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     private void handleEvent(Player player, EventData event) {
@@ -293,40 +307,48 @@ public class EventController implements ClientController {
         row1.add(session.add(dislikeButtonText, () -> handleReputation(player, false, event)));
         rows.add(row1);
 
-        List<String> row2 = new ArrayList<>();
-        row2.add(session.add(bundle.format(bundle.locale(player), "event-vote", args()),
-                () -> startVoteSession(player, event, false)));
-        if (player.admin) {
-             row2.add(session.add(bundle.format(bundle.locale(player), "event-avote", args()),
-                     () -> startVoteSession(player, event, true)));
+        if (!voteService.isVoting()) {
+            List<String> row2 = new ArrayList<>();
+            row2.add(session.add(bundle.format(bundle.locale(player), "event-vote", args()),
+                    () -> startVoteSession(player, event, false)));
+            if (player.admin) {
+                row2.add(session.add(bundle.format(bundle.locale(player), "event-avote", args()),
+                        () -> startVoteSession(player, event, true)));
+            }
+            rows.add(row2);
         }
-        rows.add(row2);
 
         boolean isOwner = pData.id != null && pData.id.equals(event.author);
         if (!event.isConducted && !event.isActive && (!event.isMajor || player.admin) && (isOwner || player.admin)) {
             List<String> row3 = new ArrayList<>();
             row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit", args()), () -> {
+                session.pushHistory(() -> handleEvent(player, event));
                 session.setDraft(event);
                 handleEdit(player);
             }));
             rows.add(row3);
         }
 
+        menuService.addNavigationRow(player, session, rows);
+
         List<String> row4 = new ArrayList<>();
-        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
-        row4.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()),
-                 () -> handleEvents(player, 1)));
+        row4.add(session.add(bundle.format(bundle.locale(player), "event-menu-events", args()), () -> {
+            session.clearHistory();
+            handleEvents(player, 1);
+        }));
         rows.add(row4);
 
         if (mapData != null) {
             List<String> row5 = new ArrayList<>();
-            row5.add(session.add(bundle.format(bundle.locale(player), "event-menu-event-map", args()),
-                     () ->  mapController.handleMap(player, mapData)));
+            row5.add(session.add(bundle.format(bundle.locale(player), "event-menu-event-map", args()), () -> {
+                session.pushHistory(() -> handleEvent(player, event));
+                mapController.get().handleMap(player, mapData);
+            }));
             rows.add(row5);
         }
 
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     public void handleEvents(Player player, int page) {
@@ -376,18 +398,23 @@ public class EventController implements ClientController {
         for (EventData event : events) {
             String buttonText = event.isActive ? bundle.format(bundle.locale(player), "event-menu-events-selected", args("name", event.name)) : event.name;
             rows.add(List.of(
-                    session.add(buttonText, () -> handleEvent(player, event))
+                    session.add(buttonText, () -> {
+                        session.pushHistory(() -> handleEvents(player, validPage));
+                        handleEvent(player, event);
+                    })
             ));
         }
 
+        menuService.addNavigationRow(player, session, rows);
 
         List<String> row1 = new ArrayList<>();
-        row1.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
-        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-main", args()),
-                 () -> handleMain(player)));
+        row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-main", args()), () -> {
+            session.clearHistory();
+            handleMain(player);
+        }));
         rows.add(row1);
 
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     private void handleMapSelection(Player player, int page) {
@@ -452,10 +479,9 @@ public class EventController implements ClientController {
                         })
                 )));
 
-        rows.add(List.of(
-                session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
-        ));
-        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
+        menuService.addNavigationRow(player, session, rows);
+
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     private void startVoteSession(Player player, EventData target, boolean forced) {
@@ -520,18 +546,6 @@ public class EventController implements ClientController {
 
         playerDataRepository.save(p);
         eventDataRepository.save(event);
-    }
-
-    private String[][] convertListToArray(List<List<String>> rows) {
-        String[][] result = new String[rows.size()][];
-
-        for (int i = 0; i < rows.size(); i++) {
-            List<String> row = rows.get(i);
-
-            result[i] = row.toArray(new String[0]);
-        }
-
-        return result;
     }
 
     private long parseTime(String input) {
