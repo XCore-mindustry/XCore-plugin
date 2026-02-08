@@ -1,31 +1,23 @@
 package org.xcore.plugin.command.controller.client;
 
-import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import arc.util.CommandHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
-import mindustry.maps.Map;
-import mindustry.ui.Menus;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
-import org.xcore.plugin.common.CustomGatherers;
-import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.model.EventData;
-import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
 
 import org.xcore.plugin.command.core.ClientController;
-import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.ui.MenuSession;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,52 +25,26 @@ import java.util.List;
 @Singleton
 public class PlayerController implements ClientController {
 
-    private int genericMenuId;
-
-    private final ObjectMap<String, PlayerController.MenuSession> playerSessionContext = new ObjectMap<>();
-
     private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
     private final Config config;
     private final BundleService bundle;
-
-
-    private static class MenuSession {
-        final List<Runnable> actions = new ArrayList<>();
-
-        String add(String buttonName, Runnable action) {
-            actions.add(action);
-            return buttonName;
-        }
-    }
+    private final MenuService menuService;
 
     @Inject
     public PlayerController(PlayerDataRepository playerDataRepository,
                             PlayerSessionService playerSessionService,
-                            Config config, BundleService bundle) {
+                            Config config, BundleService bundle, MenuService menuService) {
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.config = config;
         this.bundle = bundle;
-    }
-
-    @Override
-    public void setup(CommandHandler handler) {
-        initMenu();
+        this.menuService = menuService;
     }
 
     @Override
     public int priority() {
         return 60;
-    }
-
-    public void initMenu() {
-        this.genericMenuId = Menus.registerMenu((player, option) -> {
-            PlayerController.MenuSession session = playerSessionContext.get(player.uuid());
-            if (session != null && option >= 0 && option < session.actions.size()) {
-                session.actions.get(option).run();
-            }
-        });
     }
 
     @Command(name = "player", params = "[player-id]", aliases = {"stats", "player-statistics"})
@@ -147,15 +113,15 @@ public class PlayerController implements ClientController {
                 "pvpRating", data.pvpRating
         ));
 
-        PlayerController.MenuSession session = new PlayerController.MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> row1 = new ArrayList<>();
         row1.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {}));
         rows.add(row1);
 
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     private String[][] convertListToArray(List<List<String>> rows) {

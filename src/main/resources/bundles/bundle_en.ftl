@@ -382,3 +382,4 @@ next = Next ->
 yes = Yes
 no = No
 test = Test
+no-description = No description

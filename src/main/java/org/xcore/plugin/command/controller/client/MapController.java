@@ -1,9 +1,7 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.Core;
-import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import arc.util.CommandHandler;
 import arc.util.Timer;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -12,7 +10,6 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import mindustry.ui.Menus;
 import org.xcore.plugin.command.core.ClientController;
 import org.xcore.plugin.command.core.annotation.AdminOnly;
 import org.xcore.plugin.command.core.annotation.Command;
@@ -25,10 +22,12 @@ import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
+import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.MapService;
+import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
@@ -44,10 +43,6 @@ import java.util.List;
 @Singleton
 public class MapController implements ClientController {
 
-    private int genericMenuId;
-
-    private final ObjectMap<String, MenuSession> playerSessionContext = new ObjectMap<>();
-
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
     private final PlayerDataRepository playerDataRepository;
@@ -59,16 +54,7 @@ public class MapController implements ClientController {
     private final VoteRtvFactory voteRtvFactory;
     private final MapService mapService;
     private final GameStateService gameStateService;
-
-
-    private static class MenuSession {
-        final List<Runnable> actions = new ArrayList<>();
-
-        String add(String buttonName, Runnable action) {
-            actions.add(action);
-            return buttonName;
-        }
-    }
+    private final MenuService menuService;
 
     @Inject
     public MapController(EventDataRepository eventDataRepository, MapDataRepository mapDataRepository,
@@ -79,7 +65,7 @@ public class MapController implements ClientController {
                          VoteService voteService,
                          VoteRtvFactory voteRtvFactory,
                          MapService mapService,
-                         GameStateService gameStateService) {
+                         GameStateService gameStateService, MenuService menuService) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
@@ -91,25 +77,12 @@ public class MapController implements ClientController {
         this.voteRtvFactory = voteRtvFactory;
         this.mapService = mapService;
         this.gameStateService = gameStateService;
-    }
-
-    @Override
-    public void setup(CommandHandler handler) {
-        initMenu();
+        this.menuService = menuService;
     }
 
     @Override
     public int priority() {
         return 80;
-    }
-
-    public void initMenu() {
-        this.genericMenuId = Menus.registerMenu((player, option) -> {
-            MenuSession session = playerSessionContext.get(player.uuid());
-            if (session != null && option >= 0 && option < session.actions.size()) {
-                session.actions.get(option).run();
-            }
-        });
     }
 
     @Command(name = "map", params = "[map-name]", aliases = {"map-stats", "map-statistics"})
@@ -264,9 +237,9 @@ public class MapController implements ClientController {
         String menuContent = bundle.format(bundle.locale(player), "commands-map-content", args(
                 "name", m.name,
                 "author", m.author,
-                "description", map.description(),
-                "width", map.width,
-                "height", map.height,
+                "description", (map == null || map.description().isEmpty()) ? bundle.format(bundle.locale(player),"no-description", args()) : map.description(),
+                "width", (map == null) ? "" : map.width,
+                "height", (map == null) ? "" : map.height,
                 "reputation", m.reputation,
                 "popularity", String.format("%.1f", m.popularity),
                 "interest", String.format("%.1f", m.interest),
@@ -290,7 +263,8 @@ public class MapController implements ClientController {
                 ? bundle.format(bundle.locale(player), "map-vote-dislike-selected", args())
                 : bundle.format(bundle.locale(player), "map-vote-dislike", args());
 
-        MenuSession session = new MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> row1 = new ArrayList<>();
@@ -317,8 +291,7 @@ public class MapController implements ClientController {
                  () -> handleMaps(player, 1)));
         rows.add(row3);
 
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     public void handleMaps(Player player, int page) {
@@ -336,7 +309,8 @@ public class MapController implements ClientController {
                 "page", validPage,
                 "total", pagination.totalPages()
         ));
-        MenuSession session = new MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> navRow = new ArrayList<>();
@@ -372,8 +346,7 @@ public class MapController implements ClientController {
         rows.add(List.of(
                 session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
         ));
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     private void handleReputation(Player player, boolean like) {

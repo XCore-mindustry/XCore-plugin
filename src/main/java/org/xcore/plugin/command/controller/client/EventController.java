@@ -1,15 +1,12 @@
 package org.xcore.plugin.command.controller.client;
 
-import arc.struct.ObjectMap;
 import arc.struct.Seq;
-import arc.util.CommandHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import mindustry.ui.Menus;
 import org.xcore.plugin.command.core.ClientController;
 import org.xcore.plugin.command.core.annotation.Command;
 import org.xcore.plugin.command.core.context.ClientContext;
@@ -24,7 +21,9 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.MapService;
+import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteEvent;
 import org.xcore.plugin.vote.VoteEventFactory;
 import org.xcore.plugin.vote.VoteService;
@@ -38,11 +37,6 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class EventController implements ClientController {
 
-    private int genericMenuId;
-    private int genericTextId;
-
-    private final ObjectMap<String, MenuSession> playerSessionContext = new ObjectMap<>();
-
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
     private final PlayerDataRepository playerDataRepository;
@@ -53,27 +47,14 @@ public class EventController implements ClientController {
     private final VoteEventFactory voteEventFactory;
     private final MapService mapService;
     private final MapController mapController;
-
-
-    private static class MenuSession {
-        final List<Runnable> actions = new ArrayList<>();
-
-        EventData draftEvent;
-
-        java.util.function.Consumer<String> textHandler;
-
-        String add(String buttonName, Runnable action) {
-            actions.add(action);
-            return buttonName;
-        }
-    }
+    private final MenuService menuService;
 
     @Inject
     public EventController(EventDataRepository eventDataRepository, MapDataRepository mapDataRepository, PlayerDataRepository playerDataRepository,
                            PlayerSessionService playerSessionService,
                            GlobalConfig globalConfig,
                            BundleService bundle, VoteService voteService, VoteEventFactory voteEventFactory,
-                           MapService mapService, MapController mapController) {
+                           MapService mapService, MapController mapController, MenuService menuService) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
@@ -84,32 +65,12 @@ public class EventController implements ClientController {
         this.voteEventFactory = voteEventFactory;
         this.mapService = mapService;
         this.mapController = mapController;
-    }
-
-    @Override
-    public void setup(CommandHandler handler) {
-        initMenu();
+        this.menuService = menuService;
     }
 
     @Override
     public int priority() {
         return 80;
-    }
-
-    public void initMenu() {
-        this.genericMenuId = Menus.registerMenu((player, option) -> {
-            MenuSession session = playerSessionContext.get(player.uuid());
-            if (session != null && option >= 0 && option < session.actions.size()) {
-                session.actions.get(option).run();
-            }
-        });
-
-        this.genericTextId = Menus.registerTextInput((player, text) -> {
-            MenuSession session = playerSessionContext.get(player.uuid());
-            if (session != null && session.textHandler != null && text != null) {
-                session.textHandler.accept(text);
-            }
-        });
     }
 
     private Optional<EventData> currentEvent() {
@@ -130,7 +91,8 @@ public class EventController implements ClientController {
         EventData event = currentEvent().orElse(null);
         String menuTitle = bundle.format(bundle.locale(player), "event-menu-main-title", args());
         String menuContent = bundle.format(bundle.locale(player), "event-menu-main-content", args());
-        MenuSession session = new MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> row1 = new ArrayList<>();
@@ -159,8 +121,7 @@ public class EventController implements ClientController {
                 session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
         ));
 
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     public void handleCreateStart(Player player) {
@@ -168,29 +129,32 @@ public class EventController implements ClientController {
         String message = bundle.format(bundle.locale(player), "event-menu-create-start-message", args());
         String defaultText = bundle.format(bundle.locale(player), "event-menu-create-start-default", args("playerName", player.name));
 
-        MenuSession session = new MenuSession();
-        session.draftEvent = new EventData();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
+
+        session.setDraft(new EventData());
 
         PlayerData playerData =  playerSessionService.get(player.uuid());
         if  (playerData != null) {
-            session.draftEvent.author = playerData.id;
+            session.getDraft(EventData.class).author = playerData.id;
         }
 
-        playerSessionContext.put(player.uuid(), session);
-
         session.textHandler = (text) -> {
-            session.draftEvent.name = text;
+            session.getDraft(EventData.class).name = text;
             handleEdit(player);
         };
 
-        Call.textInput(player.con, genericTextId, title, message, 20, defaultText, false);
+        Call.textInput(player.con, menuService.getTextId(), title, message, 20, defaultText, false);
     }
 
     private void handleEdit(Player player) {
-        MenuSession session = playerSessionContext.get(player.uuid());
-        if (session == null || session.draftEvent == null) return;
+        MenuSession session = menuService.get(player.uuid());
+        if (!session.hasDraft(EventData.class)) {
+            handleMain(player);
+            return;
+        }
 
-        EventData draft = session.draftEvent;
+        EventData draft = session.getDraft(EventData.class);
         MapData mapData = mapDataRepository.findById(draft.map);
         PlayerData playerData = playerDataRepository.findById(draft.author);
 
@@ -199,14 +163,14 @@ public class EventController implements ClientController {
 
         String menuTitle = bundle.format(bundle.locale(player), "event-menu-edit-title", args());
         String menuContent = bundle.format(bundle.locale(player), "event-menu-edit-content", args(
-                "name", session.draftEvent.name,
-                "description", session.draftEvent.description,
+                "name", session.getDraft(EventData.class).name,
+                "description", session.getDraft(EventData.class).description,
                 "author", (playerData == null) ? "" : playerData.nickname,
                 "mapName", (mapData == null) ? "" : mapData.name,
-                "isMajor", session.draftEvent.isMajor ? yes : no,
-                "isTemporary", session.draftEvent.isTemporary ? yes : no,
-                "plannedStartTime", session.draftEvent.plannedStartTime,
-                "plannedEndTime", session.draftEvent.plannedEndTime
+                "isMajor", session.getDraft(EventData.class).isMajor ? yes : no,
+                "isTemporary", session.getDraft(EventData.class).isTemporary ? yes : no,
+                "plannedStartTime", session.getDraft(EventData.class).plannedStartTime,
+                "plannedEndTime", session.getDraft(EventData.class).plannedEndTime
         ));
 
 
@@ -216,14 +180,14 @@ public class EventController implements ClientController {
         List<String> row1 = new ArrayList<>();
         row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-name", args()), () -> {
             session.textHandler = text -> { draft.name = text; handleEdit(player); };
-            Call.textInput(player.con, genericTextId,
+            Call.textInput(player.con, menuService.getTextId(),
                     bundle.format(bundle.locale(player), "event-menu-edit-name-title", args()),
                     bundle.format(bundle.locale(player), "event-menu-edit-name-message", args()),
                     24, draft.name, false);
         }));
         row1.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-description", args()), () -> {
             session.textHandler = text -> { draft.description = text; handleEdit(player); };
-            Call.textInput(player.con, genericTextId,
+            Call.textInput(player.con, menuService.getTextId(),
                     bundle.format(bundle.locale(player), "event-menu-edit-description-title", args()),
                     bundle.format(bundle.locale(player), "event-menu-edit-description-message", args()),
                     1000, draft.description, false);
@@ -245,14 +209,14 @@ public class EventController implements ClientController {
                 draft.plannedStartTime = parseTime(text);
                 handleEdit(player);
             };
-            Call.textInput(player.con, genericTextId,
+            Call.textInput(player.con, menuService.getTextId(),
                     bundle.format(bundle.locale(player), "event-menu-edit-planned-start-title", args()),
                     bundle.format(bundle.locale(player), "event-menu-edit-planned-start-message", args()),
                     64, "", false);
         }));
         row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit-planned-end", args()), () -> {
             session.textHandler = text -> { draft.plannedEndTime = parseTime(text); handleEdit(player); };
-            Call.textInput(player.con, genericTextId,
+            Call.textInput(player.con, menuService.getTextId(),
                     bundle.format(bundle.locale(player), "event-menu-edit-planned-end-title", args()),
                     bundle.format(bundle.locale(player), "event-menu-edit-planned-end-message", args()),
                     10, "", false);
@@ -266,10 +230,13 @@ public class EventController implements ClientController {
                 return;
             }
             eventDataRepository.save(draft);
-            playerSessionContext.remove(player.uuid());
+            session.clearDraft(EventData.class);
+
             handleEvents(player, 1);
         }));
-        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> playerSessionContext.remove(player.uuid())));
+        row4.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {
+            menuService.clear(player.uuid());
+        }));
         rows.add(row4);
 
         if (player.admin) {
@@ -280,11 +247,12 @@ public class EventController implements ClientController {
             })));
         }
 
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     private void handleEvent(Player player, EventData event) {
-        MenuSession session = new MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         MapData mapData = mapDataRepository.findById(event.map);
@@ -338,7 +306,7 @@ public class EventController implements ClientController {
         if (!event.isConducted && !event.isActive && (!event.isMajor || player.admin) && (isOwner || player.admin)) {
             List<String> row3 = new ArrayList<>();
             row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit", args()), () -> {
-                session.draftEvent = event;
+                session.setDraft(event);
                 handleEdit(player);
             }));
             rows.add(row3);
@@ -358,8 +326,7 @@ public class EventController implements ClientController {
         }
 
 
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     public void handleEvents(Player player, int page) {
@@ -380,7 +347,8 @@ public class EventController implements ClientController {
                 "total", pagination.totalPages()
         ));
 
-        MenuSession session = new MenuSession();
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
         List<String> navRow = new ArrayList<>();
@@ -419,8 +387,7 @@ public class EventController implements ClientController {
                  () -> handleMain(player)));
         rows.add(row1);
 
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     private void handleMapSelection(Player player, int page) {
@@ -438,13 +405,15 @@ public class EventController implements ClientController {
                 "page", validPage,
                 "total", pagination.totalPages()
         ));
-        MenuSession session = playerSessionContext.get(player.uuid());
-        if (session == null) {
+
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
+        if (!session.hasDraft(EventData.class)) {
             handleMain(player);
             return;
         }
 
-        session.actions.clear();
+
         List<List<String>> rows = new ArrayList<>();
 
         List<String> navRow = new ArrayList<>();
@@ -478,7 +447,7 @@ public class EventController implements ClientController {
                                 mapDataRepository.save(data);
                             }
 
-                            session.draftEvent.map = data.id;
+                            session.getDraft(EventData.class).map = data.id;
                             handleEdit(player);
                         })
                 )));
@@ -486,8 +455,7 @@ public class EventController implements ClientController {
         rows.add(List.of(
                 session.add(bundle.format(bundle.locale(player), "close", args()), () -> {})
         ));
-        playerSessionContext.put(player.uuid(), session);
-        Call.menu(player.con, genericMenuId, menuTitle, menuContent, convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, convertListToArray(rows));
     }
 
     private void startVoteSession(Player player, EventData target, boolean forced) {
