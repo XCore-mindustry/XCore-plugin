@@ -12,8 +12,8 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "3.0.0-beta.2"
-val mindustryVersion = "154.3"
+version = "3.0.0-beta.3"
+val mindustryVersion = "155"
 
 java {
     toolchain {
