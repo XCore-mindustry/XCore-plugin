@@ -7,7 +7,6 @@
 # ==============================================================================
 # General & Help
 # ==============================================================================
-commands-help-params = { "[" }сторінка]
 commands-help-description = Показує список усіх команд.
 
 help-menu-title = [orange]• [white]КОМАНДИ XCORE [orange]•
@@ -30,16 +29,13 @@ help-legacy-command-content = [orange]» [accent]Команда: [white]/{$name}
     {""}[gray](Це застаріла команда з обмеженою інформацією)
 help-back = [lightgray]« Назад
 
-commands-information-params = ${""}
 commands-information-description = Показати інформацію про сервер
 commands-info-title = [orange]{ -xcore } — {$xcorServerName}
 commands-info-text = [accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     {""}
     {""}Версія XCore — [accent]{$xcoreVersion}[white]
 
-commands-sync-params = {""}
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
-commands-discord-params = { "" }
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
 
 welcome = [accent]Ласкаво просимо на {$serverName}!
@@ -83,14 +79,10 @@ commands-events-page-description = Номер сторінки
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
-commands-t-params = <повідомлення…>
 commands-t-description = Надіслати повідомлення тільки своїм союзникам по команді.
 commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]>[accent] { $name }[coral]:[white] { $message }
-commands-g-params = <повідомлення…>
 commands-g-description = Надіслати повідомлення на всі сервери.
-commands-a-params = <повідомлення…>
 commands-a-description = Надіслати повідомлення тільки адміністраторам.
-commands-tr-params = <мова>
 commands-tr-description = Встановити мову перекладача.
 commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{$translatorLanguage}[]!
 commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
@@ -102,7 +94,6 @@ global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{$server}[])
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-params = <пароль>
 commands-login-description = Запит на права адміністратора. Не використовуйте, якщо не знаєте, що робите.
 commands-login-incorrect-password = { "[" }scarlet]⚠ Невірний пароль!
 commands-login-success = { "[" }green]Права адміністратора отримано.
@@ -111,22 +102,17 @@ commands-login-admin-password-created =
     { "[" }green]Пароль адміністратора створено.
     { "" }[red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
 commands-login-request-approval-discord = { "[" }accent]Вам потрібно підтвердити запит на права адміністратора в каналі [orange]#admin-bots[] на нашому Discord сервері.
-commands-logout-params = { "" }
 commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші права адміністратора.
 commands-logout-successful = { "[" }green]Права адміністратора відкликано.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-params = <id-гравця> <період> [причина…]
 commands-ban-description = Заблокувати гравця. [scarlet]Тільки для адміністраторів.
 commands-ban-success = { $nickname } [scarlet]заблокований
-commands-unban-params = <id-гравця>
 commands-unban-description = Розблокувати гравця. [scarlet]Тільки для адміністраторів.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]успішно розблокований.
-commands-mute-params = <id-гравця> <період> [причина…]
 commands-mute-description = Заглушити гравця. [scarlet]Тільки для адміністраторів.
 commands-mute-success = { "[" }accent]Успішно заглушено гравця { $nickname }
-commands-unmute-params = <id-гравця>
 commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
 commands-unmute-success = { "[" }green]Успішно знято заглушення з гравця []{ $nickname }
 ban-content =
@@ -162,9 +148,7 @@ support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
-commands-votekick-params = <ID/ім'я> <причина…>
 commands-votekick-description = Голосування за вигнання гравця з сервера.
-commands-vote-params = <y/n>
 commands-vote-description = Проголосувати у поточному голосуванні.
 commands-vote-vote-with = { "[" }scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
 votekick-vote =
@@ -182,7 +166,6 @@ votekick-success =
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
-commands-map-params = { "[" }назва-мапи]
 commands-map-description = Статистика конкретної мапи та швидкі дії
 commands-map-title = { "[" }orange]{ -xcore } — Мапа
 commands-map-content =
@@ -193,11 +176,9 @@ commands-map-content =
     { "" }[white]Подобається:[green] { $like }[orange] | [white]Не подобається:[green] { $dislike }[orange]
     { "" }[white]Мін. час:[green] { $min }[orange] | [white]Сер. час:[green] { $avg }[orange] | [white]Макс. час:[green] { $max }[orange]
     { "" }[green]{ $description }[white]
-commands-maps-params = { "[" }сторінка]
 commands-maps-description = Список усіх мап на цьому сервері.
 commands-maps-title = { "[" }orange]{ -xcore } — Список мап
 commands-maps-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
-commands-maps-text-params = { "[" }сторінка]
 commands-maps-text-description = Список усіх мап на цьому сервері.
 commands-maps-text-start-content =
     { "[" }accent]Поточна мапа: []{ $name }[white]
@@ -205,15 +186,11 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | Від: [sky]{ $author }
-commands-artv-params = { "[" }мапа…]
 commands-artv-description = Примусово змінити мапу. [scarlet]Тільки для адміністраторів.
 commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. Наступна мапа: { $name }
 commands-artv-event-skipped = { $nickname }[accent] пропустив подію. Наступна подія: { $name }
-commands-rtv-params = { "[" }мапа…]
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
-commands-like-params = { "" }
 commands-like-description = Проголосувати за мапу (підвищує репутацію)
-commands-dislike-params = { "" }
 commands-dislike-description = Проголосувати проти мапи
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content =
@@ -239,14 +216,12 @@ rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи
 # ==============================================================================
 # Statistics & Ranks
 # ==============================================================================
-commands-player-params = { "[" }id-гравця]
 commands-player-description = Переглянути статистику гравця.
 player-menu-player-content =
     Статистика гравця { $nickname } [grey]#{ $pid }
     { "" }[brown]Час у грі: [grey]{ $totalPlayTime }[] хвилин
     Ранг у Hexed: [grey]{ $hexedRankTag } { $hexedRankName }
     Рейтинг MiniPvP: { $pvpRating }
-commands-lb-params = { "" }
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -254,32 +229,26 @@ commands-lb-success =
        *[other] { "[" }accent]Таблиця лідерів [scarlet]вимкнена
     }
 leaderboard = { "[" }blue]Таблиця лідерів
-commands-rank-params = { "[" }гравець…]
 commands-rank-description = Показує інформацію про ваш ранг або ранг іншого гравця.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
     { "" }[gold]Перемог: { $points }/{ $requiredPoints }
-commands-ranks-params = { "" }
 commands-ranks-description = Показує інформацію про систему рангів.
 commands-ranks-content =
     { $rankTag } [accent]{ $rankName }
     { "" }[gold]Вимоги: [grey]{ $requiredPoints } [accent]перемог[]
 commands-ranks-footer = Кількість перемог збільшується лише при перемозі над гравцем вашого рангу або вище.
-commands-top-params = { "" }
 commands-top-description = Топ гравців.
 commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перемог
 commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
-commands-spectate-params = { "" }
 commands-spectate-description = Перейти в режим спостерігача. Це видалить вашу одиницю.
 commands-spectate-success = { "[" }green]Тепер ви спостерігаєте за грою
-commands-ai-params = <idle/i/attack/a>
 commands-ai-description = Керування ШІ (AI)
 commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)
-commands-history-params = { "[" }розмір] [x] [y]
 commands-history-description = Увімкнути/вимкнути історію блоків.
 commands-history-success = { "[" }accent]Історію блоків встановлено на [scarlet]{ 0 }
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] до кінця гри.
@@ -332,9 +301,7 @@ dislike-event-changed = [orange]Ви змінили свою думку на "Н
 # Events (Server)
 # ==============================================================================
 
-commands-event-params = { "" }
 commands-event-description = Меню керуванням подій
-commands-events-params = { "[" }сторінка]
 commands-events-description = Список усіх подій на серверах.
 event-menu-main = Головна
 event-menu-main-title = { "[" }orange]{ -xcore } — Події

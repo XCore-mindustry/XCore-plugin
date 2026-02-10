@@ -5,7 +5,6 @@
 # ==============================================================================
 # General & Help
 # ==============================================================================
-commands-help-params = [page]
 commands-help-description = Open the interactive help menu.
 help-menu-title = [orange]• [white]XCORE COMMANDS [orange]•
 help-menu-content = [gray]Page [white]{$page}[gray]/[white]{$total}
@@ -94,16 +93,13 @@ commands-events-page-description = Page number
 # ==============================================================================
 # General & Help (continued)
 # ==============================================================================
-commands-information-params = {""}
 commands-information-description = Show information about the server
 commands-info-title = { "[" }orange]{ -xcore } — { $xcorServerName }
 commands-info-text =
     { "[" }accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
     { "" }
     { "" }XCore Version — [accent]{ $xcoreVersion }[white]
-commands-sync-params = { "" }
 commands-sync-description = Sync your game with the server. Run this to fix errors like ghost units.
-commands-discord-params = { "" }
 commands-discord-description = Redirects you to discord server
 welcome =
     { "[" }accent]Welcome to { $serverName }!
@@ -117,14 +113,10 @@ welcome =
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
-commands-t-params = <message…>
 commands-t-description = Send a message only to your teammates.
 commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[coral]:[white] { $message }
-commands-g-params = <message…>
 commands-g-description = Send a message across all servers
-commands-a-params = <message…>
 commands-a-description = Send a message only to admins.
-commands-tr-params = <language>
 commands-tr-description = Set the translator language.
 commands-tr-success = [accent]The translator language has been successfully changed to [grey]{$translatorLanguage}[]!
 commands-tr-off = [accent]Translator is [scarlet]off[]!
@@ -136,7 +128,6 @@ global-chat-format = [royal][[[orange]GLOBAL [lightgray](from [accent]{$server}[
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-params = <password>
 commands-login-description = Admin request. Don't use if you don't know what you're doing.
 commands-login-incorrect-password = { "[" }scarlet]⚠ Incorrect password!
 commands-login-success = { "[" }green]Admin rights granted.
@@ -145,22 +136,17 @@ commands-login-admin-password-created =
     { "[" }green]Admin password created.
     { "" }[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
 commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [gray]#admin-bots[]
-commands-logout-params = { "" }
 commands-logout-description = Log out. This will [scarlet]revoke your admin rights.
 commands-logout-successful = { "[" }green]Admin rights revoked.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-params = <player-id> <period> [reason…]
 commands-ban-description = Ban a player. [scarlet]Admin only
 commands-ban-success = { $nickname } [scarlet]banned
-commands-unban-params = <player-id>
 commands-unban-description = Unban a player. [scarlet]Admin only.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]successfully unbanned.
-commands-mute-params = <player-id> <period> [reason…]
 commands-mute-description = Mute a player. [scarlet]Admin only.
 commands-mute-success = { "[" }accent]Successfully muted { $nickname }
-commands-unmute-params = <player-id>
 commands-unmute-description = Unmute player. [scarlet]Admin only.
 commands-unmute-success = { "[" }green]Successfully unmuted []{ $nickname }
 ban-content =
@@ -196,9 +182,7 @@ support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
-commands-votekick-params = <ID/name> <reason…>
 commands-votekick-description = Vote to kick a player from the server.
-commands-vote-params = <y/n>
 commands-vote-description = Vote on the current vote-kick session.
 commands-vote-vote-with = [scarlet]⚠ Vote with [orange]/vote <y/n/c>
 
@@ -216,7 +200,6 @@ votekick-success =
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
-commands-map-params = { "[" }map-name]
 commands-map-description = Statistics of a specific map
 commands-map-title = { "[" }orange]{ -xcore } — Statistics
 commands-map-content =
@@ -226,11 +209,9 @@ commands-map-content =
     { "" }[white]Times played:[green] { $played }[orange] | [white]Played this year:[green] { $playedYear }[orange] | [white]Last played:[green] { $lastPlayed }[orange]
     { "" }[white]Min time:[green] { $min }[orange] | [white]Avg time:[green] { $avg }[orange] | [white]Max time:[green] { $max }[orange]
     { "" }[green]{ $desc }[white]
-commands-maps-params = { "[" }page]
 commands-maps-description = List of all maps on this server.
 commands-maps-title = { "[" }orange]{ -xcore } — Map List
 commands-maps-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
-commands-maps-text-params = { "[" }page]
 commands-maps-text-description = List of all maps on this server.
 commands-maps-text-start-content =
     { "[" }accent]Current map: []{ $name }[white]
@@ -238,14 +219,10 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | By: [sky]{ $author }
-commands-artv-params = { "[" }map…]
 commands-artv-description = Force change map. [scarlet]Admin only
 commands-artv-map-skipped = { $nickname }[accent] skipped map.
-commands-rtv-params = { "[" }map…]
 commands-rtv-description = Rock the vote to change map
-commands-like-params = { "" }
 commands-like-description = Vote for the current map (increases reputation)
-commands-dislike-params = { "" }
 commands-dislike-description = Vote against the current map
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]GAME OVER!
 map-vote-content =
@@ -273,7 +250,6 @@ rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $ma
 # ==============================================================================
 # Statistics & Ranks & Players
 # ==============================================================================
-commands-player-params = { "[" }player-id]
 commands-player-description = View a player's Statistics
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
@@ -281,7 +257,6 @@ player-menu-player-content =
     { "" }[brown]PlayTime: [grey]{ $totalPlayTime }[] minutes
     Hexed Rank: [grey]{ $hexedRankTag } { $hexedRankName }
     MiniPvP rating: { $pvpRating }
-commands-lb-params = { "" }
 commands-lb-description = Enable/disable leaderboard
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -289,29 +264,24 @@ commands-lb-success =
        *[other] { "[" }accent]Leaderboard [scarlet]disabled
     }
 leaderboard = { "[" }blue]Leaderboard
-commands-rank-params = { "[" }player…]
 commands-rank-description = Shows information about this player's rank.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
     { "" }[gold]Wins: { $points }/{ $requiredPoints }
-commands-ranks-params = { "" }
 commands-ranks-description = Shows information about ranks.
 commands-ranks-content =
     { $rankTag } [accent]{ $rankName }
     { "" }[gold]Requirements: [grey]{ $requiredPoints } [accent]wins[]
 commands-ranks-footer = The amount of wins increases only when defeating a player of your rank or higher.
-commands-top-params = { "" }
 commands-top-description = Top players
 commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wins
 commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
-commands-spectate-params = { "" }
 commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily.
 commands-spectate-success = { "[" }green]You are now spectating
-commands-ai-params = <idle/i/attack/a>
 commands-ai-description = Control AI
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.
@@ -363,9 +333,7 @@ dislike-event-changed = [orange]You changed your mind to a Dislike.
 # Events (Server)
 # ==============================================================================
 
-commands-event-params = { "" }
 commands-event-description = Event management menu
-commands-events-params = { "[" }page]
 commands-events-description = List of all events on the servers.
 event-events = Events
 event-menu-main = Main
