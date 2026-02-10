@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.struct.Seq;
-import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;

@@ -1,7 +1,6 @@
 package org.xcore.plugin.cloud.parser;
 
 import arc.struct.Seq;
-import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.maps.Map;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -58,9 +57,7 @@ public class MapParser implements ArgumentParser<XCoreSender, Map>, BlockingSugg
         Seq<Map> maps = Vars.maps.customMaps().isEmpty() ? Vars.maps.all() : Vars.maps.customMaps();
         List<String> suggestions = new ArrayList<>();
 
-        maps.each(m -> {
-            suggestions.add(arc.util.Strings.stripColors(m.name()));
-        });
+        maps.each(m -> suggestions.add(arc.util.Strings.stripColors(m.name())));
 
         return suggestions;
     }
