@@ -65,7 +65,7 @@ public class MiniPvP {
                 var data = sorted.get(i);
                 builder.append(bundle.format(locale, "pvp-leaderboard-content", args(
                         "index", i + 1,
-                        "nickname", data.nickname, // Важно: в базе храним цветной ник
+                        "nickname", data.nickname,
                         "rating", data.pvpRating
                 ))).append("\n");
             }

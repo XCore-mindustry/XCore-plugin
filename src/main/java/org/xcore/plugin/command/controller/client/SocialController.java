@@ -53,8 +53,7 @@ public class SocialController implements CloudClientController {
 
     @RequiresMuteCheck
     @Command("t <message>")
-    public void teamChat(XCoreSender sender,
-                         @Argument("message") @Greedy String message) {
+    public void teamChat(XCoreSender sender, @Argument("message") @Greedy String message) {
 
         Player author = sender.player();
 
@@ -75,8 +74,7 @@ public class SocialController implements CloudClientController {
     @RequiresMuteCheck
     @RequiresPlayTime(PlayTimeLimit.GLOBAL_CHAT)
     @Command("g <message>")
-    public void globalChat(XCoreSender sender,
-                           @Argument("message") @Greedy String message) {
+    public void globalChat(XCoreSender sender, @Argument("message") @Greedy String message) {
 
         network.post(new SocketEvents.GlobalChatEvent(
                 sender.player().coloredName(),
@@ -97,8 +95,7 @@ public class SocialController implements CloudClientController {
     }
 
     @Command("tr <language>")
-    public void translator(XCoreSender sender,
-                           @Argument(value = "language", parserName = "language") String language) {
+    public void translator(XCoreSender sender, @Argument(value = "language", parserName = "language") String language) {
 
         var data = playerSessionService.get(sender.player().uuid());
         String input = language.toLowerCase();

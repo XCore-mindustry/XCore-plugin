@@ -102,10 +102,6 @@ public class InformationController implements CloudClientController {
 
         menuService.addNavigationRow(player, session, rows);
 
-        Call.menu(player.con,
-                menuService.getMenuId(),
-                menuTitle,
-                menuContent,
-                menuService.convertListToArray(rows));
+        Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 }

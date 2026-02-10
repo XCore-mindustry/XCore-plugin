@@ -77,8 +77,7 @@ public class EventController implements CloudClientController {
     }
 
     @Command("events [page]")
-    public void events(XCoreSender sender,
-                       @Argument("page") @Default("1") int page) {
+    public void events(XCoreSender sender, @Argument("page") @Default("1") int page) {
         handleEvents(sender.player(), page);
     }
 

@@ -30,9 +30,7 @@ public class VoteController implements CloudClientController {
 
     @RequiresPlayTime(PlayTimeLimit.VOTE_KICK)
     @Command("votekick <target> <reason>")
-    public void votekick(XCoreSender sender,
-                         @Argument("target") Player target,
-                         @Argument("reason") @Greedy String reason) {
+    public void votekick(XCoreSender sender, @Argument("target") Player target, @Argument("reason") @Greedy String reason) {
 
         if (voteService.getCurrentVoteKick() != null) {
             sender.send("error-vote-in-progress", args());
@@ -55,8 +53,7 @@ public class VoteController implements CloudClientController {
     }
 
     @Command("vote <choice>")
-    public void vote(XCoreSender sender,
-                     @Argument("choice") String choice) {
+    public void vote(XCoreSender sender, @Argument("choice") String choice) {
 
         VoteSession currentSession = voteService.getCurrentSession();
         if (currentSession == null) {

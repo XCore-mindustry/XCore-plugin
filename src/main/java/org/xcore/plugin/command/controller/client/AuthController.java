@@ -35,8 +35,7 @@ public class AuthController implements CloudClientController {
     }
 
     @Command("login <password>")
-    public void login(XCoreSender sender,
-                      @Argument("password") String password) {
+    public void login(XCoreSender sender, @Argument("password") String password) {
 
         if (password.length() < 4) {
             sender.send("error-admin-password-too-short", args());

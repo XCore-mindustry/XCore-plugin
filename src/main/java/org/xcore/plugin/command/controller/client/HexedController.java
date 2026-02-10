@@ -36,13 +36,11 @@ public class HexedController implements CloudClientController {
         sender.send("commands-spectate-success", args());
     }
 
-    // /rank
     @Command("rank")
     public void rankSelf(XCoreSender sender) {
         rank(sender, sender.player());
     }
 
-    // /rank <player>
     @Command("rank <player>")
     public void rank(XCoreSender sender,
                      @Argument("player") Player target) {
