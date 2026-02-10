@@ -202,16 +202,6 @@ commands-vote-params = <y/n>
 commands-vote-description = Vote on the current vote-kick session.
 commands-vote-vote-with = [scarlet]⚠ Vote with [orange]/vote <y/n/c>
 
-votekick-vote = {$starter} [grey]#[white]{$starterId}[lightgray] voted to kick {$target} [grey]#[white]{$targetId}[lightgray] for [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$required}[])
-    {""}[lightgray]Type [orange]/vote <y/n>[] to vote.
-votekick-left = {$player}[lightgray] left. Their vote was cancelled. ([accent]{$votes}[]/[accent]{$required}[])
-votekick-fail = [lightgray]Vote failed. Not enough votes to kick {$target}[lightgray].
-votekick-cancelled = [scarlet]Vote to kick {$target}[scarlet] was cancelled by {$admin}.
-
-votekick-success = [orange]Vote passed. {$target}[orange] kicked for [scarlet]{$minutes}[] { $minutes ->
-[one] minute
-*[other] minutes
-commands-vote-vote-with = { "[" }scarlet]⚠ Vote with [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     { "" }[lightgray]Type [orange]/vote <y/n>[] to vote.
@@ -293,9 +283,6 @@ player-menu-player-content =
     MiniPvP rating: { $pvpRating }
 commands-lb-params = { "" }
 commands-lb-description = Enable/disable leaderboard
-commands-lb-success = { $leaderboardEnabled ->
-[true] [accent]Leaderboard [green]enabled
-*[other] [accent]Leaderboard [scarlet]disabled
 commands-lb-success =
     { $leaderboardEnabled ->
         [true] { "[" }accent]Leaderboard [green]enabled
@@ -337,9 +324,6 @@ hexed-ranks-veteran = Veteran
 hexed-ranks-davastator = Devastator
 hexed-ranks-the_legend = The Legend
 hexed-game-over-header = Game Over. Winners:
-hexed-game-over-winner-row = [orange]{$index}. {$name}[][accent]: [cyan]{$cores} { $cores ->
-[one] hex
-*[other] hexes
 hexed-game-over-winner-row =
     { "[" }orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
         [one] hex
