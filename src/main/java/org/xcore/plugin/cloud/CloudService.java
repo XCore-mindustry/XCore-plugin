@@ -6,6 +6,7 @@ import io.avaje.inject.PostConstruct;
 import io.leangen.geantyref.TypeToken;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import lombok.Getter;
 import mindustry.Vars;
 import mindustry.game.Team;
 import mindustry.gen.Player;
@@ -59,7 +60,7 @@ public class CloudService {
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
 
     private MindustryCommandManager<XCoreSender> clientManager;
-    private MindustryCommandManager<XCoreSender> serverManager;
+    @Getter private MindustryCommandManager<XCoreSender> serverManager;
     private AnnotationParser<XCoreSender> clientAnnotationParser;
     private AnnotationParser<XCoreSender> serverAnnotationParser;
 
@@ -126,7 +127,7 @@ public class CloudService {
 
         mgr.parserRegistry().registerAnnotationMapper(
                 AllTeams.class,
-                (annotation, type) -> ParserParameters.single(AllTeams.PARAM, true)
+                (_, _) -> ParserParameters.single(AllTeams.PARAM, true)
         );
 
         mgr.parserRegistry().registerParserSupplier(
@@ -261,7 +262,7 @@ public class CloudService {
     }
 
     private void configurePreprocessors(AnnotationParser<XCoreSender> parser) {
-        parser.registerPreprocessorMapper(RequiresMuteCheck.class, annotation -> (ctx, input) -> {
+        parser.registerPreprocessorMapper(RequiresMuteCheck.class, _ -> (ctx, _) -> {
             XCoreSender sender = ctx.sender();
             if (sender.isPlayer() && securityService.isMuted(sender.player())) {
                 return ArgumentParseResult.failure(new IllegalStateException("Player is muted"));
@@ -269,7 +270,7 @@ public class CloudService {
             return ArgumentParseResult.success(true);
         });
 
-        parser.registerPreprocessorMapper(RequiresPlayTime.class, annotation -> (ctx, input) -> {
+        parser.registerPreprocessorMapper(RequiresPlayTime.class, annotation -> (ctx, _) -> {
             XCoreSender sender = ctx.sender();
             if (!sender.isPlayer()) return ArgumentParseResult.success(true);
 
@@ -280,7 +281,6 @@ public class CloudService {
                 case GLOBAL_CHAT -> globalConfig.minPlayTimeForGlobalChat;
                 case VOTE_KICK -> globalConfig.minPlayTimeForVotekick;
                 case CUSTOM -> 0;
-                default -> throw new IllegalStateException("Unexpected value: " + annotation.value());
             };
 
             var data = playerSessionService.get(player.uuid());

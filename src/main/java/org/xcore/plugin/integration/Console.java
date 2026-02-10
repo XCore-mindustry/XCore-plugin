@@ -12,9 +12,10 @@ import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
-import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.jline.widget.AutopairWidgets;
+import org.jspecify.annotations.NonNull;
 import org.xcore.plugin.config.Config;
 
 import java.io.ByteArrayOutputStream;
@@ -24,51 +25,46 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+
 @Singleton
 public class Console {
-
     private final Config config;
-    private final ServerControl serverControl;
+    private final CloudJLineCompleter cloudJLineCompleter;
 
+    private final ServerControl serverControl;
     private ExecutorService executor;
     private LineReader lineReader;
     private Terminal terminal;
     private volatile boolean running = false;
 
     @Inject
-    public Console(Config config) {
+    public Console(Config config, CloudJLineCompleter cloudJLineCompleter) { // Внедряем абстракцию
         this.config = config;
+        this.cloudJLineCompleter = cloudJLineCompleter;
         this.serverControl = ServerControl.instance;
     }
-
     @PostConstruct
     public void init() {
-        if (!config.consoleEnabled) {
-            return;
-        }
+        if (!config.consoleEnabled) return;
 
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
-        ClassLoader customClassLoader = Console.class.getClassLoader();
-
         try {
-            Thread.currentThread().setContextClassLoader(customClassLoader);
-
-            terminal = TerminalBuilder.builder()
-                    .system(true)
-                    .build();
+            Thread.currentThread().setContextClassLoader(Console.class.getClassLoader());
+            terminal = TerminalBuilder.builder().system(true).build();
 
             lineReader = LineReaderBuilder.builder()
                     .terminal(terminal)
-                    .completer(new StringsCompleter(serverControl.handler.getCommandList().map(c -> c.text)))
+                    .completer(cloudJLineCompleter)
                     .build();
-
             terminal.enterRawMode();
-            System.setOut(new BlockingPrintStream(string -> lineReader.printAbove(string)));
+
+            AutopairWidgets autopairWidgets = new AutopairWidgets(lineReader, true);
+            autopairWidgets.enable();
+
+            System.setOut(new BlockingPrintStream(lineReader::printAbove));
 
             serverControl.serverInput = () -> {};
-
             executor = Executors.newSingleThreadExecutor(r -> new Thread(r, "Console-Input-Thread"));
-
             running = true;
             handleNextInput();
         } catch (Exception e) {
@@ -170,7 +166,7 @@ public class Console {
         }
 
         @Override
-        public void write(byte[] buf, int off, int len) {
+        public void write(byte @NonNull [] buf, int off, int len) {
             for (int i = 0; i < len; i++) {
                 write(buf[off + i]);
             }
