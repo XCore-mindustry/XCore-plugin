@@ -27,11 +27,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.GameStateService;
-import org.xcore.plugin.service.MapService;
-import org.xcore.plugin.service.MenuService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.service.*;
 import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
@@ -293,11 +289,11 @@ public class MapController implements CloudClientController {
                 ? bundle.format(bundle.locale(player), "never", args())
                 : (System.currentTimeMillis() - m.lastPlayedTime) / 60000 + "m";
 
-        String menuTitle = bundle.format(bundle.locale(player),"commands-map-title", args());
+        String menuTitle = bundle.format(bundle.locale(player), "commands-map-title", args());
         String menuContent = bundle.format(bundle.locale(player), "commands-map-content", args(
                 "name", m.name,
                 "author", m.author,
-                "description", (map == null || map.description().isEmpty()) ? bundle.format(bundle.locale(player),"no-description", args()) : map.description(),
+                "description", (map == null || map.description().isEmpty()) ? bundle.format(bundle.locale(player), "no-description", args()) : map.description(),
                 "width", (map == null) ? "" : map.width,
                 "height", (map == null) ? "" : map.height,
                 "reputation", m.reputation,

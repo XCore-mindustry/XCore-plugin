@@ -240,9 +240,8 @@ public class EventController implements CloudClientController {
             session.clearDraft(EventData.class);
             handleEvents(player, 1);
         }));
-        row4.add(session.add(bundle.format(bundle.locale(player), "cancel", args()), () -> {
-            menuService.clear(player.uuid());
-        }));
+        row4.add(session.add(bundle.format(bundle.locale(player), "cancel", args()), () ->
+                menuService.clear(player.uuid())));
         rows.add(row4);
 
         if (player.admin) {
@@ -502,20 +501,34 @@ public class EventController implements CloudClientController {
     }
 
     private long parseTime(String input) {
+        if (input == null || input.isEmpty()) {
+            return 0;
+        }
+
         try {
             if (input.startsWith("+")) {
                 long now = System.currentTimeMillis();
-                String value = input.substring(1, input.length() - 1);
-                char unit = input.charAt(input.length() - 1);
-                long num = Long.parseLong(value);
 
-                return switch (unit) {
-                    case 'h' -> now + (num * 3600000L);
-                    case 'd' -> now + (num * 84400000L);
-                    case 'm' -> now + (num * 60000L);
-                    default -> now;
+                String valueStr = input.substring(1, input.length() - 1);
+                char unit = input.charAt(input.length() - 1);
+
+                long value = Long.parseLong(valueStr);
+
+                long millisInSecond = 1000L;
+                long millisInMinute = 60 * millisInSecond;
+                long millisInHour = 60 * millisInMinute;
+                long millisInDay = 24 * millisInHour;
+
+                long offset = switch (unit) {
+                    case 'm' -> value * millisInMinute;
+                    case 'h' -> value * millisInHour;
+                    case 'd' -> value * millisInDay;
+                    default -> 0;
                 };
+
+                return now + offset;
             }
+
             return Long.parseLong(input);
         } catch (Exception e) {
             return 0;
