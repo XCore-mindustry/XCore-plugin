@@ -1,39 +1,40 @@
 package org.xcore.plugin.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.bson.codecs.pojo.annotations.BsonId;
-import org.bson.types.ObjectId;
+import lombok.*;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 
 @Data
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MapData {
-    @BsonId
-    public ObjectId id;
+@Accessors(chain = true)
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class MapData extends ModelData {
 
-    public String name = "Unknown";
-    public String fileName = "Unknown";
-    public String author = "Unknown";
-    public String gameMode = "Unknown";
+    @Builder.Default public String name = "Unknown";
+    @Builder.Default public String fileName = "Unknown";
+    @Builder.Default public String author = "Unknown";
+    @Builder.Default public String gameMode = "Unknown";
 
-    public int like = 0;
-    public double dislike = 0;
+    @Builder.Default public int like = 0;
+    @Builder.Default public double dislike = 0;
 
-    public int reputation = 0;
-    public double popularity = 0;
-    public double interest = 0;
-    public int playedTimesYear = 0;
+    @Builder.Default public int reputation = 0;
+    @Builder.Default public double popularity = 0;
+    @Builder.Default public double interest = 0;
+    @Builder.Default public int playedTimesYear = 0;
 
-    public long playedTimes = 0;
-    public long lastPlayedTime = 0;
+    @Builder.Default public long playedTimes = 0;
+    @Builder.Default public long lastPlayedTime = 0;
 
-    public long minimumGameTime = 0;
-    public long averageGameTime = 0;
-    public long maximumGameTime = 0;
+    @Builder.Default public long minimumGameTime = 0;
+    @Builder.Default public long averageGameTime = 0;
+    @Builder.Default public long maximumGameTime = 0;
 
     public MapData(String name, String fileName, String author, String gameMode) {
+        super();
         this.name = name;
         this.fileName = fileName;
         this.author = author;

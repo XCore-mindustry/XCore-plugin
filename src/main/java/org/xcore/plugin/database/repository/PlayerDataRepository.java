@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.bson.Document;
-import org.bson.types.ObjectId;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.PlayerData;
@@ -17,13 +16,13 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
 
 @Singleton
-public class PlayerDataRepository {
-    private final MongoCollection<PlayerData> collection;
+public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
 
     @Inject
     public PlayerDataRepository(MongoDatabase database) {
-        this.collection = database.getCollection("players", PlayerData.class);
+
+        super(database, "players", PlayerData.class);
         this.counters = database.getCollection("counters");
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
@@ -31,11 +30,13 @@ public class PlayerDataRepository {
         collection.createIndex(new Document("nickname", 1));
     }
 
+    @Override
     public void save(PlayerData data) {
         if (data.pid == 0) {
             data.pid = generatePid();
         }
-        collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+
+        super.save(data);
     }
 
     private int generatePid() {
@@ -57,10 +58,6 @@ public class PlayerDataRepository {
 
     public PlayerData findByPid(int id) {
         return collection.find(eq("pid", id)).first();
-    }
-
-    public PlayerData findById(ObjectId id) {
-        return collection.find(eq("_id", id)).first();
     }
 
     public long deleteBots() {

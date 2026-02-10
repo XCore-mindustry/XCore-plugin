@@ -285,7 +285,7 @@ public class EventController implements ClientController {
                 "isConducted", event.isConducted ? yes : no,
                 "isActive", event.isActive ? yes : no,
                 "isTemporary", event.isTemporary ? yes : no,
-                "createdEventTime", event.createdEventTime,
+                "createdEventTime", event.createdModelTime,
                 "plannedStartTime", event.plannedStartTime,
                 "plannedEndTime", event.plannedEndTime,
                 "like", event.like,

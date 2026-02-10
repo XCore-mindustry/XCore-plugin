@@ -1,15 +1,21 @@
 package org.xcore.plugin.model;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 import org.mindrot.jbcrypt.BCrypt;
 
+@Data
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AdminData {
-    public String uuid = "";
-    public String password = "";
-    public boolean adminConfirmed = false;
+@Accessors(chain = true)
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class AdminData extends ModelData {
+    @Builder.Default public String uuid = "";
+    @Builder.Default public String password = "";
+    @Builder.Default public boolean adminConfirmed = false;
 
     public AdminData(String uuid) {
         this.uuid = uuid;

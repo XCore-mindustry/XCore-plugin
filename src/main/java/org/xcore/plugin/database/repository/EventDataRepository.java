@@ -1,8 +1,6 @@
 package org.xcore.plugin.database.repository;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
@@ -16,14 +14,11 @@ import java.util.Optional;
 import static com.mongodb.client.model.Filters.*;
 
 @Singleton
-public class EventDataRepository {
-    private final MongoCollection<EventData> collection;
-    private final MongoDatabase database;
+public class EventDataRepository extends DataRepository<EventData> {
 
     @Inject
     public EventDataRepository(MongoDatabase database) {
-        this.database = database;
-        this.collection = database.getCollection("events", EventData.class);
+        super(database, "events", EventData.class);
 
         collection.createIndex(new Document("name", 1).append("map", 1).append("author", 1));
         collection.createIndex(new Document("isActive", -1));
@@ -80,20 +75,6 @@ public class EventDataRepository {
             .sort(new Document("scheduledTime", 1))
             .first()
         );
-    }
-
-    public void save(EventData data) {
-        if (data == null) return;
-
-        if (data.createdTime == 0) {
-            data.createdTime = System.currentTimeMillis();
-        }
-
-        if (data.id == null) {
-            collection.insertOne(data);
-        } else {
-            collection.replaceOne(eq("_id", data.id), data, new ReplaceOptions().upsert(true));
-        }
     }
 
     public Optional<EventData> findActive() {

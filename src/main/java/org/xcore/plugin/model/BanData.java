@@ -1,12 +1,12 @@
 package org.xcore.plugin.model;
 
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-@NoArgsConstructor
+@Data
 @SuperBuilder
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class BanData extends Punishment {
-    @Builder.Default
-    public String ip = null;
+    @Builder.Default public String ip = null;
 }

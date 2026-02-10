@@ -1,8 +1,6 @@
 package org.xcore.plugin.database.repository;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.model.AdminData;
@@ -10,21 +8,16 @@ import org.xcore.plugin.model.AdminData;
 import static com.mongodb.client.model.Filters.eq;
 
 @Singleton
-public class AdminDataRepository {
-    private final MongoCollection<AdminData> collection;
+public class AdminDataRepository extends DataRepository<AdminData> {
 
     @Inject
     public AdminDataRepository(MongoDatabase database) {
-        this.collection = database.getCollection("admins", AdminData.class);
+        super(database, "admins", AdminData.class);
     }
 
     public AdminData findByUuid(String uuid) {
         var found = collection.find(eq("uuid", uuid)).first();
         return found != null ? found : new AdminData(uuid);
-    }
-
-    public void save(AdminData data) {
-        collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 
     public void delete(String uuid) {

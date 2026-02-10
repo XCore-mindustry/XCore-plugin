@@ -2,9 +2,7 @@ package org.xcore.plugin.database.repository;
 
 import arc.struct.ObjectMap;
 import arc.util.Log;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.Updates;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -12,20 +10,16 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.model.MapData;
 
-import java.util.ArrayList;
 import java.util.Optional;
 
 import static com.mongodb.client.model.Filters.*;
 
 @Singleton
-public class MapDataRepository {
-    private final MongoCollection<MapData> collection;
-    private final MongoDatabase database;
+public class MapDataRepository extends DataRepository<MapData> {
 
     @Inject
     public MapDataRepository(MongoDatabase database) {
-        this.database = database;
-        this.collection = database.getCollection("maps", MapData.class);
+        super(database, "maps", MapData.class);
 
         collection.createIndex(new Document("name", -1));
         collection.createIndex(new Document("author", -1));
@@ -62,19 +56,6 @@ public class MapDataRepository {
             save(newData);
             return newData;
         });
-    }
-
-    public MapData findById(ObjectId id) {
-        if (id == null) return null;
-        return collection.find(eq("_id", id)).first();
-    }
-
-    public void save(MapData data) {
-        if (data.id == null) {
-            collection.insertOne(data);
-        } else {
-            collection.replaceOne(eq("_id", data.id), data, new ReplaceOptions().upsert(true));
-        }
     }
 
     public void incrementStats(ObjectId id, double popularityDelta, double interestDelta, int reputationDelta) {

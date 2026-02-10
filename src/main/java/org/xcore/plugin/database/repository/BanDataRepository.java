@@ -1,6 +1,5 @@
 package org.xcore.plugin.database.repository;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Singleton;
@@ -13,12 +12,11 @@ import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
 
 @Singleton
-public class BanDataRepository {
-    private final MongoCollection<BanData> collection;
+public class BanDataRepository extends DataRepository<BanData> {
 
     @Inject
     public BanDataRepository(MongoDatabase database) {
-        this.collection = database.getCollection("bans", BanData.class);
+        super(database, "bans", BanData.class);
     }
 
     public BanData find(String uuid, String ip) {

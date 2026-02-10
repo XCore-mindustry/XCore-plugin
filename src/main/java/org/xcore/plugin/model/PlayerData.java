@@ -1,7 +1,8 @@
 package org.xcore.plugin.model;
 
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.Accessors;
+import lombok.experimental.SuperBuilder;
 import mindustry.gen.Player;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
@@ -13,40 +14,46 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 @Accessors(chain = true)
-public class PlayerData {
-    @BsonId
-    public ObjectId id;
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class PlayerData extends ModelData {
 
-    public int pid;
-    public String uuid = "";
+    @Builder.Default public int pid = 0;
+    @Builder.Default public String uuid = "";
 
-    @Setter public String ip = "";
-    @Setter public String nickname = "<unknown>";
-    public String translatorLanguage = "off";
+    @Builder.Default public String ip = "";
+    @Builder.Default public String nickname = "Unknown";
 
-    public int pvpRating = 0;
-    public int hexedRank = 0;
-    public int hexedPoints = 0;
-    public int totalPlayTime = 0;
+    @Builder.Default public String translatorLanguage = "off";
 
-    public Map<String, Boolean> eventVotes = new HashMap<>();
-    public Map<String, Boolean> mapVotes = new HashMap<>();
+    @Builder.Default public int pvpRating = 0;
+    @Builder.Default public int hexedRank = 0;
+    @Builder.Default public int hexedPoints = 0;
+    @Builder.Default public int totalPlayTime = 0;
 
-    public boolean leaderboard = true;
+    @Builder.Default public Map<String, Boolean> eventVotes = new HashMap<>();
+    @Builder.Default public Map<String, Boolean> mapVotes = new HashMap<>();
 
-    @BsonIgnore @Setter public transient Player player = null;
-    @BsonIgnore public String adminModVersion = null;
-    @BsonIgnore public long historySize = 0L;
-    @BsonIgnore public transient boolean exists = true;
-    @BsonIgnore public long lastUnload = 0;
+    @Builder.Default public boolean leaderboard = true;
+
+    @Builder.Default @BsonIgnore public transient Player player = null;
+    @Builder.Default @BsonIgnore public String adminModVersion = null;
+    @Builder.Default @BsonIgnore public long historySize = 0L;
+
+    @Builder.Default @BsonIgnore public transient boolean exists = true;
+
+    @Builder.Default @BsonIgnore public long lastUnload = 0;
 
     public PlayerData(String uuid, Boolean exists) {
+        super();
         this.uuid = uuid;
         this.exists = exists;
     }
-
-    public PlayerData() {}
 
     public HexedRanks.HexedRank hexedRank() {
         return HexedRanks.HexedRank.values()[hexedRank];

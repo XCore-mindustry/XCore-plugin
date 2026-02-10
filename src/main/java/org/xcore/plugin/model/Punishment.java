@@ -1,23 +1,20 @@
 package org.xcore.plugin.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
 
+@Data
 @SuperBuilder
-@AllArgsConstructor
 @NoArgsConstructor
-public class Punishment {
-    public String uuid;
-    @Builder.Default
-    public String name = "<unknown>";
-    @Builder.Default
-    public String adminName = "<unknown>";
-    @Builder.Default
-    public String reason = "Not Specified";
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public abstract class Punishment extends ModelData {
+    @Builder.Default public String uuid = "";
+    @Builder.Default public String name = "Unknown";
+    @Builder.Default public String adminName = "Unknown";
+    @Builder.Default public String reason = "Not Specified";
 
     public Instant expireDate;
 

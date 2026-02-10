@@ -1,6 +1,5 @@
 package org.xcore.plugin.database.repository;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
@@ -10,12 +9,11 @@ import org.xcore.plugin.model.MuteData;
 import static com.mongodb.client.model.Filters.eq;
 
 @Singleton
-public class MuteDataRepository {
-    private final MongoCollection<MuteData> collection;
+public class MuteDataRepository extends DataRepository<MuteData> {
 
     @Inject
     public MuteDataRepository(MongoDatabase database) {
-        this.collection = database.getCollection("mutes", MuteData.class);
+        super(database,"mutes", MuteData.class);
     }
 
     public MuteData findByUuid(String uuid) {
