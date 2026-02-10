@@ -3,105 +3,94 @@ package org.xcore.plugin.command.controller.client;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.annotation.MinPlayTime;
-import org.xcore.plugin.command.core.annotation.PlayTimeLimit;
-import org.xcore.plugin.command.core.context.ClientContext;
-import org.xcore.plugin.vote.VoteChoice;
-import org.xcore.plugin.vote.VoteKick;
-import org.xcore.plugin.vote.VoteKickFactory;
-import org.xcore.plugin.vote.VoteService;
-import org.xcore.plugin.vote.VoteSession;
-import org.xcore.plugin.service.FindService;
+import org.incendo.cloud.annotation.specifier.Greedy;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
+import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
+import org.xcore.plugin.command.controller.CloudClientController;
+import org.xcore.plugin.vote.*;
 import org.xcore.plugin.common.TextUtils;
 
 import static com.ospx.flubundle.Bundle.args;
 
-import org.xcore.plugin.command.core.ClientController;
-
 @Singleton
-public class VoteController implements ClientController {
-    private final FindService findService;
+public class VoteController implements CloudClientController {
+
     private final VoteService voteService;
     private final VoteKickFactory voteKickFactory;
 
     @Inject
-    public VoteController(FindService findService, VoteService voteService, VoteKickFactory voteKickFactory) {
-        this.findService = findService;
+    public VoteController(VoteService voteService,
+                          VoteKickFactory voteKickFactory) {
         this.voteService = voteService;
         this.voteKickFactory = voteKickFactory;
     }
 
-    @Override
-    public int priority() {
-        return 70;
-    }
+    @RequiresPlayTime(PlayTimeLimit.VOTE_KICK)
+    @Command("votekick <target> <reason>")
+    public void votekick(XCoreSender sender,
+                         @Argument("target") Player target,
+                         @Argument("reason") @Greedy String reason) {
 
-    @MinPlayTime(value = PlayTimeLimit.VOTE_KICK, errorKey = "error-votekick-total-playtime")
-    @Command(name = "votekick", params = "<id/name> <reason...>")
-    public void votekick(ClientContext ctx) {
         if (voteService.getCurrentVoteKick() != null) {
-            ctx.send("error-vote-in-progress", args());
+            sender.send("error-vote-in-progress", args());
             return;
         }
 
-        Player found = findService.player(ctx.arg(0));
-        if (found == null) {
-            ctx.send("error-player-not-found", args());
+        if (target.admin) {
+            sender.player().kick(sender.format("error-player-admin", args()), 300000);
             return;
         }
 
-        if (found.admin) {
-            ctx.player().kick(ctx.format("error-player-admin", args()), 300000);
+        if (target.team() != sender.player().team()) {
+            sender.send("error-player-not-teammate", args());
             return;
         }
 
-        if (found.team() != ctx.player().team()) {
-            ctx.send("error-player-not-teammate", args());
-            return;
-        }
-
-        VoteKick kick = voteKickFactory.create(ctx.player(), found, ctx.args()[1]);
+        VoteKick kick = voteKickFactory.create(sender.player(), target, reason);
         voteService.startVote(kick);
-        kick.vote(ctx.player(), 1);
+        kick.vote(sender.player(), 1);
     }
 
-    @Command(name = "vote", params = "<y/n/c>")
-    public void vote(ClientContext ctx) {
-        VoteSession currentSession = voteService.getCurrentSession();
+    @Command("vote <choice>")
+    public void vote(XCoreSender sender,
+                     @Argument("choice") String choice) {
 
+        VoteSession currentSession = voteService.getCurrentSession();
         if (currentSession == null) {
-            ctx.send("error-no-voting", args());
+            sender.send("error-no-voting", args());
             return;
         }
 
-        String choice = TextUtils.stripFooCharacters(ctx.arg(0).toLowerCase());
+        String c = TextUtils.stripFooCharacters(choice.toLowerCase());
 
-        if (choice.equals("c")) {
-            if (!ctx.player().admin) {
-                ctx.send("error-access-denied", args());
+        if (c.equals("c")) {
+            if (!sender.player().admin) {
+                sender.send("error-access-denied", args());
                 return;
             }
-            currentSession.cancelByAdmin(ctx.player());
+            currentSession.cancelByAdmin(sender.player());
             return;
         }
 
-        if (currentSession.voted.containsKey(ctx.player().id)) {
-            ctx.send("error-already-voted", args());
+        if (currentSession.voted.containsKey(sender.player().id)) {
+            sender.send("error-already-voted", args());
             return;
         }
 
-        if (currentSession instanceof VoteKick voteKick && voteKick.target == ctx.player()) {
-            ctx.send("error-vote-yourself", args());
+        if (currentSession instanceof VoteKick voteKick && voteKick.target == sender.player()) {
+            sender.send("error-vote-yourself", args());
             return;
         }
 
-        VoteChoice sign = VoteChoice.parse(choice);
+        VoteChoice sign = VoteChoice.parse(c);
         if (!sign.isValid()) {
-            ctx.send("commands-vote-vote-with", args());
+            sender.send("commands-vote-vote-with", args());
             return;
         }
 
-        currentSession.vote(ctx.player(), sign.sign());
+        currentSession.vote(sender.player(), sign.sign());
     }
 }

@@ -9,16 +9,19 @@ import com.google.gson.Gson;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ServerContext;
+import org.incendo.cloud.annotation.specifier.Greedy;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.CommandDescription;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.FindService;
 
-import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class DataController implements ServerController {
+public class DataController implements CloudServerController {
 
     private final PlayerDataRepository playerDataRepository;
     private final Fi configFile;
@@ -39,20 +42,19 @@ public class DataController implements ServerController {
         this.find = find;
     }
 
-    @Command(name = "xconfig", params = "[field] [value]", description = "Configure xcore plugin settings via JSON field mapping.")
-    public void xconfig(ServerContext ctx) {
-        String json = prettyGson.toJson(config);
-        if (ctx.args().length == 0) {
-            Log.info(json);
-            return;
-        }
-        if (ctx.args().length < 2) {
-            Log.err("Usage: xconfig <field> <value>");
-            return;
-        }
+    @Command("xconfig")
+    @CommandDescription("Displays the current XCore configuration JSON.")
+    public void xconfigShow(XCoreSender sender) {
+        Log.info(prettyGson.toJson(config));
+    }
 
-        String field = ctx.arg(0);
-        String value = ctx.arg(1);
+    @Command("xconfig <field> <value>")
+    @CommandDescription("Modifies a specific field in the XCore configuration.")
+    public void xconfigEdit(XCoreSender sender,
+                            @Argument(value = "field", description = "The JSON field name") String field,
+                            @Argument(value = "value", description = "The new value") @Greedy String value) {
+
+        String json = prettyGson.toJson(config);
         JsonValue root = new JsonReader().parse(json);
 
         if (!root.has(field)) {
@@ -66,16 +68,19 @@ public class DataController implements ServerController {
         Log.info("Config field '@' updated to '@'.", field, value);
     }
 
-    @Command(name = "edit-data", params = "<#id/uuid> <field> <value>", description = "Edit PlayerData fields.")
-    public void editData(ServerContext ctx) {
-        PlayerData data = find.playerData(ctx.arg(0));
+    @Command("edit-data <player> <field> <value>")
+    @CommandDescription("Directly modifies a field in a player's database entry.")
+    public void editData(XCoreSender sender,
+                         @Argument(value = "player", description = "Player Name/#ID/UUID") String player,
+                         @Argument(value = "field", description = "The database field name") String field,
+                         @Argument(value = "value", description = "The new value") @Greedy String value) {
+
+        PlayerData data = find.playerData(player);
         if (data == null) {
             Log.err("Player not found.");
             return;
         }
 
-        String field = ctx.arg(1);
-        String value = ctx.arg(2);
         JsonValue root = new JsonReader().parse(prettyGson.toJson(data));
 
         if (!root.has(field)) {
@@ -89,9 +94,12 @@ public class DataController implements ServerController {
         Log.info("PlayerData for @ updated. Field '@' -> '@'.", data.nickname, field, value);
     }
 
-    @Command(name = "dbinfo", params = "<#id/uuid>", description = "Show raw JSON info about player.")
-    public void dbInfo(ServerContext ctx) {
-        PlayerData data = find.playerData(ctx.arg(0));
+    @Command("dbinfo <player>")
+    @CommandDescription("Displays raw database information (JSON) for a player.")
+    public void dbInfo(XCoreSender sender,
+                       @Argument(value = "player", description = "Player Name/#ID/UUID") String player) {
+
+        PlayerData data = find.playerData(player);
         if (data == null) {
             Log.err("Player not found.");
             return;

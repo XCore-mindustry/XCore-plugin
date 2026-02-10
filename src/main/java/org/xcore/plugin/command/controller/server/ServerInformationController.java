@@ -7,15 +7,17 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.net.Administration.PlayerInfo;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ServerContext;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.CommandDescription;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.service.PlayerSessionService;
 
 import static mindustry.Vars.netServer;
 
-import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class ServerInformationController implements ServerController {
+public class ServerInformationController implements CloudServerController {
 
     private final PlayerSessionService playerSessionService;
 
@@ -24,8 +26,9 @@ public class ServerInformationController implements ServerController {
         this.playerSessionService = playerSessionService;
     }
 
-    @Command(name = "players", description = "List online players with status.")
-    public void players(ServerContext ctx) {
+    @Command("players")
+    @CommandDescription("Lists all online players with their internal IDs and IPs.")
+    public void players(XCoreSender sender) {
         if (Groups.player.isEmpty()) {
             Log.info("No players online.");
             return;
@@ -38,10 +41,11 @@ public class ServerInformationController implements ServerController {
         });
     }
 
-    @Command(name = "info", params = "<IP/UUID/#id/name...>", description = "Find detailed player traces.")
-    public void info(ServerContext ctx) {
+    @Command("info <query>")
+    @CommandDescription("Finds detailed player info by Name, IP, UUID, or #ID.")
+    public void info(XCoreSender sender, @Argument("query") String q) {
+
         ObjectSet<PlayerInfo> set;
-        String q = ctx.arg(0);
         if (q.startsWith("#")) {
             var d = playerSessionService.getOrLoadFromDb(Strings.parseInt(q.substring(1)));
             set = (d != null) ? ObjectSet.with(netServer.admins.getInfoOptional(d.uuid)) : new ObjectSet<>();

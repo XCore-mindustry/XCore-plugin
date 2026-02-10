@@ -4,24 +4,27 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.annotation.MinPlayTime;
-import org.xcore.plugin.command.core.annotation.MuteCheck;
-import org.xcore.plugin.command.core.annotation.PlayTimeLimit;
-import org.xcore.plugin.command.core.context.ClientContext;
+import mindustry.gen.Player;
+import org.incendo.cloud.annotation.specifier.Greedy;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
+import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
+import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
+import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
 
-import org.xcore.plugin.command.core.ClientController;
-
 @Singleton
-public class SocialController implements ClientController {
+public class SocialController implements CloudClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final PlayerSessionService playerSessionService;
@@ -29,6 +32,7 @@ public class SocialController implements ClientController {
     private final Config config;
     private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
+    private final BundleService bundleService;
 
     @Inject
     public SocialController(PlayerDataRepository playerDataRepository,
@@ -36,79 +40,85 @@ public class SocialController implements ClientController {
                             NetworkService network,
                             Config config,
                             GlobalConfig globalConfig,
-                            TranslatorLanguagesProvider translatorLanguagesProvider) {
+                            TranslatorLanguagesProvider translatorLanguagesProvider,
+                            BundleService bundleService) {
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
+        this.bundleService = bundleService;
     }
 
-    @Override
-    public int priority() {
-        return 90;
-    }
+    @RequiresMuteCheck
+    @Command("t <message>")
+    public void teamChat(XCoreSender sender,
+                         @Argument("message") @Greedy String message) {
 
-    @MuteCheck
-    @Command(name = "t", params = "<message...>")
-    public void teamChat(ClientContext ctx) {
+        Player author = sender.player();
+
         Groups.player.each(
-                other -> other.team() == ctx.player().team(),
-                p -> p.sendMessage(ctx.format("commands-t-chat", args(
-                        "color", ctx.player().team().color,
-                        "name", ctx.player().coloredName(),
-                        "message", ctx.args()[0]
-                )), ctx.player())
+                other -> other.team() == author.team(),
+                p -> {
+                    String formatted = bundleService.format(bundleService.locale(p),
+                            "commands-t-chat", args(
+                                    "color", author.team().color,
+                                    "name", author.coloredName(),
+                                    "message", message
+                            ));
+                    p.sendMessage(formatted, author);
+                }
         );
     }
 
-    @MuteCheck
-    @MinPlayTime(value = PlayTimeLimit.GLOBAL_CHAT, errorKey = "error-globalchat-total-playtime")
-    @Command(name = "g", params = "<message...>")
-    public void globalChat(ClientContext ctx) {
-        String message = ctx.args()[0];
+    @RequiresMuteCheck
+    @RequiresPlayTime(PlayTimeLimit.GLOBAL_CHAT)
+    @Command("g <message>")
+    public void globalChat(XCoreSender sender,
+                           @Argument("message") @Greedy String message) {
 
         network.post(new SocketEvents.GlobalChatEvent(
-                ctx.player().coloredName(),
+                sender.player().coloredName(),
                 message,
                 config.server
         ));
 
         network.post(new SocketEvents.MessageEvent(
-                ctx.player().plainName(),
+                sender.player().plainName(),
                 "[" + config.server + "] " + message.replace("`", "*"),
                 "global"
         ));
     }
 
-    @Command(name = "discord")
-    public void discord(ClientContext ctx) {
-        Call.openURI(ctx.player().con, globalConfig.discordUrl);
+    @Command("discord")
+    public void discord(XCoreSender sender) {
+        Call.openURI(sender.player().con, globalConfig.discordUrl);
     }
 
-    @Command(name = "tr", params = "<language/auto/off>")
-    public void translator(ClientContext ctx) {
-        var data = playerSessionService.get(ctx.player().uuid());
-        String input = ctx.arg(0).toLowerCase();
+    @Command("tr <language>")
+    public void translator(XCoreSender sender,
+                           @Argument(value = "language", parserName = "language") String language) {
+
+        var data = playerSessionService.get(sender.player().uuid());
+        String input = language.toLowerCase();
 
         if (input.equals("off")) {
             data.translatorLanguage = "off";
-            ctx.send("commands-tr-off", args());
-        } else if (input.equals("auto")) {
-            var lang = findTranslatorLanguage(ctx.player().locale);
+            sender.send("commands-tr-off", args());
+            playerDataRepository.save(data);
+            return;
+        }
+
+        if (input.equals("auto")) {
+            var lang = findTranslatorLanguage(sender.player().locale);
             data.translatorLanguage = (lang == null) ? "en" : lang;
         } else {
-            var lang = findTranslatorLanguage(input);
-            if (lang == null) {
-                ctx.send("commands-tr-not-found", args());
-                return;
-            }
-            data.translatorLanguage = lang;
+            data.translatorLanguage = input;
         }
 
         String langName = translatorLanguagesProvider.getLanguages().get(data.translatorLanguage);
-        ctx.send("commands-tr-success", args(
+        sender.send("commands-tr-success", args(
                 "translatorLanguage", langName != null ? langName : data.translatorLanguage
         ));
 

@@ -1,4 +1,4 @@
-package org.xcore.plugin.command.core.annotation;
+package org.xcore.plugin.cloud.annotation;
 
 public enum PlayTimeLimit {
     CUSTOM,

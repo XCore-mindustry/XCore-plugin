@@ -50,8 +50,9 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryHeadless)
 
     implementation(project(":flubundle"))
-
+    implementation("com.github.XCore-mindustry:cloud-mindustry:5021268676")
     implementation("com.github.osp54:Sock:9d465f7")
+
     implementation("org.mongodb:mongodb-driver-sync:5.6.2")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.mindrot:jbcrypt:0.4")

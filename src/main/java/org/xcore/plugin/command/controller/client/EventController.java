@@ -1,16 +1,19 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.struct.Seq;
-import jakarta.inject.Provider;
+import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import org.xcore.plugin.command.core.ClientController;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ClientContext;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Default;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.GlobalConfig;
@@ -36,7 +39,7 @@ import java.util.Optional;
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
-public class EventController implements ClientController {
+public class EventController implements CloudClientController {
 
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
@@ -69,23 +72,19 @@ public class EventController implements ClientController {
         this.menuService = menuService;
     }
 
-    @Override
-    public int priority() {
-        return 80;
+    @Command("event")
+    public void event(XCoreSender sender) {
+        handleMain(sender.player());
+    }
+
+    @Command("events [page]")
+    public void events(XCoreSender sender,
+                       @Argument("page") @Default("1") int page) {
+        handleEvents(sender.player(), page);
     }
 
     private Optional<EventData> currentEvent() {
         return this.eventDataRepository.findActive();
-    }
-
-    @Command(name = "event")
-    public void event(ClientContext ctx) {
-        handleMain(ctx.player());
-    }
-
-    @Command(name = "events", params = "[page]")
-    public void events(ClientContext ctx) {
-        handleEvents(ctx.player(), ctx.argInt(0, 1));
     }
 
     private void handleMain(Player player) {
@@ -117,18 +116,15 @@ public class EventController implements ClientController {
         }
 
         List<String> row3 = new ArrayList<>();
-
         if (voteService.getCurrentSession() instanceof VoteEvent && player.admin()) {
             row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-vote-stop", args()), voteService::endVote));
         }
         if (event != null && event.isActive && player.admin()) {
             row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-stop", args()), eventDataRepository::finishActiveEvent));
         }
-
         rows.add(row3);
 
         menuService.addNavigationRow(player, session, rows);
-
         Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
@@ -139,11 +135,10 @@ public class EventController implements ClientController {
 
         MenuSession session = menuService.get(player.uuid());
         session.actions.clear();
-
         session.setDraft(new EventData());
 
-        PlayerData playerData =  playerSessionService.get(player.uuid());
-        if  (playerData != null) {
+        PlayerData playerData = playerSessionService.get(player.uuid());
+        if (playerData != null) {
             session.getDraft(EventData.class).author = playerData.id;
         }
 
@@ -174,16 +169,15 @@ public class EventController implements ClientController {
 
         String menuTitle = bundle.format(bundle.locale(player), "event-menu-edit-title", args());
         String menuContent = bundle.format(bundle.locale(player), "event-menu-edit-content", args(
-                "name", session.getDraft(EventData.class).name,
-                "description", session.getDraft(EventData.class).description,
+                "name", draft.name,
+                "description", draft.description,
                 "author", (playerData == null) ? "" : playerData.nickname,
                 "mapName", (mapData == null) ? "" : mapData.name,
-                "isMajor", session.getDraft(EventData.class).isMajor ? yes : no,
-                "isTemporary", session.getDraft(EventData.class).isTemporary ? yes : no,
-                "plannedStartTime", session.getDraft(EventData.class).plannedStartTime,
-                "plannedEndTime", session.getDraft(EventData.class).plannedEndTime
+                "isMajor", draft.isMajor ? yes : no,
+                "isTemporary", draft.isTemporary ? yes : no,
+                "plannedStartTime", draft.plannedStartTime,
+                "plannedEndTime", draft.plannedEndTime
         ));
-
 
         session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
@@ -211,7 +205,7 @@ public class EventController implements ClientController {
             handleMapSelection(player, 1);
         }));
         row2.add(session.add(bundle.format(bundle.locale(player),
-            draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive", args()), () -> {
+                draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive", args()), () -> {
             draft.isTemporary = !draft.isTemporary;
             handleEdit(player);
         }));
@@ -245,7 +239,6 @@ public class EventController implements ClientController {
             }
             eventDataRepository.save(draft);
             session.clearDraft(EventData.class);
-
             handleEvents(player, 1);
         }));
         row4.add(session.add(bundle.format(bundle.locale(player), "cancel", args()), () -> {
@@ -255,7 +248,7 @@ public class EventController implements ClientController {
 
         if (player.admin) {
             rows.add(List.of(session.add(bundle.format(bundle.locale(player),
-                draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive", args()), () -> {
+                    draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive", args()), () -> {
                 draft.isMajor = !draft.isMajor;
                 handleEdit(player);
             })));
@@ -347,13 +340,11 @@ public class EventController implements ClientController {
             rows.add(row5);
         }
 
-
         Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
     public void handleEvents(Player player, int page) {
         int totalEvents = (int) eventDataRepository.count();
-
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(totalEvents, perPage);
 
@@ -375,34 +366,22 @@ public class EventController implements ClientController {
 
         List<String> navRow = new ArrayList<>();
         if (validPage > 1) {
-            final int prevPage = validPage - 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "previous", args()),
-                    () -> handleMapSelection(player, prevPage)
-            ));
+            navRow.add(session.add(bundle.format(bundle.locale(player), "previous", args()), () -> handleEvents(player, validPage - 1)));
         }
         if (validPage < pagination.totalPages()) {
-            final int nextPage = validPage + 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "next", args()),
-                    () -> handleMapSelection(player, nextPage)
-            ));
+            navRow.add(session.add(bundle.format(bundle.locale(player), "next", args()), () -> handleEvents(player, validPage + 1)));
         }
-        if (!navRow.isEmpty()) {
-            rows.add(navRow);
-        }
+        if (!navRow.isEmpty()) rows.add(navRow);
 
         int skip = (validPage - 1) * perPage;
         List<EventData> events = eventDataRepository.findPage(skip, perPage);
 
         for (EventData event : events) {
             String buttonText = event.isActive ? bundle.format(bundle.locale(player), "event-menu-events-selected", args("name", event.name)) : event.name;
-            rows.add(List.of(
-                    session.add(buttonText, () -> {
-                        session.pushHistory(() -> handleEvents(player, validPage));
-                        handleEvent(player, event);
-                    })
-            ));
+            rows.add(List.of(session.add(buttonText, () -> {
+                session.pushHistory(() -> handleEvents(player, validPage));
+                handleEvent(player, event);
+            })));
         }
 
         menuService.addNavigationRow(player, session, rows);
@@ -440,47 +419,28 @@ public class EventController implements ClientController {
             return;
         }
 
-
         List<List<String>> rows = new ArrayList<>();
-
         List<String> navRow = new ArrayList<>();
         if (validPage > 1) {
-            final int prevPage = validPage - 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "previous", args()),
-                    () -> handleMapSelection(player, prevPage)
-            ));
+            navRow.add(session.add(bundle.format(bundle.locale(player), "previous", args()), () -> handleMapSelection(player, validPage - 1)));
         }
         if (validPage < pagination.totalPages()) {
-            final int nextPage = validPage + 1;
-            navRow.add(session.add(
-                    bundle.format(bundle.locale(player), "next", args()),
-                    () -> handleMapSelection(player, nextPage)
-            ));
+            navRow.add(session.add(bundle.format(bundle.locale(player), "next", args()), () -> handleMapSelection(player, validPage + 1)));
         }
-        if (!navRow.isEmpty()) {
-            rows.add(navRow);
-        }
-        String gameMode = Vars.state.rules.mode().name();
+        if (!navRow.isEmpty()) rows.add(navRow);
 
+        String gameMode = Vars.state.rules.mode().name();
         SeqStream.of(maps)
                 .gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage))
                 .flatMap(List::stream)
-                .forEach(map -> rows.add(List.of(
-                        session.add(map.name(), () -> {
-                            MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
-
-                            if (data.id == null) {
-                                mapDataRepository.save(data);
-                            }
-
-                            session.getDraft(EventData.class).map = data.id;
-                            handleEdit(player);
-                        })
-                )));
+                .forEach(map -> rows.add(List.of(session.add(map.name(), () -> {
+                    MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
+                    if (data.id == null) mapDataRepository.save(data);
+                    session.getDraft(EventData.class).map = data.id;
+                    handleEdit(player);
+                }))));
 
         menuService.addNavigationRow(player, session, rows);
-
         Call.menu(player.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
     }
 
@@ -502,17 +462,12 @@ public class EventController implements ClientController {
 
         if (forced) {
             eventDataRepository.activateEvent(target);
-
-            bundle.send("commands-artv-event-skipped", args(
-                    "name", target.name,
-                    "nickname", player.coloredName()
-            ));
+            bundle.send("commands-artv-event-skipped", args("name", target.name, "nickname", player.coloredName()));
         } else {
             var vote = voteEventFactory.create(target);
             voteService.startVote(vote);
             vote.vote(player, 1);
         }
-
     }
 
     private void handleReputation(Player player, boolean like, EventData event) {
@@ -543,7 +498,6 @@ public class EventController implements ClientController {
         }
 
         p.eventVotes.put(event.id.toString(), like);
-
         playerDataRepository.save(p);
         eventDataRepository.save(event);
     }
@@ -558,7 +512,7 @@ public class EventController implements ClientController {
 
                 return switch (unit) {
                     case 'h' -> now + (num * 3600000L);
-                    case 'd' -> now + (num * 86400000L);
+                    case 'd' -> now + (num * 84400000L);
                     case 'm' -> now + (num * 60000L);
                     default -> now;
                 };

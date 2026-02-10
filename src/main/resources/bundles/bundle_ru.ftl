@@ -3,9 +3,28 @@
 # ==============================================================================
 commands-help-params = { "[" }страница]
 commands-help-description = Перечисляет все команды
-commands-help-start-content = { "[" }orange]-- Страница Команд[lightgray] { $page }[gray]/[lightgray]{ $totalPages }[orange] --
-commands-help-content = { "[" }orange] /{ $commandName }[white] { $commandParams }[lightgray] - { $commandDescription }
-commands-information-params = ${ "" }
+
+help-menu-title = [orange]• [white]КОМАНДЫ XCORE [orange]•
+help-menu-content = [gray]Страница [white]{$page}[gray]/[white]{$total}
+    {""}[lightgray]Выберите команду для подробной информации:
+help-menu-button = [accent]/{$command} [gray]» [white]{$description}
+help-command-title = [orange]» [white]/{$name}
+help-command-header = [orange]» [accent]Синтаксис: [white]{$syntax}
+    {""}[orange]» [accent]Описание: [lightgray]{$description}
+help-aliases = [orange]» [accent]Псевдонимы: [white]{$aliases}
+help-args-title = [orange]» [accent]Аргументы:
+help-arg-entry =   [gray]• [white]{$arg} [lightgray]- {$description}
+help-no-arguments =   [gray]Дополнительные аргументы не требуются.
+help-no-arg-description = Нет описания.
+help-no-description = Описание для этой команды не предоставлено.
+help-legacy-command-content = [orange]» [accent]Команда: [white]/{$name}
+    {""}[orange]» [accent]Параметры: [white]{$params}
+    {""}[orange]» [accent]Описание: [lightgray]{$description}
+    {""}
+    {""}[gray](Это устаревшая команда с ограниченной информацией)
+help-back = [lightgray]« Назад
+
+commands-information-params = ${""}
 commands-information-description = Показать информацию о сервере
 commands-info-title = { "[" }orange]XCore сервер — { $xcorServerName }
 commands-info-text =
@@ -16,15 +35,45 @@ commands-sync-params = { "" }
 commands-sync-description = Пересинхронизировать состояние мира
 commands-discord-params = { "" }
 commands-discord-description = Перенаправляет вас на сервер discord
-welcome =
-    { "[" }accent]Добро пожаловать в { $serverName }!
-    { "" }[lightgray]Введите [accent]/help[lightgray], чтобы увидеть список команд
-    { "" }[lightgray]Введите [accent]/vote [gray]<y/n>[lightgray], чтобы проголосовать за наказание игрока
-    { "" }[lightgray]Введите [accent]/votekick [gray]<ID/имя> <причина…>[lightgray], чтобы начать голосование-кик
-    { "" }[lightgray]Введите [accent]/t [gray]<сообщение…>[lightgray], чтобы отправить сообщение своим союзникам
-    { "" }[lightgray]Введите [accent]/g [gray]<сообщение…>[lightgray], чтобы отправить сообщение всем серверам
-    { "" }[lightgray]Введите [accent]/tr [gray]<язык/auto>[lightgray], чтобы включить переводчик
-    { "" }[lightgray]Введите [accent]/discord[lightgray], чтобы перейти наш сервер discord
+
+welcome = [accent]Добро пожаловать в {$serverName}!
+    {""}[lightgray]Введите [accent]/help[lightgray], чтобы увидеть список команд
+    {""}[lightgray]Введите [accent]/vote [gray]<y/n>[lightgray], чтобы проголосовать за наказание игрока
+    {""}[lightgray]Введите [accent]/votekick [gray]<ID/имя> <причина...>[lightgray], чтобы начать голосование-кик
+    {""}[lightgray]Введите [accent]/t [gray]<сообщение...>[lightgray], чтобы отправить сообщение своим союзникам
+    {""}[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение всем серверам
+    {""}[lightgray]Введите [accent]/tr [gray]<язык/auto>[lightgray], чтобы включить переводчик
+    {""}[lightgray]Введите [accent]/discord[lightgray], чтобы перейти наш сервер discord
+
+# ==============================================================================
+# Command Argument Descriptions
+# ==============================================================================
+commands-help-page-description = Номер страницы для отображения
+commands-login-password-description = Ваш пароль администратора
+commands-ban-id-description = ID игрока для бана
+commands-ban-period-description = Длительность бана (например: 1d, 2h, 30m)
+commands-ban-reason-description = Причина бана
+commands-unban-id-description = ID игрока для разбана
+commands-mute-id-description = ID игрока для мута
+commands-mute-period-description = Длительность мута (например: 1h, 30m)
+commands-mute-reason-description = Причина мута
+commands-unmute-id-description = ID игрока для снятия мута
+commands-votekick-target-description = Игрок для кика (ID или имя)
+commands-votekick-reason-description = Причина кика
+commands-vote-choice-description = Ваш голос: y (да), n (нет), c (отмена, только админ)
+commands-t-message-description = Сообщение для союзников
+commands-g-message-description = Сообщение для всех серверов
+commands-tr-language-description = Код языка, 'ru', 'en', ..., 'auto' или 'off'
+commands-stats-id-description = ID игрока для просмотра статистики
+commands-rank-player-description = Игрок для просмотра ранга
+commands-map-map-description = Название или номер карты
+commands-maps-page-description = Номер страницы
+commands-maps-text-page-description = Номер страницы
+commands-rtv-map-description = Карта для голосования (опционально)
+commands-artv-map-description = Карта для принудительной смены
+commands-ai-state-description = Состояние ИИ: attack (a) или idle (i)
+commands-events-page-description = Номер страницы
+
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
@@ -35,13 +84,16 @@ commands-g-params = <сообщение…>
 commands-g-description = Отправить сообщение на все сервера
 commands-a-params = <сообщение…>
 commands-a-description = Отправить сообщение только администраторам
+
 commands-tr-params = <язык>
 commands-tr-description = Установить язык переводчика
-commands-tr-success = { "[" }accent]Язык переводчика был успешно изменен на [grey]{ $translatorLanguage }[]!
-commands-tr-off = { "[" }accent]Переводчик [scarlet]выключен[]!
-commands-tr-not-found = { "[" }scarlet]⚠ Нет такого языка
-chat-discord-format = { "[" }blue][Discord][] { $author }: { $message }
-chat-global-format = { "[" }royal][[[orange]GLOBAL [lightgray](из [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+commands-tr-success = [accent]Язык переводчика был успешно изменен на [grey]{$translatorLanguage}[]!
+commands-tr-off = [accent]Переводчик [scarlet]выключен[]!
+commands-tr-not-found = [scarlet]⚠ Нет такого языка
+
+discord-message-format = [blue][Discord][] {$author}: {$message}
+global-chat-format = [royal][[[orange]GLOBAL [lightgray](из [accent]{$server}[])[] {$author}[]]: [white]{$message}
+
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -250,41 +302,62 @@ pvp-you-spectator = { "[" }scarlet]Ты проиграл. Подождите с�
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]присоединился
-player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вышел
-notification-votekick-playtime = { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ 0 }[] минут и теперь можете начать голосование за кик игрока.
-notification-global-chat-playtime =
-    { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ 0 }[] минут и теперь можете писать в глобальный чат
-    { "" }[lightgray]Введите [accent]/g [gray]<сообщение…>[lightgray], чтобы отправить сообщение.
-notification-admin-kick = { $admin }[accent] кикнул { $target }[].
-notification-admin-wave-skip = { $admin }[accent] пропустил волну.
-notification-server-restart = Перезагрузка через { $seconds }
+player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]присоединился
+player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вышел
+
+notification-votekick-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете начать голосование за кик игрока.
+notification-global-chat-playtime = [accent]Поздравляем! Вы отыграли [lightgray]{0}[] минут и теперь можете писать в глобальный чат
+    {""}[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение.
+notification-admin-kick = {$admin}[accent] кикнул {$target}[].
+notification-admin-wave-skip = {$admin}[accent] пропустил волну.
+
+server-restart-countdown = Перезагрузка через {$seconds}
+
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = { "[" }scarlet]⚠ Доступ запрещен
-error-ip-changed = { "[" }scarlet]⚠ Ваш IP адрес изменился. Привилегии администратора были отозваны.
-error-not-enough-params = { "[" }scarlet]⚠ Недостаточно параметров
-error-player-not-found = { "[" }scarlet]⚠ Игрок не найден
-error-player-not-teammate = { "[" }scarlet]⚠ Игрок не в вашей команде
-error-player-admin = { "[" }scarlet]⚠ Попытка выгнать администратора ⚠
-error-already-voted = { "[" }scarlet]⚠ Вы уже проголосовали.
-error-globalchat-total-playtime = { "[" }scarlet]⚠ Для того чтобы отправить сообщение в глобальный чат, вам необходимо отыграть { $globalChatPlayTime } минут.
-error-votekick-total-playtime = { "[" }scarlet]⚠ Для того чтобы проголосовать, вам необходимо отыграть { $votekickPlayTime } минут.
-error-vote-yourself = { "[" }scarlet]⚠ Вы не можете голосовать за себя.
-error-vote-in-progress = { "[" }scarlet]⚠ Голосование уже идет
-error-no-voting = { "[" }scarlet]⚠ На данный момент голосование не проводится.
-error-map-not-found = { "[" }scarlet]⚠ Карта не найдена! [accent]Используйте [cyan]/maps[] для просмотра списка всех доступных карт
-error-page-between = { "[" }scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{ $totalPages }[]
-error-page-number = { "[" }scarlet]⚠ 'страница' должна быть числом
-error-wrong-number = { "[" }scarlet]⚠ Неправильный формат числа
-error-wrong-period-format = ⚠ Неправильный формат периода. Пример: 1h 30h, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Неккоректное player-id
-error-spectator = { "[" }scarlet]⚠ Вы наблюдатель
-error-admin-password-too-short = { "[" }scarlet]⚠ Пароль должен быть длиннее 4 символов
-error-wrong-admin-password = { "[" }scarlet]⚠ Неправильный пароль
-error-internal = { "[" }scarlet]Внутренняя ошибка сервера
-error-processing-request = { "[" }scarlet]Произошла ошибка при обработке запроса.
+error-access-denied = [scarlet]⚠ Доступ запрещен
+error-ip-changed = [scarlet]⚠ Ваш IP адрес изменился. Привилегии администратора были отозваны.
+error-not-enough-params = [scarlet]⚠ Недостаточно параметров
+error-player-not-found = [scarlet]⚠ Игрок не найден
+error-player-not-teammate = [scarlet]⚠ Игрок не в вашей команде
+error-player-admin = [scarlet]⚠ Попытка выгнать администратора ⚠
+error-already-voted = [scarlet]⚠ Вы уже проголосовали.
+error-globalchat-total-playtime = [scarlet]⚠ Для того чтобы отправить сообщение в глобальный чат, вам необходимо отыграть {$globalChatPlayTime} минут.
+error-votekick-total-playtime = [scarlet]⚠ Для того чтобы проголосовать, вам необходимо отыграть {$votekickPlayTime} минут.
+error-vote-yourself = [scarlet]⚠ Вы не можете голосовать за себя.
+error-vote-in-progress = [scarlet]⚠ Голосование уже идет
+error-no-voting = [scarlet]⚠ На данный момент голосование не проводится.
+error-map-not-found = [scarlet]⚠ Карта не найдена! [accent]Используйте [cyan]/maps[] для просмотра списка всех доступных карт
+error-page-between = [scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{$totalPages}[]
+error-page-number = [scarlet]⚠ 'страница' должна быть числом
+error-wrong-number = [scarlet]⚠ Неправильный формат числа
+error-wrong-period-format = ⚠ Неправильный формат периода. Пример: 1h 30h, 30 ({hours})
+error-invalid-id = [scarlet]⚠ Неккоректное player-id
+error-spectator = [scarlet]⚠ Вы наблюдатель
+error-admin-password-too-short = [scarlet]⚠ Пароль должен быть длиннее 4 символов
+error-wrong-admin-password = [scarlet]⚠ Неправильный пароль
+error-internal = [scarlet]Внутренняя ошибка сервера
+error-processing-request = [scarlet]Произошла ошибка при обработке запроса.
+
+error-playtime-requirement = [scarlet]⚠ Вам нужно отыграть минимум {$time} минут для использования этой функции.
+error-invalid-syntax = [scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{$syntax}
+
+error-invalid-sender = [scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{$type}
+error-argument-parse-generic = [scarlet]⚠ Ошибка аргумента: {$error}
+
+argument-parse-failure-boolean = [scarlet]⚠ Не удалось распознать '{$input}' как логическое значение (true/false).
+argument-parse-failure-number = [scarlet]⚠ Число '{$input}' вне допустимого диапазона [{$min}, {$max}].
+argument-parse-failure-char = [scarlet]⚠ '{$input}' не является допустимым символом.
+argument-parse-failure-enum = [scarlet]⚠ '{$input}' недопустимая опция. Доступно: [lightgray]{$acceptableValues}
+argument-parse-failure-string = [scarlet]⚠ Неверный формат строки: '{$input}'.
+argument-parse-failure-uuid = [scarlet]⚠ Неверный формат UUID: '{$input}'.
+argument-parse-failure-regex = [scarlet]⚠ Ввод '{$input}' не соответствует шаблону '{$pattern}'.
+argument-parse-failure-flag-unknown = [scarlet]⚠ Неизвестный флаг: '{$flag}'.
+argument-parse-failure-flag-duplicate = [scarlet]⚠ Повторяющийся флаг: '{$flag}'.
+argument-parse-failure-flag-missing-argument = [scarlet]⚠ Отсутствует аргумент для флага: '{$flag}'.
+argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас нет прав на использование флага '{$flag}'.
+
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================

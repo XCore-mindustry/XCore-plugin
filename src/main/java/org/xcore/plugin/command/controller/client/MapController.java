@@ -11,38 +11,40 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import org.xcore.plugin.command.core.ClientController;
-import org.xcore.plugin.command.core.annotation.AdminOnly;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ClientContext;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Default;
+import org.incendo.cloud.annotations.Permission;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
-import org.xcore.plugin.model.EventData;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.GameStateService;
-import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.model.EventData;
+import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.service.GameStateService;
 import org.xcore.plugin.service.MapService;
+import org.xcore.plugin.service.MenuService;
+import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
-import org.xcore.plugin.model.MapData;
-import org.xcore.plugin.model.PlayerData;
-
-import static com.ospx.flubundle.Bundle.args;
-import static mindustry.Vars.state;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.ospx.flubundle.Bundle.args;
+import static mindustry.Vars.state;
+
 @Singleton
-public class MapController implements ClientController {
+public class MapController implements CloudClientController {
 
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
@@ -59,16 +61,21 @@ public class MapController implements ClientController {
     private final MenuService menuService;
 
     @Inject
-    public MapController(EventDataRepository eventDataRepository, MapDataRepository mapDataRepository,
-                         PlayerDataRepository playerDataRepository,
-                         PlayerSessionService playerSessionService, Config config,
-                         GlobalConfig globalConfig,
-                         BundleService bundle,
-                         VoteService voteService,
-                         VoteRtvFactory voteRtvFactory,
-                         MapService mapService,
-                         Provider<EventController> eventController,
-                         GameStateService gameStateService, MenuService menuService) {
+    public MapController(
+            EventDataRepository eventDataRepository,
+            MapDataRepository mapDataRepository,
+            PlayerDataRepository playerDataRepository,
+            PlayerSessionService playerSessionService,
+            Config config,
+            GlobalConfig globalConfig,
+            BundleService bundle,
+            VoteService voteService,
+            VoteRtvFactory voteRtvFactory,
+            MapService mapService,
+            Provider<EventController> eventController,
+            GameStateService gameStateService,
+            MenuService menuService
+    ) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
@@ -84,103 +91,152 @@ public class MapController implements ClientController {
         this.menuService = menuService;
     }
 
-    @Override
-    public int priority() {
-        return 80;
-    }
-
-    @Command(name = "map", params = "[map-name]", aliases = {"map-stats", "map-statistics"})
-    public void map(ClientContext ctx) {
-        Map map = ctx.args().length > 0 ? mapService.findMap(ctx.arg(0)) : Vars.state.map;
+    @Command("map|map-stats|map-statistics")
+    public void map(XCoreSender sender) {
+        Map map = Vars.state.map;
         if (map == null) {
-            ctx.send("error-map-not-found", args());
+            sender.send("error-map-not-found", args());
             return;
         }
 
-        MapData m = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name());
-        handleMap(ctx.player(), m);
+        MapData m = mapDataRepository.findOrCreate(
+                map.plainName(),
+                map.file.name(),
+                map.author(),
+                Vars.state.rules.mode().name()
+        );
+
+        handleMap(sender.player(), m);
     }
 
-    @Command(name = "maps", params = "[page]", aliases = {"map-ui"})
-    public void maps(ClientContext ctx) {
-        handleMaps(ctx.player(), ctx.argInt(0, 1));
+    @Command("map|map-stats|map-statistics <map>")
+    public void map(
+            XCoreSender sender,
+            @Argument("map") Map map
+    ) {
+        if (map == null) {
+            sender.send("error-map-not-found", args());
+            return;
+        }
+
+        MapData m = mapDataRepository.findOrCreate(
+                map.plainName(),
+                map.file.name(),
+                map.author(),
+                Vars.state.rules.mode().name()
+        );
+
+        handleMap(sender.player(), m);
     }
 
-    @Command(name = "maps-text", params = "[page]")
-    public void mapsText(ClientContext ctx) {
+    @Command("maps|map-ui [page]")
+    public void maps(
+            XCoreSender sender,
+            @Argument("page") @Default("1") int page
+    ) {
+        handleMaps(sender.player(), page);
+    }
+
+    @Command("maps-text [page]")
+    public void mapsText(
+            XCoreSender sender,
+            @Argument("page") @Default("1") int page
+    ) {
         Seq<Map> maps = mapService.getAvailableMaps();
         var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 
         if (pagination.totalPages() == 0) {
-            ctx.send("empty", args());
+            sender.send("empty", args());
             return;
         }
 
-        int requestedPage = ctx.argInt(0, 1);
-
-        if (!pagination.isValidPage(requestedPage)) {
-            ctx.send("error-page-between", args("totalPages", pagination.totalPages()));
+        if (!pagination.isValidPage(page)) {
+            sender.send("error-page-between", args("totalPages", pagination.totalPages()));
             return;
         }
-        var builder = new StringBuilder(ctx.format("commands-maps-text-start-content", args(
-                "name", Vars.state.map.name(),
-                "page", requestedPage,
-                "total", pagination.totalPages()
-        )));
+
+        StringBuilder builder = new StringBuilder(
+                sender.format(
+                        "commands-maps-text-start-content",
+                        args(
+                                "name", Vars.state.map.name(),
+                                "page", page,
+                                "total", pagination.totalPages()
+                        )
+                )
+        );
 
         long now = System.currentTimeMillis();
         String gameMode = Vars.state.rules.mode().name();
 
         SeqStream.of(maps)
-                .gather(CustomGatherers.indexedPage(globalConfig.mapsPerPage, requestedPage))
+                .gather(CustomGatherers.indexedPage(globalConfig.mapsPerPage, page))
                 .forEach(indexed -> {
                     Map map = indexed.value();
-                    MapData mapData = mapDataRepository
-                            .findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
+                    MapData mapData = mapDataRepository.findOrCreate(
+                            map.plainName(),
+                            map.file.name(),
+                            map.author(),
+                            gameMode
+                    );
+
                     String lastPlayed = mapData.playedTimes == 0
-                            ? ctx.format("never", args())
+                            ? sender.format("never", args())
                             : (now - mapData.lastPlayedTime) / 60000 + "m";
-                    builder.append(ctx.format("commands-maps-text-content", args(
-                            "index", indexed.index(),
-                            "name", mapData.name,
-                            "author", mapData.author,
-                            "width", map.width,
-                            "height", map.height,
-                            "reputation", mapData.reputation,
-                            "lastPlayed", lastPlayed
-                    )));
+
+                    builder.append(
+                            sender.format(
+                                    "commands-maps-text-content",
+                                    args(
+                                            "index", indexed.index(),
+                                            "name", mapData.name,
+                                            "author", mapData.author,
+                                            "width", map.width,
+                                            "height", map.height,
+                                            "reputation", mapData.reputation,
+                                            "lastPlayed", lastPlayed
+                                    )
+                            )
+                    );
                 });
-        ctx.player().sendMessage(builder.toString());
+
+        sender.player().sendMessage(builder.toString());
     }
 
-
-    @Command(name = "rtv", params = "[map...]")
-    public void rtv(ClientContext ctx) {
-        boolean isManual = ctx.args().length > 0;
-        Map target = isManual
-                ? mapService.findMap(ctx.arg(0))
-                : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
-        startRtvSession(ctx.player(), target, isManual, false);
+    @Command("rtv")
+    public void rtv(XCoreSender sender) {
+        Map target = Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+        startRtvSession(sender.player(), target, false, false);
     }
 
-    @AdminOnly
-    @Command(name = "artv", params = "[map...]")
-    public void adminRtv(ClientContext ctx) {
-        Map map = ctx.args().length > 0
-                ? mapService.findMap(ctx.arg(0))
-                : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
-
-        startRtvSession(ctx.player(), map, false, true);
+    @Command("rtv <map>")
+    public void rtv(XCoreSender sender,
+                    @Argument("map") Map map) {
+        startRtvSession(sender.player(), map, true, false);
     }
 
-    @Command(name = "like", aliases = {"+"})
-    public void like(ClientContext ctx) {
-        handleReputation(ctx.player(), true);
+    @Permission("admin")
+    @Command("artv")
+    public void artv(XCoreSender sender) {
+        Map map = Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+        startRtvSession(sender.player(), map, false, true);
     }
 
-    @Command(name = "dislike", aliases = {"-"})
-    public void dislike(ClientContext ctx) {
-        handleReputation(ctx.player(), false);
+    @Permission("admin")
+    @Command("artv <map>")
+    public void artv(XCoreSender sender,
+                     @Argument("map") Map map) {
+        startRtvSession(sender.player(), map, true, true);
+    }
+
+    @Command("like|+")
+    public void like(XCoreSender sender) {
+        handleReputation(sender.player(), true);
+    }
+
+    @Command("dislike|-")
+    public void dislike(XCoreSender sender) {
+        handleReputation(sender.player(), false);
     }
 
     private void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
@@ -276,15 +332,14 @@ public class MapController implements ClientController {
         row1.add(session.add(dislikeButtonText, () -> handleReputation(player, false, m)));
         rows.add(row1);
 
-
         EventData event = eventDataRepository.findActive().orElse(null);
         if (!config.isEvent() || (event == null || !event.isActive) || event.map.equals(m.id)) {
             List<String> row2 = new ArrayList<>();
             row2.add(session.add(bundle.format(bundle.locale(player), "map-rtv", args()),
                     () -> startRtvSession(player, map, true, false)));
             if (player.admin) {
-                 row2.add(session.add(bundle.format(bundle.locale(player), "map-artv", args()),
-                         () -> startRtvSession(player, map, true, true)));
+                row2.add(session.add(bundle.format(bundle.locale(player), "map-artv", args()),
+                        () -> startRtvSession(player, map, true, true)));
             }
             rows.add(row2);
         }

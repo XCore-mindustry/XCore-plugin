@@ -3,23 +3,28 @@ package org.xcore.plugin.command.controller.client;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.xcore.plugin.command.core.annotation.AdminOnly;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ClientContext;
+import org.incendo.cloud.annotation.specifier.Greedy;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Permission;
+import org.incendo.cloud.annotations.Default;
+
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.annotation.DefaultUnit;
+import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.moderation.ModerationService;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
 
-import org.xcore.plugin.command.core.ClientController;
-
 @Singleton
-@AdminOnly
-public class ModerationController implements ClientController {
+@Permission("admin")
+public class ModerationController implements CloudClientController {
 
     private final ModerationService moderationService;
     private final BundleService bundle;
@@ -34,88 +39,85 @@ public class ModerationController implements ClientController {
         this.find = find;
     }
 
-    @Override
-    public int priority() {
-        return 10;
-    }
+    @Command("ban <id> <period> [reason]")
+    public void ban(XCoreSender sender,
+                    @Argument("id") int id,
+                    @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
+                    @Argument("reason") @Greedy @Default("") String reason) {
 
-    @Command(name = "ban", params = "<id> <period> [reason...]")
-    public void ban(ClientContext ctx) {
-        int id = ctx.argInt(0, -1);
+        Instant duration = Instant.ofEpochMilli(period.toMillis());
 
-        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
-        if (period == null) {
-            ctx.send("error-wrong-period-format", args());
-            return;
-        }
-
-        String reason = ctx.args().length > 2 ? ctx.args()[2] : null;
-        var result = moderationService.banById(id, ctx.player().name, reason, period, true);
+        var result = moderationService.banById(
+                id,
+                sender.player().name,
+                reason.isBlank() ? null : reason,
+                duration,
+                true
+        );
 
         if (result.isSuccess()) {
-            ctx.send("commands-ban-success", args("nickname", result.getData().get().name));
+            sender.send("commands-ban-success", args("nickname", result.getData().get().name));
         } else {
-            ctx.send("error-player-not-found", args());
+            sender.send("error-player-not-found", args());
         }
     }
 
-    @Command(name = "unban", params = "<id>")
-    public void unban(ClientContext ctx) {
-        int id = ctx.argInt(0, -1);
-
+    @Command("unban <id>")
+    public void unban(XCoreSender sender, @Argument("id") int id) {
         var result = moderationService.unbanById(id);
 
         if (result.isSuccess()) {
             var target = result.getData().get();
-            ctx.send("commands-unban-success", args(
+            sender.send("commands-unban-success", args(
                     "nickname", target.nickname,
                     "pid", target.pid
             ));
         } else {
-            ctx.send("error-player-not-found", args());
+            sender.send("error-player-not-found", args());
         }
     }
 
-    @Command(name = "mute", params = "<id> <period> [reason...]")
-    public void mute(ClientContext ctx) {
-        int id = ctx.argInt(0, -1);
+    @Command("mute <id> <period> [reason]")
+    public void mute(XCoreSender sender,
+                     @Argument("id") int id,
+                     @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
+                     @Argument("reason") @Greedy @Default("") String reason) {
 
-        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
-        if (period == null) {
-            ctx.send("error-wrong-period-format", args());
-            return;
-        }
+        Instant duration = Instant.ofEpochMilli(period.toMillis());
 
-        String reason = (ctx.args().length > 2) ? ctx.args()[2] : null;
-        var result = moderationService.muteById(id, ctx.player().name, reason, period);
+        var result = moderationService.muteById(
+                id,
+                sender.player().name,
+                reason.isBlank() ? null : reason,
+                duration
+        );
 
         if (result.isSuccess()) {
             var mute = result.getData().get();
-            ctx.send("commands-mute-success", args("nickname", mute.name));
+            sender.send("commands-mute-success", args("nickname", mute.name));
 
             Player p = find.playerByUuid(mute.uuid);
             if (p != null) {
                 bundle.send(p, "you-are-muted-by", args(
-                        "adminName", ctx.player().coloredName(),
+                        "adminName", sender.player().coloredName(),
                         "reason", mute.reason,
-                        "remainMinutes", Duration.ofMillis(period.toEpochMilli()).toMinutes()
+                        "remainMinutes", period.toMinutes()
                 ));
             }
         } else {
-            ctx.send("error-player-not-found", args());
+            sender.send("error-player-not-found", args());
         }
     }
 
-    @Command(name = "unmute", params = "<id>")
-    public void unmute(ClientContext ctx) {
-        int id = ctx.argInt(0, -1);
-
+    @Command("unmute <id>")
+    public void unmute(XCoreSender sender, @Argument("id") int id) {
         var result = moderationService.unmuteById(id);
 
         if (result.isSuccess()) {
-            ctx.send("commands-unmute-success", args("nickname", result.getData().get().nickname));
+            sender.send("commands-unmute-success",
+                    args("nickname", result.getData().get().nickname));
         } else {
-            ctx.send("error-player-not-found", args());
+            sender.send("error-player-not-found", args());
         }
     }
 }

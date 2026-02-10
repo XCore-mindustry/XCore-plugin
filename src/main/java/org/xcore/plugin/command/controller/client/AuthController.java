@@ -2,8 +2,10 @@ package org.xcore.plugin.command.controller.client;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ClientContext;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Argument;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.AdminDataRepository;
@@ -13,10 +15,8 @@ import org.xcore.plugin.service.NetworkService;
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
-import org.xcore.plugin.command.core.ClientController;
-
 @Singleton
-public class AuthController implements ClientController {
+public class AuthController implements CloudClientController {
 
     private final AdminDataRepository adminDataRepository;
     private final PlayerSessionService playerSessionService;
@@ -34,49 +34,44 @@ public class AuthController implements ClientController {
         this.config = config;
     }
 
-    @Override
-    public int priority() {
-        return 50;
-    }
-
-    @Command(name = "login", params = "<password>")
-    public void login(ClientContext ctx) {
-        String password = ctx.args()[0];
+    @Command("login <password>")
+    public void login(XCoreSender sender,
+                      @Argument("password") String password) {
 
         if (password.length() < 4) {
-            ctx.send("error-admin-password-too-short", args());
+            sender.send("error-admin-password-too-short", args());
             return;
         }
 
-        var data = playerSessionService.get(ctx.player().uuid());
+        var data = playerSessionService.get(sender.player().uuid());
         var adminData = adminDataRepository.findByUuid(data.uuid);
 
         if (adminData.password.isEmpty()) {
             adminData.hashPassword(password);
             adminDataRepository.save(adminData);
-            ctx.send("commands-login-admin-password-created", args());
+            sender.send("commands-login-admin-password-created", args());
         }
 
         if (adminData.verifyPassword(password)) {
             if (adminData.adminConfirmed) {
-                ctx.player().admin(true);
-                netServer.admins.adminPlayer(ctx.player().uuid(), ctx.player().getInfo().adminUsid);
-                ctx.send("commands-login-success", args());
+                sender.player().admin(true);
+                netServer.admins.adminPlayer(sender.player().uuid(), sender.player().getInfo().adminUsid);
+                sender.send("commands-login-success", args());
             } else {
-                ctx.send("commands-login-request-approval-discord", args());
+                sender.send("commands-login-request-approval-discord", args());
                 network.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
             }
         } else {
-            ctx.send("error-wrong-admin-password", args());
+            sender.send("error-wrong-admin-password", args());
         }
     }
 
-    @Command(name = "logout")
-    public void logout(ClientContext ctx) {
-        if (ctx.player().admin) {
-            ctx.player().admin(false);
-            netServer.admins.unAdminPlayer(ctx.player().uuid());
-            ctx.send("commands-logout-successful", args());
+    @Command("logout")
+    public void logout(XCoreSender sender) {
+        if (sender.player().admin) {
+            sender.player().admin(false);
+            netServer.admins.unAdminPlayer(sender.player().uuid());
+            sender.send("commands-logout-successful", args());
         }
     }
 }

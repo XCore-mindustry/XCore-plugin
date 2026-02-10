@@ -4,14 +4,21 @@ import arc.struct.Seq;
 import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.command.core.annotation.Command;
-import org.xcore.plugin.command.core.context.ServerContext;
+import org.incendo.cloud.annotation.specifier.Greedy;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.CommandDescription;
+import org.incendo.cloud.annotations.Default;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.annotation.DefaultUnit;
+import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.moderation.ModerationService;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
@@ -19,9 +26,8 @@ import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.TextUtils.deepEquals;
 import static org.xcore.plugin.common.TextUtils.equalsNonEmpty;
 
-import org.xcore.plugin.command.core.ServerController;
 @Singleton
-public class ServerModerationController implements ServerController {
+public class ServerModerationController implements CloudServerController {
 
     private final ModerationService moderationService;
     private final BanDataRepository banDataRepository;
@@ -33,14 +39,17 @@ public class ServerModerationController implements ServerController {
         this.banDataRepository = banDataRepository;
     }
 
-    @Command(name = "tempban", params = "<uuid/ip/#id> <period> [reason...]", description = "Temp-ban a player.")
-    public void tempBan(ServerContext ctx) {
-        String arg = ctx.arg(0);
+    @Command("tempban <target> <period> [reason]")
+    @CommandDescription("Temporarily bans a player by Name, UUID, IP, or #ID.")
+    public void tempBan(XCoreSender sender,
+                        @Argument(value = "target", description = "Player Name/#ID/UUID/IP") String arg,
+                        @Argument(value = "period", description = "Duration (e.g. 1d, 30m)") @DefaultUnit(TimeUnit.DAYS) Duration period,
+                        @Argument(value = "reason", description = "Reason for the ban") @Greedy @Default("") String reason) {
+
         String uuid = null;
         String ip = null;
         String name = "Unknown";
 
-        // If it starts with #, treat it as player ID
         if (arg.startsWith("#")) {
             var target = moderationService.findPlayerData(arg);
             if (target == null) {
@@ -52,26 +61,18 @@ public class ServerModerationController implements ServerController {
             var info = netServer.admins.getInfoOptional(uuid);
             if (info != null) ip = info.lastIP;
         } else {
-            // Try to find by UUID first
             var info = netServer.admins.getInfoOptional(arg);
             if (info != null) {
                 uuid = arg;
                 ip = info.lastIP;
                 name = info.lastName;
             } else {
-                // If not found by UUID, treat as IP
                 ip = arg;
             }
         }
 
-        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.DAYS);
-        if (period == null) {
-            Log.err("Invalid period format.");
-            return;
-        }
-
-        String reason = ctx.args().length > 2 ? ctx.arg(2) : null;
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason, "console");
+        Instant duration = Instant.ofEpochMilli(period.toMillis());
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, duration, reason.isBlank() ? null : reason, "console");
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -81,14 +82,18 @@ public class ServerModerationController implements ServerController {
         }
     }
 
-    @Command(name = "tempunban", params = "<type:uuid/ip/id> <value>", description = "Unban player.")
-    public void tempUnban(ServerContext ctx) {
+    @Command("tempunban <type> <value>")
+    @CommandDescription("Unbans a temporary ban.")
+    public void tempUnban(XCoreSender sender,
+                          @Argument(value = "type", description = "Identifier type: uuid/uid, ip, id") String type,
+                          @Argument(value = "value", description = "The identifier value") String value) {
+
         String uuid = null, ip = null;
-        switch (ctx.arg(0).toLowerCase()) {
-            case "uuid", "uid" -> uuid = ctx.arg(1);
-            case "ip" -> ip = ctx.arg(1);
+        switch (type.toLowerCase()) {
+            case "uuid", "uid" -> uuid = value;
+            case "ip" -> ip = value;
             case "id" -> {
-                var d = moderationService.findPlayerData("#" + ctx.arg(1));
+                var d = moderationService.findPlayerData("#" + value);
                 if (d != null) uuid = d.uuid;
             }
         }
@@ -101,45 +106,48 @@ public class ServerModerationController implements ServerController {
         }
     }
 
-    @Command(name = "tempbans", params = "[search...]", description = "List current temp bans.")
-    public void tempBans(ServerContext ctx) {
-        // todo: paged
+    @Command("tempbans [search]")
+    @CommandDescription("Lists active temporary bans.")
+    public void tempBans(XCoreSender sender,
+                         @Argument(value = "search", description = "Filter by Name/UUID/IP") @Default("") String q) {
+
         Seq<BanData> bans = Seq.with(banDataRepository.findAll());
-        if (ctx.args().length > 0) {
-            String q = ctx.arg(0);
+        if (!q.isBlank()) {
             bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
         }
         bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
                 b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(), b.reason));
     }
 
-    @Command(name = "mute", params = "<uuid/#id> <period> [reason...]", description = "Mute player.")
-    public void mute(ServerContext ctx) {
-        PlayerData data = moderationService.findPlayerData(ctx.arg(0));
+    @Command("mute <target> <period> [reason]")
+    @CommandDescription("Mutes a player by #ID or UUID.")
+    public void mute(XCoreSender sender,
+                     @Argument(value = "target", description = "Player #ID/UUID") String target,
+                     @Argument(value = "period", description = "Duration (e.g. 1h, 30m)") @DefaultUnit(TimeUnit.HOURS) Duration period,
+                     @Argument(value = "reason", description = "Reason for the mute") @Greedy @Default("") String reason) {
+
+        PlayerData data = moderationService.findPlayerData(target);
         if (data == null) {
             Log.err("Player not found");
             return;
         }
 
-        var period = moderationService.parsePeriod(ctx.arg(1), TimeUnit.HOURS);
-        if (period == null) {
-            Log.err("Invalid period format");
-            return;
-        }
-
-        String reason = ctx.args().length > 2 ? ctx.arg(2) : null;
-        var result = moderationService.muteById(data.pid, "console", reason, period);
+        Instant duration = Instant.ofEpochMilli(period.toMillis());
+        var result = moderationService.muteById(data.pid, "console", reason.isBlank() ? null : reason, duration);
 
         if (result.isSuccess()) {
-            Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toEpochMilli()).toMinutes());
+            Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toMillis()).toMinutes());
         } else {
             Log.err(result.getMessage().orElse("Mute failed"));
         }
     }
 
-    @Command(name = "unmute", params = "<uuid/#id>", description = "Unmute player.")
-    public void unmute(ServerContext ctx) {
-        PlayerData data = moderationService.findPlayerData(ctx.arg(0));
+    @Command("unmute <target>")
+    @CommandDescription("Unmutes a player by #ID or UUID.")
+    public void unmute(XCoreSender sender,
+                       @Argument(value = "target", description = "Player #ID/UUID") String target) {
+
+        PlayerData data = moderationService.findPlayerData(target);
         if (data == null) {
             Log.err("Player not found");
             return;

@@ -10,8 +10,6 @@ import mindustry.gen.AdminRequestCallPacket;
 import mindustry.mod.Plugin;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
-import mindustry.server.ServerControl;
-import org.xcore.plugin.command.core.CommandRegistrar;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.event.NetEventService;
@@ -37,10 +35,6 @@ public class XcorePlugin extends Plugin {
         var netEvents = beanScope.get(NetEventService.class);
         var discoveryService = beanScope.get(ServerDiscoveryService.class);
         initNetworkHooks(netEvents, discoveryService);
-
-        var commandRegistrar = beanScope.get(CommandRegistrar.class);
-        commandRegistrar.registerClient(netServer.clientCommands);
-        commandRegistrar.registerServer(ServerControl.instance.handler);
 
         PLog.info("Plugin initialized.");
     }
