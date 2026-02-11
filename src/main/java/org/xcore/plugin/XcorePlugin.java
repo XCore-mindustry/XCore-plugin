@@ -20,29 +20,30 @@ import org.xcore.plugin.service.ServerDiscoveryService;
 import static mindustry.Vars.netServer;
 
 public class XcorePlugin extends Plugin {
+    public static BeanScope container; // for dependend plugins
 
     @Override
     public void init() {
         PLog.info("Plugin started.");
 
-        BeanScope beanScope = BeanScope.builder()
+        container = BeanScope.builder()
                 .classLoader(getClass().getClassLoader())
                 .build();
 
-        var migrationService = beanScope.get(MigrationService.class);
+        var migrationService = container.get(MigrationService.class);
         if (!migrationService.run()) {
             PLog.err("CRITICAL: Database migrations failed! Plugin initialization stopped.");
             return;
         }
 
-        var mapDataRepository = beanScope.get(MapDataRepository.class);
+        var mapDataRepository = container.get(MapDataRepository.class);
         initMapDecayScheduler(mapDataRepository);
 
-        var mapSelector = beanScope.get(SmartMapSelector.class);
+        var mapSelector = container.get(SmartMapSelector.class);
         Reflect.set(Vars.maps, "shuffler", mapSelector);
 
-        var netEvents = beanScope.get(NetEventService.class);
-        var discoveryService = beanScope.get(ServerDiscoveryService.class);
+        var netEvents = container.get(NetEventService.class);
+        var discoveryService = container.get(ServerDiscoveryService.class);
         initNetworkHooks(netEvents, discoveryService);
 
         PLog.info("Plugin initialized.");
@@ -68,7 +69,7 @@ public class XcorePlugin extends Plugin {
         Server server = Reflect.get(provider, "server");
 
         server.setConnectFilter(netEvents::connectFilter);
-        server.setDiscoveryHandler((address, handler) -> {
+        server.setDiscoveryHandler((_, handler) -> {
             var buffer = java.nio.ByteBuffer.allocate(500);
             discoveryService.handleDiscovery(buffer);
             handler.respond(buffer);
