@@ -1,5 +1,6 @@
 package org.xcore.plugin.database.repository;
 
+import arc.util.Log;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
@@ -21,6 +22,10 @@ public class MuteDataRepository extends DataRepository<MuteData> {
     }
 
     public void save(MuteData data) {
+        if (isReadOnly()) {
+            Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
+            return;
+        }
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
     }
 

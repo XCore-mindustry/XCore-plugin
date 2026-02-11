@@ -45,8 +45,14 @@ public class AuthController implements CloudClientController {
         var data = playerSessionService.get(sender.player().uuid());
         var adminData = adminDataRepository.findByUuid(data.uuid);
 
+        if (adminData == null) {
+            sender.send("error-internal", args());
+            return;
+        }
+
         if (adminData.password.isEmpty()) {
             adminData.hashPassword(password);
+            adminData.admin = true;
             adminDataRepository.save(adminData);
             sender.send("commands-login-admin-password-created", args());
         }

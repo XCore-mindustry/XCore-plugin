@@ -38,6 +38,9 @@ public class GlobalConfig {
 
     public int maxHistory = 16;
 
+    public boolean isDataBaseReadOnly = false;
+    public boolean isDataBaseMigration = false;
+
     public void postInit(Fi globalConfigFile) {
         Jval.read(globalConfigFile.reader()).asObject().forEach(jval -> {
             if (jval.key.equals("servers")) {

@@ -1,5 +1,6 @@
 package org.xcore.plugin.database.repository;
 
+import arc.util.Log;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Singleton;
@@ -24,6 +25,10 @@ public class BanDataRepository extends DataRepository<BanData> {
     }
 
     public void save(BanData data) {
+        if (isReadOnly()) {
+            Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
+            return;
+        }
         collection.replaceOne(or(eq("uuid", data.uuid), eq("ip", data.ip)), data, new ReplaceOptions().upsert(true));
     }
 

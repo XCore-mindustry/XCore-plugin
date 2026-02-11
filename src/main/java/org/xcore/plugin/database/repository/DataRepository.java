@@ -1,9 +1,12 @@
 package org.xcore.plugin.database.repository;
 
+import arc.util.Log;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
+import jakarta.inject.Inject;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.ModelData;
 
 import static com.mongodb.client.model.Filters.eq;
@@ -12,6 +15,8 @@ public abstract class DataRepository<T extends ModelData> {
     protected final MongoDatabase database;
     protected final MongoCollection<T> collection;
 
+    @Inject protected GlobalConfig globalConfig;
+
     protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz) {
         this.database = database;
         this.collection = database.getCollection(collectionName, clazz);
@@ -19,6 +24,11 @@ public abstract class DataRepository<T extends ModelData> {
 
     public void save(T data) {
         if (data == null) return;
+
+        if (isReadOnly()) {
+            Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
+            return;
+        }
 
         if (data.createdModelTime == 0) {
             data.createdModelTime = System.currentTimeMillis();
@@ -35,5 +45,9 @@ public abstract class DataRepository<T extends ModelData> {
 
     public T findById(ObjectId id) {
         return collection.find(eq("_id", id)).first();
+    }
+
+    public boolean isReadOnly() {
+        return globalConfig.isDataBaseReadOnly;
     }
 }

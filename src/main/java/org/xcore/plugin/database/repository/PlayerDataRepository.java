@@ -32,7 +32,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public void save(PlayerData data) {
-        if (data.pid == 0) {
+        if (data.pid == 0 && !isReadOnly()) {
             data.pid = generatePid();
         }
 

@@ -11,6 +11,7 @@ import mindustry.mod.Plugin;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
 import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.database.migration.MigrationService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.event.NetEventService;
 import org.xcore.plugin.map.SmartMapSelector;
@@ -25,6 +26,12 @@ public class XcorePlugin extends Plugin {
         BeanScope beanScope = BeanScope.builder()
                 .classLoader(getClass().getClassLoader())
                 .build();
+
+        var migrationService = beanScope.get(MigrationService.class);
+        if (!migrationService.run()) {
+            PLog.err("CRITICAL: Database migrations failed! Plugin initialization stopped.");
+            return;
+        }
 
         var mapDataRepository = beanScope.get(MapDataRepository.class);
         initMapDecayScheduler(mapDataRepository);

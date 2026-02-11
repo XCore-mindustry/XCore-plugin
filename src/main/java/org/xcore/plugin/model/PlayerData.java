@@ -7,6 +7,7 @@ import mindustry.gen.Player;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.bson.types.ObjectId;
+import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 
 import java.util.HashMap;
@@ -29,6 +30,9 @@ public class PlayerData extends ModelData {
     @Builder.Default public String ip = "";
     @Builder.Default public String nickname = "Unknown";
 
+    @Builder.Default public String password = "";
+
+    @Builder.Default public String language = "auto";
     @Builder.Default public String translatorLanguage = "off";
 
     @Builder.Default public int pvpRating = 0;
@@ -39,6 +43,8 @@ public class PlayerData extends ModelData {
     @Builder.Default public Map<String, Boolean> eventVotes = new HashMap<>();
     @Builder.Default public Map<String, Boolean> mapVotes = new HashMap<>();
 
+    @Builder.Default public boolean admin = false;
+    @Builder.Default public boolean adminConfirmed = false;
     @Builder.Default public boolean leaderboard = true;
 
     @Builder.Default @BsonIgnore public transient Player player = null;
@@ -61,5 +67,13 @@ public class PlayerData extends ModelData {
 
     public void hexedRank(HexedRanks.HexedRank rank) {
         this.hexedRank = rank.ordinal();
+    }
+
+    public void hashPassword(String password) {
+        this.password = BCrypt.hashpw(password, BCrypt.gensalt());
+    }
+
+    public boolean verifyPassword(String password) {
+        return BCrypt.checkpw(password, this.password);
     }
 }
