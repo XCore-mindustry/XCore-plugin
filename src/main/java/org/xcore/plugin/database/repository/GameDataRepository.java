@@ -4,14 +4,15 @@ import com.mongodb.client.MongoDatabase;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.GameData;
 
 @Singleton
 public class GameDataRepository extends DataRepository<GameData> {
 
     @Inject
-    public GameDataRepository(MongoDatabase database) {
-        super(database, "games", GameData.class);
+    public GameDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
+        super(database, "games", GameData.class, globalConfig);
 
         collection.createIndex(new Document("map", 1));
         collection.createIndex(new Document("event", 1));

@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.bson.Document;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.PlayerData;
@@ -20,9 +21,9 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
 
     @Inject
-    public PlayerDataRepository(MongoDatabase database) {
+    public PlayerDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
 
-        super(database, "players", PlayerData.class);
+        super(database, "players", PlayerData.class, globalConfig);
         this.counters = database.getCollection("counters");
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));

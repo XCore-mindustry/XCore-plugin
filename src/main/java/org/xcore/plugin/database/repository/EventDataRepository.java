@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.EventData;
 
 import java.util.ArrayList;
@@ -17,8 +18,8 @@ import static com.mongodb.client.model.Filters.*;
 public class EventDataRepository extends DataRepository<EventData> {
 
     @Inject
-    public EventDataRepository(MongoDatabase database) {
-        super(database, "events", EventData.class);
+    public EventDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
+        super(database, "events", EventData.class, globalConfig);
 
         collection.createIndex(new Document("name", 1).append("map", 1).append("author", 1));
         collection.createIndex(new Document("isActive", -1));

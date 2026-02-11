@@ -15,11 +15,12 @@ public abstract class DataRepository<T extends ModelData> {
     protected final MongoDatabase database;
     protected final MongoCollection<T> collection;
 
-    @Inject public GlobalConfig globalConfig;
+    protected final GlobalConfig globalConfig;
 
-    protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz) {
+    protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz, GlobalConfig globalConfig) {
         this.database = database;
         this.collection = database.getCollection(collectionName, clazz);
+        this.globalConfig = globalConfig;
     }
 
     public void save(T data) {

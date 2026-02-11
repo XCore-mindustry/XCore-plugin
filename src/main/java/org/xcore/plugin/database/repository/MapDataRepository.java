@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.MapData;
 
 import java.util.Optional;
@@ -18,8 +19,8 @@ import static com.mongodb.client.model.Filters.*;
 public class MapDataRepository extends DataRepository<MapData> {
 
     @Inject
-    public MapDataRepository(MongoDatabase database) {
-        super(database, "maps", MapData.class);
+    public MapDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
+        super(database, "maps", MapData.class, globalConfig);
 
         collection.createIndex(new Document("name", -1));
         collection.createIndex(new Document("author", -1));
