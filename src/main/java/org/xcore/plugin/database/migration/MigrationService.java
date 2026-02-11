@@ -23,7 +23,7 @@ public class MigrationService {
         this.database = database;
         this.globalConfig = globalConfig;
 
-        migrations.add(new V1__InitModernDatabasa());
+        migrations.add(new V1__InitModernDatabase());
 
         migrations.sort(Comparator.comparingInt(Migration::getVersion));
     }
