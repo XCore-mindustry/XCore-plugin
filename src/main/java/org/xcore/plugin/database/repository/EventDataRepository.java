@@ -94,7 +94,7 @@ public class EventDataRepository extends DataRepository<EventData> {
     public void finishActiveEvent() {
         findActive().ifPresent(event -> {
             event.isActive = false;
-            event.isConducted = true;
+            event.isFinished = true;
             event.endTime = System.currentTimeMillis();
             save(event);
         });

@@ -272,7 +272,7 @@ public class EventController implements CloudClientController {
                 "author", (playerData == null) ? "" : playerData.nickname,
                 "mapName", (mapData == null) ? "" : mapData.name,
                 "isMajor", event.isMajor ? yes : no,
-                "isConducted", event.isConducted ? yes : no,
+                "isConducted", event.isFinished ? yes : no,
                 "isActive", event.isActive ? yes : no,
                 "isTemporary", event.isTemporary ? yes : no,
                 "createdEventTime", event.createdModelTime,
@@ -309,7 +309,7 @@ public class EventController implements CloudClientController {
         }
 
         boolean isOwner = pData.id != null && pData.id.equals(event.author);
-        if (!event.isConducted && !event.isActive && (!event.isMajor || player.admin) && (isOwner || player.admin)) {
+        if (!event.isFinished && !event.isActive && (!event.isMajor || player.admin) && (isOwner || player.admin)) {
             List<String> row3 = new ArrayList<>();
             row3.add(session.add(bundle.format(bundle.locale(player), "event-menu-edit", args()), () -> {
                 session.pushHistory(() -> handleEvent(player, event));

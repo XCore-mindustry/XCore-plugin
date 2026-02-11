@@ -3,6 +3,7 @@ package org.xcore.plugin.model;
 import lombok.*;
 import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
+import org.bson.codecs.pojo.annotations.BsonProperty;
 
 @Data
 @SuperBuilder
@@ -16,21 +17,28 @@ public class MapData extends ModelData {
     @Builder.Default public String name = "Unknown";
     @Builder.Default public String fileName = "Unknown";
     @Builder.Default public String author = "Unknown";
+    @BsonProperty("game_mode")
     @Builder.Default public String gameMode = "Unknown";
 
     @Builder.Default public int like = 0;
-    @Builder.Default public double dislike = 0;
+    @Builder.Default public int dislike = 0;
 
     @Builder.Default public int reputation = 0;
     @Builder.Default public double popularity = 0;
     @Builder.Default public double interest = 0;
+    @BsonProperty("played_times_year")
     @Builder.Default public int playedTimesYear = 0;
 
+    @BsonProperty("play_count")
     @Builder.Default public long playedTimes = 0;
+    @BsonProperty("last_played_at")
     @Builder.Default public long lastPlayedTime = 0;
 
+    @BsonProperty("minimum_duration")
     @Builder.Default public long minimumGameTime = 0;
+    @BsonProperty("average_duration")
     @Builder.Default public long averageGameTime = 0;
+    @BsonProperty("maximum_duration")
     @Builder.Default public long maximumGameTime = 0;
 
     public MapData(String name, String fileName, String author, String gameMode) {

@@ -1,6 +1,7 @@
 package org.xcore.plugin.model;
 
 import lombok.*;
+import org.bson.codecs.pojo.annotations.BsonProperty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,20 +13,28 @@ import java.util.List;
 public class PlayerGameStats {
     public String nickname;
 
+    @BsonProperty("join_time")
     public long joinTime;
-    public long leaveTime; // 0 якщо був до кінця
+    @BsonProperty("leave_time")
+    public long leaveTime;
 
     @Builder.Default public List<TeamGameData> teams = new ArrayList<>();
 
-    public String initialTeam; // Команда при заході
-    public String finalTeam;   // Команда в кінці гри
+    @BsonProperty("initial_team")
+    public String initialTeam;
+    @BsonProperty("final_team")
+    public String finalTeam;
 
-    // Статистика дій
+    @BsonProperty("blocks_built")
     public int blocksBuilt;
-    public int blocksDeconstructed; // Розбирання молотком
-    public int blocksDestroyed;     // Руйнування ворожих блоків у бою
+    @BsonProperty("blocks_deconstructed")
+    public int blocksDeconstructed;
+    @BsonProperty("blocks_destroyed")
+    public int blocksDestroyed;
 
+    @BsonProperty("units_produced")
     public int unitsProduced;
+    @BsonProperty("units_destroyed")
     public int unitsDestroyed;
 
     public boolean isWinner;
