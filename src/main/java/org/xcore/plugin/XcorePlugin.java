@@ -23,6 +23,8 @@ public class XcorePlugin extends Plugin {
 
     @Override
     public void init() {
+        PLog.info("Plugin started.");
+
         BeanScope beanScope = BeanScope.builder()
                 .classLoader(getClass().getClassLoader())
                 .build();
