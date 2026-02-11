@@ -15,6 +15,7 @@ import org.bson.codecs.pojo.annotations.BsonProperty;
 public class MapData extends ModelData {
 
     @Builder.Default public String name = "Unknown";
+    @BsonProperty("file_name")
     @Builder.Default public String fileName = "Unknown";
     @Builder.Default public String author = "Unknown";
     @BsonProperty("game_mode")

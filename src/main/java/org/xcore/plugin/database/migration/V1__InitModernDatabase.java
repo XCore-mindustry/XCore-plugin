@@ -79,6 +79,7 @@ public class V1__InitModernDatabase implements Migration {
 
     private void renameMapFields(MongoDatabase database) {
         database.getCollection("maps").updateMany(new Document(), new Document("$rename", new Document()
+                .append("fileName", "file_name")
                 .append("gameMode", "game_mode")
                 .append("playedTimesYear", "played_times_year")
                 .append("playedTimes", "play_count")
