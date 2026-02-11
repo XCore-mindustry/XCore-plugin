@@ -15,7 +15,7 @@ public abstract class DataRepository<T extends ModelData> {
     protected final MongoDatabase database;
     protected final MongoCollection<T> collection;
 
-    @Inject protected GlobalConfig globalConfig;
+    @Inject public GlobalConfig globalConfig;
 
     protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz) {
         this.database = database;
