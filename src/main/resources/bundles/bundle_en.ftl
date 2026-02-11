@@ -475,5 +475,3 @@ github = Github
 donatello = Donatello
 weblate = Weblate
 discord-red-vs-blue = RedVSBlue
-
-error-internal = Error Internal
