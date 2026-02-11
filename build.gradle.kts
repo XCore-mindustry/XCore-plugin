@@ -107,28 +107,6 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.register<ShadowJar>("shadowJarRelease") {
     applyCommonSettings()
     archiveClassifier.set("release")
-
-//
-//    minimize {
-//        exclude(dependency("com.discord4j:.*:.*"))
-//        exclude(dependency("org.jline:.*:.*"))
-//        exclude(dependency("io.avaje:.*:.*"))
-//    }
-
-    val shadowPrefix = "org.xcore.plugin.shadow"
-
-    relocate("com.google.gson", "$shadowPrefix.gson")
-    relocate("com.mongodb", "$shadowPrefix.mongo")
-    relocate("org.bson", "$shadowPrefix.bson")
-    relocate("org.mindrot.jbcrypt", "$shadowPrefix.jbcrypt")
-
-    relocate("discord4j", "$shadowPrefix.discord4j")
-    relocate("reactor", "$shadowPrefix.reactor")
-    relocate("io.netty", "$shadowPrefix.netty")
-
-    relocate("com.ospx.sock", "$shadowPrefix.sock")
-
-    // relocate("org.jline", "$shadowPrefix.jline") fucking jline
 }
 
 tasks.register("getProjectVersion") {
