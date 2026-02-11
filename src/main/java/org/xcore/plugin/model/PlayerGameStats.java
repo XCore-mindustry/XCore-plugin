@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 public class PlayerGameStats {
     public String nickname;
+    public String uuid;
 
     @BsonProperty("join_time")
     public long joinTime;

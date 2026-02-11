@@ -23,12 +23,12 @@ public abstract class DataRepository<T extends ModelData> {
         this.globalConfig = globalConfig;
     }
 
-    public void save(T data) {
-        if (data == null) return;
+    public boolean save(T data) {
+        if (data == null) return false;
 
         if (isReadOnly()) {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
-            return;
+            return false;
         }
 
         if (data.createdModelTime == 0) {
@@ -42,6 +42,7 @@ public abstract class DataRepository<T extends ModelData> {
         } else {
             collection.replaceOne(eq("_id", data.id), data, new ReplaceOptions().upsert(true));
         }
+        return true;
     }
 
     public T findById(ObjectId id) {

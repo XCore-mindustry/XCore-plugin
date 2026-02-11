@@ -22,12 +22,14 @@ public class MuteDataRepository extends DataRepository<MuteData> {
         return collection.find(eq("uuid", uuid)).first();
     }
 
-    public void save(MuteData data) {
+    @Override
+    public boolean save(MuteData data) {
         if (isReadOnly()) {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
-            return;
+            return false;
         }
         collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+        return true;
     }
 
     public void delete(String uuid) {

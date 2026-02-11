@@ -25,12 +25,14 @@ public class BanDataRepository extends DataRepository<BanData> {
         return collection.find(or(eq("uuid", uuid), eq("ip", ip))).first();
     }
 
-    public void save(BanData data) {
+    @Override
+    public boolean save(BanData data) {
         if (isReadOnly()) {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
-            return;
+            return false;
         }
         collection.replaceOne(or(eq("uuid", data.uuid), eq("ip", data.ip)), data, new ReplaceOptions().upsert(true));
+        return true;
     }
 
     public void delete(String uuid, String ip) {
