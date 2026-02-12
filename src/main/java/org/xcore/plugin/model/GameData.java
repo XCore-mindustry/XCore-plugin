@@ -20,11 +20,11 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class GameData extends ModelData {
 
-    ObjectId map;
+    public ObjectId map;
     @BsonProperty("game_mode")
     @Builder.Default public String gameMode = "Unknown";
 
-    ObjectId event;
+    public ObjectId event;
     @BsonProperty("is_event")
     @Builder.Default public boolean isEvent = false;
 

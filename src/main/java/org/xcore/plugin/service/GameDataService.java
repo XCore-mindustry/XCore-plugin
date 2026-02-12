@@ -32,7 +32,8 @@ public class GameDataService {
 
         currentBag = new GameData(map.id, mode);
         if (event != null) {
-            currentBag.setEvent(event.id).setEvent(true);
+            currentBag.event = event.id;
+            currentBag.isEvent = true;
         }
         currentBag.setStartGameTime(now);
         playerStatsCache.clear();
