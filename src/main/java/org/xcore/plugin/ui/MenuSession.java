@@ -12,6 +12,8 @@ public class MenuSession {
 
     public final List<Runnable> actions = new ArrayList<>();
 
+    public final Map<String, StatusEnum> sortStatus = new HashMap<>();
+
     private final Deque<Runnable> history = new ArrayDeque<>();
 
     private final Map<Class<?>, Object> drafts = new HashMap<>();
@@ -74,5 +76,24 @@ public class MenuSession {
 
     public void clearHistory() {
         history.clear();
+    }
+
+    public void clearSortStatus() {
+        sortStatus.clear();
+    }
+
+    public void setNextStatus(String key) {
+        StatusEnum current = sortStatus.getOrDefault(key, StatusEnum.Neutral);
+        StatusEnum next;
+
+        if (current == StatusEnum.Neutral) {
+            next = StatusEnum.Active;
+        } else if (current == StatusEnum.Active) {
+            next = StatusEnum.Inactive;
+        } else {
+            next = StatusEnum.Neutral;
+        }
+
+        sortStatus.put(key, next);
     }
 }

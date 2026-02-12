@@ -5,6 +5,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.ModelData;
@@ -21,6 +22,9 @@ public abstract class DataRepository<T extends ModelData> {
         this.database = database;
         this.collection = database.getCollection(collectionName, clazz);
         this.globalConfig = globalConfig;
+
+        collection.createIndex(new Document("version", -1));
+        collection.createIndex(new Document("is_visible", -1));
     }
 
     public boolean save(T data) {
@@ -51,5 +55,9 @@ public abstract class DataRepository<T extends ModelData> {
 
     public boolean isReadOnly() {
         return globalConfig.isDataBaseReadOnly;
+    }
+
+    public long count() {
+        return collection.countDocuments();
     }
 }

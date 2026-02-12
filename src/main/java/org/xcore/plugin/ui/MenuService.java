@@ -84,6 +84,23 @@ public class MenuService {
         rows.add(navRow);
     }
 
+    public void addStatusButton(Player player, MenuSession session, List<String> row, String key, Runnable runnable) {
+        StatusEnum buttonStatus = session.sortStatus.getOrDefault(key, StatusEnum.Neutral);
+
+        Runnable lambda = () -> {
+            session.setNextStatus(key);
+            if (runnable != null) runnable.run();
+        };
+
+        if (buttonStatus == StatusEnum.Neutral) {
+            row.add(session.add(bundle.format(bundle.locale(player), key + "-neutral", args()), lambda));
+        } else if (buttonStatus == StatusEnum.Active) {
+            row.add(session.add(bundle.format(bundle.locale(player), key + "-active", args()), lambda));
+        } else if (buttonStatus == StatusEnum.Inactive) {
+            row.add(session.add(bundle.format(bundle.locale(player), key + "-inactive", args()), lambda));
+        }
+    }
+
     public String[][] convertListToArray(List<List<String>> rows) {
         String[][] result = new String[rows.size()][];
 

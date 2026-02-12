@@ -8,10 +8,17 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
+import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.ui.StatusEnum;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
@@ -61,8 +68,26 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return collection.find(eq("pid", id)).first();
     }
 
+    public List<PlayerData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
+        List<Bson> pipeline = new ArrayList<>();
+
+        if (filters != null) {
+            StatusEnum finished = filters.get("admin");
+            if (finished == StatusEnum.Active) pipeline.add(Filters.eq("is_admin", true));
+            if (finished == StatusEnum.Inactive) pipeline.add(Filters.eq("is_admin", false));
+        }
+
+        var query = pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
+
+        return collection.find(query)
+                .sort(new Document("created_at", -1))
+                .skip(skip)
+                .limit(limit)
+                .into(new ArrayList<>());
+    }
+
     public long deleteBots() {
-        return collection.deleteMany(lt("totalPlayTime", 2)).getDeletedCount();
+        return collection.deleteMany(lt("total_play_time", 2)).getDeletedCount();
     }
 
     public PagedDataResult<PlayerData> search(String value, int limit, int page) {

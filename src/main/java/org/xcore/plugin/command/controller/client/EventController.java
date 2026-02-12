@@ -27,6 +27,7 @@ import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.ui.MenuSession;
+import org.xcore.plugin.ui.StatusEnum;
 import org.xcore.plugin.vote.VoteEvent;
 import org.xcore.plugin.vote.VoteEventFactory;
 import org.xcore.plugin.vote.VoteService;
@@ -361,6 +362,15 @@ public class EventController implements CloudClientController {
         session.actions.clear();
         List<List<String>> rows = new ArrayList<>();
 
+        List<String> sortRow = new ArrayList<>();
+
+        Runnable lambda = () -> {handleEvents(player, page); };
+        menuService.addStatusButton(player, session, sortRow, "finished", lambda);
+        menuService.addStatusButton(player, session, sortRow, "major", lambda);
+        menuService.addStatusButton(player, session, sortRow, "active", lambda);
+
+        rows.add(sortRow);
+
         List<String> navRow = new ArrayList<>();
         if (validPage > 1) {
             navRow.add(session.add(bundle.format(bundle.locale(player), "previous", args()), () -> handleEvents(player, validPage - 1)));
@@ -371,7 +381,7 @@ public class EventController implements CloudClientController {
         if (!navRow.isEmpty()) rows.add(navRow);
 
         int skip = (validPage - 1) * perPage;
-        List<EventData> events = eventDataRepository.findPage(skip, perPage);
+        List<EventData> events = eventDataRepository.findPage(skip, perPage, session.sortStatus);
 
         for (EventData event : events) {
             String buttonText = event.isActive ? bundle.format(bundle.locale(player), "event-menu-events-selected", args("name", event.name)) : event.name;

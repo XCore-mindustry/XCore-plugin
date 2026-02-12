@@ -24,11 +24,12 @@ public class MapDataRepository extends DataRepository<MapData> {
 
         collection.createIndex(new Document("name", -1));
         collection.createIndex(new Document("author", -1));
-        collection.createIndex(new Document("gameMode", -1));
+        collection.createIndex(new Document("file_name", -1));
+        collection.createIndex(new Document("game_mode", -1));
         collection.createIndex(new Document("popularity", -1));
         collection.createIndex(new Document("reputation", -1));
         collection.createIndex(new Document("interest", -1));
-        collection.createIndex(new Document("playedTimesYear", 1));
+        collection.createIndex(new Document("played_times_year", 1));
     }
 
     public Optional<MapData> find(String name, String author, String gameMode) {
@@ -36,7 +37,7 @@ public class MapDataRepository extends DataRepository<MapData> {
         collection.find(and(
             eq("name", name),
             eq("author", author),
-            eq("gameMode", gameMode)
+            eq("game_mode", gameMode)
         )).first()
     );
 }
@@ -44,7 +45,7 @@ public class MapDataRepository extends DataRepository<MapData> {
     public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
         return find(name, author, gameMode).orElseGet(() -> {
 
-            MapData existing = collection.find(and(eq("name", name), eq("gameMode", gameMode))).first();
+            MapData existing = collection.find(and(eq("name", name), eq("game_mode", gameMode))).first();
 
             if (existing != null) {
                 existing.author = author;

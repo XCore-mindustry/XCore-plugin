@@ -16,7 +16,7 @@ public class GameDataRepository extends DataRepository<GameData> {
 
         collection.createIndex(new Document("map", 1));
         collection.createIndex(new Document("event", 1));
-//        collection.createIndex(new Document("server_name", 1));
-//        collection.createIndex(new Document("created_at", -1));
+        collection.createIndex(new Document("server_name", 1));
+        collection.createIndex(new Document("created_at", -1));
     }
 }

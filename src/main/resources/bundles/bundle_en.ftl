@@ -251,12 +251,17 @@ rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $ma
 # Statistics & Ranks & Players
 # ==============================================================================
 commands-player-description = View a player's Statistics
+player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
     { $nickname } [grey]#{ $pid } Statistics
     { "" }[brown]PlayTime: [grey]{ $totalPlayTime }[] minutes
     Hexed Rank: [grey]{ $hexedRankTag } { $hexedRankName }
     MiniPvP rating: { $pvpRating }
+player-menu-players = Players list
+player-menu-players-title = { "[" }orange]{ -xcore } — Players List
+player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+player-menu-players-empty = No players found
 commands-lb-description = Enable/disable leaderboard
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -447,6 +452,28 @@ argument-parse-failure-flag-duplicate = [scarlet]⚠ Duplicate flag: '{$flag}'.
 argument-parse-failure-flag-missing-argument = [scarlet]⚠ Missing argument for flag: '{$flag}'.
 argument-parse-failure-flag-no-permission = [scarlet]⚠ You don't have permission to use flag '{$flag}'.
 
+# ==============================================================================
+# Button Status
+# ==============================================================================
+finished = major
+finished-neutral = { "[" }orange]Finished
+finished-active = { "[" }green]Finished
+finished-inactive = { "[" }red]Finished
+
+major = Major
+major-neutral = { "[" }orange]Major
+major-active = { "[" }green]Major
+major-inactive = { "[" }red]Major
+
+active = Active
+active-neutral = { "[" }orange]Active
+active-active = { "[" }green]Active
+active-inactive = { "[" }red]Active
+
+admin = Admin
+admin-neutral = { "[" }orange]Admin
+admin-active = { "[" }green]Admin
+admin-inactive = { "[" }red]Admin
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
