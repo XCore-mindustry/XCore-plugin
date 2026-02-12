@@ -58,7 +58,7 @@ public class HelpController implements CloudClientController {
         showIndex(sender, page);
     }
 
-    private void showIndex(XCoreSender sender, int page) {
+    public void showIndex(XCoreSender sender, int page) {
         List<UnifiedCommand> allCommands = collectAllCommands(sender);
 
         allCommands.sort(Comparator.comparing(UnifiedCommand::name));

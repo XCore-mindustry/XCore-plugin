@@ -29,6 +29,8 @@ public class InformationController implements CloudClientController {
 
     private final Provider<MapController> mapController;
     private final Provider<EventController> eventController;
+    private final Provider<HelpController> helpController;
+    private final Provider<PlayerController> playerController;
 
     private final MenuService menuService;
     private final BundleService bundle;
@@ -40,6 +42,7 @@ public class InformationController implements CloudClientController {
             BuildInfo buildInfo,
             Provider<MapController> mapController,
             Provider<EventController> eventController,
+            Provider<HelpController> helpController, Provider<PlayerController> playerController,
             MenuService menuService,
             BundleService bundle
     ) {
@@ -48,13 +51,40 @@ public class InformationController implements CloudClientController {
         this.buildInfo = buildInfo;
         this.mapController = mapController;
         this.eventController = eventController;
+        this.helpController = helpController;
+        this.playerController = playerController;
         this.menuService = menuService;
         this.bundle = bundle;
     }
 
+    @Command("main|xcore|m")
+    public void mainXCore(XCoreSender sender) {
+        handleMain(sender.player(), sender);
+    }
+
+
     @Command("information|info")
     public void information(XCoreSender sender) {
         handleInformation(sender.player());
+    }
+
+    private void handleMain(Player player, XCoreSender sender) {
+        MenuSession session = menuService.get(player.uuid());
+        session.actions.clear();
+
+        Runnable lambda = () -> {session.pushHistory(() -> {handleMain(player, sender); }); };
+        session.builder().title("menu-main-title").content("menu-main-content")
+                .add("commands-info", () -> {lambda.run(); handleInformation(player); })
+                .add("help-menu", () -> {lambda.run(); helpController.get().showIndex(sender, 1); })
+                .end()
+                .add("map-maps", () -> {lambda.run(); mapController.get().handleMaps(player, 1); })
+                .add("player-menu-players", () -> {lambda.run(); playerController.get().handlePlayers(player, 1); })
+                .end()
+                .ifAdd(config.isEvent(),"event-menu-main", () -> {lambda.run(); eventController.get().handleMain(player); })
+                .ifAdd(config.isEvent(),"event-events", () -> {lambda.run(); eventController.get().handleEvents(player, 1); })
+                .end()
+                .addNavigationRow()
+                .show();
     }
 
     private void handleInformation(Player player) {

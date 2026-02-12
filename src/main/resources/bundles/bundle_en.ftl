@@ -5,8 +5,14 @@
 # ==============================================================================
 # General & Help
 # ==============================================================================
+menu-main = Main menu
+commands-help-description = Open the interactive Main menu.
+menu-main-title = { "[" }orange]{ -xcore } — Main menu
+menu-main-content = Main server menu
+
+help-menu = Help menu
 commands-help-description = Open the interactive help menu.
-help-menu-title = [orange]• [white]XCORE COMMANDS [orange]•
+help-menu-title = { "[" }orange]{ -xcore } — Commads
 help-menu-content = [gray]Page [white]{$page}[gray]/[white]{$total}
     {""}[lightgray]Select a command to see detailed usage:
 help-menu-button = [accent]/{$command} [gray]» [white]{$description}
@@ -94,6 +100,7 @@ commands-events-page-description = Page number
 # General & Help (continued)
 # ==============================================================================
 commands-information-description = Show information about the server
+commands-info = Information
 commands-info-title = { "[" }orange]{ -xcore } — { $xcorServerName }
 commands-info-text =
     { "[" }accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
@@ -341,7 +348,7 @@ dislike-event-changed = [orange]You changed your mind to a Dislike.
 commands-event-description = Event management menu
 commands-events-description = List of all events on the servers.
 event-events = Events
-event-menu-main = Main
+event-menu-main = Main events
 event-menu-main-title = { "[" }orange]{ -xcore } — Events
 event-menu-main-content = Main events page
 event-menu-event = Event

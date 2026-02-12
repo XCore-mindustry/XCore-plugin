@@ -37,6 +37,11 @@ public class MenuBuilder {
         return this;
     }
 
+    public MenuBuilder content(String key) {
+        this.content = sender.format(key, args());
+        return this;
+    }
+
     public MenuBuilder content(String key, Map<String, Object> args) {
         this.content = sender.format(key, args);
         return this;
@@ -139,9 +144,30 @@ public class MenuBuilder {
         return true;
     }
 
+    public void clear() {
+        row.clear();
+    }
+
     public void clearRows() {
         rows.clear();
         row.clear();
+    }
+
+    public MenuBuilder ifAdd(boolean bool, String buttonText, Runnable action) {
+        if (bool) {
+            row.add(session.add(buttonText, action));
+        }
+        return this;
+    }
+
+    public MenuBuilder ifElseAdd(boolean bool, String buttonText1, Runnable action1, String buttonText2, Runnable action2) {
+        if (bool) {
+            row.add(session.add(buttonText1, action1));
+        } else {
+            row.add(session.add(buttonText2, action2));
+        }
+
+        return this;
     }
 
     public record ButtonDef(String text, Runnable action) {}

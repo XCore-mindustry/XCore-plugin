@@ -86,7 +86,7 @@ public class EventController implements CloudClientController {
         return this.eventDataRepository.findActive();
     }
 
-    private void handleMain(Player player) {
+    public void handleMain(Player player) {
         EventData event = currentEvent().orElse(null);
         String menuTitle = bundle.format(bundle.locale(player), "event-menu-main-title", args());
         String menuContent = bundle.format(bundle.locale(player), "event-menu-main-content", args());
