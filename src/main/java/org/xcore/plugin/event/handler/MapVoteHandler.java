@@ -16,11 +16,15 @@ import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import mindustry.ui.Menus;
 import org.xcore.plugin.command.controller.client.MapController;
+import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.ui.MenuSession;
@@ -39,6 +43,9 @@ public class MapVoteHandler {
     private final BundleService bundleService;
     private final MenuService menuService;
     private final Provider<MapController> mapController;
+    private final GameDataService gameDataService;
+    private final EventDataRepository eventDataRepository;
+    private final Config config;
 
 
     @Inject
@@ -46,12 +53,18 @@ public class MapVoteHandler {
                           PlayerSessionService playerSessionService,
                           BundleService bundleService,
                           MenuService menuService,
-                          Provider<MapController> mapController) {
+                          Provider<MapController> mapController,
+                          GameDataService gameDataService,
+                          EventDataRepository eventDataRepository,
+                          Config config) {
         this.mapDataRepository = mapDataRepository;
         this.playerSessionService = playerSessionService;
         this.bundleService = bundleService;
         this.menuService = menuService;
         this.mapController = mapController;
+        this.gameDataService = gameDataService;
+        this.eventDataRepository = eventDataRepository;
+        this.config = config;
     }
 
     public Cons<GameOverEvent> getGameOverListener() {
@@ -64,6 +77,8 @@ public class MapVoteHandler {
                         event.winner.name, Groups.player.size(), Strings.capitalize(state.map.plainName()));
             }
 
+            gameDataService.finishGame();
+
             Map nextMap = maps.getNextMap(ServerControl.instance.lastMode, state.map);
             String nextName = (nextMap != null) ? nextMap.plainName() : "Unknown";
             String nextAuthor = (nextMap != null) ? nextMap.author() : "Unknown";
@@ -71,6 +86,9 @@ public class MapVoteHandler {
             if (nextMap != null) {
                 state.gameOver = true;
                 Call.updateGameOver(event.winner);
+
+                MapData mapData = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
+                MapData nextMapData = mapDataRepository.findOrCreate(nextMap.plainName(), nextMap.file.name(), nextMap.author(), state.rules.mode().name());
 
                 Groups.player.each(p -> {
                     String menuTitle = bundleService.format(bundleService.locale(p), "map-vote-title", args());
@@ -82,8 +100,6 @@ public class MapVoteHandler {
                     ));
 
                     PlayerData pData = playerSessionService.get(p.uuid());
-                    MapData mapData = mapDataRepository.findOrCreate(state.map.plainName(), state.map.file.name(), state.map.author(), state.rules.mode().name());
-                    MapData nextMapData = mapDataRepository.findOrCreate(nextMap.plainName(), nextMap.file.name(), nextMap.author(), state.rules.mode().name());
                     Boolean currentVote = pData.mapVotes.get(mapData.id.toString());
 
                     String likeButtonText = Boolean.TRUE.equals(currentVote)
@@ -117,6 +133,10 @@ public class MapVoteHandler {
 
                     Call.menu(p.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
                 });
+
+
+                gameDataService.startNewGame(nextMapData, state.rules.modeName, config.isEvent() ? eventDataRepository.findActive().orElse(null) : null);
+                Groups.player.each(gameDataService::addPlayer);
 
                 ServerControl.instance.play(() -> world.loadMap(nextMap,
                         nextMap.applyRules(ServerControl.instance.lastMode)));
