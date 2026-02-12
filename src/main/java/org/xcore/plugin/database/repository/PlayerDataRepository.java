@@ -72,9 +72,9 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         List<Bson> pipeline = new ArrayList<>();
 
         if (filters != null) {
-            StatusEnum finished = filters.get("admin");
-            if (finished == StatusEnum.Active) pipeline.add(Filters.eq("is_admin", true));
-            if (finished == StatusEnum.Inactive) pipeline.add(Filters.eq("is_admin", false));
+            StatusEnum admin = filters.get("admin");
+            if (admin == StatusEnum.Active) pipeline.add(Filters.eq("is_admin", true));
+            if (admin == StatusEnum.Inactive) pipeline.add(Filters.eq("is_admin", false));
         }
 
         var query = pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
