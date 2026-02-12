@@ -34,6 +34,18 @@ public class MenuSession {
         return buttonName;
     }
 
+    public MenuSession start(XCoreSender sender) {
+        actions.clear();
+        this.sender = sender;
+        return this;
+    }
+
+    public MenuSession clear() {
+        actions.clear();
+        sender = null;
+        return this;
+    }
+
     public MenuBuilder builder() {
         return new MenuBuilder(service, this);
     }

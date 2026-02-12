@@ -28,6 +28,7 @@ public class MenuBuilder {
     }
 
     public MenuBuilder title(String key) {
+        if (sender == null) return this;
         this.title = sender.format(key);
         return this;
     }
@@ -38,11 +39,13 @@ public class MenuBuilder {
     }
 
     public MenuBuilder content(String key) {
+        if (sender == null) return this;
         this.content = sender.format(key, args());
         return this;
     }
 
     public MenuBuilder content(String key, Map<String, Object> args) {
+        if (sender == null) return this;
         this.content = sender.format(key, args);
         return this;
     }

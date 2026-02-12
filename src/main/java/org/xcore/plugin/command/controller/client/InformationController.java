@@ -69,8 +69,7 @@ public class InformationController implements CloudClientController {
     }
 
     private void handleMain(Player player, XCoreSender sender) {
-        MenuSession session = menuService.get(player.uuid());
-        session.actions.clear();
+        MenuSession session = menuService.get(player.uuid()).start(sender);
 
         Runnable lambda = () -> {session.pushHistory(() -> {handleMain(player, sender); }); };
         session.builder().title("menu-main-title").content("menu-main-content")
