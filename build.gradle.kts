@@ -12,8 +12,8 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "3.0.0-beta.4"
-val mindustryVersion = "155.1"
+version = "3.0.0-beta.5"
+val mindustryVersion = "155.2"
 
 java {
     toolchain {
@@ -31,7 +31,7 @@ val metadata = ModMetadata(
     name = "xcore-plugin",
     displayName = "XCore-plugin",
     description = "The main plugin for XCore servers.",
-    author = "osp54, ",
+    author = "osp54, Radomyr (site: radomyr.net, github: BRamil0)",
     version = project.version.toString(),
     minGameVersion = mindustryVersion,
     mainClass = "${project.group}.XcorePlugin"
