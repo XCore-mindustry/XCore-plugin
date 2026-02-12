@@ -6,7 +6,7 @@
 # General & Help
 # ==============================================================================
 menu-main = Main menu
-commands-help-description = Open the interactive Main menu.
+commands-main-description = Open the interactive Main menu.
 menu-main-title = { "[" }orange]{ -xcore } — Main menu
 menu-main-content = Main server menu
 
