@@ -84,15 +84,17 @@ public class MenuBuilder {
     }
 
     public MenuBuilder end() {
-        rows.add(row);
-        row.clear();
+        if (!row.isEmpty()) {
+            rows.add(new ArrayList<>(row));
+            row.clear();
+        }
         return this;
     }
 
     public MenuBuilder addNavigationRow() {
         if (sender == null) return this;
 
-        row.clear();
+        start();
 
         if (session.hasHistory()) {
             row.add(session.add(sender.format("back", args()), () -> {
@@ -105,14 +107,14 @@ public class MenuBuilder {
             service.clear(sender.player().uuid());
         }));
 
-        rows.add(row);
+        end();
         return this;
     }
 
     public MenuBuilder addStatusButton(String buttonText, Runnable action) {
         if (sender == null) return this;
 
-        row.clear();
+        start();
         StatusEnum buttonStatus = session.sortStatus.getOrDefault(buttonText, StatusEnum.Neutral);
 
         Runnable lambda = () -> {
@@ -127,23 +129,22 @@ public class MenuBuilder {
         } else if (buttonStatus == StatusEnum.Inactive) {
             row.add(session.add(sender.format(buttonText + "-inactive", args()), lambda));
         }
-        rows.add(row);
+        end();
         return this;
     }
 
     public boolean show() {
-        if (sender == null) return false;
-
-        Call.menu(sender.player().con, service.getMenuId(), title, content,
-                rows.stream().map(innerList -> innerList.toArray(new String[0])).toArray(String[][]::new));
-        return true;
+        return show(service.getMenuId());
     }
 
     public boolean show(int menuId) {
         if (sender == null) return false;
 
-        Call.menu(sender.player().con, menuId, title, content,
-                rows.stream().map(innerList -> innerList.toArray(new String[0])).toArray(String[][]::new));
+        if (!row.isEmpty()) {
+            end();
+        }
+
+        Call.menu(sender.player().con, menuId, title, content, service.convertListToArray(rows));
         return true;
     }
 
