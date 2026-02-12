@@ -28,6 +28,7 @@ import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.*;
+import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;

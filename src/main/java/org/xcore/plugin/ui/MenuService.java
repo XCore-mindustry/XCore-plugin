@@ -1,4 +1,4 @@
-package org.xcore.plugin.service;
+package org.xcore.plugin.ui;
 
 import arc.struct.ObjectMap;
 import io.avaje.inject.PostConstruct;
@@ -7,7 +7,7 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import mindustry.ui.Menus;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.ui.MenuSession;
+import org.xcore.plugin.service.BundleService;
 
 import java.util.ArrayList;
 import java.util.List;

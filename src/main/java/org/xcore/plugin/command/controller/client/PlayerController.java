@@ -13,7 +13,7 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.service.MenuService;
+import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.ui.MenuSession;
 

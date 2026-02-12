@@ -24,7 +24,7 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.MapService;
-import org.xcore.plugin.service.MenuService;
+import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.ui.MenuSession;
 import org.xcore.plugin.vote.VoteEvent;

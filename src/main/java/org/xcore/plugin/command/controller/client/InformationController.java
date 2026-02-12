@@ -12,7 +12,7 @@ import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.MenuService;
+import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.MenuSession;
 
 import java.util.ArrayList;
