@@ -58,9 +58,17 @@ public class MenuService {
 
     public MenuSession get(String uuid) {
         if (!sessions.containsKey(uuid)) {
-            sessions.put(uuid, new MenuSession(globalConfig));
+            sessions.put(uuid, new MenuSession(this, globalConfig));
         }
         return sessions.get(uuid);
+    }
+
+    public MenuBuilder builder(String uuid) {
+        return new MenuBuilder(this, get(uuid));
+    }
+
+    public MenuBuilder builder(MenuSession session) {
+        return new MenuBuilder(this, session);
     }
 
     public void clear(String uuid) {
@@ -102,14 +110,6 @@ public class MenuService {
     }
 
     public String[][] convertListToArray(List<List<String>> rows) {
-        String[][] result = new String[rows.size()][];
-
-        for (int i = 0; i < rows.size(); i++) {
-            List<String> row = rows.get(i);
-
-            result[i] = row.toArray(new String[0]);
-        }
-
-        return result;
+        return rows.stream().map(innerList -> innerList.toArray(new String[0])).toArray(String[][]::new);
     }
 }

@@ -20,6 +20,9 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.cloud.mindustry.MindustryCloudCommand;
+import org.xcore.plugin.ui.MenuBuilder;
+import org.xcore.plugin.ui.MenuService;
+import org.xcore.plugin.ui.MenuSession;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -35,25 +38,19 @@ public class HelpController implements CloudClientController {
     private final GlobalConfig globalConfig;
 
     private HelpHandler<XCoreSender> helpHandler;
-    private int helpMenuId;
 
-    private final ObjectMap<String, MenuSession> sessions = new ObjectMap<>();
+    private final MenuService menuService;
 
     @Inject
-    public HelpController(CloudService cloud, GlobalConfig globalConfig) {
+    public HelpController(CloudService cloud, GlobalConfig globalConfig, MenuService menuService) {
         this.cloud = cloud;
         this.globalConfig = globalConfig;
+        this.menuService = menuService;
     }
 
     @PostConstruct
     public void init() {
         this.helpHandler = cloud.getHelpHandler();
-        this.helpMenuId = Menus.registerMenu((player, option) -> {
-            MenuSession session = sessions.get(player.uuid());
-            if (session != null && option >= 0 && option < session.actions.size()) {
-                session.actions.get(option).run();
-            }
-        });
     }
 
     @Command("help [page]")
@@ -80,10 +77,12 @@ public class HelpController implements CloudClientController {
 
         List<UnifiedCommand> pageCommands = getPageSlice(allCommands, currentPage, globalConfig.commandsPerPage);
 
-        MenuSession session = new MenuSession(sender);
-        sessions.put(sender.player().uuid(), session);
+        MenuSession session = menuService.get(sender.player().uuid());
+        session.actions.clear();
+        session.resetSender();
+        session.sender = sender;
 
-        MenuBuilder menu = new MenuBuilder(session, sender)
+        MenuBuilder menu = session.builder()
                 .title("help-menu-title")
                 .content("help-menu-content", args("page", currentPage, "total", pagination.totalPages()));
 
@@ -98,11 +97,14 @@ public class HelpController implements CloudClientController {
                     "description", truncate(desc, MAX_DESCRIPTION_LENGTH)
             ));
 
-            menu.addRow(buttonText, () -> showCommandDetails(session, cmd, currentPage));
+            menu.addRow(buttonText, () -> {
+                session.pushHistory(() -> showIndex(sender, page));
+                showCommandDetails(session, cmd, currentPage);
+            });
         }
 
-        menu.addCloseButton();
-        menu.show(helpMenuId);
+        menu.addNavigationRow();
+        menu.show(menuService.getMenuId());
     }
 
     private void showCommandDetails(MenuSession session, UnifiedCommand cmd, int returnPage) {
@@ -112,12 +114,11 @@ public class HelpController implements CloudClientController {
                 ? buildCloudCommandContent(sender, cmd)
                 : buildLegacyCommandContent(sender, cmd);
         String title = sender.format("help-command-title", args("name", cmd.name()));
-        new MenuBuilder(session, sender)
+        session.builder()
                 .title(title, true)
                 .rawContent(content)
-                .addRow(sender.format("help-back"), () -> showIndex(sender, returnPage),
-                        sender.format("close"), () -> {})
-                .show(helpMenuId);
+                .addRow(sender.format("help-back"), () -> showIndex(sender, returnPage)).addNavigationRow()
+                .show(menuService.getMenuId());
     }
 
     private String buildCloudCommandContent(XCoreSender sender, UnifiedCommand cmd) {
@@ -298,82 +299,5 @@ public class HelpController implements CloudClientController {
         String params() {
             return legacyCommand != null ? legacyCommand.paramText : "";
         }
-    }
-
-
-    private static class MenuSession {
-        final XCoreSender sender;
-        final List<Runnable> actions = new ArrayList<>();
-
-        MenuSession(XCoreSender sender) {
-            this.sender = sender;
-        }
-
-        String add(String text, Runnable action) {
-            actions.add(action);
-            return text;
-        }
-    }
-
-    private static class MenuBuilder {
-        private final MenuSession session;
-        final XCoreSender sender;
-        private String title = "";
-        private String content = "";
-        private final List<String[]> rows = new ArrayList<>();
-
-        MenuBuilder(MenuSession session, XCoreSender sender) {
-            this.session = session;
-            this.sender = sender;
-        }
-
-        MenuBuilder title(String key) {
-            this.title = sender.format(key);
-            return this;
-        }
-
-        MenuBuilder title(String rawTitle, boolean raw) {
-            this.title = rawTitle;
-            return this;
-        }
-
-        MenuBuilder content(String key, Map<String, Object> args) {
-            this.content = sender.format(key, args);
-            return this;
-        }
-
-        MenuBuilder rawContent(String content) {
-            this.content = content;
-            return this;
-        }
-
-        MenuBuilder addRow(String buttonText, Runnable action) {
-            rows.add(new String[]{session.add(buttonText, action)});
-            return this;
-        }
-
-        MenuBuilder addRow(String btn1, Runnable action1, String btn2, Runnable action2) {
-            rows.add(new String[]{session.add(btn1, action1), session.add(btn2, action2)});
-            return this;
-        }
-
-        MenuBuilder addRow(List<ButtonDef> buttons) {
-            String[] row = buttons.stream()
-                    .map(b -> session.add(b.text, b.action))
-                    .toArray(String[]::new);
-            rows.add(row);
-            return this;
-        }
-
-        MenuBuilder addCloseButton() {
-            rows.add(new String[]{session.add(sender.format("close"), () -> {})});
-            return this;
-        }
-
-        void show(int menuId) {
-            Call.menu(sender.player().con, menuId, title, content, rows.toArray(String[][]::new));
-        }
-
-        record ButtonDef(String text, Runnable action) {}
     }
 }

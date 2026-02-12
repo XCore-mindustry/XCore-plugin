@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui;
 
+import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.GlobalConfig;
 
 import java.util.ArrayList;
@@ -7,8 +8,10 @@ import java.util.*;
 import java.util.function.Consumer;
 
 public class MenuSession {
-
+    public final MenuService service;
     private final GlobalConfig globalConfig;
+
+    public XCoreSender sender;
 
     public final List<Runnable> actions = new ArrayList<>();
 
@@ -20,13 +23,19 @@ public class MenuSession {
 
     public Consumer<String> textHandler;
 
-    public MenuSession(GlobalConfig globalConfig) {
+    public MenuSession(MenuService service, GlobalConfig globalConfig) {
+        this.service = service;
         this.globalConfig = globalConfig;
+        this.sender = null;
     }
 
     public String add(String buttonName, Runnable action) {
         actions.add(action);
         return buttonName;
+    }
+
+    public MenuBuilder builder() {
+        return new MenuBuilder(service, this);
     }
 
     public boolean hasDraft(Class<?> clazz) {
@@ -72,6 +81,10 @@ public class MenuSession {
 
     public boolean hasHistory() {
         return !history.isEmpty();
+    }
+
+    public void resetSender() {
+        sender = null;
     }
 
     public void clearHistory() {
