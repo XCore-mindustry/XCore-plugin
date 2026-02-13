@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
 import arc.util.CommandHandler;
+import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -24,13 +25,17 @@ import static com.ospx.flubundle.Bundle.args;
 public class HelpMenu extends Menu {
 
     private final CloudService cloud;
-    private final HelpHandler<XCoreSender> helpHandler;
+    private HelpHandler<XCoreSender> helpHandler;
     private static final int MAX_DESC_LEN = 40;
 
     @Inject
     public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, CloudService cloud) {
         super(config, globalConfig, sessionService);
         this.cloud = cloud;
+    }
+
+    @PostConstruct
+    public void init() {
         this.helpHandler = cloud.getHelpHandler();
     }
 
