@@ -7,18 +7,20 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 
 import java.util.Locale;
 
 @Singleton
 public class LeaderboardService {
 
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final BundleService bundle;
 
     @Inject
-    public LeaderboardService(PlayerSessionService playerSessionService, BundleService bundle) {
-        this.playerSessionService = playerSessionService;
+    public LeaderboardService(SessionService sessionService, BundleService bundle) {
+        this.sessionService = sessionService;
         this.bundle = bundle;
     }
 
@@ -27,7 +29,7 @@ public class LeaderboardService {
             if (Groups.player.isEmpty()) return;
 
             Groups.player.each(player -> {
-                var data = playerSessionService.get(player.uuid());
+                var data = sessionService.get(player.uuid()).data;
                 if (data == null || !data.leaderboard) return;
 
                 StringBuilder builder = new StringBuilder();

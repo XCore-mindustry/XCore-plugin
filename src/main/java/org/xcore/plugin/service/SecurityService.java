@@ -1,10 +1,13 @@
 package org.xcore.plugin.service;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.model.MuteData;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -15,15 +18,16 @@ import static com.ospx.flubundle.Bundle.args;
 public class SecurityService {
 
     private final MuteDataRepository muteDataRepository;
-    private final BundleService bundle;
+    private final Provider<SessionService> sessionService;
 
     @Inject
-    public SecurityService(MuteDataRepository muteDataRepository, BundleService bundle) {
+    public SecurityService(MuteDataRepository muteDataRepository, Provider<SessionService> sessionService) {
         this.muteDataRepository = muteDataRepository;
-        this.bundle = bundle;
+        this.sessionService = sessionService;
     }
 
     public boolean isMuted(Player player) {
+        Session session = sessionService.get().get(player);
         MuteData mute = muteDataRepository.findByUuid(player.uuid());
 
         if (mute == null) return false;
@@ -31,7 +35,7 @@ public class SecurityService {
         if (!mute.expired()) {
             Duration remain = Duration.between(Instant.now(), mute.expireDate);
 
-            bundle.send(player, "you-are-muted",
+            session.locale().send("you-are-muted",
                     args("adminName", mute.adminName,
                             "reason", mute.reason,
                             "remainMinutes", remain.toMinutes(),

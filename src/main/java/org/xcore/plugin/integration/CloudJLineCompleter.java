@@ -11,7 +11,7 @@ import org.jline.reader.ParsedLine;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 
 import java.util.List;
 import java.util.Set;

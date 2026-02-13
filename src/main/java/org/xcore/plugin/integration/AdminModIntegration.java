@@ -7,11 +7,11 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.database.repository.BanDataRepository;
-import org.xcore.plugin.service.PlayerSessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.model.BanData;
@@ -28,7 +28,7 @@ public class AdminModIntegration {
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final NetworkService network;
     private final Gson rawGson;
     private final BundleService bundle;
@@ -37,14 +37,14 @@ public class AdminModIntegration {
     @Inject
     public AdminModIntegration(PlayerDataRepository playerDataRepository,
                                BanDataRepository banDataRepository,
-                               PlayerSessionService playerSessionService,
+                               SessionService sessionService,
                                NetworkService network,
                                @Named("raw") Gson rawGson,
                                BundleService bundle,
                                TimeService timeService) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.network = network;
         this.rawGson = rawGson;
         this.bundle = bundle;
@@ -106,7 +106,7 @@ public class AdminModIntegration {
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
-            var data = playerSessionService.get(player.uuid());
+            var data = sessionService.get(player.uuid()).data;
 
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);

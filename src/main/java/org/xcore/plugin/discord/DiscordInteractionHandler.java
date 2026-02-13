@@ -11,7 +11,7 @@ import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.session.SessionService;
 import reactor.core.publisher.Mono;
 
 
@@ -19,19 +19,19 @@ import reactor.core.publisher.Mono;
 public class DiscordInteractionHandler {
 
     private final GlobalConfig globalConfig;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
 
     @Inject
     public DiscordInteractionHandler(
             GlobalConfig globalConfig,
-            PlayerSessionService playerSessionService,
+            SessionService sessionService,
             AdminDataRepository adminDataRepository,
             NetworkService network
     ) {
         this.globalConfig = globalConfig;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
     }
@@ -71,7 +71,7 @@ public class DiscordInteractionHandler {
         String[] args = event.getCustomId().split("_");
 
         String server = args[0];
-        PlayerData data = playerSessionService.getOrLoadFromDb(Strings.parseInt(args[1]));
+        PlayerData data = sessionService.getOrLoadFromDb(Strings.parseInt(args[1]));
         var adminData = adminDataRepository.findByUuid(data.uuid);
 
         network.post(new SocketEvents.AdminRequestConfirmEvent(data.uuid, server));

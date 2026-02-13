@@ -17,16 +17,14 @@ import org.xcore.plugin.command.controller.client.MapController;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.GameDataService;
-import org.xcore.plugin.ui.MenuService;
-import org.xcore.plugin.service.PlayerSessionService;
-import org.xcore.plugin.ui.MenuSession;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.ui.menu.MapMenu;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.*;
@@ -35,10 +33,9 @@ import static mindustry.Vars.*;
 public class MapVoteHandler {
 
     private final MapDataRepository mapDataRepository;
-    private final PlayerSessionService playerSessionService;
-    private final BundleService bundleService;
-    private final MenuService menuService;
+    private final SessionService sessionService;
     private final Provider<MapController> mapController;
+    private final Provider<MapMenu> mapMenu;
     private final GameDataService gameDataService;
     private final EventDataRepository eventDataRepository;
     private final Config config;
@@ -46,17 +43,14 @@ public class MapVoteHandler {
 
     @Inject
     public MapVoteHandler(MapDataRepository mapDataRepository,
-                          PlayerSessionService playerSessionService,
-                          BundleService bundleService,
-                          MenuService menuService,
-                          Provider<MapController> mapController,
+                          SessionService sessionService,
+                          Provider<MapController> mapController, Provider<MapMenu> mapMenu,
                           GameDataService gameDataService,
                           EventDataRepository eventDataRepository,
                           Config config) {
         this.mapDataRepository = mapDataRepository;
-        this.playerSessionService = playerSessionService;
-        this.bundleService = bundleService;
-        this.menuService = menuService;
+        this.sessionService = sessionService;
+        this.mapMenu = mapMenu;
         this.mapController = mapController;
         this.gameDataService = gameDataService;
         this.eventDataRepository = eventDataRepository;
@@ -87,47 +81,37 @@ public class MapVoteHandler {
                 MapData nextMapData = mapDataRepository.findOrCreate(nextMap.plainName(), nextMap.file.name(), nextMap.author(), state.rules.mode().name());
 
                 Groups.player.each(p -> {
-                    String menuTitle = bundleService.format(bundleService.locale(p), "map-vote-title", args());
+                    Session session = sessionService.get(p.uuid()).clear();
+                    PlayerData pData = session.data;
+                    Localization local = session.locale();
 
-                    String menuContent = bundleService.format(bundleService.locale(p), "map-vote-content", args(
-                            "mapName", nextName,
-                            "author", nextAuthor,
-                            "seconds", 10
-                    ));
-
-                    PlayerData pData = playerSessionService.get(p.uuid());
                     Boolean currentVote = pData.mapVotes.get(mapData.id.toString());
 
                     String likeButtonText = Boolean.TRUE.equals(currentVote)
-                            ? bundleService.format(bundleService.locale(p), "map-vote-like-selected", args())
-                            : bundleService.format(bundleService.locale(p), "map-vote-like", args());
+                            ? local.format("map-vote-like-selected", args())
+                            : local.format("map-vote-like", args());
                     String dislikeButtonText = Boolean.FALSE.equals(currentVote)
-                            ? bundleService.format(bundleService.locale(p), "map-vote-dislike-selected", args())
-                            : bundleService.format(bundleService.locale(p), "map-vote-dislike", args());
+                            ? local.format("map-vote-dislike-selected", args())
+                            : local.format("map-vote-dislike", args());
 
-                    MenuSession session = menuService.get(p.uuid());
-                    session.actions.clear();
-                    List<List<String>> rows = new ArrayList<>();
-
-                    List<String> row1 = new ArrayList<>();
-                    row1.add(session.add(likeButtonText, () -> mapController.get().handleReputation(p, true, mapData)));
-                    row1.add(session.add(dislikeButtonText, () -> mapController.get().handleReputation(p, false, mapData)));
-                    rows.add(row1);
-
-                    List<String> row2 = new ArrayList<>();
-                    row2.add(session.add(bundleService.format(bundleService.locale(p), "current-map", args()), () -> {
-                        session.clearHistory();
-                        mapController.get().handleMap(p, mapData);
-                    }));
-                    row2.add(session.add(bundleService.format(bundleService.locale(p), "next-map", args()), () -> {
-                        session.clearHistory();
-                        mapController.get().handleMap(p, nextMapData);
-                    }));
-                    rows.add(row2);
-
-                    menuService.addNavigationRow(p, session, rows);
-
-                    Call.menu(p.con, menuService.getMenuId(), menuTitle, menuContent, menuService.convertListToArray(rows));
+                    var menu = session.builder().title("map-vote-title")
+                            .content("map-vote-content", args(
+                                "mapName", nextName,
+                                "author", nextAuthor,
+                                "seconds", 10
+                            ))
+                            .add(likeButtonText, () -> mapController.get().handleReputation(p, true, mapData))
+                            .add(dislikeButtonText, () -> mapController.get().handleReputation(p, false, mapData))
+                            .end()
+                            .add("current-map", () -> {
+                                session.clearHistory();
+                                mapMenu.get().map(p.uuid(), mapData);
+                            })
+                            .add("next-map", () -> {
+                                session.clearHistory();
+                                mapMenu.get().map(p.uuid(), nextMapData);
+                            })
+                            .addNavigationRow().show();
                 });
 
 

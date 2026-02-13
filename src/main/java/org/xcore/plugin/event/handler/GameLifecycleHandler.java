@@ -17,11 +17,11 @@ import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.session.SessionService;
 
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -34,18 +34,20 @@ public class GameLifecycleHandler {
     private final NetworkService network;
     private final Config config;
     private final BundleService bundleService;
+    private final SessionService sessionService;
     private final PluginState pluginState;
 
     @Inject
     public GameLifecycleHandler(MapDataRepository mapDataRepository,
                                 NetworkService network,
                                 Config config,
-                                BundleService bundleService,
+                                BundleService bundleService, SessionService sessionService,
                                 PluginState pluginState) {
         this.mapDataRepository = mapDataRepository;
         this.network = network;
         this.config = config;
         this.bundleService = bundleService;
+        this.sessionService = sessionService;
         this.pluginState = pluginState;
     }
 
@@ -114,7 +116,7 @@ public class GameLifecycleHandler {
     private void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
         Timer.schedule(() -> {
-            Groups.player.each((p) -> Call.announce(p.con, bundleService.format(Locale.of(p.locale),
+            Groups.player.each((p) -> Call.announce(p.con, bundleService.format(sessionService.get(p.uuid()).locale().getLocale(),
                             "server-restart-countdown",
                             args("seconds", secondsLeft.get()))));
             if (secondsLeft.decrementAndGet() == 0) {

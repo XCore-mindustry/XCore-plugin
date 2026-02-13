@@ -3,7 +3,7 @@ package org.xcore.plugin.cloud;
 import lombok.Getter;
 import mindustry.gen.Player;
 import org.xcore.cloud.mindustry.MindustrySender;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 
 import java.util.Locale;
 import java.util.Map;

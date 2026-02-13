@@ -6,8 +6,9 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
-import org.xcore.plugin.command.controller.client.TranslatorLanguagesProvider;
+import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.SessionService;
 
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;
@@ -17,13 +18,13 @@ import static org.xcore.plugin.common.TextUtils.deepEquals;
 @Singleton
 public class FindService {
 
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final TranslatorLanguagesProvider translatorLanguages;
 
     @Inject
-    public FindService(PlayerSessionService playerSessionService,
+    public FindService(SessionService sessionService,
                        TranslatorLanguagesProvider translatorLanguages) {
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.translatorLanguages = translatorLanguages;
     }
 
@@ -45,8 +46,8 @@ public class FindService {
 
     public PlayerData playerData(String uuidOrPid) {
         return uuidOrPid.startsWith("#")
-                ? playerSessionService.getOrLoadFromDb(Strings.parseInt(uuidOrPid.substring(1)))
-                : playerSessionService.getOrLoadFromDb(uuidOrPid);
+                ? sessionService.getOrLoadFromDb(Strings.parseInt(uuidOrPid.substring(1)))
+                : sessionService.getOrLoadFromDb(uuidOrPid);
     }
 
     public Administration.PlayerInfo playerInfo(String name) {

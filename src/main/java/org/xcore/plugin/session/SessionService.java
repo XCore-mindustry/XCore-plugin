@@ -1,30 +1,42 @@
-package org.xcore.plugin.service;
+package org.xcore.plugin.session;
 
 import arc.func.Boolf;
 import arc.func.Cons;
 import arc.struct.ObjectMap;
 import arc.util.Log;
 import io.avaje.inject.PostConstruct;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.ui.MenuService;
+
+import java.util.Map;
 
 @Singleton
-public class PlayerSessionService {
+public class SessionService {
 
+    private final BundleService bundle;
+    private final GlobalConfig globalConfig;
+    private final Provider<MenuService> menuService;
     private final PlayerDataRepository playerDataRepository;
 
     /**
      * In-memory cache of online players.
      * Key: player UUID, Value: player data
      */
-    private final ObjectMap<String, PlayerData> sessionCache = new ObjectMap<>();
+    private final ObjectMap<String, Session> sessionCache = new ObjectMap<>();
 
     @Inject
-    public PlayerSessionService(PlayerDataRepository playerDataRepository) {
+    public SessionService(BundleService bundle, GlobalConfig globalConfig, Provider<MenuService> menuService, PlayerDataRepository playerDataRepository) {
+        this.bundle = bundle;
+        this.globalConfig = globalConfig;
+        this.menuService = menuService;
         this.playerDataRepository = playerDataRepository;
     }
 
@@ -39,7 +51,7 @@ public class PlayerSessionService {
      * @param player the player instance
      * @return cached PlayerData or null if not in cache
      */
-    public PlayerData get(Player player) {
+    public Session get(Player player) {
         return sessionCache.get(player.uuid());
     }
 
@@ -49,8 +61,12 @@ public class PlayerSessionService {
      * @param uuid player UUID
      * @return cached PlayerData or null if not in cache
      */
-    public PlayerData get(String uuid) {
+    public Session get(String uuid) {
         return sessionCache.get(uuid);
+    }
+
+    public Session get(PlayerData data) {
+        return sessionCache.get(data.uuid);
     }
 
     /**
@@ -64,7 +80,7 @@ public class PlayerSessionService {
     public PlayerData getOrLoadFromDb(String uuid) {
         var cached = sessionCache.get(uuid);
         if (cached != null) {
-            return cached;
+            return cached.data;
         }
         return playerDataRepository.findByUuid(uuid);
     }
@@ -80,8 +96,8 @@ public class PlayerSessionService {
      */
     public PlayerData getOrLoadFromDb(int pid) {
         for (var data : sessionCache.values()) {
-            if (data.pid == pid) {
-                return data;
+            if (data.data.pid == pid) {
+                return data.data;
             }
         }
 
@@ -96,12 +112,17 @@ public class PlayerSessionService {
      * @param player the player instance
      * @return loaded PlayerData (newly created if player is new)
      */
-    public PlayerData registerLogin(Player player) {
+    public Session registerLogin(Player player) {
         var data = playerDataRepository.findByPlayer(player);
-        sessionCache.put(player.uuid(), data);
+
+        if (data == null) data = new PlayerData(player.uuid(), false);
+
+        Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository).init(player, data);
+
+        sessionCache.put(player.uuid(), session);
 
         Log.debug("Player session registered: @ (@)", data.nickname, player.uuid());
-        return data;
+        return session;
     }
 
     /**
@@ -109,15 +130,15 @@ public class PlayerSessionService {
      * <p>
      * Should be called when player leaves the server.
      *
-     * @param uuid player UUID
+     * @param player player
      * @return removed PlayerData or null if not in cache
      */
-    public PlayerData registerLogout(String uuid) {
-        var data = sessionCache.remove(uuid);
+    public Session registerLogout(Player player) {
+        var data = sessionCache.remove(player.uuid());
 
         if (data != null) {
-            playerDataRepository.save(data);
-            Log.debug("Player session unregistered: @ (@)", data.nickname, uuid);
+            playerDataRepository.save(data.data);
+            Log.debug("Player session unregistered: @ (@)", data.data.nickname, player.uuid());
         }
 
         return data;
@@ -128,10 +149,24 @@ public class PlayerSessionService {
      * <p>
      * If player is not in cache, adds them.
      *
+     * @param data session data to cache
+     */
+    public void update(Session data) {
+        sessionCache.put(data.data.uuid, data);
+    }
+
+    /**
+     * Updates cached player data.
+     * <p>
+     * If player is not in cache, adds them.
+     *
      * @param data player data to cache
      */
-    public void update(PlayerData data) {
-        sessionCache.put(data.uuid, data);
+    public boolean update(PlayerData data) {
+        var session = sessionCache.get(data.uuid);
+        if (session == null) return false;
+        session.data = data;
+        return true;
     }
 
     /**
@@ -142,8 +177,8 @@ public class PlayerSessionService {
     public void saveAll() {
         Log.info("Saving @ online players to database", sessionCache.size);
 
-        for (var data : sessionCache.values()) {
-            playerDataRepository.save(data);
+        for (var session : sessionCache.values()) {
+            session.save();
         }
     }
 
@@ -158,7 +193,10 @@ public class PlayerSessionService {
 
         Groups.player.each(player -> {
             var data = playerDataRepository.findByPlayer(player);
-            sessionCache.put(player.uuid(), data);
+            if (data == null) data = new PlayerData(player.uuid(), false);
+
+            Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository).init(player, data);
+            sessionCache.put(player.uuid(), session);
         });
 
         Log.info("Player cache reloaded: @ players", sessionCache.size);
@@ -174,8 +212,8 @@ public class PlayerSessionService {
      */
     public void getCachedAdminTools(Boolf<Integer> versionCompare, Cons<PlayerData> consumer) {
         for (var data : sessionCache.values()) {
-            if (data.adminModVersion != null && versionCompare.get(Integer.parseInt(data.adminModVersion))) {
-                consumer.get(data);
+            if (data.data.adminModVersion != null && versionCompare.get(Integer.parseInt(data.data.adminModVersion))) {
+                consumer.get(data.data);
             }
         }
     }
@@ -196,7 +234,13 @@ public class PlayerSessionService {
      *
      * @return all cached PlayerData entries
      */
-    public Iterable<PlayerData> getAllCached() {
+    public Iterable<Session> getAllCached() {
         return sessionCache.values();
+    }
+
+    public void broadcast(String key, Map<String, Object> args) {
+        for (Session session : getAllCached()) {
+            session.locale().send(key, args);
+        }
     }
 }

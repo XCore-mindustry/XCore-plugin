@@ -9,7 +9,7 @@ import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 
 import java.time.Duration;
 import java.time.Instant;

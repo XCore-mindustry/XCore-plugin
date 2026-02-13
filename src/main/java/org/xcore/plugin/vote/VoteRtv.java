@@ -9,10 +9,10 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.service.BundleService;
 import org.xcore.plugin.service.GameStateService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
@@ -25,7 +25,7 @@ public class VoteRtv extends VoteSession {
 
     private final MapDataRepository mapDataRepository;
     private final GlobalConfig globalConfig;
-    private final BundleService bundle;
+    private final SessionService sessionService;
     private final VoteService voteService;
     private final GameStateService gameStateService;
 
@@ -36,7 +36,7 @@ public class VoteRtv extends VoteSession {
 
             MapDataRepository mapDataRepository,
             GlobalConfig globalConfig,
-            BundleService bundleService,
+            SessionService sessionService,
             VoteService voteService,
             GameStateService gameStateService) {
         super(globalConfig);
@@ -44,7 +44,7 @@ public class VoteRtv extends VoteSession {
         this.isManualSelection = isManualSelection;
         this.mapDataRepository = mapDataRepository;
         this.globalConfig = globalConfig;
-        this.bundle = bundleService;
+        this.sessionService = sessionService;
         this.voteService = voteService;
         this.gameStateService = gameStateService;
     }
@@ -52,7 +52,7 @@ public class VoteRtv extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        bundle.send("rtv-vote", args(
+        sessionService.broadcast("rtv-vote", args(
                 "nickname", player.coloredName(),
                 "mapName", target.name(),
                 "votes", votes(),
@@ -62,7 +62,7 @@ public class VoteRtv extends VoteSession {
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0) {
-            bundle.send("rtv-left", args(
+            sessionService.broadcast("rtv-left", args(
                     "nickname", player.coloredName(),
                     "votes", votes(),
                     "votesRequired", votesRequired()));
@@ -72,7 +72,7 @@ public class VoteRtv extends VoteSession {
     @Override
     public void success() {
         stop();
-        bundle.send("rtv-success", args(
+        sessionService.broadcast("rtv-success", args(
                 "mapName", target.name(),
                 "mapLoadDelay", globalConfig.mapSwitchDelaySeconds));
 
@@ -106,13 +106,13 @@ public class VoteRtv extends VoteSession {
     @Override
     public void fail() {
         stop();
-        bundle.send("rtv-fail", args("mapName", target.name()));
+        sessionService.broadcast("rtv-fail", args("mapName", target.name()));
     }
 
     @Override
     public void cancelByAdmin(Player admin) {
         stop();
-        bundle.send("rtv-cancelled", args(
+        sessionService.broadcast("rtv-cancelled", args(
                 "mapName", target.name(),
                 "admin", admin.coloredName()));
     }

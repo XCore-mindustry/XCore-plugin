@@ -5,6 +5,7 @@ import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import io.leangen.geantyref.TypeToken;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import mindustry.Vars;
@@ -35,10 +36,10 @@ import org.xcore.plugin.cloud.parser.PlayerParser;
 import org.xcore.plugin.cloud.parser.SmartDurationParser;
 import org.xcore.plugin.cloud.parser.LanguageParser;
 import org.xcore.plugin.cloud.parser.TeamParser;
-import org.xcore.plugin.command.controller.client.TranslatorLanguagesProvider;
+import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TimeService;
 
@@ -53,8 +54,8 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class CloudService {
     private final BundleService bundleService;
-    private final SecurityService securityService;
-    private final PlayerSessionService playerSessionService;
+    private final Provider<SecurityService> securityService;
+    private final Provider<SessionService> sessionService;
     private final GlobalConfig globalConfig;
     private final TimeService timeService;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
@@ -66,13 +67,13 @@ public class CloudService {
 
     @Inject
     public CloudService(BundleService bundleService,
-                        SecurityService securityService,
-                        PlayerSessionService playerSessionService,
+                        Provider<SecurityService> securityService,
+                        Provider<SessionService> sessionService,
                         GlobalConfig globalConfig, TimeService timeService,
                         TranslatorLanguagesProvider translatorLanguagesProvider) {
         this.bundleService = bundleService;
         this.securityService = securityService;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.globalConfig = globalConfig;
         this.timeService = timeService;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
@@ -264,7 +265,7 @@ public class CloudService {
     private void configurePreprocessors(AnnotationParser<XCoreSender> parser) {
         parser.registerPreprocessorMapper(RequiresMuteCheck.class, _ -> (ctx, _) -> {
             XCoreSender sender = ctx.sender();
-            if (sender.isPlayer() && securityService.isMuted(sender.player())) {
+            if (sender.isPlayer() && securityService.get().isMuted(sender.player())) {
                 return ArgumentParseResult.failure(new IllegalStateException("Player is muted"));
             }
             return ArgumentParseResult.success(true);
@@ -283,7 +284,7 @@ public class CloudService {
                 case CUSTOM -> 0;
             };
 
-            var data = playerSessionService.get(player.uuid());
+            var data = sessionService.get().get(player.uuid()).data;
             if (data != null && data.totalPlayTime < requiredMinutes) {
                 return ArgumentParseResult.failure(
                         new XCoreCommandException("error-playtime-requirement", args("time", requiredMinutes))

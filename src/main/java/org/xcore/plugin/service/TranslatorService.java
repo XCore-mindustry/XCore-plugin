@@ -9,17 +9,18 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.session.SessionService;
 
 import static mindustry.Vars.netServer;
 
 @Singleton
 public class TranslatorService {
     private static final JsonReader reader = new JsonReader();
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
 
     @Inject
-    public TranslatorService(PlayerSessionService playerSessionService) {
-        this.playerSessionService = playerSessionService;
+    public TranslatorService(SessionService sessionService) {
+        this.sessionService = sessionService;
     }
 
     public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
@@ -33,20 +34,20 @@ public class TranslatorService {
         var cache = new StringMap();
         var message = netServer.chatFormatter.format(author, text);
 
-        for (var data : playerSessionService.getAllCached()) {
-            var player = Groups.player.find(p -> p.uuid().equals(data.uuid));
+        for (var data : sessionService.getAllCached()) {
+            var player = Groups.player.find(p -> p.uuid().equals(data.data.uuid));
             if (player == null || player == author) continue;
 
-            if (data.translatorLanguage.equals("off")) {
+            if (data.data.translatorLanguage.equals("off")) {
                 player.sendMessage(message, author, text);
                 continue;
             }
 
-            if (cache.containsKey(data.translatorLanguage)) {
-                player.sendMessage(cache.get(data.translatorLanguage), author, text);
-            } else translate(text, "auto", data.translatorLanguage, result -> {
-                cache.put(data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
-                player.sendMessage(cache.get(data.translatorLanguage), author, text);
+            if (cache.containsKey(data.data.translatorLanguage)) {
+                player.sendMessage(cache.get(data.data.translatorLanguage), author, text);
+            } else translate(text, "auto", data.data.translatorLanguage, result -> {
+                cache.put(data.data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
+                player.sendMessage(cache.get(data.data.translatorLanguage), author, text);
             }, () -> player.sendMessage(message, author, text));
         }
     }

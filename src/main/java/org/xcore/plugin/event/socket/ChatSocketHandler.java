@@ -8,7 +8,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.discord.DiscordMessageHandler;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;

@@ -8,7 +8,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
 
 import static arc.util.Strings.format;

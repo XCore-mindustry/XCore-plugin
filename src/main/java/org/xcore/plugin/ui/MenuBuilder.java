@@ -1,8 +1,8 @@
 package org.xcore.plugin.ui;
 
 import mindustry.gen.Call;
-import mindustry.gen.Player;
-import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.session.Session;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,23 +13,27 @@ import static com.ospx.flubundle.Bundle.args;
 
 public class MenuBuilder {
     public final MenuService service;
-    public final MenuSession session;
-    public final XCoreSender sender;
+    public final Session session;
+    public final Localization localization;
 
     public String title = "";
     public String content = "";
     public final List<List<String>> rows = new ArrayList<>();
     public final List<String> row = new ArrayList<>();
 
-    public MenuBuilder(MenuService service, MenuSession session) {
+    public MenuBuilder(MenuService service, Session session) {
         this.service = service;
         this.session = session;
-        this.sender = session.sender;
+        this.localization = session.locale();
     }
 
     public MenuBuilder title(String key) {
-        if (sender == null) return this;
-        this.title = sender.format(key);
+        this.title = localization.format(key);
+        return this;
+    }
+
+    public MenuBuilder title(String key, Map<String, Object> args) {
+        this.title = localization.format(key, args);
         return this;
     }
 
@@ -39,14 +43,12 @@ public class MenuBuilder {
     }
 
     public MenuBuilder content(String key) {
-        if (sender == null) return this;
-        this.content = sender.format(key, args());
+        this.content = localization.format(key, args());
         return this;
     }
 
     public MenuBuilder content(String key, Map<String, Object> args) {
-        if (sender == null) return this;
-        this.content = sender.format(key, args);
+        this.content = localization.format(key, args);
         return this;
     }
 
@@ -92,28 +94,22 @@ public class MenuBuilder {
     }
 
     public MenuBuilder addNavigationRow() {
-        if (sender == null) return this;
-
         start();
 
         if (session.hasHistory()) {
-            row.add(session.add(sender.format("back", args()), () -> {
+            row.add(session.add(localization.format("back", args()), () -> {
                 Runnable previousMenu = session.popHistory();
                 if (previousMenu != null) previousMenu.run();
             }));
         }
 
-        row.add(session.add(sender.format("close", args()), () -> {
-            service.clear(sender.player().uuid());
-        }));
+        row.add(session.add(localization.format("close", args()), session.actions::clear));
 
         end();
         return this;
     }
 
     public MenuBuilder addStatusButton(String buttonText, Runnable action) {
-        if (sender == null) return this;
-
         start();
         StatusEnum buttonStatus = session.sortStatus.getOrDefault(buttonText, StatusEnum.Neutral);
 
@@ -123,11 +119,11 @@ public class MenuBuilder {
         };
 
         if (buttonStatus == StatusEnum.Neutral) {
-            row.add(session.add(sender.format(buttonText + "-neutral", args()), lambda));
+            row.add(session.add(localization.format(buttonText + "-neutral", args()), lambda));
         } else if (buttonStatus == StatusEnum.Active) {
-            row.add(session.add(sender.format(buttonText + "-active", args()), lambda));
+            row.add(session.add(localization.format(buttonText + "-active", args()), lambda));
         } else if (buttonStatus == StatusEnum.Inactive) {
-            row.add(session.add(sender.format(buttonText + "-inactive", args()), lambda));
+            row.add(session.add(localization.format(buttonText + "-inactive", args()), lambda));
         }
         end();
         return this;
@@ -138,13 +134,11 @@ public class MenuBuilder {
     }
 
     public boolean show(int menuId) {
-        if (sender == null) return false;
-
         if (!row.isEmpty()) {
             end();
         }
 
-        Call.menu(sender.player().con, menuId, title, content, service.convertListToArray(rows));
+        Call.menu(session.player.con, menuId, title, content, service.convertListToArray(rows));
         return true;
     }
 
@@ -171,6 +165,18 @@ public class MenuBuilder {
             row.add(session.add(buttonText2, action2));
         }
 
+        return this;
+    }
+
+    public MenuBuilder apply(java.util.function.Consumer<MenuBuilder> consumer) {
+        consumer.accept(this);
+        return this;
+    }
+
+    public <T> MenuBuilder addForEach(Iterable<T> items, java.util.function.BiConsumer<MenuBuilder, T> action) {
+        for (T item : items) {
+            action.accept(this, item);
+        }
         return this;
     }
 

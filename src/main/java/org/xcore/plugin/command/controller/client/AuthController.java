@@ -9,7 +9,10 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.AdminDataRepository;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -19,64 +22,63 @@ import static mindustry.Vars.netServer;
 public class AuthController implements CloudClientController {
 
     private final AdminDataRepository adminDataRepository;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final NetworkService network;
     private final Config config;
 
     @Inject
     public AuthController(AdminDataRepository adminDataRepository,
-                          PlayerSessionService playerSessionService,
+                          SessionService sessionService,
                           NetworkService network,
                           Config config) {
         this.adminDataRepository = adminDataRepository;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.network = network;
         this.config = config;
     }
 
     @Command("login <password>")
     public void login(XCoreSender sender, @Argument("password") String password) {
+        Session session = sessionService.get(sender.player().uuid());
+        PlayerData data = session.data;
+        Localization local = session.locale();
+
 
         if (password.length() < 4) {
-            sender.send("error-admin-password-too-short", args());
+            local.send("error-admin-password-too-short", args());
             return;
         }
 
-        var data = playerSessionService.get(sender.player().uuid());
-        var adminData = adminDataRepository.findByUuid(data.uuid);
-
-        if (adminData == null) {
-            sender.send("error-internal", args());
-            return;
+        if (data.password.isEmpty()) {
+            data.hashPassword(password);
+            data.admin = true;
+            adminDataRepository.save(data);
+            local.send("commands-login-admin-password-created", args());
         }
 
-        if (adminData.password.isEmpty()) {
-            adminData.hashPassword(password);
-            adminData.admin = true;
-            adminDataRepository.save(adminData);
-            sender.send("commands-login-admin-password-created", args());
-        }
-
-        if (adminData.verifyPassword(password)) {
-            if (adminData.adminConfirmed) {
+        if (data.verifyPassword(password)) {
+            if (data.adminConfirmed) {
                 sender.player().admin(true);
                 netServer.admins.adminPlayer(sender.player().uuid(), sender.player().getInfo().adminUsid);
-                sender.send("commands-login-success", args());
+                local.send("commands-login-success", args());
             } else {
-                sender.send("commands-login-request-approval-discord", args());
+                local.send("commands-login-request-approval-discord", args());
                 network.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
             }
         } else {
-            sender.send("error-wrong-admin-password", args());
+            local.send("error-wrong-admin-password", args());
         }
     }
 
     @Command("logout")
     public void logout(XCoreSender sender) {
+        Session session = sessionService.get(sender.player().uuid());
+        Localization local = session.locale();
+
         if (sender.player().admin) {
             sender.player().admin(false);
             netServer.admins.unAdminPlayer(sender.player().uuid());
-            sender.send("commands-logout-successful", args());
+            local.send("commands-logout-successful", args());
         }
     }
 }

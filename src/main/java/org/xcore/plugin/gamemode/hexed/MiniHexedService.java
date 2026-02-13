@@ -24,8 +24,8 @@ import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
@@ -47,7 +47,7 @@ public class MiniHexedService {
     private static int winScore = 1800;
 
     private final Config config;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final NetworkService network;
     private final BundleService bundle;
@@ -57,13 +57,13 @@ public class MiniHexedService {
 
     @Inject
     public MiniHexedService(Config config,
-                            PlayerSessionService playerSessionService,
+                            SessionService sessionService,
                             PlayerDataRepository playerDataRepository,
                             NetworkService networkService,
                             BundleService bundle,
                             LeaderboardService leaderboardService) {
         this.config = config;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.network = networkService;
         this.bundle = bundle;
@@ -116,7 +116,7 @@ public class MiniHexedService {
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
-            var data = playerSessionService.get(member.uuid);
+            var data = sessionService.get(member.uuid).data;
 
             if (member.controlled() > 1 && data != null) {
                 var ranked = rankings.get(data.hexedRank());
@@ -191,7 +191,7 @@ public class MiniHexedService {
         if (!teams.isEmpty()) {
             var winnerTeam = teams.get(0);
             var player = winnerTeam.players.first();
-            var data = playerSessionService.get(player.uuid());
+            var data = sessionService.get(player.uuid()).data;
 
             var ranked = rankings.get(data.hexedRank());
             if (ranked != null && ranked.size > 1 ||

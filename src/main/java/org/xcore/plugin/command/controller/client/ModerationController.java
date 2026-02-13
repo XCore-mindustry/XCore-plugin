@@ -12,9 +12,11 @@ import org.incendo.cloud.annotations.Default;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -27,16 +29,14 @@ import static com.ospx.flubundle.Bundle.args;
 public class ModerationController implements CloudClientController {
 
     private final ModerationService moderationService;
-    private final BundleService bundle;
     private final FindService find;
+    private final SessionService sessionService;
 
     @Inject
-    public ModerationController(ModerationService moderationService,
-                                BundleService bundle,
-                                FindService find) {
+    public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService) {
         this.moderationService = moderationService;
-        this.bundle = bundle;
         this.find = find;
+        this.sessionService = sessionService;
     }
 
     @Command("ban <id> <period> [reason]")
@@ -45,35 +45,41 @@ public class ModerationController implements CloudClientController {
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
                     @Argument("reason") @Greedy @Default("") String reason) {
 
+        Session session = sessionService.get(sender.player().uuid());
+        Localization local = session.locale();
+
         Instant duration = Instant.ofEpochMilli(period.toMillis());
 
         var result = moderationService.banById(
                 id,
-                sender.player().name,
+                session.player.name,
                 reason.isBlank() ? null : reason,
                 duration,
                 true
         );
 
         if (result.isSuccess()) {
-            sender.send("commands-ban-success", args("nickname", result.getData().get().name));
+            local.send("commands-ban-success", args("nickname", result.getData().get().name));
         } else {
-            sender.send("error-player-not-found", args());
+            local.send("error-player-not-found", args());
         }
     }
 
     @Command("unban <id>")
     public void unban(XCoreSender sender, @Argument("id") int id) {
+        Session session = sessionService.get(sender.player().uuid());
+        Localization local = session.locale();
+
         var result = moderationService.unbanById(id);
 
         if (result.isSuccess()) {
             var target = result.getData().get();
-            sender.send("commands-unban-success", args(
+            local.send("commands-unban-success", args(
                     "nickname", target.nickname,
                     "pid", target.pid
             ));
         } else {
-            sender.send("error-player-not-found", args());
+            local.send("error-player-not-found", args());
         }
     }
 
@@ -83,41 +89,48 @@ public class ModerationController implements CloudClientController {
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument("reason") @Greedy @Default("") String reason) {
 
+        Session session = sessionService.get(sender.player().uuid());
+        Localization local = session.locale();
+
         Instant duration = Instant.ofEpochMilli(period.toMillis());
 
         var result = moderationService.muteById(
                 id,
-                sender.player().name,
+                session.player.name,
                 reason.isBlank() ? null : reason,
                 duration
         );
 
         if (result.isSuccess()) {
             var mute = result.getData().get();
-            sender.send("commands-mute-success", args("nickname", mute.name));
+            local.send("commands-mute-success", args("nickname", mute.name));
 
             Player p = find.playerByUuid(mute.uuid);
             if (p != null) {
-                bundle.send(p, "you-are-muted-by", args(
+                Session s = sessionService.get(p.uuid());
+                s.locale().send("you-are-muted-by", args(
                         "adminName", sender.player().coloredName(),
                         "reason", mute.reason,
                         "remainMinutes", period.toMinutes()
                 ));
             }
         } else {
-            sender.send("error-player-not-found", args());
+            local.send("error-player-not-found", args());
         }
     }
 
     @Command("unmute <id>")
     public void unmute(XCoreSender sender, @Argument("id") int id) {
+        Session session = sessionService.get(sender.player().uuid());
+        Localization local = session.locale();
+
         var result = moderationService.unmuteById(id);
 
         if (result.isSuccess()) {
-            sender.send("commands-unmute-success",
+            local.send("commands-unmute-success",
                     args("nickname", result.getData().get().nickname));
         } else {
-            sender.send("error-player-not-found", args());
+            local.send("error-player-not-found", args());
         }
     }
 }

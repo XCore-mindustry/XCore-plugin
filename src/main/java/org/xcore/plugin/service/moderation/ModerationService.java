@@ -11,7 +11,7 @@ import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
 
 import java.time.Instant;
@@ -29,7 +29,7 @@ public class ModerationService {
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
     private final MuteDataRepository muteDataRepository;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final NetworkService network;
     private final FindService find;
     private final TimeService time;
@@ -38,14 +38,14 @@ public class ModerationService {
     public ModerationService(PlayerDataRepository playerDataRepository,
                              BanDataRepository banDataRepository,
                              MuteDataRepository muteDataRepository,
-                             PlayerSessionService playerSessionService,
+                             SessionService sessionService,
                              NetworkService network,
                              FindService find,
                              TimeService timeService) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.muteDataRepository = muteDataRepository;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.network = network;
         this.find = find;
         this.time = timeService;
@@ -117,7 +117,7 @@ public class ModerationService {
      * @return Result containing MuteData if successful
      */
     public ModerationResult<MuteData> muteById(int id, String adminName, String reason, Instant duration) {
-        var target = playerSessionService.getOrLoadFromDb(id);
+        var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
             return ModerationResult.failure("Player not found");
         }
@@ -145,7 +145,7 @@ public class ModerationService {
      * @return Result containing PlayerData if successful
      */
     public ModerationResult<PlayerData> unmuteById(int id) {
-        var target = playerSessionService.getOrLoadFromDb(id);
+        var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
             return ModerationResult.failure("Player not found");
         }

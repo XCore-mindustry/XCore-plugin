@@ -101,11 +101,11 @@ commands-events-page-description = Page number
 # ==============================================================================
 commands-information-description = Show information about the server
 commands-info = Information
-commands-info-title = { "[" }orange]{ -xcore } — { $xcorServerName }
+commands-info-title = { "[" }orange]{ -xcore } — { $server-name }
 commands-info-text =
     { "[" }accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
     { "" }
-    { "" }XCore Version — [accent]{ $xcoreVersion }[white]
+    { "" }XCore Version — [accent]{ $version }[white]
 commands-sync-description = Sync your game with the server. Run this to fix errors like ghost units.
 commands-discord-description = Redirects you to discord server
 welcome =

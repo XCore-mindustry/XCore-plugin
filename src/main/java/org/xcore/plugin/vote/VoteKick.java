@@ -12,8 +12,8 @@ import mindustry.net.Packets;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.PlayerData;
 
@@ -29,9 +29,9 @@ public class VoteKick extends VoteSession {
     public final Player target;
     public final String reason;
 
-    private final PlayerSessionService playerSessionService;
-    private final NetworkService network;
     private final BundleService bundle;
+    private final SessionService sessionService;
+    private final NetworkService network;
     private final VoteService voteService;
     private final Config config;
     private final GlobalConfig globalConfig;
@@ -40,11 +40,10 @@ public class VoteKick extends VoteSession {
     public VoteKick(
             @Assisted Player starter,
             @Assisted Player target,
-            @Assisted String reason,
+            @Assisted String reason, BundleService bundle,
 
-            PlayerSessionService playerSessionService,
+            SessionService sessionService,
             NetworkService network,
-            BundleService bundleService,
             VoteService voteService,
             Config config,
             GlobalConfig globalConfig) {
@@ -52,9 +51,9 @@ public class VoteKick extends VoteSession {
         this.starter = starter;
         this.target = target;
         this.reason = reason;
-        this.playerSessionService = playerSessionService;
+        this.bundle = bundle;
+        this.sessionService = sessionService;
         this.network = network;
-        this.bundle = bundleService;
         this.voteService = voteService;
         this.config = config;
         this.globalConfig = globalConfig;
@@ -68,8 +67,8 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        PlayerData playerData = playerSessionService.get(player.uuid());
-        PlayerData targetData = playerSessionService.get(target.uuid());
+        PlayerData playerData = sessionService.get(player.uuid()).data;
+        PlayerData targetData = sessionService.get(target.uuid()).data;
         var bundleArgs = args(
                 "starter", player.coloredName(),
                 "starterId", playerData.pid,
@@ -78,12 +77,12 @@ public class VoteKick extends VoteSession {
                 "reason", reason,
                 "votes", votes(),
                 "required", votesRequired());
-        bundle.send("votekick-vote", bundleArgs);
+        sessionService.broadcast("votekick-vote", bundleArgs);
         var message = bundle.format(bundle.getDefaultLocale(), "votekick-vote", bundleArgs);
         Log.info(message);
 
         if (votes() == 1) {
-            playerSessionService.getCachedAdminTools((v) -> v >= 0, data ->
+            sessionService.getCachedAdminTools((v) -> v >= 0, data ->
                     Call.clientPacketReliable(data.player.con, "adm_mod_votekick",
                             targetData.pid + "," + targetData.nickname));
         }
@@ -96,7 +95,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0) {
-            bundle.send("votekick-left", args(
+            sessionService.broadcast("votekick-left", args(
                     "player", player.coloredName(),
                     "votes", votes(),
                     "required", votesRequired()));
@@ -113,7 +112,7 @@ public class VoteKick extends VoteSession {
         var bundleArgs = args(
                 "nickname", target.coloredName(),
                 "minutes", globalConfig.voteKickBanDurationMinutes);
-        bundle.send("votekick-success", bundleArgs);
+        sessionService.broadcast("votekick-success", bundleArgs);
         target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
 
         if (network != null) {
@@ -129,14 +128,14 @@ public class VoteKick extends VoteSession {
         var bundleArgs = args(
                 "nickname", target.coloredName(),
                 "admin", admin.coloredName());
-        bundle.send("votekick-cancelled", bundleArgs);
+        sessionService.broadcast("votekick-cancelled", bundleArgs);
         Log.info(bundle.format(bundle.getDefaultLocale(), "votekick-cancelled", bundleArgs));
     }
 
     @Override
     public void fail() {
         stop();
-        bundle.send("votekick-fail", args("nickname", target.coloredName()));
+        sessionService.broadcast("votekick-fail", args("nickname", target.coloredName()));
     }
 
     @Override

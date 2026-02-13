@@ -1,32 +1,68 @@
-package org.xcore.plugin.ui;
+package org.xcore.plugin.session;
 
+import lombok.Data;
+import mindustry.gen.Player;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.ui.MenuBuilder;
+import org.xcore.plugin.ui.MenuService;
+import org.xcore.plugin.ui.StatusEnum;
 
 import java.util.ArrayList;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class MenuSession {
-    public final MenuService service;
-    private final GlobalConfig globalConfig;
+@Data
+public class Session {
+    public final GlobalConfig globalConfig;
+    public final BundleService bundle;
+    public final MenuService menuService;
+    public final PlayerDataRepository playerDataRepository;
 
+    public Player player;
+    public PlayerData data;
+    public Localization localization;
     public XCoreSender sender;
 
     public final List<Runnable> actions = new ArrayList<>();
-
     public final Map<String, StatusEnum> sortStatus = new HashMap<>();
-
-    private final Deque<Runnable> history = new ArrayDeque<>();
-
-    private final Map<Class<?>, Object> drafts = new HashMap<>();
-
+    public final Deque<Runnable> history = new ArrayDeque<>();
+    public final Map<Class<?>, Object> drafts = new HashMap<>();
     public Consumer<String> textHandler;
 
-    public MenuSession(MenuService service, GlobalConfig globalConfig) {
-        this.service = service;
+    public Session(GlobalConfig globalConfig, BundleService bundle, MenuService menuService, PlayerDataRepository playerDataRepository) {
         this.globalConfig = globalConfig;
-        this.sender = null;
+        this.bundle = bundle;
+        this.menuService = menuService;
+        this.playerDataRepository = playerDataRepository;
+        this.localization = new Localization(bundle, this);
+    }
+
+    public Session init(Player player, PlayerData playerData) {
+        this.player = player;
+        this.data = playerData;
+
+        return this;
+    }
+
+    public Session start(XCoreSender sender) {
+        actions.clear();
+        this.sender = sender;
+        return this;
+    }
+
+    public Session clear() {
+        actions.clear();
+        return this;
+    }
+
+    public Session save() {
+        playerDataRepository.save(data);
+        return this;
     }
 
     public String add(String buttonName, Runnable action) {
@@ -34,20 +70,12 @@ public class MenuSession {
         return buttonName;
     }
 
-    public MenuSession start(XCoreSender sender) {
-        actions.clear();
-        this.sender = sender;
-        return this;
-    }
-
-    public MenuSession clear() {
-        actions.clear();
-        sender = null;
-        return this;
+    public Localization locale() {
+        return localization;
     }
 
     public MenuBuilder builder() {
-        return new MenuBuilder(service, this);
+        return new MenuBuilder(menuService, this);
     }
 
     public boolean hasDraft(Class<?> clazz) {

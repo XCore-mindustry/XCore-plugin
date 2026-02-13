@@ -8,7 +8,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;

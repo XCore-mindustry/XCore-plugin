@@ -11,10 +11,11 @@ import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -24,21 +25,21 @@ import static org.xcore.plugin.common.PLog.info;
 public class ModerationSocketHandler {
 
     private final NetworkService network;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final FindService find;
     private final DiscordLogBridge discordLogBridge;
     private final Config config;
-    private final org.xcore.plugin.service.BundleService bundleService;
+    private final BundleService bundleService;
 
     @Inject
     public ModerationSocketHandler(NetworkService network,
-                                   PlayerSessionService playerSessionService,
+                                   SessionService sessionService,
                                    FindService find,
                                    DiscordLogBridge discordLogBridge,
                                    Config config,
-                                   org.xcore.plugin.service.BundleService bundleService) {
+                                   BundleService bundleService) {
         this.network = network;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.find = find;
         this.discordLogBridge = discordLogBridge;
         this.config = config;
@@ -89,14 +90,14 @@ public class ModerationSocketHandler {
         });
 
         network.subscribe(SocketEvents.SyncPlayerData.class, e -> {
-            if (playerSessionService.get(e.data().uuid) != null) {
-                playerSessionService.update(e.data());
+            if (sessionService.get(e.data().uuid) != null) {
+                sessionService.update(e.data());
                 info("Synced player data: @ (@)", e.data().nickname, e.data().uuid);
             }
         });
 
         network.subscribe(SocketEvents.ReloadPlayerDataCache.class, _ -> {
-            playerSessionService.reloadCache();
+            sessionService.reloadCache();
             info("Reloaded player data cache.");
         });
 

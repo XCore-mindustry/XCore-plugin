@@ -1,10 +1,11 @@
-package org.xcore.plugin.service;
+package org.xcore.plugin.localization;
 
 import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.XcorePlugin;
+import org.xcore.plugin.service.FallbackDefaultValueFactory;
 
 import java.util.Locale;
 import java.util.Map;

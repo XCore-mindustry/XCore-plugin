@@ -20,14 +20,12 @@ import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.service.*;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.BanRequestData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressService;
-import org.xcore.plugin.service.BundleService;
-import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.service.SecurityService;
-import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.vote.VoteChoice;
 import org.xcore.plugin.vote.VoteService;
 
@@ -42,7 +40,7 @@ public class NetEventService {
     public int blockedIPs = 0;
     public int blockedIPsPerMinute = 0;
 
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final Config config;
     private final TranslatorService translatorService;
     private final NetworkService network;
@@ -53,13 +51,13 @@ public class NetEventService {
     private final Gson rawGson;
 
     @Inject
-    public NetEventService(PlayerSessionService playerSessionService, Config config,
+    public NetEventService(SessionService sessionService, Config config,
                            TranslatorService translatorService, NetworkService network,
                            BundleService bundle, VoteService voteService,
                            SecurityService securityService,
                            IngressService ingressService,
                            @Named("raw") Gson rawGson) {
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.config = config;
         this.translatorService = translatorService;
         this.network = network;
@@ -121,13 +119,13 @@ public class NetEventService {
                         "playerName", target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
-                var targetData = playerSessionService.get(target.uuid());
+                var targetData = sessionService.get(target.uuid()).data;
                 String banJson = rawGson.toJson(new BanRequestData(targetData.pid, target.coloredName()));
 
                 Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
             }
             case trace -> {
-                var data = playerSessionService.getOrLoadFromDb(target.uuid());
+                var data = sessionService.getOrLoadFromDb(target.uuid());
 
                 var trace = new TraceInfo(
                         target.ip(),

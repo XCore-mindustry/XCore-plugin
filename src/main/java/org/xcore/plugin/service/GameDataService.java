@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.model.*;
+import org.xcore.plugin.session.SessionService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,16 +14,16 @@ import java.util.Map;
 public class GameDataService {
 
     private final GameDataRepository gameDataRepository;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
 
     private GameData currentBag;
 
     private final Map<String, PlayerGameStats> playerStatsCache = new HashMap<>();
 
     @Inject
-    public GameDataService(GameDataRepository gameDataRepository, PlayerSessionService playerSessionService) {
+    public GameDataService(GameDataRepository gameDataRepository, SessionService sessionService) {
         this.gameDataRepository = gameDataRepository;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
     }
 
     public void startNewGame(MapData map, String mode, EventData event) {

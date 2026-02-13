@@ -7,7 +7,7 @@ import mindustry.gen.Player;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.model.EventData;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -16,7 +16,7 @@ public class VoteEvent extends VoteSession {
     public final EventData target;
 
     private final EventDataRepository eventDataRepository;
-    private final BundleService bundle;
+    private final SessionService sessionService;
     private final VoteService voteService;
 
     @Inject
@@ -24,19 +24,19 @@ public class VoteEvent extends VoteSession {
             @Assisted EventData target, EventDataRepository eventDataRepository,
 
             GlobalConfig globalConfig,
-            BundleService bundleService,
+            SessionService sessionService,
             VoteService voteService) {
         super(globalConfig);
         this.target = target;
         this.eventDataRepository = eventDataRepository;
-        this.bundle = bundleService;
+        this.sessionService = sessionService;
         this.voteService = voteService;
     }
 
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        bundle.send("vote-event-vote", args(
+        sessionService.broadcast("vote-event-vote", args(
                 "nickname", player.coloredName(),
                 "name", target.name,
                 "votes", votes(),
@@ -46,7 +46,7 @@ public class VoteEvent extends VoteSession {
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0) {
-            bundle.send("vote-event-left", args(
+            sessionService.broadcast("vote-event-left", args(
                     "nickname", player.coloredName(),
                     "votes", votes(),
                     "votesRequired", votesRequired()));
@@ -60,19 +60,19 @@ public class VoteEvent extends VoteSession {
             eventDataRepository.activateEvent(target);
         }
 
-        bundle.send("vote-event-success", args("name", target.name));
+        sessionService.broadcast("vote-event-success", args("name", target.name));
     }
 
     @Override
     public void fail() {
         stop();
-        bundle.send("vote-event-fail", args("name", target.name));
+        sessionService.broadcast("vote-event-fail", args("name", target.name));
     }
 
     @Override
     public void cancelByAdmin(Player admin) {
         stop();
-        bundle.send("vote-event-cancelled", args(
+        sessionService.broadcast("vote-event-cancelled", args(
                 "name", target.name,
                 "admin", admin.coloredName()));
     }

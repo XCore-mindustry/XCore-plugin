@@ -12,10 +12,10 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.PlayerData;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -26,19 +26,19 @@ public class MiniPvP {
     public final Seq<String> defeatedPlayers = new Seq<>();
 
     private final Config config;
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final BundleService bundle;
     private final LeaderboardService leaderboardService;
 
     @Inject
     public MiniPvP(Config config,
-                   PlayerSessionService playerSessionService,
+                   SessionService sessionService,
                    PlayerDataRepository playerDataRepository,
                    BundleService bundle,
                    LeaderboardService leaderboardService) {
         this.config = config;
-        this.playerSessionService = playerSessionService;
+        this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.bundle = bundle;
         this.leaderboardService = leaderboardService;
@@ -50,9 +50,9 @@ public class MiniPvP {
 
         leaderboardService.start((builder, player, locale) -> {
             Seq<PlayerData> sorted = new Seq<>();
-            for (var d : playerSessionService.getAllCached()) {
-                if (d.pvpRating != 0) {
-                    sorted.add(d);
+            for (var d : sessionService.getAllCached()) {
+                if (d.data.pvpRating != 0) {
+                    sorted.add(d.data);
                 }
             }
             sorted.sort(d -> d.pvpRating);
@@ -83,7 +83,7 @@ public class MiniPvP {
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
-                var data = playerSessionService.get(p.uuid());
+                var data = sessionService.get(p.uuid()).data;
 
                 int calculated = 150 / (e.winner.data().players.size + 1);
                 int increased = Mathf.clamp(calculated, 10, 60);
@@ -108,7 +108,7 @@ public class MiniPvP {
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
 
-                        var data = playerSessionService.get(p.uuid());
+                        var data = sessionService.get(p.uuid()).data;
 
                         int reduced = (int) (25f * ((float) allies / enemies));
 

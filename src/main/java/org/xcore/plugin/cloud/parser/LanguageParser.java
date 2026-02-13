@@ -11,7 +11,7 @@ import org.incendo.cloud.parser.ParserDescriptor;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
-import org.xcore.plugin.command.controller.client.TranslatorLanguagesProvider;
+import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 
 import java.util.ArrayList;
 import java.util.List;

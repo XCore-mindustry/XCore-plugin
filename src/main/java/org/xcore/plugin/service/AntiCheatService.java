@@ -6,22 +6,23 @@ import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.net.Administration.ActionType;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.SessionService;
 
 @Singleton
 public class AntiCheatService {
 
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
 
     @Inject
-    public AntiCheatService(PlayerSessionService playerSessionService) {
-        this.playerSessionService = playerSessionService;
+    public AntiCheatService(SessionService sessionService) {
+        this.sessionService = sessionService;
     }
 
     @PostConstruct
     public void init() {
         Vars.netServer.admins.addActionFilter(action -> {
             if (action.type == ActionType.depositItem) {
-                PlayerData playerData = playerSessionService.get(action.player.uuid());
+                PlayerData playerData = sessionService.get(action.player.uuid()).data;
                 if (playerData == null) return true;
                 if (System.nanoTime() - playerData.lastUnload < 1_000_000_000) {
                     return false;

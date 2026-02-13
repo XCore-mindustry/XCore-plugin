@@ -12,18 +12,18 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.service.PlayerSessionService;
+import org.xcore.plugin.session.SessionService;
 
 import static mindustry.Vars.netServer;
 
 @Singleton
 public class ServerInformationController implements CloudServerController {
 
-    private final PlayerSessionService playerSessionService;
+    private final SessionService sessionService;
 
     @Inject
-    public ServerInformationController(PlayerSessionService playerSessionService) {
-        this.playerSessionService = playerSessionService;
+    public ServerInformationController(SessionService sessionService) {
+        this.sessionService = sessionService;
     }
 
     @Command("players")
@@ -36,7 +36,7 @@ public class ServerInformationController implements CloudServerController {
         Log.info("Online players (@):", Groups.player.size());
         Groups.player.each(p -> {
             PlayerInfo i = p.getInfo();
-            var d = playerSessionService.get(p.uuid());
+            var d = sessionService.get(p.uuid()).data;
             Log.info(" @&lm @ #@ / IP: @", i.admin ? "&r[A]&c" : "&b[P]&c", i.plainLastName(), d.pid, i.lastIP);
         });
     }
@@ -47,7 +47,7 @@ public class ServerInformationController implements CloudServerController {
 
         ObjectSet<PlayerInfo> set;
         if (q.startsWith("#")) {
-            var d = playerSessionService.getOrLoadFromDb(Strings.parseInt(q.substring(1)));
+            var d = sessionService.getOrLoadFromDb(Strings.parseInt(q.substring(1)));
             set = (d != null) ? ObjectSet.with(netServer.admins.getInfoOptional(d.uuid)) : new ObjectSet<>();
         } else {
             set = netServer.admins.findByName(q);

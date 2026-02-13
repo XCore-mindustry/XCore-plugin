@@ -5,30 +5,27 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class PlayerActivityService {
 
-    private final PlayerSessionService playerSessionService;
-    private final PlayerDataRepository playerDataRepository;
-    private final BundleService bundleService;
+    private final SessionService sessionService;
     private final FindService findService;
     private final GlobalConfig globalConfig;
     private final ServerDiscoveryService discoveryService;
 
     @Inject
-    public PlayerActivityService(PlayerSessionService playerSessionService,
-                                 PlayerDataRepository playerDataRepository,
-                                 BundleService bundleService,
+    public PlayerActivityService(SessionService sessionService,
                                  FindService findService,
                                  GlobalConfig globalConfig,
                                  ServerDiscoveryService discoveryService) {
-        this.playerSessionService = playerSessionService;
-        this.playerDataRepository = playerDataRepository;
-        this.bundleService = bundleService;
+        this.sessionService = sessionService;
         this.findService = findService;
         this.globalConfig = globalConfig;
         this.discoveryService = discoveryService;
@@ -39,21 +36,24 @@ public class PlayerActivityService {
         Timer.schedule(() -> {
             discoveryService.updateFooter();
 
-            for (var data : playerSessionService.getAllCached()) {
-                var player = findService.playerByUuid(data.uuid);
+            for (Session session : sessionService.getAllCached()) {
+                var player = findService.playerByUuid(session.data.uuid);
                 if (player == null) continue;
+
+                PlayerData data = session.data;
+                Localization local = session.locale();
 
                 data.totalPlayTime++;
 
                 if (data.totalPlayTime == globalConfig.minPlayTimeForVotekick) {
-                    bundleService.send(player, "notification-votekick-playtime",
+                    local.send("notification-votekick-playtime",
                             args("votekickPlayTime", globalConfig.minPlayTimeForVotekick));
                 } else if (data.totalPlayTime == globalConfig.minPlayTimeForGlobalChat) {
-                    bundleService.send(player, "notification-global-chat-playtime",
+                    local.send("notification-global-chat-playtime",
                             args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
                 }
 
-                playerDataRepository.save(data);
+                session.save();
             }
         }, 0, 60);
     }

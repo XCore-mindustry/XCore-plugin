@@ -1,47 +1,39 @@
 package org.xcore.plugin.ui;
 
-import arc.struct.ObjectMap;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import mindustry.gen.Player;
 import mindustry.ui.Menus;
-import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.service.BundleService;
+import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.session.Session;
 
-import java.util.ArrayList;
 import java.util.List;
-
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class MenuService {
 
-    private final BundleService bundle;
-    private final GlobalConfig globalConfig;
-
-    private final ObjectMap<String, MenuSession> sessions = new ObjectMap<>();
+    private final Provider<SessionService> sessionService;
 
     private int globalMenuId;
     private int globalTextId;
 
     @Inject
-    public MenuService(BundleService bundle,  GlobalConfig globalConfig) {
-        this.bundle = bundle;
-        this.globalConfig = globalConfig;
+    public MenuService(Provider<SessionService> sessionService) {
+        this.sessionService = sessionService;
     }
 
     @PostConstruct
     public void init() {
         this.globalMenuId = Menus.registerMenu((player, option) -> {
-            MenuSession session = get(player.uuid());
+            Session session = sessionService.get().get(player.uuid());
             if (option >= 0 && option < session.actions.size()) {
                 session.actions.get(option).run();
             }
         });
 
         this.globalTextId = Menus.registerTextInput((player, text) -> {
-            MenuSession session = get(player.uuid());
+            Session session = sessionService.get().get(player.uuid());
             if (session.textHandler != null && text != null) {
                 session.textHandler.accept(text);
             }
@@ -56,57 +48,12 @@ public class MenuService {
         return globalTextId;
     }
 
-    public MenuSession get(String uuid) {
-        if (!sessions.containsKey(uuid)) {
-            sessions.put(uuid, new MenuSession(this, globalConfig));
-        }
-        return sessions.get(uuid);
-    }
-
     public MenuBuilder builder(String uuid) {
-        return new MenuBuilder(this, get(uuid));
+        return new MenuBuilder(this, sessionService.get().get(uuid));
     }
 
-    public MenuBuilder builder(MenuSession session) {
+    public MenuBuilder builder(Session session) {
         return new MenuBuilder(this, session);
-    }
-
-    public void clear(String uuid) {
-        sessions.remove(uuid);
-    }
-
-    public void addNavigationRow(Player player, MenuSession session, List<List<String>> rows) {
-        List<String> navRow = new ArrayList<>();
-
-        if (session.hasHistory()) {
-            navRow.add(session.add(bundle.format(bundle.locale(player), "back", args()), () -> {
-                Runnable previousMenu = session.popHistory();
-                if (previousMenu != null) previousMenu.run();
-            }));
-        }
-
-        navRow.add(session.add(bundle.format(bundle.locale(player), "close", args()), () -> {
-            clear(player.uuid());
-        }));
-
-        rows.add(navRow);
-    }
-
-    public void addStatusButton(Player player, MenuSession session, List<String> row, String key, Runnable runnable) {
-        StatusEnum buttonStatus = session.sortStatus.getOrDefault(key, StatusEnum.Neutral);
-
-        Runnable lambda = () -> {
-            session.setNextStatus(key);
-            if (runnable != null) runnable.run();
-        };
-
-        if (buttonStatus == StatusEnum.Neutral) {
-            row.add(session.add(bundle.format(bundle.locale(player), key + "-neutral", args()), lambda));
-        } else if (buttonStatus == StatusEnum.Active) {
-            row.add(session.add(bundle.format(bundle.locale(player), key + "-active", args()), lambda));
-        } else if (buttonStatus == StatusEnum.Inactive) {
-            row.add(session.add(bundle.format(bundle.locale(player), key + "-inactive", args()), lambda));
-        }
     }
 
     public String[][] convertListToArray(List<List<String>> rows) {

@@ -1,4 +1,4 @@
-package org.xcore.plugin.command.controller.client;
+package org.xcore.plugin.localization;
 
 import arc.struct.OrderedMap;
 import jakarta.inject.Singleton;
@@ -22,5 +22,9 @@ public class TranslatorLanguagesProvider {
 
     public OrderedMap<String, String> getLanguages() {
         return translatorLanguages;
+    }
+
+    public boolean hasLanguage(String code) {
+        return translatorLanguages.containsKey(code);
     }
 }

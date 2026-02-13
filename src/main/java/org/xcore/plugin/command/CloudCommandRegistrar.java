@@ -2,6 +2,7 @@ package org.xcore.plugin.command;
 
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.command.controller.CloudClientController;
@@ -14,14 +15,14 @@ import java.util.List;
 @Singleton
 public class CloudCommandRegistrar {
 
-    private final CloudService cloud;
-    private final Config config;
+    private final Provider<CloudService> cloud;
+    private final Provider<Config> config;
     private final List<CloudClientController> clientControllers;
     private final List<CloudServerController> serverControllers;
 
     @Inject
-    public CloudCommandRegistrar(CloudService cloud,
-                                 Config config,
+    public CloudCommandRegistrar(Provider<CloudService> cloud,
+                                 Provider<Config> config,
                                  List<CloudClientController> clientControllers,
                                  List<CloudServerController> serverControllers) {
         this.cloud = cloud;
@@ -32,14 +33,15 @@ public class CloudCommandRegistrar {
 
     @PostConstruct
     public void init() {
+        var c = cloud.get();
         clientControllers.stream()
                 .filter(this::shouldRegister)
-                .forEach(cloud::registerClient);
+                .forEach(c::registerClient);
 
-        serverControllers.forEach(cloud::registerServer);
+        serverControllers.forEach(c::registerServer);
     }
 
     private boolean shouldRegister(CloudClientController controller) {
-        return !(controller instanceof HexedController) || config.isMiniHexed();
+        return !(controller instanceof HexedController) || config.get().isMiniHexed();
     }
 }
