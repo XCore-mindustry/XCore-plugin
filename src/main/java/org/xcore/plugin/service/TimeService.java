@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 @Singleton
 public class TimeService {
-    private static final Pattern PERIOD_PATTERN = Pattern.compile("(\\d+)([mhdwy])");
+    private static final Pattern PERIOD_PATTERN = Pattern.compile("(\\d+)([smhdwy])");
 
     public @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit) {
         return parsePeriod(period, defaultUnit, false);
@@ -42,6 +42,7 @@ public class TimeService {
             String unit = matcher.group(2);
 
             Duration duration = switch (unit) {
+                case "s" -> Duration.ofSeconds(value);
                 case "m" -> Duration.ofMinutes(value);
                 case "h" -> Duration.ofHours(value);
                 case "d" -> Duration.ofDays(value);
