@@ -14,33 +14,25 @@ public class ConfigWrapper {
     public short config_type;
     public Object config;
 
-    ConfigWrapper(Object config) {
-        if (config == null)
-            set((short) 0, 0);
-        else if (config instanceof Integer integer)
-            set((short) 1, integer);
-        else if (config instanceof Boolean bool)
-            set((short) 2, bool ? 1 : 0);
-        else if (config instanceof Item item)
-            set((short) 3, Vars.content.items().indexOf(item));
-        else if (config instanceof Liquid liquid)
-            set((short) 3, Vars.content.items().size + Vars.content.liquids().indexOf(liquid));
-        else if (config instanceof UnitType unit)
-            set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().indexOf(unit));
-        else if (config instanceof Block block)
-            set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().indexOf(block));
-        else if (config instanceof UnitCommand command)
-            set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + command.id);
-        else if (config instanceof Point2 point)
-            set((short) 4, point.pack());
-        else if (config instanceof byte[] bytes)
-            set((short) 5, bytes);
-        else if (config instanceof String string)
-            set((short) 6, string.getBytes());
-        else if (config instanceof Point2[] points)
-            set((short) 7, pointArrayToBytes(points));
-        else
-            Call.sendMessage("Unknown config type: " + config.getClass().getName());
+    public ConfigWrapper(Object config) {
+        switch (config) {
+            case null -> set((short) 0, 0);
+            case Integer integer -> set((short) 1, integer);
+            case Boolean bool -> set((short) 2, bool ? 1 : 0);
+            case Item item -> set((short) 3, Vars.content.items().indexOf(item));
+            case Liquid liquid -> set((short) 3, Vars.content.items().size + Vars.content.liquids().indexOf(liquid));
+            case UnitType unit ->
+                    set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().indexOf(unit));
+            case Block block ->
+                    set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().indexOf(block));
+            case UnitCommand command ->
+                    set((short) 3, Vars.content.items().size + Vars.content.liquids().size + Vars.content.units().size + Vars.content.blocks().size + command.id);
+            case Point2 point -> set((short) 4, point.pack());
+            case byte[] bytes -> set((short) 5, bytes);
+            case String string -> set((short) 6, string.getBytes());
+            case Point2[] points -> set((short) 7, pointArrayToBytes(points));
+            default -> Call.sendMessage("Unknown config type: " + config.getClass().getName());
+        }
     }
 
     public void set(short config_type_, Object config_) {

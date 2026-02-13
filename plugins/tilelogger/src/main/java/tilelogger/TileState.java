@@ -10,7 +10,6 @@ import arc.math.geom.Point2;
 import arc.util.Reflect;
 import arc.util.Strings;
 import mindustry.Vars;
-import mindustry.ai.UnitCommand;
 import mindustry.game.Team;
 import mindustry.gen.Iconc;
 import mindustry.net.Administration.PlayerInfo;
@@ -97,11 +96,11 @@ public class TileState {
 
     public String blockEmoji() {
         try {
-            if (block == 0) return destroy ? "[red]X[]" : "[green][]";
-            if (block >= 3 && block <= 11) return "[green]" + (block - 2) + "[]";
-            return (destroy ? "[red]" : "[]") + Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + block().name)) + "[]";
+            if (block == 0) return destroy ? "[#ff8a8a]X[]" : "[#98ff98][]";
+            if (block >= 3 && block <= 11) return "[#98ff98]" + (block - 2) + "[]";
+            return (destroy ? "[#ff8a8a]" : "[]") + Reflect.get(Iconc.class, Strings.kebabToCamel(block().getContentType().name() + "-" + block().name)) + "[]";
         } catch (Exception e) {
-            return "[scarlet]" + block + "[]";
+            return "[#ff8a8a]" + block + "[]";
         }
     }
 
@@ -118,6 +117,6 @@ public class TileState {
     }
 
     public String timeAsString() {
-        return (valid ? "[white]" : "[gray]") + LocalTime.MIN.plusSeconds(time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[]";
+        return (valid ? "[#b0b5c8]" : "[#6e7080]") + LocalTime.MIN.plusSeconds(time).format(DateTimeFormatter.ISO_LOCAL_TIME) + "[]";
     }
 }

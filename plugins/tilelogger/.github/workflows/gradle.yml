@@ -9,15 +9,14 @@ jobs:
     strategy:
       matrix:
         include:
-          # Linux x64 configuration
           - os: linux
             arch: x64
             runner: ubuntu-latest
-          # Linux ARM configuration
+
           - os: linux
             arch: arm
             runner: ubuntu-22.04-arm
-          # Windows x64 configuration
+
           - os: windows
             arch: x64
             runner: windows-latest
@@ -45,11 +44,9 @@ jobs:
 
       - name: Build project
         run: |
-          ./gradlew build
-          ./gradlew packLibToJar
-
+          ./gradlew jarRelease
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: build/libs/TileLoggerPacked.jar
+          path: build/libs/TileLogger-release.jar

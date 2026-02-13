@@ -1,0 +1,21 @@
+[versions]
+java = "25"
+mindustry = "v155.1"
+avaje = "12.3"
+cloud = "5021268676"
+shadow = "9.3.0"
+
+[libraries]
+arc-core          = { module = "com.github.Anuken.Arc:arc-core", version.ref = "mindustry" }
+mindustry-core    = { module = "com.github.Anuken.Mindustry:core", version.ref = "mindustry" }
+
+xcore-plugin      = { module = "org.xcore:xcore-plugin" }
+flubundle         = { module = "org.xcore:flubundle" }
+cloud-mindustry   = { module = "com.github.XCore-mindustry:cloud-mindustry", version.ref = "cloud" }
+
+avaje-inject      = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
+avaje-inject-gen  = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
+
+[plugins]
+avaje-inject = { id = "io.avaje.inject", version.ref = "avaje" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

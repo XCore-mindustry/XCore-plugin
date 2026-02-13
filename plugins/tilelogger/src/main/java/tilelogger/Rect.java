@@ -1,7 +1,7 @@
 package tilelogger;
 
 public class Rect {
-    short x1,y1,x2,y2;
+    public short x1,y1,x2,y2;
     
     public Rect() {}
     public Rect(short x1, short y1, short x2, short y2) {

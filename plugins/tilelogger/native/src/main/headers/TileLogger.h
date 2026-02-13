@@ -76,6 +76,10 @@ public:
         return subnet_filter_.accepted(subnet);
     }
 
+    void ReloadSubnets() {
+        subnet_filter_.reset(subnets_ / "accept.txt", subnets_ / "deny.txt");
+    }
+
     size_t MemoryUsage(size_t id) const {
         switch (id) {
         case 2:

@@ -147,6 +147,15 @@ JNIEXPORT jboolean JNICALL Java_tilelogger_TileLogger_subnetAccepted (JNIEnv* en
     }
 }
 
+JNIEXPORT void JNICALL Java_tilelogger_TileLogger_reloadSubnets(JNIEnv*, jclass) {
+    try {
+        g_map_history.ReloadSubnets();
+    }
+    catch (const std::exception& e) {
+        HandleException(e);
+    }
+}
+
 JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
     try {
         return g_map_history.MemoryUsage(id);
