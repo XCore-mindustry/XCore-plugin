@@ -84,7 +84,7 @@ val generateModInfo by tasks.registering {
 }
 
 tasks.jar {
-    enabled = false
+    from(generateModInfo)
 }
 
 tasks.assemble {

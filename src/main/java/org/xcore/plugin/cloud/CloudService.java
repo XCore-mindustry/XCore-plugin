@@ -197,7 +197,6 @@ public class CloudService {
             Throwable cause = ctx.exception().getCause();
             XCoreSender sender = ctx.context().sender();
 
-            // Если парсер выбросил наше исключение
             if (cause instanceof XCoreCommandException xcoreEx) {
                 if (xcoreEx.isSilent()) return;
                 if (sender.isPlayer()) {
