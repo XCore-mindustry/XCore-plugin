@@ -1,6 +1,5 @@
 package org.xcore.plugin.cloud.parser;
 
-import jakarta.inject.Inject;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.context.CommandInput;
@@ -18,30 +17,26 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class SmartDurationParser implements ArgumentParser<XCoreSender, Duration>, BlockingSuggestionProvider.Strings<XCoreSender> {
-
     private final TimeService timeService;
     private final TimeUnit defaultUnit;
+    private final boolean allowNegative;
 
-    @Inject
-    public SmartDurationParser(TimeService timeService, TimeUnit defaultUnit) {
+    public SmartDurationParser(TimeService timeService, TimeUnit defaultUnit, boolean allowNegative) {
         this.timeService = timeService;
         this.defaultUnit = defaultUnit;
+        this.allowNegative = allowNegative;
     }
 
-    public static ParserDescriptor<XCoreSender, Duration> parser(TimeService timeService, TimeUnit defaultUnit) {
-        return ParserDescriptor.of(new SmartDurationParser(timeService, defaultUnit), Duration.class);
+    public static ParserDescriptor<XCoreSender, Duration> parser(TimeService timeService, TimeUnit defaultUnit, boolean allowNegative) {
+        return ParserDescriptor.of(new SmartDurationParser(timeService, defaultUnit, allowNegative), Duration.class);
     }
 
     @Override
-    public @NonNull ArgumentParseResult<Duration> parse(@NonNull CommandContext<XCoreSender> commandContext,
-                                                        @NonNull CommandInput commandInput) {
-        String input = commandInput.readString();
+    public @NonNull ArgumentParseResult<Duration> parse(@NonNull CommandContext<XCoreSender> ctx, @NonNull CommandInput input) {
+        String str = input.readString();
+        Instant parsed = timeService.parsePeriod(str, defaultUnit, allowNegative);
 
-        Instant parsed = timeService.parsePeriod(input, defaultUnit);
-
-        if (parsed == null) {
-            return ArgumentParseResult.failure(new XCoreCommandException("error-wrong-period-format"));
-        }
+        if (parsed == null) return ArgumentParseResult.failure(new XCoreCommandException("error-wrong-period-format"));
 
         return ArgumentParseResult.success(Duration.ofMillis(parsed.toEpochMilli()));
     }

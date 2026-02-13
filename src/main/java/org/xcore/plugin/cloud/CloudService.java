@@ -26,10 +26,7 @@ import org.incendo.cloud.parser.ParserParameters;
 import org.xcore.cloud.mindustry.ConflictStrategy;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
-import org.xcore.plugin.cloud.annotation.AllTeams;
-import org.xcore.plugin.cloud.annotation.DefaultUnit;
-import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
-import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
+import org.xcore.plugin.cloud.annotation.*;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.cloud.parser.MapParser;
 import org.xcore.plugin.cloud.parser.PlayerParser;
@@ -142,11 +139,21 @@ public class CloudService {
                 DefaultUnit.class,
                 (annotation, type) -> ParserParameters.single(DefaultUnit.PARAM, annotation.value())
         );
+
+        mgr.parserRegistry().registerAnnotationMapper(
+                AllowNegativeDuration.class,
+                (_, _) -> ParserParameters.single(AllowNegativeDuration.PARAM, true)
+        );
+
         mgr.parserRegistry().registerParserSupplier(
                 TypeToken.get(Duration.class),
-                params -> new SmartDurationParser(timeService,
-                        params.get(DefaultUnit.PARAM, TimeUnit.DAYS))
+                params -> new SmartDurationParser(
+                        timeService,
+                        params.get(DefaultUnit.PARAM, TimeUnit.DAYS),
+                        params.get(AllowNegativeDuration.PARAM, false)
+                )
         );
+
 
         mgr.parserRegistry().registerNamedParser("language", LanguageParser.parser(translatorLanguagesProvider));
 

@@ -12,15 +12,23 @@ import java.util.regex.Pattern;
 @Singleton
 public class TimeService {
     private static final Pattern PERIOD_PATTERN = Pattern.compile("(\\d+)([mhdwy])");
+
     public @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit) {
-        if (period == null || period.isBlank()) {
-            return null;
-        }
+        return parsePeriod(period, defaultUnit, false);
+    }
+
+    public @Nullable Instant parsePeriod(String period, TimeUnit defaultUnit, boolean allowNegative) {
+        if (period == null || period.isBlank()) return null;
 
         String normalized = period.toLowerCase().strip();
+        boolean negative = normalized.startsWith("-");
+        if (negative) normalized = normalized.substring(1);
+
+        if (!allowNegative && negative) return null;
 
         if (Strings.canParsePositiveInt(normalized)) {
             long millis = defaultUnit.toMillis(Strings.parseInt(normalized));
+            if (negative) millis = -millis;
             return Instant.ofEpochMilli(millis);
         }
 
@@ -41,10 +49,13 @@ public class TimeService {
                 case "y" -> Duration.ofDays(365L * value);
                 default -> Duration.ZERO;
             };
-
             total = total.plus(duration);
         }
 
-        return found ? Instant.ofEpochMilli(total.toMillis()) : null;
+        if (!found) return null;
+
+        long millis = total.toMillis();
+        if (negative) millis = -millis;
+        return Instant.ofEpochMilli(millis);
     }
 }
