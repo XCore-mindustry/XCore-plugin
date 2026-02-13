@@ -65,11 +65,11 @@ dependencies {
     implementation("org.jline:jline-reader:3.30.6")
     implementation("org.jline:jline-console:3.30.6")
 
-    implementation("io.avaje:avaje-inject:12.2")
+    implementation("io.avaje:avaje-inject:12.3")
 
     compileOnly("org.projectlombok:lombok:1.18.42")
     annotationProcessor("org.projectlombok:lombok:1.18.42")
-    annotationProcessor("io.avaje:avaje-inject-generator:12.2")
+    annotationProcessor("io.avaje:avaje-inject-generator:12.3")
 
 }
 
