@@ -40,15 +40,17 @@ tasks.withType<CppCompile>().configureEach {
         }
     })
 
-    if (toolChain is VisualCpp) {
-        compilerArgs.addAll(listOf("/std:c++20", "/O2", "/DNDEBUG", "/W3"))
+    if (os.isWindows) {
+        compilerArgs.addAll(listOf("/std:c++20", "/O2", "/DNDEBUG", "/W3", "/EHsc"))
     } else {
         compilerArgs.addAll(listOf("-std=c++20", "-O3", "-DNDEBUG", "-s", "-Wall"))
     }
 }
 
 tasks.withType<LinkSharedLibrary>().configureEach {
-    if (toolChain is VisualCpp) {
+    val os = OperatingSystem.current()
+
+    if (os.isWindows) {
         linkerArgs.add("/DEBUG")
     }
 }
