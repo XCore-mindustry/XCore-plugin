@@ -40,7 +40,11 @@ tasks.withType<CppCompile>().configureEach {
         }
     })
 
-    compilerArgs.addAll(listOf("-std=c++20", "-O3", "-DNDEBUG", "-s", "-Wall"))
+    if (toolChain is VisualCpp) {
+        compilerArgs.addAll(listOf("/std:c++20", "/O2", "/DNDEBUG", "/W3"))
+    } else {
+        compilerArgs.addAll(listOf("-std=c++20", "-O3", "-DNDEBUG", "-s", "-Wall"))
+    }
 }
 
 tasks.withType<LinkSharedLibrary>().configureEach {
