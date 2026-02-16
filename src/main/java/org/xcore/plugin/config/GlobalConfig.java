@@ -7,6 +7,7 @@ import arc.util.serialization.Jval;
 public class GlobalConfig {
     public ObjectMap<String, Long> servers = new ObjectMap<>();
     public String mongoConnectionString = "";
+    public String databaseName = "xcore";
 
     public String discordBotToken = "";
     public String discordCommandPrefix = "x!";
