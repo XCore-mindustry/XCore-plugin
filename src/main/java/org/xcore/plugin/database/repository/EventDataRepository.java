@@ -7,9 +7,9 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.EventData;
-import org.xcore.plugin.ui.StatusEnum;
 
 import java.util.ArrayList;
 import java.util.List;

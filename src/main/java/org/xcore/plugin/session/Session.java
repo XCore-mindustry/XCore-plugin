@@ -3,6 +3,7 @@ package org.xcore.plugin.session;
 import lombok.Data;
 import mindustry.gen.Player;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -10,7 +11,6 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
-import org.xcore.plugin.ui.StatusEnum;
 
 import java.util.ArrayList;
 import java.util.*;

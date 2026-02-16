@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui;
 
 import mindustry.gen.Call;
+import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.Session;
 

@@ -1,4 +1,4 @@
-package org.xcore.plugin.ui;
+package org.xcore.plugin.common;
 
 public enum StatusEnum {
     Active,
