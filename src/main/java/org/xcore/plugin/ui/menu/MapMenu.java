@@ -4,10 +4,9 @@ import arc.struct.Seq;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import mindustry.Vars;
-import mindustry.gen.Player;
+import mindustry.game.Team;
+import mindustry.gen.Groups;
 import mindustry.maps.Map;
-import org.xcore.plugin.command.controller.client.MapController;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.Config;
@@ -31,18 +30,16 @@ public class MapMenu extends Menu {
     private final MapDataRepository mapDataRepository;
     private final EventDataRepository eventDataRepository;
     private final MapService mapService;
-    private final Provider<MapController> mapController;
     private final Provider<EventMenu> eventMenu;
 
     @Inject
     public MapMenu(Config config, GlobalConfig globalConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
-                   MapService mapService, Provider<MapController> mapController, Provider<EventMenu> eventMenu) {
+                   MapService mapService, Provider<EventMenu> eventMenu) {
         super(config, globalConfig, sessionService);
         this.mapDataRepository = mapDataRepository;
         this.eventDataRepository = eventDataRepository;
         this.mapService = mapService;
-        this.mapController = mapController;
         this.eventMenu = eventMenu;
     }
 
@@ -75,14 +72,14 @@ public class MapMenu extends Menu {
         String likeTxt = Boolean.TRUE.equals(currentVote) ? session.locale().t("map-vote-like-selected") : session.locale().t("map-vote-like");
         String dislikeTxt = Boolean.FALSE.equals(currentVote) ? session.locale().t("map-vote-dislike-selected") : session.locale().t("map-vote-dislike");
 
-        builder.addRow(likeTxt, () -> { mapController.get().handleReputation(session.player, true, m); map(uuid, m); },
-                       dislikeTxt, () -> { mapController.get().handleReputation(session.player, false, m); map(uuid, m); });
+        builder.addRow(likeTxt, () -> { mapService.handleReputation(session.player, true, m); map(uuid, m); },
+                       dislikeTxt, () -> { mapService.handleReputation(session.player, false, m); map(uuid, m); });
 
         EventData activeEvent = eventDataRepository.findActive().orElse(null);
         if (!config.isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(m.id)) {
             builder.start()
-                .add(session.locale().t("map-rtv"), () -> mapController.get().startRtvSession(session.player, mindustryMap, true, false))
-                .ifAdd(session.player.admin, session.locale().t("map-artv"), () -> mapController.get().startRtvSession(session.player, mindustryMap, true, true))
+                .add(session.locale().t("map-rtv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, false))
+                .ifAdd(session.player.admin, session.locale().t("map-artv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, true))
                 .end();
         }
 
@@ -128,5 +125,41 @@ public class MapMenu extends Menu {
                 }));
 
         builder.addNavigationRow().show();
+    }
+
+    public void showGameOverMenu(MapData current, MapData next, Team winner) {
+        String nextName = next != null ? next.name : "Unknown";
+        String nextAuthor = next != null ? next.author : "Unknown";
+
+        Groups.player.each(player -> {
+            Session session = sessionService.get(player.uuid()).clear();
+
+            Boolean currentVote = session.data.mapVotes.get(current.id.toString());
+            String likeButtonText = Boolean.TRUE.equals(currentVote)
+                    ? session.locale().format("map-vote-like-selected", args())
+                    : session.locale().format("map-vote-like", args());
+            String dislikeButtonText = Boolean.FALSE.equals(currentVote)
+                    ? session.locale().format("map-vote-dislike-selected", args())
+                    : session.locale().format("map-vote-dislike", args());
+
+            session.builder().title("map-vote-title")
+                    .content("map-vote-content", args(
+                            "mapName", nextName,
+                            "author", nextAuthor,
+                            "seconds", 10
+                    ))
+                    .add(likeButtonText, () -> mapService.handleReputation(player, true, current))
+                    .add(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
+                    .end()
+                    .add("current-map", () -> {
+                        session.clearHistory();
+                        map(player.uuid(), current);
+                    })
+                    .add("next-map", () -> {
+                        session.clearHistory();
+                        map(player.uuid(), next);
+                    })
+                    .addNavigationRow().show();
+        });
     }
 }

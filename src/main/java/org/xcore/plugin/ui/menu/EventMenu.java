@@ -7,7 +7,6 @@ import mindustry.maps.Map;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.command.controller.client.EventController;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.Config;
@@ -18,10 +17,10 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.EventService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.vote.VoteEvent;
 import org.xcore.plugin.vote.VoteService;
 
@@ -36,22 +35,22 @@ public class EventMenu extends Menu {
     private final MapDataRepository mapDataRepository;
     private final PlayerDataRepository playerDataRepository;
     private final MapService mapService;
+    private final EventService eventService;
     private final VoteService voteService;
-    private final Provider<EventController> controller;
     private final Provider<MapMenu> mapMenu;
 
     @Inject
     public EventMenu(Config config, GlobalConfig globalConfig, SessionService sessionService,
                      EventDataRepository eventDataRepository, MapDataRepository mapDataRepository,
-                     PlayerDataRepository playerDataRepository, MapService mapService, VoteService voteService,
-                     Provider<EventController> controller, Provider<MapMenu> mapMenu) {
+                     PlayerDataRepository playerDataRepository, MapService mapService, EventService eventService,
+                     VoteService voteService, Provider<MapMenu> mapMenu) {
         super(config, globalConfig, sessionService);
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.playerDataRepository = playerDataRepository;
         this.mapService = mapService;
+        this.eventService = eventService;
         this.voteService = voteService;
-        this.controller = controller;
         this.mapMenu = mapMenu;
     }
 
@@ -209,13 +208,13 @@ public class EventMenu extends Menu {
         String likeTxt = Boolean.TRUE.equals(currentVote) ? session.locale().t("map-vote-like-selected") : session.locale().t("map-vote-like");
         String dislikeTxt = Boolean.FALSE.equals(currentVote) ? session.locale().t("map-vote-dislike-selected") : session.locale().t("map-vote-dislike");
 
-        builder.addRow(likeTxt, () -> { controller.get().handleReputation(session.player, true, event); event(uuid, event); },
-                       dislikeTxt, () -> { controller.get().handleReputation(session.player, false, event); event(uuid, event); });
+        builder.addRow(likeTxt, () -> { eventService.handleReputation(session.player, true, event); event(uuid, event); },
+                       dislikeTxt, () -> { eventService.handleReputation(session.player, false, event); event(uuid, event); });
 
         if (!voteService.isVoting()) {
             builder.start()
-                .add(session.locale().t("event-vote"), () -> controller.get().startVoteSession(session.player, event, false))
-                .ifAdd(session.player.admin, session.locale().t("event-avote"), () -> controller.get().startVoteSession(session.player, event, true))
+                .add(session.locale().t("event-vote"), () -> eventService.startVoteSession(session.player, event, false))
+                .ifAdd(session.player.admin, session.locale().t("event-avote"), () -> eventService.startVoteSession(session.player, event, true))
                 .end();
         }
 
