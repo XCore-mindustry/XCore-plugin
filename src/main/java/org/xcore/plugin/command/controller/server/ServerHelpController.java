@@ -70,11 +70,7 @@ public class ServerHelpController implements CloudServerController {
         if (result instanceof VerboseCommandResult<XCoreSender> verbose) {
             String rootName = verbose.entry().command().rootComponent().name();
             UnifiedCommand cmd = findUnifiedCommand(allCommands, rootName);
-            if (cmd != null) {
-                printEntryDetails(cmd);
-            } else {
-                printEntryDetails(UnifiedCommand.fromCloud(rootName, verbose.entry()));
-            }
+            printEntryDetails(Objects.requireNonNullElseGet(cmd, () -> UnifiedCommand.fromCloud(rootName, verbose.entry())));
             return;
         }
 
@@ -107,7 +103,7 @@ public class ServerHelpController implements CloudServerController {
         Log.info("Description: @", cmd.description());
 
         if (cmd.syntaxes().size() == 1) {
-            Log.info("Usage: @", cmd.syntaxes().get(0));
+            Log.info("Usage: @", cmd.syntaxes().getFirst());
         } else {
             Log.info("Usages:");
             for (String syntax : cmd.syntaxes()) {

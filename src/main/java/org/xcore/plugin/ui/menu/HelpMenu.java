@@ -144,7 +144,7 @@ public class HelpMenu extends Menu {
             return sb.toString().trim();
         }
 
-        CommandVariant legacy = legacyVariants.get(0);
+        CommandVariant legacy = legacyVariants.getFirst();
         String params = legacy.params();
         String key = (params == null || params.isBlank())
                 ? "help-legacy-command-content-no-params"
@@ -243,7 +243,7 @@ public class HelpMenu extends Menu {
         sb.append("\n\n").append(session.locale().t("help-args-title"));
 
         if (usageArgs.size() == 1 && variants.size() == 1) {
-            usageArgs.get(0).args().forEach(line -> sb.append("\n").append(line));
+            usageArgs.getFirst().args().forEach(line -> sb.append("\n").append(line));
             return;
         }
 
@@ -284,7 +284,7 @@ public class HelpMenu extends Menu {
         }
 
         String primarySyntax() {
-            return variants.isEmpty() ? name : variants.get(0).syntax();
+            return variants.isEmpty() ? name : variants.getFirst().syntax();
         }
 
         String rawDescription() {
