@@ -71,25 +71,23 @@ public class HelpMenu extends Menu {
                 .addForEach(pageSlice, (builder, cmd) -> {
                     String desc = resolveDescription(session, cmd);
                     String btnText = session.locale().t("help-menu-button", args(
-                            "command", cmd.name(),
+                            "command", formatCommandLabel(session, cmd),
                             "description", truncate(desc, MAX_DESC_LEN)
                     ));
                     builder.addRow(btnText, () -> {
                         session.pushHistory(() -> help(uuid, currentPage));
-                        details(uuid, cmd, currentPage, sender);
+                        details(uuid, cmd, currentPage);
                     });
                 })
                 .addNavigationRow()
                 .show();
     }
 
-    private void details(String uuid, UnifiedCommand cmd, int returnPage, XCoreSender sender) {
+    private void details(String uuid, UnifiedCommand cmd, int returnPage) {
         Session session = sessionService.get(uuid).clear();
 
         String title = session.locale().t("help-command-title", args("name", cmd.name()));
-        String content = cmd.isCloudCommand()
-                ? buildCloudContent(session, cmd, sender)
-                : buildLegacyContent(session, cmd);
+        String content = buildCommandContent(session, cmd);
 
         session.builder()
                 .title(title, true)
@@ -99,56 +97,94 @@ public class HelpMenu extends Menu {
                 .show();
     }
 
-    private String buildCloudContent(Session session, UnifiedCommand cmd, XCoreSender sender) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(session.locale().t("help-command-header", args("syntax", cmd.syntax(), "description", resolveDescription(session, cmd))));
+    private String buildCommandContent(Session session, UnifiedCommand cmd) {
+        boolean hasCloud = cmd.isCloudCommand();
+        boolean hasLegacy = !cmd.legacyVariants().isEmpty();
 
-        if (cmd.cloudEntry() != null) {
-            var aliases = cmd.cloudEntry().command().rootComponent().alternativeAliases();
+        if (hasCloud && hasLegacy) {
+            return buildCloudContent(session, cmd) + "\n\n" + buildLegacyContent(session, cmd);
+        }
+        if (hasCloud) return buildCloudContent(session, cmd);
+        return buildLegacyContent(session, cmd);
+    }
+
+    private String buildCloudContent(Session session, UnifiedCommand cmd) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(session.locale().t("help-command-header", args(
+                "syntax", cmd.primarySyntax(),
+                "description", resolveDescription(session, cmd)
+        )));
+
+        if (cmd.syntaxes().size() > 1) {
+            appendUsages(session, sb, cmd.syntaxes());
+        }
+
+        if (cmd.primaryCloudEntry() != null) {
+            var aliases = extractVisibleAliases(cmd);
             if (!aliases.isEmpty()) {
                 sb.append("\n").append(session.locale().t("help-aliases", args("aliases", formatAliases(aliases))));
             }
         }
 
-        sb.append("\n\n").append(session.locale().t("help-args-title"));
-        List<String> args = extractArgs(session, cmd);
-        if (args.isEmpty()) sb.append("\n").append(session.locale().t("help-no-arguments"));
-        else args.forEach(a -> sb.append("\n").append(a));
+        var cloudVariants = cmd.cloudVariants();
+        appendCloudArguments(session, sb, cmd.name(), cloudVariants);
 
-        return sb.toString();
+        return sb.toString().trim();
     }
 
     private String buildLegacyContent(Session session, UnifiedCommand cmd) {
-        return session.locale().t("help-legacy-command-content", args(
+        List<CommandVariant> legacyVariants = cmd.legacyVariants();
+        if (legacyVariants.size() != 1) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(session.locale().t("help-command-header", args(
+                    "syntax", cmd.primarySyntax(),
+                    "description", resolveDescription(session, cmd)
+            )));
+            appendUsages(session, sb, legacyVariants.stream().map(CommandVariant::syntax).toList());
+            return sb.toString().trim();
+        }
+
+        CommandVariant legacy = legacyVariants.get(0);
+        String params = legacy.params();
+        String key = (params == null || params.isBlank())
+                ? "help-legacy-command-content-no-params"
+                : "help-legacy-command-content";
+
+        return session.locale().t(key, args(
                 "name", cmd.name(),
-                "params", cmd.params(),
+                "params", params,
                 "description", resolveDescription(session, cmd)
         ));
     }
 
     private List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
-        Map<String, UnifiedCommand> commandMap = new LinkedHashMap<>();
+        Map<String, UnifiedCommandBuilder> commandMap = new LinkedHashMap<>();
         var handler = Vars.netServer.clientCommands;
 
-        Map<String, CommandEntry<XCoreSender>> allowedCloud = new HashMap<>();
-        helpHandler.queryRootIndex(sender).entries().forEach(e -> {
-            var root = e.command().rootComponent();
-            allowedCloud.put(root.name().toLowerCase(), e);
-            for (String alias : root.aliases()) allowedCloud.put(alias.toLowerCase(), e);
+        Set<String> cloudNames = new HashSet<>();
+        helpHandler.queryRootIndex(sender).entries().forEach(entry -> {
+            var root = entry.command().rootComponent();
+            String rootName = root.name();
+            String rootKey = rootName.toLowerCase(Locale.ROOT);
+
+            cloudNames.add(rootKey);
+            for (String alias : root.aliases()) {
+                cloudNames.add(alias.toLowerCase(Locale.ROOT));
+            }
+
+            commandMap.computeIfAbsent(rootKey, ignored -> new UnifiedCommandBuilder(rootName))
+                    .addVariant(CommandVariant.fromCloud(entry));
         });
 
         for (var cmd : handler.getCommandList()) {
-            String nameLower = cmd.text.toLowerCase();
-            if (cmd instanceof MindustryCloudCommand<?>) {
-                CommandEntry<XCoreSender> entry = allowedCloud.get(nameLower);
-                if (entry != null && entry.command().rootComponent().name().equalsIgnoreCase(cmd.text)) {
-                    commandMap.put(cmd.text, UnifiedCommand.fromCloud(cmd.text, entry));
-                }
-            } else {
-                commandMap.putIfAbsent(cmd.text, UnifiedCommand.fromLegacy(cmd));
-            }
+            String nameLower = cmd.text.toLowerCase(Locale.ROOT);
+            if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower)) continue;
+
+            commandMap.computeIfAbsent(nameLower, ignored -> new UnifiedCommandBuilder(cmd.text))
+                    .addVariant(CommandVariant.fromLegacy(cmd));
         }
-        return new ArrayList<>(commandMap.values());
+
+        return new ArrayList<>(commandMap.values().stream().map(UnifiedCommandBuilder::build).toList());
     }
 
     private String resolveDescription(Session session, UnifiedCommand cmd) {
@@ -158,13 +194,13 @@ public class HelpMenu extends Menu {
         return (cmd.rawDescription() != null && !cmd.rawDescription().isEmpty()) ? cmd.rawDescription() : session.locale().t("help-no-description");
     }
 
-    private List<String> extractArgs(Session session, UnifiedCommand cmd) {
+    private List<String> extractArgs(Session session, String commandName, CommandEntry<XCoreSender> commandEntry) {
         List<String> lines = new ArrayList<>();
-        var command = cmd.cloudEntry().command();
+        var command = commandEntry.command();
         for (var comp : command.components()) {
             if (comp.type() == CommandComponent.ComponentType.LITERAL || comp.type() == CommandComponent.ComponentType.FLAG) continue;
             String display = comp.required() ? "[white]<" + comp.name() + ">[]" : "[white][" + comp.name() + "][]";
-            String key = "commands-" + cmd.name() + "-" + comp.name() + "-description";
+            String key = "commands-" + commandName + "-" + comp.name() + "-description";
             String desc = session.locale().t(key);
             if (desc.equals(key)) desc = session.locale().t("help-no-arg-description");
             lines.add(session.locale().t("help-arg-entry", args("arg", display, "description", desc)));
@@ -176,25 +212,151 @@ public class HelpMenu extends Menu {
         return aliases.stream().map(a -> "[white]/" + a + "[]").collect(java.util.stream.Collectors.joining("[gray], []"));
     }
 
+    private List<String> extractVisibleAliases(UnifiedCommand cmd) {
+        CommandEntry<XCoreSender> entry = cmd.primaryCloudEntry();
+        if (entry == null) return List.of();
+
+        Set<String> uniqueAliases = new LinkedHashSet<>();
+        for (String alias : entry.command().rootComponent().alternativeAliases()) {
+            if (!alias.equalsIgnoreCase(cmd.name())) {
+                uniqueAliases.add(alias);
+            }
+        }
+        return new ArrayList<>(uniqueAliases);
+    }
+
+    private String formatCommandLabel(Session session, UnifiedCommand cmd) {
+        int overloads = cmd.syntaxes().size();
+        if (overloads <= 1) return cmd.name();
+        return session.locale().t("help-command-with-overload-count", args(
+                "name", cmd.name(),
+                "count", overloads
+        ));
+    }
+
+    private void appendCloudArguments(Session session, StringBuilder sb, String commandName, List<CommandVariant> variants) {
+        List<UsageArgs> usageArgs = collectUsageArgs(session, commandName, variants);
+        if (usageArgs.isEmpty()) {
+            return;
+        }
+
+        sb.append("\n\n").append(session.locale().t("help-args-title"));
+
+        if (usageArgs.size() == 1 && variants.size() == 1) {
+            usageArgs.get(0).args().forEach(line -> sb.append("\n").append(line));
+            return;
+        }
+
+        for (int i = 0; i < usageArgs.size(); i++) {
+            UsageArgs usage = usageArgs.get(i);
+            sb.append("\n").append(session.locale().t("help-usage-args-title", args("syntax", usage.syntax())));
+            usage.args().forEach(line -> sb.append("\n").append(line));
+            if (i < usageArgs.size() - 1) sb.append("\n");
+        }
+    }
+
+    private List<UsageArgs> collectUsageArgs(Session session, String commandName, List<CommandVariant> variants) {
+        List<UsageArgs> result = new ArrayList<>();
+        for (CommandVariant variant : variants) {
+            List<String> args = extractArgs(session, commandName, variant.cloudEntry());
+            if (!args.isEmpty()) {
+                result.add(new UsageArgs(variant.syntax(), args));
+            }
+        }
+        return result;
+    }
+
+    private void appendUsages(Session session, StringBuilder sb, List<String> syntaxes) {
+        sb.append("\n\n").append(session.locale().t("help-usages-title"));
+        for (String syntax : syntaxes) {
+            sb.append("\n").append(session.locale().t("help-usage-entry", args("syntax", syntax)));
+        }
+    }
+
     private String truncate(String text, int max) {
         if (text == null) return "";
         return text.length() <= max ? text : text.substring(0, max - 3) + "...";
     }
 
-    private record UnifiedCommand(String name, String syntax, String rawDescription, boolean isCloudCommand,
-                                  CommandEntry<XCoreSender> cloudEntry, CommandHandler.Command legacyCommand) {
-        static UnifiedCommand fromCloud(String name, CommandEntry<XCoreSender> entry) {
-            return new UnifiedCommand(name, entry.syntax(), extractDesc(entry), true, entry, null);
+    private record UnifiedCommand(String name, List<CommandVariant> variants) {
+        List<String> syntaxes() {
+            return variants.stream().map(CommandVariant::syntax).toList();
         }
-        static UnifiedCommand fromLegacy(CommandHandler.Command cmd) {
-            return new UnifiedCommand(cmd.text, "/" + cmd.text + (cmd.paramText.isEmpty() ? "" : " " + cmd.paramText), cmd.description, false, null, cmd);
+
+        String primarySyntax() {
+            return variants.isEmpty() ? name : variants.get(0).syntax();
         }
+
+        String rawDescription() {
+            for (CommandVariant variant : variants) {
+                if (variant.rawDescription() != null && !variant.rawDescription().isBlank()) return variant.rawDescription();
+            }
+            return "";
+        }
+
+        boolean isCloudCommand() {
+            return variants.stream().anyMatch(CommandVariant::isCloud);
+        }
+
+        List<CommandVariant> cloudVariants() {
+            return variants.stream().filter(CommandVariant::isCloud).toList();
+        }
+
+        List<CommandVariant> legacyVariants() {
+            return variants.stream().filter(variant -> !variant.isCloud()).toList();
+        }
+
+        CommandEntry<XCoreSender> primaryCloudEntry() {
+            for (CommandVariant variant : variants) {
+                if (variant.cloudEntry() != null) return variant.cloudEntry();
+            }
+            return null;
+        }
+    }
+
+    private record CommandVariant(String syntax, String rawDescription, CommandEntry<XCoreSender> cloudEntry,
+                                  CommandHandler.Command legacyCommand) {
+        static CommandVariant fromCloud(CommandEntry<XCoreSender> entry) {
+            return new CommandVariant(entry.syntax(), extractDesc(entry), entry, null);
+        }
+
+        static CommandVariant fromLegacy(CommandHandler.Command cmd) {
+            return new CommandVariant("/" + cmd.text + (cmd.paramText.isEmpty() ? "" : " " + cmd.paramText), cmd.description, null, cmd);
+        }
+
+        boolean isCloud() {
+            return cloudEntry != null;
+        }
+
+        String params() {
+            return legacyCommand != null ? legacyCommand.paramText : "";
+        }
+
         private static String extractDesc(CommandEntry<XCoreSender> entry) {
             var d = entry.command().rootComponent().description();
             if (!d.isEmpty()) return d.textDescription();
             var cd = entry.command().commandDescription().description();
             return !cd.isEmpty() ? cd.textDescription() : "";
         }
-        String params() { return legacyCommand != null ? legacyCommand.paramText : ""; }
+    }
+
+    private record UsageArgs(String syntax, List<String> args) {
+    }
+
+    private static final class UnifiedCommandBuilder {
+        private final String name;
+        private final Map<String, CommandVariant> variantsBySyntax = new LinkedHashMap<>();
+
+        private UnifiedCommandBuilder(String name) {
+            this.name = name;
+        }
+
+        private void addVariant(CommandVariant variant) {
+            variantsBySyntax.putIfAbsent(variant.syntax(), variant);
+        }
+
+        private UnifiedCommand build() {
+            return new UnifiedCommand(name, new ArrayList<>(variantsBySyntax.values()));
+        }
     }
 }

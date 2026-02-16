@@ -13,17 +13,25 @@ help-menu-title = [orange]• [white]КОМАНДИ XCORE [orange]•
 help-menu-content = [gray]Сторінка [white]{$page}[gray]/[white]{$total}
     {""}[lightgray]Оберіть команду для детальної інформації:
 help-menu-button = [accent]/{$command} [gray]» [white]{$description}
+help-command-with-overload-count = {$name} ({$count})
 help-command-title = [orange]» [white]/{$name}
 help-command-header = [orange]» [accent]Синтаксис: [white]{$syntax}
     {""}[orange]» [accent]Опис: [lightgray]{$description}
 help-aliases = [orange]» [accent]Псевдоніми: [white]{$aliases}
 help-args-title = [orange]» [accent]Аргументи:
+help-usages-title = [orange]» [accent]Використання:
+help-usage-entry =   [gray]• [white]{$syntax}
+help-usage-args-title = [orange]» [accent]Для [white]{$syntax}[accent]:
 help-arg-entry =   [gray]• [white]{$arg} [lightgray]- {$description}
 help-no-arguments =   [gray]Додаткові аргументи не потрібні.
 help-no-arg-description = Немає опису.
 help-no-description = Опис для цієї команди не надано.
 help-legacy-command-content = [orange]» [accent]Команда: [white]/{$name}
     {""}[orange]» [accent]Параметри: [white]{$params}
+    {""}[orange]» [accent]Опис: [lightgray]{$description}
+    {""}
+    {""}[gray](Це застаріла команда з обмеженою інформацією)
+help-legacy-command-content-no-params = [orange]» [accent]Команда: [white]/{$name}
     {""}[orange]» [accent]Опис: [lightgray]{$description}
     {""}
     {""}[gray](Це застаріла команда з обмеженою інформацією)

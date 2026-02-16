@@ -16,17 +16,25 @@ help-menu-title = { "[" }orange]{ -xcore } — Commads
 help-menu-content = [gray]Page [white]{$page}[gray]/[white]{$total}
     {""}[lightgray]Select a command to see detailed usage:
 help-menu-button = [accent]/{$command} [gray]» [white]{$description}
+help-command-with-overload-count = {$name} ({$count})
 help-command-title = [orange]» [white]/{$name}
 help-command-header = [orange]» [accent]Syntax: [white]{$syntax}
     {""}[orange]» [accent]Info: [lightgray]{$description}
 help-aliases = [orange]» [accent]Aliases: [white]{$aliases}
 help-args-title = [orange]» [accent]Arguments:
+help-usages-title = [orange]» [accent]Usage:
+help-usage-entry =   [gray]• [white]{$syntax}
+help-usage-args-title = [orange]» [accent]For [white]{$syntax}[accent]:
 help-arg-entry =   [gray]• [white]{$arg} [lightgray]- {$description}
 help-no-arguments =   [gray]No additional arguments required.
 help-no-arg-description = No description.
 help-no-description = No description provided for this command.
 help-legacy-command-content = [orange]» [accent]Command: [white]/{$name}
     {""}[orange]» [accent]Parameters: [white]{$params}
+    {""}[orange]» [accent]Info: [lightgray]{$description}
+    {""}
+    {""}[gray](This is a legacy command with limited info)
+help-legacy-command-content-no-params = [orange]» [accent]Command: [white]/{$name}
     {""}[orange]» [accent]Info: [lightgray]{$description}
     {""}
     {""}[gray](This is a legacy command with limited info)
