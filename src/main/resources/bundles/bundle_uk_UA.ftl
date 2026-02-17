@@ -8,53 +8,54 @@
 # General & Help
 # ==============================================================================
 commands-help-description = Показує список усіх команд.
-
-help-menu-title = [orange]• [white]КОМАНДИ XCORE [orange]•
-help-menu-content = [gray]Сторінка [white]{$page}[gray]/[white]{$total}
-    {""}[lightgray]Оберіть команду для детальної інформації:
-help-menu-button = [accent]/{$command} [gray]» [white]{$description}
-help-command-with-overload-count = {$name} ({$count})
-help-command-title = [orange]» [white]/{$name}
-help-command-header = [orange]» [accent]Синтаксис: [white]{$syntax}
-    {""}[orange]» [accent]Опис: [lightgray]{$description}
-help-aliases = [orange]» [accent]Псевдоніми: [white]{$aliases}
-help-args-title = [orange]» [accent]Аргументи:
-help-usages-title = [orange]» [accent]Використання:
-help-usage-entry =   [gray]• [white]{$syntax}
-help-usage-args-title = [orange]» [accent]Для [white]{$syntax}[accent]:
-help-arg-entry =   [gray]• [white]{$arg} [lightgray]- {$description}
-help-no-arguments =   [gray]Додаткові аргументи не потрібні.
+help-menu-title = { "[" }orange]• [white]КОМАНДИ XCORE [orange]•
+help-menu-content =
+    { "[" }gray]Сторінка [white]{ $page }[gray]/[white]{ $total }
+    { "" }[lightgray]Оберіть команду для детальної інформації:
+help-menu-button = { "[" }accent]/{ $command } [gray]» [white]{ $description }
+help-command-with-overload-count = { $name } ({ $count })
+help-command-title = { "[" }orange]» [white]/{ $name }
+help-command-header =
+    { "[" }orange]» [accent]Синтаксис: [white]{ $syntax }
+    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
+help-aliases = { "[" }orange]» [accent]Псевдоніми: [white]{ $aliases }
+help-args-title = { "[" }orange]» [accent]Аргументи:
+help-usages-title = { "[" }orange]» [accent]Використання:
+help-usage-entry = { "[" }gray]• [white]{ $syntax }
+help-usage-args-title = { "[" }orange]» [accent]Для [white]{ $syntax }[accent]:
+help-arg-entry = { "[" }gray]• [white]{ $arg } [lightgray]- { $description }
+help-no-arguments = { "[" }gray]Додаткові аргументи не потрібні.
 help-no-arg-description = Немає опису.
 help-no-description = Опис для цієї команди не надано.
-help-legacy-command-content = [orange]» [accent]Команда: [white]/{$name}
-    {""}[orange]» [accent]Параметри: [white]{$params}
-    {""}[orange]» [accent]Опис: [lightgray]{$description}
-    {""}
-    {""}[gray](Це застаріла команда з обмеженою інформацією)
-help-legacy-command-content-no-params = [orange]» [accent]Команда: [white]/{$name}
-    {""}[orange]» [accent]Опис: [lightgray]{$description}
-    {""}
-    {""}[gray](Це застаріла команда з обмеженою інформацією)
-help-back = [lightgray]« Назад
-
+help-legacy-command-content =
+    { "[" }orange]» [accent]Команда: [white]/{ $name }
+    { "" }[orange]» [accent]Параметри: [white]{ $params }
+    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](Це застаріла команда з обмеженою інформацією)
+help-legacy-command-content-no-params =
+    { "[" }orange]» [accent]Команда: [white]/{ $name }
+    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](Це застаріла команда з обмеженою інформацією)
+help-back = { "[" }lightgray]« Назад
 commands-information-description = Показати інформацію про сервер
-commands-info-title = [orange]{ -xcore } — {$xcorServerName}
-commands-info-text = [accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
-    {""}
-    {""}Версія XCore — [accent]{$xcoreVersion}[white]
-
+commands-info-title = { "[" }orange]{ -xcore } — { $xcorServerName }
+commands-info-text =
+    { "[" }accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
+    { "" }
+    { "" }Версія XCore — [accent]{ $xcoreVersion }[white]
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
-
-welcome = [accent]Ласкаво просимо на {$serverName}!
-    {""}[lightgray]Напишіть [accent]/help[lightgray], щоб побачити список команд
-    {""}[lightgray]Напишіть [accent]/vote [gray]<y/n>[lightgray], щоб проголосувати за вигнання гравця
-    {""}[lightgray]Напишіть [accent]/votekick [gray]<ID/ім'я> <причина...>[lightgray], щоб почати голосування за вигнання
-    {""}[lightgray]Напишіть [accent]/t [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення союзникам
-    {""}[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
-    {""}[lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
-    {""}[lightgray]Напишіть [accent]/discord[lightgray], щоб перейти на наш Discord сервер
-
+welcome =
+    { "[" }accent]Ласкаво просимо на { $serverName }!
+    { "" }[lightgray]Напишіть [accent]/help[lightgray], щоб побачити список команд
+    { "" }[lightgray]Напишіть [accent]/vote [gray]<y/n>[lightgray], щоб проголосувати за вигнання гравця
+    { "" }[lightgray]Напишіть [accent]/votekick [gray]<ID/ім'я> <причина...>[lightgray], щоб почати голосування за вигнання
+    { "" }[lightgray]Напишіть [accent]/t [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення союзникам
+    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
+    { "" }[lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
+    { "" }[lightgray]Напишіть [accent]/discord[lightgray], щоб перейти на наш Discord сервер
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
@@ -83,7 +84,6 @@ commands-rtv-map-description = Мапа для голосування (опці�
 commands-artv-map-description = Мапа для примусової зміни
 commands-ai-state-description = Стан ШІ: attack (a) або idle (i)
 commands-events-page-description = Номер сторінки
-
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
@@ -92,13 +92,11 @@ commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]>[accent] { $
 commands-g-description = Надіслати повідомлення на всі сервери.
 commands-a-description = Надіслати повідомлення тільки адміністраторам.
 commands-tr-description = Встановити мову перекладача.
-commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{$translatorLanguage}[]!
-commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
-commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
-
-discord-message-format = [blue][Discord][] {$author}: {$message}
-global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{$server}[])[] {$author}[]]: [white]{$message}
-
+commands-tr-success = { "[" }accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
+commands-tr-off = { "[" }accent]Перекладач [scarlet]вимкнено[]!
+commands-tr-not-found = { "[" }scarlet]⚠ Такої мови не існує.
+discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
+global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -284,26 +282,23 @@ pvp-you-spectator = { "[" }scarlet]Ви програли. Будь ласка, �
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]приєднався.
-player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]вийшов.
-
-notification-votekick-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{0}[] хвилин і тепер можете почати голосування за вигнання.
-notification-global-chat-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{0}[] хвилин і тепер можете писати в глобальний чат.
-    {""}[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення.
-notification-admin-kick = {$admin}[accent] вигнав(ла) {$target}[].
-notification-admin-wave-skip = {$admin}[accent] пропустив(ла) хвилю.
-
-server-restart-countdown = Перезавантаження через {$seconds}
-
-like-map-success = [green]Ви вподобали цю мапу!
-like-map-changed = [green]Ви змінили свою думку на Вподобайку!
-dislike-map-success = [orange]Ви поставили "Не подобається" цій мапі.
-dislike-map-changed = [orange]Ви змінили свою думку на "Не подобається".
-
-like-event-success = [green]Ви вподобали цю подію!
-like-event-changed = [green]Ви змінили свою думку на Вподобайку!
-dislike-event-success = [orange]Ви поставили "Не подобається" цій події.
-dislike-event-changed = [orange]Ви змінили свою думку на "Не подобається".
+player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
+player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
+notification-votekick-playtime = { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ 0 }[] хвилин і тепер можете почати голосування за вигнання.
+notification-global-chat-playtime =
+    { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ 0 }[] хвилин і тепер можете писати в глобальний чат.
+    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення.
+notification-admin-kick = { $admin }[accent] вигнав(ла) { $target }[].
+notification-admin-wave-skip = { $admin }[accent] пропустив(ла) хвилю.
+server-restart-countdown = Перезавантаження через { $seconds }
+like-map-success = { "[" }green]Ви вподобали цю мапу!
+like-map-changed = { "[" }green]Ви змінили свою думку на Вподобайку!
+dislike-map-success = { "[" }orange]Ви поставили "Не подобається" цій мапі.
+dislike-map-changed = { "[" }orange]Ви змінили свою думку на "Не подобається".
+like-event-success = { "[" }green]Ви вподобали цю подію!
+like-event-changed = { "[" }green]Ви змінили свою думку на Вподобайку!
+dislike-event-success = { "[" }orange]Ви поставили "Не подобається" цій події.
+dislike-event-changed = { "[" }orange]Ви змінили свою думку на "Не подобається".
 
 # ==============================================================================
 # Events (Server)
@@ -375,53 +370,48 @@ event-menu-this-event = { "[" }orange]Теперішна подія
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = [scarlet]⚠ Доступ заборонено
-error-ip-changed = [scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
-error-not-enough-params = [scarlet]⚠ Недостатньо параметрів
-error-player-not-found = [scarlet]⚠ Гравця не знайдено
-error-player-not-teammate = [scarlet]⚠ Цей гравець не у вашій команді
-error-player-admin = [scarlet]⚠ Не намагайтеся вигнати адміністратора ⚠
-error-already-voted = [scarlet]⚠ Ви вже проголосували. Заспокойтесь.
-error-globalchat-total-playtime = [scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти {$globalChatPlayTime} хвилин.
-error-votekick-total-playtime = [scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти {$votekickPlayTime} хвилин.
-error-vote-yourself = [scarlet]⚠ Ви не можете голосувати у власному голосуванні.
-error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
-error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
-error-no-map = [scarlet]⚠ Мапу не задано
-error-map-not-event = [scarlet]⚠ Мапа не входить у теперішню подію.
-error-map-not-found = [scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
-error-maps-empty = [scarlet]⚠ Список мап порожний
-error-event-not-found = [scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
-error-page-between = [scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{$totalPages}[]
-error-page-number = [scarlet]'сторінка' має бути числом
-error-wrong-number = [scarlet]⚠ Неправильний формат числа
-error-wrong-period-format = [scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({hours})
-error-invalid-id = [scarlet]⚠ Невірний ID гравця
-error-spectator = [scarlet]⚠ Ви спостерігач. Напишіть /spectate, щоб повернутися.
-error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи
-error-wrong-admin-password = [scarlet]⚠ Невірний пароль адміністратора
-error-internal = [scarlet]Внутрішня помилка сервера
-error-processing-request = [scarlet]Виникла помилка під час обробки запиту.
-
-error-playtime-requirement = [scarlet]⚠ Вам потрібно відіграти мінімум {$time} хвилин для використання цієї функції.
-
-error-invalid-syntax = [scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/{$syntax}
-
-error-invalid-sender = [scarlet]⚠ Невірний відправник команди. Потрібно: [lightgray]{$type}
-error-argument-parse-generic = [scarlet]⚠ Помилка аргументу: {$error}
-
-argument-parse-failure-boolean = [scarlet]⚠ Не вдалося розпізнати '{$input}' як логічне значення (true/false).
-argument-parse-failure-number = [scarlet]⚠ Число '{$input}' поза допустимим діапазоном [{$min}, {$max}].
-argument-parse-failure-char = [scarlet]⚠ '{$input}' не є допустимим символом.
-argument-parse-failure-enum = [scarlet]⚠ '{$input}' недопустима опція. Доступно: [lightgray]{$acceptableValues}
-argument-parse-failure-string = [scarlet]⚠ Невірний формат рядка: '{$input}'.
-argument-parse-failure-uuid = [scarlet]⚠ Невірний формат UUID: '{$input}'.
-argument-parse-failure-regex = [scarlet]⚠ Введення '{$input}' не відповідає шаблону '{$pattern}'.
-argument-parse-failure-flag-unknown = [scarlet]⚠ Невідомий прапорець: '{$flag}'.
-argument-parse-failure-flag-duplicate = [scarlet]⚠ Прапорець, що повторюється: '{$flag}'.
-argument-parse-failure-flag-missing-argument = [scarlet]⚠ Відсутній аргумент для прапорця: '{$flag}'.
-argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас немає прав на використання прапорця '{$flag}'.
-
+error-access-denied = { "[" }scarlet]⚠ Доступ заборонено
+error-ip-changed = { "[" }scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
+error-not-enough-params = { "[" }scarlet]⚠ Недостатньо параметрів
+error-player-not-found = { "[" }scarlet]⚠ Гравця не знайдено
+error-player-not-teammate = { "[" }scarlet]⚠ Цей гравець не у вашій команді
+error-player-admin = { "[" }scarlet]⚠ Не намагайтеся вигнати адміністратора ⚠
+error-already-voted = { "[" }scarlet]⚠ Ви вже проголосували. Заспокойтесь.
+error-globalchat-total-playtime = { "[" }scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
+error-votekick-total-playtime = { "[" }scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } хвилин.
+error-vote-yourself = { "[" }scarlet]⚠ Ви не можете голосувати у власному голосуванні.
+error-vote-in-progress = { "[" }scarlet]⚠ Голосування вже триває.
+error-no-voting = { "[" }scarlet]⚠ На даний момент голосування не проводиться.
+error-no-map = { "[" }scarlet]⚠ Мапу не задано
+error-map-not-event = { "[" }scarlet]⚠ Мапа не входить у теперішню подію.
+error-map-not-found = { "[" }scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
+error-maps-empty = { "[" }scarlet]⚠ Список мап порожний
+error-event-not-found = { "[" }scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
+error-page-between = { "[" }scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{ $totalPages }[]
+error-page-number = { "[" }scarlet]'сторінка' має бути числом
+error-wrong-number = { "[" }scarlet]⚠ Неправильний формат числа
+error-wrong-period-format = { "[" }scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
+error-invalid-id = { "[" }scarlet]⚠ Невірний ID гравця
+error-spectator = { "[" }scarlet]⚠ Ви спостерігач. Напишіть /spectate, щоб повернутися.
+error-admin-password-too-short = { "[" }scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи
+error-wrong-admin-password = { "[" }scarlet]⚠ Невірний пароль адміністратора
+error-internal = { "[" }scarlet]Внутрішня помилка сервера
+error-processing-request = { "[" }scarlet]Виникла помилка під час обробки запиту.
+error-playtime-requirement = { "[" }scarlet]⚠ Вам потрібно відіграти мінімум { $time } хвилин для використання цієї функції.
+error-invalid-syntax = { "[" }scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/{ $syntax }
+error-invalid-sender = { "[" }scarlet]⚠ Невірний відправник команди. Потрібно: [lightgray]{ $type }
+error-argument-parse-generic = { "[" }scarlet]⚠ Помилка аргументу: { $error }
+argument-parse-failure-boolean = { "[" }scarlet]⚠ Не вдалося розпізнати '{ $input }' як логічне значення (true/false).
+argument-parse-failure-number = { "[" }scarlet]⚠ Число '{ $input }' поза допустимим діапазоном [{ $min }, { $max }].
+argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' не є допустимим символом.
+argument-parse-failure-enum = { "[" }scarlet]⚠ '{ $input }' недопустима опція. Доступно: [lightgray]{ $acceptableValues }
+argument-parse-failure-string = { "[" }scarlet]⚠ Невірний формат рядка: '{ $input }'.
+argument-parse-failure-uuid = { "[" }scarlet]⚠ Невірний формат UUID: '{ $input }'.
+argument-parse-failure-regex = { "[" }scarlet]⚠ Введення '{ $input }' не відповідає шаблону '{ $pattern }'.
+argument-parse-failure-flag-unknown = { "[" }scarlet]⚠ Невідомий прапорець: '{ $flag }'.
+argument-parse-failure-flag-duplicate = { "[" }scarlet]⚠ Прапорець, що повторюється: '{ $flag }'.
+argument-parse-failure-flag-missing-argument = { "[" }scarlet]⚠ Відсутній аргумент для прапорця: '{ $flag }'.
+argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ У вас немає прав на використання прапорця '{ $flag }'.
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
@@ -431,11 +421,9 @@ success = { "[" }green]Успішно[]
 empty = { "[" }accent]Порожньо[]
 never = Ніколи
 save = Зберегти
-
 close = Закрити
 previous = <- Попередня
 next = Наступна ->
-
 yes = Так
 no = Ні
 event-events = Події
