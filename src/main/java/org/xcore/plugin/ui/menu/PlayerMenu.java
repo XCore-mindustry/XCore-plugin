@@ -169,7 +169,7 @@ public class PlayerMenu extends Menu {
                 .end();
 
         builder.addForEach(locales, (b, loc) -> {
-            String code = loc.getLanguage();
+            String code = Objects.equals(loc.getLanguage(), "uk") ? "uk_UA" : loc.getLanguage();
             String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
 
             b.addRow(langName, () -> {
