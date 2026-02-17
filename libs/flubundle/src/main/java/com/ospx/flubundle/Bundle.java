@@ -93,6 +93,10 @@ public class Bundle {
                 .build());
     }
 
+    public Seq<Locale> getAvailableLocales() {
+        return sources.keys().toSeq();
+    }
+
     public String format(Locale locale, String id, Map<String, Object> args) {
         return format(locale, id, args, defaultValueFactory);
     }
