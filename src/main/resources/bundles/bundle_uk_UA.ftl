@@ -7,8 +7,8 @@
 # ==============================================================================
 # General & Help
 # ==============================================================================
-commands-help-description = Показує список усіх команд.
-help-menu-title = { "[" }orange]• [white]КОМАНДИ XCORE [orange]•
+commands-help-description = Відкрийте інтерактивне меню довідки.
+help-menu-title = { "[" }orange]{ -xcore } — Команди
 help-menu-content =
     { "[" }gray]Сторінка [white]{ $page }[gray]/[white]{ $total }
     { "" }[lightgray]Оберіть команду для детальної інформації:
@@ -40,11 +40,11 @@ help-legacy-command-content-no-params =
     { "" }[gray](Це застаріла команда з обмеженою інформацією)
 help-back = { "[" }lightgray]« Назад
 commands-information-description = Показати інформацію про сервер
-commands-info-title = { "[" }orange]{ -xcore } — { $xcorServerName }
+commands-info-title = { "[" }orange]{ -xcore } — { $server-name }
 commands-info-text =
     { "[" }accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     { "" }
-    { "" }Версія XCore — [accent]{ $xcoreVersion }[white]
+    { "" }Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
 welcome =
@@ -284,7 +284,7 @@ pvp-you-spectator = { "[" }scarlet]Ви програли. Будь ласка, �
 # ==============================================================================
 player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
-notification-votekick-playtime = { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ 0 }[] хвилин і тепер можете почати голосування за вигнання.
+notification-votekick-playtime = { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] хвилин і тепер можете почати голосування за вигнання.
 notification-global-chat-playtime =
     { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ 0 }[] хвилин і тепер можете писати в глобальний чат.
     { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення.
@@ -306,7 +306,7 @@ dislike-event-changed = { "[" }orange]Ви змінили свою думку н
 
 commands-event-description = Меню керуванням подій
 commands-events-description = Список усіх подій на серверах.
-event-menu-main = Головна
+event-menu-main = Головних подій
 event-menu-main-title = { "[" }orange]{ -xcore } — Події
 event-menu-main-content = Головна сторінка подій
 event-menu-event = Подія
@@ -421,10 +421,61 @@ success = { "[" }green]Успішно[]
 empty = { "[" }accent]Порожньо[]
 never = Ніколи
 save = Зберегти
-close = Закрити
-previous = <- Попередня
+close = { "[" }scarlet]Закрити
+previous = { "[" }accent]« Попередня
 next = Наступна ->
 yes = Так
 no = Ні
 event-events = Події
 test = Тест
+menu-main = Головне меню
+commands-main-description = Відкрийте інтерактивне головне меню.
+menu-main-title = { "[" }orange]{ -xcore } — Головне меню
+menu-main-content = Головне меню сервера
+help-menu = Меню довідки
+commands-info = Інформація
+current-map = Поточна мапа
+next-map = Наступна мапа
+player-menu-player = Гравець
+player-menu-player-title = { "[" }orange]{ -xcore } — Статистика гравця
+player-menu-players = Список гравців
+player-menu-players-title = { "[" }orange]{ -xcore } — Список гравців
+player-menu-players-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+player-menu-players-empty = Гравців не знайдено
+player-menu-settings = Налаштування
+player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
+player-menu-settings-content = Показувати таблицю лідерів: [green]{ $leaderboard }[] | Переклад: [green]{ $language }[] | Мова для автоматичного перекладу: [green]{ $translatorLanguage }[]
+player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
+player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
+settings-language-label = Переклад: [green]{ $lang }[]
+event-menu-create-start-map = Створити подію для цієї карти
+event-end = Подія [green]{ $name }[] завершилася!
+error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено
+error-no-access = { "[" }червоний]⚠ Немає доступу
+finished = масштабна
+finished-neutral = { "[" }orange]Завершено
+finished-active = { "[" }green]Завершено
+finished-inactive = { "[" }red]Завершено
+major = Масштабна
+major-neutral = { "[" }orange]Масштабна
+major-active = { "[" }green]Масштабна
+major-inactive = { "[" }red]Масштабна
+active = Активна
+active-neutral = { "[" }orange]Активна
+active-active = { "[" }green]Активна
+active-inactive = { "[" }red]Активна
+admin = Адмін
+admin-neutral = { "[" }orange]Адмін
+admin-active = { "[" }green]Адмін
+admin-inactive = { "[" }red]Адмін
+cancel = Скасувати
+back = Назад
+no-description = Без опису
+discord = Discord
+github = GitHub
+donatello = Donatello
+weblate = Weblate
+discord-red-vs-blue = RedVSBlue
+auto = Авто
+on = Увімкнено
+off = Вимкнено

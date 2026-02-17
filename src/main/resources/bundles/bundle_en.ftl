@@ -9,101 +9,85 @@ menu-main = Main menu
 commands-main-description = Open the interactive Main menu.
 menu-main-title = { "[" }orange]{ -xcore } — Main menu
 menu-main-content = Main server menu
-
 help-menu = Help menu
 commands-help-description = Open the interactive help menu.
 help-menu-title = { "[" }orange]{ -xcore } — Commads
-help-menu-content = [gray]Page [white]{$page}[gray]/[white]{$total}
-    {""}[lightgray]Select a command to see detailed usage:
-help-menu-button = [accent]/{$command} [gray]» [white]{$description}
-help-command-with-overload-count = {$name} ({$count})
-help-command-title = [orange]» [white]/{$name}
-help-command-header = [orange]» [accent]Syntax: [white]{$syntax}
-    {""}[orange]» [accent]Info: [lightgray]{$description}
-help-aliases = [orange]» [accent]Aliases: [white]{$aliases}
-help-args-title = [orange]» [accent]Arguments:
-help-usages-title = [orange]» [accent]Usage:
-help-usage-entry =   [gray]• [white]{$syntax}
-help-usage-args-title = [orange]» [accent]For [white]{$syntax}[accent]:
-help-arg-entry =   [gray]• [white]{$arg} [lightgray]- {$description}
-help-no-arguments =   [gray]No additional arguments required.
+help-menu-content =
+    { "[" }gray]Page [white]{ $page }[gray]/[white]{ $total }
+    { "" }[lightgray]Select a command to see detailed usage:
+help-menu-button = { "[" }accent]/{ $command } [gray]» [white]{ $description }
+help-command-with-overload-count = { $name } ({ $count })
+help-command-title = { "[" }orange]» [white]/{ $name }
+help-command-header =
+    { "[" }orange]» [accent]Syntax: [white]{ $syntax }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+help-aliases = { "[" }orange]» [accent]Aliases: [white]{ $aliases }
+help-args-title = { "[" }orange]» [accent]Arguments:
+help-usages-title = { "[" }orange]» [accent]Usage:
+help-usage-entry = { "[" }gray]• [white]{ $syntax }
+help-usage-args-title = { "[" }orange]» [accent]For [white]{ $syntax }[accent]:
+help-arg-entry = { "[" }gray]• [white]{ $arg } [lightgray]- { $description }
+help-no-arguments = { "[" }gray]No additional arguments required.
 help-no-arg-description = No description.
 help-no-description = No description provided for this command.
-help-legacy-command-content = [orange]» [accent]Command: [white]/{$name}
-    {""}[orange]» [accent]Parameters: [white]{$params}
-    {""}[orange]» [accent]Info: [lightgray]{$description}
-    {""}
-    {""}[gray](This is a legacy command with limited info)
-help-legacy-command-content-no-params = [orange]» [accent]Command: [white]/{$name}
-    {""}[orange]» [accent]Info: [lightgray]{$description}
-    {""}
-    {""}[gray](This is a legacy command with limited info)
-help-back = [lightgray]« Back
-
+help-legacy-command-content =
+    { "[" }orange]» [accent]Command: [white]/{ $name }
+    { "" }[orange]» [accent]Parameters: [white]{ $params }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](This is a legacy command with limited info)
+help-legacy-command-content-no-params =
+    { "[" }orange]» [accent]Command: [white]/{ $name }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](This is a legacy command with limited info)
+help-back = { "[" }lightgray]« Back
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
 # help
 commands-help-page-description = Page number to display
-
 # login
 commands-login-password-description = Your admin password
-
 # ban
 commands-ban-id-description = Player ID to ban
 commands-ban-period-description = Ban duration (e.g. 1d, 2h, 30m)
 commands-ban-reason-description = Reason for the ban
-
 # unban
 commands-unban-id-description = Player ID to unban
-
 # mute
 commands-mute-id-description = Player ID to mute
 commands-mute-period-description = Mute duration (e.g. 1h, 30m)
 commands-mute-reason-description = Reason for the mute
-
 # unmute
 commands-unmute-id-description = Player ID to unmute
-
 # votekick
 commands-votekick-target-description = Player to kick (ID or name)
 commands-votekick-reason-description = Reason for the kick
-
 # vote
 commands-vote-choice-description = Your vote: y (yes), n (no), or c (cancel, admin only)
-
 # t (team chat)
 commands-t-message-description = Message to send to teammates
-
 # g (global chat)
 commands-g-message-description = Message to send to all servers
-
 # tr (translator)
 commands-tr-language-description = Language code, 'auto', or 'off'
-
 # stats
 commands-stats-id-description = Player ID to view stats for
-
 # rank
 commands-rank-player-description = Player to view rank for
-
 # map
 commands-map-map-description = Map name or index
-
 # maps / maps-text
 commands-maps-page-description = Page number
 commands-maps-text-page-description = Page number
-
 # rtv / artv
 commands-rtv-map-description = Map to vote for (optional)
 commands-artv-map-description = Map to force change to
-
 # ai
 commands-ai-state-description = AI state: attack (a) or idle (i)
-
 # event / events
 commands-events-page-description = Page number
-
 # ==============================================================================
 # General & Help (continued)
 # ==============================================================================
@@ -133,13 +117,11 @@ commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[cor
 commands-g-description = Send a message across all servers
 commands-a-description = Send a message only to admins.
 commands-tr-description = Set the translator language.
-commands-tr-success = [accent]The translator language has been successfully changed to [grey]{$translatorLanguage}[]!
-commands-tr-off = [accent]Translator is [scarlet]off[]!
-commands-tr-not-found = [scarlet]⚠ There is no such language.
-
-discord-message-format = [blue][Discord][] {$author}: {$message}
-global-chat-format = [royal][[[orange]GLOBAL [lightgray](from [accent]{$server}[])[] {$author}[]]: [white]{$message}
-
+commands-tr-success = { "[" }accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
+commands-tr-off = { "[" }accent]Translator is [scarlet]off[]!
+commands-tr-not-found = { "[" }scarlet]⚠ There is no such language.
+discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
+global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -199,8 +181,7 @@ support-channel = #reports-appeals
 # ==============================================================================
 commands-votekick-description = Vote to kick a player from the server.
 commands-vote-description = Vote on the current vote-kick session.
-commands-vote-vote-with = [scarlet]⚠ Vote with [orange]/vote <y/n/c>
-
+commands-vote-vote-with = { "[" }scarlet]⚠ Vote with [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
     { "" }[lightgray]Type [orange]/vote <y/n>[] to vote.
@@ -279,10 +260,10 @@ player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $
 player-menu-players-empty = No players found
 player-menu-settings = Settings
 player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
-player-menu-settings-content = { $leaderboard }, { $language }, { $translatorLanguage }
+player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Translation: [green]{ $language }[] | Language for automatic translation: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
-settings-language-label = { $lang }
+settings-language-label = Translation: [green]{ $lang }[]
 commands-lb-description = Enable/disable leaderboard
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -334,26 +315,23 @@ pvp-you-spectator = { "[" }scarlet]You have been eliminated. Please wait for the
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
-player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]has joined.
-player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]has left.
-
-notification-votekick-playtime = [accent]Congratulations! You have played for [lightgray]{$votekickPlayTime}[] minutes and can now start a vote-kick.
-notification-global-chat-playtime = [accent]Congratulations! You have played for [lightgray]{$globalChatPlayTime}[] minutes and can now send messages to global chat.
-    {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message.
-notification-admin-kick = {$admin}[accent] kicked {$target}[].
-notification-admin-wave-skip = {$admin}[accent] has skipped the wave.
-
-server-restart-countdown = Restart in {$seconds}
-
-like-map-success = [green]You liked this map!
-like-map-changed = [green]You changed your mind to a Like!
-dislike-map-success = [orange]You disliked this map.
-dislike-map-changed = [orange]You changed your mind to a Dislike.
-
-like-event-success = [green]You liked this event!
-like-event-changed = [green]You changed your mind to a Like!
-dislike-event-success = [orange]You disliked this event.
-dislike-event-changed = [orange]You changed your mind to a Dislike.
+player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has joined.
+player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has left.
+notification-votekick-playtime = { "[" }accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] minutes and can now start a vote-kick.
+notification-global-chat-playtime =
+    { "[" }accent]Congratulations! You have played for [lightgray]{ $globalChatPlayTime }[] minutes and can now send messages to global chat.
+    { "" }[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message.
+notification-admin-kick = { $admin }[accent] kicked { $target }[].
+notification-admin-wave-skip = { $admin }[accent] has skipped the wave.
+server-restart-countdown = Restart in { $seconds }
+like-map-success = { "[" }green]You liked this map!
+like-map-changed = { "[" }green]You changed your mind to a Like!
+dislike-map-success = { "[" }orange]You disliked this map.
+dislike-map-changed = { "[" }orange]You changed your mind to a Dislike.
+like-event-success = { "[" }green]You liked this event!
+like-event-changed = { "[" }green]You changed your mind to a Like!
+dislike-event-success = { "[" }orange]You disliked this event.
+dislike-event-changed = { "[" }orange]You changed your mind to a Dislike.
 
 # ==============================================================================
 # Events (Server)
@@ -428,53 +406,50 @@ event-end = event end { $name }
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = [scarlet]⚠ Access denied
-error-ip-changed = [scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
-error-not-enough-params = [scarlet]⚠ Not enough position params
-error-player-not-found = [scarlet]Player not found
-error-player-not-teammate = [scarlet]Target player is not in your team.
-error-player-admin = [scarlet]⚠ Don't try to kick an admin ⚠
-error-already-voted = [scarlet]⚠ You have already voted. Calm down.
-error-playtime-requirement = [scarlet]⚠ You need to play for at least {$time} minutes to use this feature.
-error-globalchat-total-playtime = [scarlet]⚠ In order to send message to global chat you need to play for {$globalChatPlayTime} minutes.
-error-votekick-total-playtime = [scarlet]⚠ In order to start a vote-kick you need to play for {$votekickPlayTime} minutes.
-error-vote-yourself = [scarlet]⚠ You cannot vote on your own vote session.
-error-vote-in-progress = [scarlet]⚠ A vote session is already in progress.
-error-no-voting = [scarlet]⚠ There is no vote session at the moment.
-error-no-map = [scarlet]⚠ Map not set
-error-map-not-event = [scarlet]⚠ Map is not part of the current event.
-error-map-not-found = [scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
-error-maps-empty = [scarlet]⚠ Map list is empty
-error-event-not-found = [scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
-error-page-between = [scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{$totalPages}[]
-error-page-number = [scarlet]'page' must be a number
-error-wrong-number = [scarlet]⚠ Wrong number format
-error-wrong-period-format = [scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({hours})
-error-invalid-id = [scarlet]⚠ Invalid player-id
-error-spectator = [scarlet]⚠ You are a spectator. Run /spectate to return.
-error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 4 characters long
-error-wrong-admin-password = [scarlet]⚠ Incorrect admin password
-error-internal = [scarlet]Internal error
-error-processing-request = [scarlet]An error occurred while processing the request.
-error-team-not-found = [scarlet]⚠ Team not found
-error-no-access = [scarlet]⚠ No Access
-
-error-invalid-syntax = [scarlet]⚠ Invalid command syntax. Usage: [lightgray]/{$syntax}
-error-invalid-sender = [scarlet]⚠ Invalid command sender. This command requires: [lightgray]{$type}
-error-argument-parse-generic = [scarlet]⚠ Invalid argument: {$error}
-
-argument-parse-failure-boolean = [scarlet]⚠ Could not parse boolean from '{$input}'.
-argument-parse-failure-number = [scarlet]⚠ '{$input}' is not a valid number within range [{$min}, {$max}].
-argument-parse-failure-char = [scarlet]⚠ '{$input}' is not a valid character.
-argument-parse-failure-enum = [scarlet]⚠ '{$input}' is not a valid option. Allowed: [lightgray]{$acceptableValues}
-argument-parse-failure-string = [scarlet]⚠ Invalid string format for '{$input}'.
-argument-parse-failure-uuid = [scarlet]⚠ Invalid UUID format: '{$input}'.
-argument-parse-failure-regex = [scarlet]⚠ Input '{$input}' does not match pattern '{$pattern}'.
-argument-parse-failure-flag-unknown = [scarlet]⚠ Unknown flag: '{$flag}'.
-argument-parse-failure-flag-duplicate = [scarlet]⚠ Duplicate flag: '{$flag}'.
-argument-parse-failure-flag-missing-argument = [scarlet]⚠ Missing argument for flag: '{$flag}'.
-argument-parse-failure-flag-no-permission = [scarlet]⚠ You don't have permission to use flag '{$flag}'.
-
+error-access-denied = { "[" }scarlet]⚠ Access denied
+error-ip-changed = { "[" }scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
+error-not-enough-params = { "[" }scarlet]⚠ Not enough position params
+error-player-not-found = { "[" }scarlet]Player not found
+error-player-not-teammate = { "[" }scarlet]Target player is not in your team.
+error-player-admin = { "[" }scarlet]⚠ Don't try to kick an admin ⚠
+error-already-voted = { "[" }scarlet]⚠ You have already voted. Calm down.
+error-playtime-requirement = { "[" }scarlet]⚠ You need to play for at least { $time } minutes to use this feature.
+error-globalchat-total-playtime = { "[" }scarlet]⚠ In order to send message to global chat you need to play for { $globalChatPlayTime } minutes.
+error-votekick-total-playtime = { "[" }scarlet]⚠ In order to start a vote-kick you need to play for { $votekickPlayTime } minutes.
+error-vote-yourself = { "[" }scarlet]⚠ You cannot vote on your own vote session.
+error-vote-in-progress = { "[" }scarlet]⚠ A vote session is already in progress.
+error-no-voting = { "[" }scarlet]⚠ There is no vote session at the moment.
+error-no-map = { "[" }scarlet]⚠ Map not set
+error-map-not-event = { "[" }scarlet]⚠ Map is not part of the current event.
+error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
+error-maps-empty = { "[" }scarlet]⚠ Map list is empty
+error-event-not-found = { "[" }scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
+error-page-between = { "[" }scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[]
+error-page-number = { "[" }scarlet]'page' must be a number
+error-wrong-number = { "[" }scarlet]⚠ Wrong number format
+error-wrong-period-format = { "[" }scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
+error-invalid-id = { "[" }scarlet]⚠ Invalid player-id
+error-spectator = { "[" }scarlet]⚠ You are a spectator. Run /spectate to return.
+error-admin-password-too-short = { "[" }scarlet]⚠ Admin password must be at least 4 characters long
+error-wrong-admin-password = { "[" }scarlet]⚠ Incorrect admin password
+error-internal = { "[" }scarlet]Internal error
+error-processing-request = { "[" }scarlet]An error occurred while processing the request.
+error-team-not-found = { "[" }scarlet]⚠ Team not found
+error-no-access = { "[" }scarlet]⚠ No Access
+error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/{ $syntax }
+error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: [lightgray]{ $type }
+error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: { $error }
+argument-parse-failure-boolean = { "[" }scarlet]⚠ Could not parse boolean from '{ $input }'.
+argument-parse-failure-number = { "[" }scarlet]⚠ '{ $input }' is not a valid number within range [{ $min }, { $max }].
+argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' is not a valid character.
+argument-parse-failure-enum = { "[" }scarlet]⚠ '{ $input }' is not a valid option. Allowed: [lightgray]{ $acceptableValues }
+argument-parse-failure-string = { "[" }scarlet]⚠ Invalid string format for '{ $input }'.
+argument-parse-failure-uuid = { "[" }scarlet]⚠ Invalid UUID format: '{ $input }'.
+argument-parse-failure-regex = { "[" }scarlet]⚠ Input '{ $input }' does not match pattern '{ $pattern }'.
+argument-parse-failure-flag-unknown = { "[" }scarlet]⚠ Unknown flag: '{ $flag }'.
+argument-parse-failure-flag-duplicate = { "[" }scarlet]⚠ Duplicate flag: '{ $flag }'.
+argument-parse-failure-flag-missing-argument = { "[" }scarlet]⚠ Missing argument for flag: '{ $flag }'.
+argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ You don't have permission to use flag '{ $flag }'.
 # ==============================================================================
 # Button Status
 # ==============================================================================
@@ -482,17 +457,14 @@ finished = major
 finished-neutral = { "[" }orange]Finished
 finished-active = { "[" }green]Finished
 finished-inactive = { "[" }red]Finished
-
 major = Major
 major-neutral = { "[" }orange]Major
 major-active = { "[" }green]Major
 major-inactive = { "[" }red]Major
-
 active = Active
 active-neutral = { "[" }orange]Active
 active-active = { "[" }green]Active
 active-inactive = { "[" }red]Active
-
 admin = Admin
 admin-neutral = { "[" }orange]Admin
 admin-active = { "[" }green]Admin
@@ -506,26 +478,20 @@ success = { "[" }green]Successfully
 empty = { "[" }accent]Empty
 never = Never
 save = Save
-
-close = [scarlet]Close
-previous = [accent]« Previous
-next = [accent]Next »
-
+close = { "[" }scarlet]Close
+previous = { "[" }accent]« Previous
+next = { "[" }accent]Next »
 cancel = Cancel
 back = Back
-
 yes = Yes
 no = No
-
 test = Test
 no-description = No description
-
 discord = Discord
 github = Github
 donatello = Donatello
 weblate = Weblate
 discord-red-vs-blue = RedVSBlue
-
 auto = Auto
 on = On
 off = Off
