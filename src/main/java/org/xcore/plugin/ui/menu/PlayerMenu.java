@@ -141,12 +141,12 @@ public class PlayerMenu extends Menu {
                     playerDataRepository.save(targetData);
                     settings(uuid, targetData);
                 })
-                .addLocal(local.t("settings-language-label", args("lang", currentLangName)), () -> {
+                .add(local.t("settings-language-label", args("lang", currentLangName)), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, false);
                     playerDataRepository.save(targetData);
                 }).end()
-                .addLocal(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
+                .add(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, true);
                     playerDataRepository.save(targetData);
