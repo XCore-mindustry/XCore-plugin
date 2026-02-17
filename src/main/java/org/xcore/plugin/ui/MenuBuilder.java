@@ -76,8 +76,37 @@ public class MenuBuilder {
         return this;
     }
 
+    public MenuBuilder addLocalRow(String buttonText, Runnable action) {
+        rows.add(List.of(session.add(localization.t(buttonText), action)));
+        return this;
+    }
+
+    public MenuBuilder addLocalRow(String btn1, Runnable action1, String btn2, Runnable action2) {
+        rows.add(List.of(session.add(localization.t(btn1), action1), session.add(localization.t(btn2), action2)));
+        return this;
+    }
+
+    public MenuBuilder addLocalRow(List<MenuBuilder.ButtonDef> buttons) {
+        String[] row = buttons.stream()
+                .map(b -> session.add(localization.t(b.text), b.action))
+                .toArray(String[]::new);
+        rows.add(List.of(row));
+        return this;
+    }
+
     public MenuBuilder add(String buttonText, Runnable action) {
         row.add(session.add(buttonText, action));
+        return this;
+    }
+
+
+    public MenuBuilder addLocal(String buttonText, Runnable action) {
+        row.add(session.add(localization.t(buttonText), action));
+        return this;
+    }
+
+    public MenuBuilder addLocal(String buttonText, Runnable action, Map<String, Object> args) {
+        row.add(session.add(localization.t(buttonText, args), action));
         return this;
     }
 
@@ -155,6 +184,20 @@ public class MenuBuilder {
     public MenuBuilder ifAdd(boolean bool, String buttonText, Runnable action) {
         if (bool) {
             row.add(session.add(buttonText, action));
+        }
+        return this;
+    }
+
+    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action) {
+        if (bool) {
+            row.add(session.add(localization.t(buttonText), action));
+        }
+        return this;
+    }
+
+    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action, Map<String, Object> args) {
+        if (bool) {
+            row.add(session.add(localization.t(buttonText, args), action));
         }
         return this;
     }

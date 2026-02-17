@@ -78,15 +78,15 @@ public class MapMenu extends Menu {
         EventData activeEvent = eventDataRepository.findActive().orElse(null);
         if (!config.isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(m.id)) {
             builder.start()
-                .add(session.locale().t("map-rtv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, false))
+                .addLocal(session.locale().t("map-rtv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, false))
                 .ifAdd(session.player.admin, session.locale().t("map-artv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, true))
                 .end();
         }
 
-        builder.addRow("map-maps", () -> { session.clearHistory(); maps(uuid, 1); });
+        builder.addLocalRow("map-maps", () -> { session.clearHistory(); maps(uuid, 1); });
 
         if (config.isEvent()) {
-            builder.addRow("event-menu-create-start-map", () -> {
+            builder.addLocalRow("event-menu-create-start-map", () -> {
                 session.pushHistory(() -> map(uuid, m));
                 eventMenu.get().createStart(uuid, m);
             });
@@ -113,8 +113,8 @@ public class MapMenu extends Menu {
                 .content("commands-maps-content", args("page", validPage, "total", pagination.totalPages()))
 
                 .start()
-                    .ifAdd(validPage > 1, "previous", () -> maps(uuid, validPage - 1))
-                    .ifAdd(validPage < pagination.totalPages(), "next", () -> maps(uuid, validPage + 1))
+                    .ifAddLocal(validPage > 1, "previous", () -> maps(uuid, validPage - 1))
+                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> maps(uuid, validPage + 1))
                 .end()
 
                 .addForEach(SeqStream.of(availableMaps).gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage)).flatMap(List::stream)::iterator,
@@ -148,14 +148,14 @@ public class MapMenu extends Menu {
                             "author", nextAuthor,
                             "seconds", 10
                     ))
-                    .add(likeButtonText, () -> mapService.handleReputation(player, true, current))
-                    .add(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
+                    .addLocal(likeButtonText, () -> mapService.handleReputation(player, true, current))
+                    .addLocal(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
                     .end()
-                    .add("current-map", () -> {
+                    .addLocal("current-map", () -> {
                         session.clearHistory();
                         map(player.uuid(), current);
                     })
-                    .add("next-map", () -> {
+                    .addLocal("next-map", () -> {
                         session.clearHistory();
                         map(player.uuid(), next);
                     })

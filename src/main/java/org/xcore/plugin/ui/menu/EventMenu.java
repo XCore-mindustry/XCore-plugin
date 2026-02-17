@@ -62,18 +62,18 @@ public class EventMenu extends Menu {
                 .title("event-menu-main-title")
                 .content("event-menu-main-content")
                 .start()
-                    .add(session.locale().t("event-menu-create-start"), () -> {
+                    .addLocal(session.locale().t("event-menu-create-start"), () -> {
                         session.pushHistory(() -> main(uuid));
                         createStart(uuid, null);
                     })
-                    .add(session.locale().t("event-menu-events"), () -> {
+                    .addLocal(session.locale().t("event-menu-events"), () -> {
                         session.pushHistory(() -> main(uuid));
                         events(uuid, 1);
                     })
                 .end();
 
         if (active != null) {
-            builder.addRow("event-menu-this-event", () -> {
+            builder.addLocalRow("event-menu-this-event", () -> {
                 session.pushHistory(() -> main(uuid));
                 event(uuid, active);
             });
@@ -82,10 +82,10 @@ public class EventMenu extends Menu {
         if (session.player.admin) {
             builder.start();
             if (voteService.getCurrentSession() instanceof VoteEvent) {
-                builder.add(session.locale().t("event-menu-vote-stop"), voteService::endVote);
+                builder.addLocal(session.locale().t("event-menu-vote-stop"), voteService::endVote);
             }
             if (active != null && active.isActive) {
-                builder.add(session.locale().t("event-menu-stop"), eventDataRepository::finishActiveEvent);
+                builder.addLocal(session.locale().t("event-menu-stop"), eventDataRepository::finishActiveEvent);
             }
             builder.end();
         }
@@ -133,42 +133,42 @@ public class EventMenu extends Menu {
                         "plannedEndTime",  formatTime(draft.plannedEndTime, session)
                 ))
                 .start()
-                    .add(session.locale().t("event-menu-edit-name"), () -> {
+                    .addLocal(session.locale().t("event-menu-edit-name"), () -> {
                         session.setTextHandler(t -> { draft.name = t; edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-name-title"), "", 24, draft.name, false);
                     })
-                    .add(session.locale().t("event-menu-edit-description"), () -> {
+                    .addLocal(session.locale().t("event-menu-edit-description"), () -> {
                         session.setTextHandler(t -> { draft.description = t; edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-description-title"), "", 1000, draft.description, false);
                     })
                 .end()
                 .start()
-                    .add(session.locale().t("event-menu-edit-map"), () -> {
+                    .addLocal(session.locale().t("event-menu-edit-map"), () -> {
                         session.pushHistory(() -> edit(uuid));
                         mapSelection(uuid, 1);
                     })
-                    .add(draft.isTemporary ? session.locale().t("event-menu-edit-temporary-active") : session.locale().t("event-menu-edit-temporary-inactive"), () -> {
+                    .addLocal(draft.isTemporary ? session.locale().t("event-menu-edit-temporary-active") : session.locale().t("event-menu-edit-temporary-inactive"), () -> {
                         draft.isTemporary = !draft.isTemporary; edit(uuid);
                     })
                 .end()
                 .start()
-                    .add(session.locale().t("event-menu-edit-planned-start"), () -> {
+                    .addLocal(session.locale().t("event-menu-edit-planned-start"), () -> {
                         session.setTextHandler(t -> { draft.plannedStartTime = parseTime(t); edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-planned-start-title"), "", 64, "", false);
                     })
-                    .add(session.locale().t("event-menu-edit-planned-end"), () -> {
+                    .addLocal(session.locale().t("event-menu-edit-planned-end"), () -> {
                         session.setTextHandler(t -> { draft.plannedEndTime = parseTime(t); edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-planned-end-title"), "", 10, "", false);
                     })
                 .end()
                 .start()
-                    .add("[green]" + session.locale().t("save"), () -> {
+                    .addLocal("[green]" + session.locale().t("save"), () -> {
                         if (draft.map == null) { session.locale().send("error-no-map"); return; }
                         eventDataRepository.save(draft);
                         session.clearDraft(EventData.class);
                         events(uuid, 1);
                     })
-                    .add("[red]" + session.locale().t("cancel"), () -> {
+                    .addLocal("[red]" + session.locale().t("cancel"), () -> {
                         session.clearDraft(EventData.class);
                         main(uuid);
                     })
@@ -214,24 +214,24 @@ public class EventMenu extends Menu {
 
         if (!voteService.isVoting()) {
             builder.start()
-                .add(session.locale().t("event-vote"), () -> eventService.startVoteSession(session.player, event, false))
+                .addLocal(session.locale().t("event-vote"), () -> eventService.startVoteSession(session.player, event, false))
                 .ifAdd(session.player.admin, session.locale().t("event-avote"), () -> eventService.startVoteSession(session.player, event, true))
                 .end();
         }
 
         boolean isOwner = session.data.id != null && session.data.id.equals(event.author);
         if (!event.isFinished && !event.isActive && (!event.isMajor || session.player.admin) && (isOwner || session.player.admin)) {
-            builder.addRow("event-menu-edit", () -> {
+            builder.addLocalRow("event-menu-edit", () -> {
                 session.pushHistory(() -> event(uuid, event));
                 session.setDraft(event);
                 edit(uuid);
             });
         }
 
-        builder.addRow("event-menu-events", () -> { session.clearHistory(); events(uuid, 1); });
+        builder.addLocalRow("event-menu-events", () -> { session.clearHistory(); events(uuid, 1); });
 
         if (mapData != null) {
-            builder.addRow("event-menu-event-map", () -> {
+            builder.addLocalRow("event-menu-event-map", () -> {
                 session.pushHistory(() -> event(uuid, event));
                 mapMenu.get().map(uuid, mapData);
             });
@@ -261,14 +261,14 @@ public class EventMenu extends Menu {
                     .addStatusButton("active", () -> events(uuid, 1))
                 .end()
                 .start()
-                    .ifAdd(validPage > 1, "previous", () -> events(uuid, validPage - 1))
-                    .ifAdd(validPage < pagination.totalPages(), "next", () -> events(uuid, validPage + 1))
+                    .ifAddLocal(validPage > 1, "previous", () -> events(uuid, validPage - 1))
+                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> events(uuid, validPage + 1))
                 .end()
                 .addForEach(events, (b, e) -> b.addRow(e.isActive ? session.locale().t("event-menu-events-selected", args("name", e.name)) : e.name, () -> {
                     session.pushHistory(() -> events(uuid, validPage));
                     event(uuid, e);
                 }))
-                .addRow("event-menu-main", () -> { session.clearHistory(); main(uuid); })
+                .addLocalRow("event-menu-main", () -> { session.clearHistory(); main(uuid); })
                 .addNavigationRow()
                 .show();
     }
@@ -283,8 +283,8 @@ public class EventMenu extends Menu {
                 .title("event-menu-maps-title")
                 .content("event-menu-maps-content", args("page", validPage, "total", pagination.totalPages()))
                 .start()
-                    .ifAdd(validPage > 1, "previous", () -> mapSelection(uuid, validPage - 1))
-                    .ifAdd(validPage < pagination.totalPages(), "next", () -> mapSelection(uuid, validPage + 1))
+                    .ifAddLocal(validPage > 1, "previous", () -> mapSelection(uuid, validPage - 1))
+                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> mapSelection(uuid, validPage + 1))
                 .end()
                 .addForEach(SeqStream.of(maps).gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage)).flatMap(List::stream)::iterator, (b, m) -> b.addRow(m.name(), () -> {
                     MapData data = mapDataRepository.findOrCreate(m.plainName(), m.file.name(), m.author(), Vars.state.rules.mode().name());

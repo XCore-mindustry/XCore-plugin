@@ -58,12 +58,12 @@ public class PlayerMenu extends Menu {
                         "language", targetData.language,
                         "translatorLanguage", targetData.translatorLanguage
                 ))
-                .ifAdd((isOwner || session.player.admin), "player-menu-settings", () -> {
+                .ifAddLocal((isOwner || session.player.admin), "player-menu-settings", () -> {
                     session.pushHistory(() -> player(uuid, targetData));
                     settings(uuid, targetData);
                 })
                 .end()
-                .addRow("player-menu-players", () -> players(uuid, 1))
+                .addLocalRow("player-menu-players", () -> players(uuid, 1))
                 .addNavigationRow()
                 .show();
     }
@@ -90,8 +90,8 @@ public class PlayerMenu extends Menu {
                 .addStatusButton("admin", () -> players(uuid, 1))
 
                 .start()
-                    .ifAdd(validPage > 1, "previous", () -> players(uuid, validPage - 1))
-                    .ifAdd(validPage < pagination.totalPages(), "next", () -> players(uuid, validPage + 1))
+                    .ifAddLocal(validPage > 1, "previous", () -> players(uuid, validPage - 1))
+                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> players(uuid, validPage + 1))
                 .end()
 
                 .addForEach(players, (b, pData) -> b.addRow(pData.nickname, () -> {
@@ -138,12 +138,12 @@ public class PlayerMenu extends Menu {
                     playerDataRepository.save(targetData);
                     settings(uuid, targetData);
                 })
-                .add(local.t("settings-language-label", args("lang", currentLangName)), () -> {
+                .addLocal(local.t("settings-language-label", args("lang", currentLangName)), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, false);
                     playerDataRepository.save(targetData);
                 }).end()
-                .add(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
+                .addLocal(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, true);
                     playerDataRepository.save(targetData);
@@ -160,7 +160,7 @@ public class PlayerMenu extends Menu {
         var builder = session.builder()
                 .title(isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title")
                 .start()
-                    .add(isTranslator ? "default" : "auto", () -> {
+                    .addLocal(isTranslator ? "default" : "auto", () -> {
                         if (isTranslator) targetData.translatorLanguage = "off";
                         else targetData.language = "auto";
                         playerDataRepository.save(targetData);

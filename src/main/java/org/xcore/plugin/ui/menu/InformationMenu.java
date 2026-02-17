@@ -39,14 +39,14 @@ public class InformationMenu extends Menu {
 
         Runnable lambda = () -> {session.pushHistory(() -> {main(uuid); }); };
         session.builder().title("menu-main-title").content("menu-main-content")
-                .add("commands-info", () -> {lambda.run(); information(uuid); })
-                .add("help-menu", () -> {lambda.run(); help.get().help(uuid, 1); })
+                .addLocal("commands-info", () -> {lambda.run(); information(uuid); })
+                .addLocal("help-menu", () -> {lambda.run(); help.get().help(uuid, 1); })
                 .end()
-                .add("map-maps", () -> {lambda.run(); map.get().maps(uuid, 1); })
-                .add("player-menu-players", () -> {lambda.run(); player.get().players(uuid, 1); })
+                .addLocal("map-maps", () -> {lambda.run(); map.get().maps(uuid, 1); })
+                .addLocal("player-menu-players", () -> {lambda.run(); player.get().players(uuid, 1); })
                 .end()
-                .ifAdd(config.isEvent(),"event-menu-main", () -> {lambda.run(); event.get().main(uuid); })
-                .ifAdd(config.isEvent(),"event-events", () -> {lambda.run(); event.get().events(uuid, 1); })
+                .ifAddLocal(config.isEvent(),"event-menu-main", () -> {lambda.run(); event.get().main(uuid); })
+                .ifAddLocal(config.isEvent(),"event-events", () -> {lambda.run(); event.get().events(uuid, 1); })
                 .end()
                 .addNavigationRow()
                 .show();
@@ -57,13 +57,13 @@ public class InformationMenu extends Menu {
 
         session.builder().title("commands-info-title", args("server-name", config.server))
                 .content("commands-info-text", args("version", buildInfo.getVersion()))
-                .add("discord", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
-                .add("github", () -> Call.openURI(session.player.con, globalConfig.githubUrl))
+                .addLocal("discord", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
+                .addLocal("github", () -> Call.openURI(session.player.con, globalConfig.githubUrl))
                 .end()
-                .add("donatello", () -> Call.openURI(session.player.con, globalConfig.donatelloUrl))
-                .add("weblate", () -> Call.openURI(session.player.con, globalConfig.weblateUrl))
+                .addLocal("donatello", () -> Call.openURI(session.player.con, globalConfig.donatelloUrl))
+                .addLocal("weblate", () -> Call.openURI(session.player.con, globalConfig.weblateUrl))
                 .end()
-                .addRow("discord-red-vs-blue", () -> Call.openURI(session.player.con, globalConfig.discordRedVSBlueUrl))
+                .addLocalRow("discord-red-vs-blue", () -> Call.openURI(session.player.con, globalConfig.discordRedVSBlueUrl))
                 .addNavigationRow()
                 .show();
     }
