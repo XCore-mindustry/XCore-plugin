@@ -79,7 +79,6 @@ public class EventMenu extends Menu {
             });
         }
 
-        // Адмінські кнопки стопу
         if (session.player.admin) {
             builder.start();
             if (voteService.getCurrentSession() instanceof VoteEvent) {
@@ -130,7 +129,8 @@ public class EventMenu extends Menu {
                         "mapName", (mapData == null) ? "" : mapData.name,
                         "isMajor", draft.isMajor ? yes : no,
                         "isTemporary", draft.isTemporary ? yes : no,
-                        "plannedStartTime", draft.plannedStartTime, "plannedEndTime", draft.plannedEndTime
+                        "plannedStartTime", formatTime(draft.plannedStartTime, session),
+                        "plannedEndTime",  formatTime(draft.plannedEndTime, session)
                 ))
                 .start()
                     .add(session.locale().t("event-menu-edit-name"), () -> {
@@ -199,11 +199,12 @@ public class EventMenu extends Menu {
                         "mapName", (mapData == null) ? "" : mapData.name,
                         "isMajor", event.isMajor ? yes : no, "isConducted", event.isFinished ? yes : no,
                         "isActive", event.isActive ? yes : no, "isTemporary", event.isTemporary ? yes : no,
-                        "createdEventTime", event.createdModelTime, "plannedStartTime", event.plannedStartTime,
-                        "plannedEndTime", event.plannedEndTime, "like", event.like, "dislike", event.dislike
+                        "createdEventTime", formatTime(event.createdModelTime, session),
+                        "plannedStartTime", formatTime(event.plannedStartTime, session),
+                        "plannedEndTime", formatTime(event.plannedEndTime, session),
+                        "like", event.like, "dislike", event.dislike
                 ));
 
-        // Лайки
         Boolean currentVote = session.data.eventVotes.get(event.id.toString());
         String likeTxt = Boolean.TRUE.equals(currentVote) ? session.locale().t("map-vote-like-selected") : session.locale().t("map-vote-like");
         String dislikeTxt = Boolean.FALSE.equals(currentVote) ? session.locale().t("map-vote-dislike-selected") : session.locale().t("map-vote-dislike");

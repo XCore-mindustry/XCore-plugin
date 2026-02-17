@@ -424,6 +424,7 @@ event-avote = { "[" }red]Instant Change
 event-menu-vote-stop = Stop voting
 event-menu-stop = Stop event
 event-menu-this-event = { "[" }orange]Current Event
+event-end = event end { $name }
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -456,6 +457,7 @@ error-wrong-admin-password = [scarlet]⚠ Incorrect admin password
 error-internal = [scarlet]Internal error
 error-processing-request = [scarlet]An error occurred while processing the request.
 error-team-not-found = [scarlet]⚠ Team not found
+error-no-access = [scarlet]⚠ No Access
 
 error-invalid-syntax = [scarlet]⚠ Invalid command syntax. Usage: [lightgray]/{$syntax}
 error-invalid-sender = [scarlet]⚠ Invalid command sender. This command requires: [lightgray]{$type}

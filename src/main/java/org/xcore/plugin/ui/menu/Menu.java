@@ -42,4 +42,22 @@ public class Menu {
     public String getUuid(Session session) {
         return session.data.uuid;
     }
+
+    public String formatTime(long millis, Session session) {
+        if (millis <= 0) return session.locale().t("never");
+
+        var df = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
+        return df.format(new java.util.Date(millis));
+    }
+
+    public String timeLeft(long endMillis, Session session) {
+        long remaining = endMillis - System.currentTimeMillis();
+        if (remaining <= 0) return session.locale().t("finished");
+
+        long mins = (remaining / 60000) % 60;
+        long hours = (remaining / 3600000);
+
+        if (hours > 0) return hours + "h " + mins + "m";
+        return mins + "m";
+    }
 }

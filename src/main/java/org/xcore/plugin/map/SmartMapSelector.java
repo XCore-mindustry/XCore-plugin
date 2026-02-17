@@ -16,6 +16,7 @@ import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.service.EventService;
 
 @Singleton
 public class SmartMapSelector implements MapProvider {
@@ -28,16 +29,21 @@ public class SmartMapSelector implements MapProvider {
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
 
+    private final EventService eventService;
+
     @Inject
-    public SmartMapSelector(Config config, EventDataRepository eventDataRepository, MapDataRepository mapDataRepository) {
+    public SmartMapSelector(Config config, EventDataRepository eventDataRepository, MapDataRepository mapDataRepository, EventService eventService) {
         this.config = config;
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
+        this.eventService = eventService;
     }
 
     @Override
     public Map next(Gamemode mode, Map previous) {
         if (config.isEvent()) {
+            eventService.checkTimedEvents();
+
             var activeEventOpt = eventDataRepository.findActive();
             if (activeEventOpt.isPresent()) {
                 Map map = findMindustryMap(activeEventOpt.get().map);

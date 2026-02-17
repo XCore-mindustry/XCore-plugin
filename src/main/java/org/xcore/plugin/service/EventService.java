@@ -83,4 +83,15 @@ public class EventService {
         session.save();
         eventDataRepository.save(event);
     }
+
+    public void checkTimedEvents() {
+    long now = System.currentTimeMillis();
+        eventDataRepository.findActive().ifPresent(event -> {
+            if (event.isTemporary && event.plannedEndTime > 0 && now > event.plannedEndTime) {
+                eventDataRepository.finishActiveEvent();
+                arc.util.Log.info("[XCore] Event '@' automatically finished by timer.", event.name);
+                sessionService.broadcast("event-end", args("name", event.name));
+            }
+        });
+    }
 }
