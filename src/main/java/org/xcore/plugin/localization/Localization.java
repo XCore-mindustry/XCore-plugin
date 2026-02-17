@@ -21,7 +21,7 @@ public class Localization {
         if (session.data.language == null || session.data.language.equals("auto")) {
             return bundle.locale(session.player);
         }
-        return bundle.locale(session.data.language);
+        return session.data.language.equals("uk") ? bundle.locale("uk_UA") : bundle.locale(session.data.language);
     }
 
     public String t(String key, Map<String, Object> args) {

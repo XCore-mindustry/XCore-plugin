@@ -16,6 +16,7 @@ import org.xcore.plugin.session.SessionService;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -41,7 +42,7 @@ public class PlayerMenu extends Menu {
         }
 
         Localization local = session.locale();
-        boolean isOwner = session.data.id != null && session.data.id.equals(targetData.id);
+        boolean isOwner = session.data.uuid.equals(targetData.uuid);
 
         session.builder()
                 .title("player-menu-player-title")
@@ -61,6 +62,7 @@ public class PlayerMenu extends Menu {
                     session.pushHistory(() -> player(uuid, targetData));
                     settings(uuid, targetData);
                 })
+                .end()
                 .addRow("player-menu-players", () -> players(uuid, 1))
                 .addNavigationRow()
                 .show();
@@ -109,18 +111,18 @@ public class PlayerMenu extends Menu {
             return;
         }
 
-        boolean isOwner = session.data.id != null && session.data.id.equals(targetData.id);
+        boolean isOwner = session.data.uuid.equals(targetData.uuid);
         if (!(isOwner || session.player.admin)) {
             session.locale().send("error-no-access");
         }
 
         Localization local = session.locale();
         String leaderboardText = targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive";
-        String currentLangName = targetData.language.equals("auto")
+        String currentLangName = Objects.equals(targetData.language, "auto")
             ? local.t("auto")
             : bundle.locale(targetData.language).getDisplayLanguage(bundle.locale(targetData.language));
 
-        String currentTranslatorLangName = targetData.translatorLanguage.equals("off")
+        String currentTranslatorLangName = Objects.equals(targetData.translatorLanguage, "auto")
             ? local.t("off")
             : bundle.locale(targetData.translatorLanguage).getDisplayLanguage(bundle.locale(targetData.translatorLanguage));
 
@@ -140,12 +142,12 @@ public class PlayerMenu extends Menu {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, false);
                     playerDataRepository.save(targetData);
-                })
+                }).end()
                 .add(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, true);
                     playerDataRepository.save(targetData);
-                })
+                }).end()
                 .addNavigationRow()
                 .show();
     }

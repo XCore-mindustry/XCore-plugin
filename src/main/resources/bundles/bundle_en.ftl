@@ -525,3 +525,7 @@ github = Github
 donatello = Donatello
 weblate = Weblate
 discord-red-vs-blue = RedVSBlue
+
+auto = Auto
+on = On
+off = Off
