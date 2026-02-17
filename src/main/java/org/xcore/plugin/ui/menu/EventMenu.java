@@ -228,7 +228,7 @@ public class EventMenu extends Menu {
             });
         }
 
-        builder.addLocalRow("event-menu-events", () -> { session.clearHistory(); events(uuid, 1); });
+        builder.addLocalRow("event-menu-events", () -> { session.pushHistory(() -> event(uuid, event)); events(uuid, 1); });
 
         if (mapData != null) {
             builder.addLocalRow("event-menu-event-map", () -> {

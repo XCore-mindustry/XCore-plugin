@@ -63,7 +63,10 @@ public class PlayerMenu extends Menu {
                     settings(uuid, targetData);
                 })
                 .end()
-                .addLocalRow("player-menu-players", () -> players(uuid, 1))
+                .addLocalRow("player-menu-players", () -> {
+                    session.pushHistory(() -> player(uuid, targetData));
+                    players(uuid, 1);
+                })
                 .addNavigationRow()
                 .show();
     }

@@ -83,7 +83,7 @@ public class MapMenu extends Menu {
                 .end();
         }
 
-        builder.addLocalRow("map-maps", () -> { session.clearHistory(); maps(uuid, 1); });
+        builder.addLocalRow("map-maps", () -> { session.pushHistory(() -> map(uuid, m)); maps(uuid, 1); });
 
         if (config.isEvent()) {
             builder.addLocalRow("event-menu-create-start-map", () -> {
