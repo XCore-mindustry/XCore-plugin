@@ -1,16 +1,21 @@
 package org.xcore.plugin.ui.menu;
 
+import arc.struct.Seq;
+import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.List;
+import java.util.Locale;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -18,11 +23,13 @@ import static com.ospx.flubundle.Bundle.args;
 public class PlayerMenu extends Menu {
 
     private final PlayerDataRepository playerDataRepository;
+    private final BundleService bundle;
 
     @Inject
-    public PlayerMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, PlayerDataRepository playerDataRepository) {
+    public PlayerMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, PlayerDataRepository playerDataRepository, BundleService bundle) {
         super(config, globalConfig, sessionService);
         this.playerDataRepository = playerDataRepository;
+        this.bundle = bundle;
     }
 
     public void player(String uuid, PlayerData targetData) {
@@ -33,6 +40,9 @@ public class PlayerMenu extends Menu {
             return;
         }
 
+        Localization local = session.locale();
+        boolean isOwner = session.data.id != null && session.data.id.equals(targetData.id);
+
         session.builder()
                 .title("player-menu-player-title")
                 .content("player-menu-player-content", args(
@@ -41,12 +51,17 @@ public class PlayerMenu extends Menu {
                         "totalPlayTime", targetData.totalPlayTime,
                         "hexedRankTag", targetData.hexedRank().tag,
                         "hexedRankName", targetData.hexedRank().name(),
-                        "pvpRating", targetData.pvpRating
+                        "pvpRating", targetData.pvpRating,
+                        "admin", targetData.admin ? local.t("yes") : local.t("no"),
+                        "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
+                        "language", targetData.language,
+                        "translatorLanguage", targetData.translatorLanguage
                 ))
-                .addRow("player-menu-players", () -> {
-                    session.clearHistory();
-                    players(uuid, 1);
+                .ifAdd((isOwner || session.player.admin), "player-menu-settings", () -> {
+                    session.pushHistory(() -> player(uuid, targetData));
+                    settings(uuid, targetData);
                 })
+                .addRow("player-menu-players", () -> players(uuid, 1))
                 .addNavigationRow()
                 .show();
     }
@@ -84,5 +99,85 @@ public class PlayerMenu extends Menu {
 
                 .addNavigationRow()
                 .show();
+    }
+
+    public void settings(String uuid, PlayerData targetData) {
+        Session session = sessionService.get(uuid).clear();
+
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return;
+        }
+
+        boolean isOwner = session.data.id != null && session.data.id.equals(targetData.id);
+        if (!(isOwner || session.player.admin)) {
+            session.locale().send("error-no-access");
+        }
+
+        Localization local = session.locale();
+        String leaderboardText = targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive";
+        String currentLangName = targetData.language.equals("auto")
+            ? local.t("auto")
+            : bundle.locale(targetData.language).getDisplayLanguage(bundle.locale(targetData.language));
+
+        String currentTranslatorLangName = targetData.translatorLanguage.equals("off")
+            ? local.t("off")
+            : bundle.locale(targetData.translatorLanguage).getDisplayLanguage(bundle.locale(targetData.translatorLanguage));
+
+
+        session.builder().title("player-menu-settings-title")
+                .content("player-menu-settings-content", args(
+                        "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
+                        "language", targetData.language,
+                        "translatorLanguage", targetData.translatorLanguage
+                ))
+                .addRow(leaderboardText, () -> {
+                    targetData.leaderboard = !targetData.leaderboard;
+                    playerDataRepository.save(targetData);
+                    settings(uuid, targetData);
+                })
+                .add(local.t("settings-language-label", args("lang", currentLangName)), () -> {
+                    session.pushHistory(() -> settings(uuid, targetData));
+                    languageSelectionMenu(uuid, targetData, false);
+                    playerDataRepository.save(targetData);
+                })
+                .add(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
+                    session.pushHistory(() -> settings(uuid, targetData));
+                    languageSelectionMenu(uuid, targetData, true);
+                    playerDataRepository.save(targetData);
+                })
+                .addNavigationRow()
+                .show();
+    }
+
+    public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
+        Session session = sessionService.get(uuid).clear();
+
+        Seq<Locale> locales = bundle.getAvailableLocales();
+
+        var builder = session.builder()
+                .title(isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title")
+                .start()
+                    .add(isTranslator ? "default" : "auto", () -> {
+                        if (isTranslator) targetData.translatorLanguage = "off";
+                        else targetData.language = "auto";
+                        playerDataRepository.save(targetData);
+                        session.popHistory().run();
+                    })
+                .end();
+
+        builder.addForEach(locales, (b, loc) -> {
+            String code = loc.getLanguage();
+            String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
+
+            b.addRow(langName, () -> {
+                if (isTranslator) targetData.translatorLanguage = code;
+                else targetData.language = code;
+                playerDataRepository.save(targetData);
+                session.popHistory().run();
+            });
+        });
+
+        builder.addNavigationRow().show();
     }
 }

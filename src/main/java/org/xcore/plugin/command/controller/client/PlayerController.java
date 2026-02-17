@@ -44,6 +44,15 @@ public class PlayerController implements CloudClientController {
         menu.player(menu.getUuid(sender), data);
     }
 
+    @Command("settings [id]")
+    public void settings(XCoreSender sender, @Argument("id") @Default("-1") int id) {
+        PlayerData data = id == -1
+                ? sessionService.get(sender.player().uuid()).data
+                : sessionService.getOrLoadFromDb(id);
+
+        menu.settings(menu.getUuid(sender), data);
+    }
+
     @Command("lb")
     public void leaderboard(XCoreSender sender) {
         var session = sessionService.get(sender.player().uuid());

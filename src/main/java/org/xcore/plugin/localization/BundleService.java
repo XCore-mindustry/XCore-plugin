@@ -1,5 +1,6 @@
 package org.xcore.plugin.localization;
 
+import arc.struct.Seq;
 import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
@@ -47,5 +48,9 @@ public class BundleService {
 
     public Locale getDefaultLocale() {
         return bundle.defaultLocale;
+    }
+
+    public Seq<Locale> getAvailableLocales() {
+        return bundle.getAvailableLocales();
     }
 }

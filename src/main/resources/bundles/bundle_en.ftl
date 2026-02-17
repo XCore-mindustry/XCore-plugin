@@ -277,6 +277,12 @@ player-menu-players = Players list
 player-menu-players-title = { "[" }orange]{ -xcore } — Players List
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
 player-menu-players-empty = No players found
+player-menu-settings = Settings
+player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
+player-menu-settings-content = { $leaderboard }, { $language }, { $translatorLanguage }
+player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
+player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
+settings-language-label = { $lang }
 commands-lb-description = Enable/disable leaderboard
 commands-lb-success =
     { $leaderboardEnabled ->
