@@ -2,6 +2,7 @@ package com.ospx.flubundle;
 
 import arc.files.Fi;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.Log;
 
 import fluent.bundle.FluentBundle;
