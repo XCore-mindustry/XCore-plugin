@@ -1,11 +1,17 @@
 package org.xcore.plugin.database.migration;
 
 import arc.util.Log;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.UpdateOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
+import org.xcore.plugin.config.Config; // Твій звичайний конфіг з назвою сервера
 import org.xcore.plugin.config.GlobalConfig;
 
 import java.util.ArrayList;
@@ -16,72 +22,74 @@ import java.util.List;
 public class MigrationService {
     private final MongoDatabase database;
     private final GlobalConfig globalConfig;
+    private final Config config;
     private final List<Migration> migrations = new ArrayList<>();
 
     @Inject
-    public MigrationService(MongoDatabase database, GlobalConfig globalConfig) {
+    public MigrationService(MongoDatabase database, GlobalConfig globalConfig, Config config) {
         this.database = database;
         this.globalConfig = globalConfig;
+        this.config = config;
 
         migrations.add(new V1__InitModernDatabase());
-
         migrations.sort(Comparator.comparingInt(Migration::getVersion));
     }
 
     public boolean run() {
         if (globalConfig.isDataBaseReadOnly) {
-            Log.info("[Migrations] Database is in Read-Only mode. Skipping migration check.");
+            Log.info("[Migrations] Database is in Read-Only mode. Skipping.");
             return true;
         }
 
         var settings = database.getCollection("settings");
-        var doc = settings.find(new Document("_id", "db_version")).first();
+
+        var doc = settings.find(Filters.eq("_id", "db_version")).first();
         int dbVersion = (doc != null) ? doc.getInteger("version", 0) : 0;
+        int targetVersion = migrations.stream().mapToInt(Migration::getVersion).max().orElse(0);
 
-        int targetVersion = migrations.stream()
-                .mapToInt(Migration::getVersion)
-                .max()
-                .orElse(0);
-
-
-        if (dbVersion == targetVersion) {
-            Log.info("[Migrations] Database version matches code (v@).", dbVersion);
+        if (dbVersion >= targetVersion) {
+            if (dbVersion > targetVersion) {
+                Log.err("[Migrations] Database version (v@) is newer than code (v@)!", dbVersion, targetVersion);
+                return false;
+            }
+            Log.info("[Migrations] Database is up to date (v@).", dbVersion);
             return true;
         }
 
-        if (dbVersion > targetVersion) {
-            Log.err("[Migrations] CRITICAL: Database version (v@) is newer than supported by this plugin (v@)!",
-                    dbVersion, targetVersion);
-            Log.err("[Migrations] Please update the plugin or check your database.");
-            return false;
-        }
-
-        Log.warn("[Migrations] Database version (v@) is older than code (v@).", dbVersion, targetVersion);
-
         if (!globalConfig.isDataBaseMigration) {
-            Log.err("[Migrations] Migration is required but 'isDataBaseMigration' is set to false!");
-
-            Log.warn("[Migrations] Switching to EMERGENCY Read-Only mode to prevent data corruption.");
+            Log.warn("[Migrations] Update needed (v@ -> v@) but migrations are disabled.", dbVersion, targetVersion);
             globalConfig.isDataBaseReadOnly = true;
             return true;
         }
 
-        Log.info("[Migrations] Starting migration process...");
+        if (tryLock(settings)) {
+            try {
+                Log.info("[Migrations] Lock acquired. Starting migrations...");
+                return executeMigrations(settings, dbVersion);
+            } finally {
+                releaseLock(settings);
+            }
+        } else {
+            Log.warn("[Migrations] Another server (@) is currently performing migrations.", getLockOwner(settings));
+            Log.warn("[Migrations] This server (@) will enter Read-Only mode until restart.", config.server);
+            globalConfig.isDataBaseReadOnly = true;
+            return true;
+        }
+    }
 
+    private boolean executeMigrations(MongoCollection<Document> settings, int currentVersion) {
+        int dbVersion = currentVersion;
         for (Migration m : migrations) {
             if (m.getVersion() > dbVersion) {
                 Log.info("[Migrations] Applying v@: @...", m.getVersion(), m.getDescription());
-
                 try {
                     m.up(database);
-
                     dbVersion = m.getVersion();
                     settings.updateOne(
-                        new Document("_id", "db_version"),
-                        new Document("$set", new Document("version", dbVersion)),
+                        Filters.eq("_id", "db_version"),
+                        Updates.set("version", dbVersion),
                         new UpdateOptions().upsert(true)
                     );
-
                     Log.info("[Migrations] v@ applied successfully.", dbVersion);
                 } catch (Exception e) {
                     Log.err("[Migrations] CRITICAL ERROR during migration v@: @", m.getVersion(), e.getMessage());
@@ -90,8 +98,44 @@ public class MigrationService {
                 }
             }
         }
-
-        Log.info("[Migrations] All migrations completed. Current version: v@", dbVersion);
         return true;
+    }
+
+    private boolean tryLock(MongoCollection<Document> settings) {
+        long now = System.currentTimeMillis();
+        var result = settings.findOneAndUpdate(
+            Filters.and(
+                Filters.eq("_id", "migration_lock"),
+                Filters.or(
+                    Filters.eq("locked", false),
+                    Filters.lt("locked_at", now - 600000)
+                )
+            ),
+            Updates.combine(
+                Updates.set("locked", true),
+                Updates.set("locked_by", config.server),
+                Updates.set("locked_at", now)
+            ),
+            new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
+        );
+
+        return result != null && result.getString("locked_by").equals(config.server);
+    }
+
+    private void releaseLock(MongoCollection<Document> settings) {
+        settings.updateOne(
+            Filters.eq("_id", "migration_lock"),
+            Updates.combine(
+                Updates.set("locked", false),
+                Updates.set("locked_by", ""),
+                Updates.set("locked_at", 0L)
+            )
+        );
+        Log.info("[Migrations] Lock released.");
+    }
+
+    private String getLockOwner(MongoCollection<Document> settings) {
+        var doc = settings.find(Filters.eq("_id", "migration_lock")).first();
+        return (doc != null) ? doc.getString("locked_by") : "unknown";
     }
 }
