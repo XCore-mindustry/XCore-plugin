@@ -29,6 +29,10 @@ import static mindustry.Vars.maps;
 
 @Singleton
 public class MapService {
+    private static final int NEW_VOTE_REPUTATION_DELTA = 1;
+    private static final int CHANGED_VOTE_REPUTATION_DELTA = 2;
+    private static final double POPULARITY_PER_REPUTATION = 2.0;
+
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
     private final SessionService sessionService;
@@ -97,28 +101,16 @@ public class MapService {
             return;
         }
 
-        if (config.isEvent()) {
-            EventData event = eventDataRepository.findActive().orElse(null);
-            if (event != null && event.isActive) {
-                MapData mapData = mapDataRepository.findOrCreate(target.name(), target.file.name(), target.author(), state.rules.mode().name());
-                if (!event.map.equals(mapData.id)) {
-                    session.locale().send("error-map-not-event");
-                    return;
-                }
-            }
+        if (!isAllowedEventMap(target)) {
+            session.locale().send("error-map-not-event");
+            return;
         }
 
         if (forced) {
-            Timer.schedule(() -> gameStateService.reloadWorld(() -> {
-                Gamemode mode = Gamemode.valueOf(arc.Core.settings.getString("lastServerMode", "survival"));
-                Vars.world.loadMap(target, target.applyRules(mode));
-            }), globalConfig.mapSwitchDelaySeconds);
-
-            sessionService.broadcast("commands-artv-map-skipped", args("name", target.name(), "nickname", player.coloredName()));
+            switchMapImmediately(target);
+            broadcastForcedMapSwitch(player, target);
         } else {
-            var vote = voteRtvFactory.create(target, isManual);
-            voteService.startVote(vote);
-            vote.vote(player, 1);
+            startMapVote(player, target, isManual);
         }
     }
 
@@ -130,30 +122,72 @@ public class MapService {
 
     public void handleReputation(Player player, boolean like, MapData map) {
         var session = sessionService.get(player.uuid());
-        Boolean prev = session.data.mapVotes.get(map.id.toString());
+        Boolean previousVote = session.data.mapVotes.get(map.id.toString());
 
-        if (Boolean.valueOf(like).equals(prev)) {
+        if (Boolean.valueOf(like).equals(previousVote)) {
             session.locale().send("error-already-voted");
             return;
         }
 
-        int mod = (prev == null) ? 1 : 2;
+        int reputationDelta = previousVote == null ? NEW_VOTE_REPUTATION_DELTA : CHANGED_VOTE_REPUTATION_DELTA;
         if (like) {
-            map.reputation += mod;
-            map.popularity += (mod * 2.0);
+            map.reputation += reputationDelta;
+            map.popularity += reputationDelta * POPULARITY_PER_REPUTATION;
             map.like += 1;
-            if (prev != null) map.dislike -= 1;
-            session.locale().send(prev != null ? "like-map-changed" : "like-map-success");
+            if (previousVote != null) map.dislike -= 1;
+            session.locale().send(previousVote != null ? "like-map-changed" : "like-map-success");
         } else {
-            map.reputation -= mod;
-            map.popularity -= (mod * 2.0);
+            map.reputation -= reputationDelta;
+            map.popularity -= reputationDelta * POPULARITY_PER_REPUTATION;
             map.dislike += 1;
-            if (prev != null) map.like -= 1;
-            session.locale().send(prev != null ? "dislike-map-changed" : "dislike-map-success");
+            if (previousVote != null) map.like -= 1;
+            session.locale().send(previousVote != null ? "dislike-map-changed" : "dislike-map-success");
         }
 
         session.data.mapVotes.put(map.id.toString(), like);
         session.save();
         mapDataRepository.save(map);
+    }
+
+    private boolean isAllowedEventMap(Map target) {
+        if (!config.isEvent()) {
+            return true;
+        }
+
+        EventData event = eventDataRepository.findActive().orElse(null);
+        if (event == null || !event.isActive) {
+            return true;
+        }
+
+        MapData mapData = mapDataRepository.findOrCreate(
+                target.name(),
+                target.file.name(),
+                target.author(),
+                state.rules.mode().name()
+        );
+        return event.map.equals(mapData.id);
+    }
+
+    private void switchMapImmediately(Map target) {
+        Timer.schedule(
+                () -> gameStateService.reloadWorld(() -> {
+                    Gamemode mode = Gamemode.valueOf(arc.Core.settings.getString("lastServerMode", "survival"));
+                    Vars.world.loadMap(target, target.applyRules(mode));
+                }),
+                globalConfig.mapSwitchDelaySeconds
+        );
+    }
+
+    private void broadcastForcedMapSwitch(Player player, Map target) {
+        sessionService.broadcast(
+                "commands-artv-map-skipped",
+                args("name", target.name(), "nickname", player.coloredName())
+        );
+    }
+
+    private void startMapVote(Player player, Map target, boolean isManual) {
+        var vote = voteRtvFactory.create(target, isManual);
+        voteService.startVote(vote);
+        vote.vote(player, 1);
     }
 }

@@ -25,6 +25,10 @@ import static mindustry.Vars.netServer;
  */
 @Singleton
 public class ModerationService {
+    private static final String DEFAULT_REASON = "Not Specified";
+    private static final String UNKNOWN_PLAYER_NAME = "Unknown";
+    private static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
+    private static final String MISSING_IDENTIFIER_MESSAGE = "Either UUID or IP must be provided";
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
@@ -64,10 +68,10 @@ public class ModerationService {
     public ModerationResult<BanData> banById(int id, String adminName, String reason, Instant duration, boolean kickOnline) {
         var target = playerDataRepository.findByPid(id);
         if (target == null) {
-            return ModerationResult.failure("Player not found");
+            return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
-        Instant unbanDate = Instant.now().plusMillis(duration.toEpochMilli());
+        Instant unbanDate = toExpireDate(duration);
         var info = netServer.admins.getInfoOptional(target.uuid);
         String ip = (info != null) ? info.lastIP : null;
 
@@ -80,7 +84,7 @@ public class ModerationService {
                 .uuid(target.uuid)
                 .ip(ip)
                 .adminName(adminName)
-                .reason(reason != null ? reason : "Not Specified")
+                .reason(resolveReason(reason))
                 .expireDate(unbanDate)
                 .build();
 
@@ -99,7 +103,7 @@ public class ModerationService {
     public ModerationResult<PlayerData> unbanById(int id) {
         var target = playerDataRepository.findByPid(id);
         if (target == null) {
-            return ModerationResult.failure("Player not found");
+            return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
         banDataRepository.delete(target.uuid, null);
@@ -119,16 +123,16 @@ public class ModerationService {
     public ModerationResult<MuteData> muteById(int id, String adminName, String reason, Instant duration) {
         var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
-            return ModerationResult.failure("Player not found");
+            return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
-        Instant expireDate = Instant.now().plusMillis(duration.toEpochMilli());
+        Instant expireDate = toExpireDate(duration);
 
         MuteData mute = MuteData.builder()
                 .uuid(target.uuid)
                 .name(target.nickname)
                 .adminName(adminName)
-                .reason(reason != null ? reason : "Not Specified")
+                .reason(resolveReason(reason))
                 .expireDate(expireDate)
                 .build();
 
@@ -147,7 +151,7 @@ public class ModerationService {
     public ModerationResult<PlayerData> unmuteById(int id) {
         var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
-            return ModerationResult.failure("Player not found");
+            return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
         muteDataRepository.delete(target.uuid);
@@ -167,19 +171,19 @@ public class ModerationService {
      * @return Result containing BanData if successful
      */
     public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Instant duration, String reason, String adminName) {
-        if (uuid == null && ip == null) {
-            return ModerationResult.failure("Either UUID or IP must be provided");
+        if (hasNoIdentifier(uuid, ip)) {
+            return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
 
-        Instant expire = Instant.now().plusMillis(duration.toEpochMilli());
+        Instant expire = toExpireDate(duration);
         network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
         BanData ban = BanData.builder()
-                .name(name != null ? name : "Unknown")
+                .name(resolvePlayerName(name))
                 .uuid(uuid)
                 .ip(ip)
                 .adminName(adminName)
-                .reason(reason != null ? reason : "Not Specified")
+                .reason(resolveReason(reason))
                 .expireDate(expire)
                 .build();
 
@@ -197,8 +201,8 @@ public class ModerationService {
      * @return Result indicating success or failure
      */
     public ModerationResult<Void> tempUnban(String uuid, String ip) {
-        if (uuid == null && ip == null) {
-            return ModerationResult.failure("Either UUID or IP must be provided");
+        if (hasNoIdentifier(uuid, ip)) {
+            return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
 
         banDataRepository.delete(uuid, ip);
@@ -225,5 +229,24 @@ public class ModerationService {
      */
     public PlayerData findPlayerData(String uuidOrPid) {
         return find.playerData(uuidOrPid);
+    }
+
+    private static String resolveReason(String reason) {
+        return reason != null ? reason : DEFAULT_REASON;
+    }
+
+    private static String resolvePlayerName(String name) {
+        return name != null ? name : UNKNOWN_PLAYER_NAME;
+    }
+
+    private static boolean hasNoIdentifier(String uuid, String ip) {
+        return uuid == null && ip == null;
+    }
+
+    /**
+     * Duration is currently passed as epoch-millis offset encoded as Instant.
+     */
+    private static Instant toExpireDate(Instant duration) {
+        return Instant.now().plusMillis(duration.toEpochMilli());
     }
 }

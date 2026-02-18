@@ -49,33 +49,30 @@ public class EventService {
         }
 
         if (forced) {
-            eventDataRepository.activateEvent(target);
-            sessionService.broadcast("commands-artv-event-skipped", args("name", target.name, "nickname", player.coloredName()));
+            activateEventImmediately(player, target);
         } else {
-            var vote = voteEventFactory.create(target);
-            voteService.startVote(vote);
-            vote.vote(player, 1);
+            startEventVote(player, target);
         }
     }
 
     public void handleReputation(Player player, boolean like, EventData event) {
         var session = sessionService.get(player.uuid());
         PlayerData p = session.data;
-        Boolean prev = p.eventVotes.get(event.id.toString());
+        Boolean previousVote = p.eventVotes.get(event.id.toString());
 
-        if (Boolean.valueOf(like).equals(prev)) {
+        if (Boolean.valueOf(like).equals(previousVote)) {
             session.locale().send("error-already-voted");
             return;
         }
 
         if (like) {
             event.like += 1;
-            if (prev != null) event.dislike -= 1;
-            session.locale().send(prev != null ? "like-event-changed" : "like-event-success");
+            if (previousVote != null) event.dislike -= 1;
+            session.locale().send(previousVote != null ? "like-event-changed" : "like-event-success");
         } else {
             event.dislike += 1;
-            if (prev != null) event.like -= 1;
-            session.locale().send(prev != null ? "dislike-event-changed" : "dislike-event-success");
+            if (previousVote != null) event.like -= 1;
+            session.locale().send(previousVote != null ? "dislike-event-changed" : "dislike-event-success");
         }
 
         p.eventVotes.put(event.id.toString(), like);
@@ -92,5 +89,19 @@ public class EventService {
                 sessionService.broadcast("event-end", args("name", event.name));
             }
         });
+    }
+
+    private void activateEventImmediately(Player player, EventData target) {
+        eventDataRepository.activateEvent(target);
+        sessionService.broadcast(
+                "commands-artv-event-skipped",
+                args("name", target.name, "nickname", player.coloredName())
+        );
+    }
+
+    private void startEventVote(Player player, EventData target) {
+        var vote = voteEventFactory.create(target);
+        voteService.startVote(vote);
+        vote.vote(player, 1);
     }
 }
