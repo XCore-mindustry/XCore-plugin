@@ -46,32 +46,32 @@ help-back = { "[" }lightgray]« Back
 # Command Argument Descriptions
 # ==============================================================================
 # help
-commands-help-page-description = Page number to display
+commands-help-page-description = Page number to display.
 # login
 commands-login-password-description = Your admin password.
 # ban
-commands-ban-id-description = Player ID to ban
-commands-ban-period-description = Ban duration (e.g. 1d, 2h, 30m)
-commands-ban-reason-description = Reason for the ban
+commands-ban-id-description = Player ID to ban.
+commands-ban-period-description = Ban duration (e.g. 1d, 2h, 30m).
+commands-ban-reason-description = Reason for the ban.
 # unban
-commands-unban-id-description = Player ID to unban
+commands-unban-id-description = Player ID to unban.
 # mute
 commands-mute-id-description = Player ID to mute.
-commands-mute-period-description = Mute duration (e.g. 1h, 30m)
-commands-mute-reason-description = Reason for the mute
+commands-mute-period-description = Mute duration (e.g. 1h, 30m).
+commands-mute-reason-description = Reason for the mute.
 # unmute
-commands-unmute-id-description = Player ID to unmute
+commands-unmute-id-description = Player ID to unmute.
 # votekick
-commands-votekick-target-description = Player to kick (ID or name)
-commands-votekick-reason-description = Reason for the kick
+commands-votekick-target-description = Player to kick (ID or name).
+commands-votekick-reason-description = Reason for the kick.
 # vote
-commands-vote-choice-description = Your vote: y (yes), n (no), or c (cancel, admin only)
+commands-vote-choice-description = Your vote: y (yes), n (no), or c (cancel, admin only).
 # t (team chat)
-commands-t-message-description = Message to send to teammates
+commands-t-message-description = Message to send to teammates.
 # g (global chat)
-commands-g-message-description = Message to send to all servers
+commands-g-message-description = Message to send to all servers.
 # tr (translator)
-commands-tr-language-description = Language code, 'auto', or 'off'
+commands-tr-language-description = Language code, 'auto', or 'off'.
 # stats
 commands-stats-id-description = Player ID to view stats for
 # rank
@@ -82,12 +82,12 @@ commands-map-map-description = Map name or index.
 commands-maps-page-description = Page number.
 commands-maps-text-page-description = Page number.
 # rtv / artv
-commands-rtv-map-description = Map to vote for (optional)
-commands-artv-map-description = Map to force change to
+commands-rtv-map-description = Map to vote for (optional).
+commands-artv-map-description = Map to force change to.
 # ai
-commands-ai-state-description = AI state: attack (a) or idle (i)
+commands-ai-state-description = AI state: attack (a) or idle (i).
 # event / events
-commands-events-page-description = Page number
+commands-events-page-description = Page number.
 # ==============================================================================
 # General & Help (continued)
 # ==============================================================================
@@ -196,7 +196,7 @@ votekick-success =
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
-commands-map-description = Statistics of a specific map
+commands-map-description = Statistics of a specific map.
 commands-map-title = { "[" }orange]{ -xcore } — Statistics
 commands-map-content =
     { "" }[white]Map statistics for [green]{ $name }
@@ -220,7 +220,7 @@ commands-artv-description = Force change map. [scarlet]Admin only.
 commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
 commands-rtv-description = Rock the vote to change map.
 commands-like-description = Vote for the current map (increases reputation).
-commands-dislike-description = Vote against the current map
+commands-dislike-description = Vote against the current map.
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]GAME OVER!
 map-vote-content =
     { "" }
@@ -290,7 +290,7 @@ commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cya
 # ==============================================================================
 commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily.
 commands-spectate-success = { "[" }green]You are now spectating
-commands-ai-description = Control AI
+commands-ai-description = Control AIю.
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.
 hexed-eliminated = { $nickname } [gold]has been [scarlet]eliminated[]!
@@ -338,7 +338,7 @@ dislike-event-changed = { "[" }orange]You changed your mind to a Dislike.
 # Events (Server)
 # ==============================================================================
 
-commands-event-description = Event management menu
+commands-event-description = Event management menu.
 commands-events-description = List of all events on the servers.
 event-events = Events
 event-menu-main = Main events
@@ -407,12 +407,12 @@ event-end = The [green]{ $name }[] event has ended!
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = { "[" }scarlet]⚠ Access denied
+error-access-denied = { "[" }scarlet]⚠ Access denied.
 error-ip-changed = { "[" }scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
-error-not-enough-params = { "[" }scarlet]⚠ Not enough position params
-error-player-not-found = { "[" }scarlet]Player not found
+error-not-enough-params = { "[" }scarlet]⚠ Not enough position params.
+error-player-not-found = { "[" }scarlet]Player not found.
 error-player-not-teammate = { "[" }scarlet]⚠ Target player is not in your team.
-error-player-admin = { "[" }scarlet]⚠ Don't try to kick an admin ⚠
+error-player-admin = { "[" }scarlet]⚠ Don't try to kick an admin. ⚠
 error-already-voted = { "[" }scarlet]⚠ You have already voted. Calm down.
 error-playtime-requirement = { "[" }scarlet]⚠ You need to play for at least { $time } minutes to use this feature.
 error-globalchat-total-playtime = { "[" }scarlet]⚠ In order to send message to global chat you need to play for { $globalChatPlayTime } minutes.
@@ -420,26 +420,26 @@ error-votekick-total-playtime = { "[" }scarlet]⚠ In order to start a vote-kick
 error-vote-yourself = { "[" }scarlet]⚠ You cannot vote on your own vote session.
 error-vote-in-progress = { "[" }scarlet]⚠ A vote session is already in progress.
 error-no-voting = { "[" }scarlet]⚠ There is no vote session at the moment.
-error-no-map = { "[" }scarlet]⚠ Map not set
+error-no-map = { "[" }scarlet]⚠ Map not set.
 error-map-not-event = { "[" }scarlet]⚠ Map is not part of the current event.
 error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.
-error-maps-empty = { "[" }scarlet]⚠ Map list is empty
+error-maps-empty = { "[" }scarlet]⚠ Map list is empty.
 error-event-not-found = { "[" }scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
-error-page-between = { "[" }scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[]
-error-page-number = { "[" }scarlet]'page' must be a number
-error-wrong-number = { "[" }scarlet]⚠ Wrong number format
+error-page-between = { "[" }scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[].
+error-page-number = { "[" }scarlet]'page' must be a number.
+error-wrong-number = { "[" }scarlet]⚠ Wrong number format.
 error-wrong-period-format = { "[" }scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Invalid player-id
+error-invalid-id = { "[" }scarlet]⚠ Invalid player-id.
 error-spectator = { "[" }scarlet]⚠ You are a spectator. Run /spectate to return.
-error-admin-password-too-short = { "[" }scarlet]⚠ Admin password must be at least 4 characters long
-error-wrong-admin-password = { "[" }scarlet]⚠ Incorrect admin password
-error-internal = { "[" }scarlet]Internal error
+error-admin-password-too-short = { "[" }scarlet]⚠ Admin password must be at least 4 characters long.
+error-wrong-admin-password = { "[" }scarlet]⚠ Incorrect admin password.
+error-internal = { "[" }scarlet]Internal error.
 error-processing-request = { "[" }scarlet]An error occurred while processing the request.
-error-team-not-found = { "[" }scarlet]⚠ Team not found
-error-no-access = { "[" }scarlet]⚠ No Access
-error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/{ $syntax }
-error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: [lightgray]{ $type }
-error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: { $error }
+error-team-not-found = { "[" }scarlet]⚠ Team not found.
+error-no-access = { "[" }scarlet]⚠ No Access.
+error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
+error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
+error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: '{ $error }'.
 argument-parse-failure-boolean = { "[" }scarlet]⚠ Could not parse boolean from '{ $input }'.
 argument-parse-failure-number = { "[" }scarlet]⚠ '{ $input }' is not a valid number within range [{ $min }, { $max }].
 argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' is not a valid character.
