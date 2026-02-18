@@ -83,13 +83,12 @@ public class MapService {
     public void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
         var session = sessionService.get(player.uuid());
 
-        if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteRtv)) {
+        if (voteService.shouldBlockVoteStart(VoteRtv.class, forced)) {
             session.locale().send("error-vote-in-progress");
             return;
-        } else if (voteService.isVoting() && !forced) {
-            session.locale().send("error-vote-in-progress");
-            return;
-        } else if (voteService.isVoting() && forced) {
+        }
+
+        if (forced && voteService.isVoting()) {
             voteService.endVote();
         }
 

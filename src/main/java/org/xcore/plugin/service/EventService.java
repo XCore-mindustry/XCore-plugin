@@ -34,13 +34,12 @@ public class EventService {
 
     public void startVoteSession(Player player, EventData target, boolean forced) {
         var session = sessionService.get(player.uuid());
-        if (voteService.isVoting() && !(voteService.getCurrentSession() instanceof VoteEvent)) {
+        if (voteService.shouldBlockVoteStart(VoteEvent.class, forced)) {
             session.locale().send("error-vote-in-progress");
             return;
-        } else if (voteService.isVoting() && !forced) {
-            session.locale().send("error-vote-in-progress");
-            return;
-        } else if (voteService.isVoting() && forced) {
+        }
+
+        if (forced && voteService.isVoting()) {
             voteService.endVote();
         }
 
@@ -85,7 +84,7 @@ public class EventService {
     }
 
     public void checkTimedEvents() {
-    long now = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
         eventDataRepository.findActive().ifPresent(event -> {
             if (event.isTemporary && event.plannedEndTime > 0 && now > event.plannedEndTime) {
                 eventDataRepository.finishActiveEvent();

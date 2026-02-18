@@ -28,6 +28,18 @@ public class VoteService {
         return currentSession != null;
     }
 
+    public boolean shouldBlockVoteStart(Class<? extends VoteSession> allowedForcedType, boolean forced) {
+        if (currentSession == null) {
+            return false;
+        }
+
+        if (!forced) {
+            return true;
+        }
+
+        return !allowedForcedType.isInstance(currentSession);
+    }
+
     public VoteKick getCurrentVoteKick() {
         if (currentSession instanceof VoteKick kick) {
             return kick;
