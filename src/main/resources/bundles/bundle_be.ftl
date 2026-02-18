@@ -2,11 +2,11 @@
 # Events (Server)
 # ==============================================================================
 
--xcore = XCore сэрвер
+-xcore = XCore сервер
 menu-main = Галоўнае меню
 commands-main-description = Адкрыццё інтэрактыўнага галоўнага меню
 menu-main-title = { "[" }orange]{ -xcore } — Галоўнае меню
-menu-main-content = Галоўнае меню сэрвера
+menu-main-content = Галоўнае меню сервера
 help-menu = Меню дапамогі
 commands-help-description = Адкрыццё інтэрактыўнага меню дапамогі
 help-menu-title = { "[" }orange]{ -xcore } — Каманды

@@ -15,9 +15,9 @@ help-menu-title = { "[" }orange]{ -xcore } — Commads
 help-menu-content =
     { "[" }gray]Page [white]{ $page }[gray]/[white]{ $total }
     { "" }[lightgray]Select a command to see detailed usage:
-help-menu-button = { "[" }accent]/{ $command } [gray]» [white]{ $description }
-help-command-with-overload-count = { $name } ({ $count })
-help-command-title = { "[" }orange]» [white]/{ $name }
+help-menu-button = { "[" }accent]/{ $command } [gray]» Description: [white]{ $description }
+help-command-with-overload-count = { $name } of ({ $count })
+help-command-title = { "[" }orange]» Name: [white]/{ $name }
 help-command-header =
     { "[" }orange]» [accent]Syntax: [white]{ $syntax }
     { "" }[orange]» [accent]Info: [lightgray]{ $description }
@@ -93,7 +93,7 @@ commands-events-page-description = Page number
 # ==============================================================================
 commands-information-description = Show information about the server
 commands-info = Information
-commands-info-title = { "[" }orange]{ -xcore } — { $server-name }
+commands-info-title = { "[" }orange]{ -xcore } — Server name: [orange]{ $server-name }
 commands-info-text =
     { "[" }accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
     { "" }
