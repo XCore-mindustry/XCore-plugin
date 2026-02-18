@@ -48,7 +48,7 @@ help-back = { "[" }lightgray]« Back
 # help
 commands-help-page-description = Page number to display
 # login
-commands-login-password-description = Your admin password
+commands-login-password-description = Your admin password.
 # ban
 commands-ban-id-description = Player ID to ban
 commands-ban-period-description = Ban duration (e.g. 1d, 2h, 30m)
@@ -56,7 +56,7 @@ commands-ban-reason-description = Reason for the ban
 # unban
 commands-unban-id-description = Player ID to unban
 # mute
-commands-mute-id-description = Player ID to mute
+commands-mute-id-description = Player ID to mute.
 commands-mute-period-description = Mute duration (e.g. 1h, 30m)
 commands-mute-reason-description = Reason for the mute
 # unmute
@@ -77,10 +77,10 @@ commands-stats-id-description = Player ID to view stats for
 # rank
 commands-rank-player-description = Player to view rank for
 # map
-commands-map-map-description = Map name or index
+commands-map-map-description = Map name or index.
 # maps / maps-text
-commands-maps-page-description = Page number
-commands-maps-text-page-description = Page number
+commands-maps-page-description = Page number.
+commands-maps-text-page-description = Page number.
 # rtv / artv
 commands-rtv-map-description = Map to vote for (optional)
 commands-artv-map-description = Map to force change to
@@ -91,7 +91,7 @@ commands-events-page-description = Page number
 # ==============================================================================
 # General & Help (continued)
 # ==============================================================================
-commands-information-description = Show information about the server
+commands-information-description = Show information about the server.
 commands-info = Information
 commands-info-title = { "[" }orange]{ -xcore } — Server name: [orange]{ $server-name }
 commands-info-text =
@@ -114,7 +114,7 @@ welcome =
 # ==============================================================================
 commands-t-description = Send a message only to your teammates.
 commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[coral]:[white] { $message }
-commands-g-description = Send a message across all servers
+commands-g-description = Send a message across all servers.
 commands-a-description = Send a message only to admins.
 commands-tr-description = Set the translator language.
 commands-tr-success = { "[" }accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
@@ -132,13 +132,13 @@ commands-login-confirmed = { "[" }green]Your admin request confirmed.
 commands-login-admin-password-created =
     { "[" }green]Admin password created.
     { "" }[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
-commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [gray]#admin-bots[]
+commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [orange]#admin-bots[].
 commands-logout-description = Log out. This will [scarlet]revoke your admin rights.
 commands-logout-successful = { "[" }green]Admin rights revoked.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-description = Ban a player. [scarlet]Admin only
+commands-ban-description = Ban a player. [scarlet]Admin only.
 commands-ban-success = { $nickname } [scarlet]banned
 commands-unban-description = Unban a player. [scarlet]Admin only.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]successfully unbanned.
@@ -203,8 +203,9 @@ commands-map-content =
     { "" }[white]Author:[green] { $author }[orange] | [white]Size:[green] { $width }x{ $height }[orange]
     { "" }[white]Reputation:[green] { $reputation }[orange] | [white]Popularity:[green] { $popularity }[orange] | [white]Interest:[green] { $interest }[orange]
     { "" }[white]Times played:[green] { $played }[orange] | [white]Played this year:[green] { $playedYear }[orange] | [white]Last played:[green] { $lastPlayed }[orange]
+    { "" }[white]Like:[green] { $like }[orange] | [white]Dislike:[green] { $dislike }[orange]
     { "" }[white]Min time:[green] { $min }[orange] | [white]Avg time:[green] { $avg }[orange] | [white]Max time:[green] { $max }[orange]
-    { "" }[green]{ $desc }[white]
+    { "" }[green]{ $description }[white]
 commands-maps-description = List of all maps on this server.
 commands-maps-title = { "[" }orange]{ -xcore } — Map List
 commands-maps-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
@@ -215,10 +216,10 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | By: [sky]{ $author }
-commands-artv-description = Force change map. [scarlet]Admin only
-commands-artv-map-skipped = { $nickname }[accent] skipped map.
-commands-rtv-description = Rock the vote to change map
-commands-like-description = Vote for the current map (increases reputation)
+commands-artv-description = Force change map. [scarlet]Admin only.
+commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
+commands-rtv-description = Rock the vote to change map.
+commands-like-description = Vote for the current map (increases reputation).
 commands-dislike-description = Vote against the current map
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]GAME OVER!
 map-vote-content =
@@ -246,7 +247,7 @@ rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $ma
 # ==============================================================================
 # Statistics & Ranks & Players
 # ==============================================================================
-commands-player-description = View a player's Statistics
+commands-player-description = View a player's Statistics.
 player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
@@ -264,11 +265,11 @@ player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Tr
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
 settings-language-label = Translation: [green]{ $lang }[]
-commands-lb-description = Enable/disable leaderboard
+commands-lb-description = Enable/disable leaderboard.
 commands-lb-success =
     { $leaderboardEnabled ->
-        [true] { "[" }accent]Leaderboard [green]enabled
-       *[other] { "[" }accent]Leaderboard [scarlet]disabled
+        [true] { "[" }accent]Leaderboard [green]enabled.
+       *[other] { "[" }accent]Leaderboard [scarlet]disabled.
     }
 leaderboard = { "[" }blue]Leaderboard
 commands-rank-description = Shows information about this player's rank.
@@ -281,7 +282,7 @@ commands-ranks-content =
     { $rankTag } [accent]{ $rankName }
     { "" }[gold]Requirements: [grey]{ $requiredPoints } [accent]wins[]
 commands-ranks-footer = The amount of wins increases only when defeating a player of your rank or higher.
-commands-top-description = Top players
+commands-top-description = Top players.
 commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wins
 commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
 # ==============================================================================
@@ -410,7 +411,7 @@ error-access-denied = { "[" }scarlet]⚠ Access denied
 error-ip-changed = { "[" }scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
 error-not-enough-params = { "[" }scarlet]⚠ Not enough position params
 error-player-not-found = { "[" }scarlet]Player not found
-error-player-not-teammate = { "[" }scarlet]Target player is not in your team.
+error-player-not-teammate = { "[" }scarlet]⚠ Target player is not in your team.
 error-player-admin = { "[" }scarlet]⚠ Don't try to kick an admin ⚠
 error-already-voted = { "[" }scarlet]⚠ You have already voted. Calm down.
 error-playtime-requirement = { "[" }scarlet]⚠ You need to play for at least { $time } minutes to use this feature.
@@ -421,7 +422,7 @@ error-vote-in-progress = { "[" }scarlet]⚠ A vote session is already in progres
 error-no-voting = { "[" }scarlet]⚠ There is no vote session at the moment.
 error-no-map = { "[" }scarlet]⚠ Map not set
 error-map-not-event = { "[" }scarlet]⚠ Map is not part of the current event.
-error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
+error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.
 error-maps-empty = { "[" }scarlet]⚠ Map list is empty
 error-event-not-found = { "[" }scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
 error-page-between = { "[" }scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[]

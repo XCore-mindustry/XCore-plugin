@@ -12,9 +12,9 @@ help-menu-title = { "[" }orange]{ -xcore } — Команди
 help-menu-content =
     { "[" }gray]Сторінка [white]{ $page }[gray]/[white]{ $total }
     { "" }[lightgray]Оберіть команду для детальної інформації:
-help-menu-button = { "[" }accent]/{ $command } [gray]» [white]{ $description }
-help-command-with-overload-count = { $name } ({ $count })
-help-command-title = { "[" }orange]» [white]/{ $name }
+help-menu-button = { "[" }accent]/{ $command } [gray]» Опис: [white]{ $description }
+help-command-with-overload-count = { $name } В ({ $count })
+help-command-title = { "[" }orange]» Назва: [white]/{ $name }
 help-command-header =
     { "[" }orange]» [accent]Синтаксис: [white]{ $syntax }
     { "" }[orange]» [accent]Опис: [lightgray]{ $description }
@@ -39,8 +39,8 @@ help-legacy-command-content-no-params =
     { "" }
     { "" }[gray](Це застаріла команда з обмеженою інформацією)
 help-back = { "[" }lightgray]« Назад
-commands-information-description = Показати інформацію про сервер
-commands-info-title = { "[" }orange]{ -xcore } — { $server-name }
+commands-information-description = Показати інформацію про сервер.
+commands-info-title = { "[" }orange]{ -xcore } — Назва сервера: [orange]{ $server-name }
 commands-info-text =
     { "[" }accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     { "" }
@@ -60,12 +60,12 @@ welcome =
 # Command Argument Descriptions
 # ==============================================================================
 commands-help-page-description = Номер сторінки для відображення
-commands-login-password-description = Ваш пароль адміністратора
+commands-login-password-description = Ваш пароль адміністратора.
 commands-ban-id-description = ID гравця для бану
 commands-ban-period-description = Тривалість бану (наприклад: 1d, 2h, 30m)
 commands-ban-reason-description = Причина бану
 commands-unban-id-description = ID гравця для розбану
-commands-mute-id-description = ID гравця для мута
+commands-mute-id-description = ID гравця для вимкнення можливості писати.
 commands-mute-period-description = Тривалість мута (наприклад: 1h, 30m)
 commands-mute-reason-description = Причина мута
 commands-unmute-id-description = ID гравця для зняття мута
@@ -77,9 +77,9 @@ commands-g-message-description = Повідомлення для всіх сер
 commands-tr-language-description = Код мови, 'uk_UA', 'en', '...', 'auto' або 'off'
 commands-stats-id-description = ID гравця для перегляду статистики
 commands-rank-player-description = Гравець для перегляду рангу
-commands-map-map-description = Назва або номер мапи
-commands-maps-page-description = Номер сторінки
-commands-maps-text-page-description = Номер сторінки
+commands-map-map-description = Назва або номер мапи.
+commands-maps-page-description = Номер сторінки.
+commands-maps-text-page-description = Номер сторінки.
 commands-rtv-map-description = Мапа для голосування (опціонально)
 commands-artv-map-description = Мапа для примусової зміни
 commands-ai-state-description = Стан ШІ: attack (a) або idle (i)
@@ -146,7 +146,7 @@ kick-recently-kicked =
     Зачекайте [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] перед повторним входом.
 kick-bot-protection = Можливо ви бот. Якщо ні, спробуйте перезайти.
 kick-admintools-outdated =
-    { "[" }green]Необхідна версія AdminTools: [grey]1.3[]
+    { "[" }green]Необхідна версія AdminTools: [grey]{ $requiredVersion }[]
     { "" }[scarlet]Ваша версія AdminTools: [grey]{ $version }[]
     { "" }
     { "" }[cyan]Будь ласка, оновіть AdminTools для входу на сервер.
@@ -193,10 +193,10 @@ commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | Від: [sky]{ $author }
 commands-artv-description = Примусово змінити мапу. [scarlet]Тільки для адміністраторів.
-commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. Наступна мапа: { $name }
+commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. Наступна мапа: { $name }.
 commands-artv-event-skipped = { $nickname }[accent] пропустив подію. Наступна подія: { $name }
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
-commands-like-description = Проголосувати за мапу (підвищує репутацію)
+commands-like-description = Проголосувати за мапу (підвищує репутацію).
 commands-dislike-description = Проголосувати проти мапи
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content =
@@ -231,8 +231,8 @@ player-menu-player-content =
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->
-        [true] { "[" }accent]Таблиця лідерів [green]увімкнена
-       *[other] { "[" }accent]Таблиця лідерів [scarlet]вимкнена
+        [true] { "[" }accent]Таблиця лідерів [green]увімкнена.
+       *[other] { "[" }accent]Таблиця лідерів [scarlet]вимкнена.
     }
 leaderboard = { "[" }blue]Таблиця лідерів
 commands-rank-description = Показує інформацію про ваш ранг або ранг іншого гравця.
@@ -286,8 +286,8 @@ player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєдн�
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
 notification-votekick-playtime = { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] хвилин і тепер можете почати голосування за вигнання.
 notification-global-chat-playtime =
-    { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ 0 }[] хвилин і тепер можете писати в глобальний чат.
-    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення.
+    { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ $globalChatPlayTime }[] хвилин і тепер можете писати в глобальний чат.
+    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення…>[lightgray], щоб надіслати повідомлення.
 notification-admin-kick = { $admin }[accent] вигнав(ла) { $target }[].
 notification-admin-wave-skip = { $admin }[accent] пропустив(ла) хвилю.
 server-restart-countdown = Перезавантаження через { $seconds }
@@ -374,7 +374,7 @@ error-access-denied = { "[" }scarlet]⚠ Доступ заборонено
 error-ip-changed = { "[" }scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
 error-not-enough-params = { "[" }scarlet]⚠ Недостатньо параметрів
 error-player-not-found = { "[" }scarlet]⚠ Гравця не знайдено
-error-player-not-teammate = { "[" }scarlet]⚠ Цей гравець не у вашій команді
+error-player-not-teammate = { "[" }scarlet]⚠ Цей гравець не у вашій команді.
 error-player-admin = { "[" }scarlet]⚠ Не намагайтеся вигнати адміністратора ⚠
 error-already-voted = { "[" }scarlet]⚠ Ви вже проголосували. Заспокойтесь.
 error-globalchat-total-playtime = { "[" }scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
