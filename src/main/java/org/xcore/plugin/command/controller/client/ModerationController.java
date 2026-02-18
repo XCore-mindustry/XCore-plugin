@@ -19,7 +19,6 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -43,18 +42,16 @@ public class ModerationController implements CloudClientController {
     public void ban(XCoreSender sender,
                     @Argument("id") int id,
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
-                    @Argument("reason") @Greedy @Default("") String reason) {
+                    @Argument("reason") @Greedy @Default() String reason) {
 
         Session session = sessionService.get(sender.player().uuid());
         Localization local = session.locale();
-
-        Instant duration = Instant.ofEpochMilli(period.toMillis());
 
         var result = moderationService.banById(
                 id,
                 session.player.name,
                 reason.isBlank() ? null : reason,
-                duration,
+                period,
                 true
         );
 
@@ -92,13 +89,11 @@ public class ModerationController implements CloudClientController {
         Session session = sessionService.get(sender.player().uuid());
         Localization local = session.locale();
 
-        Instant duration = Instant.ofEpochMilli(period.toMillis());
-
         var result = moderationService.muteById(
                 id,
                 session.player.name,
                 reason.isBlank() ? null : reason,
-                duration
+                period
         );
 
         if (result.isSuccess()) {

@@ -14,6 +14,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
@@ -65,7 +66,7 @@ public class ModerationService {
      * @param kickOnline  Whether to kick the player if online
      * @return Result containing BanData if successful
      */
-    public ModerationResult<BanData> banById(int id, String adminName, String reason, Instant duration, boolean kickOnline) {
+    public ModerationResult<BanData> banById(int id, String adminName, String reason, Duration duration, boolean kickOnline) {
         var target = playerDataRepository.findByPid(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -120,7 +121,7 @@ public class ModerationService {
      * @param duration  Mute duration period
      * @return Result containing MuteData if successful
      */
-    public ModerationResult<MuteData> muteById(int id, String adminName, String reason, Instant duration) {
+    public ModerationResult<MuteData> muteById(int id, String adminName, String reason, Duration duration) {
         var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -170,7 +171,7 @@ public class ModerationService {
      * @param adminName Name of the admin performing the ban
      * @return Result containing BanData if successful
      */
-    public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Instant duration, String reason, String adminName) {
+    public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Duration duration, String reason, String adminName) {
         if (hasNoIdentifier(uuid, ip)) {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
@@ -215,10 +216,14 @@ public class ModerationService {
      *
      * @param periodStr Period string (e.g., "1d", "2h")
      * @param unit      Time unit
-     * @return Parsed Instant or null if invalid
+     * @return Parsed Duration or null if invalid
      */
-    public Instant parsePeriod(String periodStr, TimeUnit unit) {
-        return time.parsePeriod(periodStr, unit);
+    public Duration parsePeriod(String periodStr, TimeUnit unit) {
+        Instant parsed = time.parsePeriod(periodStr, unit);
+        if (parsed == null) {
+            return null;
+        }
+        return Duration.ofMillis(parsed.toEpochMilli());
     }
 
     /**
@@ -243,10 +248,7 @@ public class ModerationService {
         return uuid == null && ip == null;
     }
 
-    /**
-     * Duration is currently passed as epoch-millis offset encoded as Instant.
-     */
-    private static Instant toExpireDate(Instant duration) {
-        return Instant.now().plusMillis(duration.toEpochMilli());
+    private static Instant toExpireDate(Duration duration) {
+        return Instant.now().plus(duration);
     }
 }

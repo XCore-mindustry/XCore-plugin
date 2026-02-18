@@ -18,7 +18,6 @@ import org.xcore.plugin.model.PlayerData;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.TimeoutException;
 
@@ -85,7 +84,7 @@ public record MessageContext(Message message, Member member, MessageChannel chan
         }
         return false;
     }
-    public boolean checkPeriod(Instant period) {
+    public boolean checkPeriod(Duration period) {
         if (period == null) {
             error(
                     "Wrong period format",
@@ -152,7 +151,7 @@ public record MessageContext(Message message, Member member, MessageChannel chan
                             .build()).and(e.deferEdit());
                 })
                 .timeout(Duration.ofMinutes(10))
-                .onErrorResume(TimeoutException.class, exception -> Mono.empty())
+                .onErrorResume(TimeoutException.class, _ -> Mono.empty())
                 .subscribe());
     }
 

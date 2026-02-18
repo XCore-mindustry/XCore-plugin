@@ -18,7 +18,6 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.moderation.ModerationService;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
@@ -71,8 +70,7 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        Instant duration = Instant.ofEpochMilli(period.toMillis());
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, duration, reason.isBlank() ? null : reason, "console");
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason.isBlank() ? null : reason, "console");
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -132,8 +130,7 @@ public class ServerModerationController implements CloudServerController {
             return;
         }
 
-        Instant duration = Instant.ofEpochMilli(period.toMillis());
-        var result = moderationService.muteById(data.pid, "console", reason.isBlank() ? null : reason, duration);
+        var result = moderationService.muteById(data.pid, "console", reason.isBlank() ? null : reason, period);
 
         if (result.isSuccess()) {
             Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toMillis()).toMinutes());
