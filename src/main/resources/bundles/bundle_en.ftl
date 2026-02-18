@@ -99,7 +99,7 @@ commands-info-text =
     { "" }
     { "" }XCore Version — [accent]{ $version }[white]
 commands-sync-description = Sync your game with the server. Run this to fix errors like ghost units.
-commands-discord-description = Redirects you to discord server
+commands-discord-description = Redirects you to discord server.
 welcome =
     { "[" }accent]Welcome to { $serverName }!
     { "" }[lightgray]Type [accent]/help[lightgray] to see a list of commands
@@ -320,7 +320,7 @@ player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has left.
 notification-votekick-playtime = { "[" }accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] minutes and can now start a vote-kick.
 notification-global-chat-playtime =
     { "[" }accent]Congratulations! You have played for [lightgray]{ $globalChatPlayTime }[] minutes and can now send messages to global chat.
-    { "" }[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message.
+    { "" }[lightgray]Type [accent]/g [gray]<message…>[lightgray] to send a message.
 notification-admin-kick = { $admin }[accent] kicked { $target }[].
 notification-admin-wave-skip = { $admin }[accent] has skipped the wave.
 server-restart-countdown = Restart in { $seconds }
@@ -402,7 +402,7 @@ event-avote = { "[" }red]Instant Change
 event-menu-vote-stop = Stop voting
 event-menu-stop = Stop event
 event-menu-this-event = { "[" }orange]Current Event
-event-end = event end { $name }
+event-end = The [green]{ $name }[] event has ended!
 # ==============================================================================
 # Errors
 # ==============================================================================

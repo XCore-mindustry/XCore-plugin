@@ -40,7 +40,7 @@ commands-info-text =
     { "" }
     { "" }Версия XCore — [accent]{ $xcoreVersion }[white]
 commands-sync-description = Пересинхронизировать состояние мира
-commands-discord-description = Перенаправляет вас на сервер discord
+commands-discord-description = Перенаправляет вас на сервер discord.
 welcome =
     { "[" }accent]Добро пожаловать в { $serverName }!
     { "" }[lightgray]Введите [accent]/help[lightgray], чтобы увидеть список команд
