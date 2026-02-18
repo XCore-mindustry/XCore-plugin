@@ -290,7 +290,7 @@ commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cya
 # ==============================================================================
 commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily.
 commands-spectate-success = { "[" }green]You are now spectating
-commands-ai-description = Control AIю.
+commands-ai-description = Control AI.
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.
 hexed-eliminated = { $nickname } [gold]has been [scarlet]eliminated[]!

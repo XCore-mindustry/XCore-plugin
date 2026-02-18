@@ -59,31 +59,31 @@ welcome =
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
-commands-help-page-description = Номер сторінки для відображення
+commands-help-page-description = Номер сторінки для відображення.
 commands-login-password-description = Ваш пароль адміністратора.
-commands-ban-id-description = ID гравця для бану
-commands-ban-period-description = Тривалість бану (наприклад: 1d, 2h, 30m)
-commands-ban-reason-description = Причина бану
-commands-unban-id-description = ID гравця для розбану
+commands-ban-id-description = ID гравця для блокування.
+commands-ban-period-description = Тривалість блокування (наприклад: 1d, 2h, 30m).
+commands-ban-reason-description = Причина блокування.
+commands-unban-id-description = ID гравця для розблокування.
 commands-mute-id-description = ID гравця для вимкнення можливості писати.
-commands-mute-period-description = Тривалість мута (наприклад: 1h, 30m)
-commands-mute-reason-description = Причина мута
-commands-unmute-id-description = ID гравця для зняття мута
-commands-votekick-target-description = Гравець для кіку (ID або ім'я)
-commands-votekick-reason-description = Причина кіку
-commands-vote-choice-description = Ваш голос: y (так), n (ні), c (скасувати, тільки адмін)
-commands-t-message-description = Повідомлення для союзників
-commands-g-message-description = Повідомлення для всіх серверів
-commands-tr-language-description = Код мови, 'uk_UA', 'en', '...', 'auto' або 'off'
+commands-mute-period-description = Тривалість вимкнення чату (наприклад: 1h, 30m).
+commands-mute-reason-description = Причина вимкнення чату.
+commands-unmute-id-description = ID гравця для зняття вимкнення чату.
+commands-votekick-target-description = Гравець для вигнання (ID або ім'я).
+commands-votekick-reason-description = Причина вигнання.
+commands-vote-choice-description = Ваш голос: y (так), n (ні), c (скасувати, тільки адмін).
+commands-t-message-description = Повідомлення для союзників.
+commands-g-message-description = Повідомлення для всіх серверів.
+commands-tr-language-description = Код мови, 'uk_UA', 'en', '...', 'auto' або 'off'.
 commands-stats-id-description = ID гравця для перегляду статистики
 commands-rank-player-description = Гравець для перегляду рангу
 commands-map-map-description = Назва або номер мапи.
 commands-maps-page-description = Номер сторінки.
 commands-maps-text-page-description = Номер сторінки.
-commands-rtv-map-description = Мапа для голосування (опціонально)
-commands-artv-map-description = Мапа для примусової зміни
-commands-ai-state-description = Стан ШІ: attack (a) або idle (i)
-commands-events-page-description = Номер сторінки
+commands-rtv-map-description = Мапа для голосування (опціонально).
+commands-artv-map-description = Мапа для примусової зміни.
+commands-ai-state-description = Стан ШІ: attack (a) або idle (i).
+commands-events-page-description = Номер сторінки.
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
@@ -172,7 +172,7 @@ votekick-success =
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
-commands-map-description = Статистика конкретної мапи та швидкі дії
+commands-map-description = Статистика конкретної мапи та швидкі дії.
 commands-map-title = { "[" }orange]{ -xcore } — Мапа
 commands-map-content =
     { "" }[white]Статистика мапи [green]{ $name }
@@ -197,7 +197,7 @@ commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. �
 commands-artv-event-skipped = { $nickname }[accent] пропустив подію. Наступна подія: { $name }
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
 commands-like-description = Проголосувати за мапу (підвищує репутацію).
-commands-dislike-description = Проголосувати проти мапи
+commands-dislike-description = Проголосувати проти мапи.
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content =
     { "" }
@@ -253,7 +253,7 @@ commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cya
 # ==============================================================================
 commands-spectate-description = Перейти в режим спостерігача. Це видалить вашу одиницю.
 commands-spectate-success = { "[" }green]Тепер ви спостерігаєте за грою
-commands-ai-description = Керування ШІ (AI)
+commands-ai-description = Керування ШІ (AI).
 commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)
 commands-history-description = Увімкнути/вимкнути історію блоків.
 commands-history-success = { "[" }accent]Історію блоків встановлено на [scarlet]{ 0 }
@@ -304,7 +304,7 @@ dislike-event-changed = { "[" }orange]Ви змінили свою думку н
 # Events (Server)
 # ==============================================================================
 
-commands-event-description = Меню керуванням подій
+commands-event-description = Меню керуванням подій.
 commands-events-description = Список усіх подій на серверах.
 event-menu-main = Головних подій
 event-menu-main-title = { "[" }orange]{ -xcore } — Події
@@ -370,37 +370,37 @@ event-menu-this-event = { "[" }orange]Теперішна подія
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = { "[" }scarlet]⚠ Доступ заборонено
+error-access-denied = { "[" }scarlet]⚠ Доступ заборонено.
 error-ip-changed = { "[" }scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
-error-not-enough-params = { "[" }scarlet]⚠ Недостатньо параметрів
-error-player-not-found = { "[" }scarlet]⚠ Гравця не знайдено
+error-not-enough-params = { "[" }scarlet]⚠ Недостатньо параметрів.
+error-player-not-found = { "[" }scarlet]⚠ Гравця не знайдено.
 error-player-not-teammate = { "[" }scarlet]⚠ Цей гравець не у вашій команді.
-error-player-admin = { "[" }scarlet]⚠ Не намагайтеся вигнати адміністратора ⚠
+error-player-admin = { "[" }scarlet]⚠ Не намагайтеся вигнати адміністратора. ⚠
 error-already-voted = { "[" }scarlet]⚠ Ви вже проголосували. Заспокойтесь.
 error-globalchat-total-playtime = { "[" }scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
 error-votekick-total-playtime = { "[" }scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } хвилин.
 error-vote-yourself = { "[" }scarlet]⚠ Ви не можете голосувати у власному голосуванні.
 error-vote-in-progress = { "[" }scarlet]⚠ Голосування вже триває.
 error-no-voting = { "[" }scarlet]⚠ На даний момент голосування не проводиться.
-error-no-map = { "[" }scarlet]⚠ Мапу не задано
+error-no-map = { "[" }scarlet]⚠ Мапу не задано.
 error-map-not-event = { "[" }scarlet]⚠ Мапа не входить у теперішню подію.
 error-map-not-found = { "[" }scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
-error-maps-empty = { "[" }scarlet]⚠ Список мап порожний
+error-maps-empty = { "[" }scarlet]⚠ Список мап порожній.
 error-event-not-found = { "[" }scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
-error-page-between = { "[" }scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{ $totalPages }[]
-error-page-number = { "[" }scarlet]'сторінка' має бути числом
-error-wrong-number = { "[" }scarlet]⚠ Неправильний формат числа
+error-page-between = { "[" }scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{ $totalPages }[].
+error-page-number = { "[" }scarlet]'сторінка' має бути числом.
+error-wrong-number = { "[" }scarlet]⚠ Неправильний формат числа.
 error-wrong-period-format = { "[" }scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Невірний ID гравця
+error-invalid-id = { "[" }scarlet]⚠ Невірний ID гравця.
 error-spectator = { "[" }scarlet]⚠ Ви спостерігач. Напишіть /spectate, щоб повернутися.
-error-admin-password-too-short = { "[" }scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи
-error-wrong-admin-password = { "[" }scarlet]⚠ Невірний пароль адміністратора
-error-internal = { "[" }scarlet]Внутрішня помилка сервера
+error-admin-password-too-short = { "[" }scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи.
+error-wrong-admin-password = { "[" }scarlet]⚠ Невірний пароль адміністратора.
+error-internal = { "[" }scarlet]Внутрішня помилка сервера.
 error-processing-request = { "[" }scarlet]Виникла помилка під час обробки запиту.
 error-playtime-requirement = { "[" }scarlet]⚠ Вам потрібно відіграти мінімум { $time } хвилин для використання цієї функції.
-error-invalid-syntax = { "[" }scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/{ $syntax }
-error-invalid-sender = { "[" }scarlet]⚠ Невірний відправник команди. Потрібно: [lightgray]{ $type }
-error-argument-parse-generic = { "[" }scarlet]⚠ Помилка аргументу: { $error }
+error-invalid-syntax = { "[" }scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
+error-invalid-sender = { "[" }scarlet]⚠ Невірний відправник команди. Потрібно: '[lightgray]{ $type }[]'.
+error-argument-parse-generic = { "[" }scarlet]⚠ Помилка аргументу: '{ $error }'.
 argument-parse-failure-boolean = { "[" }scarlet]⚠ Не вдалося розпізнати '{ $input }' як логічне значення (true/false).
 argument-parse-failure-number = { "[" }scarlet]⚠ Число '{ $input }' поза допустимим діапазоном [{ $min }, { $max }].
 argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' не є допустимим символом.
@@ -450,8 +450,8 @@ player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір м
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
 event-end = Подія [green]{ $name }[] завершилася!
-error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено
-error-no-access = { "[" }червоний]⚠ Немає доступу
+error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
+error-no-access = { "[" }червоний]⚠ Немає доступу.
 finished = масштабна
 finished-neutral = { "[" }orange]Завершено
 finished-active = { "[" }green]Завершено
