@@ -10,7 +10,7 @@ commands-main-description = Открыть интерактивное главн
 menu-main-title = { "[" }orange]{ -xcore } — Главное меню
 menu-main-content = Главное меню сервера
 help-menu = Меню помощи
-commands-help-description = Перечисляет все команды
+commands-help-description = Открыть интерактивное меню помощи.
 help-menu-title = { "[" }orange]• [white]КОМАНДЫ XCORE [orange]•
 help-menu-content =
     { "[" }gray]Страница [white]{ $page }[gray]/[white]{ $total }
@@ -44,11 +44,11 @@ help-legacy-command-content-no-params =
 help-back = { "[" }lightgray]« Назад
 commands-information-description = Показать информацию о сервере
 commands-info = Информация
-commands-info-title = { "[" }orange]XCore сервер — { $xcorServerName }
+commands-info-title = { "[" }orange]{ -xcore } — Название сервера: [orange]{ $server-name }
 commands-info-text =
     { "[" }accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
     { "" }
-    { "" }Версия XCore — [accent]{ $xcoreVersion }[white]
+    { "" }Версия XCore — [accent]{ $version }[white]
 commands-sync-description = Пересинхронизировать состояние мира
 commands-discord-description = Перенаправляет вас на сервер discord.
 welcome =
@@ -181,12 +181,12 @@ commands-map-content =
     { "" }[white]Автор:[green] { $author }[orange] | [white]Размер:[green] { $width }x{ $height }[orange]
     { "" }[white]Репутация:[green] { $reputation }[orange] | [white]Популярность:[green] { $popularity }[orange] | [white]Интерес:[green] { $interest }[orange]
     { "" }[white]Сыграно раз:[green] { $played }[orange] | [white]Сыграно за год:[green] { $playedYear }[orange] | [white]Последняя игра:[green] { $lastPlayed }[orange]
+    { "" }[white]Лайк:[green] { $like }[orange] | [white]Дизлайк:[green] { $dislike }[orange]
     { "" }[white]Мин. время:[green] { $min }[orange] | [white]Ср. время:[green] { $avg }[orange] | [white]Макс. время:[green] { $max }[orange]
-    { "" }[green]{ $desc }[white]
+    { "" }[green]{ $description }[white]
 commands-maps-description = Список всех карт на этом сервере.
 commands-maps-title = { "[" }orange]XCore сервер — Список карт
 commands-maps-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
-commands-maps-page-must-number = { "[" }scarlet]'страница' должна быть числом
 commands-maps-text-description = Список всех карт на этом сервере.
 commands-maps-text-start-content =
     { "[" }accent]Текущая карта: []{ $name }[white]
@@ -195,14 +195,10 @@ commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | От: [sky]{ $author }
 commands-artv-description = Изменить карту. [scarlet]Только для админов
-commands-artv-map-skipped = { $nickname }[accent] пропустил карту
+commands-artv-map-skipped = { $nickname }[accent] пропустил карту. Следующая карта: { $name }.
 commands-rtv-description = Голосование за изменение карты
 commands-like-description = Проголосовать за карту (повышает репутацию)
-commands-like-success = { "[" }green]Вы лайкнули эту карту!
-commands-like-changed = { "[" }green]Вы изменили свое мнение на Лайк!
 commands-dislike-description = Проголосовать против карты
-commands-dislike-success = { "[" }orange]Вы поставили дизлайк этой карте.
-commands-dislike-changed = { "[" }orange]Вы изменили свое мнение на Дизлайк.
 map-vote-title = { "[" }orange]XCore сервер — [scarlet]ИГРА ОКОНЧЕНА!
 map-vote-content =
     { "" }
@@ -274,8 +270,6 @@ commands-spectate-description = Переключить режим наблюда
 commands-spectate-success = { "[" }green]Теперь вы наблюдаете за игрой
 commands-ai-description = Контролировать ИИ
 commands-ai-usage = { "[" }red]attack(i) []или [accent]idle(i)
-commands-history-description = Включить/выключить историю блоков
-commands-history-success = { "[" }accent]История блоков установлена на [scarlet]{ 0 }
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] до конца игры
 hexed-eliminated = { $nickname } [gold]уничтожен!
 hexed-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]хексов
@@ -297,15 +291,15 @@ hexed-game-over-restart = Новая игра через 10 секунд…
 pvp-team-won = Ваша команда победила. Ваш рейтинг увеличился на { $increased }
 pvp-team-lose = Ваша команда проиграла. Ваш рейтинг снижен на { $reduced }
 pvp-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рейтинг
-pvp-you-spectator = { "[" }scarlet]Ты проиграл. Подождите следующей игры.
+pvp-you-spectator = { "[" }scarlet]Вы выбыли. Пожалуйста, дождитесь следующей игры.
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
 player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]присоединился
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вышел
-notification-votekick-playtime = { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ 0 }[] минут и теперь можете начать голосование за кик игрока.
+notification-votekick-playtime = { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ $votekickPlayTime }[] минут и теперь можете начать голосование за кик игрока.
 notification-global-chat-playtime =
-    { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ 0 }[] минут и теперь можете писать в глобальный чат
+    { "[" }accent]Поздравляем! Вы отыграли [lightgray]{ $globalChatPlayTime }[] минут и теперь можете писать в глобальный чат.
     { "" }[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение.
 notification-admin-kick = { $admin }[accent] кикнул { $target }[].
 notification-admin-wave-skip = { $admin }[accent] пропустил волну.
