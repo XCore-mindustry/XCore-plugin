@@ -1,6 +1,15 @@
 # ==============================================================================
+# Terms
+# ==============================================================================
+-xcore = XCore сервер
+# ==============================================================================
 # General & Help
 # ==============================================================================
+menu-main = Главное меню
+commands-main-description = Открыть интерактивное главное меню.
+menu-main-title = { "[" }orange]{ -xcore } — Главное меню
+menu-main-content = Главное меню сервера
+help-menu = Меню помощи
 commands-help-description = Перечисляет все команды
 help-menu-title = { "[" }orange]• [white]КОМАНДЫ XCORE [orange]•
 help-menu-content =
@@ -34,6 +43,7 @@ help-legacy-command-content-no-params =
     { "" }[gray](Это устаревшая команда с ограниченной информацией)
 help-back = { "[" }lightgray]« Назад
 commands-information-description = Показать информацию о сервере
+commands-info = Информация
 commands-info-title = { "[" }orange]XCore сервер — { $xcorServerName }
 commands-info-text =
     { "[" }accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
@@ -207,6 +217,8 @@ map-vote-dislike-selected = { "[" }gray]Вам не нравится
 map-rtv = { "[" }orange]Голосование
 map-artv = { "[" }red]Мгновенная смена
 map-maps = Карты
+current-map = Текущая карта
+next-map = Следующая карта
 rtv-vote =
     { $nickname }[lightgray] проголосовал за смену текущей карты на [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишите [orange]y[] или [orange]n[], чтобы проголосовать.
@@ -218,11 +230,23 @@ rtv-cancelled = { "[" }lightgray]Голосование за смену карт
 # Statistics & Ranks
 # ==============================================================================
 commands-player-description = Статистика игрока
+player-menu-player = Игрок
+player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
     Статистика игрока { $nickname } [grey]#{ $pid }
     { "" }[brown]Время на сервере: [grey]{ $totalPlayTime }[] minutes
     Ранг в MiniHexed: [grey]{ $hexedRankTag } { $hexedRankName }
     MiniPvP рейтинг: { $pvpRating }
+player-menu-players = Список игроков
+player-menu-players-title = { "[" }orange]{ -xcore } — Список игроков
+player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+player-menu-players-empty = Игроки не найдены
+player-menu-settings = Настройки
+player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки игрока
+player-menu-settings-content = Показывать таблицу лидеров: [green]{ $leaderboard }[] | Перевод: [green]{ $language }[] | Язык автоперевода: [green]{ $translatorLanguage }[]
+player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
+player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
+settings-language-label = Перевод: [green]{ $lang }[]
 commands-lb-description = Включить/выключить таблицу лидеров
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -286,6 +310,83 @@ notification-global-chat-playtime =
 notification-admin-kick = { $admin }[accent] кикнул { $target }[].
 notification-admin-wave-skip = { $admin }[accent] пропустил волну.
 server-restart-countdown = Перезагрузка через { $seconds }
+like-map-success = { "[" }green]Вам понравилась эта карта!
+like-map-changed = { "[" }green]Вы изменили мнение на лайк!
+dislike-map-success = { "[" }orange]Вам не понравилась эта карта.
+dislike-map-changed = { "[" }orange]Вы изменили мнение на дизлайк.
+like-event-success = { "[" }green]Вам понравилось это событие!
+like-event-changed = { "[" }green]Вы изменили мнение на лайк!
+dislike-event-success = { "[" }orange]Вам не понравилось это событие.
+dislike-event-changed = { "[" }orange]Вы изменили мнение на дизлайк.
+# ==============================================================================
+# Events (Server)
+# ==============================================================================
+commands-event-description = Меню управления событиями.
+commands-events-description = Список всех событий на серверах.
+event-events = События
+event-menu-main = Основные события
+event-menu-main-title = { "[" }orange]{ -xcore } — События
+event-menu-main-content = Главная страница событий
+event-menu-event = Событие
+event-menu-event-title = { "[" }orange]{ -xcore } — Событие
+event-menu-event-content =
+    { "" }[white]Статистика события [green]{ $name }
+    { "" }[white]Автор:[green] { $author }[orange] | [white]Карта:[green] { $mapName }[orange]
+    { "" }[white]Крупное?:[green] { $isMajor }[orange] | [white]Проведено?:[green] { $isConducted }[orange]
+    { "" }[white]Активно?:[green] { $isActive }[orange] | [white]Временное?:[green] { $isTemporary }[orange]
+    { "" }[white]Лайки:[green] { $like }[orange] | [white]Дизлайки:[green] { $dislike }[orange]
+    { "" }[green]{ $description }[white]
+event-menu-event-map = Посмотреть карту
+event-menu-events = Список событий
+event-menu-events-title = { "[" }orange]{ -xcore } — Список событий
+event-menu-events-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+event-menu-events-empty = События не найдены
+event-menu-events-selected = { "[" }green]●[] { $name }
+event-menu-create-start = Создать
+event-menu-create-start-title = { "[" }orange]{ -xcore } — Создание события
+event-menu-create-start-message = Введите название будущего события
+event-menu-create-start-default = Событие игрока { $playerName }
+event-menu-create-start-map = Создать событие для этой карты
+event-menu-edit = Редактировать
+event-menu-edit-title = { "[" }orange]{ -xcore } — Редактирование события
+event-menu-edit-content =
+    { "" }[white]Статистика события [green]{ $name }
+    { "" }[white]Автор:[green] { $author }[orange] | [white]Карта:[green] { $mapName }[orange]
+    { "" }[white]Крупное?:[green] { $isMajor }[orange] | [white]Временное?:[green] { $isTemporary }[orange]
+    { "" }[green]{ $description }[white]
+event-menu-edit-name = Название
+event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редактирование события
+event-menu-edit-name-message = Измените название:
+event-menu-edit-description = Описание
+event-menu-edit-description-title = { "[" }orange]{ -xcore } — Редактирование события
+event-menu-edit-description-message = Измените описание:
+event-menu-edit-map = Изменить карту
+event-menu-edit-temporary-active = { "[" }green]Временное
+event-menu-edit-temporary-inactive = { "[" }gray]Временное
+event-menu-edit-major-active = { "[" }green]Крупное
+event-menu-edit-major-inactive = { "[" }gray]Крупное
+event-menu-edit-planned-start = Начало события
+event-menu-edit-planned-start-title = { "[" }orange]{ -xcore } — Редактирование события
+event-menu-edit-planned-start-message = Введите время начала в мс или через m/h/d:
+event-menu-edit-planned-end = Конец события
+event-menu-edit-planned-end-title = { "[" }orange]{ -xcore } — Редактирование события
+event-menu-edit-planned-end-message = Введите время окончания в мс или через m/h/d:
+event-menu-maps = Карты
+event-menu-maps-title = { "[" }orange]{ -xcore } — Выбор карты
+event-menu-maps-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+vote-event-vote =
+    { $nickname }[lightgray] проголосовал за смену текущего события на [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Напишите [orange]y[] или [orange]n[], чтобы проголосовать.
+vote-event-left = { $nickname }[lightgray] вышел. Его голос за смену события отменен. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+vote-event-fail = { "[" }lightgray]Голосование не прошло. Недостаточно голосов для смены события на [orange]{ $name }[].
+vote-event-success = { "[" }orange]Голосование прошло. Событие [accent]{ $name }[] будет загружено при следующей смене карты.
+vote-event-cancelled = { "[" }lightgray]Голосование за смену события на [orange]{ $name }[lightgray] было отменено администратором { $admin }.
+event-vote = { "[" }orange]Голосование
+event-avote = { "[" }red]Мгновенная смена
+event-menu-vote-stop = Остановить голосование
+event-menu-stop = Остановить событие
+event-menu-this-event = { "[" }orange]Текущее событие
+event-end = Событие [green]{ $name }[] завершилось!
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -301,7 +402,11 @@ error-votekick-total-playtime = { "[" }scarlet]⚠ Для того чтобы п
 error-vote-yourself = { "[" }scarlet]⚠ Вы не можете голосовать за себя.
 error-vote-in-progress = { "[" }scarlet]⚠ Голосование уже идет
 error-no-voting = { "[" }scarlet]⚠ На данный момент голосование не проводится.
+error-no-map = { "[" }scarlet]⚠ Карта не выбрана.
+error-map-not-event = { "[" }scarlet]⚠ Карта не относится к текущему событию.
 error-map-not-found = { "[" }scarlet]⚠ Карта не найдена! [accent]Используйте [cyan]/maps[] для просмотра списка всех доступных карт
+error-maps-empty = { "[" }scarlet]⚠ Список карт пуст.
+error-event-not-found = { "[" }scarlet]⚠ Событие не найдено! [accent]Используйте [cyan]/events[] для просмотра списка доступных событий.
 error-page-between = { "[" }scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{ $totalPages }[]
 error-page-number = { "[" }scarlet]⚠ 'страница' должна быть числом
 error-wrong-number = { "[" }scarlet]⚠ Неправильный формат числа
@@ -313,6 +418,8 @@ error-wrong-admin-password = { "[" }scarlet]⚠ Неправильный пар�
 error-internal = { "[" }scarlet]Внутренняя ошибка сервера
 error-processing-request = { "[" }scarlet]Произошла ошибка при обработке запроса.
 error-playtime-requirement = { "[" }scarlet]⚠ Вам нужно отыграть минимум { $time } минут для использования этой функции.
+error-team-not-found = { "[" }scarlet]⚠ Команда не найдена.
+error-no-access = { "[" }scarlet]⚠ Нет доступа.
 error-invalid-syntax = { "[" }scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
 error-invalid-sender = { "[" }scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{ $type }
 error-argument-parse-generic = { "[" }scarlet]⚠ Ошибка аргумента: { $error }
@@ -328,6 +435,25 @@ argument-parse-failure-flag-duplicate = { "[" }scarlet]⚠ Повторяющи�
 argument-parse-failure-flag-missing-argument = { "[" }scarlet]⚠ Отсутствует аргумент для флага: '{ $flag }'.
 argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ У вас нет прав на использование флага '{ $flag }'.
 # ==============================================================================
+# Button Status
+# ==============================================================================
+finished = major
+finished-neutral = { "[" }orange]Завершено
+finished-active = { "[" }green]Завершено
+finished-inactive = { "[" }red]Завершено
+major = Крупное
+major-neutral = { "[" }orange]Крупное
+major-active = { "[" }green]Крупное
+major-inactive = { "[" }red]Крупное
+active = Активно
+active-neutral = { "[" }orange]Активно
+active-active = { "[" }green]Активно
+active-inactive = { "[" }red]Активно
+admin = Админ
+admin-neutral = { "[" }orange]Админ
+admin-active = { "[" }green]Админ
+admin-inactive = { "[" }red]Админ
+# ==============================================================================
 # Miscellaneous
 # ==============================================================================
 hours = часы
@@ -335,6 +461,21 @@ days = дни
 success = { "[" }green]Успешно
 empty = { "[" }accent]Пусто
 never = Никогда
+save = Сохранить
 close = Закрыть
 previous = <- Предыдущая
 next = Следующая ->
+cancel = Отмена
+back = Назад
+yes = Да
+no = Нет
+test = Тест
+no-description = Без описания
+discord = Discord
+github = GitHub
+donatello = Donatello
+weblate = Weblate
+discord-red-vs-blue = RedVSBlue
+auto = Авто
+on = Включено
+off = Выключено
