@@ -18,6 +18,7 @@ public class SerializationFactory {
         return new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .excludeFieldsWithModifiers(Modifier.PRIVATE, Modifier.TRANSIENT, Modifier.STATIC)
+                .registerTypeAdapterFactory(new BiMapTypeAdapterFactory())
                 .setPrettyPrinting()
                 .disableHtmlEscaping()
                 .serializeNulls()
@@ -28,6 +29,7 @@ public class SerializationFactory {
     @Named("raw")
     public Gson rawGson() {
         return new GsonBuilder()
+                .registerTypeAdapterFactory(new BiMapTypeAdapterFactory())
                 .serializeNulls()
                 .create();
     }

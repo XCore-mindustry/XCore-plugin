@@ -85,14 +85,14 @@ public class DiscordMessageHandler {
     private void registerChatBridge(GatewayDiscordClient gateway) {
         gateway.on(MessageCreateEvent.class)
                 .filter(event -> event.getMessage().getAuthor().map(user -> !user.isBot()).orElse(false))
-                .filter(event -> globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong(), false)
-                        && !event.getMessage().getContent().startsWith("/"))
+                .filter(event -> globalConfig.servers.containsValue(event.getMessage().getChannelId().asLong()))
+                .filter(event -> !event.getMessage().getContent().startsWith("/"))
                 .subscribe(event -> {
                     var author = event.getMember().orElse(null);
                     var message = event.getMessage();
                     var content = message.getContent();
 
-                    String server = globalConfig.servers.findKey(event.getMessage().getChannelId().asLong(), false);
+                    String server = findServerByChannelId(event.getMessage().getChannelId().asLong());
 
                     if (server == null) return;
 
@@ -115,5 +115,9 @@ public class DiscordMessageHandler {
                 "author", authorName,
                 "message", message
         ));
+    }
+
+    private String findServerByChannelId(long channelId) {
+        return globalConfig.servers.getByValue(channelId);
     }
 }

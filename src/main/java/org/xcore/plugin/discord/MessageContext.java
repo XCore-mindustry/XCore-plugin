@@ -1,7 +1,6 @@
 package org.xcore.plugin.discord;
 
 import arc.func.Cons;
-import arc.util.Strings;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.object.MessageReference;
@@ -105,7 +104,7 @@ public record MessageContext(Message message, Member member, MessageChannel chan
         if (serverName == null || !globalConfig.servers.containsKey(serverName)) {
             error(
                     "Invalid server name",
-                    "Server with provided name not found!\nServers: " + Strings.join(", ", globalConfig.servers.keys())
+                    "Server with provided name not found!\nServers: " + String.join(", ", globalConfig.servers.keySet())
             ).subscribe();
             return true;
         }

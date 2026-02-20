@@ -72,7 +72,7 @@ public class NetworkService {
     }
 
     public String findServer(String query) {
-        for (String server : globalConfig.servers.keys()) {
+        for (String server : globalConfig.servers.keySet()) {
             if (server.equals(query)) return query;
             if (server.startsWith(query) || server.contains(query)) return server;
         }

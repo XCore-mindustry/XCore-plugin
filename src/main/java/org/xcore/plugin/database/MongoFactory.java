@@ -10,6 +10,7 @@ import io.avaje.inject.Factory;
 import io.avaje.inject.PreDestroy;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.config.GlobalConfig;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -44,6 +45,7 @@ public class MongoFactory {
                 fromProviders(PojoCodecProvider.builder().automatic(true).build())
         );
 
+        PLog.info("MongoDB: using database '@'", globalConfig.databaseName);
         return client.getDatabase(globalConfig.databaseName)
                 .withCodecRegistry(pojoCodecRegistry);
     }

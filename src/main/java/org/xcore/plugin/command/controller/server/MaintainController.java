@@ -85,7 +85,7 @@ public class MaintainController implements CloudServerController {
         if (targets != null) {
             if (except) {
                 Seq<String> toExclude = Seq.with(targets);
-                for (String serverName : globalConfig.servers.keys()) {
+                for (String serverName : globalConfig.servers.keySet()) {
                     if (!toExclude.contains(serverName)) {
                         finalTargets.add(serverName);
                     }

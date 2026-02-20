@@ -126,7 +126,7 @@ public class DiscordCommandRegistry {
             }
 
             List<SelectMenu.Option> servers = new ArrayList<>();
-            for (var key : globalConfig.servers.keys()) {
+            for (var key : globalConfig.servers.keySet()) {
                 servers.add(SelectMenu.Option.of(key, key));
             }
 
