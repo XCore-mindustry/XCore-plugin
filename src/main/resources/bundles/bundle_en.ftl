@@ -454,7 +454,7 @@ argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ You don't have pe
 # ==============================================================================
 # Button Status
 # ==============================================================================
-finished = major
+finished = finished
 finished-neutral = { "[" }orange]Finished
 finished-active = { "[" }green]Finished
 finished-inactive = { "[" }red]Finished

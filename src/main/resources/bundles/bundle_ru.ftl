@@ -42,6 +42,55 @@ help-legacy-command-content-no-params =
     { "" }
     { "" }[gray](Это устаревшая команда с ограниченной информацией)
 help-back = { "[" }lightgray]« Назад
+# ==============================================================================
+# Command Argument Descriptions
+# ==============================================================================
+# help
+commands-help-page-description = Номер страницы для отображения
+# login
+commands-login-password-description = Ваш пароль администратора
+# ban
+commands-ban-id-description = ID игрока для бана
+commands-ban-period-description = Длительность бана (например: 1d, 2h, 30m)
+commands-ban-reason-description = Причина бана
+# unban
+commands-unban-id-description = ID игрока для разбана
+# mute
+commands-mute-id-description = ID игрока для мута
+commands-mute-period-description = Длительность мута (например: 1h, 30m)
+commands-mute-reason-description = Причина мута
+# unmute
+commands-unmute-id-description = ID игрока для снятия мута
+# votekick
+commands-votekick-target-description = Игрок для кика (ID или имя)
+commands-votekick-reason-description = Причина кика
+# vote
+commands-vote-choice-description = Ваш голос: y (да), n (нет), c (отмена, только админ)
+# t (team chat)
+commands-t-message-description = Сообщение для союзников
+# g (global chat)
+commands-g-message-description = Сообщение для всех серверов
+# tr (translator)
+commands-tr-language-description = Код языка, 'ru', 'en', ..., 'auto' или 'off'
+# stats
+commands-stats-id-description = ID игрока для просмотра статистики
+# rank
+commands-rank-player-description = Игрок для просмотра ранга
+# map
+commands-map-map-description = Название или номер карты
+# maps / maps-text
+commands-maps-page-description = Номер страницы
+commands-maps-text-page-description = Номер страницы
+# rtv / artv
+commands-rtv-map-description = Карта для голосования (опционально)
+commands-artv-map-description = Карта для принудительной смены
+# ai
+commands-ai-state-description = Состояние ИИ: attack (a) или idle (i)
+# event / events
+commands-events-page-description = Номер страницы
+# ==============================================================================
+# General & Help (continued)
+# ==============================================================================
 commands-information-description = Показать информацию о сервере
 commands-info = Информация
 commands-info-title = { "[" }orange]{ -xcore } — Название сервера: [orange]{ $server-name }
@@ -49,7 +98,7 @@ commands-info-text =
     { "[" }accent]XCore[white] — это [cyan]бесплатный[white] сервер для игры в [accent]Mindustry[white].
     { "" }
     { "" }Версия XCore — [accent]{ $version }[white]
-commands-sync-description = Пересинхронизировать состояние мира
+commands-sync-description = Синхронизировать игру с сервером. Запустите это для исправления ошибок, таких как фантомные юниты.
 commands-discord-description = Перенаправляет вас на сервер discord.
 welcome =
     { "[" }accent]Добро пожаловать в { $serverName }!
@@ -60,34 +109,6 @@ welcome =
     { "" }[lightgray]Введите [accent]/g [gray]<сообщение...>[lightgray], чтобы отправить сообщение всем серверам
     { "" }[lightgray]Введите [accent]/tr [gray]<язык/auto>[lightgray], чтобы включить переводчик
     { "" }[lightgray]Введите [accent]/discord[lightgray], чтобы перейти наш сервер discord
-# ==============================================================================
-# Command Argument Descriptions
-# ==============================================================================
-commands-help-page-description = Номер страницы для отображения
-commands-login-password-description = Ваш пароль администратора
-commands-ban-id-description = ID игрока для бана
-commands-ban-period-description = Длительность бана (например: 1d, 2h, 30m)
-commands-ban-reason-description = Причина бана
-commands-unban-id-description = ID игрока для разбана
-commands-mute-id-description = ID игрока для мута
-commands-mute-period-description = Длительность мута (например: 1h, 30m)
-commands-mute-reason-description = Причина мута
-commands-unmute-id-description = ID игрока для снятия мута
-commands-votekick-target-description = Игрок для кика (ID или имя)
-commands-votekick-reason-description = Причина кика
-commands-vote-choice-description = Ваш голос: y (да), n (нет), c (отмена, только админ)
-commands-t-message-description = Сообщение для союзников
-commands-g-message-description = Сообщение для всех серверов
-commands-tr-language-description = Код языка, 'ru', 'en', ..., 'auto' или 'off'
-commands-stats-id-description = ID игрока для просмотра статистики
-commands-rank-player-description = Игрок для просмотра ранга
-commands-map-map-description = Название или номер карты
-commands-maps-page-description = Номер страницы
-commands-maps-text-page-description = Номер страницы
-commands-rtv-map-description = Карта для голосования (опционально)
-commands-artv-map-description = Карта для принудительной смены
-commands-ai-state-description = Состояние ИИ: attack (a) или idle (i)
-commands-events-page-description = Номер страницы
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
@@ -111,8 +132,8 @@ commands-login-confirmed = { "[" }green]Права админа подтверж
 commands-login-admin-password-created =
     { "[" }green]Пароль админа создан
     { "" }[red]Не забудьте свой пароль! Если Вы его забудете, Вам придется обратиться к главному администратору с просьбой сбросить его.
-commands-login-request-approval-discord = { "[" }accent]Запрос на права админа. [lightgray]Подтвердите его в канале [orange]#admin-bots[] на нашем сервере discord.
-commands-logout-description = Лишить себя прав администратора
+commands-login-request-approval-discord = { "[" }accent]Вам необходимо подтвердить запрос на права администратора в Discord канале [orange]#admin-bots[].
+commands-logout-description = Выйти. Это [scarlet]отзовет ваши права администратора.
 commands-logout-successful = { "[" }green]Вы лишены прав администратора
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
@@ -135,7 +156,7 @@ tempban-content =
     Админ: { $adminName }[accent]
     Причина: "[gold]{ $reason }[]"
     Вы будете разбанены через: { $days } дней, { $hours } часов и { $minutes } минут
-    Для снятия бана посетите дискорд(канал [gray]{ support-channel }]):
+    Для снятия бана посетите дискорд(канал [gray]{ support-channel }[]):
     { "" }[cyan]{ $discordUrl }
 tempban-player-banned = { "[" }scarlet] Админ { $adminName }[scarlet] забанил игрока [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
@@ -144,8 +165,10 @@ you-are-muted-by =
 you-are-muted =
     { "[" }scarlet]Вы не можете писать в чат. Вы заглушены администратором [accent]{ $adminName }[accent] на { $remainMinutes }:{ $remainSeconds } минут.
     Причина: { $reason }
-kick-pirated-game = { "[" }accent]Вход с неофициальных клиентов [scarlet]запрещен[]. Пожалуйста, используйте [lime]официальную[] версию игры (Steam, Google Play, itch.io).
-kick-recently-kicked = { "[" }accent]Вы были недавно кикнуты с этого сервера. Подождите [cyan]{ $remainMinutes }:{ $remainSeconds }[accent]
+kick-pirated-game = { "[" }accent]Обнаружен неавторизованный клиент. [scarlet]Доступ запрещен[]. Пожалуйста, используйте [lime]официальную[] версию из [blue]Steam[], [blue]Google Play[] или [blue]itch.io[].
+kick-recently-kicked =
+    { "[" }accent]Вы недавно были кикнуты с этого сервера.
+    Подождите [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] перед повторным входом.
 kick-bot-protection = Возможно вы бот. Если нет, попробуйте перезайти.
 kick-admintools-outdated =
     { "[" }green]Требуемая версия AdminTools: [grey]{ $requiredVersion }[]
@@ -169,13 +192,13 @@ votekick-success =
     { "[" }orange]Голосование успешно. { $target }[orange] изгнан на [scarlet]{ $minutes }[] { $minutes ->
         [one] минуту
         [few] минуты
-       *[many] минут
+       *[other] минут
     }.
 # ==============================================================================
 # Maps & RTV
 # ==============================================================================
 commands-map-description = Статистика конкретной карты
-commands-map-title = { "[" }orange]XCore сервер — Статистика
+commands-map-title = { "[" }orange]{ -xcore } — Статистика
 commands-map-content =
     { "" }[white]Статистика карты [green]{ $name }
     { "" }[white]Автор:[green] { $author }[orange] | [white]Размер:[green] { $width }x{ $height }[orange]
@@ -185,7 +208,7 @@ commands-map-content =
     { "" }[white]Мин. время:[green] { $min }[orange] | [white]Ср. время:[green] { $avg }[orange] | [white]Макс. время:[green] { $max }[orange]
     { "" }[green]{ $description }[white]
 commands-maps-description = Список всех карт на этом сервере.
-commands-maps-title = { "[" }orange]XCore сервер — Список карт
+commands-maps-title = { "[" }orange]{ -xcore } — Список карт
 commands-maps-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
 commands-maps-text-description = Список всех карт на этом сервере.
 commands-maps-text-start-content =
@@ -199,7 +222,7 @@ commands-artv-map-skipped = { $nickname }[accent] пропустил карту.
 commands-rtv-description = Голосование за изменение карты
 commands-like-description = Проголосовать за карту (повышает репутацию)
 commands-dislike-description = Проголосовать против карты
-map-vote-title = { "[" }orange]XCore сервер — [scarlet]ИГРА ОКОНЧЕНА!
+map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ИГРА ОКОНЧЕНА!
 map-vote-content =
     { "" }
     { "" }Следующая карта: [accent]{ $mapName }[] от [accent]{ $author }[white].
@@ -223,14 +246,14 @@ rtv-fail = { "[" }lightgray]Голосование провалилось. Не 
 rtv-success = { "[" }orange]Голосование завершено успешно. Карта [accent]{ $mapName }[] будет загружена через [accent]{ $mapLoadDelay }[] секунд…
 rtv-cancelled = { "[" }lightgray]Голосование за смену карты на [orange]{ $mapName }[lightgray] было отменено администратором { $admin }.
 # ==============================================================================
-# Statistics & Ranks
+# Statistics & Ranks & Players
 # ==============================================================================
 commands-player-description = Статистика игрока
 player-menu-player = Игрок
 player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
     Статистика игрока { $nickname } [grey]#{ $pid }
-    { "" }[brown]Время на сервере: [grey]{ $totalPlayTime }[] minutes
+    { "" }[brown]Время на сервере: [grey]{ $totalPlayTime }[] минут
     Ранг в MiniHexed: [grey]{ $hexedRankTag } { $hexedRankName }
     MiniPvP рейтинг: { $pvpRating }
 player-menu-players = Список игроков
@@ -284,7 +307,7 @@ hexed-game-over-winner-row =
     { "[" }orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
         [one] гекс
         [few] гекса
-       *[many] гексов
+       *[other] гексов
     }
 hexed-game-over-no-winners = Игра окончена. К сожалению, победители не найдены.
 hexed-game-over-restart = Новая игра через 10 секунд…
@@ -315,6 +338,7 @@ dislike-event-changed = { "[" }orange]Вы изменили мнение на д
 # ==============================================================================
 # Events (Server)
 # ==============================================================================
+
 commands-event-description = Меню управления событиями.
 commands-events-description = Список всех событий на серверах.
 event-events = События
@@ -387,10 +411,11 @@ event-end = Событие [green]{ $name }[] завершилось!
 error-access-denied = { "[" }scarlet]⚠ Доступ запрещен
 error-ip-changed = { "[" }scarlet]⚠ Ваш IP адрес изменился. Привилегии администратора были отозваны.
 error-not-enough-params = { "[" }scarlet]⚠ Недостаточно параметров
-error-player-not-found = { "[" }scarlet]⚠ Игрок не найден
+error-player-not-found = { "[" }scarlet]Игрок не найден.
 error-player-not-teammate = { "[" }scarlet]⚠ Игрок не в вашей команде
 error-player-admin = { "[" }scarlet]⚠ Попытка выгнать администратора ⚠
 error-already-voted = { "[" }scarlet]⚠ Вы уже проголосовали.
+error-playtime-requirement = { "[" }scarlet]⚠ Вам нужно отыграть минимум { $time } минут для использования этой функции.
 error-globalchat-total-playtime = { "[" }scarlet]⚠ Для того чтобы отправить сообщение в глобальный чат, вам необходимо отыграть { $globalChatPlayTime } минут.
 error-votekick-total-playtime = { "[" }scarlet]⚠ Для того чтобы проголосовать, вам необходимо отыграть { $votekickPlayTime } минут.
 error-vote-yourself = { "[" }scarlet]⚠ Вы не можете голосовать за себя.
@@ -402,16 +427,15 @@ error-map-not-found = { "[" }scarlet]⚠ Карта не найдена! [accent
 error-maps-empty = { "[" }scarlet]⚠ Список карт пуст.
 error-event-not-found = { "[" }scarlet]⚠ Событие не найдено! [accent]Используйте [cyan]/events[] для просмотра списка доступных событий.
 error-page-between = { "[" }scarlet]⚠ 'страница' должна быть числом между[orange] 1[] и [orange]{ $totalPages }[]
-error-page-number = { "[" }scarlet]⚠ 'страница' должна быть числом
+error-page-number = { "[" }scarlet]'страница' должна быть числом.
 error-wrong-number = { "[" }scarlet]⚠ Неправильный формат числа
-error-wrong-period-format = ⚠ Неправильный формат периода. Пример: 1h 30h, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Неккоректное player-id
+error-wrong-period-format = { "[" }scarlet]⚠ Неправильный формат периода. Пример: 1h 30m, 30 ({ hours })
+error-invalid-id = { "[" }scarlet]⚠ Некорректное player-id
 error-spectator = { "[" }scarlet]⚠ Вы наблюдатель
 error-admin-password-too-short = { "[" }scarlet]⚠ Пароль должен быть длиннее 4 символов
 error-wrong-admin-password = { "[" }scarlet]⚠ Неправильный пароль
 error-internal = { "[" }scarlet]Внутренняя ошибка сервера
 error-processing-request = { "[" }scarlet]Произошла ошибка при обработке запроса.
-error-playtime-requirement = { "[" }scarlet]⚠ Вам нужно отыграть минимум { $time } минут для использования этой функции.
 error-team-not-found = { "[" }scarlet]⚠ Команда не найдена.
 error-no-access = { "[" }scarlet]⚠ Нет доступа.
 error-invalid-syntax = { "[" }scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
@@ -431,7 +455,7 @@ argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ У вас нет 
 # ==============================================================================
 # Button Status
 # ==============================================================================
-finished = major
+finished = завершено
 finished-neutral = { "[" }orange]Завершено
 finished-active = { "[" }green]Завершено
 finished-inactive = { "[" }red]Завершено
@@ -456,9 +480,9 @@ success = { "[" }green]Успешно
 empty = { "[" }accent]Пусто
 never = Никогда
 save = Сохранить
-close = Закрыть
-previous = <- Предыдущая
-next = Следующая ->
+close = { "[" }scarlet]Закрыть
+previous = { "[" }accent]« Предыдущая
+next = { "[" }accent]Следующая »
 cancel = Отмена
 back = Назад
 yes = Да
