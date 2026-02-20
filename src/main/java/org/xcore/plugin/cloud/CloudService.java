@@ -42,7 +42,6 @@ import org.xcore.plugin.service.TimeService;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -92,7 +91,7 @@ public class CloudService {
 
     private MindustryCommandManager<XCoreSender> createManager(CommandHandler handler) {
         SenderMapper<MindustrySender, XCoreSender> mapper = SenderMapper.create(
-                base -> new XCoreSender(base, bundleService),
+                base -> new XCoreSender(base, bundleService, sessionService),
                 XCoreSender::getHandle
         );
 
@@ -115,12 +114,14 @@ public class CloudService {
         });
 
         mgr.captionRegistry().registerProvider((caption, recipient) -> {
-            Locale locale = recipient.isPlayer()
-                    ? bundleService.locale(recipient.player())
-                    : bundleService.getDefaultLocale();
-
             String key = caption.key().replace(".", "-");
-            return bundleService.format(locale, key, args());
+            if (recipient.isPlayer()) {
+                var session = sessionService.get().get(recipient.player());
+                if (session != null) {
+                    return session.locale().format(key, args());
+                }
+            }
+            return bundleService.format(bundleService.getDefaultLocale(), key, args());
         });
 
         mgr.parserRegistry().registerAnnotationMapper(
@@ -172,7 +173,7 @@ public class CloudService {
 
             XCoreSender sender = ctx.context().sender();
             if (sender.isPlayer()) {
-                bundleService.send(sender.player(), ex.getKey(), ex.getArgs());
+                sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
             } else {
                 sender.sendMessage("Error: " + ex.getKey());
             }
@@ -183,7 +184,7 @@ public class CloudService {
             String correctSyntax = ex.correctSyntax();
             XCoreSender sender = ctx.context().sender();
             if (sender.isPlayer()) {
-                bundleService.send(sender.player(), "error-invalid-syntax", args("syntax", correctSyntax));
+                sendToPlayer(sender.player(), "error-invalid-syntax", args("syntax", correctSyntax));
             } else {
                 sender.sendMessage("Invalid Syntax. Usage: " + correctSyntax);
             }
@@ -194,7 +195,7 @@ public class CloudService {
             String key = "error-access-denied";
 
             if (sender.isPlayer()) {
-                bundleService.send(sender.player(), key, args());
+                sendToPlayer(sender.player(), key, args());
             } else {
                 sender.sendMessage("Error: " + key);
             }
@@ -207,7 +208,7 @@ public class CloudService {
             if (cause instanceof XCoreCommandException xcoreEx) {
                 if (xcoreEx.isSilent()) return;
                 if (sender.isPlayer()) {
-                    bundleService.send(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
+                    sendToPlayer(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
                 } else {
                     sender.sendMessage("Error: " + xcoreEx.getKey());
                 }
@@ -223,7 +224,7 @@ public class CloudService {
                 }
 
                 if (sender.isPlayer()) {
-                    bundleService.send(sender.player(), key, arguments);
+                    sendToPlayer(sender.player(), key, arguments);
                 } else {
                     sender.sendMessage("Parse Error (" + key + "): " + parserEx.getMessage());
                 }
@@ -232,7 +233,7 @@ public class CloudService {
 
             String errorMsg = cause.getMessage();
             if (sender.isPlayer()) {
-                bundleService.send(sender.player(), "error-argument-parse-generic", args("error", errorMsg));
+                sendToPlayer(sender.player(), "error-argument-parse-generic", args("error", errorMsg));
             } else {
                 sender.sendMessage("Parse Error: " + errorMsg);
             }
@@ -245,7 +246,7 @@ public class CloudService {
                 if (xcoreEx.isSilent()) return;
                 XCoreSender sender = ctx.context().sender();
                 if (sender.isPlayer()) {
-                    bundleService.send(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
+                    sendToPlayer(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
                 } else {
                     sender.sendMessage("[red]Error: " + xcoreEx.getKey());
                 }
@@ -260,12 +261,21 @@ public class CloudService {
 
             XCoreSender sender = ctx.context().sender();
             if (sender.isPlayer()) {
-                bundleService.send(sender.player(), messageKey, args());
+                sendToPlayer(sender.player(), messageKey, args());
             } else {
                 sender.sendMessage("[red]System Error: " + cause.getMessage());
                 cause.printStackTrace();
             }
         });
+    }
+
+    private void sendToPlayer(Player player, String key, Map<String, Object> args) {
+        var session = sessionService.get().get(player);
+        if (session != null) {
+            session.locale().send(key, args);
+            return;
+        }
+        player.sendMessage(bundleService.format(bundleService.getDefaultLocale(), key, args));
     }
 
     private void configurePreprocessors(AnnotationParser<XCoreSender> parser) {

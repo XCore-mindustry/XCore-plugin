@@ -11,7 +11,6 @@ import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
@@ -29,21 +28,18 @@ public class ModerationSocketHandler {
     private final FindService find;
     private final DiscordLogBridge discordLogBridge;
     private final Config config;
-    private final BundleService bundleService;
 
     @Inject
     public ModerationSocketHandler(NetworkService network,
                                    SessionService sessionService,
                                    FindService find,
                                    DiscordLogBridge discordLogBridge,
-                                   Config config,
-                                   BundleService bundleService) {
+                                   Config config) {
         this.network = network;
         this.sessionService = sessionService;
         this.find = find;
         this.discordLogBridge = discordLogBridge;
         this.config = config;
-        this.bundleService = bundleService;
     }
 
     public void registerListeners() {
@@ -60,7 +56,10 @@ public class ModerationSocketHandler {
 
             if (player != null) {
                 player.admin = true;
-                bundleService.send(player, "commands-login-confirmed", args());
+                var session = sessionService.get(player);
+                if (session != null) {
+                    session.locale().send("commands-login-confirmed", args());
+                }
             }
 
             netServer.admins.adminPlayer(e.uuid(), info.adminUsid);

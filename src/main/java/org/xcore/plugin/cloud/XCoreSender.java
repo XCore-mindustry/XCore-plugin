@@ -1,9 +1,11 @@
 package org.xcore.plugin.cloud;
 
+import jakarta.inject.Provider;
 import lombok.Getter;
 import mindustry.gen.Player;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 
 import java.util.Locale;
 import java.util.Map;
@@ -15,10 +17,12 @@ public class XCoreSender {
     @Getter
     private final MindustrySender handle;
     private final BundleService bundle;
+    private final Provider<SessionService> sessionService;
 
-    public XCoreSender(MindustrySender handle, BundleService bundle) {
+    public XCoreSender(MindustrySender handle, BundleService bundle, Provider<SessionService> sessionService) {
         this.handle = handle;
         this.bundle = bundle;
+        this.sessionService = sessionService;
     }
 
     public Player player() {
@@ -35,7 +39,12 @@ public class XCoreSender {
 
     public void send(String key, Map<String, Object> args) {
         if (isPlayer()) {
-            bundle.send(player(), key, args);
+            var session = sessionService.get().get(player());
+            if (session == null) {
+                handle.sendMessage(bundle.format(bundle.getDefaultLocale(), key, args));
+                return;
+            }
+            session.locale().send(key, args);
         } else {
             handle.sendMessage(bundle.format(bundle.getDefaultLocale(), key, args));
         }
@@ -46,11 +55,23 @@ public class XCoreSender {
     }
 
     public Locale locale() {
-        return isPlayer() ? bundle.locale(player()) : bundle.getDefaultLocale();
+        if (isPlayer()) {
+            var session = sessionService.get().get(player());
+            if (session != null) {
+                return session.locale().getLocale();
+            }
+        }
+        return bundle.getDefaultLocale();
     }
 
     public String format(String key, Map<String, Object> args) {
-        return bundle.format(locale(), key, args);
+        if (isPlayer()) {
+            var session = sessionService.get().get(player());
+            if (session != null) {
+                return session.locale().format(key, args);
+            }
+        }
+        return bundle.format(bundle.getDefaultLocale(), key, args);
     }
 
     public String format(String key) {

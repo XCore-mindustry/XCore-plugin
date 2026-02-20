@@ -75,7 +75,10 @@ public class NetEventService {
         if (choice.isValid() && voteService.isVoting()) {
             var currentVote = voteService.getCurrentSession();
             if (currentVote.voted.containsKey(author.id)) {
-                bundle.send(author, "error-already-voted", args());
+                var session = sessionService.get(author);
+                if (session != null) {
+                    session.locale().send("error-already-voted", args());
+                }
                 return null;
             }
             currentVote.vote(author, choice.sign());
@@ -149,7 +152,12 @@ public class NetEventService {
                 ));
                 Log.info("@ has skipped the wave.", admin.plainName());
             }
-            case switchTeam -> bundle.send(con.player, "error-access-denied", args());
+            case switchTeam -> {
+                var session = sessionService.get(con.player);
+                if (session != null) {
+                    session.locale().send("error-access-denied", args());
+                }
+            }
         }
     }
 

@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -31,7 +30,6 @@ public class AdminModIntegration {
     private final SessionService sessionService;
     private final NetworkService network;
     private final Gson rawGson;
-    private final BundleService bundle;
     private final TimeService time;
 
     @Inject
@@ -40,14 +38,12 @@ public class AdminModIntegration {
                                SessionService sessionService,
                                NetworkService network,
                                @Named("raw") Gson rawGson,
-                               BundleService bundle,
                                TimeService timeService) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.sessionService = sessionService;
         this.network = network;
         this.rawGson = rawGson;
-        this.bundle = bundle;
         this.time = timeService;
     }
 
@@ -55,20 +51,22 @@ public class AdminModIntegration {
     public void init() {
         netServer.addPacketHandler("take_ban_data", (player, content) -> {
             if (!player.admin) return;
+            var session = sessionService.get(player);
+            if (session == null) return;
 
             BanRequestData req;
             try {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
                 Log.err("Error processing ban request from @: @", player.name, e.getMessage());
-                bundle.send(player, "error-processing-request", args());
+                session.locale().send("error-processing-request", args());
                 return;
             }
 
             var targetData = playerDataRepository.findByPid(req.pid);
 
             if (targetData == null) {
-                bundle.send(player, "error-player-not-found", args());
+                session.locale().send("error-player-not-found", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
@@ -76,7 +74,7 @@ public class AdminModIntegration {
             Instant date = time.parsePeriod(req.duration, TimeUnit.DAYS);
 
             if (date == null) {
-                bundle.send(player, "error-wrong-period-format", args());
+                session.locale().send("error-wrong-period-format", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
@@ -97,23 +95,28 @@ public class AdminModIntegration {
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
             if (!player.admin) return;
+            var session = sessionService.get(player);
             BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
 
             var targetData = playerDataRepository.findByPid(req.pid);
             netServer.admins.unbanPlayerID(targetData.uuid);
 
-            bundle.send(player, "ban-cancelled", args("nickname", targetData.nickname));
+            if (session != null) {
+                session.locale().send("ban-cancelled", args("nickname", targetData.nickname));
+            }
         });
 
         netServer.addPacketHandler("adm_mod_end", (player, content) -> {
-            var data = sessionService.get(player.uuid()).data;
+            var session = sessionService.get(player);
+            if (session == null) return;
+            var data = session.data;
 
             if (data == null || data.adminModVersion != null) return;
             Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
             var requiredVersion = "1.3";
             if (VersionComparator.compareVersions(content, "1.3") < 0) {
-                String kickMsg = bundle.format(bundle.locale(player), "kick-admintools-outdated", args(
+                String kickMsg = session.locale().format("kick-admintools-outdated", args(
                         "version", content,
                         "requiredVersion", requiredVersion));
                 player.con.kick(kickMsg, 0);

@@ -3,6 +3,7 @@ package org.xcore.plugin.integration;
 import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.inject.Provider;
 import mindustry.server.ServerControl;
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
@@ -12,6 +13,7 @@ import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.session.SessionService;
 
 import java.util.List;
 import java.util.Set;
@@ -21,18 +23,22 @@ public class CloudJLineCompleter implements Completer {
 
     private final CloudService cloudService;
     private final BundleService bundleService;
+    private final Provider<SessionService> sessionService;
     private XCoreSender consoleSender;
 
     @Inject
-    public CloudJLineCompleter(CloudService cloudService, BundleService bundleService) {
+    public CloudJLineCompleter(CloudService cloudService,
+                               BundleService bundleService,
+                               Provider<SessionService> sessionService) {
         this.cloudService = cloudService;
         this.bundleService = bundleService;
+        this.sessionService = sessionService;
     }
 
     @Override
     public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
         if (consoleSender == null) {
-            consoleSender = new XCoreSender(new MindustrySender.ConsoleSender(), bundleService);
+            consoleSender = new XCoreSender(new MindustrySender.ConsoleSender(), bundleService, sessionService);
         }
 
         try {

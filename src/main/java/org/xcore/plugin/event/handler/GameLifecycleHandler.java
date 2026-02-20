@@ -116,9 +116,14 @@ public class GameLifecycleHandler {
     private void restart() {
         AtomicInteger secondsLeft = new AtomicInteger(10);
         Timer.schedule(() -> {
-            Groups.player.each((p) -> Call.announce(p.con, bundleService.format(sessionService.get(p.uuid()).locale().getLocale(),
-                            "server-restart-countdown",
-                            args("seconds", secondsLeft.get()))));
+            Groups.player.each((p) -> {
+                var session = sessionService.get(p);
+                var message = session == null
+                        ? bundleService.format(bundleService.getDefaultLocale(), "server-restart-countdown",
+                        args("seconds", secondsLeft.get()))
+                        : session.locale().format("server-restart-countdown", args("seconds", secondsLeft.get()));
+                Call.announce(p.con, message);
+            });
             if (secondsLeft.decrementAndGet() == 0) {
                 netServer.kickAll(Packets.KickReason.serverRestarting);
                 System.exit(0);

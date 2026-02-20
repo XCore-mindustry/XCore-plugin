@@ -139,10 +139,14 @@ public class MiniHexedService {
             int sec = winScore % 60;
             int min = (winScore / 60) % 60;
 
-            Groups.player.each(p -> Call.infoPopup(p.con(), bundle.format(bundle.locale(p.locale), "hexed-popup", args(
-                            "minutes", min,
-                            "seconds", sec)),
-                    1, Align.bottom, 0, 0, 0, 0));
+            Groups.player.each(p -> {
+                var session = sessionService.get(p);
+                if (session == null) return;
+                var message = session.locale().format("hexed-popup", args(
+                        "minutes", min,
+                        "seconds", sec));
+                Call.infoPopup(p.con(), message, 1, Align.bottom, 0, 0, 0, 0);
+            });
 
             if (winScore < 1 && !gameover && !Vars.state.gameOver) {
                 endGame();
@@ -227,7 +231,11 @@ public class MiniHexedService {
             return builder.toString();
         };
 
-        Groups.player.each(p -> Call.infoMessage(p.con, generateMessage.get(bundle.locale(p))));
+        Groups.player.each(p -> {
+            var session = sessionService.get(p);
+            if (session == null) return;
+            Call.infoMessage(p.con, generateMessage.get(session.locale().getLocale()));
+        });
 
         String rawMessage = generateMessage.get(bundle.getDefaultLocale());
         network.post(new SocketEvents.ServerActionEvent(Strings.stripColors(rawMessage), config.server));

@@ -75,6 +75,7 @@ public class MiniPvP {
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
+                // TODO: session is not guaranteed to be created at PlayerConnectionConfirmed stage.
                 bundle.send(e.player, "pvp-you-spectator", args());
             }
         });
@@ -83,13 +84,14 @@ public class MiniPvP {
             if (e.winner == Team.derelict) return;
 
             e.winner.data().players.each(p -> {
-                var data = sessionService.get(p.uuid()).data;
+                var session = sessionService.get(p);
+                var data = session.data;
 
                 int calculated = 150 / (e.winner.data().players.size + 1);
                 int increased = Mathf.clamp(calculated, 10, 60);
 
                 data.pvpRating += increased;
-                bundle.send(p, "pvp-team-won", args("increased", increased + ""));
+                session.locale().send("pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
                 playerDataRepository.save(data);
@@ -108,7 +110,8 @@ public class MiniPvP {
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
 
-                        var data = sessionService.get(p.uuid()).data;
+                        var session = sessionService.get(p);
+                        var data = session.data;
 
                         int reduced = (int) (25f * ((float) allies / enemies));
 
@@ -119,7 +122,7 @@ public class MiniPvP {
                         } else {
                             data.pvpRating -= reduced;
                         }
-                        bundle.send(p, "pvp-team-lose", args("reduced", reduced + ""));
+                        session.locale().send("pvp-team-lose", args("reduced", reduced + ""));
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
