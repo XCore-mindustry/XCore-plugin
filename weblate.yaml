@@ -3,7 +3,7 @@ weblate:
     - name: XCore Plugin
       url: git@github.com:XCore-mindustry/XCore-plugin.git
 
-      branch: v3.0-di-refactor # main
+      branch: main
 
       components:
         - name: game-texts
