@@ -6,6 +6,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.ModelData;
@@ -59,5 +60,9 @@ public abstract class DataRepository<T extends ModelData> {
 
     public long count() {
         return collection.countDocuments();
+    }
+
+    public long count(Bson filter) {
+        return collection.countDocuments(filter);
     }
 }

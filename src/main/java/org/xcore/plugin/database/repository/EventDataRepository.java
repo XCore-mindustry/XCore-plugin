@@ -48,9 +48,8 @@ public class EventDataRepository extends DataRepository<EventData> {
         });
     }
 
-    public List<EventData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
+    public Bson getQuery(Map<String, StatusEnum> filters) {
         List<Bson> pipeline = new ArrayList<>();
-
         if (filters != null) {
             StatusEnum finished = filters.get("finished");
             if (finished == StatusEnum.Active) pipeline.add(Filters.eq("is_finished", true));
@@ -64,14 +63,19 @@ public class EventDataRepository extends DataRepository<EventData> {
             if (active == StatusEnum.Active) pipeline.add(Filters.eq("is_active", true));
             if (active == StatusEnum.Inactive) pipeline.add(Filters.eq("is_active", false));
         }
+        return pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
+    }
 
-        var query = pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
-
-        return collection.find(query)
+    public List<EventData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
+        return collection.find(getQuery(filters))
                 .sort(new Document("created_at", -1))
                 .skip(skip)
                 .limit(limit)
                 .into(new ArrayList<>());
+    }
+
+    public long count(Map<String, StatusEnum> filters) {
+        return collection.countDocuments(getQuery(filters));
     }
 
     public Optional<EventData> findNextScheduled() {

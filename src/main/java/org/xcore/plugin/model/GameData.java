@@ -68,5 +68,9 @@ public class GameData extends ModelData {
         this.gameMode = gameMode;
         this.event = event;
         this.isEvent = true;
+
+        this.playerStats = new ArrayList<>();
+        this.activePatches = new ArrayList<>();
+        this.activeMods = new ArrayList<>();
     }
 }

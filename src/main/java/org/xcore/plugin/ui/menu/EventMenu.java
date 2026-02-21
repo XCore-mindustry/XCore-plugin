@@ -242,7 +242,7 @@ public class EventMenu extends Menu {
 
     public void events(String uuid, int page) {
         Session session = sessionService.get(uuid).clear();
-        int total = (int) eventDataRepository.count();
+        int total = (int) eventDataRepository.count(session.sortStatus);
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(total, perPage);
 

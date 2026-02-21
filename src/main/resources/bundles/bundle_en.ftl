@@ -470,6 +470,8 @@ admin = Admin
 admin-neutral = { "[" }orange]Admin
 admin-active = { "[" }green]Admin
 admin-inactive = { "[" }red]Admin
+player-leaderboard-active = { "[" }green]Leaderboard
+player-leaderboard-inactive = { "[" }red]Leaderboard
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================

@@ -480,3 +480,6 @@ auto = Авто
 on = Увімкнено
 off = Вимкнено
 error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
+
+player-leaderboard-active = { "[" }green]Список лідерів
+player-leaderboard-inactive = { "[" }red]Список лідерів

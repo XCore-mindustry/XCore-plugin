@@ -68,22 +68,26 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return collection.find(eq("pid", id)).first();
     }
 
-    public List<PlayerData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
+    public Bson getQuery(Map<String, StatusEnum> filters) {
         List<Bson> pipeline = new ArrayList<>();
-
         if (filters != null) {
             StatusEnum admin = filters.get("admin");
             if (admin == StatusEnum.Active) pipeline.add(Filters.eq("is_admin", true));
             if (admin == StatusEnum.Inactive) pipeline.add(Filters.eq("is_admin", false));
         }
+        return pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
+    }
 
-        var query = pipeline.isEmpty() ? new Document() : Filters.and(pipeline);
-
-        return collection.find(query)
+    public List<PlayerData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
+        return collection.find(getQuery(filters))
                 .sort(new Document("created_at", -1))
                 .skip(skip)
                 .limit(limit)
                 .into(new ArrayList<>());
+    }
+
+    public long count(Map<String, StatusEnum> filters) {
+        return collection.countDocuments(getQuery(filters));
     }
 
     public long deleteBots() {

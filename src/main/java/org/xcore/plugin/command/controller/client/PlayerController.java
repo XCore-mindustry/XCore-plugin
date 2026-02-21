@@ -70,8 +70,8 @@ public class PlayerController implements CloudClientController {
         boolean isHexed = config.isMiniHexed();
 
         Seq<PlayerData> leaders = isHexed
-                ? playerDataRepository.findLeaders("hexedRank", "hexedPoints")
-                : playerDataRepository.findLeaders("pvpRating");
+                ? playerDataRepository.findLeaders("hexed_rank", "hexed_points")
+                : playerDataRepository.findLeaders("pvp_rating");
 
         if (leaders.isEmpty()) {
             sender.send("empty", args());

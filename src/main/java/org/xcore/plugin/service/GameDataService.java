@@ -31,7 +31,12 @@ public class GameDataService {
 
         if (map == null) return;
 
-        currentBag = new GameData(map.id, mode);
+        currentBag = GameData.builder()
+            .map(map.id)
+            .gameMode(mode)
+            .startGameTime(System.currentTimeMillis())
+            .build();
+
         if (event != null) {
             currentBag.event = event.id;
             currentBag.isEvent = true;

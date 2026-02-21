@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-version = "3.0.1"
+version = "3.0.2"
 val mindustryVersion = "155.4"
 
 java {

@@ -73,7 +73,7 @@ public class PlayerMenu extends Menu {
 
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid).clear();
-        int totalPlayers = (int) playerDataRepository.count();
+        int totalPlayers = (int) playerDataRepository.count(session.sortStatus);
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(totalPlayers, perPage);
 

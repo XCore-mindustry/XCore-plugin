@@ -7,6 +7,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.command.controller.CloudServerController;
+import org.xcore.plugin.command.controller.client.EventController;
 import org.xcore.plugin.command.controller.client.HexedController;
 import org.xcore.plugin.config.Config;
 
@@ -42,6 +43,14 @@ public class CloudCommandRegistrar {
     }
 
     private boolean shouldRegister(CloudClientController controller) {
-        return !(controller instanceof HexedController) || config.get().isMiniHexed();
+        if (controller instanceof HexedController) {
+            return config.get().isMiniHexed();
+        }
+
+        if (controller instanceof EventController) {
+            return config.get().isEvent();
+        }
+
+        return true;
     }
 }
