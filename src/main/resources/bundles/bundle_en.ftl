@@ -1,212 +1,499 @@
-commands-help-params = [page]
-commands-help-description = Lists all commands.
-commands-help-start-content = [orange]-- Commands Page[lightgray] {$page}[gray]/[lightgray]{$totalPages}[orange] --
-commands-help-content = [orange] /{$commandName}[white] {$commandParams}[lightgray] - {$commandDescription}
-commands-information-params = {""}
-commands-information-description = Show information about the server
-commands-info-title = [orange]XCore Server
-commands-info-text = [accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
-    {""}
-    {""}XCore Version — [accent]{$xcoreVersion}[white]
-commands-t-params = <message...>
-commands-t-description = Send a message only to your teammates.
-commands-g-params = <message...>
-commands-g-description = Send a message across all servers
-commands-t-chat = [{"#"}{$color}][Team] [coral]>[accent] {$name}[coral]:[white] {$message}
-commands-a-params = <message...>
-commands-a-description = Send a message only to admins.
-commands-sync-params = {""}
+# ==============================================================================
+# Terms
+# ==============================================================================
+-xcore = XCore server
+# ==============================================================================
+# General & Help
+# ==============================================================================
+menu-main = Main menu
+commands-main-description = Open the interactive Main menu.
+menu-main-title = { "[" }orange]{ -xcore } — Main menu
+menu-main-content = Main server menu
+help-menu = Help menu
+commands-help-description = Open the interactive help menu.
+help-menu-title = { "[" }orange]{ -xcore } — Commads
+help-menu-content =
+    { "[" }gray]Page [white]{ $page }[gray]/[white]{ $total }
+    { "" }[lightgray]Select a command to see detailed usage:
+help-menu-button = { "[" }accent]/{ $command } [gray]» Description: [white]{ $description }
+help-command-with-overload-count = { $name } of ({ $count })
+help-command-title = { "[" }orange]» Name: [white]/{ $name }
+help-command-header =
+    { "[" }orange]» [accent]Syntax: [white]{ $syntax }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+help-aliases = { "[" }orange]» [accent]Aliases: [white]{ $aliases }
+help-args-title = { "[" }orange]» [accent]Arguments:
+help-usages-title = { "[" }orange]» [accent]Usage:
+help-usage-entry = { "[" }gray]• [white]{ $syntax }
+help-usage-args-title = { "[" }orange]» [accent]For [white]{ $syntax }[accent]:
+help-arg-entry = { "[" }gray]• [white]{ $arg } [lightgray]- { $description }
+help-no-arguments = { "[" }gray]No additional arguments required.
+help-no-arg-description = No description.
+help-no-description = No description provided for this command.
+help-legacy-command-content =
+    { "[" }orange]» [accent]Command: [white]/{ $name }
+    { "" }[orange]» [accent]Parameters: [white]{ $params }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](This is a legacy command with limited info)
+help-legacy-command-content-no-params =
+    { "[" }orange]» [accent]Command: [white]/{ $name }
+    { "" }[orange]» [accent]Info: [lightgray]{ $description }
+    { "" }
+    { "" }[gray](This is a legacy command with limited info)
+help-back = { "[" }lightgray]« Back
+# ==============================================================================
+# Command Argument Descriptions
+# ==============================================================================
+# help
+commands-help-page-description = Page number to display.
+# login
+commands-login-password-description = Your admin password.
+# ban
+commands-ban-id-description = Player ID to ban.
+commands-ban-period-description = Ban duration (e.g. 1d, 2h, 30m).
+commands-ban-reason-description = Reason for the ban.
+# unban
+commands-unban-id-description = Player ID to unban.
+# mute
+commands-mute-id-description = Player ID to mute.
+commands-mute-period-description = Mute duration (e.g. 1h, 30m).
+commands-mute-reason-description = Reason for the mute.
+# unmute
+commands-unmute-id-description = Player ID to unmute.
+# votekick
+commands-votekick-target-description = Player to kick (ID or name).
+commands-votekick-reason-description = Reason for the kick.
+# vote
+commands-vote-choice-description = Your vote: y (yes), n (no), or c (cancel, admin only).
+# t (team chat)
+commands-t-message-description = Message to send to teammates.
+# g (global chat)
+commands-g-message-description = Message to send to all servers.
+# tr (translator)
+commands-tr-language-description = Language code, 'auto', or 'off'.
+# stats
+commands-stats-id-description = Player ID to view stats for
+# rank
+commands-rank-player-description = Player to view rank for
+# map
+commands-map-map-description = Map name or index.
+# maps / maps-text
+commands-maps-page-description = Page number.
+commands-maps-text-page-description = Page number.
+# rtv / artv
+commands-rtv-map-description = Map to vote for (optional).
+commands-artv-map-description = Map to force change to.
+# ai
+commands-ai-state-description = AI state: attack (a) or idle (i).
+# event / events
+commands-events-page-description = Page number.
+# ==============================================================================
+# General & Help (continued)
+# ==============================================================================
+commands-information-description = Show information about the server.
+commands-info = Information
+commands-info-title = { "[" }orange]{ -xcore } — Server name: [orange]{ $server-name }
+commands-info-text =
+    { "[" }accent]XCore[white] is a [cyan]free[white] server for playing [accent]Mindustry[white].
+    { "" }
+    { "" }XCore Version — [accent]{ $version }[white]
 commands-sync-description = Sync your game with the server. Run this to fix errors like ghost units.
-commands-discord-params = {""}
-commands-discord-description = Redirects you to discord server
-commands-js-params = <code...>
-commands-js-description = Execute JavaScript. [scarlet]JS Access users only
-commands-artv-params = [map...]
-commands-artv-description = Force change map. [scarlet]Admin only
-commands-artv-map-skipped = {$nickname}[accent] skipped map.
-commands-rtv-params = [map...]
-commands-rtv-description = Rock the vote to change map
-commands-stats-params = [player-id]
-commands-stats-description = View a player's Statistics
-commands-stats-content = {$nickname} [grey]#{$pid} Statistics
-    {""}[brown]PlayTime: [grey]{$totalPlayTime}[] minutes
-    Hexed Rank: [grey]{$hexedRankTag} {$hexedRankName}
-    MiniPvP rating: {$pvpRating}
-commands-lb-params = {""}
-commands-lb-description = Enable/disable leaderboard
-commands-lb-success = { $leaderboardEnabled ->
-[true] [accent]Leaderboard [green]enabled
-*[other] [accent]Leaderboard [scarlet]disabled
-}
-commands-login-params = <password>
-commands-login-description = Admin request. Don't use if you don't know what you're doing.
-commands-login-incorrect-password = [scarlet]⚠ Incorrect password!
-commands-login-success = [green]Admin rights granted.
-commands-login-confirmed = [green]Your admin request confirmed.
-commands-login-admin-password-created = [green]Admin password created.
-    {""}[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
-commands-login-request-approval-discord = [accent]You need to approve your admin request on discord [gray]#admin-bots[]
-commands-logout-params = {""}
-commands-logout-description = Log out. This will [scarlet]revoke your admin rights.
-commands-logout-successful = [green]Admin rights revoked.
-commands-tr-params = <language>
+commands-discord-description = Redirects you to discord server.
+welcome =
+    { "[" }accent]Welcome to { $serverName }!
+    { "" }[lightgray]Type [accent]/help[lightgray] to see a list of commands
+    { "" }[lightgray]Type [accent]/vote [gray]<y/n>[lightgray] to vote for kicking a player
+    { "" }[lightgray]Type [accent]/votekick [gray]<ID/name> <reason…>[lightgray] to start a vote-kick
+    { "" }[lightgray]Type [accent]/t [gray]<message…>[lightgray] to send a message to your teammates
+    { "" }[lightgray]Type [accent]/g [gray]<message…>[lightgray] to send a message to all servers
+    { "" }[lightgray]Type [accent]/tr [gray]<language/auto>[lightgray] to enable the translator
+    { "" }[lightgray]Type [accent]/discord[lightgray] to redirect you to our discord server
+# ==============================================================================
+# Chat & Social
+# ==============================================================================
+commands-t-description = Send a message only to your teammates.
+commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[coral]:[white] { $message }
+commands-g-description = Send a message across all servers.
+commands-a-description = Send a message only to admins.
 commands-tr-description = Set the translator language.
-commands-tr-success = [accent]The translator language has been successfully changed to [grey]{$translatorLanguage}[]!
-commands-tr-off = [accent]Translator is [scarlet]off[]!
-commands-tr-not-found = [scarlet]⚠ There is no such language.
-commands-maps-params = [page]
-commands-maps-description = List all the maps on this server.
-commands-ban-params = <player-id> <period> [reason...]
-commands-ban-description = Ban a player. [scarlet]Admin only
-commands-ban-success = {$nickname} [scarlet]banned
-commands-unban-params = <player-id>
+commands-tr-success = { "[" }accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
+commands-tr-off = { "[" }accent]Translator is [scarlet]off[]!
+commands-tr-not-found = { "[" }scarlet]⚠ There is no such language.
+discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
+global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+# ==============================================================================
+# Authentication & Admin Access
+# ==============================================================================
+commands-login-description = Admin request. Don't use if you don't know what you're doing.
+commands-login-incorrect-password = { "[" }scarlet]⚠ Incorrect password!
+commands-login-success = { "[" }green]Admin rights granted.
+commands-login-confirmed = { "[" }green]Your admin request confirmed.
+commands-login-admin-password-created =
+    { "[" }green]Admin password created.
+    { "" }[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
+commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [orange]#admin-bots[].
+commands-logout-description = Log out. This will [scarlet]revoke your admin rights.
+commands-logout-successful = { "[" }green]Admin rights revoked.
+# ==============================================================================
+# Moderation (Ban, Mute, Kick)
+# ==============================================================================
+commands-ban-description = Ban a player. [scarlet]Admin only.
+commands-ban-success = { $nickname } [scarlet]banned
 commands-unban-description = Unban a player. [scarlet]Admin only.
-commands-unban-success = {$nickname}[accent] #{$pid} [green]successfully unbanned.
-commands-mute-params = <player-id> <period> [reason...]
+commands-unban-success = { $nickname }[accent] #{ $pid } [green]successfully unbanned.
 commands-mute-description = Mute a player. [scarlet]Admin only.
-commands-mute-success = [accent]Successfully muted {$nickname}
-commands-unmute-params = <player-id>
+commands-mute-success = { "[" }accent]Successfully muted { $nickname }
 commands-unmute-description = Unmute player. [scarlet]Admin only.
-commands-unmute-success = [green]Successfully unmuted []{$nickname}
-commands-map-stats-content = {""}[white]Statistics map for [green]{$mapName}
-    {""}[white]Author:[green] {$mapAuthor}[orange] | [white]Size:[green] {$mapWidth}x{$mapHeight}[orange]
-    {""}[white]Reputation:[green] {$mapReputation}[orange] | [white]Popularity:[green] {$mapPopularity}[orange] | [white]Interest:[green] {$mapInterest}[orange]
-    {""}[white]Played Times:[green] {$mapPlayedTimes}[orange] | [white]Played Times Year:[green] {$mapPlayedTimesYear}[orange] | [white]Last Played:[green] {$mapLastPlayed}[orange]
-    {""}[white]Min time:[green] {$mapMin}[orange] | [white]Avg time:[green] {$mapAvg}[orange] | [white]Max time:[green] {$mapMax}[orange]
-    {""}[green]{$mapDescription}[white]
-commands-map-stats-params = [map-name]
-commands-map-stats-description = Statistics for a specific map
-commands-maps-page-must-number = [scarlet]'page' must be a number
-commands-maps-start-content = [accent]Current map: []{$mapName}[white]
-    {""}[orange][gold]Maps list [lightgray]{$page}[gray]/[lightgray]{$pageCount}
-commands-maps-content = {""}
-    {$index}. [orange] - [white]{$mapName}[orange] | [green]{$mapReputation}[orange] | [white]{$mapWidth}x{$mapHeight}[orange] | [white]{$mapLastPlayed}[orange] | By: [sky]{$mapAuthor}
-commands-votekick-params = <ID/name> <reason...>
-commands-votekick-description = Vote to kick a player from the server.
-commands-vote-params = <y/n>
-commands-vote-description = Vote on the current vote-kick session.
-commands-vote-vote-with = [scarlet]⚠ Vote with [orange]/vote <y/n/c>
-commands-rank-params = [player...]
-commands-rank-description = Shows information about this player's rank.
-commands-rank-content = {$nickname}
-    {$rankTag} [accent]{$rankName}
-    {""}[gold]Wins: {$points}/{$requiredPoints}
-commands-ranks-params = {""}
-commands-ranks-description = Shows information about ranks.
-commands-ranks-content = {$rankTag} [accent]{$rankName}
-    {""}[gold]Requirements: [grey]{$requiredPoints} [accent]wins[]
-commands-ranks-footer = The amount of wins increases only when defeating a player of your rank or higher.
-commands-top-params = {""}
-commands-top-description = Top players
-commands-top-hexed-content = [orange]{$index}. {$nickname}[accent]: [blue]{$rankName} [cyan]{$points} []wins
-commands-top-pvp-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$rating}
-commands-spectate-params = {""}
-commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily. Run again to return to your team.
-commands-ai-params = <idle/i/attack/a>
-commands-ai-description = Control AI
-commands-ai-usage = [red]attack(i) []or [accent]idle(i)
-rtv-vote = {$nickname}[lightgray] voted to change the current map to [orange]{$mapName}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-    Type [orange]y[] or [orange]n[] to vote
-rtv-left = {$nickname}[lightgray] left- His vote to change the current map was cancelled- ([accent]{$votes}[]/[accent]{$votesRequired}[])
-rtv-fail = [lightgray]Vote failed- Not enough votes to change the current map to [orange]{$mapName}[].
-rtv-success = [orange]Vote passed- Map [accent]{$mapName}[] will be loaded in [accent]{$mapLoadDelay}[] seconds...
-votekick-vote = {$nickname} [grey]#[white]{$nicknameId}[lightgray] voted to kick {$targetNickname} [grey]#[white]{$targetNicknameId}[lightgray] for [orange]{$reason}[lightgray]. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-    {""}[lightgray]Type [orange]/vote <y/n>[] to vote-
-votekick-left = {$nickname}[lightgray] left. Their vote for kicking a player was cancelled. ([accent]{$votes}[]/[accent]{$votesRequired}[])
-votekick-fail = [lightgray]Vote failed. Not enough votes to kick {$nickname}[lightgray] from the server.
-votekick-cancelled = [scarlet]Vote to kick {$nickname}[scarlet] was cancelled by {$admin}
-votekick-success = [orange]Vote passed. {$nickname}[orange] kicked from the server for [scarlet]{$minutes}[] minutes
-player-joined = {$nickname} [grey]#[white]{$pid}[grey] [accent]has joined.
-player-left = {$nickname} [grey]#[white]{$pid}[grey] [accent]has left.
-notification-votekick-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now start a vote-kick.
-notification-global-chat-playtime = [accent]Congratulations! You have played for [lightgray]{0}[] minutes and can now send messages to global chat.
-    {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message.
-
-error-access-denied = [scarlet]⚠ Access denied
-error-ip-changed = [scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
-error-not-enough-params = [scarlet]⚠ Not enough position params
-error-player-not-found = [scarlet]Player not found
-error-player-not-teammate = [scarlet]Target player is not in your team-
-error-player-admin = [scarlet]⚠ Don't try to kick an admin ⚠
-error-already-voted = [scarlet]⚠ You have already voted. Calm down.
-error-globalchat-total-playtime = [scarlet]⚠ In order to send message to global chat you need to play for {$globalChatPlayTime} minutes-
-error-votekick-total-playtime = [scarlet]⚠ In order to start a vote-kick you need to play for {$votekickPlayTime} minutes-
-error-vote-yourself = [scarlet]⚠ You cannot vote on your own vote session.
-error-vote-in-progress = [scarlet]⚠ A vote session is already in progress.
-error-no-voting = [scarlet]⚠ There is no vote session at the moment.
-error-map-not-found = [scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps
-error-page-between = [scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{$pageCount}[]
-error-page-number = [scarlet]'page' must be a number
-error-wrong-number = [scarlet]⚠ Wrong number format
-error-wrong-period-format = [scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({hours})
-error-invalid-id = [scarlet]⚠ Invalid player-id
-error-spectator = [scarlet]⚠ You are a spectator. Run /spectate to return.
-error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 4 characters long
-error-wrong-admin-password = [scarlet]⚠ Incorrect admin password
-
-hours = hours
-days = days
+commands-unmute-success = { "[" }green]Successfully unmuted []{ $nickname }
+ban-content =
+    { $nickname } [accent]have been [scarlet]banned[].
+    To appeal the ban, visit discord(channel [gray]{ support-channel }[])
+    { "" }[cyan]{ $discordUrl }
+ban-cancelled = { "[" }accent]Player [scarlet]{ $nickname }[accent] ban has been cancelled
+tempban-content =
+    { $nickname }[accent] have been banned.
+    Admin: { $adminName }[accent]
+    Reason: "[gold]{ $reason }[]"
+    You will be unbanned in: { $days } days, { $hours } hours and { $minutes } minutes
+    To appeal your ban, visit discord(channel [gray]{ support-channel }[]):
+    { "" }[cyan]{ $discordUrl }
+tempban-player-banned = { "[" }scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
+you-are-muted-by =
+    { "[" }scarlet]You were muted by administrator [accent]{ $adminName }[blue] for { $remainMinutes }:{ $remainSeconds } minutes,
+    reason: { $reason }
+you-are-muted =
+    { "[" }scarlet]You can't write in the chat. [accent]You have been muted by an admin { $adminName }[blue] for { $remainMinutes }:{ $remainSeconds } minutes,
+    reason: { $reason }
+kick-pirated-game = { "[" }accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
+kick-recently-kicked =
+    { "[" }accent]You were recently kicked from this server.
+    Wait [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] before joining again.
+kick-bot-protection = Maybe you are a bot. If not, try to reconnect.
+kick-admintools-outdated =
+    { "[" }green]The required AdminTools version: [grey]{ $requiredVersion }[]
+    { "" }[scarlet]Your AdminTools version: [grey]{ $version }[]
+    { "" }
+    { "" }[cyan]Please update your AdminTools to join this server.
 support-channel = #reports-appeals
-ban-content = {$nickname} [accent]have been [scarlet]banned[].
-    To appeal the ban, visit discord(channel [gray]{support-channel}[])
-    {""}[cyan]{$discordUrl}
-ban-cancelled = [accent]Player [scarlet]{$nickname}[accent] ban has been cancelled
-tempban-content = {$nickname}[accent] have been banned-
-    Admin: {$adminName}[accent]
-    Reason: "[gold]{$reason}[]"
-    You will be unbanned in: {$days} days, {$hours} hours and {$minutes} minutes
-    To appeal your ban, visit discord(channel [gray]{support-channel}[]):
-    {""}[cyan]{$discordUrl}
-tempban-player-banned = [scarlet] Admin {$adminName}[scarlet] banned player [gray]'[]{$playerName}[gray]'
-
-you-are-muted-by = [scarlet]You were muted by administrator [accent]{$adminName}[blue] for {$remainMinutes}:{$remainSeconds} minutes,
-    reason: {$reason}
-you-are-muted = [scarlet]You can't write in the chat. [accent]You have been muted by an admin {$adminName}[blue] for {$remainMinutes}:{$remainSeconds} minutes,
-    reason: {$reason}
-success = [green]Successfully
-empty = [accent]Empty
-leaderboard = [blue]Leaderboard
-pvp-team-won = Your team has won. Your rating has been increased by {$increased}
-pvp-team-lose = Your team has lost. Your rating has been reduced by {$reduced}
-pvp-leaderboard-content = [orange]{$index}. {$nickname}[accent]:[cyan] {$rating} [accent]rating
-hexed-popup = [blue]{$minutes}:{$seconds}[] until the game ends.
-hexed-eliminated = {$nickname} [gold]has been [scarlet]eliminated[]!
-hexed-leaderboard-content = [orange]{$index}. {$nickname}[accent]: [cyan]{$hexes} [accent]hexes
+# ==============================================================================
+# Voting (VoteKick)
+# ==============================================================================
+commands-votekick-description = Vote to kick a player from the server.
+commands-vote-description = Vote on the current vote-kick session.
+commands-vote-vote-with = { "[" }scarlet]⚠ Vote with [orange]/vote <y/n/c>
+votekick-vote =
+    { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
+    { "" }[lightgray]Type [orange]/vote <y/n>[] to vote.
+votekick-left = { $player }[lightgray] left. Their vote was cancelled. ([accent]{ $votes }[]/[accent]{ $required }[])
+votekick-fail = { "[" }lightgray]Vote failed. Not enough votes to kick { $target }[lightgray].
+votekick-cancelled = { "[" }scarlet]Vote to kick { $target }[scarlet] was cancelled by { $admin }.
+votekick-success =
+    { "[" }orange]Vote passed. { $target }[orange] kicked for [scarlet]{ $minutes }[] { $minutes ->
+        [one] minute
+       *[other] minutes
+    }.
+# ==============================================================================
+# Maps & RTV
+# ==============================================================================
+commands-map-description = Statistics of a specific map.
+commands-map-title = { "[" }orange]{ -xcore } — Statistics
+commands-map-content =
+    { "" }[white]Map statistics for [green]{ $name }
+    { "" }[white]Author:[green] { $author }[orange] | [white]Size:[green] { $width }x{ $height }[orange]
+    { "" }[white]Reputation:[green] { $reputation }[orange] | [white]Popularity:[green] { $popularity }[orange] | [white]Interest:[green] { $interest }[orange]
+    { "" }[white]Times played:[green] { $played }[orange] | [white]Played this year:[green] { $playedYear }[orange] | [white]Last played:[green] { $lastPlayed }[orange]
+    { "" }[white]Like:[green] { $like }[orange] | [white]Dislike:[green] { $dislike }[orange]
+    { "" }[white]Min time:[green] { $min }[orange] | [white]Avg time:[green] { $avg }[orange] | [white]Max time:[green] { $max }[orange]
+    { "" }[green]{ $description }[white]
+commands-maps-description = List of all maps on this server.
+commands-maps-title = { "[" }orange]{ -xcore } — Map List
+commands-maps-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+commands-maps-text-description = List of all maps on this server.
+commands-maps-text-start-content =
+    { "[" }accent]Current map: []{ $name }[white]
+    { "" }[orange][gold]Map list [lightgray]{ $page }[gray]/[lightgray]{ $total }
+commands-maps-text-content =
+    { "" }
+    { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | By: [sky]{ $author }
+commands-artv-description = Force change map. [scarlet]Admin only.
+commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
+commands-rtv-description = Rock the vote to change map.
+commands-like-description = Vote for the current map (increases reputation).
+commands-dislike-description = Vote against the current map.
+map-vote-title = { "[" }orange]{ -xcore } — [scarlet]GAME OVER!
+map-vote-content =
+    { "" }
+    { "" }Next map: [accent]{ $mapName }[] by [accent]{ $author }[white].
+    { "" }New game starts in [accent]{ $seconds }[white] seconds.
+    { "" }
+    { "" }[cyan]Did you like this map?
+map-vote-like = { "[" }green]👍 Like
+map-vote-dislike = { "[" }red]👎 Dislike
+map-vote-like-selected = { "[" }gray]You liked it
+map-vote-dislike-selected = { "[" }gray]You disliked it
+map-rtv = { "[" }orange]Voting
+map-artv = { "[" }red]Instant Change
+map-maps = Maps
+current-map = Current map
+next-map = Next map
+rtv-vote =
+    { $nickname }[lightgray] voted to change the current map to [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Type [orange]y[] or [orange]n[] to vote.
+rtv-left = { $nickname }[lightgray] left. Their vote to change the current map was cancelled. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+rtv-fail = { "[" }lightgray]Vote failed. Not enough votes to change the current map to [orange]{ $mapName }[].
+rtv-success = { "[" }orange]Vote passed. Map [accent]{ $mapName }[] will be loaded in [accent]{ $mapLoadDelay }[] seconds…
+rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $mapName }[lightgray] was cancelled by { $admin }.
+# ==============================================================================
+# Statistics & Ranks & Players
+# ==============================================================================
+commands-player-description = View a player's Statistics.
+player-menu-player = Player
+player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
+player-menu-player-content =
+    { $nickname } [grey]#{ $pid } Statistics
+    { "" }[brown]PlayTime: [grey]{ $totalPlayTime }[] minutes
+    Hexed Rank: [grey]{ $hexedRankTag } { $hexedRankName }
+    MiniPvP rating: { $pvpRating }
+player-menu-players = Players list
+player-menu-players-title = { "[" }orange]{ -xcore } — Players List
+player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+player-menu-players-empty = No players found
+player-menu-settings = Settings
+player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
+player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Translation: [green]{ $language }[] | Language for automatic translation: [green]{ $translatorLanguage }[]
+player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
+player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
+settings-language-label = Translation: [green]{ $lang }[]
+commands-lb-description = Enable/disable leaderboard.
+commands-lb-success =
+    { $leaderboardEnabled ->
+        [true] { "[" }accent]Leaderboard [green]enabled.
+       *[other] { "[" }accent]Leaderboard [scarlet]disabled.
+    }
+leaderboard = { "[" }blue]Leaderboard
+commands-rank-description = Shows information about this player's rank.
+commands-rank-content =
+    { $nickname }
+    { $rankTag } [accent]{ $rankName }
+    { "" }[gold]Wins: { $points }/{ $requiredPoints }
+commands-ranks-description = Shows information about ranks.
+commands-ranks-content =
+    { $rankTag } [accent]{ $rankName }
+    { "" }[gold]Requirements: [grey]{ $requiredPoints } [accent]wins[]
+commands-ranks-footer = The amount of wins increases only when defeating a player of your rank or higher.
+commands-top-description = Top players.
+commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []wins
+commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
+# ==============================================================================
+# Game Modes (Hexed, PvP, Spectate, AI)
+# ==============================================================================
+commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily.
+commands-spectate-success = { "[" }green]You are now spectating
+commands-ai-description = Control AI.
+commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
+hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.
+hexed-eliminated = { $nickname } [gold]has been [scarlet]eliminated[]!
+hexed-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]hexes
 hexed-ranks-newbie = Newbie
 hexed-ranks-regular = Regular
 hexed-ranks-advanced = Advanced
 hexed-ranks-veteran = Veteran
 hexed-ranks-davastator = Devastator
 hexed-ranks-the_legend = The Legend
-pvp-you-spectator = [scarlet]You have been eliminated. Please wait for the next game.
-kick-pirated-game = [accent]Playing on a pirated version of the game is [scarlet]forbidden[]. Install the [lime]authentic[] version of the game from [blue]Apple App Store []or[blue] Google Play Store[] or [blue]itch.io: https://anuke-itch-io/mindustry
-kick-recently-kicked = [accent]You were recently kicked from this server.
-    Wait [cyan]{$remainMinutes}:{$remainSeconds}[accent] before joining again.
-welcome = [accent]Welcome to {$serverName}!
-    {""}[lightgray]Type [accent]/help[lightgray] to see a list of commands
-    {""}[lightgray]Type [accent]/vote [gray]<y/n>[lightgray] to vote for kicking a player
-    {""}[lightgray]Type [accent]/votekick [gray]<ID/name> <reason...>[lightgray] to start a vote-kick
-    {""}[lightgray]Type [accent]/t [gray]<message...>[lightgray] to send a message to your teammates
-    {""}[lightgray]Type [accent]/g [gray]<message...>[lightgray] to send a message to all servers
-    {""}[lightgray]Type [accent]/tr [gray]<language/auto>[lightgray] to enable the translator
-    {""}[lightgray]Type [accent]/discord[lightgray] to redirect you to our discord server
-commands-like-params = {""}
-commands-like-description = Vote for the current map (increases reputation)
-commands-like-success = [green]You liked this map!
-commands-like-changed = [green]You changed your vote to Like!
-commands-dislike-params = {""}
-commands-dislike-description = Vote against the current map
-commands-dislike-success = [orange]You disliked this map.
-commands-dislike-changed = [orange]You changed your vote to Dislike.
+hexed-game-over-header = Game Over. Winners:
+hexed-game-over-winner-row =
+    { "[" }orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
+        [one] hex
+       *[other] hexes
+    }
+hexed-game-over-no-winners = Game Over. Unfortunately, I couldn't find the winning players.
+hexed-game-over-restart = New game in 10 seconds…
+pvp-team-won = Your team has won. Your rating has been increased by { $increased }
+pvp-team-lose = Your team has lost. Your rating has been reduced by { $reduced }
+pvp-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]rating
+pvp-you-spectator = { "[" }scarlet]You have been eliminated. Please wait for the next game.
+# ==============================================================================
+# Events & Notifications
+# ==============================================================================
+player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has joined.
+player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has left.
+notification-votekick-playtime = { "[" }accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] minutes and can now start a vote-kick.
+notification-global-chat-playtime =
+    { "[" }accent]Congratulations! You have played for [lightgray]{ $globalChatPlayTime }[] minutes and can now send messages to global chat.
+    { "" }[lightgray]Type [accent]/g [gray]<message…>[lightgray] to send a message.
+notification-admin-kick = { $admin }[accent] kicked { $target }[].
+notification-admin-wave-skip = { $admin }[accent] has skipped the wave.
+server-restart-countdown = Restart in { $seconds }
+like-map-success = { "[" }green]You liked this map!
+like-map-changed = { "[" }green]You changed your mind to a Like!
+dislike-map-success = { "[" }orange]You disliked this map.
+dislike-map-changed = { "[" }orange]You changed your mind to a Dislike.
+like-event-success = { "[" }green]You liked this event!
+like-event-changed = { "[" }green]You changed your mind to a Like!
+dislike-event-success = { "[" }orange]You disliked this event.
+dislike-event-changed = { "[" }orange]You changed your mind to a Dislike.
+
+# ==============================================================================
+# Events (Server)
+# ==============================================================================
+
+commands-event-description = Event management menu.
+commands-events-description = List of all events on the servers.
+event-events = Events
+event-menu-main = Main events
+event-menu-main-title = { "[" }orange]{ -xcore } — Events
+event-menu-main-content = Main events page
+event-menu-event = Event
+event-menu-event-title = { "[" }orange]{ -xcore } — Event
+event-menu-event-content =
+    { "" }[white]Event statistics [green]{ $name }
+    { "" }[white]Author:[green] { $author }[orange] | [white]Map:[green] { $mapName }[orange]
+    { "" }[white]Is Major?:[green] { $isMajor }[orange] | [white]Conducted?:[green] { $isConducted }[orange]
+    { "" }[white]Is Active?:[green] { $isActive }[orange] | [white]Is Temporary?:[green] { $isTemporary }[orange]
+    { "" }[white]Likes:[green] { $like }[orange] | [white]Dislikes:[green] { $dislike }[orange]
+    { "" }[green]{ $description }[white]
+event-menu-event-map = View map
+event-menu-events = Events list
+event-menu-events-title = { "[" }orange]{ -xcore } — Events List
+event-menu-events-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+event-menu-events-empty = No events found
+event-menu-events-selected = { "[" }green]●[] { $name }
+event-menu-create-start = Create
+event-menu-create-start-title = { "[" }orange]{ -xcore } — Event Creation
+event-menu-create-start-message = Enter the name of the future event
+event-menu-create-start-default = { $playerName }'s Event
+event-menu-create-start-map = Create event for this map
+event-menu-edit = Edit
+event-menu-edit-title = { "[" }orange]{ -xcore } — Edit Event
+event-menu-edit-content =
+    { "" }[white]Event statistics [green]{ $name }
+    { "" }[white]Author:[green] { $author }[orange] | [white]Map:[green] { $mapName }[orange]
+    { "" }[white]Is Major?:[green] { $isMajor }[orange] | [white]Is Temporary?:[green] { $isTemporary }[orange]
+    { "" }[green]{ $description }[white]
+event-menu-edit-name = Name
+event-menu-edit-name-title = { "[" }orange]{ -xcore } — Edit Event
+event-menu-edit-name-message = Edit name:
+event-menu-edit-description = Description
+event-menu-edit-description-title = { "[" }orange]{ -xcore } — Edit Event
+event-menu-edit-description-message = Edit description:
+event-menu-edit-map = Edit map
+event-menu-edit-temporary-active = { "[" }green]Temporary
+event-menu-edit-temporary-inactive = { "[" }gray]Temporary
+event-menu-edit-major-active = { "[" }green]Major
+event-menu-edit-major-inactive = { "[" }gray]Major
+event-menu-edit-planned-start = Event start
+event-menu-edit-planned-start-title = { "[" }orange]{ -xcore } — Edit Event
+event-menu-edit-planned-start-message = Enter start time in ms or using m/h/d:
+event-menu-edit-planned-end = Event end
+event-menu-edit-planned-end-title = { "[" }orange]{ -xcore } — Edit Event
+event-menu-edit-planned-end-message = Enter end time in ms or using m/h/d:
+event-menu-maps = Maps
+event-menu-maps-title = { "[" }orange]{ -xcore } — Select Map
+event-menu-maps-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+vote-event-vote =
+    { $nickname }[lightgray] voted to change the current event to [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Type [orange]y[] or [orange]n[] to vote.
+vote-event-left = { $nickname }[lightgray] left. Their vote to change the event has been cancelled. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+vote-event-fail = { "[" }lightgray]Vote failed. Not enough votes to change the event to [orange]{ $name }[].
+vote-event-success = { "[" }orange]Vote passed. The event [accent]{ $name }[] will be loaded upon the next map change.
+vote-event-cancelled = { "[" }lightgray]The vote to change the event to [orange]{ $name }[lightgray] was cancelled by administrator { $admin }.
+event-vote = { "[" }orange]Vote
+event-avote = { "[" }red]Instant Change
+event-menu-vote-stop = Stop voting
+event-menu-stop = Stop event
+event-menu-this-event = { "[" }orange]Current Event
+event-end = The [green]{ $name }[] event has ended!
+# ==============================================================================
+# Errors
+# ==============================================================================
+error-access-denied = { "[" }scarlet]⚠ Access denied.
+error-ip-changed = { "[" }scarlet]⚠ Your IP address has changed. Admin privileges have been revoked.
+error-not-enough-params = { "[" }scarlet]⚠ Not enough position params.
+error-player-not-found = { "[" }scarlet]Player not found.
+error-player-not-teammate = { "[" }scarlet]⚠ Target player is not in your team.
+error-player-admin = { "[" }scarlet]⚠ Don't try to kick an admin. ⚠
+error-already-voted = { "[" }scarlet]⚠ You have already voted. Calm down.
+error-playtime-requirement = { "[" }scarlet]⚠ You need to play for at least { $time } minutes to use this feature.
+error-globalchat-total-playtime = { "[" }scarlet]⚠ In order to send message to global chat you need to play for { $globalChatPlayTime } minutes.
+error-votekick-total-playtime = { "[" }scarlet]⚠ In order to start a vote-kick you need to play for { $votekickPlayTime } minutes.
+error-vote-yourself = { "[" }scarlet]⚠ You cannot vote on your own vote session.
+error-vote-in-progress = { "[" }scarlet]⚠ A vote session is already in progress.
+error-no-voting = { "[" }scarlet]⚠ There is no vote session at the moment.
+error-no-map = { "[" }scarlet]⚠ Map not set.
+error-map-not-event = { "[" }scarlet]⚠ Map is not part of the current event.
+error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.
+error-maps-empty = { "[" }scarlet]⚠ Map list is empty.
+error-event-not-found = { "[" }scarlet]⚠ Event not found! [accent]Use [cyan]/events[] to see the list of available events.
+error-page-between = { "[" }scarlet]⚠ 'page' must be a number between[orange] 1[] and [orange]{ $totalPages }[].
+error-page-number = { "[" }scarlet]'page' must be a number.
+error-wrong-number = { "[" }scarlet]⚠ Wrong number format.
+error-wrong-period-format = { "[" }scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
+error-invalid-id = { "[" }scarlet]⚠ Invalid player-id.
+error-spectator = { "[" }scarlet]⚠ You are a spectator. Run /spectate to return.
+error-admin-password-too-short = { "[" }scarlet]⚠ Admin password must be at least 4 characters long.
+error-wrong-admin-password = { "[" }scarlet]⚠ Incorrect admin password.
+error-internal = { "[" }scarlet]Internal error.
+error-processing-request = { "[" }scarlet]An error occurred while processing the request.
+error-team-not-found = { "[" }scarlet]⚠ Team not found.
+error-no-access = { "[" }scarlet]⚠ No Access.
+error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
+error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
+error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: '{ $error }'.
+argument-parse-failure-boolean = { "[" }scarlet]⚠ Could not parse boolean from '{ $input }'.
+argument-parse-failure-number = { "[" }scarlet]⚠ '{ $input }' is not a valid number within range [{ $min }, { $max }].
+argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' is not a valid character.
+argument-parse-failure-enum = { "[" }scarlet]⚠ '{ $input }' is not a valid option. Allowed: [lightgray]{ $acceptableValues }
+argument-parse-failure-string = { "[" }scarlet]⚠ Invalid string format for '{ $input }'.
+argument-parse-failure-uuid = { "[" }scarlet]⚠ Invalid UUID format: '{ $input }'.
+argument-parse-failure-regex = { "[" }scarlet]⚠ Input '{ $input }' does not match pattern '{ $pattern }'.
+argument-parse-failure-flag-unknown = { "[" }scarlet]⚠ Unknown flag: '{ $flag }'.
+argument-parse-failure-flag-duplicate = { "[" }scarlet]⚠ Duplicate flag: '{ $flag }'.
+argument-parse-failure-flag-missing-argument = { "[" }scarlet]⚠ Missing argument for flag: '{ $flag }'.
+argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ You don't have permission to use flag '{ $flag }'.
+# ==============================================================================
+# Button Status
+# ==============================================================================
+finished = finished
+finished-neutral = { "[" }orange]Finished
+finished-active = { "[" }green]Finished
+finished-inactive = { "[" }red]Finished
+major = Major
+major-neutral = { "[" }orange]Major
+major-active = { "[" }green]Major
+major-inactive = { "[" }red]Major
+active = Active
+active-neutral = { "[" }orange]Active
+active-active = { "[" }green]Active
+active-inactive = { "[" }red]Active
+admin = Admin
+admin-neutral = { "[" }orange]Admin
+admin-active = { "[" }green]Admin
+admin-inactive = { "[" }red]Admin
+# ==============================================================================
+# Miscellaneous
+# ==============================================================================
+hours = hours
+days = days
+success = { "[" }green]Successfully
+empty = { "[" }accent]Empty
 never = Never
-map-vote-title = [scarlet]GAME OVER!
-map-vote-content = {""}
-    {""}Next map: [accent]{$mapName}[] by [accent]{$author}[white].
-    {""}New game starts in [accent]{$seconds}[white] seconds.
-    {""}
-    {""}[cyan]Did you like this map?
-map-vote-like = [green]👍 Like
-map-vote-dislike = [red]👎 Dislike
-map-vote-like-selected = [gray]You liked it
-map-vote-dislike-selected = [gray]You disliked it
-close = Close
+save = Save
+close = { "[" }scarlet]Close
+previous = { "[" }accent]« Previous
+next = { "[" }accent]Next »
+cancel = Cancel
+back = Back
+yes = Yes
+no = No
+test = Test
+no-description = No description
+discord = Discord
+github = Github
+donatello = Donatello
+weblate = Weblate
+discord-red-vs-blue = RedVSBlue
+auto = Auto
+on = On
+off = Off
+error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.

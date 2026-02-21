@@ -1,174 +1,83 @@
 package org.xcore.plugin;
 
-import arc.Core;
 import arc.net.Server;
-import arc.util.*;
-import com.ospx.flubundle.Bundle;
+import arc.util.Log;
+import arc.util.Reflect;
+import arc.util.Timer;
+import io.avaje.inject.BeanScope;
 import mindustry.Vars;
-import mindustry.core.Version;
 import mindustry.gen.AdminRequestCallPacket;
-import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.mod.Plugin;
-import mindustry.net.Administration;
-import mindustry.net.Administration.ActionType;
 import mindustry.net.ArcNetProvider;
 import mindustry.net.Packets;
+import org.xcore.plugin.common.PLog;
+import org.xcore.plugin.database.migration.MigrationService;
+import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.event.NetEventService;
+import org.xcore.plugin.map.SmartMapSelector;
+import org.xcore.plugin.service.ServerDiscoveryService;
 
-import org.xcore.plugin.commands.ClientCommands;
-import org.xcore.plugin.commands.ServerCommands;
-import org.xcore.plugin.listeners.NetEvents;
-import org.xcore.plugin.listeners.PluginEvents;
-import org.xcore.plugin.listeners.SocketEvents;
-import org.xcore.plugin.modules.*;
-import org.xcore.plugin.modules.bundles.Bundles;
-import org.xcore.plugin.modules.hexed.MiniHexed;
-import org.xcore.plugin.modules.maps.SmartMapSelector;
-import org.xcore.plugin.utils.Find;
-import org.xcore.plugin.utils.NetSock;
-import org.xcore.plugin.utils.database.Database;
-import org.xcore.plugin.utils.models.PlayerData;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-
-import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
-import static mindustry.Vars.state;
-import static org.xcore.plugin.PluginVars.*;
-import static org.xcore.plugin.utils.Utils.writeString;
 
 public class XcorePlugin extends Plugin {
-    public XcorePlugin() {
-        Config.init();
-        GlobalConfig.init();
-    }
-
-    public static void info(String text, Object... values) {
-        Log.infoTag("XCore", Strings.format(text, values));
-    }
-
-    public static void err(String text, Object... values) {
-        Log.errTag("XCore", Strings.format(text, values));
-    }
-
-    public static void discord(String text, Object... values) {
-        Log.infoTag("Discord", Strings.format(text, values));
-    }
-
-    public static void sendMessageFromDiscord(String authorName, String message) {
-        discord("@: @", authorName, message);
-        Call.sendMessage(Strings.format("[blue][Discord][] @: @", authorName, message));
-    }
+    public static BeanScope container; // for dependend plugins
 
     @Override
     public void init() {
-        NetSock.init();
-        Database.init();
-        PluginEvents.init();
-        SocketEvents.init();
-        AdminModIntegration.init();
-        Translator.init();
-        MiniPvP.init();
-        MiniHexed.init();
-        LastStanding.init();
-        Bundles.init();
+        PLog.info("Plugin started.");
 
-        try {
-            var myMod = Vars.mods.getMod(getClass());
+        container = BeanScope.builder()
+                .classLoader(getClass().getClassLoader())
+                .build();
 
-            if (myMod != null && myMod.meta != null) {
-                xcoreVersion = myMod.meta.version;
-            }
-        } catch (Exception e) {
-            Log.err("Failed to load plugin version", e);
+        var migrationService = container.get(MigrationService.class);
+        if (!migrationService.run()) {
+            PLog.err("CRITICAL: Database migrations failed! Plugin initialization stopped.");
+            return;
         }
 
-        Reflect.set(Vars.maps, "shuffler", new SmartMapSelector());
-        database.checkMapDecay();
+        var mapDataRepository = container.get(MapDataRepository.class);
+        initMapDecayScheduler(mapDataRepository);
+
+        var mapSelector = container.get(SmartMapSelector.class);
+        Reflect.set(Vars.maps, "shuffler", mapSelector);
+
+        var netEvents = container.get(NetEventService.class);
+        var discoveryService = container.get(ServerDiscoveryService.class);
+        initNetworkHooks(netEvents, discoveryService);
+
+        PLog.info("Plugin initialized.");
+    }
+
+    private void initMapDecayScheduler(MapDataRepository mapDataRepository) {
+        try {
+            mapDataRepository.checkMapDecay();
+        } catch (Exception e) {
+            Log.err("Failed to check map decay on init", e);
+        }
         Timer.schedule(() -> {
-            database.checkMapDecay();
-        }, 60 * 60, 60 * 60);
-
-        Vars.netServer.admins.addActionFilter(action -> {
-            if (action.type == ActionType.depositItem) {
-                PlayerData playerData = database.getCached(action.player.uuid());
-                if (System.nanoTime() - playerData.lastUnload < 1_000_000_000)
-                    return false;
-                playerData.lastUnload = System.nanoTime();
+            try {
+                mapDataRepository.checkMapDecay();
+            } catch (Exception e) {
+                Log.err("Failed to check map decay", e);
             }
-            return true;
-        });
+        }, 60 * 60, 60 * 60);
+    }
 
+    private void initNetworkHooks(NetEventService netEvents, ServerDiscoveryService discoveryService) {
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
-        server.setConnectFilter(NetEvents::connectFilter);
-        final String[] footer = {""};
 
-        server.setDiscoveryHandler((address, handler) -> {
-            String name = Administration.Config.serverName.string();
-            String description = Administration.Config.desc.string().equals("off") ? footer[0] : Administration.Config.desc.string() + footer[0];
-
-            String map = state.map.name();
-
-            ByteBuffer buffer = ByteBuffer.allocate(500);
-
-            writeString(buffer, name, 100);
-            writeString(buffer, map, 64);
-
-            buffer.putInt(Core.settings.getInt("totalPlayers", Groups.player.size()));
-            buffer.putInt(state.wave);
-            buffer.putInt(Version.build);
-            writeString(buffer, Version.type);
-
-            buffer.put((byte) state.rules.mode().ordinal());
-            buffer.putInt(config.playerLimit > 0 ? config.getNoAdminPlayerLimit() : 0);
-
-            writeString(buffer, description, 200);
-            if (state.rules.modeName != null) {
-                writeString(buffer, state.rules.modeName, 50);
-            }
-
-            buffer.position(0);
+        server.setConnectFilter(netEvents::connectFilter);
+        server.setDiscoveryHandler((_, handler) -> {
+            var buffer = java.nio.ByteBuffer.allocate(500);
+            discoveryService.handleDiscovery(buffer);
             handler.respond(buffer);
         });
-        netServer.admins.addChatFilter(NetEvents::chat);
-        Vars.net.handleServer(AdminRequestCallPacket.class, NetEvents::adminRequest);
-        Vars.net.handleServer(Packets.Connect.class, NetEvents::connect);
-        Vars.net.handleServer(Packets.ConnectPacket.class, NetEvents::connectPacket);
 
-        Timer.schedule(() -> {
-            footer[0] = config.gameStartedTimer
-                    ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - gameStarted).toMinutes() + "[] minutes ago."
-                    : "";
-            database.cachedPlayerData.each((uuid, data) -> {
-                var player = Find.playerByUuid(uuid);
-
-                if (player == null) return;
-
-                data.totalPlayTime++;
-                switch (data.totalPlayTime) {
-                    case votekickPlayTime -> bundle.send(player, "notification-votekick-playtime",
-                            args("votekickPlayTime", votekickPlayTime));
-                    case globalChatPlayTime -> bundle.send(player, "notification-global-chat-playtime",
-                            args("globalChatPlayTime", globalChatPlayTime));
-                }
-
-                data.save();
-            });
-        }, 0, 60);
-
-        Console.init();
-        info("Plugin loaded");
-    }
-
-    @Override
-    public void registerClientCommands(CommandHandler handler) {
-        ClientCommands.register(handler);
-    }
-
-    @Override
-    public void registerServerCommands(CommandHandler handler) {
-        ServerCommands.register(handler);
+        netServer.admins.addChatFilter(netEvents::chat);
+        Vars.net.handleServer(AdminRequestCallPacket.class, netEvents::adminRequest);
+        Vars.net.handleServer(Packets.Connect.class, netEvents::connect);
+        Vars.net.handleServer(Packets.ConnectPacket.class, netEvents::connectPacket);
     }
 }

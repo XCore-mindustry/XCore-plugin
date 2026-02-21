@@ -3,20 +3,21 @@ import com.xpdustry.toxopid.extension.anukeXpdustry
 import com.xpdustry.toxopid.task.MindustryExec
 import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
     id("com.xpdustry.toxopid") version "4.1.2"
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "9.3.0"
 }
 
 group = "org.xcore.plugin"
-version = "2.9.0"
-val mindustryVersion = "154.3"
+version = "3.0.0"
+val mindustryVersion = "155.4"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -30,7 +31,7 @@ val metadata = ModMetadata(
     name = "xcore-plugin",
     displayName = "XCore-plugin",
     description = "The main plugin for XCore servers.",
-    author = "osp54, ",
+    author = "osp54, Radomyr (site: radomyr.net, github: BRamil0)",
     version = project.version.toString(),
     minGameVersion = mindustryVersion,
     mainClass = "${project.group}.XcorePlugin"
@@ -49,8 +50,9 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryHeadless)
 
     implementation(project(":flubundle"))
-
+    implementation("com.github.XCore-mindustry:cloud-mindustry:5021268676")
     implementation("com.github.osp54:Sock:9d465f7")
+
     implementation("org.mongodb:mongodb-driver-sync:5.6.2")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.mindrot:jbcrypt:0.4")
@@ -63,8 +65,11 @@ dependencies {
     implementation("org.jline:jline-reader:3.30.6")
     implementation("org.jline:jline-console:3.30.6")
 
-    compileOnly("org.projectlombok:lombok:1.18.30")
-    annotationProcessor("org.projectlombok:lombok:1.18.30")
+    implementation("io.avaje:avaje-inject:12.3")
+
+    compileOnly("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
+    annotationProcessor("io.avaje:avaje-inject-generator:12.3")
 
 }
 
@@ -78,43 +83,30 @@ val generateModInfo by tasks.registering {
     }
 }
 
-tasks.shadowJar {
-    archiveClassifier.set("")
-
-    from(generateModInfo)
-
-    mergeServiceFiles()
-
-    minimize {
-        exclude(dependency("com.discord4j:.*:.*"))
-        exclude(dependency("org.jline:.*:.*"))
-    }
-
-    val shadowPrefix = "org.xcore.plugin.shadow"
-
-    relocate("com.google.gson", "$shadowPrefix.gson")
-    relocate("com.mongodb", "$shadowPrefix.mongo")
-    relocate("org.bson", "$shadowPrefix.bson")
-    relocate("org.mindrot.jbcrypt", "$shadowPrefix.jbcrypt")
-
-    relocate("discord4j", "$shadowPrefix.discord4j")
-    relocate("reactor", "$shadowPrefix.reactor")
-    relocate("io.netty", "$shadowPrefix.netty")
-
-    relocate("com.ospx.sock", "$shadowPrefix.sock")
-
-    // relocate("org.jline", "$shadowPrefix.jline") fucking jline
-
-    isReproducibleFileOrder = true
-    isPreserveFileTimestamps = false
-}
-
 tasks.jar {
-    enabled = false
+    from(generateModInfo)
 }
 
 tasks.assemble {
     dependsOn(tasks.shadowJar)
+}
+
+fun ShadowJar.applyCommonSettings() {
+    archiveClassifier.set("")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(generateModInfo)
+    mergeServiceFiles()
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    applyCommonSettings()
+}
+
+tasks.register<ShadowJar>("shadowJarRelease") {
+    applyCommonSettings()
+    archiveClassifier.set("release")
 }
 
 tasks.register("getProjectVersion") {

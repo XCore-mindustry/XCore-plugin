@@ -1,0 +1,21 @@
+weblate:
+  packages:
+    - name: XCore Plugin
+      url: git@github.com:XCore-mindustry/XCore-plugin.git
+
+      branch: v3.0-di-refactor # main
+
+      components:
+        - name: game-texts
+          filemask: src/main/resources/bundles/bundle_*.ftl
+
+          file_format: fluent
+
+          template: src/main/resources/bundles/bundle_en.ftl
+
+          save_config:
+            sort: false
+
+          language_mapping:
+            uk: uk_UA
+            en: en
