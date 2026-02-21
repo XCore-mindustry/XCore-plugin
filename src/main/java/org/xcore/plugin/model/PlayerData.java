@@ -35,6 +35,7 @@ public class PlayerData extends ModelData {
     @BsonProperty("password_hash")
     @Builder.Default public String password = "";
 
+    @BsonProperty("local_language")
     @Builder.Default public String language = "auto";
     @BsonProperty("translator_language")
     @Builder.Default public String translatorLanguage = "off";
