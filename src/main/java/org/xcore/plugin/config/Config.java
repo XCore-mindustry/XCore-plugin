@@ -2,6 +2,7 @@ package org.xcore.plugin.config;
 
 import mindustry.gen.Groups;
 
+import java.util.HashSet;
 import java.util.Set;
 
 public class Config {
@@ -12,7 +13,7 @@ public class Config {
     public int playerLimit = 30;
     public String globalConfigDirectory = null;
     public boolean gameStartedTimer = true;
-    public Set<String> disabledCommands = Set.of(); // todo: implement in new annotation based commands
+    public Set<String> disabledCommands = new HashSet<>();
 
     public int getNoAdminPlayerLimit() {
         return this.playerLimit + Groups.player.count(p -> p.admin);

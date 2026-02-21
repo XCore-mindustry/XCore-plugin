@@ -172,13 +172,19 @@ public class HelpMenu extends Menu {
                 cloudNames.add(alias.toLowerCase(Locale.ROOT));
             }
 
+            if (cloud.isCommandDisabled(entry.command())) {
+                return;
+            }
+
             commandMap.computeIfAbsent(rootKey, ignored -> new UnifiedCommandBuilder(rootName))
                     .addVariant(CommandVariant.fromCloud(entry));
         });
 
         for (var cmd : handler.getCommandList()) {
             String nameLower = cmd.text.toLowerCase(Locale.ROOT);
-            if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower)) continue;
+            if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower) || cloud.isCommandDisabled(cmd.text)) {
+                continue;
+            }
 
             commandMap.computeIfAbsent(nameLower, ignored -> new UnifiedCommandBuilder(cmd.text))
                     .addVariant(CommandVariant.fromLegacy(cmd));

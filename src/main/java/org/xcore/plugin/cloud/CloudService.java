@@ -12,9 +12,11 @@ import mindustry.Vars;
 import mindustry.game.Team;
 import mindustry.gen.Player;
 import mindustry.server.ServerControl;
+import org.incendo.cloud.Command;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.caption.CaptionVariable;
+import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.exception.ArgumentParseException;
 import org.incendo.cloud.exception.InvalidSyntaxException;
 import org.incendo.cloud.exception.NoPermissionException;
@@ -33,6 +35,7 @@ import org.xcore.plugin.cloud.parser.PlayerParser;
 import org.xcore.plugin.cloud.parser.SmartDurationParser;
 import org.xcore.plugin.cloud.parser.LanguageParser;
 import org.xcore.plugin.cloud.parser.TeamParser;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.BundleService;
@@ -42,16 +45,21 @@ import org.xcore.plugin.service.TimeService;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class CloudService {
+    private static final String ERROR_COMMAND_DISABLED = "error-command-disabled";
+
     private final BundleService bundleService;
     private final Provider<SecurityService> securityService;
     private final Provider<SessionService> sessionService;
+    private final Config config;
     private final GlobalConfig globalConfig;
     private final TimeService timeService;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
@@ -65,12 +73,15 @@ public class CloudService {
     public CloudService(BundleService bundleService,
                         Provider<SecurityService> securityService,
                         Provider<SessionService> sessionService,
-                        GlobalConfig globalConfig, TimeService timeService,
+                        GlobalConfig globalConfig,
+                        Config config,
+                        TimeService timeService,
                         TranslatorLanguagesProvider translatorLanguagesProvider) {
         this.bundleService = bundleService;
         this.securityService = securityService;
         this.sessionService = sessionService;
         this.globalConfig = globalConfig;
+        this.config = config;
         this.timeService = timeService;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
     }
@@ -161,9 +172,118 @@ public class CloudService {
         mgr.parserRegistry().registerParser(PlayerParser.parser());
         mgr.parserRegistry().registerParser(MapParser.parser());
 
+        mgr.registerCommandPreProcessor(context -> {
+            String disabledCommand = disabledCommandKey(context.commandInput().remainingInput());
+            if (disabledCommand != null) {
+                throwDisabledCommandException(disabledCommand);
+            }
+        });
+
+        mgr.registerCommandPostProcessor(context -> {
+            String disabledCommand = disabledCommandKeyFromCommand(context.command());
+            if (disabledCommand == null) {
+                return;
+            }
+            throwDisabledCommandException(disabledCommand);
+        });
+
         configureExceptions(mgr);
 
         return mgr;
+    }
+
+    public boolean isCommandDisabled(Command<XCoreSender> command) {
+        return disabledCommandKeyFromCommand(command) != null;
+    }
+
+    public boolean isCommandDisabled(String commandName) {
+        String normalized = normalizeCommandName(commandName);
+        return normalized != null && isExplicitlyDisabled(normalized);
+    }
+
+    private String disabledCommandKeyFromCommand(Command<XCoreSender> command) {
+        if (!hasDisabledCommands()) {
+            return null;
+        }
+
+        String rootName = command.rootComponent().name();
+        if (isCommandDisabled(rootName)) {
+            return rootName;
+        }
+
+        for (String alias : command.rootComponent().aliases()) {
+            if (isCommandDisabled(alias)) {
+                return rootName;
+            }
+        }
+
+        String literalSyntax = command.components().stream()
+                .filter(component -> component.type() == CommandComponent.ComponentType.LITERAL)
+                .map(CommandComponent::name)
+                .collect(Collectors.joining(" "));
+
+        if (!literalSyntax.equalsIgnoreCase(rootName) && isCommandDisabled(literalSyntax)) {
+            return literalSyntax;
+        }
+        return null;
+    }
+
+    private String disabledCommandKey(String input) {
+        if (!hasDisabledCommands()) {
+            return null;
+        }
+
+        String normalizedInput = normalizeCommandName(input);
+        if (normalizedInput == null) {
+            return null;
+        }
+
+        for (String disabledCommand : config.disabledCommands) {
+            String normalizedDisabled = normalizeCommandName(disabledCommand);
+            if (normalizedDisabled == null) {
+                continue;
+            }
+
+            if (isFullOrPrefixMatch(normalizedInput, normalizedDisabled)) {
+                return normalizedDisabled;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasDisabledCommands() {
+        return config.disabledCommands != null && !config.disabledCommands.isEmpty();
+    }
+
+    private boolean isExplicitlyDisabled(String normalizedCommandName) {
+        if (!hasDisabledCommands()) {
+            return false;
+        }
+
+        for (String disabledCommand : config.disabledCommands) {
+            String normalizedDisabled = normalizeCommandName(disabledCommand);
+            if (normalizedCommandName.equals(normalizedDisabled)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isFullOrPrefixMatch(String normalizedInput, String normalizedDisabledCommand) {
+        return normalizedInput.equals(normalizedDisabledCommand)
+                || normalizedInput.startsWith(normalizedDisabledCommand + " ");
+    }
+
+    private String normalizeCommandName(String commandName) {
+        if (commandName == null) {
+            return null;
+        }
+        String normalized = commandName.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1).trim();
+        }
+        normalized = normalized.replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private void configureExceptions(MindustryCommandManager<XCoreSender> mgr) {
@@ -172,11 +292,7 @@ public class CloudService {
             if (ex.isSilent()) return;
 
             XCoreSender sender = ctx.context().sender();
-            if (sender.isPlayer()) {
-                sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
-            } else {
-                sender.sendMessage("Error: " + ex.getKey());
-            }
+            sendXCoreException(sender, ex);
         });
 
         mgr.exceptionController().registerHandler(InvalidSyntaxException.class, ctx -> {
@@ -202,20 +318,18 @@ public class CloudService {
         });
 
         mgr.exceptionController().registerHandler(ArgumentParseException.class, ctx -> {
-            Throwable cause = ctx.exception().getCause();
+            Throwable exception = ctx.exception();
             XCoreSender sender = ctx.context().sender();
 
-            if (cause instanceof XCoreCommandException xcoreEx) {
+            XCoreCommandException xcoreEx = findCause(exception, XCoreCommandException.class);
+            if (xcoreEx != null) {
                 if (xcoreEx.isSilent()) return;
-                if (sender.isPlayer()) {
-                    sendToPlayer(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
-                } else {
-                    sender.sendMessage("Error: " + xcoreEx.getKey());
-                }
+                sendXCoreException(sender, xcoreEx);
                 return;
             }
 
-            if (cause instanceof ParserException parserEx) {
+            ParserException parserEx = findCause(exception, ParserException.class);
+            if (parserEx != null) {
                 String key = parserEx.errorCaption().key().replace(".", "-");
 
                 Map<String, Object> arguments = new HashMap<>();
@@ -231,6 +345,7 @@ public class CloudService {
                 return;
             }
 
+            Throwable cause = rootCause(exception);
             String errorMsg = cause.getMessage();
             if (sender.isPlayer()) {
                 sendToPlayer(sender.player(), "error-argument-parse-generic", args("error", errorMsg));
@@ -240,22 +355,20 @@ public class CloudService {
         });
 
         mgr.exceptionController().registerHandler(Exception.class, ctx -> {
-            Throwable cause = ctx.exception();
+            Throwable exception = ctx.exception();
 
-            if (cause instanceof XCoreCommandException xcoreEx) {
+            XCoreCommandException xcoreEx = findCause(exception, XCoreCommandException.class);
+            if (xcoreEx != null) {
                 if (xcoreEx.isSilent()) return;
                 XCoreSender sender = ctx.context().sender();
-                if (sender.isPlayer()) {
-                    sendToPlayer(sender.player(), xcoreEx.getKey(), xcoreEx.getArgs());
-                } else {
-                    sender.sendMessage("[red]Error: " + xcoreEx.getKey());
-                }
+                sendXCoreException(sender, xcoreEx);
                 return;
             }
 
+            Throwable cause = rootCause(exception);
             String messageKey = "error-internal";
 
-            if (cause instanceof InvalidSyntaxException) {
+            if (findCause(exception, InvalidSyntaxException.class) != null) {
                 messageKey = "error-invalid-syntax";
             }
 
@@ -267,6 +380,44 @@ public class CloudService {
                 cause.printStackTrace();
             }
         });
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (type.isInstance(current)) {
+                return type.cast(current);
+            }
+            Throwable cause = current.getCause();
+            if (cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return null;
+    }
+
+    private void throwDisabledCommandException(String commandName) {
+        throw new XCoreCommandException(
+                ERROR_COMMAND_DISABLED,
+                args("command", commandName)
+        );
+    }
+
+    private void sendXCoreException(XCoreSender sender, XCoreCommandException ex) {
+        if (sender.isPlayer()) {
+            sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
+            return;
+        }
+        sender.sendMessage(bundleService.format(bundleService.getDefaultLocale(), ex.getKey(), ex.getArgs()));
     }
 
     private void sendToPlayer(Player player, String key, Map<String, Object> args) {

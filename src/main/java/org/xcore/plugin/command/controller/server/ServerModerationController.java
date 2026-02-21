@@ -8,7 +8,6 @@ import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
-import org.incendo.cloud.annotations.Default;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudServerController;
@@ -43,7 +42,7 @@ public class ServerModerationController implements CloudServerController {
     public void tempBan(XCoreSender sender,
                         @Argument(value = "target", description = "Player Name/#ID/UUID/IP") String arg,
                         @Argument(value = "period", description = "Duration (e.g. 1d, 30m)") @DefaultUnit(TimeUnit.DAYS) Duration period,
-                        @Argument(value = "reason", description = "Reason for the ban") @Greedy @Default("") String reason) {
+                        @Argument(value = "reason", description = "Reason for the ban") @Greedy String reason) {
 
         String uuid = null;
         String ip = null;
@@ -70,7 +69,8 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason.isBlank() ? null : reason, "console");
+        String effectiveReason = reason == null || reason.isBlank() ? null : reason;
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, effectiveReason, "console");
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -107,10 +107,10 @@ public class ServerModerationController implements CloudServerController {
     @Command("tempbans [search]")
     @CommandDescription("Lists active temporary bans.")
     public void tempBans(XCoreSender sender,
-                         @Argument(value = "search", description = "Filter by Name/UUID/IP") @Default("") String q) {
+                         @Argument(value = "search", description = "Filter by Name/UUID/IP") String q) {
 
         Seq<BanData> bans = Seq.with(banDataRepository.findAll());
-        if (!q.isBlank()) {
+        if (q != null && !q.isBlank()) {
             bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
         }
         bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
@@ -122,7 +122,7 @@ public class ServerModerationController implements CloudServerController {
     public void mute(XCoreSender sender,
                      @Argument(value = "target", description = "Player #ID/UUID") String target,
                      @Argument(value = "period", description = "Duration (e.g. 1h, 30m)") @DefaultUnit(TimeUnit.HOURS) Duration period,
-                     @Argument(value = "reason", description = "Reason for the mute") @Greedy @Default("") String reason) {
+                     @Argument(value = "reason", description = "Reason for the mute") @Greedy String reason) {
 
         PlayerData data = moderationService.findPlayerData(target);
         if (data == null) {
@@ -130,7 +130,8 @@ public class ServerModerationController implements CloudServerController {
             return;
         }
 
-        var result = moderationService.muteById(data.pid, "console", reason.isBlank() ? null : reason, period);
+        String effectiveReason = reason == null || reason.isBlank() ? null : reason;
+        var result = moderationService.muteById(data.pid, "console", effectiveReason, period);
 
         if (result.isSuccess()) {
             Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toMillis()).toMinutes());

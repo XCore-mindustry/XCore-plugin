@@ -498,3 +498,4 @@ discord-red-vs-blue = RedVSBlue
 auto = Авто
 on = Включено
 off = Выключено
+error-command-disabled = [scarlet]⚠ Команда [accent]/{ $command }[scarlet] отключена на этом сервере.

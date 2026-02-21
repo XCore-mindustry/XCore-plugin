@@ -68,6 +68,11 @@ public class ServerHelpController implements CloudServerController {
         HelpQueryResult<XCoreSender> result = helpHandler.query(org.incendo.cloud.help.HelpQuery.of(sender, query));
 
         if (result instanceof VerboseCommandResult<XCoreSender> verbose) {
+            if (cloud.isCommandDisabled(verbose.entry().command())) {
+                Log.info("Command '@' not found.", query);
+                return;
+            }
+
             String rootName = verbose.entry().command().rootComponent().name();
             UnifiedCommand cmd = findUnifiedCommand(allCommands, rootName);
             printEntryDetails(Objects.requireNonNullElseGet(cmd, () -> UnifiedCommand.fromCloud(rootName, verbose.entry())));
@@ -87,8 +92,11 @@ public class ServerHelpController implements CloudServerController {
 
         // If not found in cloud (or it's just an index result), check vanilla commands specifically
         CommandHandler.Command legacyCmd = findLegacyCommand(query);
-        if (legacyCmd != null) printEntryDetails(UnifiedCommand.fromLegacy(legacyCmd));
-        else Log.info("Command '@' not found.", query);
+        if (legacyCmd != null && !cloud.isCommandDisabled(legacyCmd.text)) {
+            printEntryDetails(UnifiedCommand.fromLegacy(legacyCmd));
+        } else {
+            Log.info("Command '@' not found.", query);
+        }
     }
 
     private UnifiedCommand findUnifiedCommand(List<UnifiedCommand> commands, String name) {
@@ -167,6 +175,14 @@ public class ServerHelpController implements CloudServerController {
             String rootName = entry.command().rootComponent().name();
             String rootKey = rootName.toLowerCase(Locale.ROOT);
             cloudNames.add(rootKey);
+            for (String alias : entry.command().rootComponent().aliases()) {
+                cloudNames.add(alias.toLowerCase(Locale.ROOT));
+            }
+
+            if (cloud.isCommandDisabled(entry.command())) {
+                continue;
+            }
+
             commandMap.computeIfAbsent(rootKey, ignored -> new UnifiedCommandBuilder(rootName))
                     .addVariant(CommandVariant.fromCloud(entry));
         }
@@ -175,6 +191,10 @@ public class ServerHelpController implements CloudServerController {
             String nameLower = cmd.text.toLowerCase(Locale.ROOT);
 
             if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower)) {
+                continue;
+            }
+
+            if (cloud.isCommandDisabled(cmd.text)) {
                 continue;
             }
 

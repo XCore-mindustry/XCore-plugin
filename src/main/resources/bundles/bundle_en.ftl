@@ -496,3 +496,4 @@ discord-red-vs-blue = RedVSBlue
 auto = Auto
 on = On
 off = Off
+error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.

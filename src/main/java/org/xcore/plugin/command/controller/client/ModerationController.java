@@ -7,7 +7,6 @@ import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Permission;
-import org.incendo.cloud.annotations.Default;
 
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.DefaultUnit;
@@ -42,7 +41,7 @@ public class ModerationController implements CloudClientController {
     public void ban(XCoreSender sender,
                     @Argument("id") int id,
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
-                    @Argument("reason") @Greedy @Default() String reason) {
+                    @Argument("reason") @Greedy String reason) {
 
         Session session = sessionService.get(sender.player().uuid());
         Localization local = session.locale();
@@ -50,7 +49,7 @@ public class ModerationController implements CloudClientController {
         var result = moderationService.banById(
                 id,
                 session.player.name,
-                reason.isBlank() ? null : reason,
+                reason == null || reason.isBlank() ? null : reason,
                 period,
                 true
         );
@@ -84,7 +83,7 @@ public class ModerationController implements CloudClientController {
     public void mute(XCoreSender sender,
                      @Argument("id") int id,
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
-                     @Argument("reason") @Greedy @Default("") String reason) {
+                     @Argument("reason") @Greedy String reason) {
 
         Session session = sessionService.get(sender.player().uuid());
         Localization local = session.locale();
@@ -92,7 +91,7 @@ public class ModerationController implements CloudClientController {
         var result = moderationService.muteById(
                 id,
                 session.player.name,
-                reason.isBlank() ? null : reason,
+                reason == null || reason.isBlank() ? null : reason,
                 period
         );
 
