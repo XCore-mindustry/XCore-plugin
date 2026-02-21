@@ -11,7 +11,7 @@ menu-main-title = { "[" }orange]{ -xcore } — Главное меню
 menu-main-content = Главное меню сервера
 help-menu = Меню помощи
 commands-help-description = Открыть интерактивное меню помощи.
-help-menu-title = { "[" }orange]• [white]КОМАНДЫ XCORE [orange]•
+help-menu-title = { "[" }orange]{ -xcore } — Команды
 help-menu-content =
     { "[" }gray]Страница [white]{ $page }[gray]/[white]{ $total }
     { "" }[lightgray]Выберите команду для подробной информации:
@@ -273,7 +273,7 @@ commands-lb-success =
        *[other] { "[" }accent]Таблица лидеров [scarlet]выключена
     }
 leaderboard = { "[" }blue]Таблица лидеров
-commands-rank-description = Показывает информацию о вашем ранге/ранге игрока
+commands-rank-description = Показывает информацию о вашем ранге или ранге игрока.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
