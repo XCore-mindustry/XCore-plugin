@@ -210,4 +210,3 @@ map-vote-dislike = [red]👎 Dislike
 map-vote-like-selected = [gray]You liked it
 map-vote-dislike-selected = [gray]You disliked it
 close = Close
-test = Тест
