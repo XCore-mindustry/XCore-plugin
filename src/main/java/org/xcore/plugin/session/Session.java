@@ -39,6 +39,12 @@ public class Session {
         this.bundle = bundle;
         this.menuService = menuService;
         this.playerDataRepository = playerDataRepository;
+
+        if (this.data.mapVotes == null) this.data.mapVotes = new HashMap<>();
+        if (this.data.eventVotes == null) this.data.eventVotes = new HashMap<>();
+        if (this.data.language == null) this.data.language = "auto";
+        if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
+
         this.localization = new Localization(bundle, this);
     }
 

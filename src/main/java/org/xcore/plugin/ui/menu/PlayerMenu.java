@@ -77,18 +77,23 @@ public class PlayerMenu extends Menu {
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(totalPlayers, perPage);
 
-        if (totalPlayers == 0) {
-            session.locale().send("player-menu-players-empty");
-            return;
-        }
-
         int validPage = pagination.clampPage(page);
         int skip = (validPage - 1) * perPage;
         List<PlayerData> players = playerDataRepository.findPage(skip, perPage, session.sortStatus);
 
+        String menuContent;
+        if (totalPlayers == 0) {
+            menuContent = session.locale().t("player-menu-players-empty");
+        } else {
+            menuContent = session.locale().t("player-menu-players-content", args(
+                "page", validPage,
+                "total", pagination.totalPages()
+            ));
+        }
+
         session.builder()
                 .title("player-menu-players-title")
-                .content("player-menu-players-content", args("page", validPage, "total", pagination.totalPages()))
+                .rawContent(menuContent)
 
                 .addStatusButton("admin", () -> players(uuid, 1))
 

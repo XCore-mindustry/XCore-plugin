@@ -246,15 +246,23 @@ public class EventMenu extends Menu {
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(total, perPage);
 
-        if (total == 0) { session.locale().send("event-menu-events-empty"); return; }
-
         int validPage = pagination.clampPage(page);
         int skip = (validPage - 1) * perPage;
         List<EventData> events = eventDataRepository.findPage(skip, perPage, session.sortStatus);
 
+        String menuContent;
+        if (total == 0) {
+            menuContent = session.locale().t("event-menu-events-empty");
+        } else {
+            menuContent = session.locale().t("event-menu-events-content", args(
+                "page", validPage,
+                "total", pagination.totalPages()
+            ));
+        }
+
         session.builder()
                 .title("event-menu-events-title")
-                .content("event-menu-events-content", args("page", validPage, "total", pagination.totalPages()))
+                .rawContent(menuContent)
                 .start()
                     .addStatusButton("finished", () -> events(uuid, 1))
                     .addStatusButton("major", () -> events(uuid, 1))

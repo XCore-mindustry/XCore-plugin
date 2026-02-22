@@ -68,7 +68,7 @@ public class EventDataRepository extends DataRepository<EventData> {
 
     public List<EventData> findPage(int skip, int limit, Map<String, StatusEnum> filters) {
         return collection.find(getQuery(filters))
-                .sort(new Document("created_at", -1))
+                .sort(new Document("created_at", -1).append("_id", 1))
                 .skip(skip)
                 .limit(limit)
                 .into(new ArrayList<>());
