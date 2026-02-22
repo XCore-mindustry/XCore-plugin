@@ -20,7 +20,6 @@ import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.*;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.BanRequestData;
@@ -44,7 +43,6 @@ public class NetEventService {
     private final Config config;
     private final TranslatorService translatorService;
     private final NetworkService network;
-    private final BundleService bundle;
     private final VoteService voteService;
     private final SecurityService securityService;
     private final IngressService ingressService;
@@ -53,7 +51,7 @@ public class NetEventService {
     @Inject
     public NetEventService(SessionService sessionService, Config config,
                            TranslatorService translatorService, NetworkService network,
-                           BundleService bundle, VoteService voteService,
+                           VoteService voteService,
                            SecurityService securityService,
                            IngressService ingressService,
                            @Named("raw") Gson rawGson) {
@@ -61,7 +59,6 @@ public class NetEventService {
         this.config = config;
         this.translatorService = translatorService;
         this.network = network;
-        this.bundle = bundle;
         this.voteService = voteService;
         this.securityService = securityService;
         this.ingressService = ingressService;
@@ -107,7 +104,7 @@ public class NetEventService {
             case kick -> {
                 target.kick(Packets.KickReason.kick);
 
-                bundle.send("notification-admin-kick", args(
+                sessionService.broadcast("notification-admin-kick", args(
                         "admin", admin.coloredName(),
                         "target", target.coloredName()
                 ));
@@ -117,7 +114,7 @@ public class NetEventService {
             case ban -> {
                 target.kick(Packets.KickReason.banned);
                 netServer.admins.banPlayerID(target.uuid());
-                bundle.send("tempban-player-banned", args(
+                sessionService.broadcast("tempban-player-banned", args(
                         "adminName", admin.coloredName(),
                         "playerName", target.coloredName()));
                 Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
@@ -147,7 +144,7 @@ public class NetEventService {
             }
             case wave -> {
                 Vars.logic.skipWave();
-                bundle.send("notification-admin-wave-skip", args(
+                sessionService.broadcast("notification-admin-wave-skip", args(
                         "admin", admin.coloredName()
                 ));
                 Log.info("@ has skipped the wave.", admin.plainName());

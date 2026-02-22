@@ -122,18 +122,11 @@ public class PlayerMenu extends Menu {
         boolean isOwner = session.data.uuid.equals(targetData.uuid);
         if (!(isOwner || session.player.admin)) {
             session.locale().send("error-no-access");
+            return;
         }
 
         Localization local = session.locale();
         String leaderboardText = targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive";
-        String currentLangName = Objects.equals(targetData.language, "auto")
-            ? local.t("auto")
-            : bundle.locale(targetData.language).getDisplayLanguage(bundle.locale(targetData.language));
-
-        String currentTranslatorLangName = Objects.equals(targetData.translatorLanguage, "auto")
-            ? local.t("off")
-            : bundle.locale(targetData.translatorLanguage).getDisplayLanguage(bundle.locale(targetData.translatorLanguage));
-
 
         session.builder().title("player-menu-settings-title")
                 .content("player-menu-settings-content", args(
@@ -146,12 +139,14 @@ public class PlayerMenu extends Menu {
                     playerDataRepository.save(targetData);
                     settings(uuid, targetData);
                 })
-                .add(local.t("settings-language-label", args("lang", currentLangName)), () -> {
+                .add(local.t("settings-language-label", args("lang",
+                        local.getLanguageName(targetData.language, "auto"))), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, false);
                     playerDataRepository.save(targetData);
                 }).end()
-                .add(local.t("settings-language-label", args("lang", currentTranslatorLangName)), () -> {
+                .add(local.t("settings-language-label", args("lang",
+                        local.getLanguageName(targetData.language, "off"))), () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     languageSelectionMenu(uuid, targetData, true);
                     playerDataRepository.save(targetData);

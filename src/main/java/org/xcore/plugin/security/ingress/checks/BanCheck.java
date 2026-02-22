@@ -6,6 +6,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
@@ -41,6 +42,8 @@ public class BanCheck implements IngressCheck {
         String uuid = packet.uuid;
         String ip = con.address;
 
+        Localization local = new Localization(bundle, bundle.locale(packet.locale));
+
         BanData ban = banDataRepository.find(uuid, ip);
 
         if (ban != null) {
@@ -53,7 +56,7 @@ public class BanCheck implements IngressCheck {
 
             Duration duration = Duration.between(Instant.now(), ban.expireDate);
 
-            String reason = bundle.format(bundle.locale(packet.locale), "tempban-content", args(
+            String reason = local.format("tempban-content", args(
                     "nickname", stripColors(ban.name),
                     "adminName", stripColors(ban.adminName),
                     "reason", ban.reason,
@@ -70,7 +73,7 @@ public class BanCheck implements IngressCheck {
                 netServer.admins.isSubnetBanned(ip) ||
                 netServer.admins.isIDBanned(uuid)) {
 
-            String reason = bundle.format(bundle.locale(packet.locale), "ban-content", args(
+            String reason = local.format("ban-content", args(
                     "nickname", stripColors(packet.name),
                     "discordUrl", globalConfig.discordUrl
             ));

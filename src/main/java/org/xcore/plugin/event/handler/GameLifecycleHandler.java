@@ -16,10 +16,12 @@ import mindustry.net.Packets;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -117,9 +119,10 @@ public class GameLifecycleHandler {
         AtomicInteger secondsLeft = new AtomicInteger(10);
         Timer.schedule(() -> {
             Groups.player.each((p) -> {
-                var session = sessionService.get(p);
+                Session session = sessionService.get(p);
+                Localization systemLocal = new Localization(bundleService);
                 var message = session == null
-                        ? bundleService.format(bundleService.getDefaultLocale(), "server-restart-countdown",
+                        ? systemLocal.format("server-restart-countdown",
                         args("seconds", secondsLeft.get()))
                         : session.locale().format("server-restart-countdown", args("seconds", secondsLeft.get()));
                 Call.announce(p.con, message);

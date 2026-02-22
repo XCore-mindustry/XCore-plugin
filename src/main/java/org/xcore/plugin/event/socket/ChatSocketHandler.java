@@ -8,8 +8,8 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.discord.DiscordMessageHandler;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -20,24 +20,24 @@ public class ChatSocketHandler {
     private final DiscordMessageHandler discordMessageHandler;
     private final DiscordLogBridge discordLogBridge;
     private final Config config;
-    private final BundleService bundleService;
+    private final SessionService sessionService;
 
     @Inject
     public ChatSocketHandler(NetworkService network,
                              DiscordMessageHandler discordMessageHandler,
                              DiscordLogBridge discordLogBridge,
                              Config config,
-                             BundleService bundleService) {
+                             SessionService sessionService) {
         this.network = network;
         this.discordMessageHandler = discordMessageHandler;
         this.discordLogBridge = discordLogBridge;
         this.config = config;
-        this.bundleService = bundleService;
+        this.sessionService = sessionService;
     }
 
     public void registerListeners() {
         network.subscribe(SocketEvents.GlobalChatEvent.class, e -> {
-            bundleService.send("global-chat-format", args(
+            sessionService.broadcast("global-chat-format", args(
                     "server", e.server(),
                     "author", e.authorName(),
                     "message", e.message()

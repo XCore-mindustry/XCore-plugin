@@ -13,6 +13,7 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.PlayerData;
@@ -28,8 +29,8 @@ public class VoteKick extends VoteSession {
     public final Player starter;
     public final Player target;
     public final String reason;
+    public Localization systemLocal;
 
-    private final BundleService bundle;
     private final SessionService sessionService;
     private final NetworkService network;
     private final VoteService voteService;
@@ -51,7 +52,7 @@ public class VoteKick extends VoteSession {
         this.starter = starter;
         this.target = target;
         this.reason = reason;
-        this.bundle = bundle;
+        this.systemLocal = new Localization(bundle);
         this.sessionService = sessionService;
         this.network = network;
         this.voteService = voteService;
@@ -78,7 +79,7 @@ public class VoteKick extends VoteSession {
                 "votes", votes(),
                 "required", votesRequired());
         sessionService.broadcast("votekick-vote", bundleArgs);
-        var message = bundle.format(bundle.getDefaultLocale(), "votekick-vote", bundleArgs);
+        var message = systemLocal.format("votekick-vote", bundleArgs);
         Log.info(message);
 
         if (votes() == 1) {
@@ -117,7 +118,7 @@ public class VoteKick extends VoteSession {
 
         if (network != null) {
             network.post(new SocketEvents.ServerActionEvent(
-                    bundle.format(bundle.getDefaultLocale(), "votekick-success", bundleArgs), config.server));
+                    systemLocal.format("votekick-success", bundleArgs), config.server));
         }
         onKick.get(target);
     }
@@ -129,7 +130,7 @@ public class VoteKick extends VoteSession {
                 "nickname", target.coloredName(),
                 "admin", admin.coloredName());
         sessionService.broadcast("votekick-cancelled", bundleArgs);
-        Log.info(bundle.format(bundle.getDefaultLocale(), "votekick-cancelled", bundleArgs));
+        Log.info(systemLocal.format("votekick-cancelled", bundleArgs));
     }
 
     @Override

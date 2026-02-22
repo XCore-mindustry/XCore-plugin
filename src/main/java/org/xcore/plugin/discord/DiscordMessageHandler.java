@@ -8,8 +8,8 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.session.SessionService;
 
 import static arc.util.Strings.format;
 import static com.ospx.flubundle.Bundle.args;
@@ -24,7 +24,7 @@ public class DiscordMessageHandler {
     private final Config config;
     private final NetworkService network;
     private final DiscordCommandRegistry commandRegistry;
-    private final BundleService bundleService;
+    private final SessionService sessionService;
 
     @Inject
     public DiscordMessageHandler(
@@ -32,13 +32,13 @@ public class DiscordMessageHandler {
             Config config,
             NetworkService network,
             DiscordCommandRegistry commandRegistry,
-            BundleService bundleService
+            SessionService sessionService
     ) {
         this.globalConfig = globalConfig;
         this.config = config;
         this.network = network;
         this.commandRegistry = commandRegistry;
-        this.bundleService = bundleService;
+        this.sessionService = sessionService;
     }
 
     /**
@@ -94,7 +94,7 @@ public class DiscordMessageHandler {
 
                     String server = findServerByChannelId(event.getMessage().getChannelId().asLong());
 
-                    if (server == null) return;
+                    if (server == null || author == null) return;
 
                     if (server.equals(config.server)) {
                         sendMessageToGameFromDiscord(author.getDisplayName(), content);
@@ -111,7 +111,7 @@ public class DiscordMessageHandler {
      */
     public void sendMessageToGameFromDiscord(String authorName, String message) {
         Log.infoTag("Discord", format("@: @", authorName, message));
-        bundleService.send("discord-message-format", args(
+        sessionService.broadcast("discord-message-format", args(
                 "author", authorName,
                 "message", message
         ));

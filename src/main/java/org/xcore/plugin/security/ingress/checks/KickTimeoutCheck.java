@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 import org.xcore.plugin.localization.BundleService;
@@ -35,7 +36,9 @@ public class KickTimeoutCheck implements IngressCheck {
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
 
-            String reason = bundle.format(bundle.locale(packet.locale),
+            Localization local = new Localization(bundle, bundle.locale(packet.locale));
+
+            String reason = local.format(
                     "kick-recently-kicked", args(
                             "remainMinutes", remain.toMinutes(),
                             "remainSeconds", remain.toSecondsPart()

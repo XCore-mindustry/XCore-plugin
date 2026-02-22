@@ -12,9 +12,9 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.PlayerData;
 
@@ -28,19 +28,16 @@ public class MiniPvP {
     private final Config config;
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
-    private final BundleService bundle;
     private final LeaderboardService leaderboardService;
 
     @Inject
     public MiniPvP(Config config,
                    SessionService sessionService,
                    PlayerDataRepository playerDataRepository,
-                   BundleService bundle,
                    LeaderboardService leaderboardService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
-        this.bundle = bundle;
         this.leaderboardService = leaderboardService;
     }
 
@@ -59,11 +56,11 @@ public class MiniPvP {
             sorted.reverse();
 
             sorted.truncate(10);
-            builder.append(bundle.format(locale, "leaderboard", args())).append("\n\n");
+            builder.append(locale.format("leaderboard", args())).append("\n\n");
 
             for (int i = 0; i < sorted.size; i++) {
                 var data = sorted.get(i);
-                builder.append(bundle.format(locale, "pvp-leaderboard-content", args(
+                builder.append(locale.format("pvp-leaderboard-content", args(
                         "index", i + 1,
                         "nickname", data.nickname,
                         "rating", data.pvpRating
@@ -75,8 +72,11 @@ public class MiniPvP {
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
+                Session session = sessionService.get(e.player);
+                if (session == null) {return;}
+
                 // TODO: session is not guaranteed to be created at PlayerConnectionConfirmed stage.
-                bundle.send(e.player, "pvp-you-spectator", args());
+                session.locale().send("pvp-you-spectator", args());
             }
         });
 

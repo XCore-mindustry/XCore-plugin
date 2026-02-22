@@ -7,6 +7,7 @@ import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Locale;
@@ -21,7 +22,7 @@ public class LeaderboardService {
         this.sessionService = sessionService;
     }
 
-    public void start(Cons3<StringBuilder, Player, Locale> contentGenerator) {
+    public void start(Cons3<StringBuilder, Player, Localization> contentGenerator) {
         Timer.schedule(() -> {
             if (Groups.player.isEmpty()) return;
 
@@ -31,7 +32,7 @@ public class LeaderboardService {
                 if (data == null || !data.leaderboard) return;
 
                 StringBuilder builder = new StringBuilder();
-                Locale locale = session.locale().getLocale();
+                Localization locale = session.locale();
 
                 contentGenerator.get(builder, player, locale);
 

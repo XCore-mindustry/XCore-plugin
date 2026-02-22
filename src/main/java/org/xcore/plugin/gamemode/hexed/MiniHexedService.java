@@ -25,6 +25,7 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
@@ -81,12 +82,12 @@ public class MiniHexedService {
                     .reverse();
 
             teams.truncate(10);
-            builder.append(bundle.format(locale, "leaderboard", args())).append("\n\n");
+            builder.append(locale.format("leaderboard", args())).append("\n\n");
             for (int i = 0; i < teams.size; i++) {
                 var team = teams.get(i);
                 String nickname = team.players.isEmpty() ? "Unknown" : team.players.first().coloredName();
 
-                builder.append(bundle.format(locale, "hexed-leaderboard-content", args(
+                builder.append(locale.format("hexed-leaderboard-content", args(
                         "index", i + 1,
                         "nickname", nickname,
                         "hexes", team.cores.size
@@ -110,7 +111,7 @@ public class MiniHexedService {
             if (block instanceof CoreBlock && !team.data().players.isEmpty() && team != Team.derelict && team.cores().size <= 1) {
                 var player = team.data().players.first();
 
-                bundle.send("hexed-eliminated", args("nickname", player.coloredName()));
+                sessionService.broadcast("hexed-eliminated", args("nickname", player.coloredName()));
                 player.team(Team.derelict);
             }
         });
@@ -210,34 +211,34 @@ public class MiniHexedService {
             playerDataRepository.save(data);
         }
 
-        Func<Locale, String> generateMessage = locale -> {
+        Func<Localization, String> generateMessage = locale -> {
             StringBuilder builder = new StringBuilder();
             if (!teams.isEmpty()) {
-                builder.append(bundle.format(locale, "hexed-game-over-header", args())).append("\n");
+                builder.append(locale.format("hexed-game-over-header", args())).append("\n");
                 for (int i = 0; i < teams.size; i++) {
                     var team = teams.get(i);
                     var player = team.players.first();
 
-                    builder.append(bundle.format(locale, "hexed-game-over-winner-row", args(
+                    builder.append(locale.format("hexed-game-over-winner-row", args(
                             "index", i + 1,
                             "name", player.coloredName(),
                             "cores", team.cores.size
                     ))).append("\n");
                 }
             } else {
-                builder.append(bundle.format(locale, "hexed-game-over-no-winners", args()));
+                builder.append(locale.format("hexed-game-over-no-winners", args()));
             }
-            builder.append("\n").append(bundle.format(locale, "hexed-game-over-restart", args()));
+            builder.append("\n").append(locale.format("hexed-game-over-restart", args()));
             return builder.toString();
         };
 
         Groups.player.each(p -> {
             var session = sessionService.get(p);
             if (session == null) return;
-            Call.infoMessage(p.con, generateMessage.get(session.locale().getLocale()));
+            Call.infoMessage(p.con, generateMessage.get(session.locale()));
         });
 
-        String rawMessage = generateMessage.get(bundle.getDefaultLocale());
+        String rawMessage = generateMessage.get(new Localization(bundle));
         network.post(new SocketEvents.ServerActionEvent(Strings.stripColors(rawMessage), config.server));
 
         Events.fire("hexed_world-reload");
@@ -269,7 +270,7 @@ public class MiniHexedService {
 
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
-            bundle.send("hexed-eliminated", args("nickname", player.coloredName()));
+            sessionService.broadcast("hexed-eliminated", args("nickname", player.coloredName()));
             player.team(Team.derelict);
         }
 
