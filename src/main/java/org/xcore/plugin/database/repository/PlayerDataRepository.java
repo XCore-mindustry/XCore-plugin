@@ -3,7 +3,10 @@ package org.xcore.plugin.database.repository;
 import arc.struct.Seq;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.*;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.ReturnDocument;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
@@ -13,14 +16,14 @@ import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
-import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.PlayerData;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Sorts.descending;
 
 @Singleton
@@ -40,7 +43,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public boolean save(PlayerData data) {
-        if (data.pid == 0 && !isReadOnly()) {
+        if (data.pid == -1 && !isReadOnly()) {
             data.pid = generatePid();
         }
 
