@@ -272,6 +272,7 @@ player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Tr
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
 player-menu-settings-customNickname = Edit name
+player-menu-settings-customNickname-message = [lightgray]Leave blank to reset
 player-menu-settings-description = Edit description
 settings-language-label = Translation: [green]{ $lang }[]
 commands-lb-description = Enable/disable leaderboard.

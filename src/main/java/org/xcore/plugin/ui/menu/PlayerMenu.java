@@ -151,18 +151,30 @@ public class PlayerMenu extends Menu {
                 .start()
                     .addLocal("player-menu-settings-customNickname", () -> {
                         session.setTextHandler(t -> {
-                            if (t == null || t.trim().isEmpty()) return;
+                            boolean isReset = (t == null || t.trim().isEmpty());
+                            String newNick = isReset ? "" : t;
+
                             updatePlayerData(targetData, d -> {
-                                d.customNickname = t;
+                                d.customNickname = newNick;
+
                                 Session ts = sessionService.get(targetData.uuid);
-                                if (ts != null) ts.player.name = t;
+                                if (ts != null) {
+                                    ts.player.name = isReset ? ts.data.nickname : newNick;
+                                }
                             });
+
                             var info = netServer.admins.getInfo(targetData.uuid);
-                            if (info != null) info.lastName = t;
+                            if (info != null) {
+                                info.lastName = isReset ? targetData.nickname : newNick;
+                            }
 
                             settings(uuid, targetData);
                         });
-                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-name-title"), "", 256, targetData.nickname, false);
+
+                        Call.textInput(session.player.con, session.menuService.getTextId(),
+                            local.t("event-menu-edit-name-title"),
+                            local.t("player-menu-settings-customNickname-message"),
+                            256, targetData.customNickname, false);
                     })
                     .addLocal("player-menu-settings-description", () -> {
                         session.setTextHandler(t -> {

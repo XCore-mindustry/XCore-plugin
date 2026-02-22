@@ -454,6 +454,7 @@ player-menu-settings-content =
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
 player-menu-settings-customNickname = Редагувати ім'я
+player-menu-settings-customNickname-message = [lightgray]Залиште пустим для скидання
 player-menu-settings-description = Редагувати опис
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
