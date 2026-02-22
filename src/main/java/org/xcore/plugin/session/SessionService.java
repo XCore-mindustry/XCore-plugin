@@ -117,7 +117,7 @@ public class SessionService {
 
         if (data == null) data = new PlayerData(player.uuid(), false);
 
-        Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository).init(player, data);
+        Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository, player, data);
 
         sessionCache.put(player.uuid(), session);
 
@@ -195,7 +195,7 @@ public class SessionService {
             var data = playerDataRepository.findByPlayer(player);
             if (data == null) data = new PlayerData(player.uuid(), false);
 
-            Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository).init(player, data);
+            Session session = new Session(globalConfig, bundle, menuService.get(), playerDataRepository, player, data);
             sessionCache.put(player.uuid(), session);
         });
 

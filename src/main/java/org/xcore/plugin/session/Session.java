@@ -34,11 +34,18 @@ public class Session {
     public final Map<Class<?>, Object> drafts = new HashMap<>();
     public Consumer<String> textHandler;
 
-    public Session(GlobalConfig globalConfig, BundleService bundle, MenuService menuService, PlayerDataRepository playerDataRepository) {
+    public Session(GlobalConfig globalConfig,
+                   BundleService bundle,
+                   MenuService menuService,
+                   PlayerDataRepository playerDataRepository,
+                   Player player, PlayerData playerData) {
         this.globalConfig = globalConfig;
         this.bundle = bundle;
         this.menuService = menuService;
         this.playerDataRepository = playerDataRepository;
+
+        this.player = player;
+        this.data = playerData;
 
         if (this.data.mapVotes == null) this.data.mapVotes = new HashMap<>();
         if (this.data.eventVotes == null) this.data.eventVotes = new HashMap<>();
@@ -46,13 +53,6 @@ public class Session {
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
 
         this.localization = new Localization(bundle, this);
-    }
-
-    public Session init(Player player, PlayerData playerData) {
-        this.player = player;
-        this.data = playerData;
-
-        return this;
     }
 
     public Session start(XCoreSender sender) {
