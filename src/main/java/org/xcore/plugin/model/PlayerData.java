@@ -4,16 +4,12 @@ import lombok.*;
 import lombok.experimental.Accessors;
 import lombok.experimental.SuperBuilder;
 import mindustry.gen.Player;
-import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.bson.codecs.pojo.annotations.BsonProperty;
-import org.bson.types.ObjectId;
 import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 
 import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 
 @Data
@@ -25,7 +21,8 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 public class PlayerData extends ModelData {
 
-    @Builder.Default public int pid = 0;
+    @Builder.Default
+    public int pid = -1;
     @Builder.Default public String uuid = "";
 
     @BsonProperty("last_ip")
@@ -72,6 +69,7 @@ public class PlayerData extends ModelData {
         super();
         this.uuid = uuid;
         this.exists = exists;
+        this.pid = -1;
     }
 
     public HexedRanks.HexedRank hexedRank() {
