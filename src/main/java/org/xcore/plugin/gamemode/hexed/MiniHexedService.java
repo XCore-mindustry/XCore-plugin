@@ -117,7 +117,10 @@ public class MiniHexedService {
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
         Events.run(EventType.Trigger.update, () -> members.each((uuid, member) -> {
-            var data = sessionService.get(member.uuid).data;
+            var session = sessionService.get(member.uuid);
+            if (session == null) return;
+
+            var data = session.data;
 
             if (member.controlled() > 1 && data != null) {
                 var ranked = rankings.get(data.hexedRank());
