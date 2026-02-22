@@ -268,7 +268,6 @@ player-menu-settings-content =
     { "" }[white]Show Leaderboard: [green]{ $leaderboard }[]
     { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
     { "" }[green]{ $description }[white]
-player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Translation: [green]{ $language }[] | Language for automatic translation: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
 player-menu-settings-customNickname = Edit name
