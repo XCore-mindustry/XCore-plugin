@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.0.5] - 2026-02-22
+
+### Fixed
+- Fixed version checks in `getCachedAdminTools` by using string-based comparison.
+- Added a null-check for missing sessions in the `MiniHexedService` update loop.
+
+## [3.0.4] - 2026-02-22
+
+### Added
+- Added custom nickname and description support for players.
+- Added a reset-nickname command.
+
+### Changed
+- Updated Gradle to 9.3.1.
+
+### Fixed
+- Changed the default `pid` to `-1` so `0` remains a valid player ID.
+
+## [3.0.3] - 2026-02-22
+
+### Changed
+- Removed the legacy `init()` method path.
+- Improved the translation system behavior.
+
+### Fixed
+- Fixed a null-related runtime bug.
+
+## [3.0.2] - 2026-02-22
+
+### Fixed
+- Fixed additional stability bugs.
+
+## [3.0.1] - 2026-02-21
+
+### Changed
+- Updated `README.md`.
+- Updated Weblate branch configuration to `main`.
+- Synced Russian translations from Weblate.
+
+### Fixed
+- Fixed a database issue with `local_language`.
+
 ## [3.0.0] - 2026-02-21
 
 ### Added
@@ -35,5 +77,10 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.5...HEAD
+[3.0.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.4...3.0.5
+[3.0.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.3...3.0.4
+[3.0.3]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.2...3.0.3
+[3.0.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.1...3.0.2
+[3.0.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/2.9.0...3.0.0
