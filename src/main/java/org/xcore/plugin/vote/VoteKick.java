@@ -9,6 +9,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
+import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
@@ -83,9 +84,11 @@ public class VoteKick extends VoteSession {
         Log.info(message);
 
         if (votes() == 1) {
-            sessionService.getCachedAdminTools((v) -> v >= 0, data ->
-                    Call.clientPacketReliable(data.player.con, "adm_mod_votekick",
-                            targetData.pid + "," + targetData.nickname));
+            sessionService.getCachedAdminTools(
+                    (v) -> VersionComparator.compareVersions(v, "0") >= 0,
+                    data -> Call.clientPacketReliable(data.player.con, "adm_mod_votekick",
+                            targetData.pid + "," + targetData.nickname)
+            );
         }
 
         if (network != null) {

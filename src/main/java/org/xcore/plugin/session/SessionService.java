@@ -210,9 +210,9 @@ public class SessionService {
      * @param versionCompare version comparison predicate (returns true if match)
      * @param consumer consumer for matched players
      */
-    public void getCachedAdminTools(Boolf<Integer> versionCompare, Cons<PlayerData> consumer) {
+    public void getCachedAdminTools(Boolf<String> versionCompare, Cons<PlayerData> consumer) {
         for (var data : sessionCache.values()) {
-            if (data.data.adminModVersion != null && versionCompare.get(Integer.parseInt(data.data.adminModVersion))) {
+            if (data.data.adminModVersion != null && versionCompare.get(data.data.adminModVersion)) {
                 consumer.get(data.data);
             }
         }
