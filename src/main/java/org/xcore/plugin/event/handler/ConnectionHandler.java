@@ -20,6 +20,8 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
 import org.xcore.plugin.event.SocketEvents;
 
+import java.util.Objects;
+
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
@@ -68,6 +70,11 @@ public class ConnectionHandler {
 
         data.setNickname(player.coloredName()).setPlayer(player);
 
+        if (!Objects.equals(data.customNickname, "")) {
+            player.name = data.customNickname;
+            netServer.admins.getInfo(player.uuid()).lastName = player.name;
+        }
+
         Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
         if (data.exists && !data.ip.equals(player.ip())) {
@@ -83,6 +90,13 @@ public class ConnectionHandler {
 
             data.setIp(player.ip());
             session.save();
+        }
+
+        if (data.admin && data.adminConfirmed) {
+            player.admin = true;
+            if (!netServer.admins.isAdmin(player.uuid(), player.usid())) {
+                netServer.admins.adminPlayer(player.uuid(), player.usid());
+            }
         }
 
         if (!data.exists) {

@@ -224,10 +224,12 @@ rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи
 # ==============================================================================
 commands-player-description = Переглянути статистику гравця.
 player-menu-player-content =
-    Статистика гравця { $nickname } [grey]#{ $pid }
-    { "" }[brown]Час у грі: [grey]{ $totalPlayTime }[] хвилин
-    Ранг у Hexed: [grey]{ $hexedRankTag } { $hexedRankName }
-    Рейтинг MiniPvP: { $pvpRating }
+    { "" }[white]Статистика гравця [green]{ $customNickname }[][grey]#{ $pid }[]
+    { "" }[white]Оригінальне ім'я: [green]{ $nickname }[] | Адмін: [green]{ $admin }[]
+    { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг у Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
+    { "" }[white]Час у грі: [green]{ $totalPlayTime }[] хвилин | Таблиця лідерів: [green]{ $leaderboard }[]
+    { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -444,9 +446,15 @@ player-menu-players-content = { "" }[white]Сторінка [green]{ $page }[] �
 player-menu-players-empty = Гравців не знайдено
 player-menu-settings = Налаштування
 player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
-player-menu-settings-content = Показувати таблицю лідерів: [green]{ $leaderboard }[] | Переклад: [green]{ $language }[] | Мова для автоматичного перекладу: [green]{ $translatorLanguage }[]
+player-menu-settings-content =
+    { "" }[white]Встановлене ім'я: [green]{ $customNickname }[]
+    { "" }[white]Таблиця лідерів: [green]{ $leaderboard }[]
+    { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
+player-menu-settings-customNickname = Редагувати ім'я
+player-menu-settings-description = Редагувати опис
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
 event-end = Подія [green]{ $name }[] завершилася!
@@ -483,3 +491,4 @@ error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }
 
 player-leaderboard-active = { "[" }green]Список лідерів
 player-leaderboard-inactive = { "[" }red]Список лідерів
+none = Немає

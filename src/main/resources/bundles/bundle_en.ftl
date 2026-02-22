@@ -251,19 +251,28 @@ commands-player-description = View a player's Statistics.
 player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
-    { $nickname } [grey]#{ $pid } Statistics
-    { "" }[brown]PlayTime: [grey]{ $totalPlayTime }[] minutes
-    Hexed Rank: [grey]{ $hexedRankTag } { $hexedRankName }
-    MiniPvP rating: { $pvpRating }
+    { "" }[white]Player statistics for [green]{ $customNickname }[][grey]#{ $pid }[]
+    { "" }[white]Original name: [green]{ $nickname }[] | Admin: [green]{ $admin }[]
+    { "" }[white]MiniPvP rating: [green]{ $pvpRating }[] | Hexed Rank: [green]{ $hexedRankTag } { $hexedRankName }[]
+    { "" }[white]PlayTime: [green]{ $totalPlayTime }[] minutes | Show Leaderboard: [green]{ $leaderboard }[]
+    { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 player-menu-players = Players list
 player-menu-players-title = { "[" }orange]{ -xcore } — Players List
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
 player-menu-players-empty = No players found
 player-menu-settings = Settings
 player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
+player-menu-settings-content =
+    { "" }[white]Custom Nickname: [green]{ $customNickname }[]
+    { "" }[white]Show Leaderboard: [green]{ $leaderboard }[]
+    { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 player-menu-settings-content = Show leaderboard:: [green]{ $leaderboard }[] | Translation: [green]{ $language }[] | Language for automatic translation: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
+player-menu-settings-customNickname = Edit name
+player-menu-settings-description = Edit description
 settings-language-label = Translation: [green]{ $lang }[]
 commands-lb-description = Enable/disable leaderboard.
 commands-lb-success =
@@ -499,3 +508,4 @@ auto = Auto
 on = On
 off = Off
 error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.
+none = None

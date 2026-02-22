@@ -32,6 +32,10 @@ public class PlayerData extends ModelData {
     @Builder.Default public String ip = "";
     @Builder.Default public String nickname = "Unknown";
 
+    @BsonProperty("custom_nickname")
+    @Builder.Default public String customNickname = "";
+    @Builder.Default public String description = "";
+
     @BsonProperty("password_hash")
     @Builder.Default public String password = "";
 

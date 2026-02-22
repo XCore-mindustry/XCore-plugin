@@ -4,6 +4,7 @@ import arc.struct.Seq;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import mindustry.gen.Call;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
@@ -19,6 +20,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
+import static mindustry.Vars.netServer;
 
 @Singleton
 public class PlayerMenu extends Menu {
@@ -44,10 +46,17 @@ public class PlayerMenu extends Menu {
         Localization local = session.locale();
         boolean isOwner = session.data.uuid.equals(targetData.uuid);
 
+        String customNickname = targetData.customNickname == null || Objects.equals(targetData.customNickname, "")
+                ? targetData.nickname : targetData.customNickname;
+        String description = targetData.description == null || Objects.equals(targetData.description, "")
+                ? local.t("no-description") : targetData.description;
+
         session.builder()
                 .title("player-menu-player-title")
                 .content("player-menu-player-content", args(
                         "nickname", targetData.nickname,
+                        "customNickname", customNickname,
+                        "description", description,
                         "pid", targetData.pid,
                         "totalPlayTime", targetData.totalPlayTime,
                         "hexedRankTag", targetData.hexedRank().tag,
@@ -113,76 +122,115 @@ public class PlayerMenu extends Menu {
 
     public void settings(String uuid, PlayerData targetData) {
         Session session = sessionService.get(uuid).clear();
-
         if (targetData == null) {
             session.locale().send("error-player-not-found");
             return;
         }
 
-        boolean isOwner = session.data.uuid.equals(targetData.uuid);
-        if (!(isOwner || session.player.admin)) {
+        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
             session.locale().send("error-no-access");
             return;
         }
 
         Localization local = session.locale();
-        String leaderboardText = targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive";
+
+        String customNickDisplay = (targetData.customNickname == null || targetData.customNickname.isEmpty())
+                ? local.t("none") : targetData.customNickname;
+        String descDisplay = (targetData.description == null || targetData.description.isEmpty())
+                ? local.t("no-description") : targetData.description;
 
         session.builder().title("player-menu-settings-title")
                 .content("player-menu-settings-content", args(
+                        "nickname", targetData.nickname,
+                        "customNickname", customNickDisplay,
+                        "description", descDisplay,
                         "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
-                        "language", targetData.language,
-                        "translatorLanguage", targetData.translatorLanguage
+                        "language", local.getLanguageName(targetData.language, "auto"),
+                        "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
                 ))
-                .addRow(leaderboardText, () -> {
-                    targetData.leaderboard = !targetData.leaderboard;
-                    playerDataRepository.save(targetData);
+                .start()
+                    .addLocal("player-menu-settings-customNickname", () -> {
+                        session.setTextHandler(t -> {
+                            if (t == null || t.trim().isEmpty()) return;
+                            updatePlayerData(targetData, d -> {
+                                d.customNickname = t;
+                                Session ts = sessionService.get(targetData.uuid);
+                                if (ts != null) ts.player.name = t;
+                            });
+                            var info = netServer.admins.getInfo(targetData.uuid);
+                            if (info != null) info.lastName = t;
+
+                            settings(uuid, targetData);
+                        });
+                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-name-title"), "", 256, targetData.nickname, false);
+                    })
+                    .addLocal("player-menu-settings-description", () -> {
+                        session.setTextHandler(t -> {
+                            updatePlayerData(targetData, d -> d.description = t);
+                            settings(uuid, targetData);
+                        });
+                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
+                    })
+                .end()
+                .addRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
+                    updatePlayerData(targetData, d -> d.leaderboard = !d.leaderboard);
                     settings(uuid, targetData);
                 })
-                .add(local.t("settings-language-label", args("lang",
-                        local.getLanguageName(targetData.language, "auto"))), () -> {
-                    session.pushHistory(() -> settings(uuid, targetData));
-                    languageSelectionMenu(uuid, targetData, false);
-                    playerDataRepository.save(targetData);
-                }).end()
-                .add(local.t("settings-language-label", args("lang",
-                        local.getLanguageName(targetData.language, "off"))), () -> {
-                    session.pushHistory(() -> settings(uuid, targetData));
-                    languageSelectionMenu(uuid, targetData, true);
-                    playerDataRepository.save(targetData);
-                }).end()
+                .start()
+                    .add(local.t("settings-language-label", args("lang", local.getLanguageName(targetData.language, "auto"))), () -> {
+                        session.pushHistory(() -> settings(uuid, targetData));
+                        languageSelectionMenu(uuid, targetData, false);
+                    })
+                    .add(local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))), () -> {
+                        session.pushHistory(() -> settings(uuid, targetData));
+                        languageSelectionMenu(uuid, targetData, true);
+                    })
+                .end()
                 .addNavigationRow()
                 .show();
     }
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
         Session session = sessionService.get(uuid).clear();
-
         Seq<Locale> locales = bundle.getAvailableLocales();
+        Localization local = session.locale();
 
         var builder = session.builder()
                 .title(isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title")
                 .start()
                     .addLocal(isTranslator ? "default" : "auto", () -> {
-                        if (isTranslator) targetData.translatorLanguage = "off";
-                        else targetData.language = "auto";
-                        playerDataRepository.save(targetData);
+                        updatePlayerData(targetData, d -> {
+                            if (isTranslator) d.translatorLanguage = "off";
+                            else d.language = "auto";
+                        });
                         session.popHistory().run();
                     })
                 .end();
 
         builder.addForEach(locales, (b, loc) -> {
-            String code = Objects.equals(loc.getLanguage(), "uk") ? "uk_UA" : loc.getLanguage();
+            String code = "uk".equals(loc.getLanguage()) ? "uk_UA" : loc.getLanguage();
             String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
 
             b.addRow(langName, () -> {
-                if (isTranslator) targetData.translatorLanguage = code;
-                else targetData.language = code;
-                playerDataRepository.save(targetData);
+                updatePlayerData(targetData, d -> {
+                    if (isTranslator) d.translatorLanguage = code;
+                    else d.language = code;
+                });
                 session.popHistory().run();
             });
         });
 
         builder.addNavigationRow().show();
+    }
+
+    private void updatePlayerData(PlayerData targetData, java.util.function.Consumer<PlayerData> updater) {
+        Session targetSession = sessionService.get(targetData.uuid);
+        if (targetSession != null) {
+            updater.accept(targetSession.data);
+            targetSession.save();
+        } else {
+            updater.accept(targetData);
+            playerDataRepository.save(targetData);
+        }
     }
 }
