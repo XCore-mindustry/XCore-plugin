@@ -7,13 +7,13 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    id("com.xpdustry.toxopid") version "4.1.2"
-    id("com.gradleup.shadow") version "9.3.0"
+    alias(libs.plugins.toxopid)
+    alias(libs.plugins.shadow)
 }
 
 group = "org.xcore.plugin"
 version = "3.0.7"
-val mindustryVersion = "155.4"
+val mindustryVersion = libs.versions.mindustry.get()
 
 java {
     toolchain {
@@ -48,29 +48,19 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.arcCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
-
     implementation(project(":flubundle"))
-    implementation("com.github.XCore-mindustry:cloud-mindustry:5021268676")
-    implementation("com.github.osp54:Sock:9d465f7")
-
-    implementation("org.mongodb:mongodb-driver-sync:5.6.2")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("org.mindrot:jbcrypt:0.4")
-    implementation("com.discord4j:discord4j-core:3.3.0")
-
-    implementation("io.netty:netty-transport-native-epoll:4.1.107.Final:linux-x86_64")
-
-    implementation("org.jline:jline-terminal-jna:3.30.6")
-
-    implementation("org.jline:jline-reader:3.30.6")
-    implementation("org.jline:jline-console:3.30.6")
-
-    implementation("io.avaje:avaje-inject:12.3")
-
-    compileOnly("org.projectlombok:lombok:1.18.42")
-    annotationProcessor("org.projectlombok:lombok:1.18.42")
-    annotationProcessor("io.avaje:avaje-inject-generator:12.3")
-
+    implementation(libs.cloud.mindustry)
+    implementation(libs.sock)
+    implementation(libs.mongodb.sync)
+    implementation(libs.gson)
+    implementation(libs.jbcrypt)
+    implementation(libs.discord4j)
+    implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
+    implementation(libs.bundles.jline)
+    implementation(libs.avaje.inject)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+    annotationProcessor(libs.avaje.inject.generator)
 }
 
 val generateModInfo by tasks.registering {

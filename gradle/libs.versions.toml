@@ -1,0 +1,40 @@
+[versions]
+mindustry = "155.4"
+
+# Plugins
+toxopid = "4.1.2"
+shadow = "9.3.0"
+
+# Dependencies
+cloud-mindustry = "5021268676"
+sock = "9d465f7"
+mongodb = "5.6.2"
+gson = "2.10.1"
+jbcrypt = "0.4"
+discord4j = "3.3.0"
+netty = "4.1.107.Final"
+jline = "3.30.6"
+avaje = "12.3"
+lombok = "1.18.42"
+
+[plugins]
+toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+
+[libraries]
+cloud-mindustry = { module = "com.github.XCore-mindustry:cloud-mindustry", version.ref = "cloud-mindustry" }
+sock = { module = "com.github.osp54:Sock", version.ref = "sock" }
+mongodb-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
+discord4j = { module = "com.discord4j:discord4j-core", version.ref = "discord4j" }
+netty-epoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
+jline-terminal = { module = "org.jline:jline-terminal-jna", version.ref = "jline" }
+jline-reader = { module = "org.jline:jline-reader", version.ref = "jline" }
+jline-console = { module = "org.jline:jline-console", version.ref = "jline" }
+avaje-inject = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
+avaje-inject-generator = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+[bundles]
+jline = ["jline-terminal", "jline-reader", "jline-console"]
