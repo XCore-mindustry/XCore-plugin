@@ -37,6 +37,7 @@ public class PlayerActivityService {
             discoveryService.updateFooter();
 
             for (Session session : sessionService.getAllCached()) {
+                if (session == null || session.data == null) continue;
                 var player = findService.playerByUuid(session.data.uuid);
                 if (player == null) continue;
 

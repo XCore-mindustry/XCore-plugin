@@ -240,6 +240,7 @@ public class SessionService {
 
     public void broadcast(String key, Map<String, Object> args) {
         for (Session session : getAllCached()) {
+            if (session == null || session.data == null) continue;
             session.locale().send(key, args);
         }
     }

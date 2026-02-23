@@ -61,6 +61,7 @@ public class SocialController implements CloudClientController {
                 other -> other.team() == author.team(),
                 p -> {
                     Session session = sessionService.get(p.uuid());
+                    if (session == null || session.data == null) return;
                     String formatted = session.locale().format(
                             "commands-t-chat", args(
                                     "color", author.team().color,
@@ -77,6 +78,7 @@ public class SocialController implements CloudClientController {
     @Command("g <message>")
     public void globalChat(XCoreSender sender, @Argument("message") @Greedy String message) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
 
         network.post(new SocketEvents.GlobalChatEvent(
                 session.player.coloredName(),
@@ -99,6 +101,7 @@ public class SocialController implements CloudClientController {
     @Command("tr <language>")
     public void translator(XCoreSender sender, @Argument(value = "language", parserName = "language") String language) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         PlayerData data = session.data;
         Localization local = session.locale();
 

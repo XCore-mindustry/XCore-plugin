@@ -40,6 +40,7 @@ public class AuthController implements CloudClientController {
     @Command("login <password>")
     public void login(XCoreSender sender, @Argument("password") String password) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         PlayerData data = session.data;
         Localization local = session.locale();
 
@@ -73,6 +74,7 @@ public class AuthController implements CloudClientController {
     @Command("logout")
     public void logout(XCoreSender sender) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         if (sender.player().admin) {

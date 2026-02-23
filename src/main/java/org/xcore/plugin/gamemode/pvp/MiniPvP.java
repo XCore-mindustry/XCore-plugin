@@ -73,7 +73,7 @@ public class MiniPvP {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 e.player.team(Team.derelict);
                 Session session = sessionService.get(e.player);
-                if (session == null) {return;}
+                if (session == null || session.data == null) return;
 
                 // TODO: session is not guaranteed to be created at PlayerConnectionConfirmed stage.
                 session.locale().send("pvp-you-spectator", args());

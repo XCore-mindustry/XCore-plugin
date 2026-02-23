@@ -54,6 +54,11 @@ public class ConnectionHandler {
         var player = event.player;
 
         Session session = sessionService.registerLogin(player);
+        if (session == null || session.data == null) {
+            Log.err("Session is null! Player: @", player);
+            player.kick("Session is null! Write to us on Discord to resolve issues.");
+            return;
+        }
         PlayerData data = session.data;
         Localization locale = session.locale();
 
@@ -70,7 +75,7 @@ public class ConnectionHandler {
 
         data.setNickname(player.coloredName()).setPlayer(player);
 
-        if (!Objects.equals(data.customNickname, "")) {
+        if (data.customNickname != null && !data.customNickname.isEmpty()) {
             player.name = data.customNickname;
             netServer.admins.getInfo(player.uuid()).lastName = player.name;
         }

@@ -28,6 +28,7 @@ public class SecurityService {
 
     public boolean isMuted(Player player) {
         Session session = sessionService.get().get(player);
+        if (session == null || session.data == null) return false;
         MuteData mute = muteDataRepository.findByUuid(player.uuid());
 
         if (mute == null) return false;

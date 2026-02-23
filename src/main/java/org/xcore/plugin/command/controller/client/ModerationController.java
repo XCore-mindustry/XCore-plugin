@@ -44,6 +44,7 @@ public class ModerationController implements CloudClientController {
                     @Argument("reason") @Greedy String reason) {
 
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         var result = moderationService.banById(
@@ -64,6 +65,7 @@ public class ModerationController implements CloudClientController {
     @Command("unban <id>")
     public void unban(XCoreSender sender, @Argument("id") int id) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         var result = moderationService.unbanById(id);
@@ -86,6 +88,7 @@ public class ModerationController implements CloudClientController {
                      @Argument("reason") @Greedy String reason) {
 
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         var result = moderationService.muteById(
@@ -116,6 +119,7 @@ public class ModerationController implements CloudClientController {
     @Command("unmute <id>")
     public void unmute(XCoreSender sender, @Argument("id") int id) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         var result = moderationService.unmuteById(id);

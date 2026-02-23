@@ -38,6 +38,7 @@ public class VoteController implements CloudClientController {
     @Command("votekick <target> <reason>")
     public void votekick(XCoreSender sender, @Argument("target") Player target, @Argument("reason") @Greedy String reason) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         if (voteService.getCurrentVoteKick() != null) {
@@ -63,6 +64,7 @@ public class VoteController implements CloudClientController {
     @Command("vote <choice>")
     public void vote(XCoreSender sender, @Argument("choice") String choice) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         VoteSession currentSession = voteService.getCurrentSession();

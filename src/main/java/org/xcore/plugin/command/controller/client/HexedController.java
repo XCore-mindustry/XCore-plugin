@@ -36,6 +36,7 @@ public class HexedController implements CloudClientController {
     @Command("spectate")
     public void spectate(XCoreSender sender) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         hexedService.killTeam(session.player.team());
         session.locale().send("commands-spectate-success", args());
     }
@@ -57,6 +58,7 @@ public class HexedController implements CloudClientController {
         }
 
         Session session = sessionService.get(target.uuid());
+        if (session == null || session.data == null) return;
         PlayerData data = session.data;
         var rank = data.hexedRank();
 
@@ -72,6 +74,7 @@ public class HexedController implements CloudClientController {
     @Command("ranks")
     public void ranks(XCoreSender sender) {
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         StringBuilder sb = new StringBuilder();
@@ -91,6 +94,7 @@ public class HexedController implements CloudClientController {
                    @Argument("state") String state) {
 
         Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
         Localization local = session.locale();
 
         var member = hexedService.members.get(session.data.uuid);

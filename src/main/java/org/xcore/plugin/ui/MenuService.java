@@ -27,6 +27,7 @@ public class MenuService {
     public void init() {
         this.globalMenuId = Menus.registerMenu((player, option) -> {
             Session session = sessionService.get().get(player.uuid());
+            if (session == null || session.data == null) return;
             if (option >= 0 && option < session.actions.size()) {
                 session.actions.get(option).run();
             }
@@ -34,6 +35,7 @@ public class MenuService {
 
         this.globalTextId = Menus.registerTextInput((player, text) -> {
             Session session = sessionService.get().get(player.uuid());
+            if (session == null || session.data == null) return;
             if (session.textHandler != null && text != null) {
                 session.textHandler.accept(text);
             }

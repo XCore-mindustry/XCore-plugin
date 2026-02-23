@@ -41,6 +41,7 @@ public class HelpMenu extends Menu {
 
     public void help(String uuid, int page) {
         Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
         XCoreSender sender = session.sender;
 
         if (sender == null) {

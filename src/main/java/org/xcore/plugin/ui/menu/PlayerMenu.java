@@ -37,6 +37,7 @@ public class PlayerMenu extends Menu {
 
     public void player(String uuid, PlayerData targetData) {
         Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
 
         if (targetData == null) {
             session.locale().send("error-player-not-found");
@@ -82,6 +83,7 @@ public class PlayerMenu extends Menu {
 
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
         int totalPlayers = (int) playerDataRepository.count(session.sortStatus);
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(totalPlayers, perPage);
@@ -122,6 +124,7 @@ public class PlayerMenu extends Menu {
 
     public void settings(String uuid, PlayerData targetData) {
         Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
         if (targetData == null) {
             session.locale().send("error-player-not-found");
             return;
@@ -159,7 +162,17 @@ public class PlayerMenu extends Menu {
 
                                 Session ts = sessionService.get(targetData.uuid);
                                 if (ts != null) {
-                                    ts.player.name = isReset ? ts.data.nickname : newNick;
+                                    if (ts.data.nickname == null || ts.data.nickname.isEmpty()) {
+                                        ts.data.nickname = "Player";
+                                    }
+
+                                    if (isReset) {
+                                        ts.player.name = ts.data.nickname;
+                                    } else if (ts.data.customNickname != null && !ts.data.customNickname.isEmpty()) {
+                                        ts.player.name = ts.data.customNickname;
+                                    } else {
+                                        ts.player.name = ts.data.nickname;
+                                    }
                                 }
                             });
 
@@ -204,6 +217,7 @@ public class PlayerMenu extends Menu {
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
         Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
         Seq<Locale> locales = bundle.getAvailableLocales();
         Localization local = session.locale();
 
