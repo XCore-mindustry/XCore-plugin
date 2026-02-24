@@ -4,6 +4,7 @@ import com.xpdustry.toxopid.task.MindustryExec
 import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     java
@@ -61,6 +62,17 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     annotationProcessor(libs.avaje.inject.generator)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit.jupiter)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.avaje.inject.test)
+    testImplementation(toxopid.dependencies.arcCore)
+    testImplementation(toxopid.dependencies.mindustryCore)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testAnnotationProcessor(libs.avaje.inject.generator)
 }
 
 val generateModInfo by tasks.registering {
@@ -114,3 +126,7 @@ tasks.withType<MindustryExec> {
 
 tasks.register("runMainServer", MindustryExec::class)
 tasks.register("runServer", MindustryExec::class)
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}

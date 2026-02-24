@@ -16,6 +16,9 @@ netty = "4.1.107.Final"
 jline = "3.30.6"
 avaje = "12.3"
 lombok = "1.18.42"
+junit = "5.14.0"
+mockito = "5.20.0"
+assertj = "3.27.4"
 
 [plugins]
 toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
@@ -34,7 +37,13 @@ jline-reader = { module = "org.jline:jline-reader", version.ref = "jline" }
 jline-console = { module = "org.jline:jline-console", version.ref = "jline" }
 avaje-inject = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
 avaje-inject-generator = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
+avaje-inject-test = { module = "io.avaje:avaje-inject-test", version.ref = "avaje" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [bundles]
 jline = ["jline-terminal", "jline-reader", "jline-console"]
