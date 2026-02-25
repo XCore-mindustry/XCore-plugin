@@ -24,7 +24,9 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -139,6 +141,30 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("banById fails when player is not found")
+    void banById_notFound_returnsFailure() {
+        when(playerDataRepository.findByPid(404)).thenReturn(null);
+
+        var result = moderationService.banById(404, "admin", "reason", Duration.ofMinutes(10), true);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verifyNoInteractions(banDataRepository, network);
+    }
+
+    @Test
+    @DisplayName("unbanById fails when player is not found")
+    void unbanById_notFound_returnsFailure() {
+        when(playerDataRepository.findByPid(405)).thenReturn(null);
+
+        var result = moderationService.unbanById(405);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verify(banDataRepository, never()).delete(any(), any());
+    }
+
+    @Test
     @DisplayName("muteById fails when player is not found")
     void muteByIdPlayerNotFound() {
         when(sessionService.getOrLoadFromDb(100)).thenReturn(null);
@@ -206,6 +232,17 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("parsePeriod returns null when TimeService cannot parse value")
+    void parsePeriod_whenTimeServiceReturnsNull_returnsNull() {
+        when(time.parsePeriod("bad", TimeUnit.DAYS)).thenReturn(null);
+
+        var result = moderationService.parsePeriod("bad", TimeUnit.DAYS);
+
+        assertThat(result).isNull();
+        verify(time).parsePeriod("bad", TimeUnit.DAYS);
+    }
+
+    @Test
     @DisplayName("findPlayerData delegates to FindService")
     void findPlayerDataDelegation() {
         var data = PlayerData.builder().uuid("uuid-5").nickname("Nick").build();
@@ -215,6 +252,17 @@ class ModerationServiceAvajeTest {
 
         assertThat(result).isSameAs(data);
         verify(find).playerData("#12");
+    }
+
+    @Test
+    @DisplayName("findPlayerData returns null when FindService returns null")
+    void findPlayerData_whenFindReturnsNull_returnsNull() {
+        when(find.playerData("unknown")).thenReturn(null);
+
+        var result = moderationService.findPlayerData("unknown");
+
+        assertThat(result).isNull();
+        verify(find).playerData("unknown");
     }
 
     private static final class ModerationServiceModule implements AvajeModule {
