@@ -1,0 +1,36 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: xcore-discord-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:7.0
+    container_name: xcore-discord-mongo
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xcore-discord-bot
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped

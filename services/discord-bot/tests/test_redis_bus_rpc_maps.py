@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import json
+from types import MethodType, SimpleNamespace
+
+import pytest
+
+from xcore_discord_bot.redis_bus import RedisBus
+
+
+@pytest.mark.asyncio
+async def test_rpc_maps_list_parses_map_entries() -> None:
+    settings = SimpleNamespace(
+        redis_url="redis://127.0.0.1:6379",
+        redis_group_prefix="xcore:cg",
+        redis_consumer_name="discord-bot",
+        server_channel_map={"mini-pvp": 1},
+    )
+    bus = RedisBus(settings)
+
+    response_payload = {
+        "maps": [
+            {
+                "name": "Map A",
+                "fileName": "a.msav",
+                "author": "Alice",
+                "width": 120,
+                "height": 80,
+                "fileSizeBytes": 2048,
+            },
+            {"name": "Map B", "file_name": "b.msav", "author": "Bob"},
+            "Legacy Name",
+        ]
+    }
+
+    async def fake_rpc_request(self, server: str, rpc_type: str, payload: dict, timeout_ms: int):  # noqa: ANN001
+        assert server == "mini-pvp"
+        assert rpc_type == "maps.list"
+        return {"payload_json": json.dumps(response_payload)}
+
+    bus._rpc_request = MethodType(fake_rpc_request, bus)
+
+    result = await bus.rpc_maps_list("mini-pvp", 5000)
+
+    assert result == [
+        {
+            "name": "Map A",
+            "file_name": "a.msav",
+            "author": "Alice",
+            "width": "120",
+            "height": "80",
+            "file_size_bytes": "2048",
+        },
+        {
+            "name": "Map B",
+            "file_name": "b.msav",
+            "author": "Bob",
+            "width": "",
+            "height": "",
+            "file_size_bytes": "",
+        },
+        {
+            "name": "Legacy Name",
+            "file_name": "",
+            "author": "Unknown",
+            "width": "",
+            "height": "",
+            "file_size_bytes": "",
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_rpc_remove_map_uses_filename_payload() -> None:
+    settings = SimpleNamespace(
+        redis_url="redis://127.0.0.1:6379",
+        redis_group_prefix="xcore:cg",
+        redis_consumer_name="discord-bot",
+        server_channel_map={"mini-pvp": 1},
+    )
+    bus = RedisBus(settings)
+
+    async def fake_rpc_request(self, server: str, rpc_type: str, payload: dict, timeout_ms: int):  # noqa: ANN001
+        assert server == "mini-pvp"
+        assert rpc_type == "maps.remove"
+        assert payload["fileName"] == "map-a.msav"
+        assert payload["file_name"] == "map-a.msav"
+        return {"payload_json": json.dumps({"result": "ok"})}
+
+    bus._rpc_request = MethodType(fake_rpc_request, bus)
+
+    result = await bus.rpc_remove_map("mini-pvp", "map-a.msav", 5000)
+    assert result == "ok"
