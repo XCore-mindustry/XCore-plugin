@@ -12,7 +12,12 @@ import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
 
-from .contracts import BanEvent, GameChatMessage, PlayerJoinLeaveEvent, ServerActionEvent
+from .contracts import (
+    BanEvent,
+    GameChatMessage,
+    PlayerJoinLeaveEvent,
+    ServerActionEvent,
+)
 from .contracts import EventType, GlobalChatEvent, RawEvent, ServerHeartbeatEvent
 from .mongo_store import MongoStore
 from .registry import server_registry
@@ -31,10 +36,45 @@ HEXED_RANKS: list[dict[str, str | int]] = [
 ]
 
 MINDUSTRY_COLOR_NAMES = {
-    "clear", "black", "white", "light_gray", "gray", "dark_gray", "light_grey", "grey", "dark_grey",
-    "blue", "navy", "royal", "slate", "sky", "cyan", "teal", "green", "acid", "lime", "forest",
-    "olive", "yellow", "gold", "goldenrod", "orange", "brown", "tan", "brick", "red", "scarlet",
-    "crimson", "coral", "salmon", "pink", "magenta", "purple", "violet", "maroon", "accent",
+    "clear",
+    "black",
+    "white",
+    "light_gray",
+    "gray",
+    "dark_gray",
+    "light_grey",
+    "grey",
+    "dark_grey",
+    "blue",
+    "navy",
+    "royal",
+    "slate",
+    "sky",
+    "cyan",
+    "teal",
+    "green",
+    "acid",
+    "lime",
+    "forest",
+    "olive",
+    "yellow",
+    "gold",
+    "goldenrod",
+    "orange",
+    "brown",
+    "tan",
+    "brick",
+    "red",
+    "scarlet",
+    "crimson",
+    "coral",
+    "salmon",
+    "pink",
+    "magenta",
+    "purple",
+    "violet",
+    "maroon",
+    "accent",
 }
 
 
@@ -151,11 +191,15 @@ class _PaginatorView(discord.ui.View):
         self._next_btn.disabled = not has_next
 
     @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
-    async def _prev_btn(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _prev_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         await self._turn(interaction, self._page - 1)
 
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
-    async def _next_btn(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _next_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         await self._turn(interaction, self._page + 1)
 
     async def _turn(self, interaction: Interaction, new_page: int) -> None:
@@ -199,7 +243,9 @@ class _BanConfirmView(discord.ui.View):
         self.message: discord.Message | None = None
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.success)
-    async def _confirm(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _confirm(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         if interaction.user.id != self._requester_id:
             await interaction.response.send_message(
                 "Only the moderator who started this action can confirm it.",
@@ -219,7 +265,9 @@ class _BanConfirmView(discord.ui.View):
         await interaction.response.edit_message(content=result, view=self)
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
-    async def _cancel(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _cancel(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         if interaction.user.id != self._requester_id:
             await interaction.response.send_message(
                 "Only the moderator who started this action can cancel it.",
@@ -263,7 +311,9 @@ class _MapRemoveConfirmView(discord.ui.View):
         self.message: discord.Message | None = None
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.danger)
-    async def _confirm(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _confirm(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         if interaction.user.id != self._requester_id:
             await interaction.response.send_message(
                 "Only the moderator who started this action can confirm it.",
@@ -282,7 +332,9 @@ class _MapRemoveConfirmView(discord.ui.View):
             await interaction.message.edit(content=result, view=self)
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
-    async def _cancel(self, interaction: Interaction, button: discord.ui.Button) -> None:  # noqa: ARG002
+    async def _cancel(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
         if interaction.user.id != self._requester_id:
             await interaction.response.send_message(
                 "Only the moderator who started this action can cancel it.",
@@ -291,7 +343,9 @@ class _MapRemoveConfirmView(discord.ui.View):
             return
 
         self._disable_all()
-        await interaction.response.edit_message(content="Map removal cancelled.", view=self)
+        await interaction.response.edit_message(
+            content="Map removal cancelled.", view=self
+        )
 
     async def on_timeout(self) -> None:
         self._disable_all()
@@ -340,22 +394,32 @@ class XCoreDiscordBot(discord.Client):
             else None
         )
 
-        @self.tree.command(name="stats", description="Show player stats", guild=guild_obj)
+        @self.tree.command(
+            name="stats", description="Show player stats", guild=guild_obj
+        )
         @app_commands.describe(player_id="Numeric player ID")
         async def cmd_stats(interaction: Interaction, player_id: int) -> None:
             await self._cmd_stats(interaction, player_id)
 
-        @self.tree.command(name="search", description="Search players by name (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="search", description="Search players by name (admin)", guild=guild_obj
+        )
         @app_commands.describe(name="Player name to search for")
         async def cmd_search(interaction: Interaction, name: str) -> None:
             await self._cmd_search(interaction, name)
 
-        @self.tree.command(name="bans", description="List bans, optionally filtered by name (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="bans",
+            description="List bans, optionally filtered by name (admin)",
+            guild=guild_obj,
+        )
         @app_commands.describe(name="Optional name filter")
         async def cmd_bans(interaction: Interaction, name: str = "") -> None:
             await self._cmd_bans(interaction, name or None)
 
-        @self.tree.command(name="ban", description="Ban a player (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="ban", description="Ban a player (admin)", guild=guild_obj
+        )
         @app_commands.describe(
             player_id="Numeric player ID",
             period="Duration e.g. 1d, 2w, 1y",
@@ -369,12 +433,16 @@ class XCoreDiscordBot(discord.Client):
         ) -> None:
             await self._cmd_ban(interaction, player_id, period, reason)
 
-        @self.tree.command(name="unban", description="Unban a player (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="unban", description="Unban a player (admin)", guild=guild_obj
+        )
         @app_commands.describe(player_id="Numeric player ID")
         async def cmd_unban(interaction: Interaction, player_id: int) -> None:
             await self._cmd_unban(interaction, player_id)
 
-        @self.tree.command(name="mute", description="Mute a player (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="mute", description="Mute a player (admin)", guild=guild_obj
+        )
         @app_commands.describe(
             player_id="Numeric player ID",
             period="Duration e.g. 10m, 1h",
@@ -388,34 +456,78 @@ class XCoreDiscordBot(discord.Client):
         ) -> None:
             await self._cmd_mute(interaction, player_id, period, reason)
 
-        @self.tree.command(name="unmute", description="Unmute a player (admin)", guild=guild_obj)
+        @self.tree.command(
+            name="unmute", description="Unmute a player (admin)", guild=guild_obj
+        )
         @app_commands.describe(player_id="Numeric player ID")
         async def cmd_unmute(interaction: Interaction, player_id: int) -> None:
             await self._cmd_unmute(interaction, player_id)
 
-        @self.tree.command(name="remove-admin", description="Remove admin from a player (general admin)", guild=guild_obj)
+        @self.tree.command(
+            name="remove-admin",
+            description="Remove admin from a player (general admin)",
+            guild=guild_obj,
+        )
         @app_commands.describe(player_id="Numeric player ID")
         async def cmd_remove_admin(interaction: Interaction, player_id: int) -> None:
             await self._cmd_remove_admin(interaction, player_id)
 
-        @self.tree.command(name="reset-password", description="Reset admin password for a player (general admin)", guild=guild_obj)
+        @self.tree.command(
+            name="reset-password",
+            description="Reset admin password for a player (general admin)",
+            guild=guild_obj,
+        )
         @app_commands.describe(player_id="Numeric player ID")
         async def cmd_reset_password(interaction: Interaction, player_id: int) -> None:
             await self._cmd_reset_password(interaction, player_id)
 
-        @self.tree.command(name="maps", description="List maps on a server", guild=guild_obj)
+        @self.tree.command(
+            name="servers",
+            description="Show all live Mindustry servers",
+            guild=guild_obj,
+        )
+        async def cmd_servers(interaction: Interaction) -> None:
+            servers = sorted(server_registry.get_all_servers(), key=lambda s: s.name)
+            if not servers:
+                await interaction.response.send_message(
+                    "No live servers connected right now.", ephemeral=True
+                )
+                return
+
+            embed = discord.Embed(title="Live Servers", color=0x00FF00)
+            for s in servers:
+                val = f"**Players:** {s.players}/{s.max_players}\n**Version:** {s.version}\n**Channel:** <#{s.channel_id}>"
+                embed.add_field(name=s.name, value=val, inline=False)
+
+            await interaction.response.send_message(embed=embed)
+
+        @self.tree.command(
+            name="maps", description="List maps on a server", guild=guild_obj
+        )
         @app_commands.describe(server="Server name")
         @app_commands.autocomplete(server=self._autocomplete_server_name)
         async def cmd_maps(interaction: Interaction, server: str) -> None:
             await self._cmd_maps(interaction, server)
 
-        @self.tree.command(name="remove-map", description="Remove a map from a server (map reviewer)", guild=guild_obj)
-        @app_commands.describe(server="Server name", file_name="Map file name (.msav) to remove")
+        @self.tree.command(
+            name="remove-map",
+            description="Remove a map from a server (map reviewer)",
+            guild=guild_obj,
+        )
+        @app_commands.describe(
+            server="Server name", file_name="Map file name (.msav) to remove"
+        )
         @app_commands.autocomplete(server=self._autocomplete_server_name)
-        async def cmd_remove_map(interaction: Interaction, server: str, file_name: str) -> None:
+        async def cmd_remove_map(
+            interaction: Interaction, server: str, file_name: str
+        ) -> None:
             await self._cmd_remove_map(interaction, server, file_name)
 
-        @self.tree.command(name="upload-map", description="Upload .msav map files to a server (map reviewer)", guild=guild_obj)
+        @self.tree.command(
+            name="upload-map",
+            description="Upload .msav map files to a server (map reviewer)",
+            guild=guild_obj,
+        )
         @app_commands.describe(
             server="Server name",
             file1="First .msav file",
@@ -515,7 +627,9 @@ class XCoreDiscordBot(discord.Client):
             return
 
         if action == "decline":
-            confirmer = getattr(interaction.user, "mention", f"`{interaction.user.display_name}`")
+            confirmer = getattr(
+                interaction.user, "mention", f"`{interaction.user.display_name}`"
+            )
             status = (
                 f"❌ Declined admin request for `{player.get('nickname', 'Unknown')}` "
                 f"on `{server}` by {confirmer}"
@@ -540,7 +654,9 @@ class XCoreDiscordBot(discord.Client):
 
         await self._store.mark_admin_confirmed(uuid=uuid_value)
         await self._bus.publish_admin_confirm(uuid_value=uuid_value, server=server)
-        confirmer = getattr(interaction.user, "mention", f"`{interaction.user.display_name}`")
+        confirmer = getattr(
+            interaction.user, "mention", f"`{interaction.user.display_name}`"
+        )
         status = (
             f"✅ Confirmed admin request for `{player.get('nickname', 'Unknown')}` "
             f"on `{server}` by {confirmer}"
@@ -589,7 +705,12 @@ class XCoreDiscordBot(discord.Client):
             try:
                 channel = await self.fetch_channel(channel_id)
             except Exception as error:
-                logger.warning("Cannot fetch Discord channel %s for %s: %s", channel_id, context, error)
+                logger.warning(
+                    "Cannot fetch Discord channel %s for %s: %s",
+                    channel_id,
+                    context,
+                    error,
+                )
                 return None
 
         if not isinstance(channel, Messageable):
@@ -635,7 +756,9 @@ class XCoreDiscordBot(discord.Client):
         await interaction.response.edit_message(content=content, view=view)
 
     @staticmethod
-    def _disabled_interaction_buttons_view(interaction: Interaction) -> discord.ui.View | None:
+    def _disabled_interaction_buttons_view(
+        interaction: Interaction,
+    ) -> discord.ui.View | None:
         if interaction.message is None:
             return None
 
@@ -667,15 +790,17 @@ class XCoreDiscordBot(discord.Client):
 
             safe_author = str(event.author_name).replace("`", "")
             safe_message = str(event.message).replace("`", "")
-            await channel.send(
-                f"`{safe_author}: {safe_message}`"
-            )
+            await channel.send(f"`{safe_author}: {safe_message}`")
 
-        await self._run_consumer_forever("Game chat", self._bus.consume_game_chat, dispatch)
+        await self._run_consumer_forever(
+            "Game chat", self._bus.consume_game_chat, dispatch
+        )
 
     async def _consume_global_chat(self) -> None:
         async def dispatch(event: GlobalChatEvent) -> None:
-            channel_id = self._channel_id_for_server(event.server, context="global chat")
+            channel_id = self._channel_id_for_server(
+                event.server, context="global chat"
+            )
             if channel_id is None:
                 return
 
@@ -691,15 +816,20 @@ class XCoreDiscordBot(discord.Client):
             safe_server = str(event.server).replace("`", "")
             safe_author = strip_mindustry_colors(safe_author)
             safe_message = strip_mindustry_colors(safe_message)
-            await channel.send(f"`[GLOBAL:{safe_server}] {safe_author}: {safe_message}`")
+            await channel.send(
+                f"`[GLOBAL:{safe_server}] {safe_author}: {safe_message}`"
+            )
 
-        await self._run_consumer_forever("Global chat", self._bus.consume_global_chat, dispatch)
+        await self._run_consumer_forever(
+            "Global chat", self._bus.consume_global_chat, dispatch
+        )
 
     async def _consume_raw_events(self) -> None:
         async def dispatch(event: RawEvent) -> None:
             if event.event_type in {
                 EventType.HEARTBEAT,
                 "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
+                "event.serverheartbeatevent",
             }:
                 heartbeat = ServerHeartbeatEvent.from_payload(event.payload)
                 server_registry.update_server(
@@ -716,7 +846,9 @@ class XCoreDiscordBot(discord.Client):
                 event.payload,
             )
 
-        await self._run_consumer_forever("Raw event", self._bus.consume_raw_events, dispatch)
+        await self._run_consumer_forever(
+            "Raw event", self._bus.consume_raw_events, dispatch
+        )
 
     async def _consume_admin_requests(self) -> None:
         async def dispatch(pid: int, server: str) -> None:
@@ -760,7 +892,9 @@ class XCoreDiscordBot(discord.Client):
                 view=view,
             )
 
-        await self._run_consumer_forever("Admin request", self._bus.consume_admin_requests, dispatch)
+        await self._run_consumer_forever(
+            "Admin request", self._bus.consume_admin_requests, dispatch
+        )
 
     async def _consume_server_heartbeats(self) -> None:
         async def dispatch(_event: ServerHeartbeatEvent) -> None:
@@ -789,11 +923,15 @@ class XCoreDiscordBot(discord.Client):
             safe_player = str(event.player_name).replace("`", "")
             await channel.send(f"`{safe_player}` {action}")
 
-        await self._run_consumer_forever("Join/leave", self._bus.consume_player_join_leave, dispatch)
+        await self._run_consumer_forever(
+            "Join/leave", self._bus.consume_player_join_leave, dispatch
+        )
 
     async def _consume_server_actions(self) -> None:
         async def dispatch(event: ServerActionEvent) -> None:
-            channel_id = self._channel_id_for_server(event.server, context="server action")
+            channel_id = self._channel_id_for_server(
+                event.server, context="server action"
+            )
             if channel_id is None:
                 return
 
@@ -807,7 +945,9 @@ class XCoreDiscordBot(discord.Client):
             safe_message = str(event.message).replace("`", "")
             await channel.send(safe_message)
 
-        await self._run_consumer_forever("Server action", self._bus.consume_server_actions, dispatch)
+        await self._run_consumer_forever(
+            "Server action", self._bus.consume_server_actions, dispatch
+        )
 
     async def _consume_bans(self) -> None:
         async def dispatch(event: BanEvent) -> None:
@@ -875,7 +1015,9 @@ class XCoreDiscordBot(discord.Client):
         """Send an embed with Prev/Next pagination buttons via an Interaction."""
         page = 0
         embed, has_next = await fetch_page(page)
-        view = _PaginatorView(page=page, has_prev=False, has_next=has_next, fetch_page=fetch_page)
+        view = _PaginatorView(
+            page=page, has_prev=False, has_next=has_next, fetch_page=fetch_page
+        )
         await interaction.response.send_message(embed=embed, view=view)
         view.bot_message = await interaction.original_response()
 
@@ -955,10 +1097,7 @@ class XCoreDiscordBot(discord.Client):
         embed = discord.Embed(title=title, color=discord.Color.blurple())
         embed.add_field(
             name="Identity",
-            value=(
-                f"PID: `{player.get('pid', -1)}`\n"
-                f"Nickname: `{nickname}`"
-            ),
+            value=(f"PID: `{player.get('pid', -1)}`\nNickname: `{nickname}`"),
             inline=False,
         )
         embed.add_field(
@@ -976,10 +1115,7 @@ class XCoreDiscordBot(discord.Client):
         admin_confirmed = "✅" if bool(player.get("admin_confirmed", False)) else "❌"
         embed.add_field(
             name="Permissions",
-            value=(
-                f"Admin: {admin_status}\n"
-                f"Admin confirmed: {admin_confirmed}"
-            ),
+            value=(f"Admin: {admin_status}\nAdmin confirmed: {admin_confirmed}"),
             inline=False,
         )
 
@@ -1016,14 +1152,18 @@ class XCoreDiscordBot(discord.Client):
 
         await self._send_paginated(interaction, fetch_page)
 
-    async def _cmd_bans(self, interaction: Interaction, name_filter: str | None) -> None:
+    async def _cmd_bans(
+        self, interaction: Interaction, name_filter: str | None
+    ) -> None:
         if not await self._require_admin(interaction):
             return
 
         page_size = 6
 
         async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
-            bans = await self._store.list_bans(name_filter=name_filter, limit=page_size, page=page)
+            bans = await self._store.list_bans(
+                name_filter=name_filter, limit=page_size, page=page
+            )
             embed = discord.Embed(
                 title="Bans",
                 color=discord.Color.green() if bans else discord.Color.red(),
@@ -1124,7 +1264,7 @@ class XCoreDiscordBot(discord.Client):
             reason=reason,
             expire=expire,
         )
-        return f"Banned `{player.get('nickname', 'Unknown')}` until {expire.isoformat()}"
+        return f"Banned `{player.get('nickname', 'Unknown')}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
 
     async def _cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         if not await self._require_admin(interaction):
@@ -1155,11 +1295,15 @@ class XCoreDiscordBot(discord.Client):
             ip=ip_value,
         )
         if deleted == 0:
-            await interaction.response.send_message("No active ban found", ephemeral=True)
+            await interaction.response.send_message(
+                "No active ban found", ephemeral=True
+            )
             return
         if uuid_value is not None:
             await self._bus.publish_pardon_player(uuid_value=uuid_value)
-        await interaction.response.send_message(f"Unbanned `{player.get('nickname', 'Unknown')}`")
+        await interaction.response.send_message(
+            f"Unbanned `{player.get('nickname', 'Unknown')}`"
+        )
 
     async def _cmd_mute(
         self, interaction: Interaction, player_id: int, period: str, reason: str
@@ -1202,7 +1346,7 @@ class XCoreDiscordBot(discord.Client):
             expire_date=expire,
         )
         await interaction.response.send_message(
-            f"Muted `{player.get('nickname', 'Unknown')}` until {expire.isoformat()}"
+            f"Muted `{player.get('nickname', 'Unknown')}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
         )
 
     async def _cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
@@ -1231,9 +1375,13 @@ class XCoreDiscordBot(discord.Client):
 
         deleted = await self._store.delete_mute(uuid=uuid_value)
         if deleted == 0:
-            await interaction.response.send_message("No active mute found", ephemeral=True)
+            await interaction.response.send_message(
+                "No active mute found", ephemeral=True
+            )
             return
-        await interaction.response.send_message(f"Unmuted `{player.get('nickname', 'Unknown')}`")
+        await interaction.response.send_message(
+            f"Unmuted `{player.get('nickname', 'Unknown')}`"
+        )
 
     async def _cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
         if not await self._require_general_admin(interaction):
@@ -1267,7 +1415,9 @@ class XCoreDiscordBot(discord.Client):
             else "No admin state was changed"
         )
 
-    async def _cmd_reset_password(self, interaction: Interaction, player_id: int) -> None:
+    async def _cmd_reset_password(
+        self, interaction: Interaction, player_id: int
+    ) -> None:
         if not await self._require_general_admin(interaction):
             return
 
@@ -1344,8 +1494,14 @@ class XCoreDiscordBot(discord.Client):
                         bytes_size = int(file_size_raw)
                         size_part = f" • {self._format_size(bytes_size)}"
 
-                    dims_part = f" • {width}x{height}" if width.isdigit() and height.isdigit() else ""
-                    lines.append(f"- {name}{file_part} — by `{author}`{dims_part}{size_part}")
+                    dims_part = (
+                        f" • {width}x{height}"
+                        if width.isdigit() and height.isdigit()
+                        else ""
+                    )
+                    lines.append(
+                        f"- {name}{file_part} — by `{author}`{dims_part}{size_part}"
+                    )
                 embed.description = "\n".join(lines)
             else:
                 embed.description = "No maps found."
@@ -1357,7 +1513,9 @@ class XCoreDiscordBot(discord.Client):
             return embed, has_next
 
         first_embed, has_next = await fetch_page(0)
-        view = _PaginatorView(page=0, has_prev=False, has_next=has_next, fetch_page=fetch_page)
+        view = _PaginatorView(
+            page=0, has_prev=False, has_next=has_next, fetch_page=fetch_page
+        )
         sent = await interaction.followup.send(embed=first_embed, view=view)
         view.bot_message = sent
 
@@ -1369,7 +1527,9 @@ class XCoreDiscordBot(discord.Client):
 
         normalized = file_name.strip()
         if not normalized:
-            await interaction.response.send_message("Map file name must not be empty.", ephemeral=True)
+            await interaction.response.send_message(
+                "Map file name must not be empty.", ephemeral=True
+            )
             return
 
         request_nonce = secrets.token_hex(6)
@@ -1473,7 +1633,9 @@ class XCoreDiscordBot(discord.Client):
         embed.add_field(
             name="Unban Date",
             value=discord.utils.format_dt(
-                expire.replace(tzinfo=timezone.utc) if expire.tzinfo is None else expire,
+                expire.replace(tzinfo=timezone.utc)
+                if expire.tzinfo is None
+                else expire,
                 style="D",
             ),
             inline=False,
@@ -1493,7 +1655,9 @@ class XCoreDiscordBot(discord.Client):
         return result
 
     @staticmethod
-    def _player_identifiers(player: Mapping[str, object]) -> tuple[str | None, str | None]:
+    def _player_identifiers(
+        player: Mapping[str, object],
+    ) -> tuple[str | None, str | None]:
         uuid_raw = player.get("uuid")
         uuid_value = str(uuid_raw).strip() if uuid_raw is not None else ""
 
