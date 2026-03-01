@@ -32,7 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.time.Instant;
 
@@ -203,11 +205,30 @@ public final class RedisNetworkBackend {
             throw new IllegalStateException("Redis backend is unavailable for request");
         }
 
+        Class<? extends Response> responseType = router.responseTypeForRequest(request.getClass());
+        if (responseType == null) {
+            timeout.run();
+            return null;
+        }
+
         var route = router.route(request, config.server);
         String replyTo = "xcore:rpc:resp:" + config.server;
         String correlationId = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         long timeoutMs = 5000L;
+
+        CountDownLatch listenerReady = new CountDownLatch(1);
+        Thread.ofVirtual().name("redis-rpc-await-" + request.getClass().getSimpleName()).start(() ->
+                awaitRpcResponse(replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady)
+        );
+
+        try {
+            listenerReady.await(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            timeout.run();
+            return null;
+        }
 
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("schema_version", "1");
@@ -234,16 +255,6 @@ public final class RedisNetworkBackend {
 
         xaddWithTrim(commands, route.streamKey(), fields);
         rpcRequests.incrementAndGet();
-
-        Class<? extends Response> responseType = router.responseTypeForRequest(request.getClass());
-        if (responseType == null) {
-            timeout.run();
-            return null;
-        }
-
-        Thread.ofVirtual().name("redis-rpc-await-" + request.getClass().getSimpleName()).start(() ->
-                awaitRpcResponse(replyTo, correlationId, responseType, listener, timeout, timeoutMs)
-        );
 
         return null;
     }
@@ -538,8 +549,10 @@ public final class RedisNetworkBackend {
                                                        Class<? extends Response> responseType,
                                                        Cons<T> listener,
                                                        Runnable timeout,
-                                                       long timeoutMs) {
+                                                       long timeoutMs,
+                                                       CountDownLatch listenerReady) {
         if (client == null) {
+            listenerReady.countDown();
             timeout.run();
             return;
         }
@@ -547,6 +560,7 @@ public final class RedisNetworkBackend {
         long deadline = System.currentTimeMillis() + timeoutMs;
         try (StatefulRedisConnection<String, String> rpcConnection = client.connect()) {
             RedisCommands<String, String> rpcCommands = rpcConnection.sync();
+            listenerReady.countDown();
             String lastId = "$";
 
             while (!Thread.currentThread().isInterrupted() && System.currentTimeMillis() < deadline) {
@@ -582,6 +596,8 @@ public final class RedisNetworkBackend {
             }
         } catch (Exception e) {
             Log.warn("Redis RPC response await failed: @", e.getMessage());
+        } finally {
+            listenerReady.countDown();
         }
 
         rpcTimeouts.incrementAndGet();
