@@ -14,7 +14,6 @@ async def test_rpc_maps_list_parses_map_entries() -> None:
         redis_url="redis://127.0.0.1:6379",
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
-        server_channel_map={"mini-pvp": 1},
     )
     bus = RedisBus(settings)
 
@@ -76,7 +75,6 @@ async def test_rpc_remove_map_uses_filename_payload() -> None:
         redis_url="redis://127.0.0.1:6379",
         redis_group_prefix="xcore:cg",
         redis_consumer_name="discord-bot",
-        server_channel_map={"mini-pvp": 1},
     )
     bus = RedisBus(settings)
 

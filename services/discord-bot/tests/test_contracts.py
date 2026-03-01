@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from xcore_discord_bot.contracts import (
     BanEvent,
+    EventType,
     GameChatMessage,
     GlobalChatEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
+    ServerHeartbeatEvent,
     ServerActionEvent,
 )
 
@@ -80,3 +82,23 @@ def test_raw_event_from_fields() -> None:
     event = RawEvent.from_fields(fields)
     assert event.event_type == "event.someunknown"
     assert event.payload == {"a": 1, "b": "x"}
+
+
+def test_server_heartbeat_from_payload() -> None:
+    payload = {
+        "serverName": "mini-pvp",
+        "discordChannelId": "1234",
+        "players": 4,
+        "maxPlayers": 10,
+        "version": "1.2.3",
+    }
+    event = ServerHeartbeatEvent.from_payload(payload)
+    assert event.server_name == "mini-pvp"
+    assert event.discord_channel_id == 1234
+    assert event.players == 4
+    assert event.max_players == 10
+    assert event.version == "1.2.3"
+
+
+def test_heartbeat_event_type_literal() -> None:
+    assert EventType.HEARTBEAT == "ServerHeartbeatEvent"

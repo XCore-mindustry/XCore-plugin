@@ -66,7 +66,6 @@ class _Bus:
 
 class _Settings:
     discord_map_reviewer_role_id = 200
-    server_channel_map = {"mini-pvp": 123}
 
 
 @pytest.mark.asyncio

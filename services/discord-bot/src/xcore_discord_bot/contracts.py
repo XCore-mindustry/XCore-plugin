@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 
 def _pick(source: dict, *keys: str) -> str | None:
@@ -8,6 +9,26 @@ def _pick(source: dict, *keys: str) -> str | None:
         value = source.get(key)
         if isinstance(value, str):
             return value
+    return None
+
+
+class EventType(StrEnum):
+    HEARTBEAT = "ServerHeartbeatEvent"
+
+
+def _pick_int(source: dict, *keys: str) -> int | None:
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized and normalized.lstrip("-").isdigit():
+                return int(normalized)
     return None
 
 
@@ -129,6 +150,42 @@ class GlobalChatEvent:
             )
 
         return cls(author_name=author_name, message=message, server=server)
+
+
+@dataclass(frozen=True)
+class ServerHeartbeatEvent:
+    server_name: str
+    discord_channel_id: int
+    players: int
+    max_players: int
+    version: str
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> "ServerHeartbeatEvent":
+        server_name = _pick(payload, "serverName", "server_name")
+        discord_channel_id = _pick_int(payload, "discordChannelId", "discord_channel_id")
+        players = _pick_int(payload, "players")
+        max_players = _pick_int(payload, "maxPlayers", "max_players")
+        version = _pick(payload, "version")
+
+        if (
+            not server_name
+            or discord_channel_id is None
+            or players is None
+            or max_players is None
+            or version is None
+        ):
+            raise ValueError(
+                "Invalid heartbeat payload: expected serverName, discordChannelId, players, maxPlayers, version"
+            )
+
+        return cls(
+            server_name=server_name,
+            discord_channel_id=discord_channel_id,
+            players=players,
+            max_players=max_players,
+            version=version,
+        )
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass
 
@@ -20,35 +19,6 @@ def _optional_env(name: str, default: str) -> str:
     return value if value else default
 
 
-def _parse_server_channel_map(raw: str) -> dict[str, int]:
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as error:
-        raise RuntimeError(
-            "SERVER_CHANNEL_MAP_JSON must be a valid JSON object"
-        ) from error
-
-    if not isinstance(parsed, dict):
-        raise RuntimeError(
-            'SERVER_CHANNEL_MAP_JSON must be an object: {"server": channel_id}'
-        )
-
-    result: dict[str, int] = {}
-    for server, channel_id in parsed.items():
-        if not isinstance(server, str) or not server.strip():
-            raise RuntimeError("SERVER_CHANNEL_MAP_JSON keys must be non-empty strings")
-
-        try:
-            result[server.strip()] = int(channel_id)
-        except (TypeError, ValueError) as error:
-            raise RuntimeError(
-                f"Channel id for server '{server}' must be an integer"
-            ) from error
-
-    if not result:
-        raise RuntimeError("SERVER_CHANNEL_MAP_JSON cannot be empty")
-
-    return result
 
 
 @dataclass(frozen=True)
@@ -63,17 +33,18 @@ class Settings:
     redis_consumer_name: str
     mongo_uri: str
     mongo_db_name: str
-    server_channel_map: dict[str, int]
     rpc_timeout_ms: int
     discord_bans_channel_id: int = 0  # 0 = disabled
     discord_guild_id: int = 0  # 0 = global slash command sync (slower)
     discord_interaction_hmac_secret: str = ""
+    @property
+    def server_channel_map(self) -> dict[str, int]:
+        return {}
 
     @property
     def channel_server_map(self) -> dict[int, str]:
-        return {
-            channel_id: server for server, channel_id in self.server_channel_map.items()
-        }
+        return {}
+
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -111,9 +82,6 @@ class Settings:
             redis_consumer_name=_optional_env("REDIS_CONSUMER_NAME", "discord-bot"),
             mongo_uri=_optional_env("MONGO_URI", "mongodb://127.0.0.1:27017"),
             mongo_db_name=_optional_env("MONGO_DB_NAME", "xcore"),
-            server_channel_map=_parse_server_channel_map(
-                _required_env("SERVER_CHANNEL_MAP_JSON")
-            ),
             rpc_timeout_ms=rpc_timeout_ms,
             discord_interaction_hmac_secret=_optional_env("DISCORD_INTERACTION_HMAC_SECRET", ""),
         )

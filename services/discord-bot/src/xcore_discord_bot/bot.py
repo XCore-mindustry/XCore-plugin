@@ -13,8 +13,9 @@ from discord import Interaction, app_commands
 from discord.abc import Messageable
 
 from .contracts import BanEvent, GameChatMessage, PlayerJoinLeaveEvent, ServerActionEvent
-from .contracts import GlobalChatEvent, RawEvent
+from .contracts import EventType, GlobalChatEvent, RawEvent, ServerHeartbeatEvent
 from .mongo_store import MongoStore
+from .registry import server_registry
 from .redis_bus import RedisBus
 from .settings import Settings
 
@@ -325,6 +326,7 @@ class XCoreDiscordBot(discord.Client):
         self._server_action_consumer_task: asyncio.Task[None] | None = None
         self._ban_consumer_task: asyncio.Task[None] | None = None
         self._admin_request_task: asyncio.Task[None] | None = None
+        self._heartbeat_consumer_task: asyncio.Task[None] | None = None
 
         self.tree = app_commands.CommandTree(self)
         self._register_commands()
@@ -403,11 +405,13 @@ class XCoreDiscordBot(discord.Client):
 
         @self.tree.command(name="maps", description="List maps on a server", guild=guild_obj)
         @app_commands.describe(server="Server name")
+        @app_commands.autocomplete(server=self._autocomplete_server_name)
         async def cmd_maps(interaction: Interaction, server: str) -> None:
             await self._cmd_maps(interaction, server)
 
         @self.tree.command(name="remove-map", description="Remove a map from a server (map reviewer)", guild=guild_obj)
         @app_commands.describe(server="Server name", file_name="Map file name (.msav) to remove")
+        @app_commands.autocomplete(server=self._autocomplete_server_name)
         async def cmd_remove_map(interaction: Interaction, server: str, file_name: str) -> None:
             await self._cmd_remove_map(interaction, server, file_name)
 
@@ -418,6 +422,7 @@ class XCoreDiscordBot(discord.Client):
             file2="Second .msav file (optional)",
             file3="Third .msav file (optional)",
         )
+        @app_commands.autocomplete(server=self._autocomplete_server_name)
         async def cmd_upload_map(
             interaction: Interaction,
             server: str,
@@ -451,6 +456,9 @@ class XCoreDiscordBot(discord.Client):
         self._admin_request_task = asyncio.create_task(
             self._consume_admin_requests(), name="redis-admin-request-consumer"
         )
+        self._heartbeat_consumer_task = asyncio.create_task(
+            self._consume_server_heartbeats(), name="redis-server-heartbeat-consumer"
+        )
 
         if self._settings.discord_guild_id:
             guild_obj = discord.Object(id=self._settings.discord_guild_id)
@@ -467,7 +475,7 @@ class XCoreDiscordBot(discord.Client):
         if message.author.bot:
             return
 
-        target_server = self._settings.channel_server_map.get(message.channel.id)
+        target_server = server_registry.get_server_for_channel(message.channel.id)
         if target_server is None:
             return
 
@@ -548,6 +556,7 @@ class XCoreDiscordBot(discord.Client):
             self._server_action_consumer_task,
             self._ban_consumer_task,
             self._admin_request_task,
+            self._heartbeat_consumer_task,
         ):
             if task is not None:
                 task.cancel()
@@ -563,6 +572,7 @@ class XCoreDiscordBot(discord.Client):
         self._server_action_consumer_task = None
         self._ban_consumer_task = None
         self._admin_request_task = None
+        self._heartbeat_consumer_task = None
 
         await self._bus.close()
         await self._store.close()
@@ -588,14 +598,25 @@ class XCoreDiscordBot(discord.Client):
         return channel
 
     def _channel_id_for_server(self, server: str, *, context: str) -> int | None:
-        channel_id = self._settings.server_channel_map.get(server)
+        channel_id = server_registry.get_channel_for_server(server)
         if channel_id is None:
-            logger.warning(
-                "No Discord channel mapping for server '%s' (%s)",
-                server,
-                context,
-            )
+            logger.debug("No channel registered for server=%s (%s)", server, context)
         return channel_id
+
+    async def _autocomplete_server_name(
+        self,
+        _interaction: Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        current_norm = current.strip().lower()
+        choices: list[app_commands.Choice[str]] = []
+        for server in sorted(srv.name for srv in server_registry.get_all_servers()):
+            if current_norm and current_norm not in server.lower():
+                continue
+            choices.append(app_commands.Choice(name=server, value=server))
+            if len(choices) >= 25:
+                break
+        return choices
 
     async def _finalize_admin_request_message(
         self,
@@ -676,6 +697,19 @@ class XCoreDiscordBot(discord.Client):
 
     async def _consume_raw_events(self) -> None:
         async def dispatch(event: RawEvent) -> None:
+            if event.event_type in {
+                EventType.HEARTBEAT,
+                "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
+            }:
+                heartbeat = ServerHeartbeatEvent.from_payload(event.payload)
+                server_registry.update_server(
+                    heartbeat.server_name,
+                    heartbeat.discord_channel_id,
+                    heartbeat.players,
+                    heartbeat.max_players,
+                    heartbeat.version,
+                )
+                return
             logger.warning(
                 "Unhandled raw event received: type=%s payload=%s",
                 event.event_type,
@@ -727,6 +761,16 @@ class XCoreDiscordBot(discord.Client):
             )
 
         await self._run_consumer_forever("Admin request", self._bus.consume_admin_requests, dispatch)
+
+    async def _consume_server_heartbeats(self) -> None:
+        async def dispatch(_event: ServerHeartbeatEvent) -> None:
+            return None
+
+        await self._run_consumer_forever(
+            "Server heartbeat",
+            self._bus.consume_server_heartbeats,
+            dispatch,
+        )
 
     async def _consume_join_leave(self) -> None:
         async def dispatch(event: PlayerJoinLeaveEvent) -> None:
@@ -1257,9 +1301,8 @@ class XCoreDiscordBot(discord.Client):
         )
 
     async def _cmd_maps(self, interaction: Interaction, server: str) -> None:
-        if server not in self._settings.server_channel_map:
-            await interaction.response.send_message(f"Unknown server `{server}`", ephemeral=True)
-            return
+        # TODO: Task 5 will allow resolving server even if not in static map.
+        # For now, we just proceed.
 
         await interaction.response.defer()
         try:
@@ -1323,9 +1366,6 @@ class XCoreDiscordBot(discord.Client):
     ) -> None:
         if not await self._require_map_reviewer(interaction):
             return
-        if server not in self._settings.server_channel_map:
-            await interaction.response.send_message(f"Unknown server `{server}`", ephemeral=True)
-            return
 
         normalized = file_name.strip()
         if not normalized:
@@ -1378,9 +1418,6 @@ class XCoreDiscordBot(discord.Client):
         attachments: list[discord.Attachment | None],
     ) -> None:
         if not await self._require_map_reviewer(interaction):
-            return
-        if server not in self._settings.server_channel_map:
-            await interaction.response.send_message(f"Unknown server `{server}`", ephemeral=True)
             return
 
         files = [

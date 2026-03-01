@@ -21,7 +21,6 @@ def settings():
         redis_consumer_name="bot",
         mongo_uri="mongodb://localhost",
         mongo_db_name="test",
-        server_channel_map={"test-server": 1234},
         rpc_timeout_ms=5000,
     )
 

@@ -11,8 +11,10 @@ from xcore_discord_bot.contracts import (
     GlobalChatEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
+    ServerHeartbeatEvent,
     ServerActionEvent,
 )
+from xcore_discord_bot.registry import server_registry
 
 
 @pytest.fixture
@@ -28,7 +30,6 @@ def settings() -> Settings:
         redis_consumer_name="bot",
         mongo_uri="mongodb://localhost",
         mongo_db_name="test",
-        server_channel_map={"test-server": 1234},
         rpc_timeout_ms=5000,
     )
 
@@ -36,6 +37,12 @@ def settings() -> Settings:
 @pytest.fixture
 def mock_redis() -> AsyncMock:
     return AsyncMock()
+
+
+@pytest.fixture(autouse=True)
+def clear_registry() -> None:
+    with server_registry._lock:
+        server_registry._servers.clear()
 
 
 def test_stream_maxlen_policy() -> None:
@@ -461,3 +468,97 @@ async def test_consume_raw_events_dispatches_event(
         f"{settings.redis_group_prefix}:discord-raw",
         b"9-0",
     )
+
+
+@pytest.mark.asyncio
+async def test_consume_server_heartbeats_dispatches_and_updates_registry(
+    settings: Settings, mock_redis: AsyncMock
+) -> None:
+    payload = {
+        "serverName": "mini-pvp",
+        "discordChannelId": 321,
+        "players": 3,
+        "maxPlayers": 12,
+        "version": "v1",
+    }
+    mock_redis.xreadgroup.side_effect = [
+        [
+            [
+                b"xcore:evt:server:heartbeat",
+                [
+                    (
+                        b"10-0",
+                        {"payload_json": json.dumps(payload)},
+                    )
+                ],
+            ]
+        ],
+        KeyboardInterrupt("stop"),
+    ]
+
+    bus = RedisBus(settings)
+    bus._redis = mock_redis
+
+    callback = AsyncMock()
+    try:
+        await bus.consume_server_heartbeats(callback)
+    except KeyboardInterrupt:
+        pass
+
+    callback.assert_called_once_with(
+        ServerHeartbeatEvent(
+            server_name="mini-pvp",
+            discord_channel_id=321,
+            players=3,
+            max_players=12,
+            version="v1",
+        )
+    )
+    assert server_registry.get_channel_for_server("mini-pvp") == 321
+
+
+@pytest.mark.asyncio
+async def test_consume_raw_events_updates_registry_for_heartbeat_type(
+    settings: Settings, mock_redis: AsyncMock
+) -> None:
+    payload = {
+        "serverName": "mini-pvp",
+        "discordChannelId": 555,
+        "players": 2,
+        "maxPlayers": 10,
+        "version": "v2",
+    }
+    mock_redis.xreadgroup.side_effect = [
+        [
+            [
+                b"xcore:evt:raw",
+                [
+                    (
+                        b"11-0",
+                        {
+                            "event_type": "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
+                            "payload_json": json.dumps(payload),
+                        },
+                    )
+                ],
+            ]
+        ],
+        KeyboardInterrupt("stop"),
+    ]
+
+    bus = RedisBus(settings)
+    bus._redis = mock_redis
+
+    callback = AsyncMock()
+    try:
+        await bus.consume_raw_events(callback)
+    except KeyboardInterrupt:
+        pass
+
+    callback.assert_called_once_with(
+        RawEvent(
+            event_type="org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
+            payload=payload,
+        )
+    )
+    assert server_registry.get_channel_for_server("mini-pvp") == 555

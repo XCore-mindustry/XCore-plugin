@@ -6,19 +6,22 @@ import hashlib
 import asyncio
 import time
 import uuid
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Mapping
 
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from .contracts import (
     BanEvent,
+    EventType,
     GameChatMessage,
     GlobalChatEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
+    ServerHeartbeatEvent,
     ServerActionEvent,
 )
+from .registry import server_registry
 from .settings import Settings
 
 
@@ -74,42 +77,48 @@ class RedisBus:
             self._redis = redis
 
     async def publish_discord_message(
-        self, server: str, author_name: str, message: str, source_message_id: str | None = None
+        self,
+        server: str | None,
+        author_name: str,
+        message: str,
+        source_message_id: str | None = None,
     ) -> None:
         redis = self._require_redis()
         now = int(time.time() * 1000)
-        event_id = str(uuid.uuid4())
-        stream = f"xcore:cmd:discord-message:{server}"
-        payload = {
-            "authorName": author_name,
-            "message": message,
-            "server": server,
-        }
+        target_servers = [server] if server is not None else [srv.name for srv in server_registry.get_all_servers()]
+        for target_server in target_servers:
+            event_id = str(uuid.uuid4())
+            stream = f"xcore:cmd:discord-message:{target_server}"
+            payload = {
+                "authorName": author_name,
+                "message": message,
+                "server": target_server,
+            }
 
-        fields = {
-            "schema_version": "1",
-            "event_type": "chat.discord_ingress",
-            "event_id": event_id,
-            "idempotency_key": self._build_idempotency_key(
-                prefix="discord.message",
-                server=server,
-                payload_json=fields_payload_json(payload),
-                now_ms=now,
-                ttl_ms=60_000,
-                explicit_scope=source_message_id,
-            ),
-            "producer": "discord-bot",
-            "created_at": str(now),
-            "expires_at": str(now + 60_000),
-            "server": server,
-            "payload_json": json.dumps(payload, ensure_ascii=False),
-        }
-        await redis.xadd(
-            stream,
-            fields,
-            maxlen=self._stream_maxlen(stream),
-            approximate=True,
-        )
+            fields = {
+                "schema_version": "1",
+                "event_type": "chat.discord_ingress",
+                "event_id": event_id,
+                "idempotency_key": self._build_idempotency_key(
+                    prefix="discord.message",
+                    server=target_server,
+                    payload_json=fields_payload_json(payload),
+                    now_ms=now,
+                    ttl_ms=60_000,
+                    explicit_scope=source_message_id,
+                ),
+                "producer": "discord-bot",
+                "created_at": str(now),
+                "expires_at": str(now + 60_000),
+                "server": target_server,
+                "payload_json": json.dumps(payload, ensure_ascii=False),
+            }
+            await redis.xadd(
+                stream,
+                fields,
+                maxlen=self._stream_maxlen(stream),
+                approximate=True,
+            )
 
     async def consume_game_chat(
         self, callback: Callable[[GameChatMessage], Awaitable[None]]
@@ -135,11 +144,46 @@ class RedisBus:
     async def consume_raw_events(
         self, callback: Callable[[RawEvent], Awaitable[None]]
     ) -> None:
+        async def wrapped(event: RawEvent) -> None:
+            if event.event_type in {
+                EventType.HEARTBEAT,
+                "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
+            }:
+                heartbeat = ServerHeartbeatEvent.from_payload(event.payload)
+                server_registry.update_server(
+                    heartbeat.server_name,
+                    heartbeat.discord_channel_id,
+                    heartbeat.players,
+                    heartbeat.max_players,
+                    heartbeat.version,
+                )
+            await callback(event)
+
         await self._consume_events(
             stream="xcore:evt:raw",
             group_suffix="discord-raw",
             parse_fields=RawEvent.from_fields,
-            callback=callback,
+            callback=wrapped,
+        )
+
+    async def consume_server_heartbeats(
+        self, callback: Callable[[ServerHeartbeatEvent], Awaitable[None]]
+    ) -> None:
+        async def wrapped(event: ServerHeartbeatEvent) -> None:
+            server_registry.update_server(
+                event.server_name,
+                event.discord_channel_id,
+                event.players,
+                event.max_players,
+                event.version,
+            )
+            await callback(event)
+
+        await self._consume_events(
+            stream="xcore:evt:server:heartbeat",
+            group_suffix="discord-server-heartbeat",
+            parse_payload=ServerHeartbeatEvent.from_payload,
+            callback=wrapped,
         )
 
     async def consume_admin_requests(
@@ -436,14 +480,19 @@ class RedisBus:
         return f"xcore:retries:{digest}"
 
     @staticmethod
-    def _field_str(fields: dict[str, Any], key: str, default: str = "") -> str:
-        value = fields.get(key, fields.get(key.encode("utf-8"), default))
+    def _field_str(fields: Mapping[str | bytes, Any], key: str, default: str = "") -> str:
+        value = fields.get(key, default)
+        if value == default:
+            for raw_key, raw_value in fields.items():
+                if isinstance(raw_key, bytes) and raw_key.decode("utf-8", errors="replace") == key:
+                    value = raw_value
+                    break
         if isinstance(value, bytes):
             return value.decode("utf-8", errors="replace")
         return str(value)
 
     @classmethod
-    def _stringify_field_map(cls, fields: dict[str, Any]) -> dict[str, str]:
+    def _stringify_field_map(cls, fields: Mapping[str | bytes, Any]) -> dict[str, str]:
         normalized: dict[str, str] = {}
         for k, v in fields.items():
             key = k.decode("utf-8", errors="replace") if isinstance(k, bytes) else str(k)
@@ -470,36 +519,36 @@ class RedisBus:
         )
 
     async def publish_remove_admin(self, uuid_value: str) -> None:
-        for server in self._settings.server_channel_map.keys():
+        for server in [srv.name for srv in server_registry.get_all_servers()]:
             await self._publish_event(
                 stream=f"xcore:cmd:remove-admin:{server}",
                 event_type="admin.remove",
                 ttl_ms=120_000,
                 server=server,
-                payload={"uuid": uuid_value},
-                idempotency_prefix=f"admin.remove:{server}",
+                payload={"uuid": uuid_value, "server": server},
+                idempotency_prefix="admin.remove",
             )
 
     async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
-        for server in self._settings.server_channel_map.keys():
+        for server in [srv.name for srv in server_registry.get_all_servers()]:
             await self._publish_event(
                 stream=f"xcore:cmd:kick-banned:{server}",
                 event_type="moderation.kick_banned",
                 ttl_ms=120_000,
                 server=server,
-                payload={"uuid": uuid_value, "ip": ip},
-                idempotency_prefix=f"moderation.kick-banned:{server}",
+                payload={"uuid": uuid_value, "ip": ip, "server": server},
+                idempotency_prefix="moderation.kick_banned",
             )
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
-        for server in self._settings.server_channel_map.keys():
+        for server in [srv.name for srv in server_registry.get_all_servers()]:
             await self._publish_event(
                 stream=f"xcore:cmd:pardon-player:{server}",
                 event_type="moderation.pardon",
                 ttl_ms=120_000,
                 server=server,
-                payload={"uuid": uuid_value},
-                idempotency_prefix=f"moderation.pardon:{server}",
+                payload={"uuid": uuid_value, "server": server},
+                idempotency_prefix="moderation.pardon",
             )
 
     async def publish_maps_load(self, server: str, files: list[dict[str, str]]) -> None:
@@ -513,14 +562,14 @@ class RedisBus:
         )
 
     async def publish_reload_player_data_cache(self) -> None:
-        for server in self._settings.server_channel_map.keys():
+        for server in [srv.name for srv in server_registry.get_all_servers()]:
             await self._publish_event(
-                stream=f"xcore:cmd:reload-cache:{server}",
-                event_type="cache.reload_player_data",
+                stream=f"xcore:cmd:reload-player-data-cache:{server}",
+                event_type="player.reload_cache",
                 ttl_ms=120_000,
                 server=server,
-                payload={},
-                idempotency_prefix=f"cache.reload-player-data:{server}",
+                payload={"server": server},
+                idempotency_prefix="player.reload_cache",
             )
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:

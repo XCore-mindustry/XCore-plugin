@@ -5,10 +5,12 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot, parse_duration, strip_mindustry_colors
+from xcore_discord_bot.registry import server_registry
 
 
 def test_parse_duration() -> None:
@@ -318,3 +320,67 @@ async def test_run_consumer_forever_restarts_after_failure(monkeypatch: pytest.M
 
     assert calls["n"] == 2
     assert bus.reconnected == 1
+
+
+class _MessageBus:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    async def publish_discord_message(
+        self, server: str | None, author_name: str, message: str, source_message_id: str | None = None
+    ) -> None:
+        self.calls.append(
+            {
+                "server": server,
+                "author_name": author_name,
+                "message": message,
+                "source_message_id": source_message_id,
+            }
+        )
+
+
+@dataclass
+class _MsgAuthor:
+    display_name: str
+    bot: bool = False
+
+
+@dataclass
+class _MsgChannel:
+    id: int
+
+
+@dataclass
+class _DiscordMessage:
+    id: int
+    author: _MsgAuthor
+    channel: _MsgChannel
+    content: str
+
+
+@pytest.mark.asyncio
+async def test_on_message_routes_to_server_registry_mapping() -> None:
+    with server_registry._lock:
+        server_registry._servers.clear()
+    server_registry.update_server("mini-pvp", 333, 1, 10, "v1")
+
+    bot = object.__new__(XCoreDiscordBot)
+    bus = _MessageBus()
+    bot.__dict__["_bus"] = bus
+
+    message = _DiscordMessage(
+        id=44,
+        author=_MsgAuthor(display_name="mod", bot=False),
+        channel=_MsgChannel(id=333),
+        content="hello",
+    )
+    await XCoreDiscordBot.on_message(bot, message)
+
+    assert bus.calls == [
+        {
+            "server": "mini-pvp",
+            "author_name": "mod",
+            "message": "hello",
+            "source_message_id": "44",
+        }
+    ]

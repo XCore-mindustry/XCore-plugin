@@ -33,8 +33,6 @@ Required:
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_ADMIN_ROLE_ID`
 - `DISCORD_PRIVATE_CHANNEL_ID`
-- `SERVER_CHANNEL_MAP_JSON` — JSON object like:
-  - `{"mini-pvp": 123456789012345678, "mini-hexed": 234567890123456789}`
 
 Optional:
 
