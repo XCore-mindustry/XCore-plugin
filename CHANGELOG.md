@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-03-01
+
+### Changed
+- Migrated networking internals to Redis and removed legacy Sock/Discord pathways.
+- Migrated root module dependency declarations to the Gradle version catalog.
+
+### Fixed
+- Added additional null-safety checks in runtime paths.
+
+### Tests
+- Added and expanded Avaje-powered and unit test coverage for voting, moderation, ingress, and repository/security logic.
+
 ## [3.0.5] - 2026-02-22
 
 ### Fixed
@@ -77,7 +89,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.5...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.0...HEAD
+[3.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.7...3.1.0
 [3.0.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.4...3.0.5
 [3.0.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.3...3.0.4
 [3.0.3]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.2...3.0.3
