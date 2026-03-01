@@ -4,9 +4,11 @@ from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
 from xcore_discord_bot.contracts import GameChatMessage
 
+
 @pytest.fixture
 def mock_redis():
     return AsyncMock()
+
 
 @pytest.fixture
 def settings():
@@ -24,57 +26,87 @@ def settings():
         rpc_timeout_ms=5000,
     )
 
+
 @pytest.mark.asyncio
 async def test_consume_game_chat_drops_bot_producer(settings, mock_redis):
     # Pass plain strings instead of bytes for test mock so dictionary access works naturally
     # (lettuce-core/redis-py usually return bytes for keys, but sometimes configured to decode strings)
     mock_redis.xreadgroup.return_value = [
-        [b"xcore:evt:chat:message", [
-            (b"123-0", {
-                b"producer": b"discord-bot",
-                b"payload_json": b'{"authorName": "Player", "message": "Hi", "server": "test-server"}'
-            })
-        ]]
+        [
+            b"xcore:evt:chat:message",
+            [
+                (
+                    b"123-0",
+                    {
+                        b"producer": b"discord-bot",
+                        b"payload_json": b'{"authorName": "Player", "message": "Hi", "server": "test-server"}',
+                    },
+                )
+            ],
+        ]
     ]
-    
+
     # We will raise a StopIteration exception in xreadgroup to exit the while loop
-    mock_redis.xreadgroup.side_effect = [mock_redis.xreadgroup.return_value, KeyboardInterrupt("Stop loop")]
-    
+    mock_redis.xreadgroup.side_effect = [
+        mock_redis.xreadgroup.return_value,
+        KeyboardInterrupt("Stop loop"),
+    ]
+
     bus = RedisBus(settings)
     bus._redis = mock_redis
-    
+
     callback = AsyncMock()
-    
+
     try:
         await bus.consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
-        
+
     callback.assert_not_called()
-    mock_redis.xack.assert_called_once_with(b"xcore:evt:chat:message", f"{settings.redis_group_prefix}:discord-chat", b"123-0")
+    mock_redis.xack.assert_called_once_with(
+        b"xcore:evt:chat:message",
+        f"{settings.redis_group_prefix}:discord-chat",
+        b"123-0",
+    )
+
 
 @pytest.mark.asyncio
 async def test_consume_game_chat_allows_server_producer(settings, mock_redis):
     mock_redis.xreadgroup.return_value = [
-        [b"xcore:evt:chat:message", [
-            (b"123-0", {
-                b"producer": b"server:test-server",
-                b"payload_json": b'{"authorName": "Player", "message": "Hi", "server": "test-server"}'
-            })
-        ]]
+        [
+            b"xcore:evt:chat:message",
+            [
+                (
+                    b"123-0",
+                    {
+                        b"producer": b"server:test-server",
+                        b"payload_json": b'{"authorName": "Player", "message": "Hi", "server": "test-server"}',
+                    },
+                )
+            ],
+        ]
     ]
-    
-    mock_redis.xreadgroup.side_effect = [mock_redis.xreadgroup.return_value, KeyboardInterrupt("Stop loop")]
-    
+
+    mock_redis.xreadgroup.side_effect = [
+        mock_redis.xreadgroup.return_value,
+        KeyboardInterrupt("Stop loop"),
+    ]
+
     bus = RedisBus(settings)
     bus._redis = mock_redis
-    
+
     callback = AsyncMock()
-    
+
     try:
         await bus.consume_game_chat(callback)
     except KeyboardInterrupt:
         pass
-        
-    callback.assert_called_once_with(GameChatMessage(author_name="Player", message="Hi", server="test-server"))
-    mock_redis.xack.assert_called_once_with(b"xcore:evt:chat:message", f"{settings.redis_group_prefix}:discord-chat", b"123-0")
+
+    callback.assert_called_once_with(
+        GameChatMessage(author_name="Player", message="Hi", server="test-server")
+    )
+    mock_redis.xack.assert_called_once_with(
+        b"xcore:evt:chat:message",
+        f"{settings.redis_group_prefix}:discord-chat",
+        b"123-0",
+    )

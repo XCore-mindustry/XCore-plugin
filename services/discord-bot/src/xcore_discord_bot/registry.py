@@ -3,7 +3,9 @@ from threading import Lock
 
 
 class ServerInfo:
-    def __init__(self, name: str, channel_id: int, players: int, max_players: int, version: str):
+    def __init__(
+        self, name: str, channel_id: int, players: int, max_players: int, version: str
+    ):
         self.name = name
         self.channel_id = channel_id
         self.players = players
@@ -18,7 +20,9 @@ class LiveServerRegistry:
         self._lock = Lock()
         self._timeout = timeout_sec
 
-    def update_server(self, name: str, channel_id: int, players: int, max_players: int, version: str) -> None:
+    def update_server(
+        self, name: str, channel_id: int, players: int, max_players: int, version: str
+    ) -> None:
         with self._lock:
             if name in self._servers:
                 srv = self._servers[name]
@@ -28,12 +32,18 @@ class LiveServerRegistry:
                 srv.version = version
                 srv.last_seen_ts = time.time()
             else:
-                self._servers[name] = ServerInfo(name, channel_id, players, max_players, version)
+                self._servers[name] = ServerInfo(
+                    name, channel_id, players, max_players, version
+                )
 
     def prune(self) -> None:
         now = time.time()
         with self._lock:
-            stale = [name for name, srv in self._servers.items() if now - srv.last_seen_ts > self._timeout]
+            stale = [
+                name
+                for name, srv in self._servers.items()
+                if now - srv.last_seen_ts > self._timeout
+            ]
             for name in stale:
                 del self._servers[name]
 

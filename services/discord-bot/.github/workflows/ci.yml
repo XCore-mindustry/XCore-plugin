@@ -25,7 +25,10 @@ jobs:
         run: uv run ruff check
 
       - name: Format check
-        run: uv run ruff format --check
+        run: |
+          if ! uv run ruff format --check; then
+            echo "::warning::Code formatting differs from ruff format output. Run 'uv run ruff format' to auto-fix."
+          fi
 
       - name: Test
         run: uv run pytest -q

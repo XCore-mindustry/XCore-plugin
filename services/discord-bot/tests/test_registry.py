@@ -18,7 +18,9 @@ def test_update_server_and_get_channel_for_server() -> None:
 def test_update_server_overwrites_existing_values() -> None:
     registry = LiveServerRegistry(timeout_sec=90)
 
-    with patch("xcore_discord_bot.registry.time.time", side_effect=[100.0, 140.0, 140.0]):
+    with patch(
+        "xcore_discord_bot.registry.time.time", side_effect=[100.0, 140.0, 140.0]
+    ):
         registry.update_server("alpha", 123, 4, 12, "v1")
         registry.update_server("alpha", 456, 8, 20, "v2")
         servers = registry.get_all_servers()
@@ -46,7 +48,9 @@ def test_get_server_for_channel() -> None:
 def test_prune_removes_stale_servers() -> None:
     registry = LiveServerRegistry(timeout_sec=90)
 
-    with patch("xcore_discord_bot.registry.time.time", side_effect=[100.0, 191.0, 191.0, 191.0]):
+    with patch(
+        "xcore_discord_bot.registry.time.time", side_effect=[100.0, 191.0, 191.0, 191.0]
+    ):
         registry.update_server("alpha", 123, 4, 12, "v1")
         registry.prune()
         channel_id = registry.get_channel_for_server("alpha")

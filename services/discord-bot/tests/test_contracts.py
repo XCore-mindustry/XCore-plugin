@@ -77,7 +77,7 @@ def test_global_chat_event_from_payload() -> None:
 def test_raw_event_from_fields() -> None:
     fields = {
         "event_type": "event.someunknown",
-        "payload_json": "{\"a\":1,\"b\":\"x\"}",
+        "payload_json": '{"a":1,"b":"x"}',
     }
     event = RawEvent.from_fields(fields)
     assert event.event_type == "event.someunknown"

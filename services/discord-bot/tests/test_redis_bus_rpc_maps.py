@@ -32,7 +32,9 @@ async def test_rpc_maps_list_parses_map_entries() -> None:
         ]
     }
 
-    async def fake_rpc_request(self, server: str, rpc_type: str, payload: dict, timeout_ms: int):  # noqa: ANN001
+    async def fake_rpc_request(
+        self, server: str, rpc_type: str, payload: dict, timeout_ms: int
+    ):  # noqa: ANN001
         assert server == "mini-pvp"
         assert rpc_type == "maps.list"
         return {"payload_json": json.dumps(response_payload)}
@@ -78,7 +80,9 @@ async def test_rpc_remove_map_uses_filename_payload() -> None:
     )
     bus = RedisBus(settings)
 
-    async def fake_rpc_request(self, server: str, rpc_type: str, payload: dict, timeout_ms: int):  # noqa: ANN001
+    async def fake_rpc_request(
+        self, server: str, rpc_type: str, payload: dict, timeout_ms: int
+    ):  # noqa: ANN001
         assert server == "mini-pvp"
         assert rpc_type == "maps.remove"
         assert payload["fileName"] == "map-a.msav"

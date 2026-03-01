@@ -163,7 +163,9 @@ class ServerHeartbeatEvent:
     @classmethod
     def from_payload(cls, payload: dict) -> "ServerHeartbeatEvent":
         server_name = _pick(payload, "serverName", "server_name")
-        discord_channel_id = _pick_int(payload, "discordChannelId", "discord_channel_id")
+        discord_channel_id = _pick_int(
+            payload, "discordChannelId", "discord_channel_id"
+        )
         players = _pick_int(payload, "players")
         max_players = _pick_int(payload, "maxPlayers", "max_players")
         version = _pick(payload, "version")
@@ -206,9 +208,13 @@ class RawEvent:
 
             payload = loads(payload_raw)
         except Exception as error:
-            raise ValueError("Invalid raw event fields: payload_json is not valid JSON") from error
+            raise ValueError(
+                "Invalid raw event fields: payload_json is not valid JSON"
+            ) from error
 
         if not isinstance(payload, dict):
-            raise ValueError("Invalid raw event fields: payload_json must decode to object")
+            raise ValueError(
+                "Invalid raw event fields: payload_json must decode to object"
+            )
 
         return cls(event_type=event_type, payload=payload)

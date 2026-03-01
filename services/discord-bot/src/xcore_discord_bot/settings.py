@@ -19,8 +19,6 @@ def _optional_env(name: str, default: str) -> str:
     return value if value else default
 
 
-
-
 @dataclass(frozen=True)
 class Settings:
     discord_token: str
@@ -37,6 +35,7 @@ class Settings:
     discord_bans_channel_id: int = 0  # 0 = disabled
     discord_guild_id: int = 0  # 0 = global slash command sync (slower)
     discord_interaction_hmac_secret: str = ""
+
     @property
     def server_channel_map(self) -> dict[str, int]:
         return {}
@@ -44,7 +43,6 @@ class Settings:
     @property
     def channel_server_map(self) -> dict[int, str]:
         return {}
-
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -65,9 +63,7 @@ class Settings:
             _optional_env("DISCORD_MAP_REVIEWER_ROLE_ID", str(discord_admin_role_id))
         )
         discord_private_channel_id = int(_required_env("DISCORD_PRIVATE_CHANNEL_ID"))
-        discord_bans_channel_id = int(
-            _optional_env("DISCORD_BANS_CHANNEL_ID", "0")
-        )
+        discord_bans_channel_id = int(_optional_env("DISCORD_BANS_CHANNEL_ID", "0"))
 
         return cls(
             discord_token=_required_env("DISCORD_BOT_TOKEN"),
@@ -83,5 +79,7 @@ class Settings:
             mongo_uri=_optional_env("MONGO_URI", "mongodb://127.0.0.1:27017"),
             mongo_db_name=_optional_env("MONGO_DB_NAME", "xcore"),
             rpc_timeout_ms=rpc_timeout_ms,
-            discord_interaction_hmac_secret=_optional_env("DISCORD_INTERACTION_HMAC_SECRET", ""),
+            discord_interaction_hmac_secret=_optional_env(
+                "DISCORD_INTERACTION_HMAC_SECRET", ""
+            ),
         )

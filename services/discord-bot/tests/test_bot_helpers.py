@@ -9,7 +9,11 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.bot import XCoreDiscordBot, parse_duration, strip_mindustry_colors
+from xcore_discord_bot.bot import (
+    XCoreDiscordBot,
+    parse_duration,
+    strip_mindustry_colors,
+)
 from xcore_discord_bot.registry import server_registry
 
 
@@ -294,7 +298,9 @@ class _ReconnectBus:
 
 
 @pytest.mark.asyncio
-async def test_run_consumer_forever_restarts_after_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_consumer_forever_restarts_after_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     bot = object.__new__(XCoreDiscordBot)
     bus = _ReconnectBus()
     bot.__dict__["_bus"] = bus
@@ -327,7 +333,11 @@ class _MessageBus:
         self.calls: list[dict[str, Any]] = []
 
     async def publish_discord_message(
-        self, server: str | None, author_name: str, message: str, source_message_id: str | None = None
+        self,
+        server: str | None,
+        author_name: str,
+        message: str,
+        source_message_id: str | None = None,
     ) -> None:
         self.calls.append(
             {

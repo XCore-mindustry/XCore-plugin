@@ -442,7 +442,7 @@ async def test_consume_raw_events_dispatches_event(
                         b"9-0",
                         {
                             "event_type": "event.unknown",
-                            "payload_json": "{\"x\":42}",
+                            "payload_json": '{"x":42}',
                         },
                     )
                 ],

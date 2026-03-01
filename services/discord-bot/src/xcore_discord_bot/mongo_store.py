@@ -36,7 +36,9 @@ class MongoStore:
     async def find_player_by_uuid(self, uuid: str) -> dict[str, Any] | None:
         return await self._db_required()["players"].find_one({"uuid": uuid})
 
-    async def search_players(self, query: str, limit: int = 6, page: int = 0) -> list[dict[str, Any]]:
+    async def search_players(
+        self, query: str, limit: int = 6, page: int = 0
+    ) -> list[dict[str, Any]]:
         regex = re.escape(query)
         skip = page * limit
         cursor = (

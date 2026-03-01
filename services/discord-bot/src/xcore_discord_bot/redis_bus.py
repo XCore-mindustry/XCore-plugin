@@ -85,7 +85,11 @@ class RedisBus:
     ) -> None:
         redis = self._require_redis()
         now = int(time.time() * 1000)
-        target_servers = [server] if server is not None else [srv.name for srv in server_registry.get_all_servers()]
+        target_servers = (
+            [server]
+            if server is not None
+            else [srv.name for srv in server_registry.get_all_servers()]
+        )
         for target_server in target_servers:
             event_id = str(uuid.uuid4())
             stream = f"xcore:cmd:discord-message:{target_server}"
@@ -223,7 +227,9 @@ class RedisBus:
             callback=callback,
         )
 
-    async def consume_bans(self, callback: Callable[[BanEvent], Awaitable[None]]) -> None:
+    async def consume_bans(
+        self, callback: Callable[[BanEvent], Awaitable[None]]
+    ) -> None:
         await self._consume_events(
             stream="xcore:evt:moderation:ban",
             group_suffix="discord-ban",
@@ -357,7 +363,9 @@ class RedisBus:
         producer = self._field_str(fields, "producer")
         if skip_discord_producer and producer == "discord-bot":
             await redis.xack(stream, group, message_id)
-            await self._clear_failure_counter(stream=stream, group=group, message_id=message_id)
+            await self._clear_failure_counter(
+                stream=stream, group=group, message_id=message_id
+            )
             return
 
         try:
@@ -369,7 +377,9 @@ class RedisBus:
             else:
                 raise RuntimeError("No parser configured for stream consumer")
         except Exception as error:
-            attempts = await self._increment_failure_counter(stream=stream, group=group, message_id=message_id)
+            attempts = await self._increment_failure_counter(
+                stream=stream, group=group, message_id=message_id
+            )
             await self._route_to_dlq(
                 source_stream=stream,
                 source_group=group,
@@ -380,13 +390,17 @@ class RedisBus:
                 error=error,
             )
             await redis.xack(stream, group, message_id)
-            await self._clear_failure_counter(stream=stream, group=group, message_id=message_id)
+            await self._clear_failure_counter(
+                stream=stream, group=group, message_id=message_id
+            )
             return
 
         try:
             await callback(parsed)
         except Exception as error:
-            attempts = await self._increment_failure_counter(stream=stream, group=group, message_id=message_id)
+            attempts = await self._increment_failure_counter(
+                stream=stream, group=group, message_id=message_id
+            )
             logger.warning(
                 "Failed to process stream %s id=%s (%s attempt %s/%s): %s",
                 stream,
@@ -407,11 +421,15 @@ class RedisBus:
                     error=error,
                 )
                 await redis.xack(stream, group, message_id)
-                await self._clear_failure_counter(stream=stream, group=group, message_id=message_id)
+                await self._clear_failure_counter(
+                    stream=stream, group=group, message_id=message_id
+                )
             return
 
         await redis.xack(stream, group, message_id)
-        await self._clear_failure_counter(stream=stream, group=group, message_id=message_id)
+        await self._clear_failure_counter(
+            stream=stream, group=group, message_id=message_id
+        )
 
     async def _route_to_dlq(
         self,
@@ -462,29 +480,44 @@ class RedisBus:
             approximate=True,
         )
 
-    async def _increment_failure_counter(self, *, stream: str, group: str, message_id: str) -> int:
+    async def _increment_failure_counter(
+        self, *, stream: str, group: str, message_id: str
+    ) -> int:
         redis = self._require_redis()
-        key = self._failure_counter_key(stream=stream, group=group, message_id=message_id)
+        key = self._failure_counter_key(
+            stream=stream, group=group, message_id=message_id
+        )
         attempts = await redis.incr(key)
         await redis.expire(key, 86_400)
         return int(attempts)
 
-    async def _clear_failure_counter(self, *, stream: str, group: str, message_id: str) -> None:
+    async def _clear_failure_counter(
+        self, *, stream: str, group: str, message_id: str
+    ) -> None:
         redis = self._require_redis()
-        key = self._failure_counter_key(stream=stream, group=group, message_id=message_id)
+        key = self._failure_counter_key(
+            stream=stream, group=group, message_id=message_id
+        )
         await redis.delete(key)
 
     @staticmethod
     def _failure_counter_key(*, stream: str, group: str, message_id: str) -> str:
-        digest = hashlib.sha1(f"{stream}|{group}|{message_id}".encode("utf-8")).hexdigest()
+        digest = hashlib.sha1(
+            f"{stream}|{group}|{message_id}".encode("utf-8")
+        ).hexdigest()
         return f"xcore:retries:{digest}"
 
     @staticmethod
-    def _field_str(fields: Mapping[str | bytes, Any], key: str, default: str = "") -> str:
+    def _field_str(
+        fields: Mapping[str | bytes, Any], key: str, default: str = ""
+    ) -> str:
         value = fields.get(key, default)
         if value == default:
             for raw_key, raw_value in fields.items():
-                if isinstance(raw_key, bytes) and raw_key.decode("utf-8", errors="replace") == key:
+                if (
+                    isinstance(raw_key, bytes)
+                    and raw_key.decode("utf-8", errors="replace") == key
+                ):
                     value = raw_value
                     break
         if isinstance(value, bytes):
@@ -495,7 +528,9 @@ class RedisBus:
     def _stringify_field_map(cls, fields: Mapping[str | bytes, Any]) -> dict[str, str]:
         normalized: dict[str, str] = {}
         for k, v in fields.items():
-            key = k.decode("utf-8", errors="replace") if isinstance(k, bytes) else str(k)
+            key = (
+                k.decode("utf-8", errors="replace") if isinstance(k, bytes) else str(k)
+            )
             if isinstance(v, bytes):
                 normalized[key] = v.decode("utf-8", errors="replace")
             else:
@@ -600,11 +635,17 @@ class RedisBus:
                     normalized.append(
                         {
                             "name": str(value.get("name", "Unknown")),
-                            "file_name": str(value.get("fileName", value.get("file_name", ""))),
+                            "file_name": str(
+                                value.get("fileName", value.get("file_name", ""))
+                            ),
                             "author": str(value.get("author", "Unknown")),
                             "width": str(value.get("width", "")),
                             "height": str(value.get("height", "")),
-                            "file_size_bytes": str(value.get("fileSizeBytes", value.get("file_size_bytes", ""))),
+                            "file_size_bytes": str(
+                                value.get(
+                                    "fileSizeBytes", value.get("file_size_bytes", "")
+                                )
+                            ),
                         }
                     )
                 else:

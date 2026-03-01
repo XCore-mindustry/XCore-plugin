@@ -29,7 +29,9 @@ class _Response:
     async def send_message(self, text: str, *, ephemeral: bool = False) -> None:
         self.replies.append((text, ephemeral))
 
-    async def edit_message(self, *, content: str | None = None, view: Any = None) -> None:
+    async def edit_message(
+        self, *, content: str | None = None, view: Any = None
+    ) -> None:
         self.edits.append((content, view))
 
 
@@ -123,5 +125,8 @@ async def test_admin_confirm_idempotency_not_tied_to_interaction_id() -> None:
     assert store.marked == ["uuid-1"]
     assert len(first.response.edits) == 1
     assert "✅ Confirmed admin request" in (first.response.edits[0][0] or "")
-    assert second.response.replies[0][0] == "This admin confirmation was already processed."
+    assert (
+        second.response.replies[0][0]
+        == "This admin confirmation was already processed."
+    )
     assert second.response.replies[0][1] is True

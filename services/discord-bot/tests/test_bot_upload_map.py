@@ -79,7 +79,11 @@ async def test_upload_map_requires_role() -> None:
         user=_Member(roles=[_Role(100)]),
     )
 
-    attachments = [_Attachment(filename="one.msav", url="https://example/one.msav"), None, None]
+    attachments = [
+        _Attachment(filename="one.msav", url="https://example/one.msav"),
+        None,
+        None,
+    ]
     await XCoreDiscordBot._cmd_upload_map(bot, interaction, "mini-pvp", attachments)
 
     assert interaction.ephemeral_replies
