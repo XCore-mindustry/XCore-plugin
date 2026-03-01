@@ -1,12 +1,14 @@
 package org.xcore.plugin.event;
 
-import com.ospx.sock.EventBus.Request;
-import com.ospx.sock.EventBus.Response;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.xcore.plugin.model.PlayerData;
 
 public class SocketEvents {
+    public interface Event {}
+
+    public static abstract class Response {}
+    public static abstract class Request<T> {}
 
     public record MessageEvent(String authorName, String message, String server) {}
 
@@ -17,6 +19,14 @@ public class SocketEvents {
     public record GlobalChatEvent(String authorName, String message, String server) {}
 
     public record DiscordMessageEvent(String authorName, String message, String server) {}
+
+    public record ServerHeartbeatEvent(
+            String serverName,
+            long discordChannelId,
+            int players,
+            int maxPlayers,
+            String version
+    ) implements Event {}
 
     public record AdminRequestEvent(int pid, String server) {}
 
@@ -32,7 +42,11 @@ public class SocketEvents {
 
     public record FileURL(String url, String filename) {}
 
-    public record ExecuteCommand(String command, String[] expectServers) {}
+    public record ExecuteCommand(String command, String[] expectServers, boolean isExclusion) {
+        public ExecuteCommand(String command, String[] expectServers) {
+            this(command, expectServers, false);
+        }
+    }
 
     public record PardonPlayer(String uuid) {}
 
@@ -47,13 +61,24 @@ public class SocketEvents {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MapsListResponse extends Response {
-        public String[] maps;
+        public MapEntry[] maps;
+    }
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MapEntry {
+        public String name;
+        public String fileName;
+        public String author;
+        public Integer width;
+        public Integer height;
+        public Long fileSizeBytes;
     }
 
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MapRemoveRequest extends Request<MapRemoveResponse> {
-        public String server, map;
+        public String server, fileName;
     }
 
     @NoArgsConstructor

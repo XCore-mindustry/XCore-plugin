@@ -35,21 +35,38 @@ public class MapSocketHandler {
     public void registerListeners() {
         network.subscribe(SocketEvents.MapsListRequest.class, request -> {
             if (!request.server.equals(config.server)) return;
+
+            var customMaps = maps.customMaps();
+            var mapsList = new SocketEvents.MapEntry[customMaps.size];
+            for (int i = 0; i < customMaps.size; i++) {
+                Map map = customMaps.get(i);
+                mapsList[i] = new SocketEvents.MapEntry(
+                        map.plainName(),
+                        map.file == null ? "" : map.file.name(),
+                        map.author() == null ? "Unknown" : map.author(),
+                        map.width,
+                        map.height,
+                        map.file == null ? null : map.file.length()
+                );
+            }
+
             network.respond(request, new SocketEvents.MapsListResponse(
-                    maps.customMaps().map(Map::plainName).toArray(String.class)));
+                    mapsList));
         });
 
         network.subscribe(SocketEvents.MapRemoveRequest.class, request -> {
             if (!request.server.equals(config.server)) return;
 
-            var map = mapService.findMap(request.map);
+            var map = mapService.findMapByFileName(request.fileName);
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();
             }
 
             network.respond(request, new SocketEvents.MapRemoveResponse(
-                    map == null ? "Map not found" : "Successfully removed map " + map.plainName()));
+                    map == null
+                            ? "Map file not found"
+                            : "Successfully removed map " + map.plainName() + " (" + map.file.name() + ")"));
 
             if (map != null) info("Removed map @", map.plainName());
         });

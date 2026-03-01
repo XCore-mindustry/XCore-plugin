@@ -12,3 +12,7 @@
 /out/
 /server/
 /servers/
+.sisyphus/
+AGENTS.md
+CLAUDE.md
+.agents/

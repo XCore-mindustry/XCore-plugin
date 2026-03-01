@@ -90,6 +90,7 @@ public class DataController implements CloudServerController {
 
         modifyJson(root.get(field), value);
         PlayerData result = prettyGson.fromJson(root.toJson(JsonWriter.OutputType.json), PlayerData.class);
+        result.id = data.id;
         playerDataRepository.save(result);
         Log.info("PlayerData for @ updated. Field '@' -> '@'.", data.nickname, field, value);
     }

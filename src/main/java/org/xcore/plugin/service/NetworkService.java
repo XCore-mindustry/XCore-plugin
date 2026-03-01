@@ -2,80 +2,87 @@ package org.xcore.plugin.service;
 
 import arc.func.Cons;
 import arc.util.Log;
-import com.ospx.sock.ClientSock;
-import com.ospx.sock.EventBus.Request;
-import com.ospx.sock.EventBus.RequestSubscription;
-import com.ospx.sock.EventBus.Response;
-import com.ospx.sock.EventBus.Subscription;
-import com.ospx.sock.ServerSock;
-import com.ospx.sock.Sock;
+import org.xcore.plugin.event.SocketEvents.Request;
+import org.xcore.plugin.event.SocketEvents.Response;
+import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
+import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import lombok.Getter;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.service.network.RedisNetworkBackend;
+
+import java.util.Map;
 
 @Singleton
 public class NetworkService {
-
-    private final Config config;
     private final GlobalConfig globalConfig;
-    @Getter
-    private Sock sock;
+    private final RedisNetworkBackend backend;
 
     @Inject
-    public NetworkService(Config config, GlobalConfig globalConfig) {
-        this.config = config;
+    public NetworkService(GlobalConfig globalConfig, RedisNetworkBackend backend) {
         this.globalConfig = globalConfig;
+        this.backend = backend;
     }
 
     @PostConstruct
     public void init() {
-        switch (config.sockType) {
-            case CLIENT -> sock = new ClientSock(globalConfig.sockServerPort);
-            case SERVER -> sock = new ServerSock(globalConfig.sockServerPort);
-        }
         safeConnect();
     }
 
     public void safeConnect() {
         try {
-            sock.connect();
+            backend.connect();
         } catch (Exception e) {
-            Log.err("Exception occurred while connecting to Sock server", e);
+            Log.err("Exception occurred while connecting transport backend", e);
+        }
+    }
+
+    public synchronized boolean reloadBackend() {
+        try {
+            backend.disconnect();
+            backend.connect();
+            return true;
+        } catch (Exception e) {
+            Log.err("Failed to reload Redis transport backend", e);
+            return false;
         }
     }
 
     public void disconnect() {
-        sock.disconnect();
+        backend.disconnect();
     }
 
     public void post(Object event) {
-        sock.send(event);
+        backend.send(event);
     }
 
     public <T> Subscription<T> subscribe(Class<T> type, Cons<T> listener) {
-        return sock.on(type, listener);
+        return backend.subscribe(type, listener);
     }
 
     public <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
-        return sock.request(request, listener, timeout);
+        return backend.request(request, listener, timeout);
     }
 
     public <T extends Response> void respond(Request<T> request, T response) {
-        sock.respond(request, response);
+        backend.respond(request, response);
     }
 
     public boolean isSocketServer() {
-        return sock.isServer();
+        return backend.isPrimaryControlNode();
     }
 
-    public String findServer(String query) {
-        for (String server : globalConfig.servers.keySet()) {
-            if (server.equals(query)) return query;
-            if (server.startsWith(query) || server.contains(query)) return server;
-        }
-        return null;
+
+    public String backendName() {
+        return backend.getClass().getSimpleName();
+    }
+
+    public String backendSelectionName() {
+        return "REDIS";
+    }
+
+    public Map<String, Long> backendMetrics() {
+        return backend.metricsSnapshot();
     }
 }

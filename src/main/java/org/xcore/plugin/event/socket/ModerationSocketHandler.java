@@ -9,9 +9,7 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.discord.DiscordLogBridge;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
@@ -26,19 +24,16 @@ public class ModerationSocketHandler {
     private final NetworkService network;
     private final SessionService sessionService;
     private final FindService find;
-    private final DiscordLogBridge discordLogBridge;
     private final Config config;
 
     @Inject
     public ModerationSocketHandler(NetworkService network,
                                    SessionService sessionService,
                                    FindService find,
-                                   DiscordLogBridge discordLogBridge,
                                    Config config) {
         this.network = network;
         this.sessionService = sessionService;
         this.find = find;
-        this.discordLogBridge = discordLogBridge;
         this.config = config;
     }
 
@@ -101,23 +96,16 @@ public class ModerationSocketHandler {
         });
 
         network.subscribe(SocketEvents.ExecuteCommand.class, e -> {
-            if (e.expectServers() != null && Structs.contains(e.expectServers(), config.server)) return;
+            if (e.expectServers() != null) {
+                if (e.isExclusion()) {
+                    if (Structs.contains(e.expectServers(), config.server)) return;
+                } else if (e.expectServers().length > 0 && !Structs.contains(e.expectServers(), config.server)) {
+                    return;
+                }
+            }
 
             Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
             ServerControl.instance.handleCommandString(e.command());
         });
-
-        if (network.isSocketServer()) {
-            network.subscribe(BanData.class, discordLogBridge::sendBan);
-
-            network.subscribe(SocketEvents.PlayerJoinLeaveEvent.class, e ->
-                    discordLogBridge.sendConnectionEvent(e.playerName(), e.server(), e.join()));
-
-            network.subscribe(SocketEvents.ServerActionEvent.class, e ->
-                    discordLogBridge.getServerLogChannel(e.server()).ifPresent(c -> discordLogBridge.sendMessage(c, e.message())));
-
-            network.subscribe(SocketEvents.AdminRequestEvent.class, e ->
-                    discordLogBridge.sendAdminRequestEvent(e.pid(), e.server()));
-        }
     }
 }

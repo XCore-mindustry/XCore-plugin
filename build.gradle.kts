@@ -51,11 +51,10 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryHeadless)
     implementation(project(":flubundle"))
     implementation(libs.cloud.mindustry)
-    implementation(libs.sock)
     implementation(libs.mongodb.sync)
     implementation(libs.gson)
     implementation(libs.jbcrypt)
-    implementation(libs.discord4j)
+    implementation(libs.lettuce)
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
     implementation(libs.bundles.jline)
     implementation(libs.avaje.inject)
@@ -68,6 +67,8 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.assertj.core)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers)
     testImplementation(libs.avaje.inject.test)
     testImplementation(toxopid.dependencies.arcCore)
     testImplementation(toxopid.dependencies.mindustryCore)
@@ -94,7 +95,10 @@ tasks.assemble {
 }
 
 fun ShadowJar.applyCommonSettings() {
+    archiveBaseName.set(project.name)
+    archiveVersion.set(project.version.toString())
     archiveClassifier.set("")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(generateModInfo)
     mergeServiceFiles()
@@ -109,6 +113,18 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.register<ShadowJar>("shadowJarRelease") {
     applyCommonSettings()
     archiveClassifier.set("release")
+}
+
+tasks.register("printArtifacts") {
+    dependsOn(tasks.shadowJar, tasks.named("shadowJarRelease"))
+
+    doLast {
+        val shadow = tasks.named<ShadowJar>("shadowJar").get().archiveFile.get().asFile
+        val release = tasks.named<ShadowJar>("shadowJarRelease").get().archiveFile.get().asFile
+
+        println("shadowJar: ${shadow.absolutePath}")
+        println("shadowJarRelease: ${release.absolutePath}")
+    }
 }
 
 tasks.register("getProjectVersion") {
@@ -126,6 +142,20 @@ tasks.withType<MindustryExec> {
 
 tasks.register("runMainServer", MindustryExec::class)
 tasks.register("runServer", MindustryExec::class)
+
+tasks.named<MindustryExec>("runMainServer") {
+    workingDir = file("./server/runMainServer")
+    doFirst {
+        workingDir.mkdirs()
+    }
+}
+
+tasks.named<MindustryExec>("runServer") {
+    workingDir = file("./server/runServer")
+    doFirst {
+        workingDir.mkdirs()
+    }
+}
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()

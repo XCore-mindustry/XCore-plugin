@@ -65,6 +65,7 @@ public class IngressService {
     private AccessResult runParallelChecks(NetConnection con, ConnectPacket packet) {
         CompletionService<AccessResult> completionService = new ExecutorCompletionService<>(virtualExecutor);
         List<Future<AccessResult>> futures = new ArrayList<>(slowChecks.size());
+        AccessResult.Denied deniedResult = null;
 
         for (IngressCheck check : slowChecks) {
             futures.add(completionService.submit(() -> {
@@ -85,8 +86,9 @@ public class IngressService {
                 if (completedFuture != null) {
                     AccessResult result = completedFuture.get();
                     if (result instanceof AccessResult.Denied denied) {
-                        cancelRemaining(futures);
-                        return denied;
+                        if (deniedResult == null) {
+                            deniedResult = denied;
+                        }
                     }
                 } else {
                     Log.warn("[Ingress] A parallel check timed out");
@@ -98,6 +100,10 @@ public class IngressService {
             return new AccessResult.Denied("Interrupted", true);
         } catch (ExecutionException e) {
             Log.err("[Ingress] Check execution failed", e);
+        }
+
+        if (deniedResult != null) {
+            return deniedResult;
         }
 
         return AccessResult.Allowed.INSTANCE;

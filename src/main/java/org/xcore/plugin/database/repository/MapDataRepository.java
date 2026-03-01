@@ -2,7 +2,11 @@ package org.xcore.plugin.database.repository;
 
 import arc.struct.ObjectMap;
 import arc.util.Log;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -96,24 +100,32 @@ public class MapDataRepository extends DataRepository<MapData> {
 
     public void checkMapDecay() {
         var counters = database.getCollection("counters");
-        var lastDecayDoc = counters.find(eq("_id", "last_map_decay")).first();
 
         long now = System.currentTimeMillis();
         long dayMillis = 24 * 60 * 60 * 1000L;
 
-        if (lastDecayDoc == null) {
-            counters.insertOne(new Document("_id", "last_map_decay").append("time", now));
-            return;
+        try {
+            counters.updateOne(
+                    eq("_id", "last_map_decay"),
+                    Updates.setOnInsert("time", now),
+                    new UpdateOptions().upsert(true)
+            );
+        } catch (MongoWriteException ignored) {
         }
 
-        long lastTime = lastDecayDoc.getLong("time");
+        var claimed = counters.findOneAndUpdate(
+                and(
+                        eq("_id", "last_map_decay"),
+                        lte("time", now - dayMillis)
+                ),
+                Updates.set("time", now),
+                new FindOneAndUpdateOptions().returnDocument(ReturnDocument.BEFORE)
+        );
 
-        if (now - lastTime >= dayMillis) {
+        if (claimed != null) {
             Log.info("[XCore] Starting daily degradation of map popularity and interest...");
             decayPopularity(0.1);
             decayInterest(0.1);
-
-            counters.updateOne(eq("_id", "last_map_decay"), Updates.set("time", now));
         }
     }
 }

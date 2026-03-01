@@ -34,7 +34,7 @@ public class ConfigFactory {
     public GlobalConfig globalConfig(Config config, @Named("pretty") Gson gson) {
         Fi globalConfigFile = Fi.get(config.globalConfigDirectory == null
                 ? System.getProperty("user.home")
-                : config.globalConfigDirectory).child("servers.json");
+                : config.globalConfigDirectory).child("secrets.json");
 
         GlobalConfig globalConfig;
         if (globalConfigFile.exists()) {

@@ -76,6 +76,17 @@ public class MapService {
         return available.find(map -> TextUtils.deepEquals(map.name(), nameOrIndex));
     }
 
+    public Map findMapByFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return null;
+        }
+
+        String normalized = fileName.trim();
+        return getAvailableMaps().find(map ->
+                map.file != null && map.file.name().equalsIgnoreCase(normalized)
+        );
+    }
+
     public <T> T findInSeq(String nameOrIndex, Seq<T> values, Boolf<T> filter) {
         int index = Strings.parseInt(nameOrIndex, -1) - 1;
         if (index >= 0 && index < values.size) {

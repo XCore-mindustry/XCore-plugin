@@ -47,6 +47,13 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             data.pid = generatePid();
         }
 
+        if (data.id == null && data.uuid != null && !data.uuid.isBlank()) {
+            PlayerData existing = findByUuid(data.uuid);
+            if (existing != null && existing.id != null) {
+                data.id = existing.id;
+            }
+        }
+
         return super.save(data);
     }
 
