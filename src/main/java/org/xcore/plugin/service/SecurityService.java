@@ -27,22 +27,22 @@ public class SecurityService {
     }
 
     public boolean isMuted(Player player) {
-        Session session = sessionService.get().get(player);
-        if (session == null || session.data == null) return false;
         MuteData mute = muteDataRepository.findByUuid(player.uuid());
 
         if (mute == null) return false;
 
         if (!mute.expired()) {
-            Duration remain = Duration.between(Instant.now(), mute.expireDate);
-
-            session.locale().send("you-are-muted",
-                    args("adminName", mute.adminName,
-                            "reason", mute.reason,
-                            "remainMinutes", remain.toMinutes(),
-                            "remainSeconds", remain.toSecondsPart()
-                    )
-            );
+            Session session = sessionService.get().get(player);
+            if (session != null && session.data != null) {
+                Duration remain = Duration.between(Instant.now(), mute.expireDate);
+                session.locale().send("you-are-muted",
+                        args("adminName", mute.adminName,
+                                "reason", mute.reason,
+                                "remainMinutes", remain.toMinutes(),
+                                "remainSeconds", remain.toSecondsPart()
+                        )
+                );
+            }
             return true;
         }
 

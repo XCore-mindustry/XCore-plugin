@@ -23,8 +23,8 @@ import org.incendo.cloud.exception.NoPermissionException;
 import org.incendo.cloud.exception.parsing.ParserException;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.help.HelpHandler;
-import org.incendo.cloud.parser.ArgumentParseResult;
 import org.incendo.cloud.parser.ParserParameters;
+import org.incendo.cloud.key.CloudKey;
 import org.xcore.cloud.mindustry.ConflictStrategy;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
@@ -60,6 +60,8 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class CloudService {
     private static final String ERROR_COMMAND_DISABLED = "error-command-disabled";
+    private static final CloudKey<Boolean> REQUIRES_MUTE_CHECK_META = CloudKey.of("xcore.requiresMuteCheck", Boolean.class);
+    private static final CloudKey<PlayTimeLimit> REQUIRES_PLAY_TIME_META = CloudKey.of("xcore.requiresPlayTime", PlayTimeLimit.class);
 
     private final BundleService bundleService;
     private final Provider<SecurityService> securityService;
@@ -101,8 +103,8 @@ public class CloudService {
         this.clientAnnotationParser = new AnnotationParser<>(clientManager, XCoreSender.class);
         this.serverAnnotationParser = new AnnotationParser<>(serverManager, XCoreSender.class);
 
-        configurePreprocessors(clientAnnotationParser);
-        configurePreprocessors(serverAnnotationParser);
+        configureAnnotationGuards(clientAnnotationParser);
+        configureAnnotationGuards(serverAnnotationParser);
     }
 
     private MindustryCommandManager<XCoreSender> createManager(CommandHandler handler) {
@@ -194,6 +196,39 @@ public class CloudService {
                 return;
             }
             throwDisabledCommandException(disabledCommand);
+        });
+
+        mgr.registerCommandPostProcessor(context -> {
+            var commandMeta = context.command().commandMeta();
+            XCoreSender sender = context.commandContext().sender();
+
+            if (commandMeta.getOrDefault(REQUIRES_MUTE_CHECK_META, false)
+                    && sender.isPlayer()
+                    && securityService.get().isMuted(sender.player())) {
+                throw new XCoreCommandException(true);
+            }
+
+            var playTimeLimit = commandMeta.optional(REQUIRES_PLAY_TIME_META).orElse(null);
+            if (playTimeLimit == null || !sender.isPlayer()) {
+                return;
+            }
+
+            Player player = sender.player();
+            if (player.admin) {
+                return;
+            }
+
+            int requiredMinutes = switch (playTimeLimit) {
+                case GLOBAL_CHAT -> globalConfig.minPlayTimeForGlobalChat;
+                case VOTE_KICK -> globalConfig.minPlayTimeForVotekick;
+                case CUSTOM -> 0;
+            };
+
+            var session = sessionService.get().get(player.uuid());
+            var data = session != null ? session.data : null;
+            if (data != null && data.totalPlayTime < requiredMinutes) {
+                throw new XCoreCommandException("error-playtime-requirement", args("time", requiredMinutes));
+            }
         });
 
         configureExceptions(mgr);
@@ -438,36 +473,12 @@ public class CloudService {
         player.sendMessage(bundleService.format(bundleService.getDefaultLocale(), key, args));
     }
 
-    private void configurePreprocessors(AnnotationParser<XCoreSender> parser) {
-        parser.registerPreprocessorMapper(RequiresMuteCheck.class, _ -> (ctx, _) -> {
-            XCoreSender sender = ctx.sender();
-            if (sender.isPlayer() && securityService.get().isMuted(sender.player())) {
-                return ArgumentParseResult.failure(new IllegalStateException("Player is muted"));
-            }
-            return ArgumentParseResult.success(true);
-        });
+    private void configureAnnotationGuards(AnnotationParser<XCoreSender> parser) {
+        parser.registerBuilderModifier(RequiresMuteCheck.class,
+                (_, builder) -> builder.meta(REQUIRES_MUTE_CHECK_META, true));
 
-        parser.registerPreprocessorMapper(RequiresPlayTime.class, annotation -> (ctx, _) -> {
-            XCoreSender sender = ctx.sender();
-            if (!sender.isPlayer()) return ArgumentParseResult.success(true);
-
-            Player player = sender.player();
-            if (player.admin) return ArgumentParseResult.success(true);
-
-            int requiredMinutes = switch (annotation.value()) {
-                case GLOBAL_CHAT -> globalConfig.minPlayTimeForGlobalChat;
-                case VOTE_KICK -> globalConfig.minPlayTimeForVotekick;
-                case CUSTOM -> 0;
-            };
-
-            var data = sessionService.get().get(player.uuid()).data;
-            if (data != null && data.totalPlayTime < requiredMinutes) {
-                return ArgumentParseResult.failure(
-                        new XCoreCommandException("error-playtime-requirement", args("time", requiredMinutes))
-                );
-            }
-            return ArgumentParseResult.success(true);
-        });
+        parser.registerBuilderModifier(RequiresPlayTime.class,
+                (annotation, builder) -> builder.meta(REQUIRES_PLAY_TIME_META, annotation.value()));
     }
 
     public HelpHandler<XCoreSender> getHelpHandler() {

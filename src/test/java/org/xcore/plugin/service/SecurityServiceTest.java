@@ -21,8 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SecurityServiceTest {
@@ -52,23 +52,22 @@ class SecurityServiceTest {
     }
 
     @Test
-    @DisplayName("isMuted returns false when session is missing")
+    @DisplayName("isMuted returns false when session is missing but no mute record exists")
     void isMuted_returnsFalse_whenSessionMissing() {
         var player = mockPlayer("uuid-1");
         when(sessionService.get(player)).thenReturn(null);
+        when(muteDataRepository.findByUuid("uuid-1")).thenReturn(null);
 
         var result = securityService.isMuted(player);
 
         assertThat(result).isFalse();
-        verifyNoInteractions(muteDataRepository);
+        verify(muteDataRepository).findByUuid("uuid-1");
     }
 
     @Test
     @DisplayName("isMuted returns false when mute is missing")
     void isMuted_returnsFalse_whenMuteMissing() {
         var player = mockPlayer("uuid-2");
-        var session = mockSessionWithData();
-        when(sessionService.get(player)).thenReturn(session);
         when(muteDataRepository.findByUuid("uuid-2")).thenReturn(null);
 
         var result = securityService.isMuted(player);
@@ -81,8 +80,6 @@ class SecurityServiceTest {
     @DisplayName("isMuted returns false and deletes mute when mute expired")
     void isMuted_returnsFalse_andDeletesMute_whenMuteExpired() {
         var player = mockPlayer("uuid-3");
-        var session = mockSessionWithData();
-        when(sessionService.get(player)).thenReturn(session);
         when(muteDataRepository.findByUuid("uuid-3")).thenReturn(
                 MuteData.builder()
                         .expireDate(Instant.now().minusSeconds(30))
@@ -118,6 +115,24 @@ class SecurityServiceTest {
 
         assertThat(result).isTrue();
         verify(localization).send(eq("you-are-muted"), anyMap());
+    }
+
+    @Test
+    @DisplayName("isMuted returns true but does not send message when mute active and session missing")
+    void isMuted_returnsTrue_andNoMessage_whenMuteActive_andSessionMissing() {
+        var player = mockPlayer("uuid-5");
+        when(sessionService.get(player)).thenReturn(null);
+        when(muteDataRepository.findByUuid("uuid-5")).thenReturn(
+                MuteData.builder()
+                        .expireDate(Instant.now().plusSeconds(120))
+                        .adminName("admin")
+                        .reason("rule violation")
+                        .build()
+        );
+
+        var result = securityService.isMuted(player);
+
+        assertThat(result).isTrue();
     }
 
     private static Player mockPlayer(String uuid) {

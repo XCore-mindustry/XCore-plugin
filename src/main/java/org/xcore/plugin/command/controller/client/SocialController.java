@@ -38,11 +38,11 @@ public class SocialController implements CloudClientController {
 
     @Inject
     public SocialController(PlayerDataRepository playerDataRepository,
-                            SessionService sessionService,
-                            NetworkService network,
-                            Config config,
-                            GlobalConfig globalConfig,
-                            TranslatorLanguagesProvider translatorLanguagesProvider) {
+                             SessionService sessionService,
+                             NetworkService network,
+                             Config config,
+                             GlobalConfig globalConfig,
+                             TranslatorLanguagesProvider translatorLanguagesProvider) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.network = network;
@@ -54,7 +54,6 @@ public class SocialController implements CloudClientController {
     @RequiresMuteCheck
     @Command("t <message>")
     public void teamChat(XCoreSender sender, @Argument("message") @Greedy String message) {
-
         Player author = sender.player();
 
         Groups.player.each(
