@@ -454,7 +454,7 @@ player-menu-settings-content =
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
 player-menu-settings-customNickname = Редагувати ім'я
-player-menu-settings-customNickname-message = [lightgray]Залиште пустим для скидання
+player-menu-settings-customNickname-message = { "[" }lightgray]Залиште пустим для скидання
 player-menu-settings-description = Редагувати опис
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
@@ -490,7 +490,6 @@ auto = Авто
 on = Увімкнено
 off = Вимкнено
 error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
-
 player-leaderboard-active = { "[" }green]Список лідерів
 player-leaderboard-inactive = { "[" }red]Список лідерів
 none = Немає
