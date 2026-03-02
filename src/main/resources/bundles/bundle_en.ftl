@@ -446,6 +446,7 @@ error-internal = { "[" }scarlet]Internal error.
 error-processing-request = { "[" }scarlet]An error occurred while processing the request.
 error-team-not-found = { "[" }scarlet]⚠ Team not found.
 error-no-access = { "[" }scarlet]⚠ No Access.
+error-nickname-too-long = { "[" }scarlet]⚠ Nickname is too long. Max { $max } visible characters.
 error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
 error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
 error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: '{ $error }'.

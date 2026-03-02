@@ -439,6 +439,7 @@ error-internal = { "[" }scarlet]Внутренняя ошибка сервера
 error-processing-request = { "[" }scarlet]Произошла ошибка при обработке запроса.
 error-team-not-found = { "[" }scarlet]⚠ Команда не найдена.
 error-no-access = { "[" }scarlet]⚠ Нет доступа.
+error-nickname-too-long = { "[" }scarlet]⚠ Никнейм слишком длинный. Максимум { $max } видимых символов.
 error-invalid-syntax = { "[" }scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
 error-invalid-sender = { "[" }scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{ $type }
 error-argument-parse-generic = { "[" }scarlet]⚠ Ошибка аргумента: { $error }

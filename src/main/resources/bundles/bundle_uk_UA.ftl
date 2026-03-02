@@ -461,6 +461,7 @@ event-menu-create-start-map = Створити подію для цієї кар
 event-end = Подія [green]{ $name }[] завершилася!
 error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
 error-no-access = { "[" }scarlet]⚠ Немає доступу.
+error-nickname-too-long = { "[" }scarlet]⚠ Нікнейм надто довгий. Максимум { $max } видимих символів.
 finished = завершено
 finished-neutral = { "[" }orange]Завершено
 finished-active = { "[" }green]Завершено

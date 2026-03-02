@@ -15,6 +15,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -24,6 +25,9 @@ import static mindustry.Vars.netServer;
 
 @Singleton
 public class PlayerMenu extends Menu {
+
+    /** Vanilla Mindustry name length limit in UTF-8 bytes (see Vars.maxNameLength). */
+    private static final int MAX_PLAIN_NAME_BYTES = 40;
 
     private final PlayerDataRepository playerDataRepository;
     private final BundleService bundle;
@@ -156,6 +160,15 @@ public class PlayerMenu extends Menu {
                         session.setTextHandler(t -> {
                             boolean isReset = (t == null || t.trim().isEmpty());
                             String newNick = isReset ? "" : t;
+
+                            if (!isReset) {
+                                String plain = Strings.stripColors(newNick);
+                                if (plain.getBytes(StandardCharsets.UTF_8).length > MAX_PLAIN_NAME_BYTES) {
+                                    local.send("error-nickname-too-long", args("max", MAX_PLAIN_NAME_BYTES));
+                                    settings(uuid, targetData);
+                                    return;
+                                }
+                            }
 
                             updatePlayerData(targetData, d -> {
                                 d.customNickname = newNick;
