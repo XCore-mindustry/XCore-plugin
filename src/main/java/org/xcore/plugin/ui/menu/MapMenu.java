@@ -15,6 +15,7 @@ import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -77,7 +78,8 @@ public class MapMenu extends Menu {
                        dislikeTxt, () -> { mapService.handleReputation(session.player, false, m); map(uuid, m); });
 
         EventData activeEvent = eventDataRepository.findActive().orElse(null);
-        if (!config.isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(m.id)) {
+        boolean rtvEnabled = !config.isFeatureDisabled(Feature.RTV);
+        if (rtvEnabled && (!config.isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(m.id))) {
             builder.start()
                 .addLocal(session.locale().t("map-rtv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, false))
                 .ifAdd(session.player.admin, session.locale().t("map-artv"), () -> mapService.startRtvSession(session.player, mindustryMap, true, true))

@@ -509,4 +509,5 @@ auto = Auto
 on = On
 off = Off
 error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.
+error-feature-disabled = [scarlet]⚠ This feature is disabled on this server.
 none = None

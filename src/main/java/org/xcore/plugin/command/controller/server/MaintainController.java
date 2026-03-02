@@ -20,6 +20,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.NetworkService;
 
 import java.util.HashSet;
@@ -400,6 +401,68 @@ public class MaintainController implements CloudServerController {
             config.disabledCommands = new HashSet<>(config.disabledCommands);
         }
         return config.disabledCommands;
+    }
+
+    @Command("disable-feature <feature>")
+    @CommandDescription("Disables a feature by key (e.g. rtv) at runtime.")
+    public void disableFeature(XCoreSender sender, @Argument("feature") String featureKey) {
+        var feature = Feature.fromKey(featureKey);
+        if (feature.isEmpty()) {
+            Log.err("Unknown feature '@'. Available: @", featureKey,
+                    java.util.Arrays.stream(Feature.values()).map(Feature::key).collect(java.util.stream.Collectors.joining(", ")));
+            return;
+        }
+
+        Set<String> disabledFeatures = mutableDisabledFeatures();
+        if (!disabledFeatures.add(feature.get().key())) {
+            Log.info("Feature '@' is already disabled.", feature.get().key());
+            return;
+        }
+
+        saveConfig();
+        Log.info("Feature '@' disabled.", feature.get().key());
+    }
+
+    @Command("enable-feature <feature>")
+    @CommandDescription("Re-enables a disabled feature by key (e.g. rtv).")
+    public void enableFeature(XCoreSender sender, @Argument("feature") String featureKey) {
+        var feature = Feature.fromKey(featureKey);
+        if (feature.isEmpty()) {
+            Log.err("Unknown feature '@'. Available: @", featureKey,
+                    java.util.Arrays.stream(Feature.values()).map(Feature::key).collect(java.util.stream.Collectors.joining(", ")));
+            return;
+        }
+
+        Set<String> disabledFeatures = mutableDisabledFeatures();
+        if (!disabledFeatures.remove(feature.get().key())) {
+            Log.info("Feature '@' was not disabled.", feature.get().key());
+            return;
+        }
+
+        saveConfig();
+        Log.info("Feature '@' enabled.", feature.get().key());
+    }
+
+    @Command("disabled-features")
+    @CommandDescription("Lists all disabled features.")
+    public void disabledFeatures(XCoreSender sender) {
+        if (config.disabledFeatures == null || config.disabledFeatures.isEmpty()) {
+            Log.info("No features are disabled.");
+            return;
+        }
+
+        var ordered = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        ordered.addAll(config.disabledFeatures);
+        Log.info("Disabled features: @", String.join(", ", ordered));
+    }
+
+    private Set<String> mutableDisabledFeatures() {
+        if (config.disabledFeatures == null) {
+            config.disabledFeatures = new HashSet<>();
+        } else if (!(config.disabledFeatures instanceof HashSet<?>)) {
+            config.disabledFeatures = new HashSet<>(config.disabledFeatures);
+        }
+        return config.disabledFeatures;
     }
 
     private String extractRootCommand(String normalizedCommand) {

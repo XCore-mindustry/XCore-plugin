@@ -1,6 +1,7 @@
 package org.xcore.plugin.config;
 
 import mindustry.gen.Groups;
+import org.xcore.plugin.model.enums.Feature;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -33,6 +34,11 @@ public class Config {
     public String globalConfigDirectory = null;
     public boolean gameStartedTimer = true;
     public Set<String> disabledCommands = new HashSet<>();
+    public Set<String> disabledFeatures = new HashSet<>();
+
+    public boolean isFeatureDisabled(Feature feature) {
+        return disabledFeatures != null && disabledFeatures.contains(feature.key());
+    }
 
     public int getNoAdminPlayerLimit() {
         return this.playerLimit + Groups.player.count(p -> p.admin);

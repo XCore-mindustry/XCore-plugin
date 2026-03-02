@@ -17,6 +17,7 @@ import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
@@ -97,6 +98,11 @@ public class MapService {
 
     public void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
         var session = sessionService.get(player.uuid());
+
+        if (config.isFeatureDisabled(Feature.RTV)) {
+            session.locale().send("error-feature-disabled");
+            return;
+        }
 
         if (voteService.shouldBlockVoteStart(VoteRtv.class, forced)) {
             session.locale().send("error-vote-in-progress");
