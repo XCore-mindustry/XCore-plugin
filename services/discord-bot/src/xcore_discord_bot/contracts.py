@@ -15,7 +15,12 @@ from pydantic import (
 
 
 class _FrozenModel(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore", populate_by_name=True)
+    model_config = ConfigDict(
+        frozen=True,
+        extra="ignore",
+        populate_by_name=True,
+        slots=True,
+    )
 
 
 class EventType(StrEnum):
