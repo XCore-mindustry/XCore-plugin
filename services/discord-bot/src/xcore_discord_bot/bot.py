@@ -34,6 +34,7 @@ MSG_DUPLICATE_MUTATION = (
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
 MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
+PRESENCE_UPDATE_INTERVAL_SECONDS = 30
 
 HEXED_RANKS: list[dict[str, str | int]] = [
     {"name": "Newbie", "tag": "", "required": 0},
@@ -502,6 +503,8 @@ class XCoreDiscordBot(commands.Bot):
         self._ban_consumer_task: asyncio.Task[None] | None = None
         self._admin_request_task: asyncio.Task[None] | None = None
         self._heartbeat_consumer_task: asyncio.Task[None] | None = None
+        self._presence_task: asyncio.Task[None] | None = None
+        self._presence_rotation_index = 0
 
     async def setup_hook(self) -> None:
         await self.add_cog(InfoCog(self))
@@ -548,6 +551,9 @@ class XCoreDiscordBot(commands.Bot):
         self._heartbeat_consumer_task = asyncio.create_task(
             self._consume_server_heartbeats(), name="redis-server-heartbeat-consumer"
         )
+        self._presence_task = asyncio.create_task(
+            self._update_presence_loop(), name="discord-presence-updater"
+        )
 
         if self._settings.discord_guild_id:
             guild_obj = discord.Object(id=self._settings.discord_guild_id)
@@ -558,6 +564,7 @@ class XCoreDiscordBot(commands.Bot):
 
     async def on_ready(self) -> None:
         logger.info("Discord bot connected as %s", self.user)
+        await self._update_presence_once()
 
     async def on_message(self, message: discord.Message) -> None:
         """Only used for the game chat bridge — slash commands handle all admin operations."""
@@ -585,6 +592,7 @@ class XCoreDiscordBot(commands.Bot):
             self._ban_consumer_task,
             self._admin_request_task,
             self._heartbeat_consumer_task,
+            self._presence_task,
         ):
             if task is not None:
                 task.cancel()
@@ -601,6 +609,7 @@ class XCoreDiscordBot(commands.Bot):
         self._ban_consumer_task = None
         self._admin_request_task = None
         self._heartbeat_consumer_task = None
+        self._presence_task = None
 
         await self._bus.close()
         await self._store.close()
@@ -639,6 +648,43 @@ class XCoreDiscordBot(commands.Bot):
     @staticmethod
     def _get_live_servers():
         return server_registry.get_all_servers()
+
+    def _build_presence_activity(self) -> discord.Activity:
+        servers = self._get_live_servers()
+        if not servers:
+            return discord.Activity(
+                type=discord.ActivityType.watching,
+                name="silence on servers...",
+            )
+
+        total_players = sum(server.players for server in servers)
+        server_count = len(servers)
+        templates: tuple[tuple[discord.ActivityType, str], ...] = (
+            (discord.ActivityType.watching, "{players} players on XCore"),
+            (discord.ActivityType.playing, "Mindustry | {servers} servers"),
+        )
+        activity_type, template = templates[
+            self._presence_rotation_index % len(templates)
+        ]
+        self._presence_rotation_index += 1
+        return discord.Activity(
+            type=activity_type,
+            name=template.format(players=total_players, servers=server_count),
+        )
+
+    async def _update_presence_once(self) -> None:
+        await self.change_presence(activity=self._build_presence_activity())
+
+    async def _update_presence_loop(self) -> None:
+        await self.wait_until_ready()
+        while not self.is_closed():
+            await asyncio.sleep(PRESENCE_UPDATE_INTERVAL_SECONDS)
+            try:
+                await self._update_presence_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Failed to update Discord presence")
 
     @staticmethod
     def _build_servers_embed(servers) -> discord.Embed:
