@@ -621,7 +621,13 @@ public final class RedisNetworkBackend {
     }
 
     private String groupFor(Class<?> type, String stream) {
-        return config.redisGroupPrefix + ":" + type.getSimpleName().toLowerCase() + ":" + Math.abs(stream.hashCode());
+        return config.redisGroupPrefix
+                + ":"
+                + config.server
+                + ":"
+                + type.getSimpleName().toLowerCase()
+                + ":"
+                + Math.abs(stream.hashCode());
     }
 
     private void ensureGroup(RedisCommands<String, String> subCommands, String stream, String group) {

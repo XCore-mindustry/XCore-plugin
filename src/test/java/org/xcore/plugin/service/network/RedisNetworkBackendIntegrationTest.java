@@ -70,6 +70,50 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
+    @DisplayName("global chat is delivered to subscribers on different servers")
+    void globalChatDeliveredAcrossServers() throws InterruptedException {
+        Config alphaConfig = baseConfig("alpha");
+        Config betaConfig = baseConfig("beta");
+
+        serverBackend = new RedisNetworkBackend(alphaConfig);
+        requesterBackend = new RedisNetworkBackend(betaConfig);
+        serverBackend.connect();
+        requesterBackend.connect();
+
+        CountDownLatch alphaLatch = new CountDownLatch(1);
+        CountDownLatch betaLatch = new CountDownLatch(1);
+        AtomicReference<SocketEvents.GlobalChatEvent> alphaReceived = new AtomicReference<>();
+        AtomicReference<SocketEvents.GlobalChatEvent> betaReceived = new AtomicReference<>();
+
+        Subscription<SocketEvents.GlobalChatEvent> alphaSubscription = serverBackend.subscribe(
+                SocketEvents.GlobalChatEvent.class,
+                event -> {
+                    alphaReceived.set(event);
+                    alphaLatch.countDown();
+                }
+        );
+        Subscription<SocketEvents.GlobalChatEvent> betaSubscription = requesterBackend.subscribe(
+                SocketEvents.GlobalChatEvent.class,
+                event -> {
+                    betaReceived.set(event);
+                    betaLatch.countDown();
+                }
+        );
+
+        serverBackend.send(new SocketEvents.GlobalChatEvent("player", "hello world", "alpha"));
+
+        assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(alphaReceived.get()).isNotNull();
+        assertThat(betaReceived.get()).isNotNull();
+        assertThat(alphaReceived.get().message()).isEqualTo("hello world");
+        assertThat(betaReceived.get().message()).isEqualTo("hello world");
+
+        alphaSubscription.unsubscribe();
+        betaSubscription.unsubscribe();
+    }
+
+    @Test
     @DisplayName("send serializes BanData with Instant without reflection failure")
     void sendSerializesBanDataInstant() {
         Config config = baseConfig("alpha");
