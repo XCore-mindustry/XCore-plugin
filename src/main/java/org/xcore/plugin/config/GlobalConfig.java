@@ -9,17 +9,6 @@ public class GlobalConfig {
     public String mongoConnectionString = null;
     public String databaseName = null;
 
-    public String discordBotToken = "";
-    public String discordCommandPrefix = "x!";
-
-    public int sockServerPort = 2000;
-
-    public long discordAdminRoleId = 0L;
-    public long discordGeneralAdminRoleId = 0L;
-    public long discordMapReviewerRoleId = 0L;
-    public long discordBansChannelId = 0L;
-    public long discordPrivateChannelId = 0L;
-
     public String discordUrl = "https://discord.gg/RUMCCa9QAC";
     public String githubUrl = "https://github.com/XCore-mindustry/";
     public String donatelloUrl = "https://donatello.to/xcore";
