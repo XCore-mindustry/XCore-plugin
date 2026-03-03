@@ -5,7 +5,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+        frozen=True,
+    )
 
     discord_token: str = Field(validation_alias="DISCORD_BOT_TOKEN")
     discord_admin_role_id: int = Field(validation_alias="DISCORD_ADMIN_ROLE_ID")
@@ -96,18 +100,57 @@ class Settings(BaseSettings):
     def channel_server_map(self) -> dict[int, str]:
         return {}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_role_id_fallbacks(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        values = dict(data)
+
+        def _get(field_name: str, env_name: str) -> object:
+            if field_name in values:
+                return values[field_name]
+            return values.get(env_name)
+
+        def _is_missing(value: object) -> bool:
+            if value is None:
+                return True
+            return isinstance(value, str) and not value.strip()
+
+        admin_role = _get("discord_admin_role_id", "DISCORD_ADMIN_ROLE_ID")
+        if _is_missing(admin_role):
+            return values
+
+        general_role = _get(
+            "discord_general_admin_role_id",
+            "DISCORD_GENERAL_ADMIN_ROLE_ID",
+        )
+        if _is_missing(general_role):
+            if "discord_general_admin_role_id" in values:
+                values["discord_general_admin_role_id"] = admin_role
+            else:
+                values["DISCORD_GENERAL_ADMIN_ROLE_ID"] = admin_role
+
+        reviewer_role = _get(
+            "discord_map_reviewer_role_id",
+            "DISCORD_MAP_REVIEWER_ROLE_ID",
+        )
+        if _is_missing(reviewer_role):
+            if "discord_map_reviewer_role_id" in values:
+                values["discord_map_reviewer_role_id"] = admin_role
+            else:
+                values["DISCORD_MAP_REVIEWER_ROLE_ID"] = admin_role
+
+        return values
+
     @model_validator(mode="after")
-    def _validate_and_fill_defaults(self) -> "Settings":
+    def _validate_fields(self) -> "Settings":
         if not self.discord_token.strip():
             raise ValueError("Missing required environment variable: DISCORD_BOT_TOKEN")
 
         if self.rpc_timeout_ms <= 0:
             raise ValueError("RPC_TIMEOUT_MS must be > 0")
-
-        if self.discord_general_admin_role_id is None:
-            self.discord_general_admin_role_id = self.discord_admin_role_id
-        if self.discord_map_reviewer_role_id is None:
-            self.discord_map_reviewer_role_id = self.discord_admin_role_id
 
         return self
 

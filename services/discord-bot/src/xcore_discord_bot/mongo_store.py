@@ -12,7 +12,7 @@ from .settings import Settings
 
 
 class _MongoDoc(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", frozen=True)
 
 
 class PlayerDoc(_MongoDoc):

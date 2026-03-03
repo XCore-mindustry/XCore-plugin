@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from xcore_discord_bot.settings import Settings
 
@@ -95,3 +96,14 @@ def test_settings_from_env_rpc_timeout_positive(
 
     with pytest.raises(RuntimeError, match="RPC_TIMEOUT_MS must be > 0"):
         Settings.from_env()
+
+
+def test_settings_is_frozen_model() -> None:
+    settings = Settings(
+        discord_token="token",
+        discord_admin_role_id=10,
+        discord_private_channel_id=20,
+    )
+
+    with pytest.raises(ValidationError):
+        settings.discord_token = "new-token"
