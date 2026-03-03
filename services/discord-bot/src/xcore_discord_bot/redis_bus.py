@@ -554,37 +554,35 @@ class RedisBus:
         )
 
     async def publish_remove_admin(self, uuid_value: str) -> None:
-        for server in [srv.name for srv in server_registry.get_all_servers()]:
-            await self._publish_event(
-                stream=f"xcore:cmd:remove-admin:{server}",
-                event_type="admin.remove",
-                ttl_ms=120_000,
-                server=server,
-                payload={"uuid": uuid_value, "server": server},
-                idempotency_prefix="admin.remove",
-            )
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:remove-admin",
+            event_type="admin.remove",
+            ttl_ms=120_000,
+            idempotency_prefix="admin.remove",
+            payload_builder=lambda server: {"uuid": uuid_value, "server": server},
+        )
 
     async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
-        for server in [srv.name for srv in server_registry.get_all_servers()]:
-            await self._publish_event(
-                stream=f"xcore:cmd:kick-banned:{server}",
-                event_type="moderation.kick_banned",
-                ttl_ms=120_000,
-                server=server,
-                payload={"uuid": uuid_value, "ip": ip, "server": server},
-                idempotency_prefix="moderation.kick_banned",
-            )
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:kick-banned",
+            event_type="moderation.kick_banned",
+            ttl_ms=120_000,
+            idempotency_prefix="moderation.kick_banned",
+            payload_builder=lambda server: {
+                "uuid": uuid_value,
+                "ip": ip,
+                "server": server,
+            },
+        )
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
-        for server in [srv.name for srv in server_registry.get_all_servers()]:
-            await self._publish_event(
-                stream=f"xcore:cmd:pardon-player:{server}",
-                event_type="moderation.pardon",
-                ttl_ms=120_000,
-                server=server,
-                payload={"uuid": uuid_value, "server": server},
-                idempotency_prefix="moderation.pardon",
-            )
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:pardon-player",
+            event_type="moderation.pardon",
+            ttl_ms=120_000,
+            idempotency_prefix="moderation.pardon",
+            payload_builder=lambda server: {"uuid": uuid_value, "server": server},
+        )
 
     async def publish_maps_load(self, server: str, files: list[dict[str, str]]) -> None:
         await self._publish_event(
@@ -597,15 +595,13 @@ class RedisBus:
         )
 
     async def publish_reload_player_data_cache(self) -> None:
-        for server in [srv.name for srv in server_registry.get_all_servers()]:
-            await self._publish_event(
-                stream=f"xcore:cmd:reload-player-data-cache:{server}",
-                event_type="player.reload_cache",
-                ttl_ms=120_000,
-                server=server,
-                payload={"server": server},
-                idempotency_prefix="player.reload_cache",
-            )
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:reload-player-data-cache",
+            event_type="player.reload_cache",
+            ttl_ms=120_000,
+            idempotency_prefix="player.reload_cache",
+            payload_builder=lambda server: {"server": server},
+        )
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         redis = self._require_redis()
@@ -629,38 +625,54 @@ class RedisBus:
         payload = json.loads(payload_json)
         maps = payload.get("maps")
         if isinstance(maps, list):
-            normalized: list[dict[str, str]] = []
-            for value in maps:
-                if isinstance(value, dict):
-                    normalized.append(
-                        {
-                            "name": str(value.get("name", "Unknown")),
-                            "file_name": str(
-                                value.get("fileName", value.get("file_name", ""))
-                            ),
-                            "author": str(value.get("author", "Unknown")),
-                            "width": str(value.get("width", "")),
-                            "height": str(value.get("height", "")),
-                            "file_size_bytes": str(
-                                value.get(
-                                    "fileSizeBytes", value.get("file_size_bytes", "")
-                                )
-                            ),
-                        }
-                    )
-                else:
-                    normalized.append(
-                        {
-                            "name": str(value),
-                            "file_name": "",
-                            "author": "Unknown",
-                            "width": "",
-                            "height": "",
-                            "file_size_bytes": "",
-                        }
-                    )
-            return normalized
+            return [self._normalize_map_entry(value) for value in maps]
         return []
+
+    async def _publish_for_all_servers(
+        self,
+        *,
+        stream_prefix: str,
+        event_type: str,
+        ttl_ms: int,
+        idempotency_prefix: str,
+        payload_builder: Callable[[str], dict[str, Any]],
+    ) -> None:
+        for server in self._all_server_names():
+            await self._publish_event(
+                stream=f"{stream_prefix}:{server}",
+                event_type=event_type,
+                ttl_ms=ttl_ms,
+                server=server,
+                payload=payload_builder(server),
+                idempotency_prefix=idempotency_prefix,
+            )
+
+    @staticmethod
+    def _all_server_names() -> list[str]:
+        return [srv.name for srv in server_registry.get_all_servers()]
+
+    @staticmethod
+    def _normalize_map_entry(value: Any) -> dict[str, str]:
+        if isinstance(value, dict):
+            return {
+                "name": str(value.get("name", "Unknown")),
+                "file_name": str(value.get("fileName", value.get("file_name", ""))),
+                "author": str(value.get("author", "Unknown")),
+                "width": str(value.get("width", "")),
+                "height": str(value.get("height", "")),
+                "file_size_bytes": str(
+                    value.get("fileSizeBytes", value.get("file_size_bytes", ""))
+                ),
+            }
+
+        return {
+            "name": str(value),
+            "file_name": "",
+            "author": "Unknown",
+            "width": "",
+            "height": "",
+            "file_size_bytes": "",
+        }
 
     async def rpc_remove_map(self, server: str, file_name: str, timeout_ms: int) -> str:
         body = await self._rpc_request(

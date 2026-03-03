@@ -8,6 +8,7 @@ import re
 import secrets
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
+from typing import Any
 import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
@@ -25,6 +26,14 @@ from .redis_bus import RedisBus
 from .settings import Settings
 
 logger = logging.getLogger(__name__)
+
+MSG_PLAYER_NOT_FOUND = "Player not found"
+MSG_DUPLICATE_MUTATION = (
+    "Duplicate command ignored: this operation was already processed recently."
+)
+MSG_NO_ACTIVE_BAN = "No active ban found"
+MSG_NO_ACTIVE_MUTE = "No active mute found"
+MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
 
 HEXED_RANKS: list[dict[str, str | int]] = [
     {"name": "Newbie", "tag": "", "required": 0},
@@ -640,7 +649,8 @@ class XCoreDiscordBot(discord.Client):
         uuid_value = str(player.get("uuid", "")).strip()
         if not uuid_value:
             await interaction.response.send_message(
-                "Player UUID is missing", ephemeral=True
+                MSG_PLAYER_UUID_MISSING,
+                ephemeral=True,
             )
             return
 
@@ -1034,15 +1044,20 @@ class XCoreDiscordBot(discord.Client):
 
     async def _require_general_admin(self, interaction: Interaction) -> bool:
         role_ids = self._member_role_ids(interaction.user)
+        general_role = (
+            self._settings.discord_general_admin_role_id
+            if self._settings.discord_general_admin_role_id is not None
+            else self._settings.discord_admin_role_id
+        )
         allowed = {
-            self._settings.discord_general_admin_role_id,
+            general_role,
             self._settings.discord_admin_role_id,
         }
         if role_ids & allowed:
             return True
         await interaction.response.send_message(
             "Missing permissions: required one of roles "
-            f"{self._role_mention(self._settings.discord_general_admin_role_id)} or "
+            f"{self._role_mention(general_role)} or "
             f"{self._role_mention(self._settings.discord_admin_role_id)}",
             ephemeral=True,
         )
@@ -1050,11 +1065,15 @@ class XCoreDiscordBot(discord.Client):
 
     async def _require_map_reviewer(self, interaction: Interaction) -> bool:
         role_ids = self._member_role_ids(interaction.user)
-        if self._settings.discord_map_reviewer_role_id in role_ids:
+        reviewer_role = (
+            self._settings.discord_map_reviewer_role_id
+            if self._settings.discord_map_reviewer_role_id is not None
+            else self._settings.discord_admin_role_id
+        )
+        if reviewer_role in role_ids:
             return True
         await interaction.response.send_message(
-            "Missing permissions: required role "
-            f"{self._role_mention(self._settings.discord_map_reviewer_role_id)}",
+            f"Missing permissions: required role {self._role_mention(reviewer_role)}",
             ephemeral=True,
         )
         return False
@@ -1066,11 +1085,64 @@ class XCoreDiscordBot(discord.Client):
         if await self._bus.claim_idempotency(claim_key, ttl_seconds=600):
             return True
 
+        await interaction.response.send_message(MSG_DUPLICATE_MUTATION, ephemeral=True)
+        return False
+
+    async def _reply_player_not_found(self, interaction: Interaction) -> None:
+        await interaction.response.send_message(MSG_PLAYER_NOT_FOUND, ephemeral=True)
+
+    async def _get_player_or_reply(
+        self, interaction: Interaction, player_id: int
+    ) -> dict[str, Any] | None:
+        player = await self._store.find_player_by_pid(player_id)
+        if player is None:
+            await self._reply_player_not_found(interaction)
+            return None
+        return player
+
+    async def _reply_missing_uuid_for_action(
+        self,
+        interaction: Interaction,
+        *,
+        action: str,
+    ) -> None:
         await interaction.response.send_message(
-            "Duplicate command ignored: this operation was already processed recently.",
+            f"Cannot {action}: UUID is missing in player data.",
             ephemeral=True,
         )
-        return False
+
+    async def _require_player_uuid(
+        self,
+        interaction: Interaction,
+        player: Mapping[str, object],
+        *,
+        action: str,
+    ) -> str | None:
+        uuid_value, _ip_value = self._player_identifiers(player)
+        if uuid_value is None:
+            await self._reply_missing_uuid_for_action(interaction, action=action)
+            return None
+        return uuid_value
+
+    async def _require_player_uuid_or_ip(
+        self,
+        interaction: Interaction,
+        player: Mapping[str, object],
+        *,
+        action: str,
+    ) -> tuple[str | None, str | None] | None:
+        uuid_value, ip_value = self._player_identifiers(player)
+        if uuid_value is None and ip_value is None:
+            await interaction.response.send_message(
+                f"Cannot {action}: both UUID and IP are missing in player data.",
+                ephemeral=True,
+            )
+            return None
+        return uuid_value, ip_value
+
+    @staticmethod
+    def _player_name(player: Mapping[str, object]) -> str:
+        return str(player.get("nickname", "Unknown"))
 
     # ── slash command implementations ─────────────────────────────────────────
 
@@ -1078,20 +1150,19 @@ class XCoreDiscordBot(discord.Client):
         if not await self._require_admin(interaction):
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
-        nickname = str(player.get("nickname", "Unknown"))
+        nickname = self._player_name(player)
         custom_nickname = str(player.get("custom_nickname", "")).strip()
         title = f"Player Stats • {nickname}"
         if custom_nickname:
             title = f"Player Stats • {nickname} ({custom_nickname})"
 
         rank_label, rank_progress = self._format_hexed_rank_block(
-            rank_value=int(player.get("hexed_rank", 0)),
-            points=int(player.get("hexed_points", 0)),
+            rank_value=self._as_int(player.get("hexed_rank")),
+            points=self._as_int(player.get("hexed_points")),
         )
 
         embed = discord.Embed(title=title, color=discord.Color.blurple())
@@ -1103,7 +1174,7 @@ class XCoreDiscordBot(discord.Client):
         embed.add_field(
             name="Progress",
             value=(
-                f"Playtime: `{self._format_minutes(int(player.get('total_play_time', 0)))}`\n"
+                f"Playtime: `{self._format_minutes(self._as_int(player.get('total_play_time')))}`\n"
                 f"PvP rating: `{player.get('pvp_rating', 0)}`\n"
                 f"Hexed rank: `{rank_label}`\n"
                 f"Hexed progress: `{rank_progress}`"
@@ -1195,18 +1266,20 @@ class XCoreDiscordBot(discord.Client):
             await interaction.response.send_message(str(error), ephemeral=True)
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
-        uuid_value, ip_value = self._player_identifiers(player)
-        if uuid_value is None and ip_value is None:
-            await interaction.response.send_message(
-                "Cannot ban player: both UUID and IP are missing in player data.",
-                ephemeral=True,
-            )
+        identifiers = await self._require_player_uuid_or_ip(
+            interaction,
+            player,
+            action="ban player",
+        )
+        if identifiers is None:
             return
+        uuid_value, ip_value = identifiers
+
+        player_name = self._player_name(player)
 
         view = _BanConfirmView(
             bot=self,
@@ -1218,7 +1291,7 @@ class XCoreDiscordBot(discord.Client):
             duration=duration,
         )
         await interaction.response.send_message(
-            f"Are you sure you want to ban `{player.get('nickname', 'Unknown')}`?",
+            f"Are you sure you want to ban `{player_name}`?",
             view=view,
         )
         view.message = await interaction.original_response()
@@ -1248,7 +1321,7 @@ class XCoreDiscordBot(discord.Client):
         await self._store.upsert_ban(
             uuid=uuid_value or "",
             ip=ip_value,
-            name=str(player.get("nickname", "Unknown")),
+            name=self._player_name(player),
             admin_name=actor_name,
             reason=reason,
             expire_date=expire,
@@ -1259,29 +1332,29 @@ class XCoreDiscordBot(discord.Client):
         )
         await self._post_ban_log(
             pid=player_id,
-            name=str(player.get("nickname", "Unknown")),
+            name=self._player_name(player),
             admin_name=actor_name,
             reason=reason,
             expire=expire,
         )
-        return f"Banned `{player.get('nickname', 'Unknown')}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
+        return f"Banned `{self._player_name(player)}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
 
     async def _cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         if not await self._require_admin(interaction):
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
-        uuid_value, ip_value = self._player_identifiers(player)
-        if uuid_value is None and ip_value is None:
-            await interaction.response.send_message(
-                "Cannot unban player: both UUID and IP are missing in player data.",
-                ephemeral=True,
-            )
+        identifiers = await self._require_player_uuid_or_ip(
+            interaction,
+            player,
+            action="unban player",
+        )
+        if identifiers is None:
             return
+        uuid_value, ip_value = identifiers
 
         if not await self._claim_mutation(
             interaction,
@@ -1295,14 +1368,12 @@ class XCoreDiscordBot(discord.Client):
             ip=ip_value,
         )
         if deleted == 0:
-            await interaction.response.send_message(
-                "No active ban found", ephemeral=True
-            )
+            await interaction.response.send_message(MSG_NO_ACTIVE_BAN, ephemeral=True)
             return
         if uuid_value is not None:
             await self._bus.publish_pardon_player(uuid_value=uuid_value)
         await interaction.response.send_message(
-            f"Unbanned `{player.get('nickname', 'Unknown')}`"
+            f"Unbanned `{self._player_name(player)}`"
         )
 
     async def _cmd_mute(
@@ -1317,17 +1388,16 @@ class XCoreDiscordBot(discord.Client):
             await interaction.response.send_message(str(error), ephemeral=True)
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
-        uuid_value, _ip_value = self._player_identifiers(player)
+        uuid_value = await self._require_player_uuid(
+            interaction,
+            player,
+            action="mute player",
+        )
         if uuid_value is None:
-            await interaction.response.send_message(
-                "Cannot mute player: UUID is missing in player data.",
-                ephemeral=True,
-            )
             return
 
         if not await self._claim_mutation(
@@ -1340,30 +1410,29 @@ class XCoreDiscordBot(discord.Client):
         expire = self._store.now_utc() + duration
         await self._store.upsert_mute(
             uuid=uuid_value,
-            name=str(player.get("nickname", "Unknown")),
+            name=self._player_name(player),
             admin_name=interaction.user.display_name,
             reason=reason,
             expire_date=expire,
         )
         await interaction.response.send_message(
-            f"Muted `{player.get('nickname', 'Unknown')}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
+            f"Muted `{self._player_name(player)}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
         )
 
     async def _cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         if not await self._require_admin(interaction):
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
-        uuid_value, _ip_value = self._player_identifiers(player)
+        uuid_value = await self._require_player_uuid(
+            interaction,
+            player,
+            action="unmute player",
+        )
         if uuid_value is None:
-            await interaction.response.send_message(
-                "Cannot unmute player: UUID is missing in player data.",
-                ephemeral=True,
-            )
             return
 
         if not await self._claim_mutation(
@@ -1375,21 +1444,18 @@ class XCoreDiscordBot(discord.Client):
 
         deleted = await self._store.delete_mute(uuid=uuid_value)
         if deleted == 0:
-            await interaction.response.send_message(
-                "No active mute found", ephemeral=True
-            )
+            await interaction.response.send_message(MSG_NO_ACTIVE_MUTE, ephemeral=True)
             return
         await interaction.response.send_message(
-            f"Unmuted `{player.get('nickname', 'Unknown')}`"
+            f"Unmuted `{self._player_name(player)}`"
         )
 
     async def _cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
         if not await self._require_general_admin(interaction):
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
         if not await self._claim_mutation(
@@ -1399,18 +1465,18 @@ class XCoreDiscordBot(discord.Client):
         ):
             return
 
-        uuid_value, _ip_value = self._player_identifiers(player)
+        uuid_value = await self._require_player_uuid(
+            interaction,
+            player,
+            action="remove admin",
+        )
         if uuid_value is None:
-            await interaction.response.send_message(
-                "Cannot remove admin: UUID is missing in player data.",
-                ephemeral=True,
-            )
             return
 
         changed = await self._store.remove_admin(uuid=uuid_value)
         await self._bus.publish_remove_admin(uuid_value=uuid_value)
         await interaction.response.send_message(
-            f"Removed admin for `{player.get('nickname', 'Unknown')}`"
+            f"Removed admin for `{self._player_name(player)}`"
             if changed
             else "No admin state was changed"
         )
@@ -1421,9 +1487,8 @@ class XCoreDiscordBot(discord.Client):
         if not await self._require_general_admin(interaction):
             return
 
-        player = await self._store.find_player_by_pid(player_id)
+        player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
             return
 
         if not await self._claim_mutation(
@@ -1433,19 +1498,19 @@ class XCoreDiscordBot(discord.Client):
         ):
             return
 
-        uuid_value, _ip_value = self._player_identifiers(player)
+        uuid_value = await self._require_player_uuid(
+            interaction,
+            player,
+            action="reset password",
+        )
         if uuid_value is None:
-            await interaction.response.send_message(
-                "Cannot reset password: UUID is missing in player data.",
-                ephemeral=True,
-            )
             return
 
         changed = await self._store.reset_password(uuid=uuid_value)
         if changed:
             await self._bus.publish_reload_player_data_cache()
         await interaction.response.send_message(
-            f"Password reset for `{player.get('nickname', 'Unknown')}`"
+            f"Password reset for `{self._player_name(player)}`"
             if changed
             else "Password reset did not update any row"
         )
@@ -1671,7 +1736,9 @@ class XCoreDiscordBot(discord.Client):
         return uuid_final, ip_final
 
     @staticmethod
-    def _role_mention(role_id: int) -> str:
+    def _role_mention(role_id: int | None) -> str:
+        if role_id is None:
+            return "<@&0>"
         return f"<@&{role_id}>"
 
     @staticmethod
@@ -1770,6 +1837,20 @@ class XCoreDiscordBot(discord.Client):
             dt = datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
             return dt.strftime("%Y-%m-%d %H:%M UTC")
         return "n/a"
+
+    @staticmethod
+    def _as_int(value: object, default: int = 0) -> int:
+        if isinstance(value, bool):
+            return default
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized and normalized.lstrip("-").isdigit():
+                return int(normalized)
+        return default
 
     @staticmethod
     def _format_hexed_rank_block(rank_value: int, points: int) -> tuple[str, str]:

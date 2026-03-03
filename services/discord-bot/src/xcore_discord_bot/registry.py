@@ -1,17 +1,16 @@
 import time
+from dataclasses import dataclass
 from threading import Lock
 
 
+@dataclass(frozen=True, slots=True)
 class ServerInfo:
-    def __init__(
-        self, name: str, channel_id: int, players: int, max_players: int, version: str
-    ):
-        self.name = name
-        self.channel_id = channel_id
-        self.players = players
-        self.max_players = max_players
-        self.version = version
-        self.last_seen_ts = time.time()
+    name: str
+    channel_id: int
+    players: int
+    max_players: int
+    version: str
+    last_seen_ts: float
 
 
 class LiveServerRegistry:
@@ -24,17 +23,14 @@ class LiveServerRegistry:
         self, name: str, channel_id: int, players: int, max_players: int, version: str
     ) -> None:
         with self._lock:
-            if name in self._servers:
-                srv = self._servers[name]
-                srv.channel_id = channel_id
-                srv.players = players
-                srv.max_players = max_players
-                srv.version = version
-                srv.last_seen_ts = time.time()
-            else:
-                self._servers[name] = ServerInfo(
-                    name, channel_id, players, max_players, version
-                )
+            self._servers[name] = ServerInfo(
+                name=name,
+                channel_id=channel_id,
+                players=players,
+                max_players=max_players,
+                version=version,
+                last_seen_ts=time.time(),
+            )
 
     def prune(self) -> None:
         now = time.time()
