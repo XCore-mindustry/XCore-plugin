@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-03-03
+
+### Added
+- Added a `disabledFeatures` configuration/control flow to block RTV from both menu and command paths.
+
+### Changed
+- Removed legacy transport cutover commands/config and additional unused global config fields.
+- Updated Ukrainian translations from Weblate.
+
+### Fixed
+- Delivered Discord channel messages to the correct target server.
+- Enforced vanilla nickname length limit for custom nicknames.
+- Fixed mute bypass in `/t` and `/g` commands.
+
+### Tests
+- Added an integration test for `@RequiresMuteCheck` post-processor handling.
+
 ## [3.1.1] - 2026-03-01
 
 ### Fixed
@@ -94,7 +111,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.1...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.2...HEAD
+[3.1.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.0...3.1.1
 [3.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.7...3.1.0
 [3.0.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.0.4...3.0.5
