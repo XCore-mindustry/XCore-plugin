@@ -286,35 +286,24 @@ public final class RedisNetworkBackend {
         rpcResponses.incrementAndGet();
     }
 
-    public boolean isPrimaryControlNode() {
-        return switch (config.nodeRole) {
-            case PRIMARY -> true;
-            case WORKER -> false;
-            case AUTO -> false;
-        };
-    }
-
     public boolean supportsSubscribeType(Class<?> type) {
         if (router.isReadOnlyType(type)) {
             return true;
         }
         if (type == SocketEvents.KickBannedPlayer.class) {
-            return config.redisConsumeEnabled;
-        }
-        if (config.redisRpcEnabled && router.isRpcRequestType(type)) {
             return true;
         }
-        return config.redisMutatingConsumeEnabled && router.isMutatingType(type);
+        if (router.isRpcRequestType(type)) {
+            return true;
+        }
+        return router.isMutatingType(type);
     }
 
     public boolean supportsRequestType(Class<?> type) {
-        return config.redisRpcEnabled && router.isRpcRequestType(type) && ensureConnected();
+        return router.isRpcRequestType(type) && ensureConnected();
     }
 
     public boolean supportsRespond(Request<?> request) {
-        if (!config.redisRpcEnabled) {
-            return false;
-        }
         synchronized (inboundRpcContexts) {
             return inboundRpcContexts.containsKey(request);
         }
@@ -513,7 +502,7 @@ public final class RedisNetworkBackend {
 
         try {
             T event = gson.fromJson(payloadJson, type);
-            if (event instanceof Request<?> request && config.redisRpcEnabled && router.isRpcRequestType(type)) {
+            if (event instanceof Request<?> request && router.isRpcRequestType(type)) {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
                 String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server);
                 String rpcType = message.getBody().getOrDefault("rpc_type", "rpc.unknown");

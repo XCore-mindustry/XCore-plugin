@@ -36,10 +36,6 @@ import org.xcore.plugin.cloud.parser.PlayerParser;
 import org.xcore.plugin.cloud.parser.SmartDurationParser;
 import org.xcore.plugin.cloud.parser.LanguageParser;
 import org.xcore.plugin.cloud.parser.TeamParser;
-import org.xcore.plugin.command.transport.ToggleState;
-import org.xcore.plugin.command.transport.TransportCutoverTarget;
-import org.xcore.plugin.command.transport.TransportMode;
-import org.xcore.plugin.command.transport.TransportStage;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.config.GlobalConfig;
@@ -178,10 +174,6 @@ public class CloudService {
 
         mgr.parserRegistry().registerParser(PlayerParser.parser());
         mgr.parserRegistry().registerParser(MapParser.parser());
-        mgr.parserRegistry().registerParser(EnumValueParser.parser(TransportMode.class));
-        mgr.parserRegistry().registerParser(EnumValueParser.parser(TransportCutoverTarget.class));
-        mgr.parserRegistry().registerParser(EnumValueParser.parser(TransportStage.class));
-        mgr.parserRegistry().registerParser(EnumValueParser.parser(ToggleState.class));
 
         mgr.registerCommandPreProcessor(context -> {
             String disabledCommand = disabledCommandKey(context.commandInput().remainingInput());

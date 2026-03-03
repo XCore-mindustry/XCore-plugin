@@ -12,8 +12,6 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 
-import java.util.Map;
-
 @Singleton
 public class NetworkService {
     private final GlobalConfig globalConfig;
@@ -69,20 +67,7 @@ public class NetworkService {
         backend.respond(request, response);
     }
 
-    public boolean isSocketServer() {
-        return backend.isPrimaryControlNode();
-    }
-
-
     public String backendName() {
         return backend.getClass().getSimpleName();
-    }
-
-    public String backendSelectionName() {
-        return "REDIS";
-    }
-
-    public Map<String, Long> backendMetrics() {
-        return backend.metricsSnapshot();
     }
 }

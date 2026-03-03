@@ -104,7 +104,6 @@ class RedisNetworkBackendIntegrationTest {
     @DisplayName("subscribe consumes read-only stream messages")
     void subscribeConsumesReadOnlyStreamMessages() throws InterruptedException {
         Config config = baseConfig("alpha");
-        config.redisConsumeEnabled = true;
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -128,11 +127,9 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
-    @DisplayName("kick-banned subscribe works when mutating consume is disabled")
-    void kickBannedSubscribeWorksWithoutMutatingFlag() throws InterruptedException {
+    @DisplayName("kick-banned subscribe works")
+    void kickBannedSubscribeWorks() throws InterruptedException {
         Config config = baseConfig("alpha");
-        config.redisConsumeEnabled = true;
-        config.redisMutatingConsumeEnabled = false;
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -161,10 +158,8 @@ class RedisNetworkBackendIntegrationTest {
     @DisplayName("rpc request/response roundtrip works for maps list")
     void rpcRequestResponseRoundtripWorks() throws InterruptedException {
         Config serverConfig = baseConfig("target");
-        serverConfig.redisRpcEnabled = true;
 
         Config requesterConfig = baseConfig("discord");
-        requesterConfig.redisRpcEnabled = true;
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         requesterBackend = new RedisNetworkBackend(requesterConfig);
@@ -204,10 +199,8 @@ class RedisNetworkBackendIntegrationTest {
     @DisplayName("rpc dispatch filters by rpc_type and does not cross-trigger handlers")
     void rpcDispatchDoesNotCrossTriggerHandlers() throws InterruptedException {
         Config serverConfig = baseConfig("target");
-        serverConfig.redisRpcEnabled = true;
 
         Config requesterConfig = baseConfig("discord");
-        requesterConfig.redisRpcEnabled = true;
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         requesterBackend = new RedisNetworkBackend(requesterConfig);
@@ -254,7 +247,6 @@ class RedisNetworkBackendIntegrationTest {
     @DisplayName("expired rpc request is ACKed and dropped without handler execution")
     void expiredRpcRequestIsDropped() throws InterruptedException {
         Config serverConfig = baseConfig("target");
-        serverConfig.redisRpcEnabled = true;
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         serverBackend.connect();
@@ -293,7 +285,6 @@ class RedisNetworkBackendIntegrationTest {
     @DisplayName("mutating event with same idempotency_key executes once")
     void mutatingDuplicateMessageExecutesOnce() throws InterruptedException {
         Config config = baseConfig("alpha");
-        config.redisMutatingConsumeEnabled = true;
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -389,8 +380,6 @@ class RedisNetworkBackendIntegrationTest {
         Config config = new Config();
         config.server = server;
         config.redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
-        config.redisShadowPublishEnabled = true;
-        config.redisConsumeEnabled = true;
         config.redisReclaimEnabled = false;
         return config;
     }
