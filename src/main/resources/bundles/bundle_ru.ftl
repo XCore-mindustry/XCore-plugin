@@ -121,6 +121,7 @@ commands-tr-success = { "[" }accent]Язык переводчика был ус�
 commands-tr-off = { "[" }accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Нет такого языка
 discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
+discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](из [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 # ==============================================================================
 # Authentication & Admin Access

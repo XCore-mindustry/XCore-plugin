@@ -121,6 +121,7 @@ commands-tr-success = { "[" }accent]The translator language has been successfull
 commands-tr-off = { "[" }accent]Translator is [scarlet]off[]!
 commands-tr-not-found = { "[" }scarlet]⚠ There is no such language.
 discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
+discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 # ==============================================================================
 # Authentication & Admin Access
