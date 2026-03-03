@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import discord
-import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot
 from xcore_discord_bot.registry import server_registry
