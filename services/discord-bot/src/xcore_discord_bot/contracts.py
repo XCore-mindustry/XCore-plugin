@@ -1,211 +1,213 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from json import loads
 from enum import StrEnum
+from typing import Any
+
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+)
 
 
-def _pick(source: dict, *keys: str) -> str | None:
-    for key in keys:
-        value = source.get(key)
-        if isinstance(value, str):
-            return value
-    return None
+class _FrozenModel(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore", populate_by_name=True)
 
 
 class EventType(StrEnum):
     HEARTBEAT = "ServerHeartbeatEvent"
 
 
-def _pick_int(source: dict, *keys: str) -> int | None:
-    for key in keys:
-        value = source.get(key)
-        if isinstance(value, bool):
-            continue
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            normalized = value.strip()
-            if normalized and normalized.lstrip("-").isdigit():
-                return int(normalized)
-    return None
+def _coerce_int(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("Expected integer value")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized and normalized.lstrip("-").isdigit():
+            return int(normalized)
+    raise ValueError("Expected integer value")
 
 
-@dataclass(frozen=True)
-class GameChatMessage:
-    author_name: str
+class GameChatMessage(_FrozenModel):
+    author_name: str = Field(validation_alias=AliasChoices("authorName", "author_name"))
     message: str
     server: str
 
+    @field_validator("author_name", "message", "server")
     @classmethod
-    def from_payload(cls, payload: dict) -> "GameChatMessage":
-        author_name = _pick(payload, "authorName", "author_name")
-        message = _pick(payload, "message")
-        server = _pick(payload, "server")
+    def _not_blank(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
 
-        if not author_name or not message or not server:
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "GameChatMessage":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid chat payload: expected authorName, message, server"
-            )
-
-        return cls(author_name=author_name, message=message, server=server)
+            ) from error
 
 
-@dataclass(frozen=True)
-class PlayerJoinLeaveEvent:
-    player_name: str
+class PlayerJoinLeaveEvent(_FrozenModel):
+    player_name: str = Field(validation_alias=AliasChoices("playerName", "player_name"))
     server: str
-    joined: bool
+    joined: bool = Field(validation_alias="join")
+
+    @field_validator("player_name", "server")
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
+
+    @field_validator("joined", mode="before")
+    @classmethod
+    def _parse_joined(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"true", "1", "yes", "on"}
+        if isinstance(value, (int, float)):
+            return value != 0
+        return False
 
     @classmethod
-    def from_payload(cls, payload: dict) -> "PlayerJoinLeaveEvent":
-        player_name = _pick(payload, "playerName", "player_name")
-        server = _pick(payload, "server")
-        joined_raw = payload.get("join")
-
-        if isinstance(joined_raw, bool):
-            joined = joined_raw
-        elif isinstance(joined_raw, str):
-            joined = joined_raw.strip().lower() in {"true", "1", "yes", "on"}
-        elif isinstance(joined_raw, (int, float)):
-            joined = joined_raw != 0
-        else:
-            joined = False
-
-        if not player_name or not server:
+    def from_payload(cls, payload: dict[str, Any]) -> "PlayerJoinLeaveEvent":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid join/leave payload: expected playerName and server"
-            )
-
-        return cls(player_name=player_name, server=server, joined=joined)
+            ) from error
 
 
-@dataclass(frozen=True)
-class ServerActionEvent:
+class ServerActionEvent(_FrozenModel):
     message: str
     server: str
 
+    @field_validator("message", "server")
     @classmethod
-    def from_payload(cls, payload: dict) -> "ServerActionEvent":
-        message = _pick(payload, "message")
-        server = _pick(payload, "server")
+    def _required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
 
-        if not message or not server:
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "ServerActionEvent":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid server action payload: expected message and server"
-            )
-
-        return cls(message=message, server=server)
+            ) from error
 
 
-@dataclass(frozen=True)
-class BanEvent:
-    uuid: str | None
-    ip: str | None
+class BanEvent(_FrozenModel):
+    uuid: str | None = None
+    ip: str | None = None
     name: str
-    admin_name: str
+    admin_name: str = Field(validation_alias=AliasChoices("adminName", "admin_name"))
     reason: str
-    expire_date: str | None
+    expire_date: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("expireDate", "expire_date"),
+    )
+
+    @field_validator("name", "admin_name", "reason")
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
 
     @classmethod
-    def from_payload(cls, payload: dict) -> "BanEvent":
-        uuid_value = _pick(payload, "uuid")
-        ip_value = _pick(payload, "ip")
-        name = _pick(payload, "name")
-        admin_name = _pick(payload, "adminName", "admin_name")
-        reason = _pick(payload, "reason")
-        expire_date = _pick(payload, "expireDate", "expire_date")
-
-        if not name or not admin_name or not reason:
+    def from_payload(cls, payload: dict[str, Any]) -> "BanEvent":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid ban payload: expected name, adminName/admin_name, reason"
-            )
-
-        return cls(
-            uuid=uuid_value,
-            ip=ip_value,
-            name=name,
-            admin_name=admin_name,
-            reason=reason,
-            expire_date=expire_date,
-        )
+            ) from error
 
 
-@dataclass(frozen=True)
-class GlobalChatEvent:
-    author_name: str
+class GlobalChatEvent(_FrozenModel):
+    author_name: str = Field(validation_alias=AliasChoices("authorName", "author_name"))
     message: str
     server: str
 
+    @field_validator("author_name", "message", "server")
     @classmethod
-    def from_payload(cls, payload: dict) -> "GlobalChatEvent":
-        author_name = _pick(payload, "authorName", "author_name")
-        message = _pick(payload, "message")
-        server = _pick(payload, "server")
+    def _required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
 
-        if not author_name or not message or not server:
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "GlobalChatEvent":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid global chat payload: expected authorName, message, server"
-            )
-
-        return cls(author_name=author_name, message=message, server=server)
+            ) from error
 
 
-@dataclass(frozen=True)
-class ServerHeartbeatEvent:
-    server_name: str
-    discord_channel_id: int
+class ServerHeartbeatEvent(_FrozenModel):
+    server_name: str = Field(validation_alias=AliasChoices("serverName", "server_name"))
+    discord_channel_id: int = Field(
+        validation_alias=AliasChoices("discordChannelId", "discord_channel_id")
+    )
     players: int
-    max_players: int
+    max_players: int = Field(validation_alias=AliasChoices("maxPlayers", "max_players"))
     version: str
 
+    @field_validator("server_name", "version")
     @classmethod
-    def from_payload(cls, payload: dict) -> "ServerHeartbeatEvent":
-        server_name = _pick(payload, "serverName", "server_name")
-        discord_channel_id = _pick_int(
-            payload, "discordChannelId", "discord_channel_id"
-        )
-        players = _pick_int(payload, "players")
-        max_players = _pick_int(payload, "maxPlayers", "max_players")
-        version = _pick(payload, "version")
+    def _required_text(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
 
-        if (
-            not server_name
-            or discord_channel_id is None
-            or players is None
-            or max_players is None
-            or version is None
-        ):
+    @field_validator("discord_channel_id", "players", "max_players", mode="before")
+    @classmethod
+    def _parse_int_fields(cls, value: Any) -> int:
+        return _coerce_int(value)
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "ServerHeartbeatEvent":
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
             raise ValueError(
                 "Invalid heartbeat payload: expected serverName, discordChannelId, players, maxPlayers, version"
-            )
-
-        return cls(
-            server_name=server_name,
-            discord_channel_id=discord_channel_id,
-            players=players,
-            max_players=max_players,
-            version=version,
-        )
+            ) from error
 
 
-@dataclass(frozen=True)
-class RawEvent:
+class RawEvent(_FrozenModel):
     event_type: str
-    payload: dict
+    payload: dict[str, Any]
 
     @classmethod
-    def from_fields(cls, fields: dict) -> "RawEvent":
-        event_type = _pick(fields, "event_type")
-        payload_raw = _pick(fields, "payload_json") or "{}"
-
-        if not event_type:
+    def from_fields(cls, fields: dict[str, Any]) -> "RawEvent":
+        event_type_raw = fields.get("event_type")
+        if not isinstance(event_type_raw, str) or not event_type_raw:
             raise ValueError("Invalid raw event fields: expected event_type")
 
-        try:
-            from json import loads
+        payload_raw = fields.get("payload_json", "{}")
+        if not isinstance(payload_raw, str):
+            payload_raw = str(payload_raw)
 
+        try:
             payload = loads(payload_raw)
         except Exception as error:
             raise ValueError(
@@ -217,4 +219,4 @@ class RawEvent:
                 "Invalid raw event fields: payload_json must decode to object"
             )
 
-        return cls(event_type=event_type, payload=payload)
+        return cls(event_type=event_type_raw, payload=payload)

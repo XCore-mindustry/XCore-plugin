@@ -5,9 +5,48 @@ from datetime import datetime, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pydantic import BaseModel, ConfigDict
 from pymongo import DESCENDING
 
 from .settings import Settings
+
+
+class _MongoDoc(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+
+class PlayerDoc(_MongoDoc):
+    pid: int | None = None
+    uuid: str | None = None
+    ip: str | None = None
+    nickname: str | None = None
+    custom_nickname: str | None = None
+    hexed_rank: int | None = None
+    hexed_points: int | None = None
+    total_play_time: int | None = None
+    pvp_rating: int | None = None
+    is_admin: bool | None = None
+    admin_confirmed: bool | None = None
+    password_hash: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+
+
+class BanDoc(_MongoDoc):
+    uuid: str | None = None
+    ip: str | None = None
+    name: str | None = None
+    admin_name: str | None = None
+    reason: str | None = None
+    expire_date: datetime | None = None
+
+
+class MuteDoc(_MongoDoc):
+    uuid: str
+    name: str
+    admin_name: str
+    reason: str
+    expire_date: datetime
 
 
 class MongoStore:
@@ -31,10 +70,16 @@ class MongoStore:
         self._db = None
 
     async def find_player_by_pid(self, pid: int) -> dict[str, Any] | None:
-        return await self._db_required()["players"].find_one({"pid": pid})
+        raw = await self._db_required()["players"].find_one({"pid": pid})
+        if raw is None:
+            return None
+        return PlayerDoc.model_validate(raw).model_dump(mode="python")
 
     async def find_player_by_uuid(self, uuid: str) -> dict[str, Any] | None:
-        return await self._db_required()["players"].find_one({"uuid": uuid})
+        raw = await self._db_required()["players"].find_one({"uuid": uuid})
+        if raw is None:
+            return None
+        return PlayerDoc.model_validate(raw).model_dump(mode="python")
 
     async def search_players(
         self, query: str, limit: int = 6, page: int = 0
@@ -48,7 +93,8 @@ class MongoStore:
             .skip(skip)
             .limit(limit)
         )
-        return await cursor.to_list(length=limit)
+        rows = await cursor.to_list(length=limit)
+        return [PlayerDoc.model_validate(row).model_dump(mode="python") for row in rows]
 
     async def list_bans(
         self, name_filter: str | None = None, limit: int = 6, page: int = 0
@@ -65,7 +111,8 @@ class MongoStore:
             .skip(skip)
             .limit(limit)
         )
-        return await cursor.to_list(length=limit)
+        rows = await cursor.to_list(length=limit)
+        return [BanDoc.model_validate(row).model_dump(mode="python") for row in rows]
 
     async def upsert_ban(
         self,
@@ -81,14 +128,14 @@ class MongoStore:
         if ip:
             query = {"$or": [{"uuid": uuid}, {"ip": ip}]}
 
-        payload = {
-            "uuid": uuid,
-            "ip": ip,
-            "name": name,
-            "admin_name": admin_name,
-            "reason": reason,
-            "expire_date": expire_date,
-        }
+        payload = BanDoc(
+            uuid=uuid,
+            ip=ip,
+            name=name,
+            admin_name=admin_name,
+            reason=reason,
+            expire_date=expire_date,
+        ).model_dump(mode="python")
         await self._db_required()["bans"].replace_one(query, payload, upsert=True)
 
     async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
@@ -108,13 +155,13 @@ class MongoStore:
         reason: str,
         expire_date: datetime,
     ) -> None:
-        payload = {
-            "uuid": uuid,
-            "name": name,
-            "admin_name": admin_name,
-            "reason": reason,
-            "expire_date": expire_date,
-        }
+        payload = MuteDoc(
+            uuid=uuid,
+            name=name,
+            admin_name=admin_name,
+            reason=reason,
+            expire_date=expire_date,
+        ).model_dump(mode="python")
         await self._db_required()["mutes"].replace_one(
             {"uuid": uuid}, payload, upsert=True
         )
