@@ -69,7 +69,7 @@ class _Settings:
 
 
 @pytest.mark.asyncio
-async def test_upload_map_requires_role() -> None:
+async def test_upload_map_requires_valid_msav_files() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot._settings = _Settings()
     bot._bus = _Bus()
@@ -80,14 +80,14 @@ async def test_upload_map_requires_role() -> None:
     )
 
     attachments = [
-        _Attachment(filename="one.msav", url="https://example/one.msav"),
+        _Attachment(filename="one.txt", url="https://example/one.txt"),
         None,
         None,
     ]
     await XCoreDiscordBot._cmd_upload_map(bot, interaction, "mini-pvp", attachments)
 
     assert interaction.ephemeral_replies
-    assert "Missing permissions" in interaction.ephemeral_replies[0]
+    assert "No valid .msav files attached." in interaction.ephemeral_replies[0]
     assert bot._bus.maps_calls == []
 
 

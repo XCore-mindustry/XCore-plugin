@@ -41,17 +41,6 @@ def test_strip_mindustry_colors() -> None:
     assert strip_mindustry_colors("[not-a-color]text") == "[not-a-color]text"
 
 
-def test_role_mention_format() -> None:
-    assert XCoreDiscordBot._role_mention(1234567890) == "<@&1234567890>"
-
-
-def test_admin_interaction_action_parse() -> None:
-    assert XCoreDiscordBot._admin_interaction_action("s_1_admreq") == "confirm"
-    assert XCoreDiscordBot._admin_interaction_action("s_1_admreq_confirm") == "confirm"
-    assert XCoreDiscordBot._admin_interaction_action("s_1_admreq_decline") == "decline"
-    assert XCoreDiscordBot._admin_interaction_action("other") is None
-
-
 # ── _claim_mutation tests ─────────────────────────────────────────────────────
 
 

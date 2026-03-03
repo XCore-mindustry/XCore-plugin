@@ -4,10 +4,9 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
 
-import discord
 import pytest
 
-from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.bot import _AdminRequestView
 
 
 @dataclass
@@ -37,22 +36,9 @@ class _Response:
 
 @dataclass
 class _Interaction:
-    id: int
     user: _User
-    custom_id: str
     response: _Response = field(default_factory=_Response)
     message: Any = None
-
-    type: discord.InteractionType = discord.InteractionType.component
-
-    @property
-    def data(self) -> dict[str, str]:
-        return {"custom_id": self.custom_id}
-
-
-@dataclass
-class _Message:
-    content: str
 
 
 class _Store:
@@ -84,45 +70,32 @@ class _Bus:
 
 
 @pytest.mark.asyncio
-async def test_admin_confirm_idempotency_not_tied_to_interaction_id() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    settings = SimpleNamespace(
-        discord_admin_role_id=5,
-        discord_token="token",
-        discord_interaction_hmac_secret="secret",
-    )
-    store = _Store()
-    bus = _Bus()
-    bot.__dict__["_settings"] = settings
-    bot.__dict__["_store"] = store
-    bot.__dict__["_bus"] = bus
-
-    custom_id = XCoreDiscordBot._build_admin_interaction_custom_id(
-        bot,
-        "mini-pvp",
-        1,
-        "confirm",
-        "req-1",
-    )
-    initial_text = "Admin request: **Nick** (`pid=1`) on `mini-pvp`"
-    first = _Interaction(
-        id=1001,
-        user=_User(roles=[_Role(5)]),
-        custom_id=custom_id,
-        message=_Message(content=initial_text),
-    )
-    second = _Interaction(
-        id=1002,
-        user=_User(roles=[_Role(5)]),
-        custom_id=custom_id,
-        message=_Message(content=initial_text),
+async def test_admin_request_view_confirm_idempotent() -> None:
+    bot = SimpleNamespace(
+        _settings=SimpleNamespace(discord_admin_role_id=5),
+        _store=_Store(),
+        _bus=_Bus(),
     )
 
-    await XCoreDiscordBot.on_interaction(bot, first)
-    await XCoreDiscordBot.on_interaction(bot, second)
+    async def _finalize_admin_request_message(
+        interaction: _Interaction, status: str
+    ) -> None:
+        await interaction.response.edit_message(content=status, view=None)
 
-    assert bus.confirmed == [("uuid-1", "mini-pvp")]
-    assert store.marked == ["uuid-1"]
+    bot._finalize_admin_request_message = _finalize_admin_request_message
+
+    view = _AdminRequestView(bot=bot, server="mini-pvp", pid=1, request_nonce="req-1")
+    first = _Interaction(user=_User(roles=[_Role(5)]))
+    second = _Interaction(user=_User(roles=[_Role(5)]))
+
+    confirm_button = view.children[0]
+    callback = confirm_button.callback
+    assert callback is not None
+    await callback(first)
+    await callback(second)
+
+    assert bot._bus.confirmed == [("uuid-1", "mini-pvp")]
+    assert bot._store.marked == ["uuid-1"]
     assert len(first.response.edits) == 1
     assert "✅ Confirmed admin request" in (first.response.edits[0][0] or "")
     assert (

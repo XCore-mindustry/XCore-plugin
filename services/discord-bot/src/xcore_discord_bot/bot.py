@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import hmac
 import logging
 import re
 import secrets
@@ -12,6 +10,7 @@ from typing import Any
 import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
+from discord.ext import commands
 
 from .contracts import (
     BanEvent,
@@ -20,6 +19,7 @@ from .contracts import (
     ServerActionEvent,
 )
 from .contracts import EventType, GlobalChatEvent, RawEvent, ServerHeartbeatEvent
+from .cogs import AdminCog, InfoCog, MapsCog
 from .mongo_store import MongoStore
 from .registry import server_registry
 from .redis_bus import RedisBus
@@ -371,13 +371,125 @@ class _MapRemoveConfirmView(discord.ui.View):
                 item.disabled = True
 
 
-class XCoreDiscordBot(discord.Client):
+class _AdminRequestView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        server: str,
+        pid: int,
+        request_nonce: str,
+    ) -> None:
+        super().__init__(timeout=900)
+        self._bot = bot
+        self._server = server
+        self._pid = pid
+        self._request_nonce = request_nonce
+        self.message: discord.Message | None = None
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        role_ids = {role.id for role in getattr(interaction.user, "roles", [])}
+        if self._bot._settings.discord_admin_role_id in role_ids:
+            return True
+
+        await interaction.response.send_message(
+            "Access denied. Required admin role.",
+            ephemeral=True,
+        )
+        return False
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
+    async def _confirm(
+        self,
+        interaction: Interaction,
+        button: discord.ui.Button,
+    ) -> None:  # noqa: ARG002
+        player = await self._bot._store.find_player_by_pid(self._pid)
+        if player is None:
+            await interaction.response.send_message(
+                MSG_PLAYER_NOT_FOUND, ephemeral=True
+            )
+            return
+
+        uuid_value = str(player.get("uuid", "")).strip()
+        if not uuid_value:
+            await interaction.response.send_message(
+                MSG_PLAYER_UUID_MISSING,
+                ephemeral=True,
+            )
+            return
+
+        claim_key = f"admin-confirm:{self._server}:{uuid_value}:{self._request_nonce}"
+        if not await self._bot._bus.claim_idempotency(claim_key, ttl_seconds=600):
+            await interaction.response.send_message(
+                "This admin confirmation was already processed.",
+                ephemeral=True,
+            )
+            return
+
+        await self._bot._store.mark_admin_confirmed(uuid=uuid_value)
+        await self._bot._bus.publish_admin_confirm(
+            uuid_value=uuid_value,
+            server=self._server,
+        )
+        confirmer = getattr(
+            interaction.user,
+            "mention",
+            f"`{interaction.user.display_name}`",
+        )
+        status = (
+            f"✅ Confirmed admin request for `{player.get('nickname', 'Unknown')}` "
+            f"on `{self._server}` by {confirmer}"
+        )
+        await self._bot._finalize_admin_request_message(interaction, status)
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
+    async def _decline(
+        self,
+        interaction: Interaction,
+        button: discord.ui.Button,
+    ) -> None:  # noqa: ARG002
+        player = await self._bot._store.find_player_by_pid(self._pid)
+        if player is None:
+            await interaction.response.send_message(
+                MSG_PLAYER_NOT_FOUND, ephemeral=True
+            )
+            return
+
+        confirmer = getattr(
+            interaction.user,
+            "mention",
+            f"`{interaction.user.display_name}`",
+        )
+        status = (
+            f"❌ Declined admin request for `{player.get('nickname', 'Unknown')}` "
+            f"on `{self._server}` by {confirmer}"
+        )
+        await self._bot._finalize_admin_request_message(interaction, status)
+
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        try:
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            await self.message.edit(view=self)
+        except Exception:
+            pass
+
+
+class XCoreDiscordBot(commands.Bot):
     def __init__(self, settings: Settings, bus: RedisBus, store: MongoStore) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
         intents.guild_messages = True
         intents.guilds = True
-        super().__init__(intents=intents)
+        super().__init__(
+            command_prefix=commands.when_mentioned,
+            intents=intents,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
         self._settings = settings
         self._bus = bus
@@ -391,169 +503,25 @@ class XCoreDiscordBot(discord.Client):
         self._admin_request_task: asyncio.Task[None] | None = None
         self._heartbeat_consumer_task: asyncio.Task[None] | None = None
 
-        self.tree = app_commands.CommandTree(self)
-        self._register_commands()
-
-    def _register_commands(self) -> None:
-        """Register all slash commands on the tree."""
-
-        guild_obj = (
-            discord.Object(id=self._settings.discord_guild_id)
-            if self._settings.discord_guild_id
-            else None
-        )
-
-        @self.tree.command(
-            name="stats", description="Show player stats", guild=guild_obj
-        )
-        @app_commands.describe(player_id="Numeric player ID")
-        async def cmd_stats(interaction: Interaction, player_id: int) -> None:
-            await self._cmd_stats(interaction, player_id)
-
-        @self.tree.command(
-            name="search", description="Search players by name (admin)", guild=guild_obj
-        )
-        @app_commands.describe(name="Player name to search for")
-        async def cmd_search(interaction: Interaction, name: str) -> None:
-            await self._cmd_search(interaction, name)
-
-        @self.tree.command(
-            name="bans",
-            description="List bans, optionally filtered by name (admin)",
-            guild=guild_obj,
-        )
-        @app_commands.describe(name="Optional name filter")
-        async def cmd_bans(interaction: Interaction, name: str = "") -> None:
-            await self._cmd_bans(interaction, name or None)
-
-        @self.tree.command(
-            name="ban", description="Ban a player (admin)", guild=guild_obj
-        )
-        @app_commands.describe(
-            player_id="Numeric player ID",
-            period="Duration e.g. 1d, 2w, 1y",
-            reason="Ban reason",
-        )
-        async def cmd_ban(
-            interaction: Interaction,
-            player_id: int,
-            period: str,
-            reason: str = "Not Specified",
-        ) -> None:
-            await self._cmd_ban(interaction, player_id, period, reason)
-
-        @self.tree.command(
-            name="unban", description="Unban a player (admin)", guild=guild_obj
-        )
-        @app_commands.describe(player_id="Numeric player ID")
-        async def cmd_unban(interaction: Interaction, player_id: int) -> None:
-            await self._cmd_unban(interaction, player_id)
-
-        @self.tree.command(
-            name="mute", description="Mute a player (admin)", guild=guild_obj
-        )
-        @app_commands.describe(
-            player_id="Numeric player ID",
-            period="Duration e.g. 10m, 1h",
-            reason="Mute reason",
-        )
-        async def cmd_mute(
-            interaction: Interaction,
-            player_id: int,
-            period: str,
-            reason: str = "Not Specified",
-        ) -> None:
-            await self._cmd_mute(interaction, player_id, period, reason)
-
-        @self.tree.command(
-            name="unmute", description="Unmute a player (admin)", guild=guild_obj
-        )
-        @app_commands.describe(player_id="Numeric player ID")
-        async def cmd_unmute(interaction: Interaction, player_id: int) -> None:
-            await self._cmd_unmute(interaction, player_id)
-
-        @self.tree.command(
-            name="remove-admin",
-            description="Remove admin from a player (general admin)",
-            guild=guild_obj,
-        )
-        @app_commands.describe(player_id="Numeric player ID")
-        async def cmd_remove_admin(interaction: Interaction, player_id: int) -> None:
-            await self._cmd_remove_admin(interaction, player_id)
-
-        @self.tree.command(
-            name="reset-password",
-            description="Reset admin password for a player (general admin)",
-            guild=guild_obj,
-        )
-        @app_commands.describe(player_id="Numeric player ID")
-        async def cmd_reset_password(interaction: Interaction, player_id: int) -> None:
-            await self._cmd_reset_password(interaction, player_id)
-
-        @self.tree.command(
-            name="servers",
-            description="Show all live Mindustry servers",
-            guild=guild_obj,
-        )
-        async def cmd_servers(interaction: Interaction) -> None:
-            servers = sorted(server_registry.get_all_servers(), key=lambda s: s.name)
-            if not servers:
-                await interaction.response.send_message(
-                    "No live servers connected right now.", ephemeral=True
-                )
-                return
-
-            embed = discord.Embed(title="Live Servers", color=0x00FF00)
-            for s in servers:
-                val = f"**Players:** {s.players}/{s.max_players}\n**Version:** {s.version}\n**Channel:** <#{s.channel_id}>"
-                embed.add_field(name=s.name, value=val, inline=False)
-
-            await interaction.response.send_message(embed=embed)
-
-        @self.tree.command(
-            name="maps", description="List maps on a server", guild=guild_obj
-        )
-        @app_commands.describe(server="Server name")
-        @app_commands.autocomplete(server=self._autocomplete_server_name)
-        async def cmd_maps(interaction: Interaction, server: str) -> None:
-            await self._cmd_maps(interaction, server)
-
-        @self.tree.command(
-            name="remove-map",
-            description="Remove a map from a server (map reviewer)",
-            guild=guild_obj,
-        )
-        @app_commands.describe(
-            server="Server name", file_name="Map file name (.msav) to remove"
-        )
-        @app_commands.autocomplete(server=self._autocomplete_server_name)
-        async def cmd_remove_map(
-            interaction: Interaction, server: str, file_name: str
-        ) -> None:
-            await self._cmd_remove_map(interaction, server, file_name)
-
-        @self.tree.command(
-            name="upload-map",
-            description="Upload .msav map files to a server (map reviewer)",
-            guild=guild_obj,
-        )
-        @app_commands.describe(
-            server="Server name",
-            file1="First .msav file",
-            file2="Second .msav file (optional)",
-            file3="Third .msav file (optional)",
-        )
-        @app_commands.autocomplete(server=self._autocomplete_server_name)
-        async def cmd_upload_map(
-            interaction: Interaction,
-            server: str,
-            file1: discord.Attachment,
-            file2: discord.Attachment | None = None,
-            file3: discord.Attachment | None = None,
-        ) -> None:
-            await self._cmd_upload_map(interaction, server, [file1, file2, file3])
-
     async def setup_hook(self) -> None:
+        await self.add_cog(InfoCog(self))
+        await self.add_cog(AdminCog(self))
+        await self.add_cog(MapsCog(self))
+
+        @self.tree.error
+        async def _on_app_command_error(
+            interaction: Interaction,
+            error: app_commands.AppCommandError,
+        ) -> None:
+            if isinstance(error, app_commands.CheckFailure):
+                message = str(error) or "Missing permissions"
+                if interaction.response.is_done():
+                    await interaction.followup.send(message, ephemeral=True)
+                else:
+                    await interaction.response.send_message(message, ephemeral=True)
+                return
+            raise error
+
         await self._bus.connect()
         await self._store.connect()
         self._chat_consumer_task = asyncio.create_task(
@@ -606,72 +574,6 @@ class XCoreDiscordBot(discord.Client):
             message=message.content,
             source_message_id=str(message.id),
         )
-
-    async def on_interaction(self, interaction: Interaction) -> None:
-        if interaction.type != discord.InteractionType.component:
-            return
-
-        if interaction.data is None:
-            return
-
-        custom_id = str(interaction.data.get("custom_id", ""))
-        parsed = self._parse_admin_interaction_custom_id(custom_id)
-        if parsed is None:
-            return
-        server, pid, action, request_nonce = parsed
-
-        member = interaction.user
-        role_ids = {role.id for role in getattr(member, "roles", [])}
-        if self._settings.discord_admin_role_id not in role_ids:
-            await interaction.response.send_message(
-                "Access denied. Required role: "
-                f"{self._role_mention(self._settings.discord_admin_role_id)}",
-                ephemeral=True,
-            )
-            return
-
-        player = await self._store.find_player_by_pid(pid)
-        if player is None:
-            await interaction.response.send_message("Player not found", ephemeral=True)
-            return
-
-        if action == "decline":
-            confirmer = getattr(
-                interaction.user, "mention", f"`{interaction.user.display_name}`"
-            )
-            status = (
-                f"❌ Declined admin request for `{player.get('nickname', 'Unknown')}` "
-                f"on `{server}` by {confirmer}"
-            )
-            await self._finalize_admin_request_message(interaction, status)
-            return
-
-        uuid_value = str(player.get("uuid", "")).strip()
-        if not uuid_value:
-            await interaction.response.send_message(
-                MSG_PLAYER_UUID_MISSING,
-                ephemeral=True,
-            )
-            return
-
-        claim_key = f"admin-confirm:{server}:{uuid_value}:{request_nonce}"
-        if not await self._bus.claim_idempotency(claim_key, ttl_seconds=600):
-            await interaction.response.send_message(
-                "This admin confirmation was already processed.",
-                ephemeral=True,
-            )
-            return
-
-        await self._store.mark_admin_confirmed(uuid=uuid_value)
-        await self._bus.publish_admin_confirm(uuid_value=uuid_value, server=server)
-        confirmer = getattr(
-            interaction.user, "mention", f"`{interaction.user.display_name}`"
-        )
-        status = (
-            f"✅ Confirmed admin request for `{player.get('nickname', 'Unknown')}` "
-            f"on `{server}` by {confirmer}"
-        )
-        await self._finalize_admin_request_message(interaction, status)
 
     async def close(self) -> None:
         for task in (
@@ -734,20 +636,21 @@ class XCoreDiscordBot(discord.Client):
             logger.debug("No channel registered for server=%s (%s)", server, context)
         return channel_id
 
-    async def _autocomplete_server_name(
-        self,
-        _interaction: Interaction,
-        current: str,
-    ) -> list[app_commands.Choice[str]]:
-        current_norm = current.strip().lower()
-        choices: list[app_commands.Choice[str]] = []
-        for server in sorted(srv.name for srv in server_registry.get_all_servers()):
-            if current_norm and current_norm not in server.lower():
-                continue
-            choices.append(app_commands.Choice(name=server, value=server))
-            if len(choices) >= 25:
-                break
-        return choices
+    @staticmethod
+    def _get_live_servers():
+        return server_registry.get_all_servers()
+
+    @staticmethod
+    def _build_servers_embed(servers) -> discord.Embed:
+        embed = discord.Embed(title="Live Servers", color=0x00FF00)
+        for srv in servers:
+            value = (
+                f"**Players:** {srv.players}/{srv.max_players}\n"
+                f"**Version:** {srv.version}\n"
+                f"**Channel:** <#{srv.channel_id}>"
+            )
+            embed.add_field(name=srv.name, value=value, inline=False)
+        return embed
 
     async def _finalize_admin_request_message(
         self,
@@ -873,34 +776,18 @@ class XCoreDiscordBot(discord.Client):
             if channel is None:
                 return
 
-            button = discord.ui.Button(
-                style=discord.ButtonStyle.success,
-                label="Confirm",
-                custom_id=self._build_admin_interaction_custom_id(
-                    server,
-                    pid,
-                    "confirm",
-                    request_nonce,
-                ),
+            view = _AdminRequestView(
+                bot=self,
+                server=server,
+                pid=pid,
+                request_nonce=request_nonce,
             )
-            decline_button = discord.ui.Button(
-                style=discord.ButtonStyle.danger,
-                label="Decline",
-                custom_id=self._build_admin_interaction_custom_id(
-                    server,
-                    pid,
-                    "decline",
-                    request_nonce,
-                ),
-            )
-            view = discord.ui.View(timeout=None)
-            view.add_item(button)
-            view.add_item(decline_button)
 
-            await channel.send(
+            message = await channel.send(
                 f"Admin request: **{nickname}** (`pid={pid}`) on `{server}`",
                 view=view,
             )
+            view.message = message
 
         await self._run_consumer_forever(
             "Admin request", self._bus.consume_admin_requests, dispatch
@@ -1031,53 +918,6 @@ class XCoreDiscordBot(discord.Client):
         await interaction.response.send_message(embed=embed, view=view)
         view.bot_message = await interaction.original_response()
 
-    async def _require_admin(self, interaction: Interaction) -> bool:
-        role_ids = self._member_role_ids(interaction.user)
-        if self._settings.discord_admin_role_id in role_ids:
-            return True
-        await interaction.response.send_message(
-            "Missing permissions: required role "
-            f"{self._role_mention(self._settings.discord_admin_role_id)}",
-            ephemeral=True,
-        )
-        return False
-
-    async def _require_general_admin(self, interaction: Interaction) -> bool:
-        role_ids = self._member_role_ids(interaction.user)
-        general_role = (
-            self._settings.discord_general_admin_role_id
-            if self._settings.discord_general_admin_role_id is not None
-            else self._settings.discord_admin_role_id
-        )
-        allowed = {
-            general_role,
-            self._settings.discord_admin_role_id,
-        }
-        if role_ids & allowed:
-            return True
-        await interaction.response.send_message(
-            "Missing permissions: required one of roles "
-            f"{self._role_mention(general_role)} or "
-            f"{self._role_mention(self._settings.discord_admin_role_id)}",
-            ephemeral=True,
-        )
-        return False
-
-    async def _require_map_reviewer(self, interaction: Interaction) -> bool:
-        role_ids = self._member_role_ids(interaction.user)
-        reviewer_role = (
-            self._settings.discord_map_reviewer_role_id
-            if self._settings.discord_map_reviewer_role_id is not None
-            else self._settings.discord_admin_role_id
-        )
-        if reviewer_role in role_ids:
-            return True
-        await interaction.response.send_message(
-            f"Missing permissions: required role {self._role_mention(reviewer_role)}",
-            ephemeral=True,
-        )
-        return False
-
     async def _claim_mutation(
         self, interaction: Interaction, *, operation: str, scope: str
     ) -> bool:
@@ -1147,9 +987,6 @@ class XCoreDiscordBot(discord.Client):
     # ── slash command implementations ─────────────────────────────────────────
 
     async def _cmd_stats(self, interaction: Interaction, player_id: int) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
             return
@@ -1197,9 +1034,6 @@ class XCoreDiscordBot(discord.Client):
         await interaction.response.send_message(embed=embed)
 
     async def _cmd_search(self, interaction: Interaction, name: str) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         page_size = 6
 
         async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
@@ -1226,9 +1060,6 @@ class XCoreDiscordBot(discord.Client):
     async def _cmd_bans(
         self, interaction: Interaction, name_filter: str | None
     ) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         page_size = 6
 
         async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
@@ -1257,9 +1088,6 @@ class XCoreDiscordBot(discord.Client):
     async def _cmd_ban(
         self, interaction: Interaction, player_id: int, period: str, reason: str
     ) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         try:
             duration = parse_duration(period)
         except ValueError as error:
@@ -1340,9 +1168,6 @@ class XCoreDiscordBot(discord.Client):
         return f"Banned `{self._player_name(player)}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
 
     async def _cmd_unban(self, interaction: Interaction, player_id: int) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
             return
@@ -1379,9 +1204,6 @@ class XCoreDiscordBot(discord.Client):
     async def _cmd_mute(
         self, interaction: Interaction, player_id: int, period: str, reason: str
     ) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         try:
             duration = parse_duration(period)
         except ValueError as error:
@@ -1420,9 +1242,6 @@ class XCoreDiscordBot(discord.Client):
         )
 
     async def _cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
-        if not await self._require_admin(interaction):
-            return
-
         player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
             return
@@ -1451,9 +1270,6 @@ class XCoreDiscordBot(discord.Client):
         )
 
     async def _cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
-        if not await self._require_general_admin(interaction):
-            return
-
         player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
             return
@@ -1484,9 +1300,6 @@ class XCoreDiscordBot(discord.Client):
     async def _cmd_reset_password(
         self, interaction: Interaction, player_id: int
     ) -> None:
-        if not await self._require_general_admin(interaction):
-            return
-
         player = await self._get_player_or_reply(interaction, player_id)
         if player is None:
             return
@@ -1587,9 +1400,6 @@ class XCoreDiscordBot(discord.Client):
     async def _cmd_remove_map(
         self, interaction: Interaction, server: str, file_name: str
     ) -> None:
-        if not await self._require_map_reviewer(interaction):
-            return
-
         normalized = file_name.strip()
         if not normalized:
             await interaction.response.send_message(
@@ -1642,9 +1452,6 @@ class XCoreDiscordBot(discord.Client):
         server: str,
         attachments: list[discord.Attachment | None],
     ) -> None:
-        if not await self._require_map_reviewer(interaction):
-            return
-
         files = [
             {"url": att.url, "filename": att.filename}
             for att in attachments
@@ -1708,18 +1515,6 @@ class XCoreDiscordBot(discord.Client):
         await channel.send(embed=embed)
 
     @staticmethod
-    def _member_role_ids(user: object) -> set[int]:
-        roles = getattr(user, "roles", None)
-        if roles is None:
-            return set()
-        result: set[int] = set()
-        for role in roles:
-            role_id = getattr(role, "id", None)
-            if isinstance(role_id, int):
-                result.add(role_id)
-        return result
-
-    @staticmethod
     def _player_identifiers(
         player: Mapping[str, object],
     ) -> tuple[str | None, str | None]:
@@ -1734,82 +1529,6 @@ class XCoreDiscordBot(discord.Client):
         uuid_final = uuid_value if uuid_value else None
         ip_final = ip_value if ip_value else None
         return uuid_final, ip_final
-
-    @staticmethod
-    def _role_mention(role_id: int | None) -> str:
-        if role_id is None:
-            return "<@&0>"
-        return f"<@&{role_id}>"
-
-    @staticmethod
-    def _admin_interaction_action(custom_id: str) -> str | None:
-        if custom_id.endswith("_admreq"):
-            return "confirm"
-        if custom_id.endswith("_admreq_confirm"):
-            return "confirm"
-        if custom_id.endswith("_admreq_decline"):
-            return "decline"
-        return None
-
-    def _build_admin_interaction_custom_id(
-        self,
-        server: str,
-        pid: int,
-        action: str,
-        request_nonce: str,
-    ) -> str:
-        expires_at = int(datetime.now(timezone.utc).timestamp()) + 600
-        payload = f"{server}:{pid}:{action}:{request_nonce}:{expires_at}"
-        signature = hmac.new(
-            self._interaction_hmac_secret(),
-            payload.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()[:16]
-        return f"admreq:{payload}:{signature}"
-
-    def _parse_admin_interaction_custom_id(
-        self,
-        custom_id: str,
-    ) -> tuple[str, int, str, str] | None:
-        parts = custom_id.split(":")
-        if len(parts) != 7 or parts[0] != "admreq":
-            return None
-
-        server = parts[1]
-        pid_raw = parts[2]
-        action = parts[3]
-        request_nonce = parts[4]
-        expires_raw = parts[5]
-        signature = parts[6]
-
-        if action not in {"confirm", "decline"}:
-            return None
-
-        try:
-            pid = int(pid_raw)
-            expires_at = int(expires_raw)
-        except ValueError:
-            return None
-
-        if int(datetime.now(timezone.utc).timestamp()) > expires_at:
-            return None
-
-        payload = f"{server}:{pid}:{action}:{request_nonce}:{expires_at}"
-        expected = hmac.new(
-            self._interaction_hmac_secret(),
-            payload.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()[:16]
-
-        if not hmac.compare_digest(expected, signature):
-            return None
-
-        return server, pid, action, request_nonce
-
-    def _interaction_hmac_secret(self) -> bytes:
-        configured = (self._settings.discord_interaction_hmac_secret or "").strip()
-        secret = configured if configured else self._settings.discord_token
-        return secret.encode("utf-8")
 
     @staticmethod
     def _format_size(size_bytes: int) -> str:
