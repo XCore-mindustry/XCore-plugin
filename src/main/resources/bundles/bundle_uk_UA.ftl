@@ -95,7 +95,6 @@ commands-tr-description = Встановити мову перекладача.
 commands-tr-success = { "[" }accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Такої мови не існує.
-discord-message-format = { "[" }blue][Discord][] { $author }: { $message }
 discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 # ==============================================================================
