@@ -104,6 +104,49 @@ class MongoStore:
         rows = await cursor.to_list(length=limit)
         return [PlayerDoc.model_validate(row).model_dump(mode="python") for row in rows]
 
+    async def autocomplete_players(
+        self, query: str, limit: int = 25
+    ) -> list[dict[str, Any]]:
+        normalized = query.strip()
+        if not normalized:
+            return []
+
+        players = self._db_required()["players"]
+        if normalized.isdigit():
+            rows = await players.aggregate(
+                [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$regexMatch": {
+                                    "input": {"$toString": {"$ifNull": ["$pid", ""]}},
+                                    "regex": f"^{re.escape(normalized)}",
+                                }
+                            }
+                        }
+                    },
+                    {"$sort": {"pid": -1}},
+                    {"$limit": limit},
+                    {"$project": {"_id": 0, "pid": 1, "nickname": 1}},
+                ]
+            ).to_list(length=limit)
+        else:
+            cursor = (
+                players.find(
+                    {"nickname": {"$regex": re.escape(normalized), "$options": "i"}},
+                    {"_id": 0, "pid": 1, "nickname": 1},
+                )
+                .sort("pid", DESCENDING)
+                .limit(limit)
+            )
+            rows = await cursor.to_list(length=limit)
+
+        return [
+            {"pid": row.get("pid"), "nickname": row.get("nickname")}
+            for row in rows
+            if isinstance(row.get("pid"), int)
+        ]
+
     async def count_players_by_name(self, query: str) -> int:
         return int(
             await self._db_required()["players"].count_documents(

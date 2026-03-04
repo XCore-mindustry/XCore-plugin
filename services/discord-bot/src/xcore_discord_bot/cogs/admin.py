@@ -4,6 +4,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
+from .autocomplete import _autocomplete_player_id
 from .checks import admin_check, general_admin_check
 
 if TYPE_CHECKING:
@@ -68,6 +69,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 1d, 2w, 1y",
         reason="Ban reason",
     )
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_ban(
@@ -81,6 +83,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="unban", description="Unban a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         await self.bot._cmd_unban(interaction, player_id)
@@ -91,6 +94,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 10m, 1h",
         reason="Mute reason",
     )
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_mute(
@@ -104,6 +108,7 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(name="unmute", description="Unmute a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         await self.bot._cmd_unmute(interaction, player_id)
@@ -113,6 +118,7 @@ class AdminCog(commands.Cog):
         description="Remove admin from a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @general_admin_check()
     async def cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
         await self.bot._cmd_remove_admin(interaction, player_id)
@@ -122,6 +128,7 @@ class AdminCog(commands.Cog):
         description="Reset admin password for a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @general_admin_check()
     async def cmd_reset_password(
         self, interaction: Interaction, player_id: int
