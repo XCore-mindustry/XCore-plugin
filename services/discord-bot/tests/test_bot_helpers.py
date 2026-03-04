@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from bson.datetime_ms import DatetimeMS
 from discord import app_commands
 
 from xcore_discord_bot.bot import (
@@ -67,6 +68,17 @@ def test_format_ban_expire_date_for_datetime() -> None:
 
 def test_format_ban_expire_date_for_invalid_value() -> None:
     assert XCoreDiscordBot._format_ban_expire_date({"bad": "value"}) == "Unknown"
+
+
+def test_format_ban_expire_date_for_datetime_ms() -> None:
+    dtms = DatetimeMS(1762296000000)
+    formatted = XCoreDiscordBot._format_ban_expire_date(dtms)
+    assert "<t:" in formatted
+
+
+def test_format_ban_expire_date_for_far_future_millis() -> None:
+    formatted = XCoreDiscordBot._format_ban_expire_date(315537897600000)
+    assert formatted == "After year 9999"
 
 
 # ── _claim_mutation tests ─────────────────────────────────────────────────────

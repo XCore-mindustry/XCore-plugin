@@ -130,13 +130,31 @@ class MongoStore:
             logger.warning(
                 "Encountered out-of-range BSON datetime in bans; retrying without expire_date"
             )
-            rows = await (
-                bans.find(query, {"expire_date": 0})
-                .sort("_id", DESCENDING)
-                .skip(skip)
-                .limit(limit)
-                .to_list(length=limit)
-            )
+            rows = await bans.aggregate(
+                [
+                    {"$match": query},
+                    {"$sort": {"_id": -1}},
+                    {"$skip": skip},
+                    {"$limit": limit},
+                    {
+                        "$project": {
+                            "uuid": 1,
+                            "ip": 1,
+                            "name": 1,
+                            "admin_name": 1,
+                            "reason": 1,
+                            "expire_date": {
+                                "$convert": {
+                                    "input": "$expire_date",
+                                    "to": "long",
+                                    "onError": None,
+                                    "onNull": None,
+                                }
+                            },
+                        }
+                    },
+                ]
+            ).to_list(length=limit)
 
         sanitized: list[dict[str, Any]] = []
         for row in rows:

@@ -7,6 +7,8 @@ import secrets
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+from bson.datetime_ms import DatetimeMS
 import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
@@ -1693,7 +1695,29 @@ class XCoreDiscordBot(commands.Bot):
                 f"{discord.utils.format_dt(expire_dt, style='f')} "
                 f"({discord.utils.format_dt(expire_dt, style='R')})"
             )
+        if isinstance(expire_value, DatetimeMS):
+            return XCoreDiscordBot._format_ban_expire_date_from_millis(
+                int(expire_value)
+            )
+        if isinstance(expire_value, int):
+            return XCoreDiscordBot._format_ban_expire_date_from_millis(expire_value)
         return "Unknown"
+
+    @staticmethod
+    def _format_ban_expire_date_from_millis(millis: int) -> str:
+        min_millis = int(datetime(1, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+        max_millis = int(
+            datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1000
+        )
+        if millis < min_millis:
+            return "Before year 1"
+        if millis > max_millis:
+            return "After year 9999"
+        expire_dt = datetime.fromtimestamp(millis / 1000.0, tz=timezone.utc)
+        return (
+            f"{discord.utils.format_dt(expire_dt, style='f')} "
+            f"({discord.utils.format_dt(expire_dt, style='R')})"
+        )
 
     @staticmethod
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
