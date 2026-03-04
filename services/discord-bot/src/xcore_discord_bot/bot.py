@@ -1096,6 +1096,8 @@ class XCoreDiscordBot(commands.Bot):
 
     async def _cmd_search(self, interaction: Interaction, name: str) -> None:
         page_size = 6
+        total_matches = await self._store.count_players_by_name(name)
+        total_pages = max(1, (total_matches + page_size - 1) // page_size)
 
         async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
             rows = await self._store.search_players(name, limit=page_size, page=page)
@@ -1113,7 +1115,12 @@ class XCoreDiscordBot(commands.Bot):
             else:
                 embed.description = "Players not found."
             has_next = len(rows) == page_size
-            embed.set_footer(text=f"Page {page + 1} • entries: {len(rows)}")
+            embed.set_footer(
+                text=(
+                    f"Page {page + 1}/{total_pages} • total matches: {total_matches} "
+                    f"• entries on page: {len(rows)}"
+                )
+            )
             return embed, has_next
 
         await self._send_paginated(interaction, fetch_page)
@@ -1122,6 +1129,8 @@ class XCoreDiscordBot(commands.Bot):
         self, interaction: Interaction, name_filter: str | None
     ) -> None:
         page_size = 6
+        total_bans = await self._store.count_bans(name_filter=name_filter)
+        total_pages = max(1, (total_bans + page_size - 1) // page_size)
 
         async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
             bans = await self._store.list_bans(
@@ -1141,7 +1150,13 @@ class XCoreDiscordBot(commands.Bot):
             else:
                 embed.description = "No bans found."
             has_next = len(bans) == page_size
-            embed.set_footer(text=f"Page {page + 1} • entries: {len(bans)}")
+            filter_suffix = f" • filter: {name_filter}" if name_filter else ""
+            embed.set_footer(
+                text=(
+                    f"Page {page + 1}/{total_pages} • total bans: {total_bans} "
+                    f"• entries on page: {len(bans)}{filter_suffix}"
+                )
+            )
             return embed, has_next
 
         await self._send_paginated(interaction, fetch_page)

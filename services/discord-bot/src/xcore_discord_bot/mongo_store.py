@@ -104,6 +104,13 @@ class MongoStore:
         rows = await cursor.to_list(length=limit)
         return [PlayerDoc.model_validate(row).model_dump(mode="python") for row in rows]
 
+    async def count_players_by_name(self, query: str) -> int:
+        return int(
+            await self._db_required()["players"].count_documents(
+                {"nickname": {"$regex": re.escape(query), "$options": "i"}}
+            )
+        )
+
     async def list_bans(
         self, name_filter: str | None = None, limit: int = 6, page: int = 0
     ) -> list[dict[str, Any]]:
@@ -148,6 +155,12 @@ class MongoStore:
                     }
                 )
         return sanitized
+
+    async def count_bans(self, name_filter: str | None = None) -> int:
+        query: dict[str, Any] = {}
+        if name_filter:
+            query["name"] = {"$regex": re.escape(name_filter), "$options": "i"}
+        return int(await self._db_required()["bans"].count_documents(query))
 
     async def upsert_ban(
         self,
