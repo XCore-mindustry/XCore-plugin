@@ -57,6 +57,18 @@ def test_build_stats_title_without_custom_nickname() -> None:
     assert title == "Player Stats • PlayerOne"
 
 
+def test_format_ban_expire_date_for_datetime() -> None:
+    expire = datetime(2026, 3, 4, 12, 0, tzinfo=timezone.utc)
+
+    formatted = XCoreDiscordBot._format_ban_expire_date(expire)
+
+    assert "<t:" in formatted
+
+
+def test_format_ban_expire_date_for_invalid_value() -> None:
+    assert XCoreDiscordBot._format_ban_expire_date({"bad": "value"}) == "Unknown"
+
+
 # ── _claim_mutation tests ─────────────────────────────────────────────────────
 
 

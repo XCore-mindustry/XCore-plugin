@@ -1142,9 +1142,14 @@ class XCoreDiscordBot(commands.Bot):
             )
             if bans:
                 for ban in bans:
+                    unban_date = self._format_ban_expire_date(ban.get("expire_date"))
                     embed.add_field(
                         name=ban.get("name", "Unknown"),
-                        value=f"Admin: {ban.get('admin_name', 'Unknown')} | Reason: {ban.get('reason', 'Not Specified')}",
+                        value=(
+                            f"Admin: {ban.get('admin_name', 'Unknown')}\n"
+                            f"Reason: {ban.get('reason', 'Not Specified')}\n"
+                            f"Unban: {unban_date}"
+                        ),
                         inline=False,
                     )
             else:
@@ -1675,6 +1680,20 @@ class XCoreDiscordBot(commands.Bot):
         if len(base) <= DISCORD_EMBED_TITLE_MAX:
             return base
         return f"{base[: DISCORD_EMBED_TITLE_MAX - 3]}..."
+
+    @staticmethod
+    def _format_ban_expire_date(expire_value: object) -> str:
+        if isinstance(expire_value, datetime):
+            expire_dt = (
+                expire_value.replace(tzinfo=timezone.utc)
+                if expire_value.tzinfo is None
+                else expire_value
+            )
+            return (
+                f"{discord.utils.format_dt(expire_dt, style='f')} "
+                f"({discord.utils.format_dt(expire_dt, style='R')})"
+            )
+        return "Unknown"
 
     @staticmethod
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
