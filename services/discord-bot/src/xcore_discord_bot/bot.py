@@ -976,7 +976,7 @@ class XCoreDiscordBot(commands.Bot):
                 expire_dt = self._store.now_utc()
 
             await self._post_ban_log(
-                pid=player_id,
+                pid=event.pid if event.pid is not None else player_id,
                 name=event.name,
                 admin_name=event.admin_name,
                 reason=event.reason,
@@ -1657,19 +1657,37 @@ class XCoreDiscordBot(commands.Bot):
         if channel is None:
             return
 
-        embed = discord.Embed(title="Ban", color=discord.Color.red())
-        embed.add_field(name="ID", value=str(pid), inline=False)
-        embed.add_field(name="Violator", value=name, inline=False)
-        embed.add_field(name="Admin", value=admin_name, inline=False)
-        embed.add_field(name="Reason", value=reason, inline=False)
+        safe_name = (
+            strip_mindustry_colors(str(name).replace("`", "")).strip() or "Unknown"
+        )
+        safe_admin_name = (
+            strip_mindustry_colors(str(admin_name).replace("`", "")).strip()
+            or "Unknown"
+        )
+        safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
+        if not safe_reason:
+            safe_reason = "No reason provided"
+
+        safe_pid = pid if pid > 0 else None
+
+        violator_value = (
+            f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
+        )
+        expire_utc = (
+            expire.replace(tzinfo=timezone.utc) if expire.tzinfo is None else expire
+        )
+        unban_value = (
+            f"{discord.utils.format_dt(expire_utc, style='f')} "
+            f"({discord.utils.format_dt(expire_utc, style='R')})"
+        )
+
+        embed = discord.Embed(title="Ban Issued", color=discord.Color.red())
+        embed.add_field(name="Violator", value=violator_value, inline=False)
+        embed.add_field(name="Admin", value=safe_admin_name, inline=False)
+        embed.add_field(name="Reason", value=safe_reason, inline=False)
         embed.add_field(
-            name="Unban Date",
-            value=discord.utils.format_dt(
-                expire.replace(tzinfo=timezone.utc)
-                if expire.tzinfo is None
-                else expire,
-                style="D",
-            ),
+            name="Expires",
+            value=unban_value,
             inline=False,
         )
         await channel.send(embed=embed)

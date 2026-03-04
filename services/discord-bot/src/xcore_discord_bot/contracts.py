@@ -118,6 +118,10 @@ class ServerActionEvent(_FrozenModel):
 
 
 class BanEvent(_FrozenModel):
+    pid: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("pid", "playerPid", "player_pid"),
+    )
     uuid: str | None = None
     ip: str | None = None
     name: str
@@ -134,6 +138,15 @@ class BanEvent(_FrozenModel):
         if not value:
             raise ValueError("Expected non-empty string")
         return value
+
+    @field_validator("pid", mode="before")
+    @classmethod
+    def _optional_int(cls, value: Any) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return _coerce_int(value)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "BanEvent":

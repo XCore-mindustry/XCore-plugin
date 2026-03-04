@@ -37,6 +37,7 @@ def test_server_action_from_payload() -> None:
 
 def test_ban_event_from_payload_snake_case() -> None:
     payload = {
+        "pid": "7",
         "uuid": "u-1",
         "ip": "1.2.3.4",
         "name": "pizduk",
@@ -45,6 +46,7 @@ def test_ban_event_from_payload_snake_case() -> None:
         "expire_date": "2026-03-01T10:00:00+00:00",
     }
     event = BanEvent.from_payload(payload)
+    assert event.pid == 7
     assert event.uuid == "u-1"
     assert event.ip == "1.2.3.4"
     assert event.name == "pizduk"
@@ -55,6 +57,7 @@ def test_ban_event_from_payload_snake_case() -> None:
 
 def test_ban_event_from_payload_camel_case_admin_and_expire() -> None:
     payload = {
+        "playerPid": 12,
         "uuid": "u-2",
         "name": "player",
         "adminName": "mod",
@@ -62,6 +65,7 @@ def test_ban_event_from_payload_camel_case_admin_and_expire() -> None:
         "expireDate": "2026-03-01T11:00:00+00:00",
     }
     event = BanEvent.from_payload(payload)
+    assert event.pid == 12
     assert event.admin_name == "mod"
     assert event.expire_date == "2026-03-01T11:00:00+00:00"
 
