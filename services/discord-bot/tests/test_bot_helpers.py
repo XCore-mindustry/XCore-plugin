@@ -16,7 +16,7 @@ from xcore_discord_bot.bot import (
     parse_duration,
     strip_mindustry_colors,
 )
-from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.registry import ServerInfo, server_registry
 
 
 def test_parse_duration() -> None:
@@ -79,6 +79,39 @@ def test_format_ban_expire_date_for_datetime_ms() -> None:
 def test_format_ban_expire_date_for_far_future_millis() -> None:
     formatted = XCoreDiscordBot._format_ban_expire_date(315537897600000)
     assert formatted == "After year 9999"
+
+
+def test_sort_live_servers_by_players_then_name() -> None:
+    servers = [
+        ServerInfo("b", 1, 5, 30, "1", 0.0),
+        ServerInfo("a", 2, 5, 30, "1", 0.0),
+        ServerInfo("c", 3, 2, 30, "1", 0.0),
+    ]
+
+    sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "players")
+
+    assert [srv.name for srv in sorted_servers] == ["a", "b", "c"]
+
+
+def test_sort_live_servers_by_name() -> None:
+    servers = [
+        ServerInfo("beta", 1, 5, 30, "1", 0.0),
+        ServerInfo("Alpha", 2, 20, 30, "1", 0.0),
+    ]
+
+    sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "name")
+
+    assert [srv.name for srv in sorted_servers] == ["Alpha", "beta"]
+
+
+def test_build_servers_embed_includes_sort_mode_footer() -> None:
+    servers = [
+        ServerInfo("alpha", 123, 3, 30, "155.4", 0.0),
+    ]
+
+    embed = XCoreDiscordBot._build_servers_embed(servers, sort_mode="players")
+
+    assert embed.footer.text == "Sort: players • Servers: 1 • Players online: 3"
 
 
 # ── _claim_mutation tests ─────────────────────────────────────────────────────

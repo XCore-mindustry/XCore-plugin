@@ -22,12 +22,4 @@ class InfoCog(commands.Cog):
 
     @app_commands.command(name="servers", description="Show all live Mindustry servers")
     async def cmd_servers(self, interaction: Interaction) -> None:
-        servers = sorted(self.bot._get_live_servers(), key=lambda s: s.name)
-        if not servers:
-            await interaction.response.send_message(
-                "No live servers connected right now.", ephemeral=True
-            )
-            return
-
-        embed = self.bot._build_servers_embed(servers)
-        await interaction.response.send_message(embed=embed)
+        await self.bot._cmd_servers(interaction)

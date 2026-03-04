@@ -6,7 +6,7 @@ import re
 import secrets
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from bson.datetime_ms import DatetimeMS
 import discord
@@ -231,6 +231,54 @@ class _PaginatorView(discord.ui.View):
                 await self.bot_message.edit(view=self)
             except Exception:
                 pass
+
+
+class _ServersView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        sort_mode: Literal["players", "name"] = "players",
+    ) -> None:
+        super().__init__(timeout=180)
+        self._bot = bot
+        self._sort_mode: Literal["players", "name"] = sort_mode
+        self.bot_message: discord.Message | None = None
+        self._sync_sort_button_label()
+
+    @property
+    def sort_mode(self) -> Literal["players", "name"]:
+        return self._sort_mode
+
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.primary, emoji="🔄")
+    async def _refresh_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Sort: players", style=discord.ButtonStyle.secondary)
+    async def _sort_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        self._sort_mode = "name" if self._sort_mode == "players" else "players"
+        self._sync_sort_button_label()
+        embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self) -> None:
+        if self.bot_message is None:
+            return
+        try:
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            await self.bot_message.edit(view=self)
+        except Exception:
+            pass
+
+    def _sync_sort_button_label(self) -> None:
+        self._sort_btn.label = f"Sort: {self._sort_mode}"
 
 
 class _BanConfirmView(discord.ui.View):
@@ -645,6 +693,19 @@ class XCoreDiscordBot(commands.Bot):
     def _get_live_servers():
         return server_registry.get_all_servers()
 
+    @staticmethod
+    def _sort_live_servers(servers, mode: Literal["players", "name"]):
+        if mode == "name":
+            return sorted(servers, key=lambda s: s.name.lower())
+        return sorted(servers, key=lambda s: (-s.players, s.name.lower()))
+
+    def _build_servers_embed_for_mode(
+        self,
+        mode: Literal["players", "name"],
+    ) -> discord.Embed:
+        servers = self._sort_live_servers(self._get_live_servers(), mode)
+        return self._build_servers_embed(servers, sort_mode=mode)
+
     def _build_presence_activity(self) -> discord.Activity:
         servers = self._get_live_servers()
         if not servers:
@@ -683,15 +744,25 @@ class XCoreDiscordBot(commands.Bot):
                 logger.exception("Failed to update Discord presence")
 
     @staticmethod
-    def _build_servers_embed(servers) -> discord.Embed:
+    def _build_servers_embed(
+        servers,
+        *,
+        sort_mode: Literal["players", "name"],
+    ) -> discord.Embed:
         embed = discord.Embed(title="Live Servers", color=0x00FF00)
+        if not servers:
+            embed.description = "No live servers connected right now."
         for srv in servers:
-            value = (
-                f"**Players:** {srv.players}/{srv.max_players}\n"
-                f"**Version:** {srv.version}\n"
-                f"**Channel:** <#{srv.channel_id}>"
+            value = f"👥 `{srv.players}/{srv.max_players}`\n📦 `{srv.version}`\n💬 <#{srv.channel_id}>"
+            embed.add_field(name=srv.name, value=value, inline=True)
+
+        total_players = sum(srv.players for srv in servers)
+        embed.set_footer(
+            text=(
+                f"Sort: {sort_mode} • Servers: {len(servers)} "
+                f"• Players online: {total_players}"
             )
-            embed.add_field(name=srv.name, value=value, inline=False)
+        )
         return embed
 
     async def _finalize_admin_request_message(
@@ -1095,6 +1166,12 @@ class XCoreDiscordBot(commands.Bot):
         embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
 
         await interaction.response.send_message(embed=embed)
+
+    async def _cmd_servers(self, interaction: Interaction) -> None:
+        view = _ServersView(bot=self, sort_mode="players")
+        embed = self._build_servers_embed_for_mode(view.sort_mode)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.bot_message = await interaction.original_response()
 
     async def _cmd_search(self, interaction: Interaction, name: str) -> None:
         page_size = 6
