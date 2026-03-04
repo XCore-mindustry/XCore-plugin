@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -39,3 +41,23 @@ def test_ban_doc_and_mute_doc_frozen() -> None:
         ban.name = "Other"
     with pytest.raises(ValidationError):
         mute.reason = "other"
+
+
+def test_ban_doc_accepts_non_datetime_expire_date() -> None:
+    doc = BanDoc.model_validate(
+        {
+            "uuid": "u-1",
+            "name": "Nick",
+            "expire_date": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+    )
+    assert isinstance(doc.expire_date, datetime)
+
+    fallback = BanDoc.model_validate(
+        {
+            "uuid": "u-2",
+            "name": "Nick2",
+            "expire_date": {"$date": {"$numberLong": "999999999999999999"}},
+        }
+    )
+    assert isinstance(fallback.expire_date, dict)

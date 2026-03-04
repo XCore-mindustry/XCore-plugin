@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from discord import app_commands
 
 from xcore_discord_bot.bot import (
     XCoreDiscordBot,
@@ -39,6 +40,21 @@ def test_strip_mindustry_colors() -> None:
     assert strip_mindustry_colors("[accent]Hello[]") == "Hello"
     assert strip_mindustry_colors("[scarlet]A[white]B[]") == "AB"
     assert strip_mindustry_colors("[not-a-color]text") == "[not-a-color]text"
+
+
+def test_build_stats_title_truncates_to_discord_limit() -> None:
+    nickname = "n" * 240
+    custom_nickname = "c" * 240
+
+    title = XCoreDiscordBot._build_stats_title(nickname, custom_nickname)
+
+    assert len(title) == 256
+    assert title.endswith("...")
+
+
+def test_build_stats_title_without_custom_nickname() -> None:
+    title = XCoreDiscordBot._build_stats_title("PlayerOne", "")
+    assert title == "Player Stats • PlayerOne"
 
 
 # ── _claim_mutation tests ─────────────────────────────────────────────────────
@@ -253,6 +269,69 @@ class _ResetPasswordBus:
 
     async def publish_reload_player_data_cache(self) -> None:
         self.reload_calls += 1
+
+
+@dataclass
+class _ErrorResponse:
+    done: bool = False
+    sent: list[tuple[str, bool]] = field(default_factory=list)
+
+    def is_done(self) -> bool:
+        return self.done
+
+    async def send_message(self, text: str, *, ephemeral: bool = False) -> None:
+        self.sent.append((text, ephemeral))
+
+
+@dataclass
+class _ErrorFollowup:
+    sent: list[tuple[str, bool]] = field(default_factory=list)
+
+    async def send(self, text: str, *, ephemeral: bool = False) -> None:
+        self.sent.append((text, ephemeral))
+
+
+@dataclass
+class _ErrorInteraction:
+    response: _ErrorResponse = field(default_factory=_ErrorResponse)
+    followup: _ErrorFollowup = field(default_factory=_ErrorFollowup)
+
+
+@pytest.mark.asyncio
+async def test_handle_app_command_error_sends_check_failure_message() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    interaction = _ErrorInteraction()
+
+    await XCoreDiscordBot._handle_app_command_error(
+        bot,
+        interaction,
+        app_commands.CheckFailure("Missing role"),
+    )
+
+    assert interaction.response.sent == [("Missing role", True)]
+    assert interaction.followup.sent == []
+
+
+@pytest.mark.asyncio
+async def test_handle_app_command_error_sends_generic_message_on_unexpected_error() -> (
+    None
+):
+    bot = object.__new__(XCoreDiscordBot)
+    interaction = _ErrorInteraction(response=_ErrorResponse(done=True))
+
+    class _UnexpectedError(app_commands.AppCommandError):
+        pass
+
+    await XCoreDiscordBot._handle_app_command_error(
+        bot,
+        interaction,
+        _UnexpectedError("boom"),
+    )
+
+    assert interaction.response.sent == []
+    assert interaction.followup.sent == [
+        ("Command failed due to an internal error. Please try again.", True)
+    ]
 
 
 @pytest.mark.asyncio

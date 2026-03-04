@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 
+from bson.errors import InvalidBSON
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo.errors import PyMongoError
 from pydantic import BaseModel, ConfigDict
 from pymongo import DESCENDING
 
 from .settings import Settings
 
+logger = logging.getLogger(__name__)
+
 
 class _MongoDoc(BaseModel):
-    model_config = ConfigDict(extra="allow", frozen=True)
+    model_config = ConfigDict(extra="allow", frozen=True, arbitrary_types_allowed=True)
 
 
 class PlayerDoc(_MongoDoc):
@@ -38,7 +43,7 @@ class BanDoc(_MongoDoc):
     name: str | None = None
     admin_name: str | None = None
     reason: str | None = None
-    expire_date: datetime | None = None
+    expire_date: Any | None = None
 
 
 class MuteDoc(_MongoDoc):
@@ -59,7 +64,10 @@ class MongoStore:
         if self._db is not None:
             return
 
-        self._client = AsyncIOMotorClient(self._settings.mongo_uri)
+        self._client = AsyncIOMotorClient(
+            self._settings.mongo_uri,
+            datetime_conversion="DATETIME_AUTO",
+        )
         self._db = self._client[self._settings.mongo_db_name]
         await self._db.command("ping")
 
@@ -104,15 +112,42 @@ class MongoStore:
             query["name"] = {"$regex": re.escape(name_filter), "$options": "i"}
 
         skip = page * limit
+        bans = self._db_required()["bans"]
         cursor = (
-            self._db_required()["bans"]
-            .find(query)
-            .sort("expire_date", DESCENDING)
-            .skip(skip)
-            .limit(limit)
+            bans.find(query).sort("expire_date", DESCENDING).skip(skip).limit(limit)
         )
-        rows = await cursor.to_list(length=limit)
-        return [BanDoc.model_validate(row).model_dump(mode="python") for row in rows]
+
+        try:
+            rows = await cursor.to_list(length=limit)
+        except InvalidBSON:
+            logger.warning(
+                "Encountered out-of-range BSON datetime in bans; retrying without expire_date"
+            )
+            rows = await (
+                bans.find(query, {"expire_date": 0})
+                .sort("_id", DESCENDING)
+                .skip(skip)
+                .limit(limit)
+                .to_list(length=limit)
+            )
+
+        sanitized: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                sanitized.append(BanDoc.model_validate(row).model_dump(mode="python"))
+            except (ValueError, TypeError, PyMongoError) as error:
+                logger.warning("Skipping malformed ban row: %s", error)
+                sanitized.append(
+                    {
+                        "uuid": row.get("uuid"),
+                        "ip": row.get("ip"),
+                        "name": row.get("name"),
+                        "admin_name": row.get("admin_name"),
+                        "reason": row.get("reason"),
+                        "expire_date": None,
+                    }
+                )
+        return sanitized
 
     async def upsert_ban(
         self,

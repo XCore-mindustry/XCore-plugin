@@ -35,6 +35,7 @@ MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
 MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
 PRESENCE_UPDATE_INTERVAL_SECONDS = 30
+DISCORD_EMBED_TITLE_MAX = 256
 
 HEXED_RANKS: list[dict[str, str | int]] = [
     {"name": "Newbie", "tag": "", "required": 0},
@@ -516,14 +517,7 @@ class XCoreDiscordBot(commands.Bot):
             interaction: Interaction,
             error: app_commands.AppCommandError,
         ) -> None:
-            if isinstance(error, app_commands.CheckFailure):
-                message = str(error) or "Missing permissions"
-                if interaction.response.is_done():
-                    await interaction.followup.send(message, ephemeral=True)
-                else:
-                    await interaction.response.send_message(message, ephemeral=True)
-                return
-            raise error
+            await self._handle_app_command_error(interaction, error)
 
         await self._bus.connect()
         await self._store.connect()
@@ -964,6 +958,29 @@ class XCoreDiscordBot(commands.Bot):
         await interaction.response.send_message(embed=embed, view=view)
         view.bot_message = await interaction.original_response()
 
+    async def _handle_app_command_error(
+        self,
+        interaction: Interaction,
+        error: app_commands.AppCommandError,
+    ) -> None:
+        if isinstance(error, app_commands.CheckFailure):
+            message = str(error) or "Missing permissions"
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+            return
+
+        logger.exception("Unhandled app command error: %s", error)
+        message = "Command failed due to an internal error. Please try again."
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+        except discord.HTTPException:
+            logger.warning("Failed to send command error message", exc_info=True)
+
     async def _claim_mutation(
         self, interaction: Interaction, *, operation: str, scope: str
     ) -> bool:
@@ -1039,9 +1056,7 @@ class XCoreDiscordBot(commands.Bot):
 
         nickname = self._player_name(player)
         custom_nickname = str(player.get("custom_nickname", "")).strip()
-        title = f"Player Stats • {nickname}"
-        if custom_nickname:
-            title = f"Player Stats • {nickname} ({custom_nickname})"
+        title = self._build_stats_title(nickname, custom_nickname)
 
         rank_label, rank_progress = self._format_hexed_rank_block(
             rank_value=self._as_int(player.get("hexed_rank")),
@@ -1636,6 +1651,15 @@ class XCoreDiscordBot(commands.Bot):
             rank_progress = f"{points} wins (max rank)"
 
         return rank_label, rank_progress
+
+    @staticmethod
+    def _build_stats_title(nickname: str, custom_nickname: str) -> str:
+        base = f"Player Stats • {nickname}"
+        if custom_nickname:
+            base = f"{base} ({custom_nickname})"
+        if len(base) <= DISCORD_EMBED_TITLE_MAX:
+            return base
+        return f"{base[: DISCORD_EMBED_TITLE_MAX - 3]}..."
 
     @staticmethod
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
