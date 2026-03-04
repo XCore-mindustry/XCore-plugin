@@ -12,6 +12,8 @@ async def _autocomplete_player_id(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[int]]:
+    from ..bot import strip_mindustry_colors
+
     current_norm = current.strip()
     if not current_norm:
         return []
@@ -30,6 +32,9 @@ async def _autocomplete_player_id(
 
         nickname_raw = row.get("nickname")
         nickname = str(nickname_raw).strip() if nickname_raw else "Unknown"
+        nickname = (
+            strip_mindustry_colors(nickname).replace("`", "").strip() or "Unknown"
+        )
         choices.append(
             app_commands.Choice(name=f"{nickname} (pid={pid_raw})", value=pid_raw)
         )
