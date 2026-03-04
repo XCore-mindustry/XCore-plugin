@@ -10,6 +10,40 @@ if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
 
 
+_PERIOD_PRESETS: tuple[tuple[str, str], ...] = (
+    ("10m", "10 minutes"),
+    ("30m", "30 minutes"),
+    ("1h", "1 hour"),
+    ("6h", "6 hours"),
+    ("1d", "1 day"),
+    ("3d", "3 days"),
+    ("1w", "1 week"),
+    ("2w", "2 weeks"),
+    ("30d", "1 month"),
+    ("90d", "3 months"),
+    ("1y", "1 year"),
+)
+
+
+async def _autocomplete_period(
+    interaction: Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    del interaction
+    current_norm = current.strip().lower()
+    choices: list[app_commands.Choice[str]] = []
+
+    for value, label in _PERIOD_PRESETS:
+        preset_text = f"{value} - {label}"
+        if current_norm and current_norm not in preset_text.lower():
+            continue
+        choices.append(app_commands.Choice(name=preset_text, value=value))
+        if len(choices) >= 25:
+            break
+
+    return choices
+
+
 class AdminCog(commands.Cog):
     def __init__(self, bot: "XCoreDiscordBot") -> None:
         self.bot = bot
@@ -25,8 +59,8 @@ class AdminCog(commands.Cog):
     )
     @app_commands.describe(name="Optional name filter")
     @admin_check()
-    async def cmd_bans(self, interaction: Interaction, name: str = "") -> None:
-        await self.bot._cmd_bans(interaction, name or None)
+    async def cmd_bans(self, interaction: Interaction, name: str | None = None) -> None:
+        await self.bot._cmd_bans(interaction, name)
 
     @app_commands.command(name="ban", description="Ban a player (admin)")
     @app_commands.describe(
@@ -34,6 +68,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 1d, 2w, 1y",
         reason="Ban reason",
     )
+    @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_ban(
         self,
@@ -56,6 +91,7 @@ class AdminCog(commands.Cog):
         period="Duration e.g. 10m, 1h",
         reason="Mute reason",
     )
+    @app_commands.autocomplete(period=_autocomplete_period)
     @admin_check()
     async def cmd_mute(
         self,

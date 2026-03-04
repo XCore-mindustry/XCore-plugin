@@ -56,11 +56,11 @@ class MapsCog(commands.Cog):
 
     @app_commands.command(
         name="upload-map",
-        description="Upload .msav map files to a server (map reviewer)",
+        description="Upload .msav map files to a server (up to 3 per command)",
     )
     @app_commands.describe(
         server="Server name",
-        file1="First .msav file",
+        file1="Map file (.msav)",
         file2="Second .msav file (optional)",
         file3="Third .msav file (optional)",
     )
