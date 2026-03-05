@@ -424,6 +424,54 @@ class _MapRemoveConfirmView(discord.ui.View):
                 item.disabled = True
 
 
+class _MuteUndoView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        requester_id: int,
+        uuid: str,
+        player_name: str,
+    ) -> None:
+        super().__init__(timeout=30)
+        self._bot = bot
+        self._requester_id = requester_id
+        self._uuid = uuid
+        self._player_name = player_name
+        self.message: discord.Message | None = None
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        if interaction.user.id == self._requester_id:
+            return True
+
+        await interaction.response.send_message(
+            "Only the moderator who started this action can undo it.",
+            ephemeral=True,
+        )
+        return False
+
+    @discord.ui.button(label="Undo", style=discord.ButtonStyle.secondary)
+    async def _undo(
+        self,
+        interaction: Interaction,
+        button: discord.ui.Button,
+    ) -> None:  # noqa: ARG002
+        deleted = await self._bot._store.delete_mute(uuid=self._uuid)
+        if deleted > 0:
+            content = f"Mute undone for {self._player_name}."
+        else:
+            content = f"Mute was already inactive for {self._player_name}."
+        await interaction.response.edit_message(content=content, view=None)
+
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        try:
+            await self.message.edit(view=None)
+        except Exception:
+            pass
+
+
 class _AdminRequestView(discord.ui.View):
     def __init__(
         self,
@@ -1418,9 +1466,18 @@ class XCoreDiscordBot(commands.Bot):
             reason=reason,
             expire_date=expire,
         )
-        await interaction.response.send_message(
-            f"Muted `{self._player_name(player)}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})"
+        player_name = self._player_name(player)
+        view = _MuteUndoView(
+            bot=self,
+            requester_id=interaction.user.id,
+            uuid=uuid_value,
+            player_name=player_name,
         )
+        await interaction.response.send_message(
+            f"Muted `{player_name}` until {discord.utils.format_dt(expire, style='f')} ({discord.utils.format_dt(expire, style='R')})",
+            view=view,
+        )
+        view.message = await interaction.original_response()
 
     async def _cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         player = await self._get_player_or_reply(interaction, player_id)
