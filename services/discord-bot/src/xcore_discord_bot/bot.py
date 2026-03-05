@@ -5,6 +5,7 @@ import logging
 import re
 import secrets
 import time
+import traceback
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -1236,8 +1237,12 @@ class XCoreDiscordBot(commands.Bot):
                 await interaction.response.send_message(message, ephemeral=True)
             return
 
-        logger.exception("Unhandled app command error: %s", error)
-        message = "Command failed due to an internal error. Please try again."
+        error_id = secrets.token_hex(4)
+        logger.exception("Unhandled app command error [ref=%s]: %s", error_id, error)
+        message = (
+            f"Command failed (ref: {error_id}). "
+            "Report this to an admin if the issue persists."
+        )
         try:
             if interaction.response.is_done():
                 await interaction.followup.send(message, ephemeral=True)
@@ -1245,6 +1250,73 @@ class XCoreDiscordBot(commands.Bot):
                 await interaction.response.send_message(message, ephemeral=True)
         except discord.HTTPException:
             logger.warning("Failed to send command error message", exc_info=True)
+
+        error_channel_id = self._settings.discord_error_log_channel_id
+        if not error_channel_id:
+            return
+
+        channel = await self._resolve_messageable_channel(
+            error_channel_id,
+            context="error logs",
+        )
+        if channel is None:
+            return
+
+        command_text = self._format_interaction_command(interaction)
+        user_name = getattr(interaction.user, "display_name", "Unknown")
+        user_id = getattr(interaction.user, "id", "unknown")
+        tb_text = "".join(
+            traceback.format_exception(type(error), error, error.__traceback__)
+        )
+        if not tb_text.strip():
+            tb_text = repr(error)
+        if len(tb_text) > 4096:
+            tb_text = tb_text[:4093] + "..."
+
+        embed = discord.Embed(
+            title="Application Command Error",
+            color=discord.Color.red(),
+            description=tb_text,
+            timestamp=discord.utils.utcnow(),
+        )
+        embed.add_field(name="Error ID", value=error_id, inline=False)
+        embed.add_field(name="Command", value=command_text, inline=False)
+        embed.add_field(name="User", value=f"{user_name} (id={user_id})", inline=False)
+        try:
+            await channel.send(embed=embed)
+        except Exception:
+            logger.warning("Failed to send error log embed", exc_info=True)
+
+    @staticmethod
+    def _format_interaction_command(interaction: Interaction) -> str:
+        command_name = "unknown"
+        command = getattr(interaction, "command", None)
+        if command is not None:
+            command_name = getattr(command, "qualified_name", None) or getattr(
+                command, "name", "unknown"
+            )
+
+        namespace = getattr(interaction, "namespace", None)
+        if namespace is None:
+            return f"/{command_name}"
+
+        namespace_dict = getattr(namespace, "__dict__", {})
+        if not namespace_dict:
+            return f"/{command_name}"
+
+        parts: list[str] = []
+        for key in sorted(namespace_dict.keys()):
+            value = namespace_dict[key]
+            if value is None:
+                continue
+            rendered = str(value).replace("`", "")
+            if len(rendered) > 100:
+                rendered = f"{rendered[:97]}..."
+            parts.append(f"{key}={rendered}")
+
+        if not parts:
+            return f"/{command_name}"
+        return f"/{command_name} " + " ".join(parts)
 
     async def _claim_mutation(
         self, interaction: Interaction, *, operation: str, scope: str

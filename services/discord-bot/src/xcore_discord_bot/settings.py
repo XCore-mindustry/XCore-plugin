@@ -54,10 +54,15 @@ class Settings(BaseSettings):
         default="",
         validation_alias="DISCORD_INTERACTION_HMAC_SECRET",
     )
+    discord_error_log_channel_id: int | None = Field(
+        default=None,
+        validation_alias="DISCORD_ERROR_LOG_CHANNEL_ID",
+    )
 
     @field_validator(
         "discord_general_admin_role_id",
         "discord_map_reviewer_role_id",
+        "discord_error_log_channel_id",
         mode="before",
     )
     @classmethod

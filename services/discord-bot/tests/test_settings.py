@@ -15,6 +15,7 @@ ENV_KEYS = [
     "DISCORD_BANS_CHANNEL_ID",
     "DISCORD_GUILD_ID",
     "DISCORD_INTERACTION_HMAC_SECRET",
+    "DISCORD_ERROR_LOG_CHANNEL_ID",
     "REDIS_URL",
     "REDIS_GROUP_PREFIX",
     "REDIS_CONSUMER_NAME",
@@ -107,3 +108,15 @@ def test_settings_is_frozen_model() -> None:
 
     with pytest.raises(ValidationError):
         settings.discord_token = "new-token"
+
+
+def test_settings_error_log_channel_optional(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("DISCORD_ERROR_LOG_CHANNEL_ID", "")
+
+    settings = Settings.from_env()
+    assert settings.discord_error_log_channel_id is None
+
+    monkeypatch.setenv("DISCORD_ERROR_LOG_CHANNEL_ID", "123456")
+    settings = Settings.from_env()
+    assert settings.discord_error_log_channel_id == 123456

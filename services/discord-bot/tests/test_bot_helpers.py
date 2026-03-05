@@ -352,11 +352,15 @@ class _ErrorFollowup:
 class _ErrorInteraction:
     response: _ErrorResponse = field(default_factory=_ErrorResponse)
     followup: _ErrorFollowup = field(default_factory=_ErrorFollowup)
+    user: Any = field(default_factory=lambda: SimpleNamespace(id=1, display_name="mod"))
+    command: Any = field(default_factory=lambda: SimpleNamespace(name="ban"))
+    namespace: Any = field(default_factory=lambda: SimpleNamespace(player_id=1))
 
 
 @pytest.mark.asyncio
 async def test_handle_app_command_error_sends_check_failure_message() -> None:
     bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=None)
     interaction = _ErrorInteraction()
 
     await XCoreDiscordBot._handle_app_command_error(
@@ -374,6 +378,7 @@ async def test_handle_app_command_error_sends_generic_message_on_unexpected_erro
     None
 ):
     bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=None)
     interaction = _ErrorInteraction(response=_ErrorResponse(done=True))
 
     class _UnexpectedError(app_commands.AppCommandError):
@@ -386,9 +391,56 @@ async def test_handle_app_command_error_sends_generic_message_on_unexpected_erro
     )
 
     assert interaction.response.sent == []
-    assert interaction.followup.sent == [
-        ("Command failed due to an internal error. Please try again.", True)
-    ]
+    assert len(interaction.followup.sent) == 1
+    sent_text, is_ephemeral = interaction.followup.sent[0]
+    assert is_ephemeral is True
+    assert sent_text.startswith("Command failed (ref: ")
+    assert sent_text.endswith("). Report this to an admin if the issue persists.")
+
+
+@pytest.mark.asyncio
+async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
+    class _Channel:
+        def __init__(self) -> None:
+            self.embeds: list[Any] = []
+
+        async def send(self, *, embed: Any) -> None:
+            self.embeds.append(embed)
+
+    class _UnexpectedError(app_commands.AppCommandError):
+        pass
+
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(discord_error_log_channel_id=999)
+    channel = _Channel()
+
+    async def _resolve(channel_id: int, *, context: str):
+        assert channel_id == 999
+        assert context == "error logs"
+        return channel
+
+    bot.__dict__["_resolve_messageable_channel"] = _resolve
+
+    interaction = _ErrorInteraction(
+        command=SimpleNamespace(name="mute"),
+        namespace=SimpleNamespace(player_id=123, reason="spam"),
+    )
+
+    await XCoreDiscordBot._handle_app_command_error(
+        bot,
+        interaction,
+        _UnexpectedError("boom"),
+    )
+
+    assert len(channel.embeds) == 1
+    embed = channel.embeds[0]
+    assert embed.title == "Application Command Error"
+    fields = {field.name: field.value for field in embed.fields}
+    assert len(fields["Error ID"]) == 8
+    assert fields["Command"].startswith("/mute")
+    assert "player_id=123" in fields["Command"]
+    assert "reason=spam" in fields["Command"]
+    assert fields["User"] == "mod (id=1)"
 
 
 @pytest.mark.asyncio
