@@ -39,6 +39,7 @@ MSG_NO_ACTIVE_MUTE = "No active mute found"
 MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
 PRESENCE_UPDATE_INTERVAL_SECONDS = 30
 DISCORD_EMBED_TITLE_MAX = 256
+DISCORD_MODAL_TITLE_MAX = 45
 
 HEXED_RANKS: list[dict[str, str | int]] = [
     {"name": "Newbie", "tag": "", "required": 0},
@@ -468,6 +469,147 @@ class _MuteUndoView(discord.ui.View):
             return
         try:
             await self.message.edit(view=None)
+        except Exception:
+            pass
+
+
+class _StatsBanModal(discord.ui.Modal):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        player_id: int,
+        player: Mapping[str, object],
+    ) -> None:
+        player_name = str(player.get("nickname", "Unknown"))
+        title = f"Ban {player_name}"
+        if len(title) > DISCORD_MODAL_TITLE_MAX:
+            title = f"{title[: DISCORD_MODAL_TITLE_MAX - 3]}..."
+        super().__init__(title=title)
+        self._bot = bot
+        self._player_id = player_id
+        self.period = discord.ui.TextInput(
+            label="Duration",
+            style=discord.TextStyle.short,
+            placeholder="1d, 2w, 1y",
+            required=True,
+            max_length=32,
+        )
+        self.reason = discord.ui.TextInput(
+            label="Reason",
+            style=discord.TextStyle.long,
+            placeholder="Ban reason",
+            required=False,
+            default="Not Specified",
+            max_length=400,
+        )
+        self.add_item(self.period)
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        period_value = str(self.period.value).strip()
+        reason_value = str(self.reason.value).strip() or "Not Specified"
+        await self._bot._cmd_ban(
+            interaction, self._player_id, period_value, reason_value
+        )
+
+
+class _StatsMuteModal(discord.ui.Modal):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        player_id: int,
+        player: Mapping[str, object],
+    ) -> None:
+        player_name = str(player.get("nickname", "Unknown"))
+        title = f"Mute {player_name}"
+        if len(title) > DISCORD_MODAL_TITLE_MAX:
+            title = f"{title[: DISCORD_MODAL_TITLE_MAX - 3]}..."
+        super().__init__(title=title)
+        self._bot = bot
+        self._player_id = player_id
+        self.period = discord.ui.TextInput(
+            label="Duration",
+            style=discord.TextStyle.short,
+            placeholder="10m, 1h",
+            required=True,
+            max_length=32,
+        )
+        self.reason = discord.ui.TextInput(
+            label="Reason",
+            style=discord.TextStyle.long,
+            placeholder="Mute reason",
+            required=False,
+            default="Not Specified",
+            max_length=400,
+        )
+        self.add_item(self.period)
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        period_value = str(self.period.value).strip()
+        reason_value = str(self.reason.value).strip() or "Not Specified"
+        await self._bot._cmd_mute(
+            interaction, self._player_id, period_value, reason_value
+        )
+
+
+class _StatsActionsView(discord.ui.View):
+    def __init__(
+        self,
+        *,
+        bot: "XCoreDiscordBot",
+        player_id: int,
+        player: Mapping[str, object],
+    ) -> None:
+        super().__init__(timeout=180)
+        self._bot = bot
+        self._player_id = player_id
+        self._player = dict(player)
+        self.message: discord.Message | None = None
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        role_ids = {role.id for role in getattr(interaction.user, "roles", [])}
+        if self._bot._settings.discord_admin_role_id in role_ids:
+            return True
+
+        await interaction.response.send_message(
+            "Access denied. Required admin role.",
+            ephemeral=True,
+        )
+        return False
+
+    @discord.ui.button(label="Ban", style=discord.ButtonStyle.danger)
+    async def _ban_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        modal = _StatsBanModal(
+            bot=self._bot,
+            player_id=self._player_id,
+            player=self._player,
+        )
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Mute", style=discord.ButtonStyle.secondary)
+    async def _mute_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        modal = _StatsMuteModal(
+            bot=self._bot,
+            player_id=self._player_id,
+            player=self._player,
+        )
+        await interaction.response.send_modal(modal)
+
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        try:
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
+            await self.message.edit(view=self)
         except Exception:
             pass
 
@@ -1215,7 +1357,9 @@ class XCoreDiscordBot(commands.Bot):
         updated_at = self._format_epoch_millis(player.get("updated_at"))
         embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
 
-        await interaction.response.send_message(embed=embed)
+        view = _StatsActionsView(bot=self, player_id=player_id, player=player)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     async def _cmd_servers(self, interaction: Interaction) -> None:
         view = _ServersView(bot=self, sort_mode="players")
