@@ -113,6 +113,8 @@ tasks.named<ShadowJar>("shadowJar") {
 tasks.register<ShadowJar>("shadowJarRelease") {
     applyCommonSettings()
     archiveClassifier.set("release")
+    from(sourceSets.main.get().output)
+    configurations = listOf(project.configurations.runtimeClasspath.get())
 }
 
 tasks.register("printArtifacts") {
