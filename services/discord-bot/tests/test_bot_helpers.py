@@ -331,12 +331,16 @@ class _ResetPasswordStore:
 class _ResetPasswordBus:
     def __init__(self) -> None:
         self.reload_calls = 0
+        self.pardon_calls: list[str] = []
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
         return True
 
     async def publish_reload_player_data_cache(self) -> None:
         self.reload_calls += 1
+
+    async def publish_pardon_player(self, uuid_value: str) -> None:
+        self.pardon_calls.append(uuid_value)
 
 
 @dataclass
@@ -475,6 +479,29 @@ async def test_reset_password_publishes_reload_cache_event() -> None:
     assert bus.reload_calls == 1
     assert interaction.response.messages
     assert interaction.response.messages[0][0].startswith("Password reset for")
+
+
+@pytest.mark.asyncio
+async def test_pardon_publishes_pardon_event() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bus = _ResetPasswordBus()
+    bot.__dict__["_bus"] = bus
+    bot.__dict__["_store"] = _ResetPasswordStore()
+    bot.__dict__["_settings"] = SimpleNamespace(
+        discord_general_admin_role_id=10,
+        discord_admin_role_id=20,
+    )
+
+    interaction = _CmdInteraction(
+        id=778,
+        user=_User(id=1, display_name="mod", roles=[_Role(id=10)]),
+    )
+
+    await XCoreDiscordBot._cmd_pardon(bot, interaction, 7)
+
+    assert bus.pardon_calls == ["u-7"]
+    assert interaction.response.messages
+    assert interaction.response.messages[0][0].startswith("Pardoned `Target`")
 
 
 class _ReconnectBus:

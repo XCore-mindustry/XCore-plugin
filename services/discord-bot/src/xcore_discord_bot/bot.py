@@ -1650,6 +1650,31 @@ class XCoreDiscordBot(commands.Bot):
         )
         await interaction.response.send_message(embed=embed)
 
+    async def _cmd_pardon(self, interaction: Interaction, player_id: int) -> None:
+        player = await self._get_player_or_reply(interaction, player_id)
+        if player is None:
+            return
+
+        if not await self._claim_mutation(
+            interaction,
+            operation="pardon",
+            scope=str(player_id),
+        ):
+            return
+
+        uuid_value = await self._require_player_uuid(
+            interaction,
+            player,
+            action="pardon player",
+        )
+        if uuid_value is None:
+            return
+
+        await self._bus.publish_pardon_player(uuid_value=uuid_value)
+        await interaction.response.send_message(
+            f"Pardoned `{self._player_name(player)}`"
+        )
+
     async def _cmd_mute(
         self, interaction: Interaction, player_id: int, period: str, reason: str
     ) -> None:

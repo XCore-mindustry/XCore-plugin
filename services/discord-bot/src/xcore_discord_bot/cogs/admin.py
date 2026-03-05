@@ -88,6 +88,13 @@ class AdminCog(commands.Cog):
     async def cmd_unban(self, interaction: Interaction, player_id: int) -> None:
         await self.bot._cmd_unban(interaction, player_id)
 
+    @app_commands.command(name="pardon", description="Pardon a player (admin)")
+    @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @admin_check()
+    async def cmd_pardon(self, interaction: Interaction, player_id: int) -> None:
+        await self.bot._cmd_pardon(interaction, player_id)
+
     @app_commands.command(name="mute", description="Mute a player (admin)")
     @app_commands.describe(
         player_id="Numeric player ID",
