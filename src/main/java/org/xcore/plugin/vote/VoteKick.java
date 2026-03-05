@@ -66,6 +66,10 @@ public class VoteKick extends VoteSession {
         VoteKick.onKick = onKick;
     }
 
+    public boolean isTarget(Player player) {
+        return target == player;
+    }
+
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);

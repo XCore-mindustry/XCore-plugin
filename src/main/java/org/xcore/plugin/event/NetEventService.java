@@ -26,6 +26,7 @@ import org.xcore.plugin.model.BanRequestData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressService;
 import org.xcore.plugin.vote.VoteChoice;
+import org.xcore.plugin.vote.VoteKick;
 import org.xcore.plugin.vote.VoteService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -71,6 +72,14 @@ public class NetEventService {
 
         if (choice.isValid() && voteService.isVoting()) {
             var currentVote = voteService.getCurrentSession();
+            VoteKick currentKick = voteService.getCurrentVoteKick();
+            if (currentKick != null && currentKick.isTarget(author)) {
+                var session = sessionService.get(author);
+                if (session != null) {
+                    session.locale().send("error-vote-yourself", args());
+                }
+                return null;
+            }
             if (currentVote.voted.containsKey(author.id)) {
                 var session = sessionService.get(author);
                 if (session != null) {
