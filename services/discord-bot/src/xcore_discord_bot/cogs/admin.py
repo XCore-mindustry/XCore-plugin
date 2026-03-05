@@ -134,3 +134,13 @@ class AdminCog(commands.Cog):
         self, interaction: Interaction, player_id: int
     ) -> None:
         await self.bot._cmd_reset_password(interaction, player_id)
+
+    @app_commands.command(
+        name="test-error",
+        description="Trigger an internal error for logging test (admin)",
+    )
+    @admin_check()
+    async def cmd_test_error(self, interaction: Interaction) -> None:
+        raise RuntimeError(
+            f"Intentional test error from /test-error by {interaction.user.display_name}"
+        )
