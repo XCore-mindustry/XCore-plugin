@@ -474,7 +474,7 @@ public final class RedisNetworkBackend {
             String idempotencyKey = message.getBody().getOrDefault("idempotency_key", "");
             if (!idempotencyKey.isBlank()) {
                 long ttlSeconds = resolveIdempotencyTtlSeconds(expiresAt);
-                idempotencyRedisKey = "xcore:idmp:consume:" + idempotencyKey;
+                idempotencyRedisKey = "xcore:idmp:consume:" + config.server + ":" + idempotencyKey;
                 String claimed = consumerCommands.set(
                         idempotencyRedisKey,
                         "1",
