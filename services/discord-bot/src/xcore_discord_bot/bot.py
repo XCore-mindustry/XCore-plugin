@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 import secrets
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -556,6 +557,7 @@ class XCoreDiscordBot(commands.Bot):
         self._heartbeat_consumer_task: asyncio.Task[None] | None = None
         self._presence_task: asyncio.Task[None] | None = None
         self._presence_rotation_index = 0
+        self._map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
 
     async def setup_hook(self) -> None:
         await self.add_cog(InfoCog(self))
@@ -1556,6 +1558,21 @@ class XCoreDiscordBot(commands.Bot):
         )
         sent = await interaction.followup.send(embed=first_embed, view=view)
         view.bot_message = sent
+
+    async def get_cached_maps(self, server: str) -> list[dict[str, str]]:
+        now = time.monotonic()
+        cached = self._map_cache.get(server)
+        if cached is not None:
+            ts, maps = cached
+            if now - ts < 60:
+                return maps
+
+        try:
+            maps = await self._bus.rpc_maps_list(server=server, timeout_ms=3000)
+            self._map_cache[server] = (now, maps)
+            return maps
+        except TimeoutError:
+            return self._map_cache.get(server, (0.0, []))[1]
 
     async def _cmd_remove_map(
         self, interaction: Interaction, server: str, file_name: str

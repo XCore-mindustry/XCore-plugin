@@ -5,6 +5,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
+from .autocomplete import _autocomplete_map_file
 from .checks import map_reviewer_check
 from ..registry import server_registry
 
@@ -45,6 +46,7 @@ class MapsCog(commands.Cog):
         server="Server name", file_name="Map file name (.msav) to remove"
     )
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
+    @app_commands.autocomplete(file_name=_autocomplete_map_file)
     @map_reviewer_check()
     async def cmd_remove_map(
         self,
