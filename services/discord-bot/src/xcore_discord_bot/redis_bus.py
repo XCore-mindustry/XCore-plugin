@@ -160,6 +160,8 @@ class RedisBus:
                     heartbeat.players,
                     heartbeat.max_players,
                     heartbeat.version,
+                    heartbeat.host,
+                    heartbeat.port,
                 )
             await callback(event)
 
@@ -180,6 +182,8 @@ class RedisBus:
                 event.players,
                 event.max_players,
                 event.version,
+                event.host,
+                event.port,
             )
             await callback(event)
 

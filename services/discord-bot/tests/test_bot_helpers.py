@@ -83,9 +83,9 @@ def test_format_ban_expire_date_for_far_future_millis() -> None:
 
 def test_sort_live_servers_by_players_then_name() -> None:
     servers = [
-        ServerInfo("b", 1, 5, 30, "1", 0.0),
-        ServerInfo("a", 2, 5, 30, "1", 0.0),
-        ServerInfo("c", 3, 2, 30, "1", 0.0),
+        ServerInfo("b", 1, 5, 30, "1", None, None, 0.0),
+        ServerInfo("a", 2, 5, 30, "1", None, None, 0.0),
+        ServerInfo("c", 3, 2, 30, "1", None, None, 0.0),
     ]
 
     sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "players")
@@ -95,8 +95,8 @@ def test_sort_live_servers_by_players_then_name() -> None:
 
 def test_sort_live_servers_by_name() -> None:
     servers = [
-        ServerInfo("beta", 1, 5, 30, "1", 0.0),
-        ServerInfo("Alpha", 2, 20, 30, "1", 0.0),
+        ServerInfo("beta", 1, 5, 30, "1", None, None, 0.0),
+        ServerInfo("Alpha", 2, 20, 30, "1", None, None, 0.0),
     ]
 
     sorted_servers = XCoreDiscordBot._sort_live_servers(servers, "name")
@@ -106,12 +106,23 @@ def test_sort_live_servers_by_name() -> None:
 
 def test_build_servers_embed_includes_sort_mode_footer() -> None:
     servers = [
-        ServerInfo("alpha", 123, 3, 30, "155.4", 0.0),
+        ServerInfo("alpha", 123, 3, 30, "155.4", None, None, 0.0),
     ]
 
     embed = XCoreDiscordBot._build_servers_embed(servers, sort_mode="players")
 
     assert embed.footer.text == "Sort: players • Servers: 1 • Players online: 3"
+
+
+def test_build_servers_embed_includes_address_when_available() -> None:
+    servers = [
+        ServerInfo("alpha", 123, 3, 30, "155.4", "play.example.com", 6567, 0.0),
+    ]
+
+    embed = XCoreDiscordBot._build_servers_embed(servers, sort_mode="players")
+
+    assert len(embed.fields) == 1
+    assert "Address: `play.example.com:6567`" in (embed.fields[0].value or "")
 
 
 # ── _claim_mutation tests ─────────────────────────────────────────────────────

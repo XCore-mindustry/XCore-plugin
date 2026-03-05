@@ -104,5 +104,20 @@ def test_server_heartbeat_from_payload() -> None:
     assert event.version == "1.2.3"
 
 
+def test_server_heartbeat_from_payload_with_address_aliases() -> None:
+    payload = {
+        "serverName": "mini-pvp",
+        "discordChannelId": "1234",
+        "players": 4,
+        "maxPlayers": 10,
+        "version": "1.2.3",
+        "serverHost": "play.example.com",
+        "serverPort": "6567",
+    }
+    event = ServerHeartbeatEvent.from_payload(payload)
+    assert event.host == "play.example.com"
+    assert event.port == 6567
+
+
 def test_heartbeat_event_type_literal() -> None:
     assert EventType.HEARTBEAT == "ServerHeartbeatEvent"

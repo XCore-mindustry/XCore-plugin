@@ -9,10 +9,22 @@ def test_update_server_and_get_channel_for_server() -> None:
     registry = LiveServerRegistry(timeout_sec=90)
 
     with patch("xcore_discord_bot.registry.time.time", side_effect=[100.0, 100.0]):
-        registry.update_server("alpha", 123, 4, 12, "v1")
+        registry.update_server("alpha", 123, 4, 12, "v1", "host.local", 6567)
         channel_id = registry.get_channel_for_server("alpha")
 
     assert channel_id == 123
+
+
+def test_update_server_stores_optional_address() -> None:
+    registry = LiveServerRegistry(timeout_sec=90)
+
+    with patch("xcore_discord_bot.registry.time.time", side_effect=[100.0, 100.0]):
+        registry.update_server("alpha", 123, 4, 12, "v1", "play.xcore.fun", 6567)
+        servers = registry.get_all_servers()
+
+    assert len(servers) == 1
+    assert servers[0].host == "play.xcore.fun"
+    assert servers[0].port == 6567
 
 
 def test_update_server_overwrites_existing_values() -> None:

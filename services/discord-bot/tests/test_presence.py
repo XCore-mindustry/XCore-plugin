@@ -24,8 +24,8 @@ def test_build_presence_activity_offline() -> None:
 def test_build_presence_activity_rotates_two_templates() -> None:
     with server_registry._lock:
         server_registry._servers.clear()
-    server_registry.update_server("alpha", 100, 5, 20, "v1")
-    server_registry.update_server("beta", 101, 7, 20, "v1")
+    server_registry.update_server("alpha", 100, 5, 20, "v1", None, None)
+    server_registry.update_server("beta", 101, 7, 20, "v1", None, None)
 
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_presence_rotation_index"] = 0
@@ -47,7 +47,7 @@ def test_build_presence_activity_rotates_two_templates() -> None:
 async def test_update_presence_once_calls_change_presence() -> None:
     with server_registry._lock:
         server_registry._servers.clear()
-    server_registry.update_server("alpha", 100, 3, 20, "v1")
+    server_registry.update_server("alpha", 100, 3, 20, "v1", None, None)
 
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_presence_rotation_index"] = 0

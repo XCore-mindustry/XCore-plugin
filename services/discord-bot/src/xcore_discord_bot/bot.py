@@ -947,6 +947,8 @@ class XCoreDiscordBot(commands.Bot):
             embed.description = "No live servers connected right now."
         for srv in servers:
             value = f"👥 `{srv.players}/{srv.max_players}`\n📦 `{srv.version}`\n💬 <#{srv.channel_id}>"
+            if srv.host and isinstance(srv.port, int) and srv.port > 0:
+                value += f"\n🔌 Address: `{srv.host}:{srv.port}`"
             embed.add_field(name=srv.name, value=value, inline=True)
 
         total_players = sum(srv.players for srv in servers)
@@ -1057,6 +1059,8 @@ class XCoreDiscordBot(commands.Bot):
                     heartbeat.players,
                     heartbeat.max_players,
                     heartbeat.version,
+                    heartbeat.host,
+                    heartbeat.port,
                 )
                 return
             logger.warning(

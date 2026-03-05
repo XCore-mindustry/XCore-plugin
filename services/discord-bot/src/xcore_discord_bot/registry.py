@@ -10,6 +10,8 @@ class ServerInfo:
     players: int
     max_players: int
     version: str
+    host: str | None
+    port: int | None
     last_seen_ts: float
 
 
@@ -20,7 +22,14 @@ class LiveServerRegistry:
         self._timeout = timeout_sec
 
     def update_server(
-        self, name: str, channel_id: int, players: int, max_players: int, version: str
+        self,
+        name: str,
+        channel_id: int,
+        players: int,
+        max_players: int,
+        version: str,
+        host: str | None = None,
+        port: int | None = None,
     ) -> None:
         with self._lock:
             self._servers[name] = ServerInfo(
@@ -29,6 +38,8 @@ class LiveServerRegistry:
                 players=players,
                 max_players=max_players,
                 version=version,
+                host=host,
+                port=port,
                 last_seen_ts=time.time(),
             )
 

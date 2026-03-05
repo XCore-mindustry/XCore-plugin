@@ -188,6 +188,12 @@ class ServerHeartbeatEvent(_FrozenModel):
     players: int
     max_players: int = Field(validation_alias=AliasChoices("maxPlayers", "max_players"))
     version: str
+    host: str | None = Field(
+        default=None, validation_alias=AliasChoices("host", "serverHost", "server_host")
+    )
+    port: int | None = Field(
+        default=None, validation_alias=AliasChoices("port", "serverPort", "server_port")
+    )
 
     @field_validator("server_name", "version")
     @classmethod
@@ -199,6 +205,25 @@ class ServerHeartbeatEvent(_FrozenModel):
     @field_validator("discord_channel_id", "players", "max_players", mode="before")
     @classmethod
     def _parse_int_fields(cls, value: Any) -> int:
+        return _coerce_int(value)
+
+    @field_validator("host", mode="before")
+    @classmethod
+    def _parse_host(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized if normalized else None
+        return str(value)
+
+    @field_validator("port", mode="before")
+    @classmethod
+    def _parse_optional_port(cls, value: Any) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
         return _coerce_int(value)
 
     @classmethod
