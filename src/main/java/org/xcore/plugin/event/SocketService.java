@@ -9,11 +9,17 @@ import jakarta.inject.Singleton;
 import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
+import mindustry.net.Administration;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.socket.ChatSocketHandler;
 import org.xcore.plugin.event.socket.MapSocketHandler;
 import org.xcore.plugin.event.socket.ModerationSocketHandler;
 import org.xcore.plugin.service.NetworkService;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 @Singleton
 public class SocketService {
@@ -23,6 +29,7 @@ public class SocketService {
     private final MapSocketHandler mapSocketHandler;
     private final NetworkService network;
     private final Config config;
+    private volatile String cachedPublicHost;
 
     @Inject
     public SocketService(ChatSocketHandler chatSocketHandler,
@@ -53,12 +60,44 @@ public class SocketService {
                             config.discordChannelId,
                             Groups.player.size(),
                             config.getNoAdminPlayerLimit(),
-                            Version.buildString()
+                            Version.buildString(),
+                            resolveHostAddress(),
+                            Administration.Config.port.num()
                     ));
                 } catch (Exception ex) {
                     Log.err("Failed to publish heartbeat", ex);
                 }
             }, 10f, 30f);
         });
+    }
+
+    private String resolveHostAddress() {
+        String cached = cachedPublicHost;
+        if (cached != null && !cached.isBlank()) {
+            return cached;
+        }
+
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("https://api.ipify.org").openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(2000);
+            connection.setReadTimeout(2000);
+
+            try (InputStream stream = connection.getInputStream()) {
+                String host = new String(stream.readAllBytes(), StandardCharsets.UTF_8).trim();
+                if (!host.isBlank()) {
+                    cachedPublicHost = host;
+                    return host;
+                }
+            }
+        } catch (Exception ex) {
+            Log.warn("Failed to resolve public host via api.ipify.org: @", ex.toString());
+        }
+
+        try {
+            return cachedPublicHost;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

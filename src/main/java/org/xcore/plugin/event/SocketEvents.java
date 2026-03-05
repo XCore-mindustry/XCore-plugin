@@ -25,7 +25,9 @@ public class SocketEvents {
             long discordChannelId,
             int players,
             int maxPlayers,
-            String version
+            String version,
+            String host,
+            Integer port
     ) implements Event {}
 
     public record AdminRequestEvent(int pid, String server) {}
