@@ -255,6 +255,16 @@ class MongoStore:
         result = await self._db_required()["bans"].delete_many(query)
         return result.deleted_count
 
+    async def find_ban(self, *, uuid: str, ip: str | None) -> dict[str, Any] | None:
+        query: dict[str, Any] = {"uuid": uuid}
+        if ip:
+            query = {"$or": [{"uuid": uuid}, {"ip": ip}]}
+
+        raw = await self._db_required()["bans"].find_one(query)
+        if raw is None:
+            return None
+        return BanDoc.model_validate(raw).model_dump(mode="python")
+
     async def upsert_mute(
         self,
         *,
@@ -278,6 +288,12 @@ class MongoStore:
     async def delete_mute(self, *, uuid: str) -> int:
         result = await self._db_required()["mutes"].delete_one({"uuid": uuid})
         return result.deleted_count
+
+    async def find_mute(self, *, uuid: str) -> dict[str, Any] | None:
+        raw = await self._db_required()["mutes"].find_one({"uuid": uuid})
+        if raw is None:
+            return None
+        return MuteDoc.model_validate(raw).model_dump(mode="python")
 
     async def remove_admin(self, *, uuid: str) -> bool:
         result = await self._db_required()["players"].update_one(

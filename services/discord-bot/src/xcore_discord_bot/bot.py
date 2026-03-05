@@ -1350,6 +1350,8 @@ class XCoreDiscordBot(commands.Bot):
         ):
             return
 
+        ban_doc = await self._store.find_ban(uuid=uuid_value or "", ip=ip_value)
+
         deleted = await self._store.delete_ban(
             uuid=uuid_value or "",
             ip=ip_value,
@@ -1359,9 +1361,26 @@ class XCoreDiscordBot(commands.Bot):
             return
         if uuid_value is not None:
             await self._bus.publish_pardon_player(uuid_value=uuid_value)
-        await interaction.response.send_message(
-            f"Unbanned `{self._player_name(player)}`"
+
+        player_name = self._player_name(player)
+        banned_by = str((ban_doc or {}).get("admin_name") or "Unknown")
+        reason = str((ban_doc or {}).get("reason") or "Not specified")
+        expire_text = self._format_ban_expire_date((ban_doc or {}).get("expire_date"))
+
+        embed = discord.Embed(
+            title=f"Unbanned {player_name}",
+            color=discord.Color.green(),
         )
+        embed.add_field(name="PID", value=str(player_id), inline=False)
+        embed.add_field(name="Admin who banned", value=banned_by, inline=False)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.add_field(name="Was set to expire", value=expire_text, inline=False)
+        embed.add_field(
+            name="Unbanned by",
+            value=interaction.user.display_name,
+            inline=False,
+        )
+        await interaction.response.send_message(embed=embed)
 
     async def _cmd_mute(
         self, interaction: Interaction, player_id: int, period: str, reason: str
@@ -1423,13 +1442,32 @@ class XCoreDiscordBot(commands.Bot):
         ):
             return
 
+        mute_doc = await self._store.find_mute(uuid=uuid_value)
+
         deleted = await self._store.delete_mute(uuid=uuid_value)
         if deleted == 0:
             await interaction.response.send_message(MSG_NO_ACTIVE_MUTE, ephemeral=True)
             return
-        await interaction.response.send_message(
-            f"Unmuted `{self._player_name(player)}`"
+
+        player_name = self._player_name(player)
+        muted_by = str((mute_doc or {}).get("admin_name") or "Unknown")
+        reason = str((mute_doc or {}).get("reason") or "Not specified")
+        expire_text = self._format_ban_expire_date((mute_doc or {}).get("expire_date"))
+
+        embed = discord.Embed(
+            title=f"Unmuted {player_name}",
+            color=discord.Color.green(),
         )
+        embed.add_field(name="PID", value=str(player_id), inline=False)
+        embed.add_field(name="Admin who muted", value=muted_by, inline=False)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.add_field(name="Was set to expire", value=expire_text, inline=False)
+        embed.add_field(
+            name="Unmuted by",
+            value=interaction.user.display_name,
+            inline=False,
+        )
+        await interaction.response.send_message(embed=embed)
 
     async def _cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
         player = await self._get_player_or_reply(interaction, player_id)
