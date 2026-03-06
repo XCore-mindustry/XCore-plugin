@@ -118,7 +118,7 @@ public class VoteKick extends VoteSession {
     public void success() {
         stop();
         var bundleArgs = args(
-                "nickname", target.coloredName(),
+                "target", target.coloredName(),
                 "minutes", globalConfig.voteKickBanDurationMinutes);
         sessionService.broadcast("votekick-success", bundleArgs);
         target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
@@ -134,7 +134,7 @@ public class VoteKick extends VoteSession {
     public void cancelByAdmin(Player admin) {
         stop();
         var bundleArgs = args(
-                "nickname", target.coloredName(),
+                "target", target.coloredName(),
                 "admin", admin.coloredName());
         sessionService.broadcast("votekick-cancelled", bundleArgs);
         Log.info(systemLocal.format("votekick-cancelled", bundleArgs));
@@ -143,7 +143,7 @@ public class VoteKick extends VoteSession {
     @Override
     public void fail() {
         stop();
-        sessionService.broadcast("votekick-fail", args("nickname", target.coloredName()));
+        sessionService.broadcast("votekick-fail", args("target", target.coloredName()));
     }
 
     @Override
