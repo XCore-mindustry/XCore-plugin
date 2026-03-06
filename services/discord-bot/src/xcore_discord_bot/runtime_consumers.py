@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from .contracts import EventType, ServerHeartbeatEvent
-from .handlers_moderation import post_ban_log
+from .handlers_moderation import post_ban_log, post_mute_log
 from .moderation_views import AdminRequestView
 from .registry import server_registry
 from .retry import retry_reconnect_bus
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         BanEvent,
         GameChatMessage,
         GlobalChatEvent,
+        MuteEvent,
         PlayerJoinLeaveEvent,
         RawEvent,
         ServerActionEvent,
@@ -235,6 +236,26 @@ async def consume_bans(bot: "XCoreDiscordBot") -> None:
         )
 
     await run_consumer_forever(bot, "Ban", bot.consume_bans_stream, dispatch)
+
+
+async def consume_mutes(bot: "XCoreDiscordBot") -> None:
+    async def dispatch(event: MuteEvent) -> None:
+        if not bot.mutes_channel_id:
+            return
+
+        player_id = await _player_pid_for_uuid(bot, event.uuid)
+
+        expire_dt = bot._parse_iso_datetime(event.expire_date) or await bot.now_utc()
+        await post_mute_log(
+            bot,
+            pid=event.pid if event.pid is not None else player_id,
+            name=event.name,
+            admin_name=event.admin_name,
+            reason=event.reason,
+            expire=expire_dt,
+        )
+
+    await run_consumer_forever(bot, "Mute", bot.consume_mutes_stream, dispatch)
 
 
 async def run_consumer_forever(

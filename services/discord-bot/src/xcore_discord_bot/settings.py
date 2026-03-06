@@ -46,6 +46,10 @@ class Settings(BaseSettings):
         default=0,
         validation_alias="DISCORD_BANS_CHANNEL_ID",
     )  # 0 = disabled
+    discord_mutes_channel_id: int = Field(
+        default=0,
+        validation_alias="DISCORD_MUTES_CHANNEL_ID",
+    )  # 0 = disabled
     discord_guild_id: int = Field(
         default=0,
         validation_alias="DISCORD_GUILD_ID",

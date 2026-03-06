@@ -16,6 +16,7 @@ from .contracts import (
     EventType,
     GameChatMessage,
     GlobalChatEvent,
+    MuteEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
     ServerHeartbeatEvent,
@@ -222,6 +223,16 @@ class RedisBus:
             stream="xcore:evt:moderation:ban",
             group_suffix="discord-ban",
             parse_payload=BanEvent.from_payload,
+            callback=callback,
+        )
+
+    async def consume_mutes(
+        self, callback: Callable[[MuteEvent], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:moderation:mute",
+            group_suffix="discord-mute",
+            parse_payload=MuteEvent.from_payload,
             callback=callback,
         )
 

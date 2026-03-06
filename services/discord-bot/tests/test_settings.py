@@ -13,6 +13,7 @@ ENV_KEYS = [
     "DISCORD_MAP_REVIEWER_ROLE_ID",
     "DISCORD_PRIVATE_CHANNEL_ID",
     "DISCORD_BANS_CHANNEL_ID",
+    "DISCORD_MUTES_CHANNEL_ID",
     "DISCORD_GUILD_ID",
     "DISCORD_INTERACTION_HMAC_SECRET",
     "DISCORD_ERROR_LOG_CHANNEL_ID",
@@ -120,3 +121,13 @@ def test_settings_error_log_channel_optional(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("DISCORD_ERROR_LOG_CHANNEL_ID", "123456")
     settings = Settings.from_env()
     assert settings.discord_error_log_channel_id == 123456
+
+
+def test_settings_mutes_channel_id_defaults_to_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_mutes_channel_id == 0

@@ -7,9 +7,13 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.contracts import BanEvent, GameChatMessage
+from xcore_discord_bot.contracts import BanEvent, GameChatMessage, MuteEvent
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot.runtime_consumers import consume_bans, consume_game_chat
+from xcore_discord_bot.runtime_consumers import (
+    consume_bans,
+    consume_game_chat,
+    consume_mutes,
+)
 
 
 @dataclass
@@ -70,6 +74,41 @@ class _BanBot:
     async def consume_bans_stream(self, callback) -> None:
         await callback(
             BanEvent(
+                uuid="uuid-1",
+                name="Target",
+                admin_name="Admin",
+                reason="Rule 1",
+                expire_date="bad-date",
+            )
+        )
+        raise asyncio.CancelledError()
+
+    async def reconnect_bus(self) -> None:
+        raise AssertionError("reconnect should not be called")
+
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
+        assert uuid == "uuid-1"
+        return self.player
+
+    async def now_utc(self) -> datetime:
+        self.now_calls += 1
+        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    @staticmethod
+    def _parse_iso_datetime(raw: str | None) -> datetime | None:
+        del raw
+        return None
+
+
+class _MuteBot:
+    def __init__(self, *, mutes_channel_id: int, player: PlayerRecord | None) -> None:
+        self.mutes_channel_id = mutes_channel_id
+        self.player = player
+        self.now_calls = 0
+
+    async def consume_mutes_stream(self, callback) -> None:
+        await callback(
+            MuteEvent(
                 uuid="uuid-1",
                 name="Target",
                 admin_name="Admin",
@@ -170,6 +209,69 @@ async def test_consume_bans_returns_early_when_ban_logs_disabled(
 
     with pytest.raises(asyncio.CancelledError):
         await consume_bans(bot)
+
+    assert bot.now_calls == 0
+    assert called is False
+
+
+@pytest.mark.asyncio
+async def test_consume_mutes_uses_now_when_expire_date_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    async def fake_post_mute_log(
+        bot, *, pid: int, name: str, admin_name: str, reason: str, expire
+    ):
+        captured.update(
+            {
+                "bot": bot,
+                "pid": pid,
+                "name": name,
+                "admin_name": admin_name,
+                "reason": reason,
+                "expire": expire,
+            }
+        )
+
+    monkeypatch.setattr(
+        "xcore_discord_bot.runtime_consumers.post_mute_log", fake_post_mute_log
+    )
+
+    bot = _MuteBot(
+        mutes_channel_id=778,
+        player=PlayerRecord(pid=42, nickname="Target"),
+    )
+
+    with pytest.raises(asyncio.CancelledError):
+        await consume_mutes(bot)
+
+    assert bot.now_calls == 1
+    assert captured["pid"] == 42
+    assert captured["name"] == "Target"
+    assert captured["admin_name"] == "Admin"
+    assert captured["reason"] == "Rule 1"
+    assert captured["expire"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_consume_mutes_returns_early_when_mute_logs_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called = False
+
+    async def fake_post_mute_log(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(
+        "xcore_discord_bot.runtime_consumers.post_mute_log", fake_post_mute_log
+    )
+
+    bot = _MuteBot(mutes_channel_id=0, player=PlayerRecord(pid=42, nickname="Target"))
+
+    with pytest.raises(asyncio.CancelledError):
+        await consume_mutes(bot)
 
     assert bot.now_calls == 0
     assert called is False

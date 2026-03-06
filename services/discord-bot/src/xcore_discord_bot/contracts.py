@@ -159,6 +159,42 @@ class BanEvent(_FrozenModel):
         )
 
 
+class MuteEvent(_FrozenModel):
+    pid: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("pid", "playerPid", "player_pid"),
+    )
+    uuid: str | None = None
+    name: str
+    admin_name: str = Field(validation_alias=AliasChoices("adminName", "admin_name"))
+    reason: str
+    expire_date: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("expireDate", "expire_date"),
+    )
+
+    @field_validator("name", "admin_name", "reason")
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        return cls._require_non_empty_text(value)
+
+    @field_validator("pid", mode="before")
+    @classmethod
+    def _optional_int(cls, value: Any) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return _coerce_int(value)
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "MuteEvent":
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid mute payload: expected name, adminName/admin_name, reason",
+        )
+
+
 class GlobalChatEvent(_FrozenModel):
     author_name: str = Field(validation_alias=AliasChoices("authorName", "author_name"))
     message: str

@@ -9,6 +9,7 @@ from xcore_discord_bot.settings import Settings
 from xcore_discord_bot.contracts import (
     BanEvent,
     GlobalChatEvent,
+    MuteEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
     ServerHeartbeatEvent,
@@ -354,6 +355,57 @@ async def test_consume_bans_dispatches_event(
         b"xcore:evt:moderation:ban",
         f"{settings.redis_group_prefix}:discord-ban",
         b"7-0",
+    )
+
+
+@pytest.mark.asyncio
+async def test_consume_mutes_dispatches_event(
+    settings: Settings, mock_redis: AsyncMock
+) -> None:
+    payload = {
+        "uuid": "u-1",
+        "name": "pizduk",
+        "admin_name": "admin",
+        "reason": "rule",
+        "expire_date": "2026-03-01T10:00:00+00:00",
+    }
+    mock_redis.xreadgroup.side_effect = [
+        [
+            [
+                b"xcore:evt:moderation:mute",
+                [
+                    (
+                        b"7-1",
+                        {"payload_json": json.dumps(payload)},
+                    )
+                ],
+            ]
+        ],
+        KeyboardInterrupt("stop"),
+    ]
+
+    bus = RedisBus(settings)
+    bus._redis = mock_redis
+
+    callback = AsyncMock()
+    try:
+        await bus.consume_mutes(callback)
+    except KeyboardInterrupt:
+        pass
+
+    callback.assert_called_once_with(
+        MuteEvent(
+            uuid="u-1",
+            name="pizduk",
+            admin_name="admin",
+            reason="rule",
+            expire_date="2026-03-01T10:00:00+00:00",
+        )
+    )
+    mock_redis.xack.assert_called_once_with(
+        b"xcore:evt:moderation:mute",
+        f"{settings.redis_group_prefix}:discord-mute",
+        b"7-1",
     )
 
 

@@ -5,6 +5,7 @@ from xcore_discord_bot.contracts import (
     EventType,
     GameChatMessage,
     GlobalChatEvent,
+    MuteEvent,
     PlayerJoinLeaveEvent,
     RawEvent,
     ServerHeartbeatEvent,
@@ -67,6 +68,23 @@ def test_ban_event_from_payload_camel_case_admin_and_expire() -> None:
     event = BanEvent.from_payload(payload)
     assert event.pid == 12
     assert event.admin_name == "mod"
+    assert event.expire_date == "2026-03-01T11:00:00+00:00"
+
+
+def test_mute_event_from_payload_camel_case_admin_and_expire() -> None:
+    payload = {
+        "playerPid": 12,
+        "uuid": "u-2",
+        "name": "player",
+        "adminName": "mod",
+        "reason": "spam",
+        "expireDate": "2026-03-01T11:00:00+00:00",
+    }
+    event = MuteEvent.from_payload(payload)
+    assert event.pid == 12
+    assert event.uuid == "u-2"
+    assert event.admin_name == "mod"
+    assert event.reason == "spam"
     assert event.expire_date == "2026-03-01T11:00:00+00:00"
 
 

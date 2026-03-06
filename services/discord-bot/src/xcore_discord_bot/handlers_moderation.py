@@ -218,6 +218,14 @@ async def cmd_mute(
         expire_date=expire,
     )
     player_name = bot._player_name(player)
+    await post_mute_log(
+        bot,
+        pid=player_id,
+        name=player_name,
+        admin_name=interaction.user.display_name,
+        reason=reason,
+        expire=expire,
+    )
     view = MuteUndoView(
         requester_id=interaction.user.id,
         uuid=uuid_value,
@@ -390,4 +398,53 @@ async def post_ban_log(
     embed.add_field(name="Admin", value=safe_admin_name, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
     embed.add_field(name="Expires", value=unban_value, inline=False)
+    await channel.send(embed=embed)
+
+
+async def post_mute_log(
+    bot: "XCoreDiscordBot",
+    *,
+    pid: int,
+    name: str,
+    admin_name: str,
+    reason: str,
+    expire: datetime,
+) -> None:
+    from .bot import strip_mindustry_colors
+
+    mutes_channel_id = bot.mutes_channel_id
+    if not mutes_channel_id:
+        return
+
+    channel = await bot._resolve_messageable_channel(
+        mutes_channel_id, context="mute logs"
+    )
+    if channel is None:
+        return
+
+    safe_name = strip_mindustry_colors(str(name).replace("`", "")).strip() or "Unknown"
+    safe_admin_name = (
+        strip_mindustry_colors(str(admin_name).replace("`", "")).strip() or "Unknown"
+    )
+    safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
+    if not safe_reason:
+        safe_reason = "No reason provided"
+
+    safe_pid = pid if pid > 0 else None
+    violator_value = (
+        f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
+    )
+    expire_utc = (
+        expire.replace(tzinfo=timezone.utc) if expire.tzinfo is None else expire
+    )
+    unmute_value = (
+        f"{discord.utils.format_dt(expire_utc, style='f')} "
+        f"({discord.utils.format_dt(expire_utc, style='R')})"
+    )
+
+    embed = discord.Embed(title="Mute Issued", color=discord.Color.orange())
+    embed.add_field(name="Violator", value=violator_value, inline=False)
+    embed.add_field(name="Admin", value=safe_admin_name, inline=False)
+    embed.add_field(name="Reason", value=safe_reason, inline=False)
+    embed.add_field(name="Expires", value=unmute_value, inline=False)
     await channel.send(embed=embed)
