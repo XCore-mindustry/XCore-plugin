@@ -596,10 +596,11 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
         sleep_calls.append(seconds)
 
     monkeypatch.setattr("xcore_discord_bot.runtime_consumers.asyncio.sleep", fast_sleep)
+    monkeypatch.setattr("xcore_discord_bot.retry.asyncio.sleep", fast_sleep)
 
     async def failing_reconnect() -> None:
         bus.reconnected += 1
-        raise RuntimeError("still down")
+        raise ConnectionError("still down")
 
     bot.reconnect_bus = failing_reconnect
 
@@ -618,8 +619,8 @@ async def test_run_consumer_forever_retries_when_reconnect_fails(
         await run_consumer_forever(bot, "Test", consume, callback)
 
     assert calls["n"] == 2
-    assert bus.reconnected == 1
-    assert sleep_calls == [2, 2]
+    assert bus.reconnected == 2
+    assert sleep_calls == [2, 2.0, 2]
 
 
 class _MessageBus:

@@ -10,6 +10,7 @@ from .contracts import EventType, ServerHeartbeatEvent
 from .handlers_moderation import post_ban_log
 from .moderation_views import AdminRequestView
 from .registry import server_registry
+from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 
 if TYPE_CHECKING:
@@ -253,7 +254,7 @@ async def run_consumer_forever(
             )
             await asyncio.sleep(2)
             try:
-                await bot.reconnect_bus()
+                await retry_reconnect_bus(bot.reconnect_bus)
             except Exception as connect_error:
                 logger.warning("%s consumer reconnect failed: %s", label, connect_error)
                 await asyncio.sleep(2)

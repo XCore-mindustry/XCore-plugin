@@ -19,6 +19,7 @@ from .presentation import (
     format_minutes,
     format_size,
 )
+from .retry import retry_read_rpc
 from .server_views import PaginatorView, ServersView
 
 if TYPE_CHECKING:
@@ -268,7 +269,9 @@ async def get_cached_maps(bot: "XCoreDiscordBot", server: str) -> list[dict[str,
             return maps
 
     try:
-        maps = await bot.rpc_maps_list(server=server, timeout_ms=3000)
+        maps = await retry_read_rpc(
+            lambda: bot.rpc_maps_list(server=server, timeout_ms=3000)
+        )
         bot._map_cache[server] = (now, maps)
         return maps
     except TimeoutError:

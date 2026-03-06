@@ -15,6 +15,7 @@ class _MapsBus:
     def __init__(self) -> None:
         self.calls = 0
         self.fail = False
+        self.fail_once = False
         self.maps: list[dict[str, str]] = [
             {"name": "Glacier", "file_name": "glacier.msav"},
         ]
@@ -23,6 +24,9 @@ class _MapsBus:
         self.calls += 1
         assert server == "survival"
         assert timeout_ms == 3000
+        if self.fail_once:
+            self.fail_once = False
+            raise TimeoutError
         if self.fail:
             raise TimeoutError
         return self.maps
@@ -83,12 +87,38 @@ async def test_get_cached_maps_returns_stale_cache_on_timeout(
     )
     bus.fail = True
 
+    async def fast_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr("xcore_discord_bot.retry.asyncio.sleep", fast_sleep)
     monkeypatch.setattr(
         "xcore_discord_bot.handlers_misc.time.monotonic", lambda: 1000.0
     )
 
     maps = await get_cached_maps(cast(Any, bot), "survival")
     assert maps == [{"name": "Gladius Arena", "file_name": "gladius.msav"}]
+
+
+@pytest.mark.asyncio
+async def test_get_cached_maps_retries_transient_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bus = _MapsBus()
+    bus.fail_once = True
+    bot = _CachedMapsBot(_bus=bus, _map_cache={})
+
+    async def fast_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr("xcore_discord_bot.retry.asyncio.sleep", fast_sleep)
+    monkeypatch.setattr(
+        "xcore_discord_bot.handlers_misc.time.monotonic", lambda: 1000.0
+    )
+
+    maps = await get_cached_maps(cast(Any, bot), "survival")
+
+    assert maps == [{"name": "Glacier", "file_name": "glacier.msav"}]
+    assert bus.calls == 2
 
 
 @dataclass
