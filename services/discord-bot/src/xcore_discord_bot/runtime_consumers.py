@@ -10,6 +10,7 @@ from .contracts import EventType, ServerHeartbeatEvent
 from .handlers_moderation import post_ban_log
 from .moderation_views import AdminRequestView
 from .registry import server_registry
+from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -25,6 +26,32 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+async def _player_nickname_for_pid(store: PlayerLookupService, pid: int) -> str:
+    player = await store.find_player_by_pid(pid)
+    if player is None:
+        return "Unknown"
+
+    nickname_raw = player.get("nickname")
+    nickname = str(nickname_raw).strip() if nickname_raw else ""
+    return nickname or "Unknown"
+
+
+async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> int:
+    if not uuid:
+        return -1
+
+    player = await store.find_player_by_uuid(uuid)
+    if player is None:
+        return -1
+
+    pid_raw = player.get("pid")
+    if isinstance(pid_raw, int):
+        return pid_raw
+    if isinstance(pid_raw, str) and pid_raw.isdigit():
+        return int(pid_raw)
+    return -1
 
 
 async def consume_game_chat(bot: "XCoreDiscordBot") -> None:
@@ -100,9 +127,15 @@ async def consume_raw_events(bot: "XCoreDiscordBot") -> None:
 
 
 async def consume_admin_requests(bot: "XCoreDiscordBot") -> None:
-    async def dispatch(pid: int, server: str) -> None:
+    async def find_player_by_pid_for_view(pid: int) -> dict[str, object] | None:
         player = await bot.find_player_by_pid(pid)
-        nickname = player.get("nickname", "Unknown") if player else "Unknown"
+        return dict(player) if player is not None else None
+
+    async def claim_idempotency_for_view(key: str, ttl_seconds: int) -> bool:
+        return await bot.claim_idempotency(key, ttl_seconds=ttl_seconds)
+
+    async def dispatch(pid: int, server: str) -> None:
+        nickname = await _player_nickname_for_pid(bot, pid)
         request_nonce = secrets.token_hex(6)
 
         channel = await bot._resolve_messageable_channel(
@@ -117,8 +150,8 @@ async def consume_admin_requests(bot: "XCoreDiscordBot") -> None:
             server=server,
             pid=pid,
             request_nonce=request_nonce,
-            find_player_by_pid=bot.find_player_by_pid,
-            claim_idempotency=bot.claim_idempotency,
+            find_player_by_pid=find_player_by_pid_for_view,
+            claim_idempotency=claim_idempotency_for_view,
             mark_admin_confirmed=bot.mark_admin_confirmed,
             publish_admin_confirm=bot.publish_admin_confirm,
             finalize_message=bot._finalize_admin_request_message,
@@ -198,11 +231,7 @@ async def consume_bans(bot: "XCoreDiscordBot") -> None:
         if not bot.bans_channel_id:
             return
 
-        player_id = -1
-        if event.uuid:
-            player = await bot.find_player_by_uuid(event.uuid)
-            if player is not None:
-                player_id = int(player.get("pid", -1))
+        player_id = await _player_pid_for_uuid(bot, event.uuid)
 
         expire_dt = bot._parse_iso_datetime(event.expire_date) or await bot.now_utc()
         await post_ban_log(
@@ -218,7 +247,7 @@ async def consume_bans(bot: "XCoreDiscordBot") -> None:
 
 
 async def run_consumer_forever(
-    bot: "XCoreDiscordBot",
+    bot: ConsumerRecoveryService,
     label: str,
     consume: Callable[[Callable[..., Awaitable[None]]], Awaitable[None]],
     callback: Callable[..., Awaitable[None]],

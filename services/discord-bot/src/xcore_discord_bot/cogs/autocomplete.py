@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from discord import Interaction, app_commands
 
-from ..client_protocols import SupportsCachedMaps, SupportsPlayerAutocomplete
+from ..service_protocols import BusService, StoreService
 
 
 async def _autocomplete_player_id(
@@ -16,11 +16,11 @@ async def _autocomplete_player_id(
     if not current_norm:
         return []
 
-    bot = interaction.client
-    if not isinstance(bot, SupportsPlayerAutocomplete):
+    store = interaction.client
+    if not isinstance(store, StoreService):
         return []
 
-    rows = await bot.autocomplete_players(current_norm, limit=25)
+    rows = await store.autocomplete_players(current_norm, limit=25)
     choices: list[app_commands.Choice[int]] = []
     for row in rows:
         pid_raw = row.get("pid")
@@ -45,14 +45,14 @@ async def _autocomplete_map_file(
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    bot = interaction.client
+    bus = interaction.client
     server = str(getattr(interaction.namespace, "server", "")).strip()
     if not server:
         return []
 
-    if not isinstance(bot, SupportsCachedMaps):
+    if not isinstance(bus, BusService):
         return []
-    maps = await bot.get_cached_maps(server)
+    maps = await bus.get_cached_maps(server)
     current_norm = current.strip().lower()
 
     choices: list[app_commands.Choice[str]] = []
