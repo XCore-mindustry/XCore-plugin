@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.4] - 2026-03-06
+
+### Added
+- Routed moderation mute events into a dedicated Redis stream so downstream services can consume mute actions directly.
+
+### Fixed
+- Restored Discord mute log delivery by publishing `MuteData` as `moderation.mute` instead of falling back to raw events.
+- Fixed release packaging to include root module classes and runtime dependencies in the release jar.
+- Aligned votekick localization target arguments with the current vote flow.
+- Corrected mute/help localization placeholders and added consistency coverage for localization bundles.
+
 ## [3.1.3] - 2026-03-05
 
 ### Added
@@ -120,7 +131,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.3...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...HEAD
+[3.1.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.3...3.1.4
 [3.1.3]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.2...3.1.3
 [3.1.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.1...3.1.2
 [3.1.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.0...3.1.1
