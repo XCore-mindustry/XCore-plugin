@@ -248,7 +248,10 @@ class XCoreDiscordBot(commands.Bot):
 
     @property
     def mutes_channel_id(self) -> int:
-        return self._settings.discord_mutes_channel_id
+        settings = getattr(self, "_settings", None)
+        if settings is None:
+            return 0
+        return settings.discord_mutes_channel_id
 
     async def autocomplete_players(
         self,
