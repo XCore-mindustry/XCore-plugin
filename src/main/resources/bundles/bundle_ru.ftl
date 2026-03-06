@@ -252,17 +252,23 @@ commands-player-description = Статистика игрока
 player-menu-player = Игрок
 player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
-    Статистика игрока { $nickname } [grey]#{ $pid }
-    { "" }[brown]Время на сервере: [grey]{ $totalPlayTime }[] минут
-    Ранг в MiniHexed: [grey]{ $hexedRankTag } { $hexedRankName }
-    MiniPvP рейтинг: { $pvpRating }
+    { "" }[white]Статистика игрока [green]{ $customNickname }[][grey]#{ $pid }[]
+    { "" }[white]Оригинальное имя: [green]{ $nickname }[] | Админ: [green]{ $admin }[]
+    { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг в Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
+    { "" }[white]Время в игре: [green]{ $totalPlayTime }[] минут | Таблица лидеров: [green]{ $leaderboard }[]
+    { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 player-menu-players = Список игроков
 player-menu-players-title = { "[" }orange]{ -xcore } — Список игроков
 player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
 player-menu-players-empty = Игроки не найдены
 player-menu-settings = Настройки
 player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки игрока
-player-menu-settings-content = Показывать таблицу лидеров: [green]{ $leaderboard }[] | Перевод: [green]{ $language }[] | Язык автоперевода: [green]{ $translatorLanguage }[]
+player-menu-settings-content =
+    { "" }[white]Установленное имя: [green]{ $customNickname }[]
+    { "" }[white]Таблица лидеров: [green]{ $leaderboard }[]
+    { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
+    { "" }[green]{ $description }[white]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
 settings-language-label = Перевод: [green]{ $lang }[]
