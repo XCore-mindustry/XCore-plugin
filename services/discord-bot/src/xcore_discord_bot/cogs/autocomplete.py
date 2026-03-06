@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 from discord import Interaction, app_commands
 
 from ..client_protocols import SupportsCachedMaps, SupportsPlayerAutocomplete
-
-if TYPE_CHECKING:
-    from ..bot import XCoreDiscordBot
 
 
 async def _autocomplete_player_id(

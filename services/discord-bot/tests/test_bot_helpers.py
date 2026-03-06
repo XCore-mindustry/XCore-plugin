@@ -561,7 +561,7 @@ async def test_run_consumer_forever_restarts_after_failure(
     async def fast_sleep(_seconds: float) -> None:
         return None
 
-    monkeypatch.setattr("xcore_discord_bot.bot.asyncio.sleep", fast_sleep)
+    monkeypatch.setattr("xcore_discord_bot.runtime_consumers.asyncio.sleep", fast_sleep)
 
     calls = {"n": 0}
 
@@ -579,6 +579,46 @@ async def test_run_consumer_forever_restarts_after_failure(
 
     assert calls["n"] == 2
     assert bus.reconnected == 1
+
+
+@pytest.mark.asyncio
+async def test_run_consumer_forever_retries_when_reconnect_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bus = _ReconnectBus()
+    bot.__dict__["_bus"] = bus
+
+    sleep_calls: list[float] = []
+
+    async def fast_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+
+    monkeypatch.setattr("xcore_discord_bot.runtime_consumers.asyncio.sleep", fast_sleep)
+
+    async def failing_reconnect() -> None:
+        bus.reconnected += 1
+        raise RuntimeError("still down")
+
+    bot.reconnect_bus = failing_reconnect
+
+    calls = {"n": 0}
+
+    async def consume(_callback):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("redis down")
+        raise asyncio.CancelledError()
+
+    async def callback() -> None:
+        return None
+
+    with pytest.raises(asyncio.CancelledError):
+        await run_consumer_forever(bot, "Test", consume, callback)
+
+    assert calls["n"] == 2
+    assert bus.reconnected == 1
+    assert sleep_calls == [2, 2]
 
 
 class _MessageBus:
