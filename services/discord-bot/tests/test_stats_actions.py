@@ -12,6 +12,7 @@ from xcore_discord_bot.bot import (
     _StatsBanModal,
     _StatsMuteModal,
 )
+from xcore_discord_bot.handlers_misc import cmd_stats
 
 
 @dataclass
@@ -95,12 +96,22 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_store"] = _Store()
     bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot.__dict__["_create_stats_ban_modal"] = lambda **kwargs: _StatsBanModal(
+        player_id=kwargs["player_id"],
+        player=kwargs["player"],
+        on_submit_ban=lambda *args: None,
+    )
+    bot.__dict__["_create_stats_mute_modal"] = lambda **kwargs: _StatsMuteModal(
+        player_id=kwargs["player_id"],
+        player=kwargs["player"],
+        on_submit_mute=lambda *args: None,
+    )
 
     interaction = _Interaction(
         id=1,
         user=_User(id=9, display_name="admin", roles=[_Role(5)]),
     )
-    await XCoreDiscordBot._cmd_stats(bot, interaction, 123)
+    await cmd_stats(bot, interaction, 123)
 
     assert len(interaction.response.sent) == 1
     sent = interaction.response.sent[0]
@@ -113,7 +124,21 @@ async def test_cmd_stats_attaches_actions_view() -> None:
 async def test_stats_actions_view_blocks_non_admin() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
-    view = _StatsActionsView(bot=bot, player_id=123, player={"nickname": "Vortex"})
+    view = _StatsActionsView(
+        settings=bot._settings,
+        player_id=123,
+        player={"nickname": "Vortex"},
+        create_ban_modal=lambda **kwargs: _StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=lambda *args: None,
+        ),
+        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=lambda *args: None,
+        ),
+    )
 
     interaction = _Interaction(
         id=2,
@@ -136,7 +161,21 @@ async def test_stats_actions_view_blocks_non_admin() -> None:
 async def test_stats_actions_view_ban_button_opens_modal() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
-    view = _StatsActionsView(bot=bot, player_id=123, player={"nickname": "Vortex"})
+    view = _StatsActionsView(
+        settings=bot._settings,
+        player_id=123,
+        player={"nickname": "Vortex"},
+        create_ban_modal=lambda **kwargs: _StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=lambda *args: None,
+        ),
+        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=lambda *args: None,
+        ),
+    )
 
     interaction = _Interaction(
         id=3,
@@ -154,7 +193,6 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_mute_modal_calls_cmd_mute() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     calls: list[tuple[int, str, str]] = []
 
     async def _fake_cmd_mute(
@@ -166,8 +204,11 @@ async def test_stats_mute_modal_calls_cmd_mute() -> None:
         del interaction
         calls.append((player_id, period, reason))
 
-    bot.__dict__["_cmd_mute"] = _fake_cmd_mute
-    modal = _StatsMuteModal(bot=bot, player_id=123, player={"nickname": "Vortex"})
+    modal = _StatsMuteModal(
+        player_id=123,
+        player={"nickname": "Vortex"},
+        on_submit_mute=_fake_cmd_mute,
+    )
     modal.period = SimpleNamespace(value="10m")
     modal.reason = SimpleNamespace(value="")
 

@@ -6,7 +6,13 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.bot import MSG_NO_ACTIVE_BAN, MSG_NO_ACTIVE_MUTE, XCoreDiscordBot
+from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.handlers_moderation import (
+    MSG_NO_ACTIVE_BAN,
+    MSG_NO_ACTIVE_MUTE,
+    cmd_unban,
+    cmd_unmute,
+)
 
 
 @dataclass
@@ -95,7 +101,7 @@ async def test_cmd_unban_sends_rich_embed() -> None:
     bot.__dict__["_store"] = _Store()
 
     interaction = _Interaction(id=1, user=_User(id=7, display_name="admin-x"))
-    await XCoreDiscordBot._cmd_unban(bot, interaction, 123)
+    await cmd_unban(bot, interaction, 123)
 
     assert bus.pardon_calls == ["uuid-123"]
     assert len(interaction.response.calls) == 1
@@ -121,7 +127,7 @@ async def test_cmd_unmute_sends_rich_embed() -> None:
     bot.__dict__["_store"] = _Store()
 
     interaction = _Interaction(id=2, user=_User(id=7, display_name="admin-y"))
-    await XCoreDiscordBot._cmd_unmute(bot, interaction, 123)
+    await cmd_unmute(bot, interaction, 123)
 
     assert len(interaction.response.calls) == 1
     call = interaction.response.calls[0]
@@ -143,7 +149,7 @@ async def test_cmd_unban_no_active_ban_message() -> None:
     bot.__dict__["_store"] = _NoActiveStore()
 
     interaction = _Interaction(id=3, user=_User(id=7, display_name="admin"))
-    await XCoreDiscordBot._cmd_unban(bot, interaction, 123)
+    await cmd_unban(bot, interaction, 123)
 
     assert interaction.response.calls == [
         {"content": MSG_NO_ACTIVE_BAN, "embed": None, "ephemeral": True}
@@ -157,7 +163,7 @@ async def test_cmd_unmute_no_active_mute_message() -> None:
     bot.__dict__["_store"] = _NoActiveStore()
 
     interaction = _Interaction(id=4, user=_User(id=7, display_name="admin"))
-    await XCoreDiscordBot._cmd_unmute(bot, interaction, 123)
+    await cmd_unmute(bot, interaction, 123)
 
     assert interaction.response.calls == [
         {"content": MSG_NO_ACTIVE_MUTE, "embed": None, "ephemeral": True}

@@ -71,20 +71,26 @@ class _Bus:
 
 @pytest.mark.asyncio
 async def test_admin_request_view_confirm_idempotent() -> None:
-    bot = SimpleNamespace(
-        _settings=SimpleNamespace(discord_admin_role_id=5),
-        _store=_Store(),
-        _bus=_Bus(),
-    )
+    settings = SimpleNamespace(discord_admin_role_id=5)
+    store = _Store()
+    bus = _Bus()
 
     async def _finalize_admin_request_message(
         interaction: _Interaction, status: str
     ) -> None:
         await interaction.response.edit_message(content=status, view=None)
 
-    bot._finalize_admin_request_message = _finalize_admin_request_message
-
-    view = _AdminRequestView(bot=bot, server="mini-pvp", pid=1, request_nonce="req-1")
+    view = _AdminRequestView(
+        settings=settings,
+        server="mini-pvp",
+        pid=1,
+        request_nonce="req-1",
+        find_player_by_pid=store.find_player_by_pid,
+        claim_idempotency=bus.claim_idempotency,
+        mark_admin_confirmed=store.mark_admin_confirmed,
+        publish_admin_confirm=bus.publish_admin_confirm,
+        finalize_message=_finalize_admin_request_message,
+    )
     first = _Interaction(user=_User(roles=[_Role(5)]))
     second = _Interaction(user=_User(roles=[_Role(5)]))
 
@@ -94,8 +100,8 @@ async def test_admin_request_view_confirm_idempotent() -> None:
     await callback(first)
     await callback(second)
 
-    assert bot._bus.confirmed == [("uuid-1", "mini-pvp")]
-    assert bot._store.marked == ["uuid-1"]
+    assert bus.confirmed == [("uuid-1", "mini-pvp")]
+    assert store.marked == ["uuid-1"]
     assert len(first.response.edits) == 1
     assert "✅ Confirmed admin request" in (first.response.edits[0][0] or "")
     assert (

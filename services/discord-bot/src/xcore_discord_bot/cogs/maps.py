@@ -5,6 +5,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
+from .. import handlers_misc
 from .autocomplete import _autocomplete_map_file
 from .checks import map_reviewer_check
 from ..registry import server_registry
@@ -36,7 +37,7 @@ class MapsCog(commands.Cog):
     @app_commands.describe(server="Server name")
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
     async def cmd_maps(self, interaction: Interaction, server: str) -> None:
-        await self.bot._cmd_maps(interaction, server)
+        await handlers_misc.cmd_maps(self.bot, interaction, server)
 
     @app_commands.command(
         name="remove-map",
@@ -54,7 +55,7 @@ class MapsCog(commands.Cog):
         server: str,
         file_name: str,
     ) -> None:
-        await self.bot._cmd_remove_map(interaction, server, file_name)
+        await handlers_misc.cmd_remove_map(self.bot, interaction, server, file_name)
 
     @app_commands.command(
         name="upload-map",
@@ -76,4 +77,9 @@ class MapsCog(commands.Cog):
         file2: discord.Attachment | None = None,
         file3: discord.Attachment | None = None,
     ) -> None:
-        await self.bot._cmd_upload_map(interaction, server, [file1, file2, file3])
+        await handlers_misc.cmd_upload_map(
+            self.bot,
+            interaction,
+            server,
+            [file1, file2, file3],
+        )

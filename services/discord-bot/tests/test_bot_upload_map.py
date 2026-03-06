@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.handlers_misc import cmd_upload_map
 
 
 @dataclass
@@ -84,7 +85,7 @@ async def test_upload_map_requires_valid_msav_files() -> None:
         None,
         None,
     ]
-    await XCoreDiscordBot._cmd_upload_map(bot, interaction, "mini-pvp", attachments)
+    await cmd_upload_map(bot, interaction, "mini-pvp", attachments)
 
     assert interaction.ephemeral_replies
     assert "No valid .msav files attached." in interaction.ephemeral_replies[0]
@@ -107,7 +108,7 @@ async def test_upload_map_publishes_msav_files() -> None:
         _Attachment(filename="ignored.txt", url="https://example/ignored.txt"),
         _Attachment(filename="two.MSAV", url="https://example/two.MSAV"),
     ]
-    await XCoreDiscordBot._cmd_upload_map(bot, interaction, "mini-pvp", attachments)
+    await cmd_upload_map(bot, interaction, "mini-pvp", attachments)
 
     assert len(bot._bus.maps_calls) == 1
     server, files = bot._bus.maps_calls[0]

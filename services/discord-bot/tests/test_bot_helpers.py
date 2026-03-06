@@ -16,6 +16,18 @@ from xcore_discord_bot.bot import (
     parse_duration,
     strip_mindustry_colors,
 )
+from xcore_discord_bot import handlers_moderation
+from xcore_discord_bot.handlers_moderation import (
+    cmd_pardon,
+    cmd_reset_password,
+    perform_ban,
+)
+from xcore_discord_bot.runtime_consumers import run_consumer_forever
+from xcore_discord_bot.presentation import (
+    build_servers_embed,
+    build_stats_title,
+    format_ban_expire_date,
+)
 from xcore_discord_bot.registry import ServerInfo, server_registry
 
 
@@ -47,37 +59,37 @@ def test_build_stats_title_truncates_to_discord_limit() -> None:
     nickname = "n" * 240
     custom_nickname = "c" * 240
 
-    title = XCoreDiscordBot._build_stats_title(nickname, custom_nickname)
+    title = build_stats_title(nickname, custom_nickname)
 
     assert len(title) == 256
     assert title.endswith("...")
 
 
 def test_build_stats_title_without_custom_nickname() -> None:
-    title = XCoreDiscordBot._build_stats_title("PlayerOne", "")
+    title = build_stats_title("PlayerOne", "")
     assert title == "Player Stats • PlayerOne"
 
 
 def test_format_ban_expire_date_for_datetime() -> None:
     expire = datetime(2026, 3, 4, 12, 0, tzinfo=timezone.utc)
 
-    formatted = XCoreDiscordBot._format_ban_expire_date(expire)
+    formatted = format_ban_expire_date(expire)
 
     assert "<t:" in formatted
 
 
 def test_format_ban_expire_date_for_invalid_value() -> None:
-    assert XCoreDiscordBot._format_ban_expire_date({"bad": "value"}) == "Unknown"
+    assert format_ban_expire_date({"bad": "value"}) == "Unknown"
 
 
 def test_format_ban_expire_date_for_datetime_ms() -> None:
     dtms = DatetimeMS(1762296000000)
-    formatted = XCoreDiscordBot._format_ban_expire_date(dtms)
+    formatted = format_ban_expire_date(dtms)
     assert "<t:" in formatted
 
 
 def test_format_ban_expire_date_for_far_future_millis() -> None:
-    formatted = XCoreDiscordBot._format_ban_expire_date(315537897600000)
+    formatted = format_ban_expire_date(315537897600000)
     assert formatted == "After year 9999"
 
 
@@ -109,7 +121,7 @@ def test_build_servers_embed_includes_sort_mode_footer() -> None:
         ServerInfo("alpha", 123, 3, 30, "155.4", None, None, 0.0),
     ]
 
-    embed = XCoreDiscordBot._build_servers_embed(servers, sort_mode="players")
+    embed = build_servers_embed(servers, sort_mode="players")
 
     assert embed.footer.text == "Sort: players • Servers: 1 • Players online: 3"
 
@@ -119,7 +131,7 @@ def test_build_servers_embed_includes_address_when_available() -> None:
         ServerInfo("alpha", 123, 3, 30, "155.4", "play.example.com", 6567, 0.0),
     ]
 
-    embed = XCoreDiscordBot._build_servers_embed(servers, sort_mode="players")
+    embed = build_servers_embed(servers, sort_mode="players")
 
     assert len(embed.fields) == 1
     assert "Address: `play.example.com:6567`" in (embed.fields[0].value or "")
@@ -151,6 +163,11 @@ class _FakeBus:
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return self.should_claim
+
+
+class _SettingsClient:
+    def __init__(self, settings: object) -> None:
+        self.settings = settings
 
 
 @pytest.mark.asyncio
@@ -262,10 +279,30 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
         )
 
     bot.__dict__["_post_ban_log"] = fake_post_ban_log
+    original_post_ban_log = handlers_moderation.post_ban_log
+
+    async def patched_post_ban_log(
+        _bot: XCoreDiscordBot,
+        *,
+        pid: int,
+        name: str,
+        admin_name: str,
+        reason: str,
+        expire: datetime,
+    ) -> None:
+        await fake_post_ban_log(
+            pid=pid,
+            name=name,
+            admin_name=admin_name,
+            reason=reason,
+            expire=expire,
+        )
+
+    handlers_moderation.post_ban_log = patched_post_ban_log
 
     player = {"uuid": "u-1", "ip": "1.2.3.4", "nickname": "Nick"}
 
-    first = await XCoreDiscordBot._perform_ban(
+    first = await perform_ban(
         bot,
         actor_name="admin",
         player_id=10,
@@ -274,7 +311,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
         duration=timedelta(days=1),
         player=player,
     )
-    second = await XCoreDiscordBot._perform_ban(
+    second = await perform_ban(
         bot,
         actor_name="admin",
         player_id=10,
@@ -289,6 +326,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     assert len(store.bans) == 1
     assert bus.kicks == [("u-1", "1.2.3.4")]
     assert len(calls) == 1
+    handlers_moderation.post_ban_log = original_post_ban_log
 
 
 @dataclass
@@ -474,7 +512,7 @@ async def test_reset_password_publishes_reload_cache_event() -> None:
         user=_User(id=1, display_name="mod", roles=[_Role(id=10)]),
     )
 
-    await XCoreDiscordBot._cmd_reset_password(bot, interaction, 7)
+    await cmd_reset_password(bot, interaction, 7)
 
     assert bus.reload_calls == 1
     assert interaction.response.messages
@@ -497,7 +535,7 @@ async def test_pardon_publishes_pardon_event() -> None:
         user=_User(id=1, display_name="mod", roles=[_Role(id=10)]),
     )
 
-    await XCoreDiscordBot._cmd_pardon(bot, interaction, 7)
+    await cmd_pardon(bot, interaction, 7)
 
     assert bus.pardon_calls == ["u-7"]
     assert interaction.response.messages
@@ -537,7 +575,7 @@ async def test_run_consumer_forever_restarts_after_failure(
         return None
 
     with pytest.raises(asyncio.CancelledError):
-        await XCoreDiscordBot._run_consumer_forever(bot, "Test", consume, callback)
+        await run_consumer_forever(bot, "Test", consume, callback)
 
     assert calls["n"] == 2
     assert bus.reconnected == 1

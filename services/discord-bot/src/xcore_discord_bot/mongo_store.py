@@ -233,9 +233,7 @@ class MongoStore:
         reason: str,
         expire_date: datetime,
     ) -> None:
-        query: dict[str, Any] = {"uuid": uuid}
-        if ip:
-            query = {"$or": [{"uuid": uuid}, {"ip": ip}]}
+        query = self._ban_lookup_query(uuid=uuid, ip=ip)
 
         payload = BanDoc(
             uuid=uuid,
@@ -248,17 +246,13 @@ class MongoStore:
         await self._db_required()["bans"].replace_one(query, payload, upsert=True)
 
     async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
-        query: dict[str, Any] = {"uuid": uuid}
-        if ip:
-            query = {"$or": [{"uuid": uuid}, {"ip": ip}]}
+        query = self._ban_lookup_query(uuid=uuid, ip=ip)
 
         result = await self._db_required()["bans"].delete_many(query)
         return result.deleted_count
 
     async def find_ban(self, *, uuid: str, ip: str | None) -> dict[str, Any] | None:
-        query: dict[str, Any] = {"uuid": uuid}
-        if ip:
-            query = {"$or": [{"uuid": uuid}, {"ip": ip}]}
+        query = self._ban_lookup_query(uuid=uuid, ip=ip)
 
         raw = await self._db_required()["bans"].find_one(query)
         if raw is None:
@@ -324,3 +318,9 @@ class MongoStore:
         if self._db is None:
             raise RuntimeError("MongoStore is not connected")
         return self._db
+
+    @staticmethod
+    def _ban_lookup_query(uuid: str, ip: str | None) -> dict[str, Any]:
+        if ip:
+            return {"$or": [{"uuid": uuid}, {"ip": ip}]}
+        return {"uuid": uuid}

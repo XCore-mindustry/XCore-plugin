@@ -4,6 +4,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
+from .. import handlers_misc
 from .autocomplete import _autocomplete_player_id
 from .checks import admin_check
 
@@ -20,8 +21,8 @@ class InfoCog(commands.Cog):
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_stats(self, interaction: Interaction, player_id: int) -> None:
-        await self.bot._cmd_stats(interaction, player_id)
+        await handlers_misc.cmd_stats(self.bot, interaction, player_id)
 
     @app_commands.command(name="servers", description="Show all live Mindustry servers")
     async def cmd_servers(self, interaction: Interaction) -> None:
-        await self.bot._cmd_servers(interaction)
+        await handlers_misc.cmd_servers(self.bot, interaction)

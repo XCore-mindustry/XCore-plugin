@@ -154,15 +154,7 @@ class RedisBus:
                 "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
             }:
                 heartbeat = ServerHeartbeatEvent.from_payload(event.payload)
-                server_registry.update_server(
-                    heartbeat.server_name,
-                    heartbeat.discord_channel_id,
-                    heartbeat.players,
-                    heartbeat.max_players,
-                    heartbeat.version,
-                    heartbeat.host,
-                    heartbeat.port,
-                )
+                self._update_registry_from_heartbeat(heartbeat)
             await callback(event)
 
         await self._consume_events(
@@ -176,15 +168,7 @@ class RedisBus:
         self, callback: Callable[[ServerHeartbeatEvent], Awaitable[None]]
     ) -> None:
         async def wrapped(event: ServerHeartbeatEvent) -> None:
-            server_registry.update_server(
-                event.server_name,
-                event.discord_channel_id,
-                event.players,
-                event.max_players,
-                event.version,
-                event.host,
-                event.port,
-            )
+            self._update_registry_from_heartbeat(event)
             await callback(event)
 
         await self._consume_events(
@@ -433,6 +417,18 @@ class RedisBus:
         await redis.xack(stream, group, message_id)
         await self._clear_failure_counter(
             stream=stream, group=group, message_id=message_id
+        )
+
+    @staticmethod
+    def _update_registry_from_heartbeat(event: ServerHeartbeatEvent) -> None:
+        server_registry.update_server(
+            event.server_name,
+            event.discord_channel_id,
+            event.players,
+            event.max_players,
+            event.version,
+            event.host,
+            event.port,
         )
 
     async def _route_to_dlq(

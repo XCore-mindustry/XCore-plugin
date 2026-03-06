@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot, _MuteUndoView
+from xcore_discord_bot.handlers_moderation import cmd_mute
 
 
 @dataclass
@@ -105,14 +106,13 @@ class _Bus:
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_blocks_other_users() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
+    store = _Store()
 
     view = _MuteUndoView(
-        bot=bot,
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
+        delete_mute=store.delete_mute,
     )
     interaction = _Interaction(id=1, user=_User(id=11, display_name="other"))
 
@@ -126,15 +126,13 @@ async def test_mute_undo_view_blocks_other_users() -> None:
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
-    bot = object.__new__(XCoreDiscordBot)
     store = _Store()
-    bot.__dict__["_store"] = store
 
     view = _MuteUndoView(
-        bot=bot,
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
+        delete_mute=store.delete_mute,
     )
     interaction = _Interaction(id=2, user=_User(id=10, display_name="moderator"))
 
@@ -151,13 +149,12 @@ async def test_mute_undo_view_removes_mute_and_edits_message() -> None:
 
 @pytest.mark.asyncio
 async def test_mute_undo_view_timeout_hides_button() -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot.__dict__["_store"] = _Store()
+    store = _Store()
     view = _MuteUndoView(
-        bot=bot,
         requester_id=10,
         uuid="uuid-123",
         player_name="Vortex",
+        delete_mute=store.delete_mute,
     )
     message = _Message()
     view.message = message
@@ -175,7 +172,7 @@ async def test_cmd_mute_attaches_undo_view() -> None:
     bot.__dict__["_bus"] = _Bus()
 
     interaction = _Interaction(id=99, user=_User(id=10, display_name="moderator"))
-    await XCoreDiscordBot._cmd_mute(bot, interaction, 123, "10m", "spam")
+    await cmd_mute(bot, interaction, 123, "10m", "spam")
 
     assert len(interaction.response.command_messages) == 1
     sent = interaction.response.command_messages[0]

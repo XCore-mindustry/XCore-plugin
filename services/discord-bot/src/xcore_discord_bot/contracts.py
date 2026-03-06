@@ -15,12 +15,29 @@ from pydantic import (
 
 
 class _FrozenModel(BaseModel):
-    model_config = ConfigDict(
-        frozen=True,
-        extra="ignore",
-        populate_by_name=True,
-        slots=True,
-    )
+    model_config: ConfigDict = {
+        "frozen": True,
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+    @staticmethod
+    def _require_non_empty_text(value: str) -> str:
+        if not value:
+            raise ValueError("Expected non-empty string")
+        return value
+
+    @classmethod
+    def _validate_payload(
+        cls,
+        payload: dict[str, Any],
+        *,
+        error_message: str,
+    ):
+        try:
+            return cls.model_validate(payload)
+        except ValidationError as error:
+            raise ValueError(error_message) from error
 
 
 class EventType(StrEnum):
@@ -49,18 +66,14 @@ class GameChatMessage(_FrozenModel):
     @field_validator("author_name", "message", "server")
     @classmethod
     def _not_blank(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "GameChatMessage":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
-                "Invalid chat payload: expected authorName, message, server"
-            ) from error
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid chat payload: expected authorName, message, server",
+        )
 
 
 class PlayerJoinLeaveEvent(_FrozenModel):
@@ -71,9 +84,7 @@ class PlayerJoinLeaveEvent(_FrozenModel):
     @field_validator("player_name", "server")
     @classmethod
     def _required_text(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @field_validator("joined", mode="before")
     @classmethod
@@ -88,12 +99,10 @@ class PlayerJoinLeaveEvent(_FrozenModel):
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "PlayerJoinLeaveEvent":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
-                "Invalid join/leave payload: expected playerName and server"
-            ) from error
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid join/leave payload: expected playerName and server",
+        )
 
 
 class ServerActionEvent(_FrozenModel):
@@ -103,18 +112,14 @@ class ServerActionEvent(_FrozenModel):
     @field_validator("message", "server")
     @classmethod
     def _required_text(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "ServerActionEvent":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
-                "Invalid server action payload: expected message and server"
-            ) from error
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid server action payload: expected message and server",
+        )
 
 
 class BanEvent(_FrozenModel):
@@ -135,9 +140,7 @@ class BanEvent(_FrozenModel):
     @field_validator("name", "admin_name", "reason")
     @classmethod
     def _required_text(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @field_validator("pid", mode="before")
     @classmethod
@@ -150,12 +153,10 @@ class BanEvent(_FrozenModel):
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "BanEvent":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
-                "Invalid ban payload: expected name, adminName/admin_name, reason"
-            ) from error
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid ban payload: expected name, adminName/admin_name, reason",
+        )
 
 
 class GlobalChatEvent(_FrozenModel):
@@ -166,18 +167,14 @@ class GlobalChatEvent(_FrozenModel):
     @field_validator("author_name", "message", "server")
     @classmethod
     def _required_text(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "GlobalChatEvent":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
-                "Invalid global chat payload: expected authorName, message, server"
-            ) from error
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid global chat payload: expected authorName, message, server",
+        )
 
 
 class ServerHeartbeatEvent(_FrozenModel):
@@ -198,9 +195,7 @@ class ServerHeartbeatEvent(_FrozenModel):
     @field_validator("server_name", "version")
     @classmethod
     def _required_text(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Expected non-empty string")
-        return value
+        return cls._require_non_empty_text(value)
 
     @field_validator("discord_channel_id", "players", "max_players", mode="before")
     @classmethod
@@ -228,12 +223,12 @@ class ServerHeartbeatEvent(_FrozenModel):
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "ServerHeartbeatEvent":
-        try:
-            return cls.model_validate(payload)
-        except ValidationError as error:
-            raise ValueError(
+        return cls._validate_payload(
+            payload,
+            error_message=(
                 "Invalid heartbeat payload: expected serverName, discordChannelId, players, maxPlayers, version"
-            ) from error
+            ),
+        )
 
 
 class RawEvent(_FrozenModel):

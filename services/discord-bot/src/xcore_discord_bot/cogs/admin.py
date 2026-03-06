@@ -4,6 +4,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
+from .. import handlers_misc, handlers_moderation
 from .autocomplete import _autocomplete_player_id
 from .checks import admin_check, general_admin_check
 
@@ -53,7 +54,7 @@ class AdminCog(commands.Cog):
     @app_commands.describe(name="Player name to search for")
     @admin_check()
     async def cmd_search(self, interaction: Interaction, name: str) -> None:
-        await self.bot._cmd_search(interaction, name)
+        await handlers_misc.cmd_search(self.bot, interaction, name)
 
     @app_commands.command(
         name="bans", description="List bans, optionally filtered by name (admin)"
@@ -61,7 +62,7 @@ class AdminCog(commands.Cog):
     @app_commands.describe(name="Optional name filter")
     @admin_check()
     async def cmd_bans(self, interaction: Interaction, name: str | None = None) -> None:
-        await self.bot._cmd_bans(interaction, name)
+        await handlers_misc.cmd_bans(self.bot, interaction, name)
 
     @app_commands.command(name="ban", description="Ban a player (admin)")
     @app_commands.describe(
@@ -79,21 +80,23 @@ class AdminCog(commands.Cog):
         period: str,
         reason: str = "Not Specified",
     ) -> None:
-        await self.bot._cmd_ban(interaction, player_id, period, reason)
+        await handlers_moderation.cmd_ban(
+            self.bot, interaction, player_id, period, reason
+        )
 
     @app_commands.command(name="unban", description="Unban a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_unban(self, interaction: Interaction, player_id: int) -> None:
-        await self.bot._cmd_unban(interaction, player_id)
+        await handlers_moderation.cmd_unban(self.bot, interaction, player_id)
 
     @app_commands.command(name="pardon", description="Pardon a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_pardon(self, interaction: Interaction, player_id: int) -> None:
-        await self.bot._cmd_pardon(interaction, player_id)
+        await handlers_moderation.cmd_pardon(self.bot, interaction, player_id)
 
     @app_commands.command(name="mute", description="Mute a player (admin)")
     @app_commands.describe(
@@ -111,14 +114,16 @@ class AdminCog(commands.Cog):
         period: str,
         reason: str = "Not Specified",
     ) -> None:
-        await self.bot._cmd_mute(interaction, player_id, period, reason)
+        await handlers_moderation.cmd_mute(
+            self.bot, interaction, player_id, period, reason
+        )
 
     @app_commands.command(name="unmute", description="Unmute a player (admin)")
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @admin_check()
     async def cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
-        await self.bot._cmd_unmute(interaction, player_id)
+        await handlers_moderation.cmd_unmute(self.bot, interaction, player_id)
 
     @app_commands.command(
         name="remove-admin",
@@ -128,7 +133,7 @@ class AdminCog(commands.Cog):
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @general_admin_check()
     async def cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
-        await self.bot._cmd_remove_admin(interaction, player_id)
+        await handlers_moderation.cmd_remove_admin(self.bot, interaction, player_id)
 
     @app_commands.command(
         name="reset-password",
@@ -140,7 +145,7 @@ class AdminCog(commands.Cog):
     async def cmd_reset_password(
         self, interaction: Interaction, player_id: int
     ) -> None:
-        await self.bot._cmd_reset_password(interaction, player_id)
+        await handlers_moderation.cmd_reset_password(self.bot, interaction, player_id)
 
     @app_commands.command(
         name="test-error",

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from discord import Interaction, app_commands
+
+from ..client_protocols import SupportsCachedMaps, SupportsPlayerAutocomplete
 
 if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
@@ -19,11 +21,10 @@ async def _autocomplete_player_id(
         return []
 
     bot = interaction.client
-    if not hasattr(bot, "_store"):
+    if not isinstance(bot, SupportsPlayerAutocomplete):
         return []
-    xcore_bot = cast("XCoreDiscordBot", bot)
 
-    rows = await xcore_bot._store.autocomplete_players(current_norm, limit=25)
+    rows = await bot.autocomplete_players(current_norm, limit=25)
     choices: list[app_commands.Choice[int]] = []
     for row in rows:
         pid_raw = row.get("pid")
@@ -49,15 +50,13 @@ async def _autocomplete_map_file(
     current: str,
 ) -> list[app_commands.Choice[str]]:
     bot = interaction.client
-    if not hasattr(bot, "get_cached_maps"):
-        return []
-
     server = str(getattr(interaction.namespace, "server", "")).strip()
     if not server:
         return []
 
-    xcore_bot = cast("XCoreDiscordBot", bot)
-    maps = await xcore_bot.get_cached_maps(server)
+    if not isinstance(bot, SupportsCachedMaps):
+        return []
+    maps = await bot.get_cached_maps(server)
     current_norm = current.strip().lower()
 
     choices: list[app_commands.Choice[str]] = []

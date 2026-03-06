@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.handlers_misc import get_cached_maps
 from xcore_discord_bot.cogs.autocomplete import _autocomplete_map_file
 
 
@@ -38,18 +39,20 @@ async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None
     def _fake_monotonic() -> float:
         return now
 
-    monkeypatch.setattr("xcore_discord_bot.bot.time.monotonic", _fake_monotonic)
+    monkeypatch.setattr(
+        "xcore_discord_bot.handlers_misc.time.monotonic", _fake_monotonic
+    )
 
-    first = await XCoreDiscordBot.get_cached_maps(bot, "survival")
+    first = await get_cached_maps(bot, "survival")
     assert first == [{"name": "Glacier", "file_name": "glacier.msav"}]
     assert bot._bus.calls == 1
 
-    second = await XCoreDiscordBot.get_cached_maps(bot, "survival")
+    second = await get_cached_maps(bot, "survival")
     assert second == first
     assert bot._bus.calls == 1
 
     now = 1061.0
-    third = await XCoreDiscordBot.get_cached_maps(bot, "survival")
+    third = await get_cached_maps(bot, "survival")
     assert third == first
     assert bot._bus.calls == 2
 
@@ -66,15 +69,26 @@ async def test_get_cached_maps_returns_stale_cache_on_timeout(
     }
     bus.fail = True
 
-    monkeypatch.setattr("xcore_discord_bot.bot.time.monotonic", lambda: 1000.0)
+    monkeypatch.setattr(
+        "xcore_discord_bot.handlers_misc.time.monotonic", lambda: 1000.0
+    )
 
-    maps = await XCoreDiscordBot.get_cached_maps(bot, "survival")
+    maps = await get_cached_maps(bot, "survival")
     assert maps == [{"name": "Gladius Arena", "file_name": "gladius.msav"}]
 
 
 @dataclass
 class _AutocompleteBot:
     maps: list[dict[str, str]]
+
+    async def autocomplete_players(
+        self,
+        query: str,
+        *,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        del query, limit
+        return []
 
     async def get_cached_maps(self, server: str) -> list[dict[str, str]]:
         assert server == "survival"
