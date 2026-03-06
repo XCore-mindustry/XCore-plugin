@@ -46,6 +46,17 @@ Optional:
 - `MONGO_URI` (default: `mongodb://127.0.0.1:27017`)
 - `MONGO_DB_NAME` (default: `xcore`)
 
+## Local setup
+
+For a fresh clone, install dev dependencies and enable the git hook once:
+
+```bash
+uv sync --all-groups
+uv run pre-commit install --install-hooks
+```
+
+After that, `pre-commit` runs automatically on every `git commit`.
+
 ## Local run
 
 ```bash

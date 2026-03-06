@@ -22,6 +22,7 @@ xcore-discord-bot = "xcore_discord_bot.main:main"
 [dependency-groups]
 dev = [
     "fakeredis>=2.31.0",
+    "pre-commit>=4.3.0",
     "pytest>=8.4.0",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.11.0",
