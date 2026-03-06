@@ -108,7 +108,8 @@ public class ModerationController implements CloudClientController {
                 s.locale().send("you-are-muted-by", args(
                         "adminName", sender.player().coloredName(),
                         "reason", mute.reason,
-                        "remainMinutes", period.toMinutes()
+                        "remainMinutes", period.toMinutes(),
+                        "remainSeconds", period.toSecondsPart()
                 ));
             }
         } else {

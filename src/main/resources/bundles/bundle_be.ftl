@@ -13,7 +13,7 @@ help-menu-title = { "[" }orange]{ -xcore } — Каманды
 help-menu-content =
     { "[" }gray]Старонка[white]{ $page }[gray]/[white]{ $total }
     { "" }[lightgray]Выбраць каманду для дэталёвай інформацыі
-help-menu-button = { $count }{ "[" }accent]/{ $command } [gray]» [white]{ $description }
+help-menu-button = { "[" }accent]/{ $command } [gray]» [white]{ $description }
 help-command-with-overload-count = { $name } ({ $count })
 help-command-title = { "[" }orange]» [white]/{ $name }
 help-command-header =
