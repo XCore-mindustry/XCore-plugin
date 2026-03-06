@@ -10,6 +10,7 @@ from discord import Interaction
 from .dto import PlayerRecord
 from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
+from .permissions import admin_role_ids, has_any_role, settings_from_interaction
 from .presentation import (
     build_servers_embed,
     build_stats_title,
@@ -72,6 +73,16 @@ async def cmd_stats(
     created_at = format_epoch_millis(player.created_at)
     updated_at = format_epoch_millis(player.updated_at)
     embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
+
+    settings = settings_from_interaction(interaction)
+    is_admin_viewer = settings is not None and has_any_role(
+        interaction.user,
+        admin_role_ids(settings),
+    )
+
+    if not is_admin_viewer:
+        await interaction.response.send_message(embed=embed)
+        return
 
     view = StatsActionsView(
         settings=bot.settings,

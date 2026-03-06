@@ -66,6 +66,7 @@ class _Response:
 class _Interaction:
     id: int
     user: _User
+    client: Any | None = None
     response: _Response = field(default_factory=_Response)
     _message: _Message = field(default_factory=_Message)
 
@@ -111,6 +112,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     interaction = _Interaction(
         id=1,
         user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+        client=bot,
     )
     await cmd_stats(bot, interaction, 123)
 
@@ -119,6 +121,35 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert sent["embed"] is not None
     assert isinstance(sent["view"], _StatsActionsView)
     assert sent["view"].message is interaction._message
+
+
+@pytest.mark.asyncio
+async def test_cmd_stats_hides_actions_for_non_admin() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+    bot.__dict__["_create_stats_ban_modal"] = lambda **kwargs: _StatsBanModal(
+        player_id=kwargs["player_id"],
+        player=kwargs["player"],
+        on_submit_ban=lambda *args: None,
+    )
+    bot.__dict__["_create_stats_mute_modal"] = lambda **kwargs: _StatsMuteModal(
+        player_id=kwargs["player_id"],
+        player=kwargs["player"],
+        on_submit_mute=lambda *args: None,
+    )
+
+    interaction = _Interaction(
+        id=5,
+        user=_User(id=10, display_name="guest", roles=[_Role(2)]),
+        client=bot,
+    )
+    await cmd_stats(bot, interaction, 123)
+
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is not None
+    assert sent["view"] is None
 
 
 @pytest.mark.asyncio

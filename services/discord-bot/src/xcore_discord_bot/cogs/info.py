@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from .. import handlers_misc
 from .autocomplete import _autocomplete_player_id
-from .checks import admin_check
 
 if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
@@ -19,7 +18,6 @@ class InfoCog(commands.Cog):
     @app_commands.command(name="stats", description="Show player stats")
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
-    @admin_check()
     async def cmd_stats(self, interaction: Interaction, player_id: int) -> None:
         await handlers_misc.cmd_stats(self.bot, interaction, player_id)
 
