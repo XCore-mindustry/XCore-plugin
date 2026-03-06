@@ -16,6 +16,7 @@ from xcore_discord_bot.bot import (
     parse_duration,
     strip_mindustry_colors,
 )
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot import handlers_moderation
 from xcore_discord_bot.handlers_moderation import (
     cmd_pardon,
@@ -300,7 +301,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
 
     handlers_moderation.post_ban_log = patched_post_ban_log
 
-    player = {"uuid": "u-1", "ip": "1.2.3.4", "nickname": "Nick"}
+    player = PlayerRecord(pid=10, uuid="u-1", ip="1.2.3.4", nickname="Nick")
 
     first = await perform_ban(
         bot,
@@ -357,10 +358,10 @@ class _CmdInteraction:
 
 
 class _ResetPasswordStore:
-    async def find_player_by_pid(self, pid: int) -> dict[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 7:
             return None
-        return {"pid": 7, "uuid": "u-7", "nickname": "Target"}
+        return PlayerRecord(pid=7, uuid="u-7", nickname="Target")
 
     async def reset_password(self, uuid: str) -> bool:
         return uuid == "u-7"

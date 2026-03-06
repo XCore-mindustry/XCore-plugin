@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 import discord
 from discord import Interaction
 
+from .dto import PlayerRecord
 from .moderation_views import BanConfirmView, MuteUndoView
 from .presentation import format_ban_expire_date
 
@@ -65,7 +65,7 @@ async def perform_ban(
     period: str,
     reason: str,
     duration: timedelta,
-    player: Mapping[str, object],
+    player: PlayerRecord,
 ) -> str:
     uuid_value, ip_value = bot._player_identifiers(player)
     if uuid_value is None and ip_value is None:
@@ -141,9 +141,9 @@ async def cmd_unban(
         subject_name=bot._player_name(player),
         player_id=player_id,
         previous_actor_label="Admin who banned",
-        previous_actor_value=bot._doc_value(ban_doc, "admin_name", default="Unknown"),
-        reason=bot._doc_value(ban_doc, "reason", default="Not specified"),
-        expire_value=(ban_doc or {}).get("expire_date"),
+        previous_actor_value=ban_doc.admin_name if ban_doc is not None else "Unknown",
+        reason=ban_doc.reason if ban_doc is not None else "Not specified",
+        expire_value=ban_doc.expire_date if ban_doc is not None else None,
         actor_label="Unbanned by",
         actor_name=interaction.user.display_name,
         format_expire_date=format_ban_expire_date,
@@ -267,9 +267,9 @@ async def cmd_unmute(
         subject_name=bot._player_name(player),
         player_id=player_id,
         previous_actor_label="Admin who muted",
-        previous_actor_value=bot._doc_value(mute_doc, "admin_name", default="Unknown"),
-        reason=bot._doc_value(mute_doc, "reason", default="Not specified"),
-        expire_value=(mute_doc or {}).get("expire_date"),
+        previous_actor_value=mute_doc.admin_name if mute_doc is not None else "Unknown",
+        reason=mute_doc.reason if mute_doc is not None else "Not specified",
+        expire_value=mute_doc.expire_date if mute_doc is not None else None,
         actor_label="Unmuted by",
         actor_name=interaction.user.display_name,
         format_expire_date=format_ban_expire_date,

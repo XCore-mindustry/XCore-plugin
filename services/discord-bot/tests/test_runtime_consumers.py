@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.contracts import BanEvent, GameChatMessage
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.runtime_consumers import consume_bans, consume_game_chat
 
 
@@ -61,9 +62,7 @@ class _GameChatBot:
 
 
 class _BanBot:
-    def __init__(
-        self, *, bans_channel_id: int, player: dict[str, object] | None
-    ) -> None:
+    def __init__(self, *, bans_channel_id: int, player: PlayerRecord | None) -> None:
         self.bans_channel_id = bans_channel_id
         self.player = player
         self.now_calls = 0
@@ -83,7 +82,7 @@ class _BanBot:
     async def reconnect_bus(self) -> None:
         raise AssertionError("reconnect should not be called")
 
-    async def find_player_by_uuid(self, uuid: str) -> dict[str, object] | None:
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         assert uuid == "uuid-1"
         return self.player
 
@@ -140,7 +139,7 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
         "xcore_discord_bot.runtime_consumers.post_ban_log", fake_post_ban_log
     )
 
-    bot = _BanBot(bans_channel_id=777, player={"pid": 42})
+    bot = _BanBot(bans_channel_id=777, player=PlayerRecord(pid=42, nickname="Target"))
 
     with pytest.raises(asyncio.CancelledError):
         await consume_bans(bot)
@@ -167,7 +166,7 @@ async def test_consume_bans_returns_early_when_ban_logs_disabled(
         "xcore_discord_bot.runtime_consumers.post_ban_log", fake_post_ban_log
     )
 
-    bot = _BanBot(bans_channel_id=0, player={"pid": 42})
+    bot = _BanBot(bans_channel_id=0, player=PlayerRecord(pid=42, nickname="Target"))
 
     with pytest.raises(asyncio.CancelledError):
         await consume_bans(bot)

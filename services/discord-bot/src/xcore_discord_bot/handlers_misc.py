@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 import discord
 from discord import Interaction
 
+from .dto import PlayerRecord
 from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
 from .presentation import (
-    as_int,
     build_servers_embed,
     build_stats_title,
     format_ban_expire_date,
@@ -35,47 +35,47 @@ async def cmd_stats(
         return
 
     nickname = bot._player_name(player)
-    custom_nickname = str(player.get("custom_nickname", "")).strip()
+    custom_nickname = str(player.custom_nickname or "").strip()
     title = build_stats_title(nickname, custom_nickname)
 
     rank_label, rank_progress = format_hexed_rank_block(
-        rank_value=as_int(player.get("hexed_rank")),
-        points=as_int(player.get("hexed_points")),
+        rank_value=player.hexed_rank,
+        points=player.hexed_points,
     )
 
     embed = discord.Embed(title=title, color=discord.Color.blurple())
     embed.add_field(
         name="Identity",
-        value=(f"PID: `{player.get('pid', -1)}`\nNickname: `{nickname}`"),
+        value=(f"PID: `{player.pid}`\nNickname: `{nickname}`"),
         inline=False,
     )
     embed.add_field(
         name="Progress",
         value=(
-            f"Playtime: `{format_minutes(as_int(player.get('total_play_time')))}`\n"
-            f"PvP rating: `{player.get('pvp_rating', 0)}`\n"
+            f"Playtime: `{format_minutes(player.total_play_time)}`\n"
+            f"PvP rating: `{player.pvp_rating}`\n"
             f"Hexed rank: `{rank_label}`\n"
             f"Hexed progress: `{rank_progress}`"
         ),
         inline=False,
     )
 
-    admin_status = "✅" if bool(player.get("is_admin", False)) else "❌"
-    admin_confirmed = "✅" if bool(player.get("admin_confirmed", False)) else "❌"
+    admin_status = "✅" if player.is_admin else "❌"
+    admin_confirmed = "✅" if player.admin_confirmed else "❌"
     embed.add_field(
         name="Permissions",
         value=(f"Admin: {admin_status}\nAdmin confirmed: {admin_confirmed}"),
         inline=False,
     )
 
-    created_at = format_epoch_millis(player.get("created_at"))
-    updated_at = format_epoch_millis(player.get("updated_at"))
+    created_at = format_epoch_millis(player.created_at)
+    updated_at = format_epoch_millis(player.updated_at)
     embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
 
     view = StatsActionsView(
         settings=bot.settings,
         player_id=player_id,
-        player=player,
+        player=_player_record_as_mapping(player),
         create_ban_modal=lambda **kwargs: create_stats_ban_modal(bot, **kwargs),
         create_mute_modal=lambda **kwargs: create_stats_mute_modal(bot, **kwargs),
     )
@@ -109,8 +109,8 @@ async def cmd_search(
         if rows:
             for row in rows:
                 embed.add_field(
-                    name=row.get("nickname", "Unknown"),
-                    value=f"ID: {row.get('pid', -1)} | playtime: {row.get('total_play_time', 0)}m",
+                    name=row.nickname,
+                    value=f"ID: {row.pid} | playtime: {row.total_play_time}m",
                     inline=False,
                 )
         else:
@@ -125,6 +125,25 @@ async def cmd_search(
         return embed, has_next
 
     await bot._send_paginated(interaction, fetch_page)
+
+
+def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
+    return {
+        "pid": player.pid,
+        "nickname": player.nickname,
+        "uuid": player.uuid,
+        "ip": player.ip,
+        "last_ip": player.last_ip,
+        "custom_nickname": player.custom_nickname,
+        "total_play_time": player.total_play_time,
+        "pvp_rating": player.pvp_rating,
+        "hexed_rank": player.hexed_rank,
+        "hexed_points": player.hexed_points,
+        "is_admin": player.is_admin,
+        "admin_confirmed": player.admin_confirmed,
+        "created_at": player.created_at,
+        "updated_at": player.updated_at,
+    }
 
 
 async def cmd_bans(
@@ -144,12 +163,12 @@ async def cmd_bans(
         )
         if bans:
             for ban in bans:
-                unban_date = format_ban_expire_date(ban.get("expire_date"))
+                unban_date = format_ban_expire_date(ban.expire_date)
                 embed.add_field(
-                    name=ban.get("name", "Unknown"),
+                    name=ban.name,
                     value=(
-                        f"Admin: {ban.get('admin_name', 'Unknown')}\n"
-                        f"Reason: {ban.get('reason', 'Not Specified')}\n"
+                        f"Admin: {ban.admin_name}\n"
+                        f"Reason: {ban.reason}\n"
                         f"Unban: {unban_date}"
                     ),
                     inline=False,

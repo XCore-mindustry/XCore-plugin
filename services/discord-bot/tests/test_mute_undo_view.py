@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot, _MuteUndoView
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_moderation import cmd_mute
 
 
@@ -69,10 +70,10 @@ class _Store:
         self.deleted.append(uuid)
         return 1
 
-    async def find_player_by_pid(self, pid: int) -> dict[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
-        return {"pid": 123, "uuid": "uuid-123", "nickname": "Vortex"}
+        return PlayerRecord(pid=123, uuid="uuid-123", nickname="Vortex")
 
     def now_utc(self):
         from datetime import datetime, timezone

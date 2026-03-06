@@ -11,7 +11,13 @@ from pymongo.errors import PyMongoError
 from pydantic import BaseModel, ConfigDict
 from pymongo import DESCENDING
 
+from .dto import BanRecord, MuteRecord, PlayerRecord
 from .settings import Settings
+from .store_mappers import (
+    ban_record_from_doc,
+    mute_record_from_doc,
+    player_record_from_doc,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,21 +83,25 @@ class MongoStore:
         self._client = None
         self._db = None
 
-    async def find_player_by_pid(self, pid: int) -> dict[str, Any] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         raw = await self._db_required()["players"].find_one({"pid": pid})
         if raw is None:
             return None
-        return PlayerDoc.model_validate(raw).model_dump(mode="python")
+        return player_record_from_doc(
+            PlayerDoc.model_validate(raw).model_dump(mode="python")
+        )
 
-    async def find_player_by_uuid(self, uuid: str) -> dict[str, Any] | None:
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         raw = await self._db_required()["players"].find_one({"uuid": uuid})
         if raw is None:
             return None
-        return PlayerDoc.model_validate(raw).model_dump(mode="python")
+        return player_record_from_doc(
+            PlayerDoc.model_validate(raw).model_dump(mode="python")
+        )
 
     async def search_players(
         self, query: str, limit: int = 6, page: int = 0
-    ) -> list[dict[str, Any]]:
+    ) -> list[PlayerRecord]:
         regex = re.escape(query)
         skip = page * limit
         cursor = (
@@ -102,11 +112,16 @@ class MongoStore:
             .limit(limit)
         )
         rows = await cursor.to_list(length=limit)
-        return [PlayerDoc.model_validate(row).model_dump(mode="python") for row in rows]
+        return [
+            player_record_from_doc(
+                PlayerDoc.model_validate(row).model_dump(mode="python")
+            )
+            for row in rows
+        ]
 
     async def autocomplete_players(
         self, query: str, limit: int = 25
-    ) -> list[dict[str, Any]]:
+    ) -> list[PlayerRecord]:
         normalized = query.strip()
         if not normalized:
             return []
@@ -141,11 +156,8 @@ class MongoStore:
             )
             rows = await cursor.to_list(length=limit)
 
-        return [
-            {"pid": row.get("pid"), "nickname": row.get("nickname")}
-            for row in rows
-            if isinstance(row.get("pid"), int)
-        ]
+        records = [player_record_from_doc(row) for row in rows]
+        return [record for record in records if record.pid >= 0]
 
     async def count_players_by_name(self, query: str) -> int:
         return int(
@@ -156,7 +168,7 @@ class MongoStore:
 
     async def list_bans(
         self, name_filter: str | None = None, limit: int = 6, page: int = 0
-    ) -> list[dict[str, Any]]:
+    ) -> list[BanRecord]:
         query: dict[str, Any] = {}
         if name_filter:
             query["name"] = {"$regex": re.escape(name_filter), "$options": "i"}
@@ -199,21 +211,27 @@ class MongoStore:
                 ]
             ).to_list(length=limit)
 
-        sanitized: list[dict[str, Any]] = []
+        sanitized: list[BanRecord] = []
         for row in rows:
             try:
-                sanitized.append(BanDoc.model_validate(row).model_dump(mode="python"))
+                sanitized.append(
+                    ban_record_from_doc(
+                        BanDoc.model_validate(row).model_dump(mode="python")
+                    )
+                )
             except (ValueError, TypeError, PyMongoError) as error:
                 logger.warning("Skipping malformed ban row: %s", error)
                 sanitized.append(
-                    {
-                        "uuid": row.get("uuid"),
-                        "ip": row.get("ip"),
-                        "name": row.get("name"),
-                        "admin_name": row.get("admin_name"),
-                        "reason": row.get("reason"),
-                        "expire_date": None,
-                    }
+                    ban_record_from_doc(
+                        {
+                            "uuid": row.get("uuid"),
+                            "ip": row.get("ip"),
+                            "name": row.get("name"),
+                            "admin_name": row.get("admin_name"),
+                            "reason": row.get("reason"),
+                            "expire_date": None,
+                        }
+                    )
                 )
         return sanitized
 
@@ -251,13 +269,13 @@ class MongoStore:
         result = await self._db_required()["bans"].delete_many(query)
         return result.deleted_count
 
-    async def find_ban(self, *, uuid: str, ip: str | None) -> dict[str, Any] | None:
+    async def find_ban(self, *, uuid: str, ip: str | None) -> BanRecord | None:
         query = self._ban_lookup_query(uuid=uuid, ip=ip)
 
         raw = await self._db_required()["bans"].find_one(query)
         if raw is None:
             return None
-        return BanDoc.model_validate(raw).model_dump(mode="python")
+        return ban_record_from_doc(BanDoc.model_validate(raw).model_dump(mode="python"))
 
     async def upsert_mute(
         self,
@@ -283,11 +301,13 @@ class MongoStore:
         result = await self._db_required()["mutes"].delete_one({"uuid": uuid})
         return result.deleted_count
 
-    async def find_mute(self, *, uuid: str) -> dict[str, Any] | None:
+    async def find_mute(self, *, uuid: str) -> MuteRecord | None:
         raw = await self._db_required()["mutes"].find_one({"uuid": uuid})
         if raw is None:
             return None
-        return MuteDoc.model_validate(raw).model_dump(mode="python")
+        return mute_record_from_doc(
+            MuteDoc.model_validate(raw).model_dump(mode="python")
+        )
 
     async def remove_admin(self, *, uuid: str) -> bool:
         result = await self._db_required()["players"].update_one(

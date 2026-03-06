@@ -12,6 +12,7 @@ from xcore_discord_bot.bot import (
     _StatsBanModal,
     _StatsMuteModal,
 )
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_misc import cmd_stats
 
 
@@ -73,22 +74,22 @@ class _Interaction:
 
 
 class _Store:
-    async def find_player_by_pid(self, pid: int) -> dict[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
-        return {
-            "pid": 123,
-            "nickname": "Vortex",
-            "custom_nickname": "",
-            "hexed_rank": 0,
-            "hexed_points": 0,
-            "total_play_time": 10,
-            "pvp_rating": 1000,
-            "is_admin": False,
-            "admin_confirmed": False,
-            "created_at": 0,
-            "updated_at": 0,
-        }
+        return PlayerRecord(
+            pid=123,
+            nickname="Vortex",
+            custom_nickname="",
+            hexed_rank=0,
+            hexed_points=0,
+            total_play_time=10,
+            pvp_rating=1000,
+            is_admin=False,
+            admin_confirmed=False,
+            created_at=0,
+            updated_at=0,
+        )
 
 
 @pytest.mark.asyncio

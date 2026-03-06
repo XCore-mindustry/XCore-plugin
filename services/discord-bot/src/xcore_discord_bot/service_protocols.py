@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol, runtime_checkable
+
+from .dto import PlayerRecord
 
 
 @runtime_checkable
@@ -12,14 +14,14 @@ class StoreService(Protocol):
         query: str,
         *,
         limit: int,
-    ) -> Sequence[dict[str, object]]: ...
+    ) -> Sequence[PlayerRecord]: ...
 
 
 @runtime_checkable
 class PlayerLookupService(Protocol):
-    async def find_player_by_pid(self, pid: int) -> Mapping[str, object] | None: ...
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None: ...
 
-    async def find_player_by_uuid(self, uuid: str) -> Mapping[str, object] | None: ...
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None: ...
 
     async def now_utc(self) -> datetime: ...
 

@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.dto import BanRecord, MuteRecord, PlayerRecord
 from xcore_discord_bot.handlers_moderation import (
     MSG_NO_ACTIVE_BAN,
     MSG_NO_ACTIVE_MUTE,
@@ -54,32 +55,30 @@ class _Bus:
 
 
 class _Store:
-    async def find_player_by_pid(self, pid: int) -> dict[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
-        return {
-            "pid": 123,
-            "uuid": "uuid-123",
-            "ip": "1.2.3.4",
-            "nickname": "Vortex",
-        }
+        return PlayerRecord(pid=123, uuid="uuid-123", ip="1.2.3.4", nickname="Vortex")
 
-    async def find_ban(self, *, uuid: str, ip: str | None) -> dict[str, object] | None:  # noqa: ARG002
-        return {
-            "admin_name": "mod-1",
-            "reason": "griefing",
-            "expire_date": datetime(2026, 12, 31, 15, 0, tzinfo=timezone.utc),
-        }
+    async def find_ban(self, *, uuid: str, ip: str | None) -> BanRecord | None:  # noqa: ARG002
+        return BanRecord(
+            name="Vortex",
+            admin_name="mod-1",
+            reason="griefing",
+            expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=timezone.utc),
+        )
 
     async def delete_ban(self, *, uuid: str, ip: str | None) -> int:  # noqa: ARG002
         return 1
 
-    async def find_mute(self, *, uuid: str) -> dict[str, object] | None:  # noqa: ARG002
-        return {
-            "admin_name": "mod-2",
-            "reason": "spam",
-            "expire_date": datetime(2026, 12, 31, 16, 0, tzinfo=timezone.utc),
-        }
+    async def find_mute(self, *, uuid: str) -> MuteRecord | None:  # noqa: ARG002
+        return MuteRecord(
+            uuid=uuid,
+            name="Vortex",
+            admin_name="mod-2",
+            reason="spam",
+            expire_date=datetime(2026, 12, 31, 16, 0, tzinfo=timezone.utc),
+        )
 
     async def delete_mute(self, *, uuid: str) -> int:  # noqa: ARG002
         return 1

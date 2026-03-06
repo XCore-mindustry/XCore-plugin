@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
-from xcore_discord_bot.bot import XCoreDiscordBot
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_misc import get_cached_maps
 from xcore_discord_bot.cogs.autocomplete import _autocomplete_map_file
 
@@ -28,11 +28,21 @@ class _MapsBus:
         return self.maps
 
 
+@dataclass
+class _CachedMapsBot:
+    _bus: _MapsBus
+    _map_cache: dict[str, tuple[float, list[dict[str, str]]]]
+
+    async def rpc_maps_list(
+        self, *, server: str, timeout_ms: int
+    ) -> list[dict[str, str]]:
+        return await self._bus.rpc_maps_list(server, timeout_ms)
+
+
 @pytest.mark.asyncio
 async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
-    bot = object.__new__(XCoreDiscordBot)
-    bot._bus = _MapsBus()
-    bot._map_cache = {}
+    bus = _MapsBus()
+    bot = _CachedMapsBot(_bus=bus, _map_cache={})
 
     now = 1000.0
 
@@ -43,37 +53,41 @@ async def test_get_cached_maps_uses_ttl(monkeypatch: pytest.MonkeyPatch) -> None
         "xcore_discord_bot.handlers_misc.time.monotonic", _fake_monotonic
     )
 
-    first = await get_cached_maps(bot, "survival")
+    first = await get_cached_maps(cast(Any, bot), "survival")
     assert first == [{"name": "Glacier", "file_name": "glacier.msav"}]
-    assert bot._bus.calls == 1
+    assert cast(Any, bus).calls == 1
 
-    second = await get_cached_maps(bot, "survival")
+    second = await get_cached_maps(cast(Any, bot), "survival")
     assert second == first
-    assert bot._bus.calls == 1
+    assert cast(Any, bus).calls == 1
 
     now = 1061.0
-    third = await get_cached_maps(bot, "survival")
+    third = await get_cached_maps(cast(Any, bot), "survival")
     assert third == first
-    assert bot._bus.calls == 2
+    assert cast(Any, bus).calls == 2
 
 
 @pytest.mark.asyncio
 async def test_get_cached_maps_returns_stale_cache_on_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bot = object.__new__(XCoreDiscordBot)
     bus = _MapsBus()
-    bot._bus = bus
-    bot._map_cache = {
-        "survival": (100.0, [{"name": "Gladius Arena", "file_name": "gladius.msav"}])
-    }
+    bot = _CachedMapsBot(
+        _bus=bus,
+        _map_cache={
+            "survival": (
+                100.0,
+                [{"name": "Gladius Arena", "file_name": "gladius.msav"}],
+            )
+        },
+    )
     bus.fail = True
 
     monkeypatch.setattr(
         "xcore_discord_bot.handlers_misc.time.monotonic", lambda: 1000.0
     )
 
-    maps = await get_cached_maps(bot, "survival")
+    maps = await get_cached_maps(cast(Any, bot), "survival")
     assert maps == [{"name": "Gladius Arena", "file_name": "gladius.msav"}]
 
 
@@ -86,7 +100,7 @@ class _AutocompleteBot:
         query: str,
         *,
         limit: int,
-    ) -> list[dict[str, object]]:
+    ) -> list[PlayerRecord]:
         del query, limit
         return []
 
@@ -103,7 +117,7 @@ class _Interaction:
 
 @pytest.mark.asyncio
 async def test_autocomplete_map_file_filters_and_formats() -> None:
-    interaction = _Interaction(
+    interaction: Any = _Interaction(
         client=_AutocompleteBot(
             maps=[
                 {"name": "Glacier", "file_name": "glacier.msav"},
@@ -122,7 +136,7 @@ async def test_autocomplete_map_file_filters_and_formats() -> None:
 
 @pytest.mark.asyncio
 async def test_autocomplete_map_file_returns_empty_without_server() -> None:
-    interaction = _Interaction(
+    interaction: Any = _Interaction(
         client=_AutocompleteBot(maps=[]),
         namespace=SimpleNamespace(),
     )

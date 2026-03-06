@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.bot import _AdminRequestView
+from xcore_discord_bot.dto import PlayerRecord
 
 
 @dataclass
@@ -45,10 +46,10 @@ class _Store:
     def __init__(self) -> None:
         self.marked: list[str] = []
 
-    async def find_player_by_pid(self, pid: int) -> dict[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 1:
             return None
-        return {"pid": 1, "uuid": "uuid-1", "nickname": "Nick"}
+        return PlayerRecord(pid=1, uuid="uuid-1", nickname="Nick")
 
     async def mark_admin_confirmed(self, uuid: str) -> None:
         self.marked.append(uuid)

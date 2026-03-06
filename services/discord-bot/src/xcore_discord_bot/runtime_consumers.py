@@ -33,8 +33,7 @@ async def _player_nickname_for_pid(store: PlayerLookupService, pid: int) -> str:
     if player is None:
         return "Unknown"
 
-    nickname_raw = player.get("nickname")
-    nickname = str(nickname_raw).strip() if nickname_raw else ""
+    nickname = str(player.nickname).strip()
     return nickname or "Unknown"
 
 
@@ -46,12 +45,7 @@ async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> 
     if player is None:
         return -1
 
-    pid_raw = player.get("pid")
-    if isinstance(pid_raw, int):
-        return pid_raw
-    if isinstance(pid_raw, str) and pid_raw.isdigit():
-        return int(pid_raw)
-    return -1
+    return player.pid
 
 
 async def consume_game_chat(bot: "XCoreDiscordBot") -> None:
@@ -127,10 +121,6 @@ async def consume_raw_events(bot: "XCoreDiscordBot") -> None:
 
 
 async def consume_admin_requests(bot: "XCoreDiscordBot") -> None:
-    async def find_player_by_pid_for_view(pid: int) -> dict[str, object] | None:
-        player = await bot.find_player_by_pid(pid)
-        return dict(player) if player is not None else None
-
     async def claim_idempotency_for_view(key: str, ttl_seconds: int) -> bool:
         return await bot.claim_idempotency(key, ttl_seconds=ttl_seconds)
 
@@ -150,7 +140,7 @@ async def consume_admin_requests(bot: "XCoreDiscordBot") -> None:
             server=server,
             pid=pid,
             request_nonce=request_nonce,
-            find_player_by_pid=find_player_by_pid_for_view,
+            find_player_by_pid=bot.find_player_by_pid,
             claim_idempotency=claim_idempotency_for_view,
             mark_admin_confirmed=bot.mark_admin_confirmed,
             publish_admin_confirm=bot.publish_admin_confirm,

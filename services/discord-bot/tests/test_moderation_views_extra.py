@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_views import (
     AdminRequestView,
     BanConfirmView,
@@ -186,9 +187,9 @@ async def test_admin_request_view_confirm_rejects_missing_player() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_request_view_confirm_rejects_missing_uuid() -> None:
-    async def find_player_by_pid(pid: int) -> dict[str, object]:
+    async def find_player_by_pid(pid: int) -> PlayerRecord:
         assert pid == 5
-        return {"nickname": "Nick", "uuid": ""}
+        return PlayerRecord(pid=5, nickname="Nick", uuid="")
 
     async def no_op(*args, **kwargs):
         return None
@@ -217,9 +218,9 @@ async def test_admin_request_view_confirm_rejects_missing_uuid() -> None:
 async def test_admin_request_view_decline_finalizes_message() -> None:
     finalized: list[str] = []
 
-    async def find_player_by_pid(pid: int) -> dict[str, object]:
+    async def find_player_by_pid(pid: int) -> PlayerRecord:
         assert pid == 5
-        return {"nickname": "Nick", "uuid": "uuid-1"}
+        return PlayerRecord(pid=5, nickname="Nick", uuid="uuid-1")
 
     async def finalize_message(_interaction: _Interaction, status: str) -> None:
         finalized.append(status)

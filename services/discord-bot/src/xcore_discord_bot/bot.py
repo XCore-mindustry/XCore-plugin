@@ -7,7 +7,7 @@ import secrets
 import traceback
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Literal
 
 import discord
 from discord import Interaction, app_commands
@@ -15,6 +15,7 @@ from discord.abc import Messageable
 from discord.ext import commands
 
 from .cogs import AdminCog, InfoCog, MapsCog
+from .dto import BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
     AdminRequestView,
@@ -249,7 +250,7 @@ class XCoreDiscordBot(commands.Bot):
         query: str,
         *,
         limit: int,
-    ) -> list[dict[str, object]]:
+    ) -> list[PlayerRecord]:
         return await self._store.autocomplete_players(query, limit=limit)
 
     async def get_cached_maps(self, server: str) -> list[dict[str, str]]:
@@ -266,7 +267,7 @@ class XCoreDiscordBot(commands.Bot):
         *,
         limit: int,
         page: int,
-    ) -> list[dict[str, object]]:
+    ) -> list[PlayerRecord]:
         return await self._store.search_players(name, limit=limit, page=page)
 
     async def count_bans(self, *, name_filter: str | None) -> int:
@@ -278,7 +279,7 @@ class XCoreDiscordBot(commands.Bot):
         name_filter: str | None,
         limit: int,
         page: int,
-    ) -> list[dict[str, object]]:
+    ) -> list[BanRecord]:
         return await self._store.list_bans(
             name_filter=name_filter, limit=limit, page=page
         )
@@ -342,7 +343,7 @@ class XCoreDiscordBot(commands.Bot):
         *,
         uuid: str,
         ip: str | None,
-    ) -> Mapping[str, object] | None:
+    ) -> BanRecord | None:
         return await self._store.find_ban(uuid=uuid, ip=ip)
 
     async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
@@ -371,7 +372,7 @@ class XCoreDiscordBot(commands.Bot):
     async def delete_mute(self, *, uuid: str) -> int:
         return await self._store.delete_mute(uuid=uuid)
 
-    async def find_mute(self, *, uuid: str) -> Mapping[str, object] | None:
+    async def find_mute(self, *, uuid: str) -> MuteRecord | None:
         return await self._store.find_mute(uuid=uuid)
 
     async def remove_admin(self, *, uuid: str) -> bool:
@@ -386,10 +387,10 @@ class XCoreDiscordBot(commands.Bot):
     async def publish_reload_player_data_cache(self) -> None:
         await self._bus.publish_reload_player_data_cache()
 
-    async def find_player_by_pid(self, pid: int) -> Mapping[str, object] | None:
+    async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         return await self._store.find_player_by_pid(pid)
 
-    async def find_player_by_uuid(self, uuid: str) -> Mapping[str, object] | None:
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)
 
     async def mark_admin_confirmed(self, *, uuid: str) -> None:
@@ -793,7 +794,7 @@ class XCoreDiscordBot(commands.Bot):
 
     async def _get_player_or_reply(
         self, interaction: Interaction, player_id: int
-    ) -> dict[str, Any] | None:
+    ) -> PlayerRecord | None:
         player = await self.find_player_by_pid(player_id)
         if player is None:
             await self._reply_player_not_found(interaction)
@@ -814,7 +815,7 @@ class XCoreDiscordBot(commands.Bot):
     async def _require_player_uuid(
         self,
         interaction: Interaction,
-        player: Mapping[str, object],
+        player: PlayerRecord,
         *,
         action: str,
     ) -> str | None:
@@ -827,7 +828,7 @@ class XCoreDiscordBot(commands.Bot):
     async def _require_player_uuid_or_ip(
         self,
         interaction: Interaction,
-        player: Mapping[str, object],
+        player: PlayerRecord,
         *,
         action: str,
     ) -> tuple[str | None, str | None] | None:
@@ -841,8 +842,8 @@ class XCoreDiscordBot(commands.Bot):
         return uuid_value, ip_value
 
     @staticmethod
-    def _player_name(player: Mapping[str, object]) -> str:
-        return str(player.get("nickname", "Unknown"))
+    def _player_name(player: PlayerRecord) -> str:
+        return player.nickname
 
     async def _parse_duration_or_reply(
         self,
@@ -899,14 +900,11 @@ class XCoreDiscordBot(commands.Bot):
 
     @staticmethod
     def _player_identifiers(
-        player: Mapping[str, object],
+        player: PlayerRecord,
     ) -> tuple[str | None, str | None]:
-        uuid_raw = player.get("uuid")
-        uuid_value = str(uuid_raw).strip() if uuid_raw is not None else ""
+        uuid_value = str(player.uuid).strip() if player.uuid is not None else ""
 
-        ip_raw = player.get("ip")
-        if not ip_raw:
-            ip_raw = player.get("last_ip")
+        ip_raw = player.ip or player.last_ip
         ip_value = str(ip_raw).strip() if ip_raw is not None else ""
 
         uuid_final = uuid_value if uuid_value else None

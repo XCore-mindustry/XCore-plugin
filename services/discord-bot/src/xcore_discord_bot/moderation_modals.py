@@ -5,11 +5,16 @@ from collections.abc import Awaitable, Callable, Mapping
 import discord
 from discord import Interaction
 
+from .dto import PlayerRecord
+
 DISCORD_MODAL_TITLE_MAX = 45
 
 
-def _build_modal_title(action: str, player: Mapping[str, object]) -> str:
-    player_name = str(player.get("nickname", "Unknown"))
+def _build_modal_title(action: str, player: Mapping[str, object] | PlayerRecord) -> str:
+    if isinstance(player, PlayerRecord):
+        player_name = player.nickname
+    else:
+        player_name = str(player.get("nickname", "Unknown"))
     title = f"{action} {player_name}"
     if len(title) <= DISCORD_MODAL_TITLE_MAX:
         return title

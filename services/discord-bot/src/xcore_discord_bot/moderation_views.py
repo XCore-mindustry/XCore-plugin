@@ -7,6 +7,7 @@ from typing import Awaitable, Callable
 import discord
 from discord import Interaction
 
+from .dto import PlayerRecord
 from .permissions import admin_role_ids, ensure_any_role
 from .settings import Settings
 from .moderation_modals import StatsBanModal, StatsMuteModal
@@ -23,7 +24,7 @@ PerformBanFn = Callable[..., Awaitable[str]]
 PerformRemoveMapFn = Callable[..., Awaitable[str]]
 DeleteMuteFn = Callable[..., Awaitable[int]]
 CreateModalFn = Callable[..., discord.ui.Modal]
-FindPlayerByPidFn = Callable[[int], Awaitable[dict[str, object] | None]]
+FindPlayerByPidFn = Callable[[int], Awaitable[PlayerRecord | None]]
 ClaimIdempotencyFn = Callable[[str, int], Awaitable[bool]]
 MarkAdminConfirmedFn = Callable[..., Awaitable[object]]
 PublishAdminConfirmFn = Callable[..., Awaitable[object]]
@@ -36,7 +37,7 @@ class BanConfirmView(discord.ui.View):
         *,
         requester_id: int,
         player_id: int,
-        player: Mapping[str, object],
+        player: PlayerRecord,
         period: str,
         reason: str,
         duration: timedelta,
@@ -45,7 +46,7 @@ class BanConfirmView(discord.ui.View):
         super().__init__(timeout=120)
         self._requester_id = requester_id
         self._player_id = player_id
-        self._player = dict(player)
+        self._player = player
         self._period = period
         self._reason = reason
         self._duration = duration
@@ -302,7 +303,7 @@ class AdminRequestView(discord.ui.View):
             )
             return
 
-        uuid_value = str(player.get("uuid", "")).strip()
+        uuid_value = str(player.uuid or "").strip()
         if not uuid_value:
             await interaction.response.send_message(
                 MSG_PLAYER_UUID_MISSING,
@@ -329,7 +330,7 @@ class AdminRequestView(discord.ui.View):
             f"`{interaction.user.display_name}`",
         )
         status = (
-            f"✅ Confirmed admin request for `{player.get('nickname', 'Unknown')}` "
+            f"✅ Confirmed admin request for `{player.nickname}` "
             f"on `{self._server}` by {confirmer}"
         )
         await self._finalize_message(interaction, status)
@@ -353,7 +354,7 @@ class AdminRequestView(discord.ui.View):
             f"`{interaction.user.display_name}`",
         )
         status = (
-            f"❌ Declined admin request for `{player.get('nickname', 'Unknown')}` "
+            f"❌ Declined admin request for `{player.nickname}` "
             f"on `{self._server}` by {confirmer}"
         )
         await self._finalize_message(interaction, status)
