@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.MuteData;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -36,6 +37,9 @@ public final class RedisStreamRouter {
         }
         if (event instanceof BanData) {
             return new Route("xcore:evt:moderation:ban", "moderation.ban", 120000L);
+        }
+        if (event instanceof MuteData) {
+            return new Route("xcore:evt:moderation:mute", "moderation.mute", 120000L);
         }
         if (event instanceof SocketEvents.AdminRequestConfirmEvent) {
             var server = extractServer(event, defaultServer);
@@ -107,6 +111,10 @@ public final class RedisStreamRouter {
             streams.add("xcore:evt:moderation:ban");
             return streams;
         }
+        if (type == MuteData.class) {
+            streams.add("xcore:evt:moderation:mute");
+            return streams;
+        }
         if (type == SocketEvents.AdminRequestConfirmEvent.class) {
             streams.add("xcore:cmd:admin-confirm:" + defaultServer);
             return streams;
@@ -158,7 +166,8 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.GlobalChatEvent.class
                 || type == SocketEvents.DiscordMessageEvent.class
                 || type == SocketEvents.AdminRequestEvent.class
-                || type == BanData.class;
+                || type == BanData.class
+                || type == MuteData.class;
     }
 
     public boolean isMutatingType(Class<?> type) {

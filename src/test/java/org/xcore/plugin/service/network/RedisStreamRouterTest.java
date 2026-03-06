@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.MuteData;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +18,7 @@ class RedisStreamRouterTest {
         var messageRoute = router.route(new SocketEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
         var joinRoute = router.route(new SocketEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
         var banRoute = router.route(BanData.builder().uuid("u").name("n").build(), "mini-pvp");
+        var muteRoute = router.route(MuteData.builder().uuid("u").name("n").build(), "mini-pvp");
 
         assertThat(messageRoute.streamKey()).isEqualTo("xcore:evt:chat:message");
         assertThat(messageRoute.eventType()).isEqualTo("chat.message");
@@ -26,6 +28,9 @@ class RedisStreamRouterTest {
 
         assertThat(banRoute.streamKey()).isEqualTo("xcore:evt:moderation:ban");
         assertThat(banRoute.eventType()).isEqualTo("moderation.ban");
+
+        assertThat(muteRoute.streamKey()).isEqualTo("xcore:evt:moderation:mute");
+        assertThat(muteRoute.eventType()).isEqualTo("moderation.mute");
     }
 
     @Test
@@ -52,6 +57,9 @@ class RedisStreamRouterTest {
 
         assertThat(router.subscribeStreamsFor(BanData.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:ban");
+
+        assertThat(router.subscribeStreamsFor(MuteData.class, "mini-pvp"))
+                .containsExactly("xcore:evt:moderation:mute");
     }
 
     @Test
@@ -59,6 +67,7 @@ class RedisStreamRouterTest {
     void classificationAndResponseMapping() {
         assertThat(router.isReadOnlyType(SocketEvents.AdminRequestEvent.class)).isTrue();
         assertThat(router.isReadOnlyType(BanData.class)).isTrue();
+        assertThat(router.isReadOnlyType(MuteData.class)).isTrue();
         assertThat(router.isReadOnlyType(SocketEvents.RemoveAdmin.class)).isFalse();
 
         assertThat(router.isMutatingType(SocketEvents.RemoveAdmin.class)).isTrue();
