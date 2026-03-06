@@ -20,6 +20,7 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.NetworkService;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -102,26 +103,46 @@ public class MaintainController implements CloudServerController {
         Log.info("Deleted @ bots from database.", deleted);
     }
 
-    @Command("gcmd <command> [targets]")
-    @CommandDescription("Executes a command on remote servers via socket.")
+    @Command("gcmd <command>")
+    @CommandDescription("Executes a command on remote servers via socket. Example: gcmd --targets mini-pvp,mini-hexed -- say hello world")
     public void gcmd(XCoreSender sender,
-                     @Argument(value = "command", description = "Command to execute. Use quotes for spaces.") String command,
-                     @Argument(value = "targets", description = "Target server names") String[] targets,
+                     @Argument(value = "command", description = "Command to execute on remote servers") @Greedy String command,
+                     @Flag(value = "targets", description = "Comma-separated target server names") String targetsCsv,
                      @Flag(value = "except", description = "Invert targets (execute everywhere EXCEPT targets)") boolean except) {
 
-        if (targets == null || targets.length == 0) {
-            Log.info("Dispatching '@' to [ALL]", command);
-            network.post(new SocketEvents.ExecuteCommand(command, new String[0], false));
+        if (command == null || command.isBlank()) {
+            Log.err("Usage: gcmd [--targets server-a,server-b] [--except] -- <command>");
+            return;
+        }
+
+        String normalizedCommand = command.trim();
+        String[] targets = parseTargetList(targetsCsv);
+
+        if (targets.length == 0) {
+            Log.info("Dispatching '@' to [ALL]", normalizedCommand);
+            network.post(new SocketEvents.ExecuteCommand(normalizedCommand, new String[0], false));
             return;
         }
 
         if (except) {
-            Log.info("Dispatching '@' to [ALL EXCEPT @]", command, Seq.with(targets));
+            Log.info("Dispatching '@' to [ALL EXCEPT @]", normalizedCommand, Seq.with(targets));
         } else {
-            Log.info("Dispatching '@' to @", command, Seq.with(targets));
+            Log.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
         }
 
-        network.post(new SocketEvents.ExecuteCommand(command, targets, except));
+        network.post(new SocketEvents.ExecuteCommand(normalizedCommand, targets, except));
+    }
+
+    private String[] parseTargetList(String targetsCsv) {
+        if (targetsCsv == null || targetsCsv.isBlank()) {
+            return new String[0];
+        }
+
+        return Arrays.stream(targetsCsv.split(","))
+                .map(String::trim)
+                .filter(target -> !target.isEmpty())
+                .distinct()
+                .toArray(String[]::new);
     }
 
     @Command("disable-cmd <command>")
