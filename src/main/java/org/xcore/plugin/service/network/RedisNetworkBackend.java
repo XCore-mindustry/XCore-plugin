@@ -511,8 +511,8 @@ public final class RedisNetworkBackend {
                     inboundRpcContexts.put(request, new RpcInboundContext(correlationId, replyTo, rpcType, System.currentTimeMillis()));
                 }
             }
-            listener.get(event);
             consumedEvents.incrementAndGet();
+            listener.get(event);
             return true;
         } catch (Exception e) {
             if (idempotencyClaimed && idempotencyRedisKey != null) {
