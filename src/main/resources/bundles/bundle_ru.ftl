@@ -158,7 +158,7 @@ private-message-blocked-content =
     { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
     { "" }[white]Заблокировано: [accent]{ $count }[]
 private-message-blocked-empty = { "" }[lightgray]У вас нет заблокированных игроков.
-private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
+private-message-blocked-entry = { "[" }white]{ $target } [gray]#{ $pid }[]
 private-message-compose = Написать
 private-message-blocked = Заблокированные
 private-message-block = Блокировать отправителя
@@ -326,13 +326,13 @@ badge-menu-title = { "[" }orange]{ -xcore } — Бейджи
 badge-menu-content =
     { "" }[white]Системный бейдж: [green]{ $systemBadge }[]
     { "" }[white]Активный бейдж: [green]{ $activeBadge }[]
-badge-menu-empty = [lightgray]У вас пока нет открытых бейджей.
-badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-menu-empty = { "[" }lightgray]У вас пока нет открытых бейджей.
+badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
 badge-clear-button = Снять активный бейдж
-badge-set-success = [accent]Активный бейдж установлен: [green]{ $badge }[].
-badge-clear-success = [accent]Активный бейдж снят.
-badge-grant-success = [accent]Бейдж [green]{ $badge }[] выдан игроку [green]{ $nickname }[][gray]#{ $pid }[].
-badge-revoke-success = [accent]Бейдж [green]{ $badge }[] снят у игрока [green]{ $nickname }[][gray]#{ $pid }[].
+badge-set-success = { "[" }accent]Активный бейдж установлен: [green]{ $badge }[].
+badge-clear-success = { "[" }accent]Активный бейдж снят.
+badge-grant-success = { "[" }accent]Бейдж [green]{ $badge }[] выдан игроку [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = { "[" }accent]Бейдж [green]{ $badge }[] снят у игрока [green]{ $nickname }[][gray]#{ $pid }[].
 badge-already-unlocked = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] уже открыт.
 badge-not-owned = { "[" }scarlet]⚠ У игрока нет бейджа [accent]{ $badge }[scarlet].
 error-badge-not-found = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] не найден.

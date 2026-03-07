@@ -24,13 +24,13 @@ badge-menu-title = { "[" }orange]{ -xcore } — Бэйджы
 badge-menu-content =
     { "" }[white]Сістэмны бэйдж: [green]{ $systemBadge }[]
     { "" }[white]Актыўны бэйдж: [green]{ $activeBadge }[]
-badge-menu-empty = [lightgray]У вас пакуль няма адкрытых бэйджаў.
-badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-menu-empty = { "[" }lightgray]У вас пакуль няма адкрытых бэйджаў.
+badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
 badge-clear-button = Зняць актыўны бэйдж
-badge-set-success = [accent]Актыўны бэйдж усталяваны: [green]{ $badge }[].
-badge-clear-success = [accent]Актыўны бэйдж зняты.
-badge-grant-success = [accent]Бэйдж [green]{ $badge }[] выдадзены гульцу [green]{ $nickname }[][gray]#{ $pid }[].
-badge-revoke-success = [accent]Бэйдж [green]{ $badge }[] зняты ў гульца [green]{ $nickname }[][gray]#{ $pid }[].
+badge-set-success = { "[" }accent]Актыўны бэйдж усталяваны: [green]{ $badge }[].
+badge-clear-success = { "[" }accent]Актыўны бэйдж зняты.
+badge-grant-success = { "[" }accent]Бэйдж [green]{ $badge }[] выдадзены гульцу [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = { "[" }accent]Бэйдж [green]{ $badge }[] зняты ў гульца [green]{ $nickname }[][gray]#{ $pid }[].
 badge-already-unlocked = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] ужо адкрыты.
 badge-not-owned = { "[" }scarlet]⚠ У гульца няма бэйджа [accent]{ $badge }[scarlet].
 error-badge-not-found = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] не знойдзены.

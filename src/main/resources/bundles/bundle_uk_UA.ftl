@@ -133,7 +133,7 @@ private-message-blocked-content =
     { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
     { "" }[white]Заблоковано: [accent]{ $count }[]
 private-message-blocked-empty = { "" }[lightgray]У вас немає заблокованих гравців.
-private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
+private-message-blocked-entry = { "[" }white]{ $target } [gray]#{ $pid }[]
 private-message-compose = Написати
 private-message-blocked = Заблоковані
 private-message-block = Заблокувати відправника
@@ -558,13 +558,13 @@ badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
 badge-menu-content =
     { "" }[white]Системна відзнака: [green]{ $systemBadge }[]
     { "" }[white]Активна відзнака: [green]{ $activeBadge }[]
-badge-menu-empty = [lightgray]У вас поки що немає відкритих відзнак.
-badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-menu-empty = { "[" }lightgray]У вас поки що немає відкритих відзнак.
+badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
 badge-clear-button = Прибрати активну відзнаку
-badge-set-success = [accent]Активну відзнаку встановлено: [green]{ $badge }[].
-badge-clear-success = [accent]Активну відзнаку прибрано.
-badge-grant-success = [accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].
-badge-revoke-success = [accent]Відзнаку [green]{ $badge }[] знято з гравця [green]{ $nickname }[][gray]#{ $pid }[].
+badge-set-success = { "[" }accent]Активну відзнаку встановлено: [green]{ $badge }[].
+badge-clear-success = { "[" }accent]Активну відзнаку прибрано.
+badge-grant-success = { "[" }accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = { "[" }accent]Відзнаку [green]{ $badge }[] знято з гравця [green]{ $nickname }[][gray]#{ $pid }[].
 badge-already-unlocked = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] уже відкрито.
 badge-not-owned = { "[" }scarlet]⚠ Гравець не має відзнаки [accent]{ $badge }[scarlet].
 error-badge-not-found = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не знайдено.
