@@ -4,8 +4,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import arc.util.Strings;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
+import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.session.Session;
@@ -24,16 +26,22 @@ public class PrivateMessageService {
     private final PrivateMessageRepository privateMessageRepository;
     private final SessionService sessionService;
     private final SecurityService securityService;
+    private final NetworkService networkService;
+    private final Config config;
     private final GlobalConfig globalConfig;
 
     @Inject
     public PrivateMessageService(PrivateMessageRepository privateMessageRepository,
                                  SessionService sessionService,
                                  SecurityService securityService,
+                                 NetworkService networkService,
+                                 Config config,
                                  GlobalConfig globalConfig) {
         this.privateMessageRepository = privateMessageRepository;
         this.sessionService = sessionService;
         this.securityService = securityService;
+        this.networkService = networkService;
+        this.config = config;
         this.globalConfig = globalConfig;
     }
 
@@ -104,6 +112,16 @@ public class PrivateMessageService {
             privateMessageRepository.save(privateMessage);
             deliverIncoming(privateMessage, recipientSession);
             recipientSession.lastPrivateTargetPid = senderSession.data.pid;
+        } else {
+            networkService.post(new SocketEvents.PrivateMessageEvent(
+                    privateMessage.fromUuid,
+                    privateMessage.fromPid,
+                    privateMessage.fromName,
+                    privateMessage.toUuid,
+                    privateMessage.toPid,
+                    privateMessage.message,
+                    config.server
+            ));
         }
 
         senderSession.lastPrivateTargetPid = targetData.pid;

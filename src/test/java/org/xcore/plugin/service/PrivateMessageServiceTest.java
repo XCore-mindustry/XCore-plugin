@@ -9,7 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
+import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
@@ -32,6 +34,7 @@ class PrivateMessageServiceTest {
     private PrivateMessageRepository privateMessageRepository;
     private SessionService sessionService;
     private SecurityService securityService;
+    private NetworkService networkService;
 
     @BeforeEach
     void setUp() {
@@ -41,12 +44,14 @@ class PrivateMessageServiceTest {
                 .mock(PrivateMessageRepository.class)
                 .mock(SessionService.class)
                 .mock(SecurityService.class)
+                .mock(NetworkService.class)
                 .build();
 
         privateMessageService = scope.get(PrivateMessageService.class);
         privateMessageRepository = scope.get(PrivateMessageRepository.class);
         sessionService = scope.get(SessionService.class);
         securityService = scope.get(SecurityService.class);
+        networkService = scope.get(NetworkService.class);
     }
 
     @AfterEach
@@ -64,6 +69,7 @@ class PrivateMessageServiceTest {
         when(sessionService.getOrLoadFromDb(42)).thenReturn(target);
         when(privateMessageRepository.countUnread("target-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);
+        when(sessionService.get("target-uuid")).thenReturn(null);
 
         boolean result = privateMessageService.send(sender, 42, "hello there");
 
@@ -72,6 +78,7 @@ class PrivateMessageServiceTest {
         assertThat(sender.lastPrivateMessageAt).isGreaterThan(0L);
         verify(privateMessageRepository).save(any(PrivateMessage.class));
         verify(sender.locale()).send(eq("private-message-sent"), anyMap());
+        verify(networkService).post(any(SocketEvents.PrivateMessageEvent.class));
     }
 
     @Test
@@ -124,6 +131,26 @@ class PrivateMessageServiceTest {
         assertThat(result).isFalse();
         verify(sender.locale()).send(eq("error-processing-request"), anyMap());
         verify(sender.locale(), never()).send(eq("private-message-sent"), anyMap());
+        verify(networkService, never()).post(any());
+    }
+
+    @Test
+    @DisplayName("send does not publish cross-server event when recipient is local")
+    void send_doesNotPublishCrossServerEvent_whenRecipientIsLocal() {
+        Session sender = mockSession("sender-uuid", 10, "Sender");
+        Session recipient = mockSession("target-uuid", 42, "Target");
+        PlayerData target = PlayerData.builder().uuid("target-uuid").pid(42).nickname("Target").blockedPrivateUuids(new HashSet<>()).build();
+
+        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(sessionService.getOrLoadFromDb(42)).thenReturn(target);
+        when(privateMessageRepository.countUnread("target-uuid")).thenReturn(0L);
+        when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);
+        when(sessionService.get("target-uuid")).thenReturn(recipient);
+
+        boolean result = privateMessageService.send(sender, 42, "hello there");
+
+        assertThat(result).isTrue();
+        verify(networkService, never()).post(any());
     }
 
     @Test
@@ -147,6 +174,7 @@ class PrivateMessageServiceTest {
         when(sessionService.getOrLoadFromDb(88)).thenReturn(target);
         when(privateMessageRepository.countUnread("other-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);
+        when(sessionService.get("other-uuid")).thenReturn(null);
 
         boolean result = privateMessageService.reply(sender, "reply text");
 
@@ -244,11 +272,16 @@ class PrivateMessageServiceTest {
             if (builder.isBeanAbsent(GlobalConfig.class)) {
                 builder.register(new GlobalConfig());
             }
+            if (builder.isBeanAbsent(Config.class)) {
+                builder.register(new Config());
+            }
             if (builder.isBeanAbsent(PrivateMessageService.class)) {
                 builder.register(new PrivateMessageService(
                         builder.get(PrivateMessageRepository.class),
                         builder.get(SessionService.class),
                         builder.get(SecurityService.class),
+                        builder.get(NetworkService.class),
+                        builder.get(Config.class),
                         builder.get(GlobalConfig.class)
                 ));
             }

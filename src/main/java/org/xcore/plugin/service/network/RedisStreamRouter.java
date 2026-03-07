@@ -32,6 +32,9 @@ public final class RedisStreamRouter {
             var server = extractServer(event, defaultServer);
             return new Route("xcore:cmd:discord-message:" + server, "chat.discord_ingress", 60000L);
         }
+        if (event instanceof SocketEvents.PrivateMessageEvent) {
+            return new Route("xcore:evt:chat:private", "chat.private", 60000L);
+        }
         if (event instanceof SocketEvents.AdminRequestEvent) {
             return new Route("xcore:evt:admin:request", "admin.request", 120000L);
         }
@@ -103,6 +106,10 @@ public final class RedisStreamRouter {
             streams.add("xcore:cmd:discord-message:" + defaultServer);
             return streams;
         }
+        if (type == SocketEvents.PrivateMessageEvent.class) {
+            streams.add("xcore:evt:chat:private");
+            return streams;
+        }
         if (type == SocketEvents.AdminRequestEvent.class) {
             streams.add("xcore:evt:admin:request");
             return streams;
@@ -165,6 +172,7 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.PlayerJoinLeaveEvent.class
                 || type == SocketEvents.GlobalChatEvent.class
                 || type == SocketEvents.DiscordMessageEvent.class
+                || type == SocketEvents.PrivateMessageEvent.class
                 || type == SocketEvents.AdminRequestEvent.class
                 || type == BanData.class
                 || type == MuteData.class;

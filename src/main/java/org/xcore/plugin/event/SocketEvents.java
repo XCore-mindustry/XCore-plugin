@@ -20,6 +20,16 @@ public class SocketEvents {
 
     public record DiscordMessageEvent(String authorName, String message, String server) {}
 
+    public record PrivateMessageEvent(
+            String fromUuid,
+            int fromPid,
+            String fromName,
+            String toUuid,
+            int toPid,
+            String message,
+            String server
+    ) {}
+
     public record ServerHeartbeatEvent(
             String serverName,
             long discordChannelId,
