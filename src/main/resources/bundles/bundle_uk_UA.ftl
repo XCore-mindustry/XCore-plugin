@@ -273,7 +273,7 @@ commands-player-description = Переглянути статистику гра
 player-menu-player-content =
     { "" }[white]Статистика гравця [green]{ $customNickname }[][grey]#{ $pid }[]
     { "" }[white]Оригінальне ім'я: [green]{ $nickname }[] | Адмін: [green]{ $admin }[]
-    { "" }[white]Системний бейдж: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
+    { "" }[white]Системний відзнака: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
     { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг у Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
     { "" }[white]Час у грі: [green]{ $totalPlayTime }[] хвилин | Таблиця лідерів: [green]{ $leaderboard }[]
     { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
@@ -496,7 +496,7 @@ player-menu-settings = Налаштування
 player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
 player-menu-settings-content =
     { "" }[white]Встановлене ім'я: [green]{ $customNickname }[]
-    { "" }[white]Системний бейдж: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
+    { "" }[white]Системний відзнака: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
     { "" }[white]Таблиця лідерів: [green]{ $leaderboard }[]
     { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
     { "" }[green]{ $description }[white]
