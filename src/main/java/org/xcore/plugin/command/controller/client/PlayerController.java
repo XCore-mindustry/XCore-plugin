@@ -3,6 +3,7 @@ package org.xcore.plugin.command.controller.client;
 import arc.struct.Seq;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import mindustry.game.Team;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
@@ -11,6 +12,7 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
 
@@ -51,6 +53,11 @@ public class PlayerController implements CloudClientController {
                 : sessionService.getOrLoadFromDb(id);
 
         menu.settings(menu.getUuid(sender), data);
+    }
+
+    @Command("observer|spectator")
+    public void observer(XCoreSender sender) {
+        sender.player().team(Team.derelict);
     }
 
     @Command("lb")
