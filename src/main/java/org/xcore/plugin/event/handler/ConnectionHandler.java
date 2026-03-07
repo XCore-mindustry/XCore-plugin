@@ -15,6 +15,7 @@ import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
@@ -34,6 +35,7 @@ public class ConnectionHandler {
     private final Config config;
     private final GlobalConfig globalConfig;
     private final VoteService voteService;
+    private final PrivateMessageService privateMessageService;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -41,13 +43,15 @@ public class ConnectionHandler {
                              NetworkService network,
                              Config config,
                              GlobalConfig globalConfig,
-                             VoteService voteService) {
+                             VoteService voteService,
+                             PrivateMessageService privateMessageService) {
         this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
         this.voteService = voteService;
+        this.privateMessageService = privateMessageService;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -114,6 +118,11 @@ public class ConnectionHandler {
 
         if (player.getInfo().timesJoined < 5) {
             Call.openURI(player.con, globalConfig.discordUrl);
+        }
+
+        long unreadMessages = privateMessageService.countUnread(data.uuid);
+        if (unreadMessages > 0) {
+            locale.send("private-message-join-notification", args("count", unreadMessages));
         }
 
         Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());

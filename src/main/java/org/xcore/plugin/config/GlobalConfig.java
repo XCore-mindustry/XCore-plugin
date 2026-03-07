@@ -25,8 +25,13 @@ public class GlobalConfig {
     public int eventsPerPage = 10;
     public int mapsPerPage = 10;
     public int commandsPerPage = 6;
+    public int privateMessagesPerPage = 10;
 
     public int maxHistory = 16;
+    public int privateMessageMaxLength = 300;
+    public int privateMessageCooldownSeconds = 10;
+    public int privateMessageUnreadLimit = 30;
+    public int privateMessageBlockedLimit = 100;
 
     public boolean isDataBaseReadOnly = false;
     public boolean isDataBaseMigration = false;

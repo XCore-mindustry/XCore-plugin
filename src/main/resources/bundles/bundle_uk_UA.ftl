@@ -91,12 +91,59 @@ commands-t-description = Надіслати повідомлення тільк�
 commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]>[accent] { $name }[coral]:[white] { $message }
 commands-g-description = Надіслати повідомлення на всі сервери.
 commands-a-description = Надіслати повідомлення тільки адміністраторам.
+commands-msg-description = Надіслати гравцю приватне повідомлення.
+commands-msg-id-description = ID гравця.
+commands-msg-message-description = Текст приватного повідомлення.
+commands-reply-description = Відповісти останньому співрозмовнику в приватних повідомленнях.
+commands-reply-message-description = Текст відповіді.
+commands-inbox-description = Відкрити меню приватних повідомлень.
+commands-inbox-id-description = ID гравця.
 commands-tr-description = Встановити мову перекладача.
 commands-tr-success = { "[" }accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Такої мови не існує.
 discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+private-message-received = { "[" }sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-sent = { "[" }sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-unread-count = { "[" }accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень.
+private-message-join-notification = { "[" }accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень. Використайте [white]/inbox[accent], щоб відкрити їх.
+private-message-block-success = { "[" }accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] тепер заблоковані.
+private-message-block-already = { "[" }lightgray]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[lightgray] вже заблоковані.
+private-message-unblock-success = { "[" }accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] знову дозволені.
+private-message-unblock-missing = { "[" }lightgray]Гравця [white]{ $target } [gray]#{ $pid }[lightgray] немає у списку заблокованих.
+private-message-menu-title = { "[" }orange]{ -xcore } — Приватні повідомлення
+private-message-menu-content =
+    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+    { "" }[white]Непрочитано: [accent]{ $unread }[]
+private-message-menu-empty = { "" }[lightgray]У вас поки немає приватних повідомлень.
+private-message-menu-entry-unread = { "[" }accent]Непрочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-menu-entry-read = { "[" }gray]Прочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-details-title = { "[" }orange]{ -xcore } — Повідомлення
+private-message-details-content =
+    { "" }[white]Від: [accent]{ $author } [gray]#{ $pid }[]
+    { "" }[white]Час: [accent]{ $time }[]
+    { "" }[white]Статус: [accent]{ $status }[]
+    { "" }
+    { "" }[white]{ $message }
+private-message-status-unread = непрочитано
+private-message-status-read = прочитано
+private-message-blocked-title = { "[" }orange]{ -xcore } — Заблоковані гравці
+private-message-blocked-content =
+    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+    { "" }[white]Заблоковано: [accent]{ $count }[]
+private-message-blocked-empty = { "" }[lightgray]У вас немає заблокованих гравців.
+private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
+private-message-compose = Написати
+private-message-blocked = Заблоковані
+private-message-block = Заблокувати відправника
+private-message-unblock = Розблокувати відправника
+private-message-reply-title = Відповідь
+private-message-reply-message = Введіть повідомлення для [accent]#{ $pid }[]
+private-message-compose-target-title = Нове повідомлення
+private-message-compose-target-message = Введіть ID гравця у форматі [accent]#123[]
+private-message-compose-body-title = Текст повідомлення
+private-message-compose-body-message = Введіть приватне повідомлення для [accent]{ $pid }[]
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -462,6 +509,16 @@ event-end = Подія [green]{ $name }[] завершилася!
 error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
 error-no-access = { "[" }scarlet]⚠ Немає доступу.
 error-nickname-too-long = { "[" }scarlet]⚠ Ім'я користувача надто довге. Максимум { $max } видимих символів.
+error-private-message-invalid-pid = { "[" }scarlet]⚠ Невірний ID гравця. Використовуйте формат [lightgray]#123[].
+error-private-message-self = { "[" }scarlet]⚠ Не можна надсилати приватне повідомлення самому собі.
+error-private-message-empty = { "[" }scarlet]⚠ Повідомлення не може бути порожнім.
+error-private-message-too-long = { "[" }scarlet]⚠ Повідомлення надто довге. Максимум { $max } символів.
+error-private-message-cooldown = { "[" }scarlet]⚠ Зачекайте { $seconds }с перед надсиланням наступного приватного повідомлення.
+error-private-message-target-unavailable = { "[" }scarlet]⚠ Цей гравець зараз недоступний для приватних повідомлень.
+error-private-message-no-reply-target = { "[" }scarlet]⚠ Немає кому відповісти в приватних повідомленнях.
+error-private-message-not-found = { "[" }scarlet]⚠ Повідомлення не знайдено.
+error-private-message-block-self = { "[" }scarlet]⚠ Не можна заблокувати самого себе.
+error-private-message-block-limit = { "[" }scarlet]⚠ Досягнуто ліміту списку блокувань ({ $limit }).
 finished = завершено
 finished-neutral = { "[" }orange]Завершено
 finished-active = { "[" }green]Завершено

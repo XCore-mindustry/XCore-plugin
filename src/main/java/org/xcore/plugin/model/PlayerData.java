@@ -10,7 +10,9 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Data
 @SuperBuilder
@@ -54,6 +56,8 @@ public class PlayerData extends ModelData {
     @Builder.Default public Map<String, Boolean> eventVotes = new HashMap<>();
     @BsonProperty("map_votes")
     @Builder.Default public Map<String, Boolean> mapVotes = new HashMap<>();
+    @BsonProperty("blocked_private_uuids")
+    @Builder.Default public Set<String> blockedPrivateUuids = new HashSet<>();
 
     @BsonProperty("is_admin")
     @Builder.Default public boolean admin = false;

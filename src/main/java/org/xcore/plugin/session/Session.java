@@ -33,6 +33,8 @@ public class Session {
     public final Deque<Runnable> history = new ArrayDeque<>();
     public final Map<Class<?>, Object> drafts = new HashMap<>();
     public Consumer<String> textHandler;
+    public Integer lastPrivateTargetPid;
+    public long lastPrivateMessageAt;
 
     public Session(GlobalConfig globalConfig,
                    BundleService bundle,
@@ -49,6 +51,7 @@ public class Session {
 
         if (this.data.mapVotes == null) this.data.mapVotes = new HashMap<>();
         if (this.data.eventVotes == null) this.data.eventVotes = new HashMap<>();
+        if (this.data.blockedPrivateUuids == null) this.data.blockedPrivateUuids = new HashSet<>();
         if (this.data.language == null) this.data.language = "auto";
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
 

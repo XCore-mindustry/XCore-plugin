@@ -116,12 +116,59 @@ commands-t-description = Отправить сообщение только св
 commands-t-chat = { "[" }{ "#" }{ $color }][Команде] [coral]>[accent] { $name }[coral]:[white] { $message }
 commands-g-description = Отправить сообщение на все сервера
 commands-a-description = Отправить сообщение только администраторам
+commands-msg-description = Отправить игроку личное сообщение
+commands-msg-id-description = ID игрока
+commands-msg-message-description = Текст личного сообщения
+commands-reply-description = Ответить последнему собеседнику в личных сообщениях
+commands-reply-message-description = Текст ответа
+commands-inbox-description = Открыть меню личных сообщений
+commands-inbox-id-description = ID игрока
 commands-tr-description = Установить язык переводчика
 commands-tr-success = { "[" }accent]Язык переводчика был успешно изменен на [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Нет такого языка
 discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](из [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+private-message-received = { "[" }sky][ЛС][] [lightgray]от [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-sent = { "[" }sky][ЛС][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-unread-count = { "[" }accent]У вас [white]{ $count }[accent] непрочитанных личных сообщений.
+private-message-join-notification = { "[" }accent]У вас [white]{ $count }[accent] непрочитанных личных сообщений. Используйте [white]/inbox[accent], чтобы открыть их.
+private-message-block-success = { "[" }accent]Личные сообщения от [white]{ $target } [gray]#{ $pid }[accent] теперь заблокированы.
+private-message-block-already = { "[" }lightgray]Личные сообщения от [white]{ $target } [gray]#{ $pid }[lightgray] уже заблокированы.
+private-message-unblock-success = { "[" }accent]Личные сообщения от [white]{ $target } [gray]#{ $pid }[accent] снова разрешены.
+private-message-unblock-missing = { "[" }lightgray]Игрок [white]{ $target } [gray]#{ $pid }[lightgray] не находится в блок-листе.
+private-message-menu-title = { "[" }orange]{ -xcore } — Входящие
+private-message-menu-content =
+    { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+    { "" }[white]Непрочитано: [accent]{ $unread }[]
+private-message-menu-empty = { "" }[lightgray]У вас пока нет личных сообщений.
+private-message-menu-entry-unread = { "[" }accent]Непрочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-menu-entry-read = { "[" }gray]Прочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-details-title = { "[" }orange]{ -xcore } — Сообщение
+private-message-details-content =
+    { "" }[white]От: [accent]{ $author } [gray]#{ $pid }[]
+    { "" }[white]Время: [accent]{ $time }[]
+    { "" }[white]Статус: [accent]{ $status }[]
+    { "" }
+    { "" }[white]{ $message }
+private-message-status-unread = непрочитано
+private-message-status-read = прочитано
+private-message-blocked-title = { "[" }orange]{ -xcore } — Заблокированные игроки
+private-message-blocked-content =
+    { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+    { "" }[white]Заблокировано: [accent]{ $count }[]
+private-message-blocked-empty = { "" }[lightgray]У вас нет заблокированных игроков.
+private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
+private-message-compose = Написать
+private-message-blocked = Заблокированные
+private-message-block = Блокировать отправителя
+private-message-unblock = Разблокировать отправителя
+private-message-reply-title = Ответ
+private-message-reply-message = Введите сообщение для [accent]#{ $pid }[]
+private-message-compose-target-title = Новое сообщение
+private-message-compose-target-message = Введите ID игрока в формате [accent]#123[]
+private-message-compose-body-title = Текст сообщения
+private-message-compose-body-message = Введите личное сообщение для [accent]{ $pid }[]
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -437,7 +484,7 @@ error-page-between = { "[" }scarlet]⚠ 'страница' должна быть
 error-page-number = { "[" }scarlet]'страница' должна быть числом.
 error-wrong-number = { "[" }scarlet]⚠ Неправильный формат числа
 error-wrong-period-format = { "[" }scarlet]⚠ Неправильный формат периода. Пример: 1h 30m, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Некорректное player-id
+error-invalid-id = { "[" }scarlet]⚠ Некорректный ID игрока.
 error-spectator = { "[" }scarlet]⚠ Вы наблюдатель
 error-admin-password-too-short = { "[" }scarlet]⚠ Пароль должен быть длиннее 4 символов
 error-wrong-admin-password = { "[" }scarlet]⚠ Неправильный пароль
@@ -446,6 +493,16 @@ error-processing-request = { "[" }scarlet]Произошла ошибка при
 error-team-not-found = { "[" }scarlet]⚠ Команда не найдена.
 error-no-access = { "[" }scarlet]⚠ Нет доступа.
 error-nickname-too-long = { "[" }scarlet]⚠ Никнейм слишком длинный. Максимум { $max } видимых символов.
+error-private-message-invalid-pid = { "[" }scarlet]⚠ Неверный ID игрока. Используйте формат [lightgray]#123[].
+error-private-message-self = { "[" }scarlet]⚠ Нельзя отправить личное сообщение самому себе.
+error-private-message-empty = { "[" }scarlet]⚠ Сообщение не может быть пустым.
+error-private-message-too-long = { "[" }scarlet]⚠ Сообщение слишком длинное. Максимум { $max } символов.
+error-private-message-cooldown = { "[" }scarlet]⚠ Подождите { $seconds }с перед отправкой следующего личного сообщения.
+error-private-message-target-unavailable = { "[" }scarlet]⚠ Этот игрок сейчас недоступен для личных сообщений.
+error-private-message-no-reply-target = { "[" }scarlet]⚠ Некому ответить в личных сообщениях.
+error-private-message-not-found = { "[" }scarlet]⚠ Сообщение не найдено.
+error-private-message-block-self = { "[" }scarlet]⚠ Нельзя заблокировать самого себя.
+error-private-message-block-limit = { "[" }scarlet]⚠ Достигнут лимит блок-листа ({ $limit }).
 error-invalid-syntax = { "[" }scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
 error-invalid-sender = { "[" }scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{ $type }
 error-argument-parse-generic = { "[" }scarlet]⚠ Ошибка аргумента: { $error }

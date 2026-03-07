@@ -116,12 +116,59 @@ commands-t-description = Send a message only to your teammates.
 commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[coral]:[white] { $message }
 commands-g-description = Send a message across all servers.
 commands-a-description = Send a message only to admins.
+commands-msg-description = Send a private message to a player.
+commands-msg-id-description = Player ID.
+commands-msg-message-description = Private message text.
+commands-reply-description = Reply to the last player in private messages.
+commands-reply-message-description = Private reply text.
+commands-inbox-description = Open the private messages menu.
+commands-inbox-id-description = Player ID.
 commands-tr-description = Set the translator language.
 commands-tr-success = { "[" }accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Translator is [scarlet]off[]!
 commands-tr-not-found = { "[" }scarlet]⚠ There is no such language.
 discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
 global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+private-message-received = { "[" }sky][PM][] [lightgray]from [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-sent = { "[" }sky][PM][] [lightgray]to [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-unread-count = { "[" }accent]You have [white]{ $count }[accent] unread private messages.
+private-message-join-notification = { "[" }accent]You have [white]{ $count }[accent] unread private messages. Use [white]/inbox[accent] to open them.
+private-message-block-success = { "[" }accent]Private messages from [white]{ $target } [gray]#{ $pid }[accent] are now blocked.
+private-message-block-already = { "[" }lightgray]Private messages from [white]{ $target } [gray]#{ $pid }[lightgray] are already blocked.
+private-message-unblock-success = { "[" }accent]Private messages from [white]{ $target } [gray]#{ $pid }[accent] are no longer blocked.
+private-message-unblock-missing = { "[" }lightgray][white]{ $target } [gray]#{ $pid }[lightgray] is not blocked.
+private-message-menu-title = { "[" }orange]{ -xcore } — Private messages
+private-message-menu-content =
+    { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+    { "" }[white]Unread: [accent]{ $unread }[]
+private-message-menu-empty = { "" }[lightgray]Your inbox is empty.
+private-message-menu-entry-unread = { "[" }accent]Unread[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-menu-entry-read = { "[" }gray]Read[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-details-title = { "[" }orange]{ -xcore } — Message
+private-message-details-content =
+    { "" }[white]From: [accent]{ $author } [gray]#{ $pid }[]
+    { "" }[white]Time: [accent]{ $time }[]
+    { "" }[white]Status: [accent]{ $status }[]
+    { "" }
+    { "" }[white]{ $message }
+private-message-status-unread = unread
+private-message-status-read = read
+private-message-blocked-title = { "[" }orange]{ -xcore } — Blocked players
+private-message-blocked-content =
+    { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+    { "" }[white]Blocked: [accent]{ $count }[]
+private-message-blocked-empty = { "" }[lightgray]You have no blocked players.
+private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
+private-message-compose = New message
+private-message-blocked = Blocked
+private-message-block = Block sender
+private-message-unblock = Unblock sender
+private-message-reply-title = Reply
+private-message-reply-message = Enter a message for [accent]#{ $pid }[]
+private-message-compose-target-title = New message
+private-message-compose-target-message = Enter the player ID in format [accent]#123[]
+private-message-compose-body-title = Message text
+private-message-compose-body-message = Enter a private message for [accent]{ $pid }[]
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
@@ -447,6 +494,16 @@ error-processing-request = { "[" }scarlet]An error occurred while processing the
 error-team-not-found = { "[" }scarlet]⚠ Team not found.
 error-no-access = { "[" }scarlet]⚠ No Access.
 error-nickname-too-long = { "[" }scarlet]⚠ Nickname is too long. Max { $max } visible characters.
+error-private-message-invalid-pid = { "[" }scarlet]⚠ Invalid private-message pid. Use format [lightgray]#123[].
+error-private-message-self = { "[" }scarlet]⚠ You cannot send a private message to yourself.
+error-private-message-empty = { "[" }scarlet]⚠ Message cannot be empty.
+error-private-message-too-long = { "[" }scarlet]⚠ Message is too long. Max { $max } characters.
+error-private-message-cooldown = { "[" }scarlet]⚠ Wait { $seconds }s before sending another private message.
+error-private-message-target-unavailable = { "[" }scarlet]⚠ This player is unavailable for private messages right now.
+error-private-message-no-reply-target = { "[" }scarlet]⚠ No recent private-message contact to reply to.
+error-private-message-not-found = { "[" }scarlet]⚠ Message not found.
+error-private-message-block-self = { "[" }scarlet]⚠ You cannot block yourself.
+error-private-message-block-limit = { "[" }scarlet]⚠ Block list limit reached ({ $limit }).
 error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
 error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
 error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: '{ $error }'.
