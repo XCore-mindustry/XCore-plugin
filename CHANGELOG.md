@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.5] - 2026-03-07
+
+### Added
+- Added persistent private messages with inbox/reply/block flows and cross-server delivery.
+- Added unlockable player badges with player selection, server/admin management commands, and localized badge metadata.
+- Added dedicated translator and map-maker badges alongside the initial badge set.
+
+### Changed
+- Redesigned chat badge rendering so official badges are shown separately from player-controlled nicknames.
+
+### Fixed
+- Reduced badge spoofing by blocking reserved badge glyphs in custom nicknames.
+- Fixed admin badge refresh/state synchronization across login, logout, socket approval, and sync flows.
+
 ## [3.1.4] - 2026-03-06
 
 ### Added
@@ -131,7 +145,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...HEAD
+[3.1.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...3.1.5
 [3.1.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.3...3.1.4
 [3.1.3]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.2...3.1.3
 [3.1.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.1...3.1.2
