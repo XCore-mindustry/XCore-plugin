@@ -12,31 +12,45 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.player.Badge;
+import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
-import static mindustry.Vars.netServer;
-
 @Singleton
 public class PlayerMenu extends Menu {
 
     /** Vanilla Mindustry name length limit in UTF-8 bytes (see Vars.maxNameLength). */
     private static final int MAX_PLAIN_NAME_BYTES = 40;
+    private static final int BADGE_ICON_RANGE_START = 0xE800;
+    private static final int BADGE_ICON_RANGE_END = 0xF8FF;
 
     private final PlayerDataRepository playerDataRepository;
     private final BundleService bundle;
+    private final NetworkService network;
+    private final PlayerDisplayService playerDisplayService;
 
     @Inject
-    public PlayerMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, PlayerDataRepository playerDataRepository, BundleService bundle) {
+    public PlayerMenu(Config config,
+                      GlobalConfig globalConfig,
+                      SessionService sessionService,
+                      PlayerDataRepository playerDataRepository,
+                      BundleService bundle,
+                      NetworkService network,
+                      PlayerDisplayService playerDisplayService) {
         super(config, globalConfig, sessionService);
         this.playerDataRepository = playerDataRepository;
         this.bundle = bundle;
+        this.network = network;
+        this.playerDisplayService = playerDisplayService;
     }
 
     public void player(String uuid, PlayerData targetData) {
@@ -55,12 +69,16 @@ public class PlayerMenu extends Menu {
                 ? targetData.nickname : targetData.customNickname;
         String description = targetData.description == null || Objects.equals(targetData.description, "")
                 ? local.t("no-description") : targetData.description;
+        String activeBadge = activeBadgeName(local, targetData);
+        String systemBadge = systemBadgeName(local, targetData);
 
         session.builder()
                 .title("player-menu-player-title")
                 .content("player-menu-player-content", args(
                         "nickname", targetData.nickname,
                         "customNickname", customNickname,
+                        "activeBadge", activeBadge,
+                        "systemBadge", systemBadge,
                         "description", description,
                         "pid", targetData.pid,
                         "totalPlayTime", targetData.totalPlayTime,
@@ -145,11 +163,15 @@ public class PlayerMenu extends Menu {
                 ? local.t("none") : targetData.customNickname;
         String descDisplay = (targetData.description == null || targetData.description.isEmpty())
                 ? local.t("no-description") : targetData.description;
+        String activeBadge = activeBadgeName(local, targetData);
+        String systemBadge = systemBadgeName(local, targetData);
 
         session.builder().title("player-menu-settings-title")
                 .content("player-menu-settings-content", args(
                         "nickname", targetData.nickname,
                         "customNickname", customNickDisplay,
+                        "activeBadge", activeBadge,
+                        "systemBadge", systemBadge,
                         "description", descDisplay,
                         "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
                         "language", local.getLanguageName(targetData.language, "auto"),
@@ -168,6 +190,12 @@ public class PlayerMenu extends Menu {
                                     settings(uuid, targetData);
                                     return;
                                 }
+
+                                if (containsBadgeLikeGlyphs(plain)) {
+                                    local.send("error-nickname-badge-glyph", args());
+                                    settings(uuid, targetData);
+                                    return;
+                                }
                             }
 
                             updatePlayerData(targetData, d -> {
@@ -178,21 +206,8 @@ public class PlayerMenu extends Menu {
                                     if (ts.data.nickname == null || ts.data.nickname.isEmpty()) {
                                         ts.data.nickname = "Player";
                                     }
-
-                                    if (isReset) {
-                                        ts.player.name = ts.data.nickname;
-                                    } else if (ts.data.customNickname != null && !ts.data.customNickname.isEmpty()) {
-                                        ts.player.name = ts.data.customNickname;
-                                    } else {
-                                        ts.player.name = ts.data.nickname;
-                                    }
                                 }
-                            });
-
-                            var info = netServer.admins.getInfo(targetData.uuid);
-                            if (info != null) {
-                                info.lastName = isReset ? targetData.nickname : newNick;
-                            }
+                            }, true, true);
 
                             settings(uuid, targetData);
                         });
@@ -204,14 +219,18 @@ public class PlayerMenu extends Menu {
                     })
                     .addLocal("player-menu-settings-description", () -> {
                         session.setTextHandler(t -> {
-                            updatePlayerData(targetData, d -> d.description = t);
+                            updatePlayerData(targetData, d -> d.description = t, false, false);
                             settings(uuid, targetData);
                         });
                         Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
                     })
+                    .addLocal("player-menu-settings-badges", () -> {
+                        session.pushHistory(() -> settings(uuid, targetData));
+                        badges(uuid, targetData);
+                    })
                 .end()
                 .addRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
-                    updatePlayerData(targetData, d -> d.leaderboard = !d.leaderboard);
+                    updatePlayerData(targetData, d -> d.leaderboard = !d.leaderboard, false, false);
                     settings(uuid, targetData);
                 })
                 .start()
@@ -241,7 +260,7 @@ public class PlayerMenu extends Menu {
                         updatePlayerData(targetData, d -> {
                             if (isTranslator) d.translatorLanguage = "off";
                             else d.language = "auto";
-                        });
+                        }, false, false);
                         session.popHistory().run();
                     })
                 .end();
@@ -254,7 +273,7 @@ public class PlayerMenu extends Menu {
                 updatePlayerData(targetData, d -> {
                     if (isTranslator) d.translatorLanguage = code;
                     else d.language = code;
-                });
+                }, false, false);
                 session.popHistory().run();
             });
         });
@@ -262,14 +281,100 @@ public class PlayerMenu extends Menu {
         builder.addNavigationRow().show();
     }
 
-    private void updatePlayerData(PlayerData targetData, java.util.function.Consumer<PlayerData> updater) {
+    public void badges(String uuid, PlayerData targetData) {
+        Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return;
+        }
+
+        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
+            session.locale().send("error-no-access");
+            return;
+        }
+
+        Localization local = session.locale();
+        List<Badge> badges = unlockedSelectableBadges(targetData);
+        String header = local.t("badge-menu-content", args(
+                "systemBadge", systemBadgeName(local, targetData),
+                "activeBadge", activeBadgeName(local, targetData)
+        ));
+
+        var builder = session.builder()
+                .title("badge-menu-title")
+                .rawContent(badges.isEmpty() ? header + "\n" + local.t("badge-menu-empty") : header);
+
+        if (!badges.isEmpty()) {
+            builder.addForEach(badges, (b, badge) -> b.addRow(local.t("badge-menu-row", args(
+                    "badge", badgeLabel(local, badge),
+                    "description", local.t(badge.descriptionKey())
+            )), () -> {
+                updatePlayerData(targetData, d -> d.activeBadge = badge.id(), true, true);
+                badges(uuid, targetData);
+            }));
+        }
+
+        builder.start()
+                .addLocal("badge-clear-button", () -> {
+                    updatePlayerData(targetData, d -> d.activeBadge = "", true, true);
+                    badges(uuid, targetData);
+                })
+                .end()
+                .addNavigationRow()
+                .show();
+    }
+
+    private void updatePlayerData(PlayerData targetData,
+                                  java.util.function.Consumer<PlayerData> updater,
+                                  boolean refreshDisplay,
+                                  boolean sync) {
         Session targetSession = sessionService.get(targetData.uuid);
         if (targetSession != null) {
             updater.accept(targetSession.data);
             targetSession.save();
+            if (refreshDisplay) {
+                playerDisplayService.refresh(targetSession);
+            }
+            if (sync) {
+                network.post(new org.xcore.plugin.event.SocketEvents.SyncPlayerData(targetSession.data));
+            }
         } else {
             updater.accept(targetData);
             playerDataRepository.save(targetData);
+            if (sync) {
+                network.post(new org.xcore.plugin.event.SocketEvents.SyncPlayerData(targetData));
+            }
         }
+    }
+
+    private String activeBadgeName(Localization local, PlayerData targetData) {
+        Badge badge = Badge.byId(targetData.activeBadge);
+        if (badge == null || targetData.unlockedBadges == null || !targetData.unlockedBadges.contains(badge.id())) {
+            return local.t("none");
+        }
+        return badgeLabel(local, badge);
+    }
+
+    private String systemBadgeName(Localization local, PlayerData targetData) {
+        return targetData.admin ? badgeLabel(local, Badge.ADMIN) : local.t("none");
+    }
+
+    private List<Badge> unlockedSelectableBadges(PlayerData targetData) {
+        List<Badge> result = new ArrayList<>();
+        for (Badge badge : Badge.selectableManualBadges()) {
+            if (targetData.unlockedBadges != null && targetData.unlockedBadges.contains(badge.id())) {
+                result.add(badge);
+            }
+        }
+        return result;
+    }
+
+    private String badgeLabel(Localization local, Badge badge) {
+        return badge.tag() + " " + local.t(badge.nameKey());
+    }
+
+    private boolean containsBadgeLikeGlyphs(String input) {
+        return input.codePoints().anyMatch(cp -> cp >= BADGE_ICON_RANGE_START && cp <= BADGE_ICON_RANGE_END);
     }
 }

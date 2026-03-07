@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.IngressService;
+import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TranslatorService;
@@ -35,6 +36,7 @@ class NetEventServiceTest {
         VoteService voteService = mock(VoteService.class);
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
 
         NetEventService service = new NetEventService(
                 sessionService,
@@ -44,6 +46,7 @@ class NetEventServiceTest {
                 voteService,
                 securityService,
                 ingressService,
+                chatFormatService,
                 new Gson()
         );
 

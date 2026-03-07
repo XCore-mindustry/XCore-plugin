@@ -6,8 +6,7 @@ import org.xcore.plugin.model.PlayerData;
 
 public class HexedRanks {
     public static void updateRank(Player player, PlayerData data, Config config) {
-        if (!config.isMiniHexed()) return;
-        player.name = data.hexedRank().tag + " " + player.getInfo().lastName;
+        if (!config.isMiniHexed() || player == null || data == null) return;
     }
 
     public enum HexedRank {

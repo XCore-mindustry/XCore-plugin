@@ -52,6 +52,8 @@ public class Session {
         if (this.data.mapVotes == null) this.data.mapVotes = new HashMap<>();
         if (this.data.eventVotes == null) this.data.eventVotes = new HashMap<>();
         if (this.data.blockedPrivateUuids == null) this.data.blockedPrivateUuids = new HashSet<>();
+        if (this.data.unlockedBadges == null) this.data.unlockedBadges = new HashSet<>();
+        if (this.data.activeBadge == null) this.data.activeBadge = "";
         if (this.data.language == null) this.data.language = "auto";
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
 

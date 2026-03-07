@@ -11,16 +11,16 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.session.SessionService;
 
-import static mindustry.Vars.netServer;
-
 @Singleton
 public class TranslatorService {
     private static final JsonReader reader = new JsonReader();
     private final SessionService sessionService;
+    private final ChatFormatService chatFormatService;
 
     @Inject
-    public TranslatorService(SessionService sessionService) {
+    public TranslatorService(SessionService sessionService, ChatFormatService chatFormatService) {
         this.sessionService = sessionService;
+        this.chatFormatService = chatFormatService;
     }
 
     public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
@@ -32,7 +32,7 @@ public class TranslatorService {
 
     public void translate(Player author, String text) {
         var cache = new StringMap();
-        var message = netServer.chatFormatter.format(author, text);
+        var message = chatFormatService.formatChat(author, text);
 
         for (var data : sessionService.getAllCached()) {
             var player = Groups.player.find(p -> p.uuid().equals(data.data.uuid));

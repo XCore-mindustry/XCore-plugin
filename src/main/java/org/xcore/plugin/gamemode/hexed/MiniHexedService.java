@@ -30,6 +30,7 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PlayerDisplayService;
 
 import java.util.Locale;
 
@@ -53,6 +54,7 @@ public class MiniHexedService {
     private final NetworkService network;
     private final BundleService bundle;
     private final LeaderboardService leaderboardService;
+    private final PlayerDisplayService playerDisplayService;
 
     private static boolean gameover = false;
 
@@ -62,13 +64,15 @@ public class MiniHexedService {
                             PlayerDataRepository playerDataRepository,
                             NetworkService networkService,
                             BundleService bundle,
-                            LeaderboardService leaderboardService) {
+                            LeaderboardService leaderboardService,
+                            PlayerDisplayService playerDisplayService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.network = networkService;
         this.bundle = bundle;
         this.leaderboardService = leaderboardService;
+        this.playerDisplayService = playerDisplayService;
     }
 
     @PostConstruct
@@ -206,9 +210,9 @@ public class MiniHexedService {
                     rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
                 data.hexedPoints++;
                 if (data.hexedRank().checkNext(data.hexedPoints)) {
-                    HexedRanks.updateRank(player, data, config);
-                    data.hexedPoints = 0;
                     data.hexedRank(data.hexedRank().next);
+                    data.hexedPoints = 0;
+                    playerDisplayService.refresh(player, data);
                 }
             }
             playerDataRepository.save(data);

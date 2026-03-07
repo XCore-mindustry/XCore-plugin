@@ -12,6 +12,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -25,16 +26,19 @@ public class ModerationSocketHandler {
     private final SessionService sessionService;
     private final FindService find;
     private final Config config;
+    private final PlayerDisplayService playerDisplayService;
 
     @Inject
     public ModerationSocketHandler(NetworkService network,
                                    SessionService sessionService,
                                    FindService find,
-                                   Config config) {
+                                   Config config,
+                                   PlayerDisplayService playerDisplayService) {
         this.network = network;
         this.sessionService = sessionService;
         this.find = find;
         this.config = config;
+        this.playerDisplayService = playerDisplayService;
     }
 
     public void registerListeners() {
@@ -53,6 +57,9 @@ public class ModerationSocketHandler {
                 player.admin = true;
                 var session = sessionService.get(player);
                 if (session != null) {
+                    session.data.admin = true;
+                    session.data.adminConfirmed = true;
+                    playerDisplayService.refresh(session);
                     session.locale().send("commands-login-confirmed", args());
                 }
             }
@@ -67,7 +74,15 @@ public class ModerationSocketHandler {
 
             if (info == null || !info.admin) return;
 
-            if (player != null) player.admin = false;
+            if (player != null) {
+                player.admin = false;
+                var session = sessionService.get(player);
+                if (session != null) {
+                    session.data.admin = false;
+                    session.data.adminConfirmed = false;
+                    playerDisplayService.refresh(session);
+                }
+            }
 
             netServer.admins.unAdminPlayer(e.uuid());
             info("Removed admin: @", info.plainLastName());
@@ -86,6 +101,10 @@ public class ModerationSocketHandler {
         network.subscribe(SocketEvents.SyncPlayerData.class, e -> {
             if (sessionService.get(e.data().uuid) != null) {
                 sessionService.update(e.data());
+                var session = sessionService.get(e.data().uuid);
+                if (session != null) {
+                    playerDisplayService.refresh(session);
+                }
                 info("Synced player data: @ (@)", e.data().nickname, e.data().uuid);
             }
         });

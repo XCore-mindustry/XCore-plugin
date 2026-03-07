@@ -19,6 +19,37 @@ help-command-title = { "[" }orange]» [white]/{ $name }
 help-command-header =
     { "[" }orange]» [accent]Сінтаксіс: [white]{ $syntax }
     { "" }[orange]» [accent]Апіс: [lightgray]{ $description }
+player-menu-settings-badges = Бэйджы
+badge-menu-title = { "[" }orange]{ -xcore } — Бэйджы
+badge-menu-content =
+    { "" }[white]Сістэмны бэйдж: [green]{ $systemBadge }[]
+    { "" }[white]Актыўны бэйдж: [green]{ $activeBadge }[]
+badge-menu-empty = [lightgray]У вас пакуль няма адкрытых бэйджаў.
+badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-clear-button = Зняць актыўны бэйдж
+badge-set-success = [accent]Актыўны бэйдж усталяваны: [green]{ $badge }[].
+badge-clear-success = [accent]Актыўны бэйдж зняты.
+badge-grant-success = [accent]Бэйдж [green]{ $badge }[] выдадзены гульцу [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = [accent]Бэйдж [green]{ $badge }[] зняты ў гульца [green]{ $nickname }[][gray]#{ $pid }[].
+badge-already-unlocked = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] ужо адкрыты.
+badge-not-owned = { "[" }scarlet]⚠ У гульца няма бэйджа [accent]{ $badge }[scarlet].
+error-badge-not-found = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] не знойдзены.
+error-badge-not-unlocked = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] не адкрыты.
+error-badge-not-selectable = { "[" }scarlet]⚠ Бэйдж [accent]{ $badge }[scarlet] нельга выбраць уручную.
+badge-admin-name = Адмін
+badge-admin-description = Аўтаматычны бэйдж для адміністратараў.
+badge-developer-name = Распрацоўшчык
+badge-developer-description = Выдаецца распрацоўшчыкам XCore.
+badge-translator-name = Перакладчык
+badge-translator-description = Выдаецца тым, хто дапамагае з перакладам XCore.
+badge-map-maker-name = Мапмэйкер
+badge-map-maker-description = Выдаецца аўтарам мап, што выкарыстоўваюцца на серверы.
+badge-contributor-name = Кантрыб'ютар
+badge-contributor-description = Выдаецца за значны ўклад у праект або супольнасць.
+badge-event-winner-name = Пераможца івэнту
+badge-event-winner-description = Выдаецца пераможцам спецыяльных падзей сервера.
+badge-veteran-name = Ветэран
+badge-veteran-description = Выдаецца паважаным даўнім гульцам.
 help-aliases = { "[" }orange]» [accent]Псеўданімы: [white]{ $aliases }
 help-args-title = { "[" }orange]» [accent]Аргументы:
 help-usages-title = { "[" }orange]» [accent]Выкарыстанне:
@@ -73,3 +104,5 @@ commands-info-text =
     { "" }
     { "" } Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Сінхранізуйце гульню з серверам. Выканайце гэта для выпраўлення памылак (напрыклад прывідныя юніты).
+none = Няма
+error-nickname-badge-glyph = { "[" }scarlet]⚠ Карыстальніцкі нік не можа ўтрымліваць зарэзерваваныя іконкі бэйджаў.

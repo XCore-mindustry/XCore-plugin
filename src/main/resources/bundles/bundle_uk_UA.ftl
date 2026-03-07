@@ -88,7 +88,7 @@ commands-events-page-description = Номер сторінки.
 # Chat & Social
 # ==============================================================================
 commands-t-description = Надіслати повідомлення тільки своїм союзникам по команді.
-commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]>[accent] { $name }[coral]:[white] { $message }
+commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]> { $badge }[accent]{ $name }[lightgray]: [white]{ $message }
 commands-g-description = Надіслати повідомлення на всі сервери.
 commands-a-description = Надіслати повідомлення тільки адміністраторам.
 commands-msg-description = Надіслати гравцю приватне повідомлення.
@@ -273,6 +273,7 @@ commands-player-description = Переглянути статистику гра
 player-menu-player-content =
     { "" }[white]Статистика гравця [green]{ $customNickname }[][grey]#{ $pid }[]
     { "" }[white]Оригінальне ім'я: [green]{ $nickname }[] | Адмін: [green]{ $admin }[]
+    { "" }[white]Системний бейдж: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
     { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг у Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
     { "" }[white]Час у грі: [green]{ $totalPlayTime }[] хвилин | Таблиця лідерів: [green]{ $leaderboard }[]
     { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
@@ -495,6 +496,7 @@ player-menu-settings = Налаштування
 player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
 player-menu-settings-content =
     { "" }[white]Встановлене ім'я: [green]{ $customNickname }[]
+    { "" }[white]Системний бейдж: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
     { "" }[white]Таблиця лідерів: [green]{ $leaderboard }[]
     { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
     { "" }[green]{ $description }[white]
@@ -548,6 +550,38 @@ on = Увімкнено
 off = Вимкнено
 error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
 error-feature-disabled = { "[" }scarlet]⚠ Цю функцію вимкнено на цьому сервері.
+error-nickname-badge-glyph = { "[" }scarlet]⚠ Користувацький нік не може містити зарезервовані іконки відзнак.
 player-leaderboard-active = { "[" }green]Список лідерів
 player-leaderboard-inactive = { "[" }red]Список лідерів
+player-menu-settings-badges = Відзнаки
+badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
+badge-menu-content =
+    { "" }[white]Системна відзнака: [green]{ $systemBadge }[]
+    { "" }[white]Активна відзнака: [green]{ $activeBadge }[]
+badge-menu-empty = [lightgray]У вас поки що немає відкритих відзнак.
+badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-clear-button = Прибрати активну відзнаку
+badge-set-success = [accent]Активну відзнаку встановлено: [green]{ $badge }[].
+badge-clear-success = [accent]Активну відзнаку прибрано.
+badge-grant-success = [accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = [accent]Відзнаку [green]{ $badge }[] знято з гравця [green]{ $nickname }[][gray]#{ $pid }[].
+badge-already-unlocked = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] уже відкрито.
+badge-not-owned = { "[" }scarlet]⚠ Гравець не має відзнаки [accent]{ $badge }[scarlet].
+error-badge-not-found = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не знайдено.
+error-badge-not-unlocked = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не відкрито.
+error-badge-not-selectable = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не можна вибрати вручну.
+badge-admin-name = Адміністратор
+badge-admin-description = Автоматична відзнака для адміністраторів.
+badge-developer-name = Розробник
+badge-developer-description = Надається розробникам XCore.
+badge-translator-name = Перекладач
+badge-translator-description = Надається тим, хто допомагає з перекладом XCore.
+badge-map-maker-name = Творець мап
+badge-map-maker-description = Надається авторам мап, що використовуються на сервері.
+badge-contributor-name = Контриб'ютор
+badge-contributor-description = Надається за вагомий внесок у проєкт або спільноту.
+badge-event-winner-name = Переможець події
+badge-event-winner-description = Надається переможцям особливих серверних подій.
+badge-veteran-name = Ветеран
+badge-veteran-description = Надається шанованим досвідченим гравцям.
 none = Немає

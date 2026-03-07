@@ -113,7 +113,7 @@ welcome =
 # Chat & Social
 # ==============================================================================
 commands-t-description = Отправить сообщение только своим товарищам по команде
-commands-t-chat = { "[" }{ "#" }{ $color }][Команде] [coral]>[accent] { $name }[coral]:[white] { $message }
+commands-t-chat = { "[" }{ "#" }{ $color }][Команде] [coral]> { $badge }[accent]{ $name }[lightgray]: [white]{ $message }
 commands-g-description = Отправить сообщение на все сервера
 commands-a-description = Отправить сообщение только администраторам
 commands-msg-description = Отправить игроку личное сообщение
@@ -301,6 +301,7 @@ player-menu-player-title = { "[" }orange]{ -xcore } — Статистика и�
 player-menu-player-content =
     { "" }[white]Статистика игрока [green]{ $customNickname }[][grey]#{ $pid }[]
     { "" }[white]Оригинальное имя: [green]{ $nickname }[] | Админ: [green]{ $admin }[]
+    { "" }[white]Системный бейдж: [green]{ $systemBadge }[] | Активный бейдж: [green]{ $activeBadge }[]
     { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг в Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
     { "" }[white]Время в игре: [green]{ $totalPlayTime }[] минут | Таблица лидеров: [green]{ $leaderboard }[]
     { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
@@ -313,12 +314,44 @@ player-menu-settings = Настройки
 player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки игрока
 player-menu-settings-content =
     { "" }[white]Установленное имя: [green]{ $customNickname }[]
+    { "" }[white]Системный бейдж: [green]{ $systemBadge }[] | Активный бейдж: [green]{ $activeBadge }[]
     { "" }[white]Таблица лидеров: [green]{ $leaderboard }[]
     { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
     { "" }[green]{ $description }[white]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
+player-menu-settings-badges = Бейджи
 settings-language-label = Перевод: [green]{ $lang }[]
+badge-menu-title = { "[" }orange]{ -xcore } — Бейджи
+badge-menu-content =
+    { "" }[white]Системный бейдж: [green]{ $systemBadge }[]
+    { "" }[white]Активный бейдж: [green]{ $activeBadge }[]
+badge-menu-empty = [lightgray]У вас пока нет открытых бейджей.
+badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-clear-button = Снять активный бейдж
+badge-set-success = [accent]Активный бейдж установлен: [green]{ $badge }[].
+badge-clear-success = [accent]Активный бейдж снят.
+badge-grant-success = [accent]Бейдж [green]{ $badge }[] выдан игроку [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = [accent]Бейдж [green]{ $badge }[] снят у игрока [green]{ $nickname }[][gray]#{ $pid }[].
+badge-already-unlocked = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] уже открыт.
+badge-not-owned = { "[" }scarlet]⚠ У игрока нет бейджа [accent]{ $badge }[scarlet].
+error-badge-not-found = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] не найден.
+error-badge-not-unlocked = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] не открыт.
+error-badge-not-selectable = { "[" }scarlet]⚠ Бейдж [accent]{ $badge }[scarlet] нельзя выбрать вручную.
+badge-admin-name = Админ
+badge-admin-description = Автоматический бейдж для администраторов.
+badge-developer-name = Разработчик
+badge-developer-description = Выдаётся разработчикам XCore.
+badge-translator-name = Переводчик
+badge-translator-description = Выдаётся тем, кто помогает с переводом XCore.
+badge-map-maker-name = Мапмейкер
+badge-map-maker-description = Выдаётся авторам карт, используемых на сервере.
+badge-contributor-name = Контрибьютор
+badge-contributor-description = Выдаётся за заметный вклад в проект или сообщество.
+badge-event-winner-name = Победитель ивента
+badge-event-winner-description = Выдаётся победителям специальных серверных событий.
+badge-veteran-name = Ветеран
+badge-veteran-description = Выдаётся уважаемым старым игрокам.
 commands-lb-description = Включить/выключить таблицу лидеров
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -564,3 +597,5 @@ on = Включено
 off = Выключено
 error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] отключена на этом сервере.
 error-feature-disabled = { "[" }scarlet]⚠ Эта функция отключена на этом сервере.
+none = Нет
+error-nickname-badge-glyph = { "[" }scarlet]⚠ Пользовательский ник не может содержать зарезервированные иконки бейджей.

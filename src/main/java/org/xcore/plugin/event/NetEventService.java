@@ -47,6 +47,7 @@ public class NetEventService {
     private final VoteService voteService;
     private final SecurityService securityService;
     private final IngressService ingressService;
+    private final ChatFormatService chatFormatService;
     private final Gson rawGson;
 
     @Inject
@@ -55,6 +56,7 @@ public class NetEventService {
                            VoteService voteService,
                            SecurityService securityService,
                            IngressService ingressService,
+                           ChatFormatService chatFormatService,
                            @Named("raw") Gson rawGson) {
         this.sessionService = sessionService;
         this.config = config;
@@ -63,6 +65,7 @@ public class NetEventService {
         this.voteService = voteService;
         this.securityService = securityService;
         this.ingressService = ingressService;
+        this.chatFormatService = chatFormatService;
         this.rawGson = rawGson;
     }
 
@@ -94,7 +97,7 @@ public class NetEventService {
 
         if (securityService.isMuted(author)) return null;
 
-        author.sendMessage(netServer.chatFormatter.format(author, text), author, text);
+        author.sendMessage(chatFormatService.formatChat(author, text), author, text);
         translatorService.translate(author, text);
 
         network.post(new SocketEvents.MessageEvent(author.plainName(), text.replace("`", "*"), config.server));

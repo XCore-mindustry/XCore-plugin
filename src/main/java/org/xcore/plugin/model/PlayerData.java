@@ -58,6 +58,10 @@ public class PlayerData extends ModelData {
     @Builder.Default public Map<String, Boolean> mapVotes = new HashMap<>();
     @BsonProperty("blocked_private_uuids")
     @Builder.Default public Set<String> blockedPrivateUuids = new HashSet<>();
+    @BsonProperty("unlocked_badges")
+    @Builder.Default public Set<String> unlockedBadges = new HashSet<>();
+    @BsonProperty("active_badge")
+    @Builder.Default public String activeBadge = "";
 
     @BsonProperty("is_admin")
     @Builder.Default public boolean admin = false;

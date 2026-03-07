@@ -22,6 +22,7 @@ import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.NetworkService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -35,20 +36,23 @@ public class SocialController implements CloudClientController {
     private final Config config;
     private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
+    private final ChatFormatService chatFormatService;
 
     @Inject
     public SocialController(PlayerDataRepository playerDataRepository,
                              SessionService sessionService,
-                             NetworkService network,
-                             Config config,
-                             GlobalConfig globalConfig,
-                             TranslatorLanguagesProvider translatorLanguagesProvider) {
+                              NetworkService network,
+                              Config config,
+                              GlobalConfig globalConfig,
+                              TranslatorLanguagesProvider translatorLanguagesProvider,
+                              ChatFormatService chatFormatService) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
+        this.chatFormatService = chatFormatService;
     }
 
     @RequiresMuteCheck
@@ -61,12 +65,7 @@ public class SocialController implements CloudClientController {
                 p -> {
                     Session session = sessionService.get(p.uuid());
                     if (session == null || session.data == null) return;
-                    String formatted = session.locale().format(
-                            "commands-t-chat", args(
-                                    "color", author.team().color,
-                                    "name", author.coloredName(),
-                                    "message", message
-                            ));
+                    String formatted = chatFormatService.formatTeamChat(author, session.locale(), message);
                     p.sendMessage(formatted, author);
                 }
         );

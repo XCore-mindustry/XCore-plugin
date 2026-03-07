@@ -113,7 +113,7 @@ welcome =
 # Chat & Social
 # ==============================================================================
 commands-t-description = Send a message only to your teammates.
-commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]>[accent] { $name }[coral]:[white] { $message }
+commands-t-chat = { "[" }{ "#" }{ $color }][Team] [coral]> { $badge }[accent]{ $name }[lightgray]: [white]{ $message }
 commands-g-description = Send a message across all servers.
 commands-a-description = Send a message only to admins.
 commands-msg-description = Send a private message to a player.
@@ -300,6 +300,7 @@ player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
     { "" }[white]Player statistics for [green]{ $customNickname }[][grey]#{ $pid }[]
     { "" }[white]Original name: [green]{ $nickname }[] | Admin: [green]{ $admin }[]
+    { "" }[white]System Badge: [green]{ $systemBadge }[] | Active Badge: [green]{ $activeBadge }[]
     { "" }[white]MiniPvP rating: [green]{ $pvpRating }[] | Hexed Rank: [green]{ $hexedRankTag } { $hexedRankName }[]
     { "" }[white]PlayTime: [green]{ $totalPlayTime }[] minutes | Show Leaderboard: [green]{ $leaderboard }[]
     { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
@@ -312,6 +313,7 @@ player-menu-settings = Settings
 player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
 player-menu-settings-content =
     { "" }[white]Custom Nickname: [green]{ $customNickname }[]
+    { "" }[white]System Badge: [green]{ $systemBadge }[] | Active Badge: [green]{ $activeBadge }[]
     { "" }[white]Show Leaderboard: [green]{ $leaderboard }[]
     { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
     { "" }[green]{ $description }[white]
@@ -320,7 +322,38 @@ player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection lan
 player-menu-settings-customNickname = Edit name
 player-menu-settings-customNickname-message = [lightgray]Leave blank to reset
 player-menu-settings-description = Edit description
+player-menu-settings-badges = Badges
 settings-language-label = Translation: [green]{ $lang }[]
+badge-menu-title = { "[" }orange]{ -xcore } — Badges
+badge-menu-content =
+    { "" }[white]System Badge: [green]{ $systemBadge }[]
+    { "" }[white]Active Badge: [green]{ $activeBadge }[]
+badge-menu-empty = [lightgray]You do not have any unlocked badges yet.
+badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-clear-button = Clear active badge
+badge-set-success = [accent]Active badge set to [green]{ $badge }[].
+badge-clear-success = [accent]Active badge cleared.
+badge-grant-success = [accent]Granted [green]{ $badge }[] to [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = [accent]Revoked [green]{ $badge }[] from [green]{ $nickname }[][gray]#{ $pid }[].
+badge-already-unlocked = [scarlet]⚠ Badge [accent]{ $badge }[scarlet] is already unlocked.
+badge-not-owned = [scarlet]⚠ Player does not own badge [accent]{ $badge }[scarlet].
+error-badge-not-found = [scarlet]⚠ Badge [accent]{ $badge }[scarlet] was not found.
+error-badge-not-unlocked = [scarlet]⚠ Badge [accent]{ $badge }[scarlet] is not unlocked.
+error-badge-not-selectable = [scarlet]⚠ Badge [accent]{ $badge }[scarlet] cannot be selected manually.
+badge-admin-name = Admin
+badge-admin-description = Automatic badge shown for administrators.
+badge-developer-name = Developer
+badge-developer-description = Awarded to XCore developers.
+badge-translator-name = Translator
+badge-translator-description = Awarded to contributors who translate XCore.
+badge-map-maker-name = Map Maker
+badge-map-maker-description = Awarded to creators of maps used on the server.
+badge-contributor-name = Contributor
+badge-contributor-description = Awarded for meaningful contributions to the project or community.
+badge-event-winner-name = Event Winner
+badge-event-winner-description = Awarded to winners of special server events.
+badge-veteran-name = Veteran
+badge-veteran-description = Awarded to long-term respected players.
 commands-lb-description = Enable/disable leaderboard.
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -568,3 +601,4 @@ off = Off
 error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is disabled on this server.
 error-feature-disabled = [scarlet]⚠ This feature is disabled on this server.
 none = None
+error-nickname-badge-glyph = [scarlet]⚠ Custom nickname cannot contain reserved badge icons.

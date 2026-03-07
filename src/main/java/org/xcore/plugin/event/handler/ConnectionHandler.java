@@ -15,6 +15,7 @@ import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
@@ -36,6 +37,7 @@ public class ConnectionHandler {
     private final GlobalConfig globalConfig;
     private final VoteService voteService;
     private final PrivateMessageService privateMessageService;
+    private final PlayerDisplayService playerDisplayService;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -44,7 +46,8 @@ public class ConnectionHandler {
                              Config config,
                              GlobalConfig globalConfig,
                              VoteService voteService,
-                             PrivateMessageService privateMessageService) {
+                             PrivateMessageService privateMessageService,
+                             PlayerDisplayService playerDisplayService) {
         this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
@@ -52,6 +55,7 @@ public class ConnectionHandler {
         this.globalConfig = globalConfig;
         this.voteService = voteService;
         this.privateMessageService = privateMessageService;
+        this.playerDisplayService = playerDisplayService;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -78,11 +82,6 @@ public class ConnectionHandler {
         locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
 
         data.setNickname(player.coloredName()).setPlayer(player);
-
-        if (data.customNickname != null && !data.customNickname.isEmpty()) {
-            player.name = data.customNickname;
-            netServer.admins.getInfo(player.uuid()).lastName = player.name;
-        }
 
         Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
@@ -114,7 +113,7 @@ public class ConnectionHandler {
             session.save();
         }
 
-        HexedRanks.updateRank(player, data, config);
+        playerDisplayService.refresh(session);
 
         if (player.getInfo().timesJoined < 5) {
             Call.openURI(player.con, globalConfig.discordUrl);

@@ -14,6 +14,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.PlayerDisplayService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -25,16 +26,19 @@ public class AuthController implements CloudClientController {
     private final SessionService sessionService;
     private final NetworkService network;
     private final Config config;
+    private final PlayerDisplayService playerDisplayService;
 
     @Inject
     public AuthController(AdminDataRepository adminDataRepository,
                           SessionService sessionService,
                           NetworkService network,
-                          Config config) {
+                          Config config,
+                          PlayerDisplayService playerDisplayService) {
         this.adminDataRepository = adminDataRepository;
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
+        this.playerDisplayService = playerDisplayService;
     }
 
     @Command("login <password>")
@@ -61,6 +65,7 @@ public class AuthController implements CloudClientController {
             if (data.adminConfirmed) {
                 sender.player().admin(true);
                 netServer.admins.adminPlayer(sender.player().uuid(), sender.player().getInfo().adminUsid);
+                playerDisplayService.refresh(session);
                 local.send("commands-login-success", args());
             } else {
                 local.send("commands-login-request-approval-discord", args());
@@ -80,6 +85,7 @@ public class AuthController implements CloudClientController {
         if (sender.player().admin) {
             sender.player().admin(false);
             netServer.admins.unAdminPlayer(sender.player().uuid());
+            playerDisplayService.refresh(session);
             local.send("commands-logout-successful", args());
         }
     }
