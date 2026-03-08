@@ -78,26 +78,22 @@ public class MaintainController implements CloudServerController {
     }
 
     @Command("set-team [id] [pid]")
-    public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Argument("pid") @Default("-1") int pid) {
-        Team team = id == -1 ? sender.player().team() : Team.get(id);
+    public void setTeam(XCoreSender sender, @Argument("id") int id, @Argument("pid") int pid) {
+        Team team = Team.get(id);
 
-        Session targetSession;
-            if (pid == -1) {
-                targetSession = sessionService.get(sender.player().uuid());
-            } else {
-                var dbPlayer = sessionService.getOrLoadFromDb(pid);
-                targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
-            }
 
-            if (targetSession == null || targetSession.player == null) {
-                Log.info("[scarlet]Player not found.");
-                return;
-            }
+        var dbPlayer = sessionService.getOrLoadFromDb(pid);
+        Session targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
 
-            targetSession.player.team(team);
-
-            sender.sendMessage("[green]Player's team [white]" + targetSession.player.name() + "[green]changed to [white]" + team.name);
+        if (targetSession == null || targetSession.player == null) {
+            Log.err("[scarlet]Player not found.");
+            return;
         }
+
+        targetSession.player.team(team);
+
+        Log.info("[green]Player's team [white]" + targetSession.player.name() + "[green]changed to [white]" + team.name);
+    }
 
     @Command("set-gamemode [name]")
     public void setGamemode(XCoreSender sender, @Argument("name") @Default("-1") String name) {
@@ -112,6 +108,7 @@ public class MaintainController implements CloudServerController {
         Call.setRules(Vars.state.rules);
 
         Core.settings.put("defaultGameMode", mode.name());
+        Core.settings.forceSave();
 
         Log.info("Game mode changed to: " + mode.name());
     }

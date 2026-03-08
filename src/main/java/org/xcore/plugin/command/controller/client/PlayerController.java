@@ -1,6 +1,7 @@
 package org.xcore.plugin.command.controller.client;
 
 import arc.struct.Seq;
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
@@ -65,6 +66,28 @@ public class PlayerController implements CloudClientController {
 
         sessionService.get(sender.player().uuid()).locale().send("commands-spectate-success");
     }
+
+    @Permission("admin")
+    @Command("set-team [id] [pid]")
+    public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Argument("pid") @Default("-1") int pid) {
+        Team team = id == -1 ? sender.player().team() : Team.get(id);
+
+        Session targetSession;
+        if (pid == -1) {
+            targetSession = sessionService.get(sender.player().uuid());
+        } else {
+            var dbPlayer = sessionService.getOrLoadFromDb(pid);
+            targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
+        }
+
+        if (targetSession == null || targetSession.player == null) {
+            return;
+        }
+
+        targetSession.player.clearUnit();
+        targetSession.player.team(team);
+    }
+
 
     @Command("lb")
     public void leaderboard(XCoreSender sender) {
