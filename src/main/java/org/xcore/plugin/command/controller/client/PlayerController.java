@@ -7,6 +7,7 @@ import mindustry.game.Team;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
+import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.config.Config;
@@ -55,9 +56,14 @@ public class PlayerController implements CloudClientController {
         menu.settings(menu.getUuid(sender), data);
     }
 
-    @Command("observer|spectator")
+    @Command("observer")
     public void observer(XCoreSender sender) {
-        sender.player().team(Team.derelict);
+        var player = sender.player();
+
+        player.clearUnit();
+        player.team(Team.derelict);
+
+        sessionService.get(sender.player().uuid()).locale().send("commands-spectate-success");
     }
 
     @Command("lb")
