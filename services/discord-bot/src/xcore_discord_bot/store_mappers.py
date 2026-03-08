@@ -26,6 +26,35 @@ def _int_or_default(value: object, *, default: int = 0) -> int:
     return default
 
 
+def _bool_or_default(value: object, *, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    return default
+
+
+def _normalized_str_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return ()
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        normalized = _normalized_optional_str(item)
+        if normalized is None or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return tuple(result)
+
+
 def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
     nickname = _normalized_optional_str(doc.get("nickname")) or "Unknown"
     return PlayerRecord(
@@ -35,10 +64,17 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         ip=_normalized_optional_str(doc.get("ip")),
         last_ip=_normalized_optional_str(doc.get("last_ip")),
         custom_nickname=_normalized_optional_str(doc.get("custom_nickname")),
+        description=_normalized_optional_str(doc.get("description")),
+        language=_normalized_optional_str(doc.get("local_language")),
+        translator_language=_normalized_optional_str(doc.get("translator_language")),
         total_play_time=_int_or_default(doc.get("total_play_time"), default=0),
         pvp_rating=_int_or_default(doc.get("pvp_rating"), default=0),
         hexed_rank=_int_or_default(doc.get("hexed_rank"), default=0),
         hexed_points=_int_or_default(doc.get("hexed_points"), default=0),
+        leaderboard=_bool_or_default(doc.get("leaderboard"), default=True),
+        unlocked_badges=_normalized_str_tuple(doc.get("unlocked_badges")),
+        active_badge=_normalized_optional_str(doc.get("active_badge")),
+        blocked_private_uuids=_normalized_str_tuple(doc.get("blocked_private_uuids")),
         is_admin=bool(doc.get("is_admin", False)),
         admin_confirmed=bool(doc.get("admin_confirmed", False)),
         created_at=doc.get("created_at"),

@@ -32,10 +32,17 @@ class PlayerDoc(_MongoDoc):
     ip: str | None = None
     nickname: str | None = None
     custom_nickname: str | None = None
+    description: str | None = None
+    local_language: str | None = None
+    translator_language: str | None = None
     hexed_rank: int | None = None
     hexed_points: int | None = None
     total_play_time: int | None = None
     pvp_rating: int | None = None
+    leaderboard: bool | None = None
+    unlocked_badges: list[str] | None = None
+    active_badge: str | None = None
+    blocked_private_uuids: list[str] | None = None
     is_admin: bool | None = None
     admin_confirmed: bool | None = None
     password_hash: str | None = None
@@ -320,6 +327,39 @@ class MongoStore:
         result = await self._db_required()["players"].update_one(
             {"uuid": uuid},
             {"$set": {"password_hash": ""}},
+        )
+        return result.modified_count > 0
+
+    async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
+        result = await self._db_required()["players"].update_one(
+            {"uuid": uuid},
+            {"$addToSet": {"unlocked_badges": badge_id}},
+        )
+        return result.modified_count > 0
+
+    async def revoke_badge(self, *, uuid: str, badge_id: str) -> bool:
+        result = await self._db_required()["players"].update_one(
+            {"uuid": uuid},
+            [
+                {
+                    "$set": {
+                        "unlocked_badges": {
+                            "$filter": {
+                                "input": {"$ifNull": ["$unlocked_badges", []]},
+                                "as": "badge",
+                                "cond": {"$ne": ["$$badge", badge_id]},
+                            }
+                        },
+                        "active_badge": {
+                            "$cond": [
+                                {"$eq": [{"$ifNull": ["$active_badge", ""]}, badge_id]},
+                                "",
+                                {"$ifNull": ["$active_badge", ""]},
+                            ]
+                        },
+                    }
+                }
+            ],
         )
         return result.modified_count > 0
 

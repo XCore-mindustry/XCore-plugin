@@ -14,10 +14,17 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "nickname": "  Vortex  ",
             "uuid": "  uuid-42 ",
             "custom_nickname": "   ",
+            "description": "  hello world  ",
+            "local_language": "  ru  ",
+            "translator_language": "  uk  ",
             "total_play_time": "15",
             "pvp_rating": None,
             "hexed_rank": "3",
             "hexed_points": "9",
+            "leaderboard": "0",
+            "unlocked_badges": [" translator ", "developer", "translator", ""],
+            "active_badge": "  translator  ",
+            "blocked_private_uuids": [" uuid-1 ", "uuid-2", "uuid-1"],
             "is_admin": 1,
             "admin_confirmed": 0,
         }
@@ -27,10 +34,17 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.nickname == "Vortex"
     assert record.uuid == "uuid-42"
     assert record.custom_nickname is None
+    assert record.description == "hello world"
+    assert record.language == "ru"
+    assert record.translator_language == "uk"
     assert record.total_play_time == 15
     assert record.pvp_rating == 0
     assert record.hexed_rank == 3
     assert record.hexed_points == 9
+    assert record.leaderboard is False
+    assert record.unlocked_badges == ("translator", "developer")
+    assert record.active_badge == "translator"
+    assert record.blocked_private_uuids == ("uuid-1", "uuid-2")
     assert record.is_admin is True
     assert record.admin_confirmed is False
 
@@ -43,6 +57,13 @@ def test_player_record_from_doc_uses_safe_defaults() -> None:
     assert record.uuid is None
     assert record.total_play_time == 0
     assert record.pvp_rating == 0
+    assert record.description is None
+    assert record.language is None
+    assert record.translator_language is None
+    assert record.leaderboard is True
+    assert record.unlocked_badges == ()
+    assert record.active_badge is None
+    assert record.blocked_private_uuids == ()
 
 
 def test_ban_record_from_doc_normalizes_values() -> None:

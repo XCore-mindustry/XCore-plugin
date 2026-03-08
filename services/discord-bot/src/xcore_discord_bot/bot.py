@@ -392,6 +392,12 @@ class XCoreDiscordBot(commands.Bot):
     async def reset_password(self, *, uuid: str) -> bool:
         return await self._store.reset_password(uuid=uuid)
 
+    async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
+        return await self._store.grant_badge(uuid=uuid, badge_id=badge_id)
+
+    async def revoke_badge(self, *, uuid: str, badge_id: str) -> bool:
+        return await self._store.revoke_badge(uuid=uuid, badge_id=badge_id)
+
     async def publish_reload_player_data_cache(self) -> None:
         await self._bus.publish_reload_player_data_cache()
 

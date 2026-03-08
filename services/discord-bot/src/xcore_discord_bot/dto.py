@@ -11,10 +11,17 @@ class PlayerRecord:
     ip: str | None = None
     last_ip: str | None = None
     custom_nickname: str | None = None
+    description: str | None = None
+    language: str | None = None
+    translator_language: str | None = None
     total_play_time: int = 0
     pvp_rating: int = 0
     hexed_rank: int = 0
     hexed_points: int = 0
+    leaderboard: bool = True
+    unlocked_badges: tuple[str, ...] = ()
+    active_badge: str | None = None
+    blocked_private_uuids: tuple[str, ...] = ()
     is_admin: bool = False
     admin_confirmed: bool = False
     created_at: object = None

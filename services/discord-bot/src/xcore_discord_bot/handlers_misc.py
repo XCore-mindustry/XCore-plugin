@@ -70,6 +70,36 @@ async def cmd_stats(
         inline=False,
     )
 
+    description = str(player.description or "").strip() or "none"
+    language = str(player.language or "").strip() or "auto"
+    translator_language = str(player.translator_language or "").strip() or "off"
+    leaderboard = "enabled" if player.leaderboard else "disabled"
+    embed.add_field(
+        name="Profile",
+        value=(
+            f"Description: `{description}`\n"
+            f"Language: `{language}`\n"
+            f"Translator language: `{translator_language}`\n"
+            f"Leaderboard: `{leaderboard}`"
+        ),
+        inline=False,
+    )
+
+    active_badge = str(player.active_badge or "").strip() or "none"
+    unlocked_badges = (
+        ", ".join(player.unlocked_badges) if player.unlocked_badges else "none"
+    )
+    system_badge = "admin" if player.is_admin else "none"
+    embed.add_field(
+        name="Badges",
+        value=(
+            f"Active: `{active_badge}`\n"
+            f"Unlocked: `{unlocked_badges}`\n"
+            f"System: `{system_badge}`"
+        ),
+        inline=False,
+    )
+
     created_at = format_epoch_millis(player.created_at)
     updated_at = format_epoch_millis(player.updated_at)
     embed.set_footer(text=f"Created: {created_at} • Updated: {updated_at}")
@@ -147,10 +177,17 @@ def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
         "ip": player.ip,
         "last_ip": player.last_ip,
         "custom_nickname": player.custom_nickname,
+        "description": player.description,
+        "language": player.language,
+        "translator_language": player.translator_language,
         "total_play_time": player.total_play_time,
         "pvp_rating": player.pvp_rating,
         "hexed_rank": player.hexed_rank,
         "hexed_points": player.hexed_points,
+        "leaderboard": player.leaderboard,
+        "unlocked_badges": player.unlocked_badges,
+        "active_badge": player.active_badge,
+        "blocked_private_uuids": player.blocked_private_uuids,
         "is_admin": player.is_admin,
         "admin_confirmed": player.admin_confirmed,
         "created_at": player.created_at,

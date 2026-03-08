@@ -4,8 +4,8 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 from typing import TYPE_CHECKING
 
-from .. import handlers_misc, handlers_moderation
-from .autocomplete import _autocomplete_player_id
+from .. import handlers_badges, handlers_misc, handlers_moderation
+from .autocomplete import _autocomplete_badge_id, _autocomplete_player_id
 from .checks import admin_check, general_admin_check
 
 if TYPE_CHECKING:
@@ -146,6 +146,48 @@ class AdminCog(commands.Cog):
         self, interaction: Interaction, player_id: int
     ) -> None:
         await handlers_moderation.cmd_reset_password(self.bot, interaction, player_id)
+
+    @app_commands.command(
+        name="badge-grant",
+        description="Grant a badge to a player (general admin)",
+    )
+    @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(badge_id=_autocomplete_badge_id)
+    @general_admin_check()
+    async def cmd_badge_grant(
+        self,
+        interaction: Interaction,
+        player_id: int,
+        badge_id: str,
+    ) -> None:
+        await handlers_badges.cmd_badge_grant(
+            self.bot,
+            interaction,
+            player_id,
+            badge_id,
+        )
+
+    @app_commands.command(
+        name="badge-revoke",
+        description="Revoke a badge from a player (general admin)",
+    )
+    @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @app_commands.autocomplete(badge_id=_autocomplete_badge_id)
+    @general_admin_check()
+    async def cmd_badge_revoke(
+        self,
+        interaction: Interaction,
+        player_id: int,
+        badge_id: str,
+    ) -> None:
+        await handlers_badges.cmd_badge_revoke(
+            self.bot,
+            interaction,
+            player_id,
+            badge_id,
+        )
 
     @app_commands.command(
         name="test-error",

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from discord import Interaction, app_commands
 
+from ..badges import badge_choice_label, grantable_badges
 from ..service_protocols import BusService, StoreService
 
 
@@ -64,6 +65,27 @@ async def _autocomplete_map_file(
 
         choices.append(
             app_commands.Choice(name=f"{map_name} ({file_name})", value=file_name)
+        )
+        if len(choices) >= 25:
+            break
+
+    return choices
+
+
+async def _autocomplete_badge_id(
+    interaction: Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    del interaction
+    current_norm = current.strip().lower()
+
+    choices: list[app_commands.Choice[str]] = []
+    for badge in grantable_badges():
+        searchable = f"{badge.id} {badge.label}".lower()
+        if current_norm and current_norm not in searchable:
+            continue
+        choices.append(
+            app_commands.Choice(name=badge_choice_label(badge), value=badge.id)
         )
         if len(choices) >= 25:
             break
