@@ -1,5 +1,6 @@
 package org.xcore.plugin.command.controller.server;
 
+import arc.Core;
 import arc.files.Fi;
 import arc.struct.Seq;
 import arc.util.Log;
@@ -7,6 +8,10 @@ import com.google.gson.Gson;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
+import mindustry.Vars;
+import mindustry.game.Gamemode;
+import mindustry.game.Team;
+import mindustry.gen.Call;
 import mindustry.net.Packets;
 import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.*;
@@ -19,6 +24,8 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.session.Session;
+import org.xcore.plugin.session.SessionService;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -26,6 +33,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 
 @Singleton
@@ -39,7 +47,7 @@ public class MaintainController implements CloudServerController {
     private final NetworkService network;
     private final PlayerDataRepository playerDataRepository;
     private final PluginState pluginState;
-    private final GlobalConfig globalConfig;
+    private final SessionService sessionService;
     private final Config config;
     private final Fi configFile;
     private final Gson prettyGson;
@@ -48,14 +56,14 @@ public class MaintainController implements CloudServerController {
     public MaintainController(NetworkService network,
                               PlayerDataRepository playerDataRepository,
                               PluginState pluginState,
-                              GlobalConfig globalConfig,
+                              SessionService sessionService,
                               Config config,
                               @Named("xcConfigFile") Fi configFile,
                               @Named("pretty") Gson prettyGson) {
         this.network = network;
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
-        this.globalConfig = globalConfig;
+        this.sessionService = sessionService;
         this.config = config;
         this.configFile = configFile;
         this.prettyGson = prettyGson;
@@ -67,6 +75,45 @@ public class MaintainController implements CloudServerController {
         Log.info("Shutting down server.");
         netServer.kickAll(Packets.KickReason.serverRestarting);
         System.exit(0);
+    }
+
+    @Command("set-team [id] [pid]")
+    public void setTeam(XCoreSender sender, @Argument("id") @Default("-1") int id, @Argument("pid") @Default("-1") int pid) {
+        Team team = id == -1 ? sender.player().team() : Team.get(id);
+
+        Session targetSession;
+            if (pid == -1) {
+                targetSession = sessionService.get(sender.player().uuid());
+            } else {
+                var dbPlayer = sessionService.getOrLoadFromDb(pid);
+                targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
+            }
+
+            if (targetSession == null || targetSession.player == null) {
+                Log.info("[scarlet]Player not found.");
+                return;
+            }
+
+            targetSession.player.team(team);
+
+            sender.sendMessage("[green]Player's team [white]" + targetSession.player.name() + "[green]changed to [white]" + team.name);
+        }
+
+    @Command("set-gamemode [name]")
+    public void setGamemode(XCoreSender sender, @Argument("name") @Default("-1") String name) {
+        Gamemode mode = Seq.with(Gamemode.all).find(g -> g.name().equalsIgnoreCase(name));
+
+        if (mode == null) {
+            Log.err("[scarlet]Error: Mode " + name + " not found. Available: survival, sandbox, attack, pvp.");
+            return;
+        }
+
+        mode.apply(Vars.state.rules);
+        Call.setRules(Vars.state.rules);
+
+        Core.settings.put("defaultGameMode", mode.name());
+
+        Log.info("Game mode changed to: " + mode.name());
     }
 
     @Command("redis-reload")
