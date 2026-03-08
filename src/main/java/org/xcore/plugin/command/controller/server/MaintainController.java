@@ -107,6 +107,7 @@ public class MaintainController implements CloudServerController {
         mode.apply(Vars.state.rules);
         Call.setRules(Vars.state.rules);
 
+        Core.settings.put("lastServerMode", mode.name());
         Core.settings.put("defaultGameMode", mode.name());
         Core.settings.forceSave();
 
