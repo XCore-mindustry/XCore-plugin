@@ -97,7 +97,21 @@ public class GameLifecycleHandler {
                     boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
 
                     stats.registerGame(durationMillis, isWin, modeName, author);
-                    mapDataRepository.save(stats);
+                    mapDataRepository.registerGameStats(
+                            stats.id,
+                            durationMillis,
+                            isWin,
+                            author,
+                            modeName,
+                            stats.playedTimes,
+                            stats.averageGameTime,
+                            stats.minimumGameTime,
+                            stats.maximumGameTime,
+                            stats.playedTimesYear,
+                            stats.lastPlayedTime,
+                            stats.popularity,
+                            stats.interest
+                    );
 
                     Log.info("Map stats updated for '@'", mapName);
                 }

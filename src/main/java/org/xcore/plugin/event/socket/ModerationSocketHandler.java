@@ -10,10 +10,14 @@ import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
+
+import java.util.HashSet;
+import java.util.function.Consumer;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -98,16 +102,36 @@ public class ModerationSocketHandler {
             }
         });
 
-        network.subscribe(SocketEvents.SyncPlayerData.class, e -> {
-            if (sessionService.get(e.data().uuid) != null) {
-                sessionService.update(e.data());
-                var session = sessionService.get(e.data().uuid);
-                if (session != null) {
-                    playerDisplayService.refresh(session);
-                }
-                info("Synced player data: @ (@)", e.data().nickname, e.data().uuid);
-            }
-        });
+        network.subscribe(SocketEvents.PlayerCustomNicknameChanged.class, e -> updatePlayerSession(
+                e.uuid(),
+                data -> data.customNickname = e.customNickname(),
+                false,
+                "custom nickname"
+        ));
+
+        network.subscribe(SocketEvents.PlayerActiveBadgeChanged.class, e -> updatePlayerSession(
+                e.uuid(),
+                data -> data.activeBadge = e.activeBadge(),
+                true,
+                "active badge"
+        ));
+
+        network.subscribe(SocketEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
+                e.uuid(),
+                data -> {
+                    data.activeBadge = e.activeBadge();
+                    data.unlockedBadges = e.unlockedBadges() == null ? new HashSet<>() : new HashSet<>(e.unlockedBadges());
+                },
+                true,
+                "badge inventory"
+        ));
+
+        network.subscribe(SocketEvents.PlayerPasswordReset.class, e -> updatePlayerSession(
+                e.uuid(),
+                data -> data.password = "",
+                false,
+                "password reset"
+        ));
 
         network.subscribe(SocketEvents.ReloadPlayerDataCache.class, _ -> {
             sessionService.reloadCache();
@@ -126,5 +150,21 @@ public class ModerationSocketHandler {
             Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
             ServerControl.instance.handleCommandString(e.command());
         });
+    }
+
+    private void updatePlayerSession(String uuid,
+                                     Consumer<PlayerData> updater,
+                                     boolean refreshDisplay,
+                                     String label) {
+        var session = sessionService.get(uuid);
+        if (session == null || session.data == null) {
+            return;
+        }
+
+        updater.accept(session.data);
+        if (refreshDisplay) {
+            playerDisplayService.refresh(session);
+        }
+        info("Synced player @ for @", label, uuid);
     }
 }

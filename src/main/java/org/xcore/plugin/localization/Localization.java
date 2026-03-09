@@ -115,8 +115,8 @@ public class Localization {
         if (session == null) {return this;}
 
         if (Objects.equals(locale.getLanguage(), session.data.language)) return this;
+        session.playerDataRepository.updateLanguage(session.data.uuid, locale.getLanguage());
         session.data.language = locale.getLanguage();
-        session.save();
         return this;
     }
 
@@ -124,8 +124,8 @@ public class Localization {
         if (session == null) {return this;}
 
         if (Objects.equals(language, session.data.language)) return this;
+        session.playerDataRepository.updateLanguage(session.data.uuid, language);
         session.data.language = language;
-        session.save();
         return this;
     }
 
@@ -133,8 +133,8 @@ public class Localization {
         if (session == null) {return this;}
 
         if (Objects.equals("auto", session.data.language)) return this;
+        session.playerDataRepository.updateLanguage(session.data.uuid, "auto");
         session.data.language = "auto";
-        session.save();
         return this;
     }
 }

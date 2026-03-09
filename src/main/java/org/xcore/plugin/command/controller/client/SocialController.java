@@ -16,7 +16,6 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
@@ -30,7 +29,6 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class SocialController implements CloudClientController {
 
-    private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final NetworkService network;
     private final Config config;
@@ -39,14 +37,12 @@ public class SocialController implements CloudClientController {
     private final ChatFormatService chatFormatService;
 
     @Inject
-    public SocialController(PlayerDataRepository playerDataRepository,
-                             SessionService sessionService,
-                              NetworkService network,
-                              Config config,
-                              GlobalConfig globalConfig,
-                              TranslatorLanguagesProvider translatorLanguagesProvider,
-                              ChatFormatService chatFormatService) {
-        this.playerDataRepository = playerDataRepository;
+    public SocialController(SessionService sessionService,
+                            NetworkService network,
+                            Config config,
+                            GlobalConfig globalConfig,
+                            TranslatorLanguagesProvider translatorLanguagesProvider,
+                            ChatFormatService chatFormatService) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
@@ -106,25 +102,22 @@ public class SocialController implements CloudClientController {
         String input = language.toLowerCase();
 
         if (input.equals("off")) {
-            data.translatorLanguage = "off";
+            sessionService.updateTranslatorLanguage(session, "off");
             local.send("commands-tr-off", args());
-            playerDataRepository.save(data);
             return;
         }
 
         if (input.equals("auto")) {
             var lang = findTranslatorLanguage(session.player.locale);
-            data.translatorLanguage = (lang == null) ? "en" : lang;
+            sessionService.updateTranslatorLanguage(session, (lang == null) ? "en" : lang);
         } else {
-            data.translatorLanguage = input;
+            sessionService.updateTranslatorLanguage(session, input);
         }
 
         String langName = translatorLanguagesProvider.getLanguages().get(data.translatorLanguage);
         local.send("commands-tr-success", args(
                 "translatorLanguage", langName != null ? langName : data.translatorLanguage
         ));
-
-        playerDataRepository.save(data);
     }
 
     private String findTranslatorLanguage(String locale) {

@@ -44,7 +44,7 @@ public class PlayerActivityService {
                 PlayerData data = session.data;
                 Localization local = session.locale();
 
-                data.totalPlayTime++;
+                sessionService.incrementPlayTime(session, 1);
 
                 if (data.totalPlayTime == globalConfig.minPlayTimeForVotekick) {
                     local.send("notification-votekick-playtime",
@@ -54,7 +54,6 @@ public class PlayerActivityService {
                             args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
                 }
 
-                session.save();
             }
         }, 0, 60);
     }

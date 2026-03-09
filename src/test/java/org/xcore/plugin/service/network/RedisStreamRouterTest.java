@@ -38,9 +38,15 @@ class RedisStreamRouterTest {
     void routeServerTargetedEvents() {
         var discordRoute = router.route(new SocketEvents.DiscordMessageEvent("bot", "hello", "mini-hexed"), "mini-pvp");
         var mapsRoute = router.route(new SocketEvents.LoadMapsV2(new SocketEvents.FileURL[0], "event"), "mini-pvp");
+        var badgeRoute = router.route(new SocketEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
+        var passwordRoute = router.route(new SocketEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
+        assertThat(badgeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-inventory:mini-pvp");
+        assertThat(badgeRoute.eventType()).isEqualTo("player.badge_inventory");
+        assertThat(passwordRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
+        assertThat(passwordRoute.eventType()).isEqualTo("player.password_reset");
     }
 
     @Test
@@ -54,6 +60,9 @@ class RedisStreamRouterTest {
 
         assertThat(router.subscribeStreamsFor(SocketEvents.MapRemoveRequest.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
+
+        assertThat(router.subscribeStreamsFor(SocketEvents.PlayerPasswordReset.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:player-password-reset:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(BanData.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:ban");
@@ -71,6 +80,7 @@ class RedisStreamRouterTest {
         assertThat(router.isReadOnlyType(SocketEvents.RemoveAdmin.class)).isFalse();
 
         assertThat(router.isMutatingType(SocketEvents.RemoveAdmin.class)).isTrue();
+        assertThat(router.isMutatingType(SocketEvents.PlayerPasswordReset.class)).isTrue();
         assertThat(router.isMutatingType(SocketEvents.MessageEvent.class)).isFalse();
 
         assertThat(router.isRpcRequestType(SocketEvents.MapsListRequest.class)).isTrue();

@@ -137,7 +137,6 @@ public class SessionService {
         var data = sessionCache.remove(player.uuid());
 
         if (data != null) {
-            playerDataRepository.save(data.data);
             Log.debug("Player session unregistered: @ (@)", data.data.nickname, player.uuid());
         }
 
@@ -169,17 +168,13 @@ public class SessionService {
         return true;
     }
 
-    /**
-     * Saves all cached player data to database.
-     * <p>
-     * Useful for periodic persistence or server shutdown.
-     */
-    public void saveAll() {
-        Log.info("Saving @ online players to database", sessionCache.size);
-
-        for (var session : sessionCache.values()) {
-            session.save();
+    public boolean persistPlayer(Session session) {
+        if (session == null || session.data == null) {
+            return false;
         }
+
+        playerDataRepository.save(session.data);
+        return true;
     }
 
     /**
@@ -236,6 +231,78 @@ public class SessionService {
      */
     public Iterable<Session> getAllCached() {
         return sessionCache.values();
+    }
+
+    public boolean incrementPlayTime(Session session, int delta) {
+        if (session == null || session.data == null) return false;
+        session.data.totalPlayTime += delta;
+        return playerDataRepository.incrementPlayTime(session.data.uuid, delta);
+    }
+
+    public boolean updateIp(Session session, String ip) {
+        if (session == null || session.data == null) return false;
+        session.data.ip = ip;
+        return playerDataRepository.updateIp(session.data.uuid, ip);
+    }
+
+    public boolean updateLanguage(Session session, String language) {
+        if (session == null || session.data == null) return false;
+        session.data.language = language;
+        return playerDataRepository.updateLanguage(session.data.uuid, language);
+    }
+
+    public boolean updateTranslatorLanguage(Session session, String language) {
+        if (session == null || session.data == null) return false;
+        session.data.translatorLanguage = language;
+        return playerDataRepository.updateTranslatorLanguage(session.data.uuid, language);
+    }
+
+    public boolean updateLeaderboard(Session session, boolean leaderboard) {
+        if (session == null || session.data == null) return false;
+        session.data.leaderboard = leaderboard;
+        return playerDataRepository.updateLeaderboard(session.data.uuid, leaderboard);
+    }
+
+    public boolean updateCustomNickname(Session session, String customNickname) {
+        if (session == null || session.data == null) return false;
+        session.data.customNickname = customNickname;
+        return playerDataRepository.updateCustomNickname(session.data.uuid, customNickname);
+    }
+
+    public boolean updateDescription(Session session, String description) {
+        if (session == null || session.data == null) return false;
+        session.data.description = description;
+        return playerDataRepository.updateDescription(session.data.uuid, description);
+    }
+
+    public boolean setActiveBadge(Session session, String badgeId) {
+        if (session == null || session.data == null) return false;
+        session.data.activeBadge = badgeId;
+        return playerDataRepository.setActiveBadge(session.data.uuid, badgeId);
+    }
+
+    public boolean addBlockedPrivateUuid(Session session, String blockedUuid) {
+        if (session == null || session.data == null) return false;
+        session.data.blockedPrivateUuids.add(blockedUuid);
+        return playerDataRepository.addBlockedPrivateUuid(session.data.uuid, blockedUuid);
+    }
+
+    public boolean removeBlockedPrivateUuid(Session session, String blockedUuid) {
+        if (session == null || session.data == null) return false;
+        session.data.blockedPrivateUuids.remove(blockedUuid);
+        return playerDataRepository.removeBlockedPrivateUuid(session.data.uuid, blockedUuid);
+    }
+
+    public boolean putMapVote(Session session, String mapId, boolean like) {
+        if (session == null || session.data == null) return false;
+        session.data.mapVotes.put(mapId, like);
+        return playerDataRepository.putMapVote(session.data.uuid, mapId, like);
+    }
+
+    public boolean putEventVote(Session session, String eventId, boolean like) {
+        if (session == null || session.data == null) return false;
+        session.data.eventVotes.put(eventId, like);
+        return playerDataRepository.putEventVote(session.data.uuid, eventId, like);
     }
 
     public void broadcast(String key, Map<String, Object> args) {

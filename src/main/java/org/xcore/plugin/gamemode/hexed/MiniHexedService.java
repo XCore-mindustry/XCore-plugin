@@ -215,7 +215,7 @@ public class MiniHexedService {
                     playerDisplayService.refresh(player, data);
                 }
             }
-            playerDataRepository.save(data);
+            playerDataRepository.updateHexedProgress(data.uuid, data.hexedRank, data.hexedPoints);
         }
 
         Func<Localization, String> generateMessage = locale -> {

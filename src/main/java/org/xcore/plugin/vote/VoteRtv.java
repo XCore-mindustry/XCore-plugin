@@ -84,7 +84,7 @@ public class VoteRtv extends VoteSession {
 
             MapData currentMapStats = mapDataRepository.findOrCreate(currentMapName, currentMapFileName, currentAuthor, currentMode);
             currentMapStats.onSkip();
-            mapDataRepository.save(currentMapStats);
+            mapDataRepository.markSkip(currentMapStats.id);
         }
 
         if (isManualSelection) {
@@ -95,7 +95,7 @@ public class VoteRtv extends VoteSession {
 
             MapData targetMapStats = mapDataRepository.findOrCreate(targetMapName, targetMapFileName, targetAuthor, targetMode);
             targetMapStats.popularity += 2.0;
-            mapDataRepository.save(targetMapStats);
+            mapDataRepository.bumpPopularity(targetMapStats.id, 2.0);
         }
 
         Timer.schedule(() -> gameStateService.reloadWorld(() ->

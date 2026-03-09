@@ -7,6 +7,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.Updates;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
@@ -21,6 +22,7 @@ import org.xcore.plugin.model.PlayerData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.lt;
@@ -76,6 +78,91 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public PlayerData findByPid(int id) {
         return collection.find(eq("pid", id)).first();
+    }
+
+    public boolean incrementPlayTime(String uuid, int delta) {
+        return updateByUuid(uuid, Updates.inc("total_play_time", delta));
+    }
+
+    public boolean updateIp(String uuid, String ip) {
+        return updateByUuid(uuid, Updates.set("last_ip", ip));
+    }
+
+    public boolean updateLanguage(String uuid, String language) {
+        return updateByUuid(uuid, Updates.set("local_language", language));
+    }
+
+    public boolean updateTranslatorLanguage(String uuid, String language) {
+        return updateByUuid(uuid, Updates.set("translator_language", language));
+    }
+
+    public boolean updateLeaderboard(String uuid, boolean leaderboard) {
+        return updateByUuid(uuid, Updates.set("leaderboard", leaderboard));
+    }
+
+    public boolean updateCustomNickname(String uuid, String customNickname) {
+        return updateByUuid(uuid, Updates.set("custom_nickname", customNickname));
+    }
+
+    public boolean updateDescription(String uuid, String description) {
+        return updateByUuid(uuid, Updates.set("description", description));
+    }
+
+    public boolean setActiveBadge(String uuid, String badgeId) {
+        return updateByUuid(uuid, Updates.set("active_badge", badgeId));
+    }
+
+    public boolean addUnlockedBadge(String uuid, String badgeId) {
+        return updateByUuid(uuid, Updates.addToSet("unlocked_badges", badgeId));
+    }
+
+    public boolean removeUnlockedBadge(String uuid, String badgeId) {
+        return updateByUuid(uuid, Updates.pull("unlocked_badges", badgeId));
+    }
+
+    public boolean addBlockedPrivateUuid(String uuid, String blockedUuid) {
+        return updateByUuid(uuid, Updates.addToSet("blocked_private_uuids", blockedUuid));
+    }
+
+    public boolean removeBlockedPrivateUuid(String uuid, String blockedUuid) {
+        return updateByUuid(uuid, Updates.pull("blocked_private_uuids", blockedUuid));
+    }
+
+    public boolean updatePvpRating(String uuid, int rating) {
+        return updateByUuid(uuid, Updates.set("pvp_rating", rating));
+    }
+
+    public boolean updateHexedProgress(String uuid, int rank, int points) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("hexed_rank", rank),
+                Updates.set("hexed_points", points)
+        ));
+    }
+
+    public boolean putMapVote(String uuid, String mapId, boolean like) {
+        return updateByUuid(uuid, Updates.set("map_votes." + mapId, like));
+    }
+
+    public boolean putEventVote(String uuid, String eventId, boolean like) {
+        return updateByUuid(uuid, Updates.set("event_votes." + eventId, like));
+    }
+
+    public boolean replaceUnlockedBadges(String uuid, Set<String> unlockedBadges) {
+        return updateByUuid(uuid, Updates.set("unlocked_badges", unlockedBadges));
+    }
+
+    private boolean updateByUuid(String uuid, Bson update) {
+        if (uuid == null || uuid.isBlank() || update == null || isReadOnly()) {
+            return false;
+        }
+
+        return collection.updateOne(
+                eq("uuid", uuid),
+                Updates.combine(
+                        update,
+                        Updates.set("updated_at", System.currentTimeMillis())
+                )
+        ).getMatchedCount() > 0;
     }
 
     public Bson getQuery(Map<String, StatusEnum> filters) {

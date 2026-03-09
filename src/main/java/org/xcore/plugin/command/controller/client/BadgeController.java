@@ -47,10 +47,9 @@ public class BadgeController implements CloudClientController {
         Session session = sessionService.get(sender.player().uuid());
         if (session == null || session.data == null) return;
 
-        session.data.activeBadge = "";
-        session.save();
+        sessionService.setActiveBadge(session, "");
         playerDisplayService.refresh(session);
-        network.post(new SocketEvents.SyncPlayerData(session.data));
+        network.post(new SocketEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
         session.locale().send("badge-clear-success", args());
     }
 
@@ -75,10 +74,9 @@ public class BadgeController implements CloudClientController {
             return;
         }
 
-        session.data.activeBadge = badge.id();
-        session.save();
+        sessionService.setActiveBadge(session, badge.id());
         playerDisplayService.refresh(session);
-        network.post(new SocketEvents.SyncPlayerData(session.data));
+        network.post(new SocketEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
         session.locale().send("badge-set-success", args("badge", session.locale().t(badge.nameKey())));
     }
 }

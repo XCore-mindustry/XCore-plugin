@@ -219,8 +219,7 @@ public class PrivateMessageService {
             return false;
         }
 
-        session.data.blockedPrivateUuids.add(targetData.uuid);
-        session.save();
+        sessionService.addBlockedPrivateUuid(session, targetData.uuid);
         session.locale().send("private-message-block-success", args("target", targetData.nickname, "pid", targetData.pid));
         return true;
     }
@@ -236,12 +235,12 @@ public class PrivateMessageService {
             return false;
         }
 
-        if (session.data.blockedPrivateUuids == null || !session.data.blockedPrivateUuids.remove(targetData.uuid)) {
+        if (session.data.blockedPrivateUuids == null || !session.data.blockedPrivateUuids.contains(targetData.uuid)) {
             session.locale().send("private-message-unblock-missing", args("target", targetData.nickname, "pid", targetData.pid));
             return false;
         }
 
-        session.save();
+        sessionService.removeBlockedPrivateUuid(session, targetData.uuid);
         session.locale().send("private-message-unblock-success", args("target", targetData.nickname, "pid", targetData.pid));
         return true;
     }

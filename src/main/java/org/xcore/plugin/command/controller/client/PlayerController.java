@@ -98,7 +98,7 @@ public class PlayerController implements CloudClientController {
                 "leaderboardEnabled", String.valueOf(session.data.leaderboard)
         ));
 
-        session.save();
+        sessionService.updateLeaderboard(session, session.data.leaderboard);
     }
 
     @Command("top")

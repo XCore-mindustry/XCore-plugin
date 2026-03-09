@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import static com.ospx.flubundle.Bundle.args;
 @Singleton
@@ -198,16 +199,7 @@ public class PlayerMenu extends Menu {
                                 }
                             }
 
-                            updatePlayerData(targetData, d -> {
-                                d.customNickname = newNick;
-
-                                Session ts = sessionService.get(targetData.uuid);
-                                if (ts != null) {
-                                    if (ts.data.nickname == null || ts.data.nickname.isEmpty()) {
-                                        ts.data.nickname = "Player";
-                                    }
-                                }
-                            }, true, true);
+                            updateCustomNickname(targetData, newNick, true, true);
 
                             settings(uuid, targetData);
                         });
@@ -219,7 +211,7 @@ public class PlayerMenu extends Menu {
                     })
                     .addLocal("player-menu-settings-description", () -> {
                         session.setTextHandler(t -> {
-                            updatePlayerData(targetData, d -> d.description = t, false, false);
+                            updateDescription(targetData, t);
                             settings(uuid, targetData);
                         });
                         Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
@@ -230,7 +222,7 @@ public class PlayerMenu extends Menu {
                     })
                 .end()
                 .addRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
-                    updatePlayerData(targetData, d -> d.leaderboard = !d.leaderboard, false, false);
+                    updateLeaderboard(targetData, !targetData.leaderboard);
                     settings(uuid, targetData);
                 })
                 .start()
@@ -257,10 +249,11 @@ public class PlayerMenu extends Menu {
                 .title(isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title")
                 .start()
                     .addLocal(isTranslator ? "default" : "auto", () -> {
-                        updatePlayerData(targetData, d -> {
-                            if (isTranslator) d.translatorLanguage = "off";
-                            else d.language = "auto";
-                        }, false, false);
+                        if (isTranslator) {
+                            updateTranslatorLanguage(targetData, "off");
+                        } else {
+                            updateLanguage(targetData, "auto");
+                        }
                         session.popHistory().run();
                     })
                 .end();
@@ -270,12 +263,13 @@ public class PlayerMenu extends Menu {
             String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
 
             b.addRow(langName, () -> {
-                updatePlayerData(targetData, d -> {
-                    if (isTranslator) d.translatorLanguage = code;
-                    else d.language = code;
-                }, false, false);
-                session.popHistory().run();
-            });
+                        if (isTranslator) {
+                            updateTranslatorLanguage(targetData, code);
+                        } else {
+                            updateLanguage(targetData, code);
+                        }
+                        session.popHistory().run();
+                    });
         });
 
         builder.addNavigationRow().show();
@@ -310,14 +304,14 @@ public class PlayerMenu extends Menu {
                     "badge", badgeLabel(local, badge),
                     "description", local.t(badge.descriptionKey())
             )), () -> {
-                updatePlayerData(targetData, d -> d.activeBadge = badge.id(), true, true);
+                updateActiveBadge(targetData, badge.id(), true, true);
                 badges(uuid, targetData);
             }));
         }
 
         builder.start()
                 .addLocal("badge-clear-button", () -> {
-                    updatePlayerData(targetData, d -> d.activeBadge = "", true, true);
+                    updateActiveBadge(targetData, "", true, true);
                     badges(uuid, targetData);
                 })
                 .end()
@@ -325,25 +319,81 @@ public class PlayerMenu extends Menu {
                 .show();
     }
 
+    private void updateCustomNickname(PlayerData targetData, String customNickname, boolean refreshDisplay, boolean sync) {
+        updatePlayerData(targetData,
+                data -> data.customNickname = customNickname,
+                data -> playerDataRepository.updateCustomNickname(data.uuid, customNickname),
+                data -> new org.xcore.plugin.event.SocketEvents.PlayerCustomNicknameChanged(data.uuid, data.customNickname),
+                refreshDisplay,
+                sync);
+    }
+
+    private void updateDescription(PlayerData targetData, String description) {
+        updatePlayerData(targetData,
+                data -> data.description = description,
+                data -> playerDataRepository.updateDescription(data.uuid, description),
+                null,
+                false,
+                false);
+    }
+
+    private void updateLeaderboard(PlayerData targetData, boolean leaderboard) {
+        updatePlayerData(targetData,
+                data -> data.leaderboard = leaderboard,
+                data -> playerDataRepository.updateLeaderboard(data.uuid, leaderboard),
+                null,
+                false,
+                false);
+    }
+
+    private void updateLanguage(PlayerData targetData, String language) {
+        updatePlayerData(targetData,
+                data -> data.language = language,
+                data -> playerDataRepository.updateLanguage(data.uuid, language),
+                null,
+                false,
+                false);
+    }
+
+    private void updateTranslatorLanguage(PlayerData targetData, String language) {
+        updatePlayerData(targetData,
+                data -> data.translatorLanguage = language,
+                data -> playerDataRepository.updateTranslatorLanguage(data.uuid, language),
+                null,
+                false,
+                false);
+    }
+
+    private void updateActiveBadge(PlayerData targetData, String badgeId, boolean refreshDisplay, boolean sync) {
+        updatePlayerData(targetData,
+                data -> data.activeBadge = badgeId,
+                data -> playerDataRepository.setActiveBadge(data.uuid, badgeId),
+                data -> new org.xcore.plugin.event.SocketEvents.PlayerActiveBadgeChanged(data.uuid, data.activeBadge),
+                refreshDisplay,
+                sync);
+    }
+
     private void updatePlayerData(PlayerData targetData,
-                                  java.util.function.Consumer<PlayerData> updater,
+                                  Consumer<PlayerData> updater,
+                                  Consumer<PlayerData> partialUpdater,
+                                  java.util.function.Function<PlayerData, Object> syncEventFactory,
                                   boolean refreshDisplay,
                                   boolean sync) {
         Session targetSession = sessionService.get(targetData.uuid);
         if (targetSession != null) {
             updater.accept(targetSession.data);
-            targetSession.save();
+            partialUpdater.accept(targetSession.data);
             if (refreshDisplay) {
                 playerDisplayService.refresh(targetSession);
             }
-            if (sync) {
-                network.post(new org.xcore.plugin.event.SocketEvents.SyncPlayerData(targetSession.data));
+            if (sync && syncEventFactory != null) {
+                network.post(syncEventFactory.apply(targetSession.data));
             }
         } else {
             updater.accept(targetData);
-            playerDataRepository.save(targetData);
-            if (sync) {
-                network.post(new org.xcore.plugin.event.SocketEvents.SyncPlayerData(targetData));
+            partialUpdater.accept(targetData);
+            if (sync && syncEventFactory != null) {
+                network.post(syncEventFactory.apply(targetData));
             }
         }
     }

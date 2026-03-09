@@ -147,23 +147,35 @@ public class MapService {
         }
 
         int reputationDelta = previousVote == null ? NEW_VOTE_REPUTATION_DELTA : CHANGED_VOTE_REPUTATION_DELTA;
+        int likeDelta = 0;
+        int dislikeDelta = 0;
+        double popularityDelta;
         if (like) {
             map.reputation += reputationDelta;
             map.popularity += reputationDelta * POPULARITY_PER_REPUTATION;
             map.like += 1;
-            if (previousVote != null) map.dislike -= 1;
+            likeDelta = 1;
+            popularityDelta = reputationDelta * POPULARITY_PER_REPUTATION;
+            if (previousVote != null) {
+                map.dislike -= 1;
+                dislikeDelta = -1;
+            }
             session.locale().send(previousVote != null ? "like-map-changed" : "like-map-success");
         } else {
             map.reputation -= reputationDelta;
             map.popularity -= reputationDelta * POPULARITY_PER_REPUTATION;
             map.dislike += 1;
-            if (previousVote != null) map.like -= 1;
+            dislikeDelta = 1;
+            popularityDelta = -reputationDelta * POPULARITY_PER_REPUTATION;
+            if (previousVote != null) {
+                map.like -= 1;
+                likeDelta = -1;
+            }
             session.locale().send(previousVote != null ? "dislike-map-changed" : "dislike-map-success");
         }
 
-        session.data.mapVotes.put(map.id.toString(), like);
-        session.save();
-        mapDataRepository.save(map);
+        sessionService.putMapVote(session, map.id.toString(), like);
+        mapDataRepository.applyVote(map.id, like ? reputationDelta : -reputationDelta, popularityDelta, likeDelta, dislikeDelta);
     }
 
     private boolean isAllowedEventMap(Map target) {

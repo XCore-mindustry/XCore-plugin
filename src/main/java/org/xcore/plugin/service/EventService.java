@@ -75,8 +75,7 @@ public class EventService {
             session.locale().send(previousVote != null ? "dislike-event-changed" : "dislike-event-success");
         }
 
-        p.eventVotes.put(event.id.toString(), like);
-        session.save();
+        sessionService.putEventVote(session, event.id.toString(), like);
         eventDataRepository.save(event);
     }
 

@@ -257,7 +257,6 @@ class PrivateMessageServiceTest {
         when(session.player.plainName()).thenReturn(nickname);
         Localization localization = mock(Localization.class);
         when(session.locale()).thenReturn(localization);
-        when(session.save()).thenReturn(session);
         return session;
     }
 

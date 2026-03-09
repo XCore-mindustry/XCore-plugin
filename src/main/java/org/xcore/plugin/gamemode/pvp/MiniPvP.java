@@ -94,7 +94,7 @@ public class MiniPvP {
                 session.locale().send("pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                playerDataRepository.save(data);
+                playerDataRepository.updatePvpRating(data.uuid, data.pvpRating);
             });
         });
 
@@ -126,7 +126,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        playerDataRepository.save(data);
+                        playerDataRepository.updatePvpRating(data.uuid, data.pvpRating);
                     });
                 }
             }

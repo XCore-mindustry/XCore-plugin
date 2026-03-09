@@ -51,8 +51,17 @@ public final class RedisStreamRouter {
         if (event instanceof SocketEvents.KickBannedPlayer) {
             return new Route("xcore:cmd:kick-banned:" + defaultServer, "moderation.kick_banned", 120000L);
         }
-        if (event instanceof SocketEvents.SyncPlayerData) {
-            return new Route("xcore:cmd:sync-player:" + defaultServer, "player.sync", 120000L);
+        if (event instanceof SocketEvents.PlayerCustomNicknameChanged) {
+            return new Route("xcore:cmd:player-custom-nickname:" + defaultServer, "player.custom_nickname", 120000L);
+        }
+        if (event instanceof SocketEvents.PlayerActiveBadgeChanged) {
+            return new Route("xcore:cmd:player-active-badge:" + defaultServer, "player.active_badge", 120000L);
+        }
+        if (event instanceof SocketEvents.PlayerBadgeInventoryChanged) {
+            return new Route("xcore:cmd:player-badge-inventory:" + defaultServer, "player.badge_inventory", 120000L);
+        }
+        if (event instanceof SocketEvents.PlayerPasswordReset) {
+            return new Route("xcore:cmd:player-password-reset:" + defaultServer, "player.password_reset", 120000L);
         }
         if (event instanceof SocketEvents.ReloadPlayerDataCache) {
             return new Route("xcore:cmd:reload-cache:" + defaultServer, "cache.reload_player_data", 120000L);
@@ -130,8 +139,20 @@ public final class RedisStreamRouter {
             streams.add("xcore:cmd:kick-banned:" + defaultServer);
             return streams;
         }
-        if (type == SocketEvents.SyncPlayerData.class) {
-            streams.add("xcore:cmd:sync-player:" + defaultServer);
+        if (type == SocketEvents.PlayerCustomNicknameChanged.class) {
+            streams.add("xcore:cmd:player-custom-nickname:" + defaultServer);
+            return streams;
+        }
+        if (type == SocketEvents.PlayerActiveBadgeChanged.class) {
+            streams.add("xcore:cmd:player-active-badge:" + defaultServer);
+            return streams;
+        }
+        if (type == SocketEvents.PlayerBadgeInventoryChanged.class) {
+            streams.add("xcore:cmd:player-badge-inventory:" + defaultServer);
+            return streams;
+        }
+        if (type == SocketEvents.PlayerPasswordReset.class) {
+            streams.add("xcore:cmd:player-password-reset:" + defaultServer);
             return streams;
         }
         if (type == SocketEvents.ReloadPlayerDataCache.class) {
@@ -181,7 +202,10 @@ public final class RedisStreamRouter {
     public boolean isMutatingType(Class<?> type) {
         return type == SocketEvents.AdminRequestConfirmEvent.class
                 || type == SocketEvents.KickBannedPlayer.class
-                || type == SocketEvents.SyncPlayerData.class
+                || type == SocketEvents.PlayerCustomNicknameChanged.class
+                || type == SocketEvents.PlayerActiveBadgeChanged.class
+                || type == SocketEvents.PlayerBadgeInventoryChanged.class
+                || type == SocketEvents.PlayerPasswordReset.class
                 || type == SocketEvents.ReloadPlayerDataCache.class
                 || type == SocketEvents.LoadMapsV2.class
                 || type == SocketEvents.ExecuteCommand.class

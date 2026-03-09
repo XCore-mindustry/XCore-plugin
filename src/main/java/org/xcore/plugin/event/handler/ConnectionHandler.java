@@ -96,8 +96,7 @@ public class ConnectionHandler {
                 locale.send("error-ip-changed", args());
             }
 
-            data.setIp(player.ip());
-            session.save();
+            sessionService.updateIp(session, player.ip());
         }
 
         if (data.admin && data.adminConfirmed) {
@@ -110,7 +109,7 @@ public class ConnectionHandler {
         if (!data.exists) {
             data.setIp(player.ip());
             data.exists = true;
-            session.save();
+            sessionService.persistPlayer(session);
         }
 
         playerDisplayService.refresh(session);

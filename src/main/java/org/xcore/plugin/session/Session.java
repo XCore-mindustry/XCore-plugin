@@ -71,11 +71,6 @@ public class Session {
         return this;
     }
 
-    public Session save() {
-        playerDataRepository.save(data);
-        return this;
-    }
-
     public String add(String buttonName, Runnable action) {
         actions.add(action);
         return buttonName;

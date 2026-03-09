@@ -17,6 +17,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
@@ -104,15 +105,19 @@ public class BadgeAdminController implements CloudServerController {
         Session session = sessionService.get(target.uuid);
         if (session != null) {
             session.data = target;
-            session.save();
+            syncSessionBadgeState(session, grant, badge.id());
             playerDisplayService.refresh(session);
         }
 
         if (session == null) {
-            target = persistOfflineTarget(target);
+            applyOfflineBadgeState(target, grant, badge.id());
         }
 
-        network.post(new SocketEvents.SyncPlayerData(target));
+        network.post(new SocketEvents.PlayerBadgeInventoryChanged(
+                target.uuid,
+                target.activeBadge,
+                copyBadges(target.unlockedBadges)
+        ));
         if (grant) {
             Log.info("Granted badge '@' to @ (#@).", badge.id(), target.nickname, target.pid);
         } else {
@@ -120,9 +125,30 @@ public class BadgeAdminController implements CloudServerController {
         }
     }
 
-    private PlayerData persistOfflineTarget(PlayerData target) {
-        playerDataRepository.save(target);
-        return target;
+    private void applyOfflineBadgeState(PlayerData target, boolean grant, String badgeId) {
+        if (grant) {
+            playerDataRepository.addUnlockedBadge(target.uuid, badgeId);
+        } else {
+            playerDataRepository.removeUnlockedBadge(target.uuid, badgeId);
+            if (target.activeBadge == null || target.activeBadge.isEmpty()) {
+                playerDataRepository.setActiveBadge(target.uuid, "");
+            }
+        }
+    }
+
+    private void syncSessionBadgeState(Session session, boolean grant, String badgeId) {
+        if (grant) {
+            playerDataRepository.addUnlockedBadge(session.data.uuid, badgeId);
+        } else {
+            playerDataRepository.removeUnlockedBadge(session.data.uuid, badgeId);
+            if (session.data.activeBadge == null || session.data.activeBadge.isEmpty()) {
+                playerDataRepository.setActiveBadge(session.data.uuid, "");
+            }
+        }
+    }
+
+    private Set<String> copyBadges(Set<String> badges) {
+        return badges == null ? Set.of() : Set.copyOf(badges);
     }
 
     private PlayerData resolveTarget(String playerRef) {

@@ -2,7 +2,8 @@ package org.xcore.plugin.event;
 
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import org.xcore.plugin.model.PlayerData;
+
+import java.util.Set;
 
 public class SocketEvents {
     public interface Event {}
@@ -46,7 +47,13 @@ public class SocketEvents {
 
     public record KickBannedPlayer(String uuid, String ip) {}
 
-    public record SyncPlayerData(PlayerData data) {}
+    public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}
+
+    public record PlayerActiveBadgeChanged(String uuid, String activeBadge) {}
+
+    public record PlayerBadgeInventoryChanged(String uuid, String activeBadge, Set<String> unlockedBadges) {}
+
+    public record PlayerPasswordReset(String uuid) {}
 
     public static class ReloadPlayerDataCache {}
 

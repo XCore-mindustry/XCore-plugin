@@ -76,6 +76,53 @@ public class MapDataRepository extends DataRepository<MapData> {
         );
     }
 
+    public boolean applyVote(ObjectId id, int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta) {
+        return updateById(id, Updates.combine(
+                Updates.inc("reputation", reputationDelta),
+                Updates.inc("popularity", popularityDelta),
+                Updates.inc("like", likeDelta),
+                Updates.inc("dislike", dislikeDelta)
+        ));
+    }
+
+    public boolean markSkip(ObjectId id) {
+        return updateById(id, Updates.combine(
+                Updates.inc("popularity", -1.0),
+                Updates.inc("interest", -0.5)
+        ));
+    }
+
+    public boolean bumpPopularity(ObjectId id, double delta) {
+        return updateById(id, Updates.inc("popularity", delta));
+    }
+
+    public boolean registerGameStats(ObjectId id,
+                                     long duration,
+                                     boolean isWin,
+                                     String author,
+                                     String mode,
+                                     long playedTimes,
+                                     long averageGameTime,
+                                     long minimumGameTime,
+                                     long maximumGameTime,
+                                     int playedTimesYear,
+                                     long lastPlayedTime,
+                                     double popularity,
+                                     double interest) {
+        return updateById(id, Updates.combine(
+                Updates.set("author", author),
+                Updates.set("game_mode", mode),
+                Updates.set("play_count", playedTimes),
+                Updates.set("average_duration", averageGameTime),
+                Updates.set("minimum_duration", minimumGameTime),
+                Updates.set("maximum_duration", maximumGameTime),
+                Updates.set("played_times_year", playedTimesYear),
+                Updates.set("last_played_at", lastPlayedTime),
+                Updates.set("popularity", popularity),
+                Updates.set("interest", interest)
+        ));
+    }
+
     public void decayPopularity(double amount) {
         collection.updateMany(gt("popularity", 0), Updates.inc("popularity", -amount));
         collection.updateMany(lt("popularity", 0), Updates.set("popularity", 0.0));
@@ -127,5 +174,19 @@ public class MapDataRepository extends DataRepository<MapData> {
             decayPopularity(0.1);
             decayInterest(0.1);
         }
+    }
+
+    private boolean updateById(ObjectId id, org.bson.conversions.Bson update) {
+        if (id == null || update == null || isReadOnly()) {
+            return false;
+        }
+
+        return collection.updateOne(
+                eq("_id", id),
+                Updates.combine(
+                        update,
+                        Updates.set("updated_at", System.currentTimeMillis())
+                )
+        ).getMatchedCount() > 0;
     }
 }
