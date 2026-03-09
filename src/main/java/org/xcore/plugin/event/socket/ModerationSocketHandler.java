@@ -61,8 +61,7 @@ public class ModerationSocketHandler {
                 player.admin = true;
                 var session = sessionService.get(player);
                 if (session != null) {
-                    session.data.admin = true;
-                    session.data.adminConfirmed = true;
+                    sessionService.updateAdminStatus(session, true, true);
                     playerDisplayService.refresh(session);
                     session.locale().send("commands-login-confirmed", args());
                 }
@@ -82,8 +81,7 @@ public class ModerationSocketHandler {
                 player.admin = false;
                 var session = sessionService.get(player);
                 if (session != null) {
-                    session.data.admin = false;
-                    session.data.adminConfirmed = false;
+                    sessionService.updateAdminStatus(session, false, false);
                     playerDisplayService.refresh(session);
                 }
             }

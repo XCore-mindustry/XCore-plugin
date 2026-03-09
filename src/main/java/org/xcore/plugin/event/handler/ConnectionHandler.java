@@ -87,16 +87,14 @@ public class ConnectionHandler {
 
         if (data.exists && !data.ip.equals(player.ip())) {
             if (player.admin) {
-                var adminData = adminDataRepository.findByUuid(data.uuid);
-                adminData.adminConfirmed = false;
-                adminDataRepository.save(adminData);
+                sessionService.updateAdminStatus(session, true, false);
 
                 player.admin = false;
                 netServer.admins.unAdminPlayer(player.uuid());
                 locale.send("error-ip-changed", args());
             }
 
-            sessionService.updateIp(session, player.ip());
+            sessionService.updateConnectionData(session, player.ip(), player.coloredName());
         }
 
         if (data.admin && data.adminConfirmed) {

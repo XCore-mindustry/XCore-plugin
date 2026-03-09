@@ -87,9 +87,12 @@ public class BadgeAdminController implements CloudServerController {
             target.unlockedBadges = new HashSet<>();
         }
 
-        boolean changed = grant ? target.unlockedBadges.add(badge.id()) : target.unlockedBadges.remove(badge.id());
-        if (!grant && badge.id().equals(target.activeBadge)) {
-            target.activeBadge = "";
+        Set<String> updatedBadges = new HashSet<>(target.unlockedBadges);
+        boolean changed = grant ? updatedBadges.add(badge.id()) : updatedBadges.remove(badge.id());
+
+        String updatedActiveBadge = target.activeBadge;
+        if (!grant && badge.id().equals(updatedActiveBadge)) {
+            updatedActiveBadge = "";
             changed = true;
         }
 
@@ -104,19 +107,18 @@ public class BadgeAdminController implements CloudServerController {
 
         Session session = sessionService.get(target.uuid);
         if (session != null) {
-            session.data = target;
-            syncSessionBadgeState(session, grant, badge.id());
+            applyBadgeState(session.data, updatedBadges, updatedActiveBadge);
+            persistBadgeState(session.data);
             playerDisplayService.refresh(session);
-        }
-
-        if (session == null) {
-            applyOfflineBadgeState(target, grant, badge.id());
+        } else {
+            applyBadgeState(target, updatedBadges, updatedActiveBadge);
+            persistBadgeState(target);
         }
 
         network.post(new SocketEvents.PlayerBadgeInventoryChanged(
                 target.uuid,
-                target.activeBadge,
-                copyBadges(target.unlockedBadges)
+                updatedActiveBadge,
+                copyBadges(updatedBadges)
         ));
         if (grant) {
             Log.info("Granted badge '@' to @ (#@).", badge.id(), target.nickname, target.pid);
@@ -125,26 +127,14 @@ public class BadgeAdminController implements CloudServerController {
         }
     }
 
-    private void applyOfflineBadgeState(PlayerData target, boolean grant, String badgeId) {
-        if (grant) {
-            playerDataRepository.addUnlockedBadge(target.uuid, badgeId);
-        } else {
-            playerDataRepository.removeUnlockedBadge(target.uuid, badgeId);
-            if (target.activeBadge == null || target.activeBadge.isEmpty()) {
-                playerDataRepository.setActiveBadge(target.uuid, "");
-            }
-        }
+    private void applyBadgeState(PlayerData target, Set<String> unlockedBadges, String activeBadge) {
+        target.unlockedBadges = unlockedBadges;
+        target.activeBadge = activeBadge;
     }
 
-    private void syncSessionBadgeState(Session session, boolean grant, String badgeId) {
-        if (grant) {
-            playerDataRepository.addUnlockedBadge(session.data.uuid, badgeId);
-        } else {
-            playerDataRepository.removeUnlockedBadge(session.data.uuid, badgeId);
-            if (session.data.activeBadge == null || session.data.activeBadge.isEmpty()) {
-                playerDataRepository.setActiveBadge(session.data.uuid, "");
-            }
-        }
+    private void persistBadgeState(PlayerData target) {
+        playerDataRepository.replaceUnlockedBadges(target.uuid, copyBadges(target.unlockedBadges));
+        playerDataRepository.setActiveBadge(target.uuid, target.activeBadge == null ? "" : target.activeBadge);
     }
 
     private Set<String> copyBadges(Set<String> badges) {

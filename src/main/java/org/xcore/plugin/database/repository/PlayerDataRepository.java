@@ -88,6 +88,20 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuid(uuid, Updates.set("last_ip", ip));
     }
 
+    public boolean updateConnectionData(String uuid, String ip, String nickname) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("last_ip", ip),
+                Updates.set("nickname", nickname)
+        ));
+    }
+
+    public boolean updateAdminStatus(String uuid, boolean admin, boolean adminConfirmed) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("is_admin", admin),
+                Updates.set("admin_confirmed", adminConfirmed)
+        ));
+    }
+
     public boolean updateLanguage(String uuid, String language) {
         return updateByUuid(uuid, Updates.set("local_language", language));
     }

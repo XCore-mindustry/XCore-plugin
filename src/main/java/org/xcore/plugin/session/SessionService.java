@@ -245,6 +245,20 @@ public class SessionService {
         return playerDataRepository.updateIp(session.data.uuid, ip);
     }
 
+    public boolean updateConnectionData(Session session, String ip, String nickname) {
+        if (session == null || session.data == null) return false;
+        session.data.ip = ip;
+        session.data.nickname = nickname;
+        return playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname);
+    }
+
+    public boolean updateAdminStatus(Session session, boolean admin, boolean adminConfirmed) {
+        if (session == null || session.data == null) return false;
+        session.data.admin = admin;
+        session.data.adminConfirmed = adminConfirmed;
+        return playerDataRepository.updateAdminStatus(session.data.uuid, admin, adminConfirmed);
+    }
+
     public boolean updateLanguage(Session session, String language) {
         if (session == null || session.data == null) return false;
         session.data.language = language;
