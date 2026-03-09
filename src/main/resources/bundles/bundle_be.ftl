@@ -26,7 +26,16 @@ badge-menu-content =
     { "" }[white]Актыўны бэйдж: [green]{ $activeBadge }[]
 badge-menu-empty = { "[" }lightgray]У вас пакуль няма адкрытых бэйджаў.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-view-all = Усе бэйджы
+badge-menu-all-title = { "[" }orange]{ -xcore } — Усе бэйджы
+badge-menu-all-content = { "[" }lightgray]Прагляд усіх бэйджаў, іх статусу і апісання.
+badge-menu-all-row = { "[" }white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
 badge-clear-button = Зняць актыўны бэйдж
+badge-state-system = Сістэмны
+badge-state-system-active = Сістэмны актыўны
+badge-state-active = Актыўны
+badge-state-unlocked = Адкрыты
+badge-state-locked = Закрыты
 badge-set-success = { "[" }accent]Актыўны бэйдж усталяваны: [green]{ $badge }[].
 badge-clear-success = { "[" }accent]Актыўны бэйдж зняты.
 badge-grant-success = { "[" }accent]Бэйдж [green]{ $badge }[] выдадзены гульцу [green]{ $nickname }[][gray]#{ $pid }[].

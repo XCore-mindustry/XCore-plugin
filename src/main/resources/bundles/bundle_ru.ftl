@@ -328,7 +328,16 @@ badge-menu-content =
     { "" }[white]Активный бейдж: [green]{ $activeBadge }[]
 badge-menu-empty = { "[" }lightgray]У вас пока нет открытых бейджей.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-view-all = Все бейджи
+badge-menu-all-title = { "[" }orange]{ -xcore } — Все бейджи
+badge-menu-all-content = { "[" }lightgray]Просмотр всех бейджей, их статуса и описания.
+badge-menu-all-row = { "[" }white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
 badge-clear-button = Снять активный бейдж
+badge-state-system = Системный
+badge-state-system-active = Системный активен
+badge-state-active = Активен
+badge-state-unlocked = Открыт
+badge-state-locked = Закрыт
 badge-set-success = { "[" }accent]Активный бейдж установлен: [green]{ $badge }[].
 badge-clear-success = { "[" }accent]Активный бейдж снят.
 badge-grant-success = { "[" }accent]Бейдж [green]{ $badge }[] выдан игроку [green]{ $nickname }[][gray]#{ $pid }[].

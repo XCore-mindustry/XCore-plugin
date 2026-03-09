@@ -330,7 +330,16 @@ badge-menu-content =
     { "" }[white]Active Badge: [green]{ $activeBadge }[]
 badge-menu-empty = [lightgray]You do not have any unlocked badges yet.
 badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-menu-view-all = View all badges
+badge-menu-all-title = [orange]{ -xcore } — All badges
+badge-menu-all-content = [lightgray]Browse all badges, their status, and descriptions.
+badge-menu-all-row = [white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
 badge-clear-button = Clear active badge
+badge-state-system = System
+badge-state-system-active = Active system
+badge-state-active = Active
+badge-state-unlocked = Unlocked
+badge-state-locked = Locked
 badge-set-success = [accent]Active badge set to [green]{ $badge }[].
 badge-clear-success = [accent]Active badge cleared.
 badge-grant-success = [accent]Granted [green]{ $badge }[] to [green]{ $nickname }[][gray]#{ $pid }[].

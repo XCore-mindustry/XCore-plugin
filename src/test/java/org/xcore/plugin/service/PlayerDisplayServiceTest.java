@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import mindustry.gen.Iconc;
 import mindustry.gen.Player;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class PlayerDisplayServiceTest {
         data.unlockedBadges.add("developer");
         data.activeBadge = "developer";
 
-        assertThat(service.buildDisplayName(data, null)).isEqualTo("[#86dca2]<[white]\uE80F[]>[] PlayerOne");
+        assertThat(service.buildDisplayName(data, null)).isEqualTo("[#86dca2]<[white]" + Iconc.wrench + "[]>[] PlayerOne");
     }
 
     @Test
@@ -61,7 +62,7 @@ class PlayerDisplayServiceTest {
         var data = basePlayer();
         data.admin = true;
 
-        assertThat(service.buildDisplayName(data, null)).isEqualTo("[scarlet]<\uE817>[] PlayerOne");
+        assertThat(service.buildDisplayName(data, null)).isEqualTo("[scarlet]<" + Iconc.hammer + ">[] PlayerOne");
     }
 
     @Test
@@ -88,7 +89,7 @@ class PlayerDisplayServiceTest {
         data.hexedRank(HexedRanks.HexedRank.regular);
 
         assertThat(service.buildChatBadgePrefix(data, null))
-                .isEqualTo("[scarlet]<\uE817>[] [#79d7ff]<[white]\uE80A[]>[]");
+                .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#79d7ff]<[white]" + Iconc.bookOpen + "[]>[]");
     }
 
     @Test
@@ -113,7 +114,7 @@ class PlayerDisplayServiceTest {
         data.customNickname = "[gold]Hero[]";
 
         assertThat(service.buildDisplayName(data, null))
-                .isEqualTo("[scarlet]<\uE817>[] [#86dca2]<[white]\uE80F[]>[] [cyan]<[accent]\uF7E7[cyan]>[] [gold]Hero[]");
+                .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#86dca2]<[white]" + Iconc.wrench + "[]>[] [cyan]<[accent]\uF7E7[cyan]>[] [gold]Hero[]");
     }
 
     @Test

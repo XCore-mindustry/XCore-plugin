@@ -560,7 +560,16 @@ badge-menu-content =
     { "" }[white]Активна відзнака: [green]{ $activeBadge }[]
 badge-menu-empty = { "[" }lightgray]У вас поки що немає відкритих відзнак.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-view-all = Усі відзнаки
+badge-menu-all-title = { "[" }orange]{ -xcore } — Усі відзнаки
+badge-menu-all-content = { "[" }lightgray]Перегляд усіх відзнак, їхнього статусу та опису.
+badge-menu-all-row = { "[" }white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
 badge-clear-button = Прибрати активну відзнаку
+badge-state-system = Системна
+badge-state-system-active = Системна активна
+badge-state-active = Активна
+badge-state-unlocked = Відкрита
+badge-state-locked = Закрита
 badge-set-success = { "[" }accent]Активну відзнаку встановлено: [green]{ $badge }[].
 badge-clear-success = { "[" }accent]Активну відзнаку прибрано.
 badge-grant-success = { "[" }accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].

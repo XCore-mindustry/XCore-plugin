@@ -310,6 +310,10 @@ public class PlayerMenu extends Menu {
         }
 
         builder.start()
+                .addLocal("badge-menu-view-all", () -> {
+                    session.pushHistory(() -> badges(uuid, targetData));
+                    allBadges(uuid, targetData);
+                })
                 .addLocal("badge-clear-button", () -> {
                     updateActiveBadge(targetData, "", true, true);
                     badges(uuid, targetData);
@@ -317,6 +321,38 @@ public class PlayerMenu extends Menu {
                 .end()
                 .addNavigationRow()
                 .show();
+    }
+
+    public void allBadges(String uuid, PlayerData targetData) {
+        Session session = sessionService.get(uuid).clear();
+        if (session == null || session.data == null) return;
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return;
+        }
+
+        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
+            session.locale().send("error-no-access");
+            return;
+        }
+
+        Localization local = session.locale();
+        var builder = session.builder()
+                .title("badge-menu-all-title")
+                .content("badge-menu-all-content");
+
+        builder.addForEach(List.of(Badge.values()), (b, badge) -> b.addRow(local.t("badge-menu-all-row", args(
+                "badge", badgeLabel(local, badge),
+                "state", badgeState(local, targetData, badge),
+                "description", local.t(badge.descriptionKey())
+        )), () -> {
+            if (badge.selectable() && !badge.system() && ownsBadge(targetData, badge)) {
+                updateActiveBadge(targetData, badge.id(), true, true);
+            }
+            allBadges(uuid, targetData);
+        }));
+
+        builder.addNavigationRow().show();
     }
 
     private void updateCustomNickname(PlayerData targetData, String customNickname, boolean refreshDisplay, boolean sync) {
@@ -422,6 +458,22 @@ public class PlayerMenu extends Menu {
 
     private String badgeLabel(Localization local, Badge badge) {
         return badge.tag() + " " + local.t(badge.nameKey());
+    }
+
+    private String badgeState(Localization local, PlayerData targetData, Badge badge) {
+        if (badge.system()) {
+            return targetData.admin ? local.t("badge-state-system-active") : local.t("badge-state-system");
+        }
+
+        if (badge.id().equals(targetData.activeBadge) && ownsBadge(targetData, badge)) {
+            return local.t("badge-state-active");
+        }
+
+        return ownsBadge(targetData, badge) ? local.t("badge-state-unlocked") : local.t("badge-state-locked");
+    }
+
+    private boolean ownsBadge(PlayerData targetData, Badge badge) {
+        return targetData.unlockedBadges != null && targetData.unlockedBadges.contains(badge.id());
     }
 
     private boolean containsBadgeLikeGlyphs(String input) {
