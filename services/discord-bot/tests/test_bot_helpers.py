@@ -369,14 +369,14 @@ class _ResetPasswordStore:
 
 class _ResetPasswordBus:
     def __init__(self) -> None:
-        self.reload_calls = 0
+        self.password_reset_calls: list[str] = []
         self.pardon_calls: list[str] = []
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
         return True
 
-    async def publish_reload_player_data_cache(self) -> None:
-        self.reload_calls += 1
+    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
+        self.password_reset_calls.append(uuid_value)
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
         self.pardon_calls.append(uuid_value)
@@ -498,7 +498,7 @@ async def test_handle_app_command_error_posts_embed_to_error_channel() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reset_password_publishes_reload_cache_event() -> None:
+async def test_reset_password_publishes_password_reset_event() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bus = _ResetPasswordBus()
     bot.__dict__["_bus"] = bus
@@ -515,7 +515,7 @@ async def test_reset_password_publishes_reload_cache_event() -> None:
 
     await cmd_reset_password(bot, interaction, 7)
 
-    assert bus.reload_calls == 1
+    assert bus.password_reset_calls == ["u-7"]
     assert interaction.response.messages
     assert interaction.response.messages[0][0].startswith("Password reset for")
 
