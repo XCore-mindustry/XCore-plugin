@@ -398,8 +398,29 @@ class XCoreDiscordBot(commands.Bot):
     async def revoke_badge(self, *, uuid: str, badge_id: str) -> bool:
         return await self._store.revoke_badge(uuid=uuid, badge_id=badge_id)
 
-    async def publish_reload_player_data_cache(self) -> None:
-        await self._bus.publish_reload_player_data_cache()
+    async def publish_player_active_badge_changed(
+        self, *, uuid_value: str, active_badge: str | None
+    ) -> None:
+        await self._bus.publish_player_active_badge_changed(
+            uuid_value=uuid_value,
+            active_badge=active_badge,
+        )
+
+    async def publish_player_badge_inventory_changed(
+        self,
+        *,
+        uuid_value: str,
+        active_badge: str | None,
+        unlocked_badges: list[str] | tuple[str, ...],
+    ) -> None:
+        await self._bus.publish_player_badge_inventory_changed(
+            uuid_value=uuid_value,
+            active_badge=active_badge,
+            unlocked_badges=unlocked_badges,
+        )
+
+    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
+        await self._bus.publish_player_password_reset(uuid_value=uuid_value)
 
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         return await self._store.find_player_by_pid(pid)

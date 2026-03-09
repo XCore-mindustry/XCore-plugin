@@ -344,7 +344,7 @@ async def cmd_reset_password(
 
     changed = await bot.reset_password(uuid=uuid_value)
     if changed:
-        await bot.publish_reload_player_data_cache()
+        await bot.publish_player_password_reset(uuid_value=uuid_value)
     await interaction.response.send_message(
         f"Password reset for `{bot._player_name(player)}`"
         if changed

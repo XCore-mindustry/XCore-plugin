@@ -605,13 +605,54 @@ class RedisBus:
             idempotency_prefix="maps.load",
         )
 
-    async def publish_reload_player_data_cache(self) -> None:
+    async def publish_player_active_badge_changed(
+        self, *, uuid_value: str, active_badge: str | None
+    ) -> None:
+        normalized_badge = (active_badge or "").strip()
         await self._publish_for_all_servers(
-            stream_prefix="xcore:cmd:reload-player-data-cache",
-            event_type="player.reload_cache",
+            stream_prefix="xcore:cmd:player-active-badge",
+            event_type="player.active_badge",
             ttl_ms=120_000,
-            idempotency_prefix="player.reload_cache",
-            payload_builder=lambda server: {"server": server},
+            idempotency_prefix="player.active_badge",
+            payload_builder=lambda server: {
+                "uuid": uuid_value,
+                "activeBadge": normalized_badge,
+                "server": server,
+            },
+        )
+
+    async def publish_player_badge_inventory_changed(
+        self,
+        *,
+        uuid_value: str,
+        active_badge: str | None,
+        unlocked_badges: list[str] | tuple[str, ...],
+    ) -> None:
+        normalized_badge = (active_badge or "").strip()
+        badges = [str(badge).strip() for badge in unlocked_badges if str(badge).strip()]
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:player-badge-inventory",
+            event_type="player.badge_inventory",
+            ttl_ms=120_000,
+            idempotency_prefix="player.badge_inventory",
+            payload_builder=lambda server: {
+                "uuid": uuid_value,
+                "activeBadge": normalized_badge,
+                "unlockedBadges": badges,
+                "server": server,
+            },
+        )
+
+    async def publish_player_password_reset(self, *, uuid_value: str) -> None:
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:player-password-reset",
+            event_type="player.password_reset",
+            ttl_ms=120_000,
+            idempotency_prefix="player.password_reset",
+            payload_builder=lambda server: {
+                "uuid": uuid_value,
+                "server": server,
+            },
         )
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:

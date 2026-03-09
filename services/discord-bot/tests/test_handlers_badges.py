@@ -34,12 +34,13 @@ class _Bot:
         self, *, player: PlayerRecord | None, grant_result: bool, revoke_result: bool
     ) -> None:
         self.player = player
+        self.updated_player = player
         self.grant_result = grant_result
         self.revoke_result = revoke_result
         self.claims: list[tuple[str, str]] = []
         self.grants: list[tuple[str, str]] = []
         self.revokes: list[tuple[str, str]] = []
-        self.reload_calls = 0
+        self.badge_inventory_events: list[tuple[str, str | None, tuple[str, ...]]] = []
 
     async def _get_player_or_reply(
         self, interaction: _Interaction, player_id: int
@@ -71,8 +72,18 @@ class _Bot:
         self.revokes.append((uuid, badge_id))
         return self.revoke_result
 
-    async def publish_reload_player_data_cache(self) -> None:
-        self.reload_calls += 1
+    async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
+        assert self.player is None or uuid == self.player.uuid
+        return self.updated_player
+
+    async def publish_player_badge_inventory_changed(
+        self,
+        *,
+        uuid_value: str,
+        active_badge: str | None,
+        unlocked_badges: tuple[str, ...],
+    ) -> None:
+        self.badge_inventory_events.append((uuid_value, active_badge, unlocked_badges))
 
     @staticmethod
     def _player_name(player: PlayerRecord) -> str:
@@ -86,13 +97,20 @@ async def test_cmd_badge_grant_grants_badge() -> None:
         grant_result=True,
         revoke_result=False,
     )
+    bot.updated_player = PlayerRecord(
+        pid=7,
+        uuid="uuid-7",
+        nickname="Target",
+        active_badge="translator",
+        unlocked_badges=("translator",),
+    )
     interaction = _Interaction(id=11)
 
     await cmd_badge_grant(cast(Any, bot), cast(Any, interaction), 7, "translator")
 
     assert bot.claims == [("badge-grant", "7:translator")]
     assert bot.grants == [("uuid-7", "translator")]
-    assert bot.reload_calls == 1
+    assert bot.badge_inventory_events == [("uuid-7", "translator", ("translator",))]
     assert interaction.response.sent == [
         ("Granted badge `translator` to `Target`", False)
     ]
@@ -109,7 +127,7 @@ async def test_cmd_badge_grant_reports_existing_badge() -> None:
 
     await cmd_badge_grant(cast(Any, bot), cast(Any, interaction), 7, "translator")
 
-    assert bot.reload_calls == 0
+    assert bot.badge_inventory_events == []
     assert interaction.response.sent == [
         ("Player already has badge `translator`", False)
     ]
@@ -122,13 +140,20 @@ async def test_cmd_badge_revoke_revokes_badge() -> None:
         grant_result=False,
         revoke_result=True,
     )
+    bot.updated_player = PlayerRecord(
+        pid=7,
+        uuid="uuid-7",
+        nickname="Target",
+        active_badge="",
+        unlocked_badges=(),
+    )
     interaction = _Interaction(id=13)
 
     await cmd_badge_revoke(cast(Any, bot), cast(Any, interaction), 7, "translator")
 
     assert bot.claims == [("badge-revoke", "7:translator")]
     assert bot.revokes == [("uuid-7", "translator")]
-    assert bot.reload_calls == 1
+    assert bot.badge_inventory_events == [("uuid-7", "", ())]
     assert interaction.response.sent == [
         ("Revoked badge `translator` from `Target`", False)
     ]
@@ -145,7 +170,7 @@ async def test_cmd_badge_revoke_reports_missing_badge() -> None:
 
     await cmd_badge_revoke(cast(Any, bot), cast(Any, interaction), 7, "translator")
 
-    assert bot.reload_calls == 0
+    assert bot.badge_inventory_events == []
     assert interaction.response.sent == [
         ("Player does not have badge `translator`", False)
     ]

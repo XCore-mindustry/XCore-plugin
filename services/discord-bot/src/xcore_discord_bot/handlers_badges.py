@@ -90,7 +90,13 @@ async def _cmd_badge_change(
     )
 
     if changed:
-        await bot.publish_reload_player_data_cache()
+        updated_player = await bot.find_player_by_uuid(uuid_value)
+        if updated_player is not None:
+            await bot.publish_player_badge_inventory_changed(
+                uuid_value=uuid_value,
+                active_badge=updated_player.active_badge,
+                unlocked_badges=updated_player.unlocked_badges,
+            )
 
     player_name = bot._player_name(player)
     if grant:
