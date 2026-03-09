@@ -26,7 +26,7 @@ class MaintainControllerTest {
         var network = mock(NetworkService.class);
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
-        var sessionService = new SessionService();
+        var sessionService = mock(SessionService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -59,7 +59,7 @@ class MaintainControllerTest {
         var network = mock(NetworkService.class);
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
-        var sessionService = new SessionService();
+        var sessionService = mock(SessionService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -92,7 +92,7 @@ class MaintainControllerTest {
         var network = mock(NetworkService.class);
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
-        var sessionService = new SessionService();
+        var sessionService = mock(SessionService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
