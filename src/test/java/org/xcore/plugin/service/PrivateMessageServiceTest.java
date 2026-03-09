@@ -190,6 +190,18 @@ class PrivateMessageServiceTest {
         PlayerData target = PlayerData.builder().uuid("target-uuid").pid(7).nickname("Target").build();
 
         when(sessionService.getOrLoadFromDb(7)).thenReturn(target);
+        doAnswer(invocation -> {
+            Session session = invocation.getArgument(0);
+            String blockedUuid = invocation.getArgument(1);
+            session.data.blockedPrivateUuids.add(blockedUuid);
+            return true;
+        }).when(sessionService).addBlockedPrivateUuid(same(sender), eq("target-uuid"));
+        doAnswer(invocation -> {
+            Session session = invocation.getArgument(0);
+            String blockedUuid = invocation.getArgument(1);
+            session.data.blockedPrivateUuids.remove(blockedUuid);
+            return true;
+        }).when(sessionService).removeBlockedPrivateUuid(same(sender), eq("target-uuid"));
 
         boolean blocked = privateMessageService.block(sender, 7);
         boolean unblocked = privateMessageService.unblock(sender, 7);
