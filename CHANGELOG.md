@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.6] - 2026-03-10
+
+### Added
+- Redesigned the player statistics menu with a richer profile view, including account creation date, formatted playtime, PvP rating, and aggregated lifetime match stats.
+- Added Hexed progression details to the player profile, including current rank, points, progress to the next rank, and max-rank state.
+- Added a full badge browser so players can view all badges with their descriptions and current unlock or active state.
+- Added admin and console `set-team` command support for moving online players between teams.
+- Added a console `set-gamemode` command for runtime server administration.
+- Added localized strings for the expanded player menu, playtime formatting, badge states, and translator or language selection in English, Russian, Ukrainian, and Belarusian.
+
+### Changed
+- Improved badge rendering by switching badge icons to Mindustry `Iconc` glyphs for more consistent display.
+- Expanded badge browsing from owned badges only to a discoverable list with locked, unlocked, and active state visibility.
+- Improved observer flow so the command clears the current unit before moving the player into spectator state.
+- Reworked player and map persistence to use targeted partial database updates instead of frequent full-document saves.
+
+### Fixed
+- Fixed the `observer` command behavior.
+- Fixed server-side `set-gamemode` command handling.
+- Fixed reliability issues when persisting partial player data updates.
+- Fixed player IP and nickname connection updates so both values are stored together when needed.
+- Fixed badge grant or revoke persistence so active badge and unlocked badge state remain synchronized.
+- Fixed admin confirmation and removal synchronization so in-game admin state and display refresh correctly after moderation socket events.
+- Fixed private-message block and unblock persistence flow to match the new session update behavior.
+
+### Tests
+- Added coverage for connection handling, moderation socket admin flows, session partial-update helpers, aggregated player stats, and localized menu formatting.
+- Updated existing tests for private messages, Redis stream routing, player display behavior, and maintain-controller command behavior.
+
 ## [3.1.5] - 2026-03-07
 
 ### Added
@@ -145,7 +174,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...HEAD
+[3.1.6]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...3.1.6
 [3.1.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...3.1.5
 [3.1.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.3...3.1.4
 [3.1.3]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.2...3.1.3
