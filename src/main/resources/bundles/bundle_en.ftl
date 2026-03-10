@@ -298,13 +298,26 @@ commands-player-description = View a player's Statistics.
 player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
-    { "" }[white]Player statistics for [green]{ $customNickname }[][grey]#{ $pid }[]
-    { "" }[white]Original name: [green]{ $nickname }[] | Admin: [green]{ $admin }[]
-    { "" }[white]System Badge: [green]{ $systemBadge }[] | Active Badge: [green]{ $activeBadge }[]
-    { "" }[white]MiniPvP rating: [green]{ $pvpRating }[] | Hexed Rank: [green]{ $hexedRankTag } { $hexedRankName }[]
-    { "" }[white]PlayTime: [green]{ $totalPlayTime }[] minutes | Show Leaderboard: [green]{ $leaderboard }[]
-    { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
-    { "" }[green]{ $description }[white]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[orange]▸ [accent]Profile[]
+    { "" }[white]Name: [green]{ $nickname }[] | [white]Admin: [green]{ $admin }[]
+    { "" }[white]Active Badge: [green]{ $activeBadge }[] | [white]System Badge: [green]{ $systemBadge }[]
+    { "" }[white]Joined: [green]{ $accountCreated }[]
+    { "" }
+    { "" }[orange]▸ [accent]Game Stats[]
+    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Play Time: [green]{ $totalPlayTime }[]
+    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Points: [green]{ $hexedPoints }[]
+    { "" }[lightgray]{ $hexedProgress }[]
+    { "" }[white]Games: [green]{ $gamesPlayed }[] | [white]Wins: [green]{ $gamesWon }[] | [white]Win Rate: [green]{ $winRate }%[]
+    { "" }
+    { "" }[orange]▸ [accent]Combat[]
+    { "" }[white]Blocks Built: [green]{ $blocksBuilt }[] | [white]Deconstructed: [green]{ $blocksDeconstructed }[]
+    { "" }[white]Blocks Destroyed: [green]{ $blocksDestroyed }[]
+    { "" }[white]Units Produced: [green]{ $unitsProduced }[] | [white]Units Destroyed: [green]{ $unitsDestroyed }[]
 player-menu-players = Players list
 player-menu-players-title = { "[" }orange]{ -xcore } — Players List
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
@@ -323,7 +336,13 @@ player-menu-settings-customNickname = Edit name
 player-menu-settings-customNickname-message = [lightgray]Leave blank to reset
 player-menu-settings-description = Edit description
 player-menu-settings-badges = Badges
+player-menu-player-max-rank = Max rank reached
+player-menu-player-hexed-progress = Hexed progress: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-time-days = { $value }d
+player-menu-time-hours = { $value }h
+player-menu-time-minutes = { $value }m
 settings-language-label = Translation: [green]{ $lang }[]
+settings-translator-label = Translator language: [green]{ $lang }[]
 badge-menu-title = { "[" }orange]{ -xcore } — Badges
 badge-menu-content =
     { "" }[white]System Badge: [green]{ $systemBadge }[]

@@ -299,13 +299,26 @@ commands-player-description = Статистика игрока
 player-menu-player = Игрок
 player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
-    { "" }[white]Статистика игрока [green]{ $customNickname }[][grey]#{ $pid }[]
-    { "" }[white]Оригинальное имя: [green]{ $nickname }[] | Админ: [green]{ $admin }[]
-    { "" }[white]Системный бейдж: [green]{ $systemBadge }[] | Активный бейдж: [green]{ $activeBadge }[]
-    { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг в Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
-    { "" }[white]Время в игре: [green]{ $totalPlayTime }[] минут | Таблица лидеров: [green]{ $leaderboard }[]
-    { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
-    { "" }[green]{ $description }[white]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[orange]▸ [accent]Профиль[]
+    { "" }[white]Имя: [green]{ $nickname }[] | [white]Админ: [green]{ $admin }[]
+    { "" }[white]Активный бейдж: [green]{ $activeBadge }[] | [white]Системный бейдж: [green]{ $systemBadge }[]
+    { "" }[white]На сервере с: [green]{ $accountCreated }[]
+    { "" }
+    { "" }[orange]▸ [accent]Игровая статистика[]
+    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Время в игре: [green]{ $totalPlayTime }[]
+    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Очки: [green]{ $hexedPoints }[]
+    { "" }[lightgray]{ $hexedProgress }[]
+    { "" }[white]Игр: [green]{ $gamesPlayed }[] | [white]Побед: [green]{ $gamesWon }[] | [white]Винрейт: [green]{ $winRate }%[]
+    { "" }
+    { "" }[orange]▸ [accent]Бой[]
+    { "" }[white]Построено блоков: [green]{ $blocksBuilt }[] | [white]Разобрано: [green]{ $blocksDeconstructed }[]
+    { "" }[white]Уничтожено блоков: [green]{ $blocksDestroyed }[]
+    { "" }[white]Произведено юнитов: [green]{ $unitsProduced }[] | [white]Уничтожено юнитов: [green]{ $unitsDestroyed }[]
 player-menu-players = Список игроков
 player-menu-players-title = { "[" }orange]{ -xcore } — Список игроков
 player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
@@ -321,7 +334,13 @@ player-menu-settings-content =
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
 player-menu-settings-badges = Бейджи
+player-menu-player-max-rank = Максимальный ранг достигнут
+player-menu-player-hexed-progress = Прогресс Hexed: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-time-days = { $value }д
+player-menu-time-hours = { $value }ч
+player-menu-time-minutes = { $value }м
 settings-language-label = Перевод: [green]{ $lang }[]
+settings-translator-label = Язык переводчика: [green]{ $lang }[]
 badge-menu-title = { "[" }orange]{ -xcore } — Бейджи
 badge-menu-content =
     { "" }[white]Системный бейдж: [green]{ $systemBadge }[]
@@ -578,6 +597,8 @@ admin = Админ
 admin-neutral = { "[" }orange]Админ
 admin-active = { "[" }green]Админ
 admin-inactive = { "[" }red]Админ
+player-leaderboard-active = { "[" }green]Таблица лидеров
+player-leaderboard-inactive = { "[" }red]Таблица лидеров
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================

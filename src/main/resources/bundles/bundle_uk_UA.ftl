@@ -271,13 +271,32 @@ rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи
 # ==============================================================================
 commands-player-description = Переглянути статистику гравця.
 player-menu-player-content =
-    { "" }[white]Статистика гравця [green]{ $customNickname }[][grey]#{ $pid }[]
-    { "" }[white]Оригінальне ім'я: [green]{ $nickname }[] | Адмін: [green]{ $admin }[]
-    { "" }[white]Системний відзнака: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
-    { "" }[white]Рейтинг MiniPvP: [green]{ $pvpRating }[] | Ранг у Hexed: [green]{ $hexedRankTag } { $hexedRankName }[]
-    { "" }[white]Час у грі: [green]{ $totalPlayTime }[] хвилин | Таблиця лідерів: [green]{ $leaderboard }[]
-    { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
-    { "" }[green]{ $description }[white]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[orange]▸ [accent]Профіль[]
+    { "" }[white]Ім'я: [green]{ $nickname }[] | [white]Адмін: [green]{ $admin }[]
+    { "" }[white]Активний бейдж: [green]{ $activeBadge }[] | [white]Системна відзнака: [green]{ $systemBadge }[]
+    { "" }[white]На сервері з: [green]{ $accountCreated }[]
+    { "" }
+    { "" }[orange]▸ [accent]Ігрова статистика[]
+    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Час у грі: [green]{ $totalPlayTime }[]
+    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Очки: [green]{ $hexedPoints }[]
+    { "" }[lightgray]{ $hexedProgress }[]
+    { "" }[white]Ігор: [green]{ $gamesPlayed }[] | [white]Перемог: [green]{ $gamesWon }[] | [white]Вінрейт: [green]{ $winRate }%[]
+    { "" }
+    { "" }[orange]▸ [accent]Бій[]
+    { "" }[white]Побудовано блоків: [green]{ $blocksBuilt }[] | [white]Розібрано: [green]{ $blocksDeconstructed }[]
+    { "" }[white]Знищено блоків: [green]{ $blocksDestroyed }[]
+    { "" }[white]Вироблено юнітів: [green]{ $unitsProduced }[] | [white]Знищено юнітів: [green]{ $unitsDestroyed }[]
+player-menu-player-max-rank = Досягнуто максимального рангу
+player-menu-player-hexed-progress = Прогрес Hexed: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-time-days = { $value }д
+player-menu-time-hours = { $value }г
+player-menu-time-minutes = { $value }хв
+settings-translator-label = Мова перекладача: [green]{ $lang }[]
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->

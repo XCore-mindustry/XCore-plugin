@@ -8,9 +8,11 @@ import mindustry.gen.Call;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
@@ -19,6 +21,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -35,6 +38,7 @@ public class PlayerMenu extends Menu {
     private static final int BADGE_ICON_RANGE_END = 0xF8FF;
 
     private final PlayerDataRepository playerDataRepository;
+    private final GameDataRepository gameDataRepository;
     private final BundleService bundle;
     private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
@@ -44,11 +48,13 @@ public class PlayerMenu extends Menu {
                       GlobalConfig globalConfig,
                       SessionService sessionService,
                       PlayerDataRepository playerDataRepository,
+                      GameDataRepository gameDataRepository,
                       BundleService bundle,
                       NetworkService network,
                       PlayerDisplayService playerDisplayService) {
         super(config, globalConfig, sessionService);
         this.playerDataRepository = playerDataRepository;
+        this.gameDataRepository = gameDataRepository;
         this.bundle = bundle;
         this.network = network;
         this.playerDisplayService = playerDisplayService;
@@ -72,6 +78,12 @@ public class PlayerMenu extends Menu {
                 ? local.t("no-description") : targetData.description;
         String activeBadge = activeBadgeName(local, targetData);
         String systemBadge = systemBadgeName(local, targetData);
+        String accountCreated = formatTime(targetData.createdModelTime, session);
+        String playTime = formatPlayTime(targetData.totalPlayTime, local);
+        String rankName = local.t("hexed-ranks-" + targetData.hexedRank().name());
+        String hexedProgress = formatHexedProgress(local, targetData);
+        AggregatedPlayerStats gameStats = gameDataRepository.aggregatePlayerStats(targetData.uuid);
+        NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
 
         session.builder()
                 .title("player-menu-player-title")
@@ -82,14 +94,22 @@ public class PlayerMenu extends Menu {
                         "systemBadge", systemBadge,
                         "description", description,
                         "pid", targetData.pid,
-                        "totalPlayTime", targetData.totalPlayTime,
+                        "accountCreated", accountCreated,
+                        "totalPlayTime", playTime,
                         "hexedRankTag", targetData.hexedRank().tag,
-                        "hexedRankName", targetData.hexedRank().name(),
-                        "pvpRating", targetData.pvpRating,
+                        "hexedRankName", rankName,
+                        "hexedProgress", hexedProgress,
+                        "pvpRating", numberFormat.format(targetData.pvpRating),
+                        "gamesPlayed", numberFormat.format(gameStats.gamesPlayed()),
+                        "gamesWon", numberFormat.format(gameStats.gamesWon()),
+                        "winRate", numberFormat.format(gameStats.winRatePercent()),
+                        "blocksBuilt", numberFormat.format(gameStats.blocksBuilt()),
+                        "blocksDeconstructed", numberFormat.format(gameStats.blocksDeconstructed()),
+                        "blocksDestroyed", numberFormat.format(gameStats.blocksDestroyed()),
+                        "unitsProduced", numberFormat.format(gameStats.unitsProduced()),
+                        "unitsDestroyed", numberFormat.format(gameStats.unitsDestroyed()),
                         "admin", targetData.admin ? local.t("yes") : local.t("no"),
-                        "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
-                        "language", targetData.language,
-                        "translatorLanguage", targetData.translatorLanguage
+                        "hexedPoints", numberFormat.format(targetData.hexedPoints)
                 ))
                 .ifAddLocal((isOwner || session.player.admin), "player-menu-settings", () -> {
                     session.pushHistory(() -> player(uuid, targetData));
@@ -102,6 +122,22 @@ public class PlayerMenu extends Menu {
                 })
                 .addNavigationRow()
                 .show();
+    }
+
+    private String formatHexedProgress(Localization local, PlayerData targetData) {
+        var rank = targetData.hexedRank();
+        if (!rank.hasNext()) {
+            return local.t("player-menu-player-max-rank");
+        }
+
+        int currentPoints = targetData.hexedPoints;
+        int requiredPoints = rank.next.requirements.wins();
+        String nextRankName = local.t("hexed-ranks-" + rank.next.name());
+        return local.t("player-menu-player-hexed-progress", args(
+                "currentPoints", currentPoints,
+                "requiredPoints", requiredPoints,
+                "nextRankName", nextRankName
+        ));
     }
 
     public void players(String uuid, int page) {
@@ -216,12 +252,12 @@ public class PlayerMenu extends Menu {
                         });
                         Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
                     })
-                    .addLocal("player-menu-settings-badges", () -> {
-                        session.pushHistory(() -> settings(uuid, targetData));
-                        badges(uuid, targetData);
-                    })
                 .end()
-                .addRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
+                .addLocalRow("player-menu-settings-badges", () -> {
+                    session.pushHistory(() -> settings(uuid, targetData));
+                    badges(uuid, targetData);
+                })
+                .addLocalRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
                     updateLeaderboard(targetData, !targetData.leaderboard);
                     settings(uuid, targetData);
                 })
