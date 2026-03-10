@@ -54,7 +54,7 @@ public class MapVoteHandler {
                         event.winner.name, Groups.player.size(), Strings.capitalize(state.map.plainName()));
             }
 
-            gameDataService.finishGame();
+            gameDataService.finishGame(event.winner);
 
             Map nextMap = maps.getNextMap(ServerControl.instance.lastMode, state.map);
 

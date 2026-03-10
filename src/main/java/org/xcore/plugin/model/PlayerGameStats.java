@@ -38,5 +38,11 @@ public class PlayerGameStats {
     @BsonProperty("units_destroyed")
     public int unitsDestroyed;
 
+    @BsonProperty("played_to_end")
+    public boolean playedToEnd;
+
+    @BsonProperty("placement")
+    public Integer placement;
+
     public boolean isWinner;
 }

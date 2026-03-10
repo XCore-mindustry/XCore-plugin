@@ -271,28 +271,35 @@ rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи
 # ==============================================================================
 commands-player-description = Переглянути статистику гравця.
 player-menu-player-content =
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $customNickname }[] [gray]#{ $pid }[]
     { "" }[lightgray]{ $description }[]
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[orange]▸ [accent]Профіль[]
-    { "" }[white]Ім'я: [green]{ $nickname }[] | [white]Адмін: [green]{ $admin }[]
-    { "" }[white]Активний бейдж: [green]{ $activeBadge }[] | [white]Системна відзнака: [green]{ $systemBadge }[]
-    { "" }[white]На сервері з: [green]{ $accountCreated }[]
+    { "" }[accent]■ Профіль[]
+    { "" }[gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Адмін: [lime]{ $admin }[]
+    { "" }[gray]Відзнака: [white]{ $activeBadge } [darkgray]|[gray] Системна: [coral]{ $systemBadge }[]
+    { "" }[gray]Реєстрація: [white]{ $accountCreated }[]
     { "" }
-    { "" }[orange]▸ [accent]Ігрова статистика[]
-    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Час у грі: [green]{ $totalPlayTime }[]
-    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Очки: [green]{ $hexedPoints }[]
+    { "" }[accent]■ Ігрові рейтинги[]
+    { "" }[gray]Час у грі: [white]{ $totalPlayTime }[]
+    { "" }[gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
     { "" }[lightgray]{ $hexedProgress }[]
-    { "" }[white]Ігор: [green]{ $gamesPlayed }[] | [white]Перемог: [green]{ $gamesWon }[] | [white]Вінрейт: [green]{ $winRate }%[]
     { "" }
-    { "" }[orange]▸ [accent]Бій[]
-    { "" }[white]Побудовано блоків: [green]{ $blocksBuilt }[] | [white]Розібрано: [green]{ $blocksDeconstructed }[]
-    { "" }[white]Знищено блоків: [green]{ $blocksDestroyed }[]
-    { "" }[white]Вироблено юнітів: [green]{ $unitsProduced }[] | [white]Знищено юнітів: [green]{ $unitsDestroyed }[]
+    { "" }[accent]■ Матчі: [white]{ $gamesPlayed } [gray]ігор [darkgray]|[lime] { $gamesWon } [gray]перемог [darkgray]|[sky] { $winRate }% [gray]вінрейт[]
+    { "" }[gray]• [white]PvP: { $pvpSummary }[]
+    { "" }[gray]• [white]Surv: { $survivalSummary }[]
+    { "" }[gray]• [white]Hexed: { $hexedSummary }[]
+    { "" }
+    { "" }[accent]■ Бойова ефективність[]
+    { "" }[gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+    { "" }[gray]Юніти (Створ/Вбито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-player-max-rank = Досягнуто максимального рангу
-player-menu-player-hexed-progress = Прогрес Hexed: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-player-hexed-progress = [gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
+player-menu-player-no-mode-stats = [gray]немає даних[]
+player-menu-player-pvp-summary = [gray]ігор [white]{ $gamesPlayed }[], перемог [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
+player-menu-player-survival-summary = [gray]хвилі: макс [lime]{ $bestWave }[], сер [white]{ $averageWave }[] [gray](забігів: { $gamesPlayed })[]
+player-menu-player-hexed-summary = [gray]матчів [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], краще місце [accent]#{ $bestPlacement }[]
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }г
 player-menu-time-minutes = { $value }хв

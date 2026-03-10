@@ -12,8 +12,9 @@ import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
-import org.xcore.plugin.model.AggregatedPlayerStats;
+import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
@@ -82,7 +83,8 @@ public class PlayerMenu extends Menu {
         String playTime = formatPlayTime(targetData.totalPlayTime, local);
         String rankName = local.t("hexed-ranks-" + targetData.hexedRank().name());
         String hexedProgress = formatHexedProgress(local, targetData);
-        AggregatedPlayerStats gameStats = gameDataRepository.aggregatePlayerStats(targetData.uuid);
+        PlayerStatsOverview statsOverview = gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid);
+        var overallStats = statsOverview.overall();
         NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
 
         session.builder()
@@ -100,14 +102,17 @@ public class PlayerMenu extends Menu {
                         "hexedRankName", rankName,
                         "hexedProgress", hexedProgress,
                         "pvpRating", numberFormat.format(targetData.pvpRating),
-                        "gamesPlayed", numberFormat.format(gameStats.gamesPlayed()),
-                        "gamesWon", numberFormat.format(gameStats.gamesWon()),
-                        "winRate", numberFormat.format(gameStats.winRatePercent()),
-                        "blocksBuilt", numberFormat.format(gameStats.blocksBuilt()),
-                        "blocksDeconstructed", numberFormat.format(gameStats.blocksDeconstructed()),
-                        "blocksDestroyed", numberFormat.format(gameStats.blocksDestroyed()),
-                        "unitsProduced", numberFormat.format(gameStats.unitsProduced()),
-                        "unitsDestroyed", numberFormat.format(gameStats.unitsDestroyed()),
+                        "gamesPlayed", numberFormat.format(overallStats.gamesPlayed()),
+                        "gamesWon", numberFormat.format(overallStats.gamesWon()),
+                        "winRate", numberFormat.format(overallStats.winRatePercent()),
+                        "blocksBuilt", numberFormat.format(overallStats.blocksBuilt()),
+                        "blocksDeconstructed", numberFormat.format(overallStats.blocksDeconstructed()),
+                        "blocksDestroyed", numberFormat.format(overallStats.blocksDestroyed()),
+                        "unitsProduced", numberFormat.format(overallStats.unitsProduced()),
+                        "unitsDestroyed", numberFormat.format(overallStats.unitsDestroyed()),
+                        "pvpSummary", formatPvpSummary(local, statsOverview.pvp(), numberFormat),
+                        "survivalSummary", formatSurvivalSummary(local, statsOverview.survival(), numberFormat),
+                        "hexedSummary", formatHexedSummary(local, statsOverview.hexed(), numberFormat),
                         "admin", targetData.admin ? local.t("yes") : local.t("no"),
                         "hexedPoints", numberFormat.format(targetData.hexedPoints)
                 ))
@@ -122,6 +127,40 @@ public class PlayerMenu extends Menu {
                 })
                 .addNavigationRow()
                 .show();
+    }
+
+    private String formatPvpSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+        if (!stats.hasData()) {
+            return local.t("player-menu-player-no-mode-stats");
+        }
+        return local.t("player-menu-player-pvp-summary", args(
+                "gamesPlayed", numberFormat.format(stats.gamesPlayed()),
+                "gamesWon", numberFormat.format(stats.gamesWon()),
+                "winRate", numberFormat.format(stats.winRatePercent())
+        ));
+    }
+
+    private String formatSurvivalSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+        if (!stats.hasData()) {
+            return local.t("player-menu-player-no-mode-stats");
+        }
+        return local.t("player-menu-player-survival-summary", args(
+                "gamesPlayed", numberFormat.format(stats.gamesPlayed()),
+                "bestWave", numberFormat.format(stats.bestWave()),
+                "averageWave", numberFormat.format(stats.averageWave())
+        ));
+    }
+
+    private String formatHexedSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+        if (!stats.hasData()) {
+            return local.t("player-menu-player-no-mode-stats");
+        }
+        return local.t("player-menu-player-hexed-summary", args(
+                "gamesPlayed", numberFormat.format(stats.gamesPlayed()),
+                "gamesWon", numberFormat.format(stats.gamesWon()),
+                "bestPlacement", numberFormat.format(stats.bestPlacement()),
+                "top3Finishes", numberFormat.format(stats.top3Finishes())
+        ));
     }
 
     private String formatHexedProgress(Localization local, PlayerData targetData) {

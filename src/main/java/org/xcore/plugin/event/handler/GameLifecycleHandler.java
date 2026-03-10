@@ -9,6 +9,7 @@ import jakarta.inject.Singleton;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
 import mindustry.game.Rules;
+import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.io.JsonIO;
@@ -18,7 +19,9 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.localization.BundleService;
+import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.session.Session;
@@ -38,19 +41,22 @@ public class GameLifecycleHandler {
     private final BundleService bundleService;
     private final SessionService sessionService;
     private final PluginState pluginState;
+    private final GameDataService gameDataService;
 
     @Inject
     public GameLifecycleHandler(MapDataRepository mapDataRepository,
                                 NetworkService network,
                                 Config config,
                                 BundleService bundleService, SessionService sessionService,
-                                PluginState pluginState) {
+                                PluginState pluginState,
+                                GameDataService gameDataService) {
         this.mapDataRepository = mapDataRepository;
         this.network = network;
         this.config = config;
         this.bundleService = bundleService;
         this.sessionService = sessionService;
         this.pluginState = pluginState;
+        this.gameDataService = gameDataService;
     }
 
     public void onPlayEvent(PlayEvent event) {
@@ -124,9 +130,34 @@ public class GameLifecycleHandler {
     }
 
     public void onWorldReload(String event) {
+        if (event == null || event.isBlank()) {
+            return;
+        }
+
+        if (event.startsWith("rvsb_game_over:")) {
+            handleRvsbGameOver(event.substring("rvsb_game_over:".length()));
+            return;
+        }
+
         if ((event.equals("rvsb_world-reload") || event.equals("rvsb-world-reload") || event.equals("hexed_world-reload")) && pluginState.restartOnGameOver) {
             restart();
         }
+    }
+
+    private void handleRvsbGameOver(String winnerName) {
+        if (winnerName == null || winnerName.isBlank()) {
+            gameDataService.finishGame(null, FinishReason.NATURAL);
+            return;
+        }
+
+        Team winner = null;
+        for (var team : Team.all) {
+            if (team != null && winnerName.equalsIgnoreCase(team.name)) {
+                winner = team;
+                break;
+            }
+        }
+        gameDataService.finishGame(winner, FinishReason.NATURAL);
     }
 
     private void restart() {

@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.model.enums.FinishReason;
+import org.xcore.plugin.model.enums.GameStatsCategory;
 import org.xcore.plugin.model.enums.VictoryType;
 
 import java.util.ArrayList;
@@ -42,6 +43,15 @@ public class GameData extends ModelData {
     public int wavesReached;
     @BsonProperty("winning_team")
     public String winningTeam;
+
+    @BsonProperty("stats_category")
+    @Builder.Default public GameStatsCategory statsCategory = GameStatsCategory.OTHER;
+
+    @BsonProperty("is_ranked")
+    @Builder.Default public boolean ranked = false;
+
+    @BsonProperty("counted_in_stats")
+    @Builder.Default public boolean countedInStats = false;
 
     @BsonProperty("finish_reason")
     @Builder.Default public FinishReason finishReason = FinishReason.NATURAL;

@@ -28,11 +28,15 @@ import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
+import org.xcore.plugin.service.GameDataService;
 
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -55,6 +59,7 @@ public class MiniHexedService {
     private final BundleService bundle;
     private final LeaderboardService leaderboardService;
     private final PlayerDisplayService playerDisplayService;
+    private final GameDataService gameDataService;
 
     private static boolean gameover = false;
 
@@ -65,7 +70,8 @@ public class MiniHexedService {
                             NetworkService networkService,
                             BundleService bundle,
                             LeaderboardService leaderboardService,
-                            PlayerDisplayService playerDisplayService) {
+                            PlayerDisplayService playerDisplayService,
+                            GameDataService gameDataService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
@@ -73,6 +79,7 @@ public class MiniHexedService {
         this.bundle = bundle;
         this.leaderboardService = leaderboardService;
         this.playerDisplayService = playerDisplayService;
+        this.gameDataService = gameDataService;
     }
 
     @PostConstruct
@@ -197,8 +204,13 @@ public class MiniHexedService {
     private void endGame() {
         winScore = 1800;
         gameover = true;
-        var teams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        var rankedTeams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
+        Map<String, Integer> placements = buildPlacements(rankedTeams);
+        var teams = rankedTeams.copy();
         teams.truncate(3);
+
+        gameDataService.applyPlacements(placements);
+        gameDataService.finishGame(teams.isEmpty() ? null : teams.first().team, FinishReason.NATURAL);
 
         if (!teams.isEmpty()) {
             var winnerTeam = teams.get(0);
@@ -250,6 +262,16 @@ public class MiniHexedService {
 
         Events.fire("hexed_world-reload");
         Timer.schedule(this::reloadMap, 10);
+    }
+
+    private Map<String, Integer> buildPlacements(Seq<Teams.TeamData> teams) {
+        Map<String, Integer> placements = new HashMap<>();
+        for (int i = 0; i < teams.size; i++) {
+            var team = teams.get(i);
+            int placement = i + 1;
+            team.players.each(player -> placements.put(player.uuid(), placement));
+        }
+        return placements;
     }
 
     private void reloadMap() {

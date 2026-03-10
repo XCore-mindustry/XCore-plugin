@@ -12,9 +12,13 @@ import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.GameStateService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.model.enums.FinishReason;
+import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
+import mindustry.gen.Groups;
+
 import static mindustry.Vars.state;
 import static mindustry.Vars.world;
 
@@ -28,6 +32,7 @@ public class VoteRtv extends VoteSession {
     private final SessionService sessionService;
     private final VoteService voteService;
     private final GameStateService gameStateService;
+    private final GameDataService gameDataService;
 
     @Inject
     public VoteRtv(
@@ -38,7 +43,8 @@ public class VoteRtv extends VoteSession {
             GlobalConfig globalConfig,
             SessionService sessionService,
             VoteService voteService,
-            GameStateService gameStateService) {
+            GameStateService gameStateService,
+            GameDataService gameDataService) {
         super(globalConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
@@ -47,6 +53,7 @@ public class VoteRtv extends VoteSession {
         this.sessionService = sessionService;
         this.voteService = voteService;
         this.gameStateService = gameStateService;
+        this.gameDataService = gameDataService;
     }
 
     @Override
@@ -98,8 +105,19 @@ public class VoteRtv extends VoteSession {
             mapDataRepository.bumpPopularity(targetMapStats.id, 2.0);
         }
 
-        Timer.schedule(() -> gameStateService.reloadWorld(() ->
-                        world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode"))))),
+        Timer.schedule(() -> {
+                    gameDataService.finishGame(null, FinishReason.RTV);
+                    gameStateService.reloadWorld(() ->
+                                    world.loadMap(target, target.applyRules(Gamemode.valueOf(Core.settings.getString("lastServerMode")))),
+                            () -> {
+                                gameDataService.startNewGame(
+                                        mapDataRepository.findOrCreate(target.plainName(), target.file.name(), target.author(), state.rules.mode().name()),
+                                        state.rules.modeName,
+                                        null
+                                );
+                                Groups.player.each(gameDataService::addPlayer);
+                            });
+                },
                 globalConfig.mapSwitchDelaySeconds);
     }
 

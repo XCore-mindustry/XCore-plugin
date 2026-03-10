@@ -299,25 +299,29 @@ player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
     { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[accent]{ $customNickname }[][gray] #{ $pid }[]
     { "" }[lightgray]{ $description }[]
     { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
     { "" }[orange]▸ [accent]Profile[]
-    { "" }[white]Name: [green]{ $nickname }[] | [white]Admin: [green]{ $admin }[]
-    { "" }[white]Active Badge: [green]{ $activeBadge }[] | [white]System Badge: [green]{ $systemBadge }[]
-    { "" }[white]Joined: [green]{ $accountCreated }[]
+    { "" }[lightgray]Name:[white] { $nickname }[]   [lightgray]Admin:[accent] { $admin }[]
+    { "" }[lightgray]Badge:[white] { $activeBadge }[]   [lightgray]System:[accent] { $systemBadge }[]
+    { "" }[lightgray]Joined:[white] { $accountCreated }[]
     { "" }
     { "" }[orange]▸ [accent]Game Stats[]
-    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Play Time: [green]{ $totalPlayTime }[]
-    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Points: [green]{ $hexedPoints }[]
+    { "" }[lightgray]MiniPvP rating:[accent] { $pvpRating }[]   [lightgray]Play time:[white] { $totalPlayTime }[]
+    { "" }[lightgray]Hexed rank:[accent] { $hexedRankTag } { $hexedRankName }[]   [lightgray]Points:[white] { $hexedPoints }[]
     { "" }[lightgray]{ $hexedProgress }[]
-    { "" }[white]Games: [green]{ $gamesPlayed }[] | [white]Wins: [green]{ $gamesWon }[] | [white]Win Rate: [green]{ $winRate }%[]
+    { "" }[lightgray]Total matches:[white] { $gamesPlayed }[]   [lightgray]Wins:[accent] { $gamesWon }[]   [lightgray]Win rate:[accent] { $winRate }%[]
+    { "" }
+    { "" }[gray]• PvP:[white] { $pvpSummary }[]
+    { "" }[gray]• Survival:[white] { $survivalSummary }[]
+    { "" }[gray]• Hexed:[white] { $hexedSummary }[]
     { "" }
     { "" }[orange]▸ [accent]Combat[]
-    { "" }[white]Blocks Built: [green]{ $blocksBuilt }[] | [white]Deconstructed: [green]{ $blocksDeconstructed }[]
-    { "" }[white]Blocks Destroyed: [green]{ $blocksDestroyed }[]
-    { "" }[white]Units Produced: [green]{ $unitsProduced }[] | [white]Units Destroyed: [green]{ $unitsDestroyed }[]
+    { "" }[lightgray]Blocks built:[white] { $blocksBuilt }[]   [lightgray]Deconstructed:[white] { $blocksDeconstructed }[]
+    { "" }[lightgray]Blocks destroyed:[accent] { $blocksDestroyed }[]
+    { "" }[lightgray]Units produced:[white] { $unitsProduced }[]   [lightgray]Units destroyed:[accent] { $unitsDestroyed }[]
 player-menu-players = Players list
 player-menu-players-title = { "[" }orange]{ -xcore } — Players List
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
@@ -338,6 +342,10 @@ player-menu-settings-description = Edit description
 player-menu-settings-badges = Badges
 player-menu-player-max-rank = Max rank reached
 player-menu-player-hexed-progress = Hexed progress: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-player-no-mode-stats = [gray]no data[]
+player-menu-player-pvp-summary = [lightgray]{ $gamesPlayed } games[], wins [accent]{ $gamesWon }[], win rate [accent]{ $winRate }%[]
+player-menu-player-survival-summary = [lightgray]{ $gamesPlayed } runs[], best wave [accent]{ $bestWave }[], average [white]{ $averageWave }[]
+player-menu-player-hexed-summary = [lightgray]{ $gamesPlayed } matches[], wins [accent]{ $gamesWon }[], best place [accent]#{ $bestPlacement }[], top 3 [white]{ $top3Finishes }[]
 player-menu-time-days = { $value }d
 player-menu-time-hours = { $value }h
 player-menu-time-minutes = { $value }m

@@ -299,26 +299,29 @@ commands-player-description = Статистика игрока
 player-menu-player = Игрок
 player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[green]{ $customNickname }[][grey] #{ $pid }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $customNickname }[] [gray]#{ $pid }[]
     { "" }[lightgray]{ $description }[]
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[orange]▸ [accent]Профиль[]
-    { "" }[white]Имя: [green]{ $nickname }[] | [white]Админ: [green]{ $admin }[]
-    { "" }[white]Активный бейдж: [green]{ $activeBadge }[] | [white]Системный бейдж: [green]{ $systemBadge }[]
-    { "" }[white]На сервере с: [green]{ $accountCreated }[]
+    { "" }[accent]■ Профиль[]
+    { "" }[gray]Имя: [white]{ $nickname } [darkgray]|[gray] Админ: [lime]{ $admin }[]
+    { "" }[gray]Бейдж: [white]{ $activeBadge } [darkgray]|[gray] Системный: [coral]{ $systemBadge }[]
+    { "" }[gray]Регистрация: [white]{ $accountCreated }[]
     { "" }
-    { "" }[orange]▸ [accent]Игровая статистика[]
-    { "" }[white]MiniPvP: [green]{ $pvpRating }[] | [white]Время в игре: [green]{ $totalPlayTime }[]
-    { "" }[white]Hexed: [green]{ $hexedRankTag } { $hexedRankName }[] | [white]Очки: [green]{ $hexedPoints }[]
+    { "" }[accent]■ Игровые рейтинги[]
+    { "" }[gray]Время в игре: [white]{ $totalPlayTime }[]
+    { "" }[gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
     { "" }[lightgray]{ $hexedProgress }[]
-    { "" }[white]Игр: [green]{ $gamesPlayed }[] | [white]Побед: [green]{ $gamesWon }[] | [white]Винрейт: [green]{ $winRate }%[]
     { "" }
-    { "" }[orange]▸ [accent]Бой[]
-    { "" }[white]Построено блоков: [green]{ $blocksBuilt }[] | [white]Разобрано: [green]{ $blocksDeconstructed }[]
-    { "" }[white]Уничтожено блоков: [green]{ $blocksDestroyed }[]
-    { "" }[white]Произведено юнитов: [green]{ $unitsProduced }[] | [white]Уничтожено юнитов: [green]{ $unitsDestroyed }[]
+    { "" }[accent]■ Матчи: [white]{ $gamesPlayed } [gray]игр [darkgray]|[lime] { $gamesWon } [gray]побед [darkgray]|[sky] { $winRate }% [gray]винрейт[]
+    { "" }[gray]• [white]PvP: { $pvpSummary }[]
+    { "" }[gray]• [white]Surv: { $survivalSummary }[]
+    { "" }[gray]• [white]Hexed: { $hexedSummary }[]
+    { "" }
+    { "" }[accent]■ Боевая эффективность[]
+    { "" }[gray]Блоки (Стр/Разб/Уничт): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+    { "" }[gray]Юниты (Созд/Убито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-players = Список игроков
 player-menu-players-title = { "[" }orange]{ -xcore } — Список игроков
 player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
@@ -335,7 +338,11 @@ player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор 
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
 player-menu-settings-badges = Бейджи
 player-menu-player-max-rank = Максимальный ранг достигнут
-player-menu-player-hexed-progress = Прогресс Hexed: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-player-hexed-progress = [gray]До [white]{ $nextRankName } [gray]осталось побед: [accent]{ $requiredPoints }[]
+player-menu-player-no-mode-stats = [gray]нет данных[]
+player-menu-player-pvp-summary = [gray]игр [white]{ $gamesPlayed }[], побед [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
+player-menu-player-survival-summary = [gray]волны: макс [lime]{ $bestWave }[], ср [white]{ $averageWave }[] [gray](забегов: { $gamesPlayed })[]
+player-menu-player-hexed-summary = [gray]матчей [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], лучшее место [accent]#{ $bestPlacement }[]
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }ч
 player-menu-time-minutes = { $value }м

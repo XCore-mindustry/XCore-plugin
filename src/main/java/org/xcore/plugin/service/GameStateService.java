@@ -12,6 +12,10 @@ import mindustry.net.WorldReloader;
 @Singleton
 public class GameStateService {
     public void reloadWorld(Runnable loadAction) {
+        reloadWorld(loadAction, null);
+    }
+
+    public void reloadWorld(Runnable loadAction, Runnable afterLoadAction) {
         try {
             var reloader = new WorldReloader();
             reloader.begin();
@@ -22,6 +26,9 @@ public class GameStateService {
                     Gamemode.valueOf(Core.settings.getString("lastServerMode"))
             );
             Vars.logic.play();
+            if (afterLoadAction != null) {
+                afterLoadAction.run();
+            }
             reloader.end();
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
