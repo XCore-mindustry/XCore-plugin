@@ -295,11 +295,11 @@ player-menu-player-content =
     { "" }[gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
     { "" }[gray]Юніти (Створ/Вбито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-player-max-rank = Досягнуто максимального рангу
-player-menu-player-hexed-progress = [gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
-player-menu-player-no-mode-stats = [gray]немає даних[]
-player-menu-player-pvp-summary = [gray]ігор [white]{ $gamesPlayed }[], перемог [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
-player-menu-player-survival-summary = [gray]хвилі: макс [lime]{ $bestWave }[], сер [white]{ $averageWave }[] [gray](забігів: { $gamesPlayed })[]
-player-menu-player-hexed-summary = [gray]матчів [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], краще місце [accent]#{ $bestPlacement }[]
+player-menu-player-hexed-progress = { "[" }gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
+player-menu-player-no-mode-stats = { "[" }gray]немає даних[]
+player-menu-player-pvp-summary = { "[" }gray]ігор [white]{ $gamesPlayed }[], перемог [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
+player-menu-player-survival-summary = { "[" }gray]хвилі: макс [lime]{ $bestWave }[], сер [white]{ $averageWave }[] [gray](забігів: { $gamesPlayed })[]
+player-menu-player-hexed-summary = { "[" }gray]матчів [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], краще місце [accent]#{ $bestPlacement }[]
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }г
 player-menu-time-minutes = { $value }хв
