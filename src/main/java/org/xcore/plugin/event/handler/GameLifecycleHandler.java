@@ -124,7 +124,7 @@ public class GameLifecycleHandler {
     }
 
     public void onWorldReload(String event) {
-        if ((event.equals("rvsb_world-reload") || event.equals("hexed_world-reload")) && pluginState.restartOnGameOver) {
+        if ((event.equals("rvsb_world-reload") || event.equals("rvsb-world-reload") || event.equals("hexed_world-reload")) && pluginState.restartOnGameOver) {
             restart();
         }
     }
