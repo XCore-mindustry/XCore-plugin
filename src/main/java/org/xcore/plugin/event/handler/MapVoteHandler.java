@@ -18,6 +18,7 @@ import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.GameDataService;
+import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.ui.menu.MapMenu;
 import static mindustry.Vars.*;
 
@@ -29,6 +30,7 @@ public class MapVoteHandler {
     private final GameDataService gameDataService;
     private final EventDataRepository eventDataRepository;
     private final Config config;
+    private final MapService mapService;
 
 
     @Inject
@@ -36,12 +38,14 @@ public class MapVoteHandler {
                           Provider<MapMenu> mapMenu,
                           GameDataService gameDataService,
                           EventDataRepository eventDataRepository,
-                          Config config) {
+                          Config config,
+                          MapService mapService) {
         this.mapDataRepository = mapDataRepository;
         this.mapMenu = mapMenu;
         this.gameDataService = gameDataService;
         this.eventDataRepository = eventDataRepository;
         this.config = config;
+        this.mapService = mapService;
     }
 
     public Cons<GameOverEvent> getGameOverListener() {
@@ -56,7 +60,7 @@ public class MapVoteHandler {
 
             gameDataService.finishGame(event.winner);
 
-            Map nextMap = maps.getNextMap(ServerControl.instance.lastMode, state.map);
+            Map nextMap = mapService.resolveNextMap(ServerControl.instance.lastMode, state.map);
 
             if (nextMap != null) {
                 state.gameOver = true;

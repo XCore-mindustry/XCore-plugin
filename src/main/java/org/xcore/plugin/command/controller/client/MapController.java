@@ -62,14 +62,14 @@ public class MapController implements CloudClientController {
 
     @Command("rtv [map]")
     public void rtv(XCoreSender sender, @Argument("map") Map map) {
-        Map target = map != null ? map : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+        Map target = map != null ? map : mapService.resolveNextMap(Vars.state.rules.mode(), Vars.state.map);
         mapService.startRtvSession(sender.player(), target, map != null, false);
     }
 
     @Permission("admin")
     @Command("artv [map]")
     public void artv(XCoreSender sender, @Argument("map") Map map) {
-        Map target = map != null ? map : Vars.maps.getNextMap(Vars.state.rules.mode(), Vars.state.map);
+        Map target = map != null ? map : mapService.resolveNextMap(Vars.state.rules.mode(), Vars.state.map);
         mapService.startRtvSession(sender.player(), target, map != null, true);
     }
 

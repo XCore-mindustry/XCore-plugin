@@ -88,6 +88,15 @@ public class MapService {
         );
     }
 
+    public Map resolveNextMap(Gamemode mode, Map previous) {
+        Map eventMap = findActiveEventMap();
+        if (eventMap != null) {
+            return eventMap;
+        }
+
+        return maps.getNextMap(mode, previous);
+    }
+
     public <T> T findInSeq(String nameOrIndex, Seq<T> values, Boolf<T> filter) {
         int index = Strings.parseInt(nameOrIndex, -1) - 1;
         if (index >= 0 && index < values.size) {
@@ -195,6 +204,32 @@ public class MapService {
                 state.rules.mode().name()
         );
         return event.map.equals(mapData.id);
+    }
+
+    private Map findActiveEventMap() {
+        if (!config.isEvent()) {
+            return null;
+        }
+
+        EventData event = eventDataRepository.findActive().orElse(null);
+        if (event == null || !event.isActive) {
+            return null;
+        }
+
+        MapData mapData = mapDataRepository.findById(event.map);
+        if (mapData == null) {
+            return null;
+        }
+
+        Map byFileName = findMapByFileName(mapData.fileName);
+        if (byFileName != null) {
+            return byFileName;
+        }
+
+        return getAvailableMaps().find(map ->
+                map.plainName().equals(mapData.name)
+                        && map.author().equals(mapData.author)
+        );
     }
 
     private void switchMapImmediately(Map target) {
