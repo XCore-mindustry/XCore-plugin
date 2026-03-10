@@ -298,30 +298,29 @@ commands-player-description = View a player's Statistics.
 player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[accent]{ $customNickname }[][gray] #{ $pid }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $customNickname }[] [gray]#{ $pid }[]
     { "" }[lightgray]{ $description }[]
-    { "" }[orange]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[orange]▸ [accent]Profile[]
-    { "" }[lightgray]Name:[white] { $nickname }[]   [lightgray]Admin:[accent] { $admin }[]
-    { "" }[lightgray]Badge:[white] { $activeBadge }[]   [lightgray]System:[accent] { $systemBadge }[]
-    { "" }[lightgray]Joined:[white] { $accountCreated }[]
+    { "" }[accent]■ Profile[]
+    { "" }[gray]Name: [white]{ $nickname } [darkgray]|[gray] Admin: [lime]{ $admin }[]
+    { "" }[gray]Badge: [white]{ $activeBadge } [darkgray]|[gray] System: [coral]{ $systemBadge }[]
+    { "" }[gray]Joined: [white]{ $accountCreated }[]
     { "" }
-    { "" }[orange]▸ [accent]Game Stats[]
-    { "" }[lightgray]MiniPvP rating:[accent] { $pvpRating }[]   [lightgray]Play time:[white] { $totalPlayTime }[]
-    { "" }[lightgray]Hexed rank:[accent] { $hexedRankTag } { $hexedRankName }[]   [lightgray]Points:[white] { $hexedPoints }[]
+    { "" }[accent]■ Game Ratings[]
+    { "" }[gray]Play time: [white]{ $totalPlayTime }[]
+    { "" }[gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } pts)[]
     { "" }[lightgray]{ $hexedProgress }[]
-    { "" }[lightgray]Total matches:[white] { $gamesPlayed }[]   [lightgray]Wins:[accent] { $gamesWon }[]   [lightgray]Win rate:[accent] { $winRate }%[]
     { "" }
-    { "" }[gray]• PvP:[white] { $pvpSummary }[]
-    { "" }[gray]• Survival:[white] { $survivalSummary }[]
-    { "" }[gray]• Hexed:[white] { $hexedSummary }[]
+    { "" }[accent]■ Matches: [white]{ $gamesPlayed } [gray]games [darkgray]|[lime] { $gamesWon } [gray]wins [darkgray]|[sky] { $winRate }% [gray]win rate[]
+    { "" }[gray]• [white]PvP: { $pvpSummary }[]
+    { "" }[gray]• [white]Surv: { $survivalSummary }[]
+    { "" }[gray]• [white]Hexed: { $hexedSummary }[]
     { "" }
-    { "" }[orange]▸ [accent]Combat[]
-    { "" }[lightgray]Blocks built:[white] { $blocksBuilt }[]   [lightgray]Deconstructed:[white] { $blocksDeconstructed }[]
-    { "" }[lightgray]Blocks destroyed:[accent] { $blocksDestroyed }[]
-    { "" }[lightgray]Units produced:[white] { $unitsProduced }[]   [lightgray]Units destroyed:[accent] { $unitsDestroyed }[]
+    { "" }[accent]■ Combat Efficiency[]
+    { "" }[gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+    { "" }[gray]Units (Prod/Kills): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-players = Players list
 player-menu-players-title = { "[" }orange]{ -xcore } — Players List
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
@@ -341,11 +340,11 @@ player-menu-settings-customNickname-message = [lightgray]Leave blank to reset
 player-menu-settings-description = Edit description
 player-menu-settings-badges = Badges
 player-menu-player-max-rank = Max rank reached
-player-menu-player-hexed-progress = Hexed progress: { $currentPoints }/{ $requiredPoints } -> { $nextRankName }
+player-menu-player-hexed-progress = [gray]Wins needed for [white]{ $nextRankName }[gray]: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = [gray]no data[]
-player-menu-player-pvp-summary = [lightgray]{ $gamesPlayed } games[], wins [accent]{ $gamesWon }[], win rate [accent]{ $winRate }%[]
-player-menu-player-survival-summary = [lightgray]{ $gamesPlayed } runs[], best wave [accent]{ $bestWave }[], average [white]{ $averageWave }[]
-player-menu-player-hexed-summary = [lightgray]{ $gamesPlayed } matches[], wins [accent]{ $gamesWon }[], best place [accent]#{ $bestPlacement }[], top 3 [white]{ $top3Finishes }[]
+player-menu-player-pvp-summary = [gray]games [white]{ $gamesPlayed }[], wins [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
+player-menu-player-survival-summary = [gray]waves: max [lime]{ $bestWave }[], avg [white]{ $averageWave }[] [gray](runs: { $gamesPlayed })[]
+player-menu-player-hexed-summary = [gray]matches [white]{ $gamesPlayed }[], top-1 [lime]{ $gamesWon }[], best place [accent]#{ $bestPlacement }[]
 player-menu-time-days = { $value }d
 player-menu-time-hours = { $value }h
 player-menu-time-minutes = { $value }m
