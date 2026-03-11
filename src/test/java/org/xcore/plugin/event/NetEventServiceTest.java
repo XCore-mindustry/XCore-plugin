@@ -5,6 +5,7 @@ import mindustry.gen.Player;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.integration.AdminModIntegration;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.IngressService;
 import org.xcore.plugin.service.ChatFormatService;
@@ -22,8 +23,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyMap;
 
 class NetEventServiceTest {
 
@@ -39,6 +40,7 @@ class NetEventServiceTest {
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         BanMenu banMenu = mock(BanMenu.class);
+        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
 
         NetEventService service = new NetEventService(
                 sessionService,
@@ -50,6 +52,7 @@ class NetEventServiceTest {
                 ingressService,
                 chatFormatService,
                 banMenu,
+                adminModIntegration,
                 new Gson()
         );
 

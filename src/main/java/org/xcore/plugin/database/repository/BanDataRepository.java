@@ -9,6 +9,7 @@ import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.BanData;
+import org.bson.conversions.Bson;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
@@ -22,21 +23,38 @@ public class BanDataRepository extends DataRepository<BanData> {
     }
 
     public BanData find(String uuid, String ip) {
-        return collection.find(or(eq("uuid", uuid), eq("ip", ip))).first();
+        var filter = identifierFilter(uuid, ip);
+        if (filter == null) {
+            return null;
+        }
+        return collection.find(filter).first();
     }
 
     @Override
     public boolean save(BanData data) {
+        if (data == null) {
+            return false;
+        }
         if (isReadOnly()) {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
             return false;
         }
-        collection.replaceOne(or(eq("uuid", data.uuid), eq("ip", data.ip)), data, new ReplaceOptions().upsert(true));
+
+        var filter = identifierFilter(data.uuid, data.ip);
+        if (filter == null) {
+            return false;
+        }
+
+        collection.replaceOne(filter, data, new ReplaceOptions().upsert(true));
         return true;
     }
 
-    public void delete(String uuid, String ip) {
-        collection.deleteMany(or(eq("uuid", uuid), eq("ip", ip)));
+    public boolean delete(String uuid, String ip) {
+        var filter = identifierFilter(uuid, ip);
+        if (filter == null) {
+            return false;
+        }
+        return collection.deleteMany(filter).getDeletedCount() > 0;
     }
 
     public PagedDataResult<BanData> search(String value, int limit, int page) {
@@ -56,5 +74,18 @@ public class BanDataRepository extends DataRepository<BanData> {
 
     public Iterable<BanData> findAll() {
         return collection.find();
+    }
+
+    private static Bson identifierFilter(String uuid, String ip) {
+        if (uuid != null && ip != null) {
+            return or(eq("uuid", uuid), eq("ip", ip));
+        }
+        if (uuid != null) {
+            return eq("uuid", uuid);
+        }
+        if (ip != null) {
+            return eq("ip", ip);
+        }
+        return null;
     }
 }

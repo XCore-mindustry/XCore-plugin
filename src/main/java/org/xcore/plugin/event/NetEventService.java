@@ -20,6 +20,7 @@ import mindustry.net.Administration.TraceInfo;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.integration.AdminModIntegration;
 import org.xcore.plugin.service.*;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.BanRequestData;
@@ -50,6 +51,7 @@ public class NetEventService {
     private final IngressService ingressService;
     private final ChatFormatService chatFormatService;
     private final BanMenu banMenu;
+    private final AdminModIntegration adminModIntegration;
     private final Gson rawGson;
 
     @Inject
@@ -60,6 +62,7 @@ public class NetEventService {
                            IngressService ingressService,
                            ChatFormatService chatFormatService,
                            BanMenu banMenu,
+                           AdminModIntegration adminModIntegration,
                            @Named("raw") Gson rawGson) {
         this.sessionService = sessionService;
         this.config = config;
@@ -70,6 +73,7 @@ public class NetEventService {
         this.ingressService = ingressService;
         this.chatFormatService = chatFormatService;
         this.banMenu = banMenu;
+        this.adminModIntegration = adminModIntegration;
         this.rawGson = rawGson;
     }
 
@@ -134,12 +138,7 @@ public class NetEventService {
 
                 if (adminSession.data.adminModVersion != null) {
                     target.kick(Packets.KickReason.banned);
-                    netServer.admins.banPlayerID(target.uuid());
-                    sessionService.broadcast("tempban-player-banned", args(
-                            "adminName", admin.coloredName(),
-                            "playerName", target.coloredName()));
-                    Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
-
+                    adminModIntegration.holdVanillaBan(target.uuid());
                     String banJson = rawGson.toJson(new BanRequestData(targetSession.data.pid, target.coloredName()));
                     Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
                 } else {

@@ -1,22 +1,19 @@
 package org.xcore.plugin.integration;
 
 import arc.util.Log;
+import arc.struct.ObjectSet;
 import com.google.gson.Gson;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
+import org.xcore.plugin.service.moderation.ModerationService;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.service.TimeService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.database.repository.BanDataRepository;
-import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.common.VersionComparator;
-import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.BanRequestData;
 
-import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -26,25 +23,20 @@ import static mindustry.Vars.netServer;
 public class AdminModIntegration {
 
     private final PlayerDataRepository playerDataRepository;
-    private final BanDataRepository banDataRepository;
     private final SessionService sessionService;
-    private final NetworkService network;
+    private final ModerationService moderationService;
     private final Gson rawGson;
-    private final TimeService time;
+    private final ObjectSet<String> pendingVanillaBanUuids = new ObjectSet<>();
 
     @Inject
     public AdminModIntegration(PlayerDataRepository playerDataRepository,
-                               BanDataRepository banDataRepository,
                                SessionService sessionService,
-                               NetworkService network,
-                               @Named("raw") Gson rawGson,
-                               TimeService timeService) {
+                               ModerationService moderationService,
+                               @Named("raw") Gson rawGson) {
         this.playerDataRepository = playerDataRepository;
-        this.banDataRepository = banDataRepository;
         this.sessionService = sessionService;
-        this.network = network;
+        this.moderationService = moderationService;
         this.rawGson = rawGson;
-        this.time = timeService;
     }
 
     @PostConstruct
@@ -71,37 +63,51 @@ public class AdminModIntegration {
                 return;
             }
 
-            Instant date = time.parsePeriod(req.duration, TimeUnit.DAYS);
+            var duration = moderationService.parsePeriod(req.duration, TimeUnit.DAYS);
 
-            if (date == null) {
+            if (duration == null) {
                 session.locale().send("error-wrong-period-format", args());
                 Call.clientPacketReliable(player.con, "give_ban_data", content);
                 return;
             }
 
-            netServer.admins.unbanPlayerID(targetData.uuid);
+            var result = moderationService.banById(req.pid, player.name, req.reason, duration, true);
 
-            var ban = BanData.builder()
-                    .name(req.name)
-                    .uuid(targetData.uuid)
-                    .ip(targetData.ip)
-                    .adminName(player.name)
-                    .reason(req.reason)
-                    .expireDate(Instant.now().plusMillis(date.toEpochMilli()))
-                    .build();
-            network.post(ban);
-            banDataRepository.save(ban);
+            if (!result.isSuccess() || result.getData().isEmpty()) {
+                session.locale().send("error-processing-request", args());
+                Call.clientPacketReliable(player.con, "give_ban_data", content);
+                return;
+            }
+
+            clearPendingVanillaBan(targetData.uuid);
+            sessionService.broadcast("tempban-player-banned", args(
+                    "adminName", player.coloredName(),
+                    "playerName", req.name != null ? req.name : targetData.nickname
+            ));
+            Log.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
+            session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
         });
 
         netServer.addPacketHandler("cancel_ban_data", (player, content) -> {
             if (!player.admin) return;
             var session = sessionService.get(player);
-            BanRequestData req = rawGson.fromJson(content, BanRequestData.class);
+            BanRequestData req;
+            try {
+                req = rawGson.fromJson(content, BanRequestData.class);
+            } catch (Exception e) {
+                Log.err("Error processing ban cancellation from @: @", player.name, e.getMessage());
+                if (session != null) {
+                    session.locale().send("error-processing-request", args());
+                }
+                return;
+            }
 
             var targetData = playerDataRepository.findByPid(req.pid);
-            netServer.admins.unbanPlayerID(targetData.uuid);
+            if (targetData != null) {
+                clearPendingVanillaBan(targetData.uuid);
+            }
 
-            if (session != null) {
+            if (session != null && targetData != null) {
                 session.locale().send("ban-cancelled", args("nickname", targetData.nickname));
             }
         });
@@ -124,5 +130,22 @@ public class AdminModIntegration {
             }
             data.adminModVersion = content;
         });
+    }
+
+    public void holdVanillaBan(String uuid) {
+        if (uuid == null) {
+            return;
+        }
+
+        netServer.admins.banPlayerID(uuid);
+        pendingVanillaBanUuids.add(uuid);
+    }
+
+    private void clearPendingVanillaBan(String uuid) {
+        if (uuid == null || !pendingVanillaBanUuids.remove(uuid)) {
+            return;
+        }
+
+        netServer.admins.unbanPlayerID(uuid);
     }
 }

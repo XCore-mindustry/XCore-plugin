@@ -58,7 +58,7 @@ public class ModerationController implements CloudClientController {
         if (result.isSuccess()) {
             local.send("commands-ban-success", args("nickname", result.getData().get().name));
         } else {
-            local.send("error-player-not-found", args());
+            sendModerationFailure(local, result);
         }
     }
 
@@ -77,7 +77,7 @@ public class ModerationController implements CloudClientController {
                     "pid", target.pid
             ));
         } else {
-            local.send("error-player-not-found", args());
+            sendModerationFailure(local, result);
         }
     }
 
@@ -113,7 +113,7 @@ public class ModerationController implements CloudClientController {
                 ));
             }
         } else {
-            local.send("error-player-not-found", args());
+            sendModerationFailure(local, result);
         }
     }
 
@@ -129,7 +129,16 @@ public class ModerationController implements CloudClientController {
             local.send("commands-unmute-success",
                     args("nickname", result.getData().get().nickname));
         } else {
-            local.send("error-player-not-found", args());
+            sendModerationFailure(local, result);
         }
+    }
+
+    private static void sendModerationFailure(Localization local, org.xcore.plugin.service.moderation.ModerationResult<?> result) {
+        var message = result.getMessage().orElse(null);
+        if ("Player not found".equals(message)) {
+            local.send("error-player-not-found", args());
+            return;
+        }
+        local.send("error-processing-request", args());
     }
 }

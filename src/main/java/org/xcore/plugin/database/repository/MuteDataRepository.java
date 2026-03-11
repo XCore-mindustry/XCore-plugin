@@ -24,6 +24,9 @@ public class MuteDataRepository extends DataRepository<MuteData> {
 
     @Override
     public boolean save(MuteData data) {
+        if (data == null) {
+            return false;
+        }
         if (isReadOnly()) {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
             return false;
@@ -32,7 +35,10 @@ public class MuteDataRepository extends DataRepository<MuteData> {
         return true;
     }
 
-    public void delete(String uuid) {
-        collection.deleteOne(eq("uuid", uuid));
+    public boolean delete(String uuid) {
+        if (uuid == null) {
+            return false;
+        }
+        return collection.deleteOne(eq("uuid", uuid)).getDeletedCount() > 0;
     }
 }

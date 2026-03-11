@@ -30,6 +30,10 @@ public class ModerationService {
     private static final String UNKNOWN_PLAYER_NAME = "Unknown";
     private static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
     private static final String MISSING_IDENTIFIER_MESSAGE = "Either UUID or IP must be provided";
+    private static final String BAN_SAVE_FAILED_MESSAGE = "Failed to save ban";
+    private static final String BAN_DELETE_FAILED_MESSAGE = "Failed to delete ban";
+    private static final String MUTE_SAVE_FAILED_MESSAGE = "Failed to save mute";
+    private static final String MUTE_DELETE_FAILED_MESSAGE = "Failed to delete mute";
 
     private final PlayerDataRepository playerDataRepository;
     private final BanDataRepository banDataRepository;
@@ -76,10 +80,6 @@ public class ModerationService {
         var info = netServer.admins.getInfoOptional(target.uuid);
         String ip = (info != null) ? info.lastIP : null;
 
-        if (kickOnline) {
-            network.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
-        }
-
         BanData ban = BanData.builder()
                 .name(target.nickname)
                 .uuid(target.uuid)
@@ -89,8 +89,15 @@ public class ModerationService {
                 .expireDate(unbanDate)
                 .build();
 
+        if (!banDataRepository.save(ban)) {
+            return ModerationResult.failure(BAN_SAVE_FAILED_MESSAGE);
+        }
+
         network.post(ban);
-        banDataRepository.save(ban);
+
+        if (kickOnline) {
+            network.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
+        }
 
         return ModerationResult.success("Player '" + target.nickname + "' banned successfully", ban);
     }
@@ -107,7 +114,9 @@ public class ModerationService {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
-        banDataRepository.delete(target.uuid, null);
+        if (!banDataRepository.delete(target.uuid, null)) {
+            return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
+        }
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -137,7 +146,10 @@ public class ModerationService {
                 .expireDate(expireDate)
                 .build();
 
-        muteDataRepository.save(mute);
+        if (!muteDataRepository.save(mute)) {
+            return ModerationResult.failure(MUTE_SAVE_FAILED_MESSAGE);
+        }
+
         network.post(mute);
 
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
@@ -155,7 +167,9 @@ public class ModerationService {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
         }
 
-        muteDataRepository.delete(target.uuid);
+        if (!muteDataRepository.delete(target.uuid)) {
+            return ModerationResult.failure(MUTE_DELETE_FAILED_MESSAGE);
+        }
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
@@ -177,7 +191,6 @@ public class ModerationService {
         }
 
         Instant expire = toExpireDate(duration);
-        network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
         BanData ban = BanData.builder()
                 .name(resolvePlayerName(name))
@@ -188,8 +201,12 @@ public class ModerationService {
                 .expireDate(expire)
                 .build();
 
+        if (!banDataRepository.save(ban)) {
+            return ModerationResult.failure(BAN_SAVE_FAILED_MESSAGE);
+        }
+
         network.post(ban);
-        banDataRepository.save(ban);
+        network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
         return ModerationResult.success("Player '" + ban.name + "' banned until " + expire, ban);
     }
@@ -206,7 +223,9 @@ public class ModerationService {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
 
-        banDataRepository.delete(uuid, ip);
+        if (!banDataRepository.delete(uuid, ip)) {
+            return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
+        }
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
