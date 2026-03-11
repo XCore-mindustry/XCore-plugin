@@ -23,10 +23,11 @@ import java.util.Map;
 
 @Singleton
 public class GameDataRepository extends DataRepository<GameData> {
+    private static final String COLLECTION_NAME = "games_v2";
 
     @Inject
     public GameDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "games", GameData.class, globalConfig);
+        super(database, COLLECTION_NAME, GameData.class, globalConfig);
 
         collection.createIndex(new Document("map", 1));
         collection.createIndex(new Document("event", 1));
@@ -40,7 +41,7 @@ public class GameDataRepository extends DataRepository<GameData> {
             return AggregatedPlayerStats.EMPTY;
         }
 
-        var results = database.getCollection("games").aggregate(List.of(
+        var results = database.getCollection(COLLECTION_NAME).aggregate(List.of(
                 Aggregates.match(Filters.eq("player_stats.uuid", uuid)),
                 Aggregates.match(Filters.eq("counted_in_stats", true)),
                 Aggregates.unwind("$player_stats"),
@@ -90,7 +91,7 @@ public class GameDataRepository extends DataRepository<GameData> {
     }
 
     private Map<GameStatsCategory, ModeStatsSummary> aggregateModeStats(String uuid) {
-        var rows = database.getCollection("games").aggregate(List.of(
+        var rows = database.getCollection(COLLECTION_NAME).aggregate(List.of(
                 Aggregates.match(Filters.eq("player_stats.uuid", uuid)),
                 Aggregates.match(Filters.eq("counted_in_stats", true)),
                 Aggregates.unwind("$player_stats"),

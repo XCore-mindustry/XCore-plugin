@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.7] - 2026-03-11
+
+### Added
+- Added a fallback temporary-ban moderation menu to keep admin workflows available when the primary path is unavailable.
+- Added aggregated per-mode match statistics and expanded tests for game data, map rotation, moderation, and admin integration flows.
+
+### Changed
+- Renamed the MongoDB match-history collection from `games` to `games_v2` in code for future writes and queries.
+- Reworked dependency injection wiring around Avaje factories and cleaned up duplicated service logic.
+
+### Fixed
+- Fixed ban persistence handling and several moderation edge cases.
+- Fixed active event-map reload behavior and support for hyphenated restart event names.
+- Fixed English compact stats menu text and aligned newer match-tracking behavior.
+
 ## [3.1.6] - 2026-03-10
 
 ### Added
@@ -174,7 +189,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...HEAD
+[3.1.7]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...3.1.7
 [3.1.6]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...3.1.6
 [3.1.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...3.1.5
 [3.1.4]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.3...3.1.4
