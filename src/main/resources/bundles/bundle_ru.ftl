@@ -571,6 +571,16 @@ error-private-message-no-reply-target = { "[" }scarlet]⚠ Некому отве
 error-private-message-not-found = { "[" }scarlet]⚠ Сообщение не найдено.
 error-private-message-block-self = { "[" }scarlet]⚠ Нельзя заблокировать самого себя.
 error-private-message-block-limit = { "[" }scarlet]⚠ Достигнут лимит блок-листа ({ $limit }).
+ban-menu-duration-title = { "[" }orange]{ -xcore } - Длительность бана
+ban-menu-duration-message = Введите длительность бана для { $nickname }. Например: 1d, 12h, 30m
+ban-menu-reason-title = { "[" }orange]{ -xcore } - Причина бана
+ban-menu-reason-message = Введите причину бана для { $nickname }. Оставьте пустым для причины по умолчанию.
+ban-menu-confirm-title = { "[" }orange]{ -xcore } - Подтверждение бана
+ban-menu-confirm-content =
+    { "" }[white]Игрок: { $nickname }[]
+    { "" }[white]Длительность: [accent]{ $duration }[]
+    { "" }[white]Причина: [accent]{ $reason }[]
+ban-menu-confirm-action = { "[" }scarlet]Забанить игрока
 error-invalid-syntax = { "[" }scarlet]⚠ Неверный синтаксис команды. Использование: [lightgray]/{ $syntax }
 error-invalid-sender = { "[" }scarlet]⚠ Неверный отправитель команды. Требуется: [lightgray]{ $type }
 error-argument-parse-generic = { "[" }scarlet]⚠ Ошибка аргумента: { $error }

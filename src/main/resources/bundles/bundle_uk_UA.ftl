@@ -547,6 +547,16 @@ error-private-message-no-reply-target = { "[" }scarlet]⚠ Немає кому �
 error-private-message-not-found = { "[" }scarlet]⚠ Повідомлення не знайдено.
 error-private-message-block-self = { "[" }scarlet]⚠ Не можна заблокувати самого себе.
 error-private-message-block-limit = { "[" }scarlet]⚠ Досягнуто ліміту списку блокувань ({ $limit }).
+ban-menu-duration-title = { "[" }orange]{ -xcore } — Тривалість блокування
+ban-menu-duration-message = Введіть тривалість блокування для { $nickname }. Наприклад: 1d, 12h, 30m
+ban-menu-reason-title = { "[" }orange]{ -xcore } — Причина блокування
+ban-menu-reason-message = Введіть причину блокування для { $nickname }. Залиште порожнім для причини за замовчуванням.
+ban-menu-confirm-title = { "[" }orange]{ -xcore } — Підтвердження блокування
+ban-menu-confirm-content =
+    { "" }[white]Гравець: { $nickname }[]
+    { "" }[white]Тривалість: [accent]{ $duration }[]
+    { "" }[white]Причина: [accent]{ $reason }[]
+ban-menu-confirm-action = { "[" }scarlet]Заблокувати гравця
 finished = завершено
 finished-neutral = { "[" }orange]Завершено
 finished-active = { "[" }green]Завершено

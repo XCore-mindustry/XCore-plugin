@@ -25,6 +25,7 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.BanRequestData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressService;
+import org.xcore.plugin.ui.menu.BanMenu;
 import org.xcore.plugin.vote.VoteChoice;
 import org.xcore.plugin.vote.VoteKick;
 import org.xcore.plugin.vote.VoteService;
@@ -48,6 +49,7 @@ public class NetEventService {
     private final SecurityService securityService;
     private final IngressService ingressService;
     private final ChatFormatService chatFormatService;
+    private final BanMenu banMenu;
     private final Gson rawGson;
 
     @Inject
@@ -57,6 +59,7 @@ public class NetEventService {
                            SecurityService securityService,
                            IngressService ingressService,
                            ChatFormatService chatFormatService,
+                           BanMenu banMenu,
                            @Named("raw") Gson rawGson) {
         this.sessionService = sessionService;
         this.config = config;
@@ -66,6 +69,7 @@ public class NetEventService {
         this.securityService = securityService;
         this.ingressService = ingressService;
         this.chatFormatService = chatFormatService;
+        this.banMenu = banMenu;
         this.rawGson = rawGson;
     }
 
@@ -124,17 +128,23 @@ public class NetEventService {
                 Log.info("@ kicked @ (@)", admin.plainName(), target.plainName(), target.uuid());
             }
             case ban -> {
-                target.kick(Packets.KickReason.banned);
-                netServer.admins.banPlayerID(target.uuid());
-                sessionService.broadcast("tempban-player-banned", args(
-                        "adminName", admin.coloredName(),
-                        "playerName", target.coloredName()));
-                Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
+                var adminSession = sessionService.get(admin);
+                var targetSession = sessionService.get(target);
+                if (adminSession == null || targetSession == null || targetSession.data == null) return;
 
-                var targetData = sessionService.get(target.uuid()).data;
-                String banJson = rawGson.toJson(new BanRequestData(targetData.pid, target.coloredName()));
+                if (adminSession.data.adminModVersion != null) {
+                    target.kick(Packets.KickReason.banned);
+                    netServer.admins.banPlayerID(target.uuid());
+                    sessionService.broadcast("tempban-player-banned", args(
+                            "adminName", admin.coloredName(),
+                            "playerName", target.coloredName()));
+                    Log.info("@ banned @ (@)", admin.plainName(), target.plainName(), target.uuid());
 
-                Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
+                    String banJson = rawGson.toJson(new BanRequestData(targetSession.data.pid, target.coloredName()));
+                    Call.clientPacketReliable(admin.con, "give_ban_data", banJson);
+                } else {
+                    banMenu.open(admin, target);
+                }
             }
             case trace -> {
                 var data = sessionService.getOrLoadFromDb(target.uuid());

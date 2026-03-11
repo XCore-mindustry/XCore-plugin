@@ -572,6 +572,16 @@ error-private-message-no-reply-target = { "[" }scarlet]⚠ No recent private-mes
 error-private-message-not-found = { "[" }scarlet]⚠ Message not found.
 error-private-message-block-self = { "[" }scarlet]⚠ You cannot block yourself.
 error-private-message-block-limit = { "[" }scarlet]⚠ Block list limit reached ({ $limit }).
+ban-menu-duration-title = { "[" }orange]{ -xcore } - Ban duration
+ban-menu-duration-message = Enter ban duration for { $nickname }. Example: 1d, 12h, 30m
+ban-menu-reason-title = { "[" }orange]{ -xcore } - Ban reason
+ban-menu-reason-message = Enter ban reason for { $nickname }. Leave empty for default reason.
+ban-menu-confirm-title = { "[" }orange]{ -xcore } - Confirm ban
+ban-menu-confirm-content =
+    { "" }[white]Target: { $nickname }[]
+    { "" }[white]Duration: [accent]{ $duration }[]
+    { "" }[white]Reason: [accent]{ $reason }[]
+ban-menu-confirm-action = { "[" }scarlet]Ban player
 error-invalid-syntax = { "[" }scarlet]⚠ Invalid command syntax. Usage: [lightgray]/'{ $syntax }'.
 error-invalid-sender = { "[" }scarlet]⚠ Invalid command sender. This command requires: '[lightgray]{ $type }[]'.
 error-argument-parse-generic = { "[" }scarlet]⚠ Invalid argument: '{ $error }'.
