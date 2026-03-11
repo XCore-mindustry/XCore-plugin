@@ -13,6 +13,7 @@ import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.menu.BanMenu;
 import org.xcore.plugin.vote.VoteKick;
 import org.xcore.plugin.vote.VoteService;
 import org.xcore.plugin.vote.VoteSession;
@@ -37,6 +38,7 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        BanMenu banMenu = mock(BanMenu.class);
 
         NetEventService service = new NetEventService(
                 sessionService,
@@ -47,6 +49,7 @@ class NetEventServiceTest {
                 securityService,
                 ingressService,
                 chatFormatService,
+                banMenu,
                 new Gson()
         );
 
