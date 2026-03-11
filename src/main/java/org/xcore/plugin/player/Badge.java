@@ -64,9 +64,11 @@ public enum Badge {
     }
 
     public static Badge byId(String id) {
-        if (id == null || id.isBlank()) return null;
+        String normalizedId = normalizeId(id);
+        if (normalizedId.isBlank()) return null;
+
         return Arrays.stream(values())
-                .filter(badge -> badge.id.equalsIgnoreCase(id.trim()))
+                .filter(badge -> normalizeId(badge.id).equals(normalizedId))
                 .findFirst()
                 .orElse(null);
     }

@@ -136,7 +136,7 @@ public class ConnectionHandler {
         Player player = event.player;
 
         Session session = sessionService.registerLogout(event.player);
-        PlayerData data = session.data;
+        PlayerData data = session != null ? session.data : null;
 
         voteService.handleLeave(event.player);
 

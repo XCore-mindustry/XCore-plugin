@@ -45,14 +45,13 @@ public class GameDataService {
             .serverName(resolveServerName())
             .statsCategory(resolveStatsCategory(mode, event != null))
             .ranked(isRankedCategory(mode, event != null))
-            .startGameTime(System.currentTimeMillis())
+            .startGameTime(now)
             .build();
 
         if (event != null) {
             currentBag.event = event.id;
             currentBag.isEvent = true;
         }
-        currentBag.setStartGameTime(now);
         playerStatsCache.clear();
     }
 
@@ -144,16 +143,18 @@ public class GameDataService {
     }
 
     private GameStatsCategory resolveStatsCategory(String mode, boolean eventGame) {
+        var rules = state == null ? null : state.rules;
+
         if (config.isMiniHexed() || configIsHexedMode(mode)) {
             return GameStatsCategory.HEXED;
         }
         if (eventGame) {
             return GameStatsCategory.EVENT;
         }
-        if (state != null && state.rules != null && state.rules.waves) {
+        if (rules != null && rules.waves) {
             return GameStatsCategory.SURVIVAL;
         }
-        if (state != null && state.rules != null && state.rules.pvp) {
+        if (rules != null && rules.pvp) {
             return GameStatsCategory.PVP;
         }
         return GameStatsCategory.OTHER;

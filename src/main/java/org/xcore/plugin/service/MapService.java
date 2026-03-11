@@ -33,6 +33,7 @@ public class MapService {
     private static final int NEW_VOTE_REPUTATION_DELTA = 1;
     private static final int CHANGED_VOTE_REPUTATION_DELTA = 2;
     private static final double POPULARITY_PER_REPUTATION = 2.0;
+    private static final double NEGATIVE_POPULARITY_FACTOR = -POPULARITY_PER_REPUTATION;
 
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
@@ -155,45 +156,17 @@ public class MapService {
             return;
         }
 
-        int reputationDelta = previousVote == null ? NEW_VOTE_REPUTATION_DELTA : CHANGED_VOTE_REPUTATION_DELTA;
-        int likeDelta = 0;
-        int dislikeDelta = 0;
-        double popularityDelta;
-        if (like) {
-            map.reputation += reputationDelta;
-            map.popularity += reputationDelta * POPULARITY_PER_REPUTATION;
-            map.like += 1;
-            likeDelta = 1;
-            popularityDelta = reputationDelta * POPULARITY_PER_REPUTATION;
-            if (previousVote != null) {
-                map.dislike -= 1;
-                dislikeDelta = -1;
-            }
-            session.locale().send(previousVote != null ? "like-map-changed" : "like-map-success");
-        } else {
-            map.reputation -= reputationDelta;
-            map.popularity -= reputationDelta * POPULARITY_PER_REPUTATION;
-            map.dislike += 1;
-            dislikeDelta = 1;
-            popularityDelta = -reputationDelta * POPULARITY_PER_REPUTATION;
-            if (previousVote != null) {
-                map.like -= 1;
-                likeDelta = -1;
-            }
-            session.locale().send(previousVote != null ? "dislike-map-changed" : "dislike-map-success");
-        }
+        VoteDelta delta = buildVoteDelta(previousVote, like);
+        applyVoteDelta(map, delta);
+        session.locale().send(delta.messageKey());
 
         sessionService.putMapVote(session, map.id.toString(), like);
-        mapDataRepository.applyVote(map.id, like ? reputationDelta : -reputationDelta, popularityDelta, likeDelta, dislikeDelta);
+        mapDataRepository.applyVote(map.id, delta.reputationDelta(), delta.popularityDelta(), delta.likeDelta(), delta.dislikeDelta());
     }
 
     private boolean isAllowedEventMap(Map target) {
-        if (!config.isEvent()) {
-            return true;
-        }
-
-        EventData event = eventDataRepository.findActive().orElse(null);
-        if (event == null || !event.isActive) {
+        EventData event = getActiveEventOrNull();
+        if (event == null) {
             return true;
         }
 
@@ -207,12 +180,8 @@ public class MapService {
     }
 
     private Map findActiveEventMap() {
-        if (!config.isEvent()) {
-            return null;
-        }
-
-        EventData event = eventDataRepository.findActive().orElse(null);
-        if (event == null || !event.isActive) {
+        EventData event = getActiveEventOrNull();
+        if (event == null) {
             return null;
         }
 
@@ -253,5 +222,36 @@ public class MapService {
         var vote = voteRtvFactory.create(target, isManual);
         voteService.startVote(vote);
         vote.vote(player, 1);
+    }
+
+    private EventData getActiveEventOrNull() {
+        if (!config.isEvent()) {
+            return null;
+        }
+
+        EventData event = eventDataRepository.findActive().orElse(null);
+        return event != null && event.isActive ? event : null;
+    }
+
+    private VoteDelta buildVoteDelta(Boolean previousVote, boolean like) {
+        int reputationMagnitude = previousVote == null ? NEW_VOTE_REPUTATION_DELTA : CHANGED_VOTE_REPUTATION_DELTA;
+        int reputationDelta = like ? reputationMagnitude : -reputationMagnitude;
+        double popularityDelta = reputationMagnitude * (like ? POPULARITY_PER_REPUTATION : NEGATIVE_POPULARITY_FACTOR);
+        int likeDelta = like ? 1 : previousVote != null ? -1 : 0;
+        int dislikeDelta = like ? previousVote != null ? -1 : 0 : 1;
+        String messageKey = like
+                ? previousVote != null ? "like-map-changed" : "like-map-success"
+                : previousVote != null ? "dislike-map-changed" : "dislike-map-success";
+        return new VoteDelta(reputationDelta, popularityDelta, likeDelta, dislikeDelta, messageKey);
+    }
+
+    private void applyVoteDelta(MapData map, VoteDelta delta) {
+        map.reputation += delta.reputationDelta();
+        map.popularity += delta.popularityDelta();
+        map.like += delta.likeDelta();
+        map.dislike += delta.dislikeDelta();
+    }
+
+    private record VoteDelta(int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta, String messageKey) {
     }
 }

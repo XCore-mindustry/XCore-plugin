@@ -46,7 +46,7 @@ public class PrivateMessageService {
     }
 
     public boolean send(Session senderSession, int targetPid, String rawMessage) {
-        if (senderSession == null || senderSession.data == null || senderSession.player == null) {
+        if (!hasActiveSender(senderSession)) {
             return false;
         }
 
@@ -54,8 +54,8 @@ public class PrivateMessageService {
             return false;
         }
 
-        PlayerData targetData = sessionService.getOrLoadFromDb(targetPid);
-        if (targetData == null || targetData.uuid == null || targetData.uuid.isBlank()) {
+        PlayerData targetData = resolveTargetByPid(targetPid);
+        if (targetData == null) {
             senderSession.locale().send("error-player-not-found", args());
             return false;
         }
@@ -106,23 +106,7 @@ public class PrivateMessageService {
             return false;
         }
 
-        Session recipientSession = sessionService.get(targetData.uuid);
-        if (recipientSession != null && recipientSession.player != null) {
-            privateMessage.deliveredAt = System.currentTimeMillis();
-            privateMessageRepository.save(privateMessage);
-            deliverIncoming(privateMessage, recipientSession);
-            recipientSession.lastPrivateTargetPid = senderSession.data.pid;
-        } else {
-            networkService.post(new SocketEvents.PrivateMessageEvent(
-                    privateMessage.fromUuid,
-                    privateMessage.fromPid,
-                    privateMessage.fromName,
-                    privateMessage.toUuid,
-                    privateMessage.toPid,
-                    privateMessage.message,
-                    config.server
-            ));
-        }
+        deliverOrDispatch(privateMessage, senderSession.data.pid);
 
         senderSession.lastPrivateTargetPid = targetData.pid;
         senderSession.lastPrivateMessageAt = System.currentTimeMillis();
@@ -190,12 +174,12 @@ public class PrivateMessageService {
     }
 
     public boolean block(Session session, int targetPid) {
-        if (session == null || session.data == null) {
+        if (!hasSessionData(session)) {
             return false;
         }
 
-        PlayerData targetData = sessionService.getOrLoadFromDb(targetPid);
-        if (targetData == null || targetData.uuid == null || targetData.uuid.isBlank()) {
+        PlayerData targetData = resolveTargetByPid(targetPid);
+        if (targetData == null) {
             session.locale().send("error-player-not-found", args());
             return false;
         }
@@ -225,12 +209,12 @@ public class PrivateMessageService {
     }
 
     public boolean unblock(Session session, int targetPid) {
-        if (session == null || session.data == null) {
+        if (!hasSessionData(session)) {
             return false;
         }
 
-        PlayerData targetData = sessionService.getOrLoadFromDb(targetPid);
-        if (targetData == null || targetData.uuid == null || targetData.uuid.isBlank()) {
+        PlayerData targetData = resolveTargetByPid(targetPid);
+        if (targetData == null) {
             session.locale().send("error-player-not-found", args());
             return false;
         }
@@ -263,7 +247,7 @@ public class PrivateMessageService {
     }
 
     public PlayerData resolveLastCorrespondent(Session session) {
-        if (session == null || session.data == null) {
+        if (!hasSessionData(session)) {
             return null;
         }
 
@@ -322,6 +306,44 @@ public class PrivateMessageService {
         long remainingMillis = globalConfig.privateMessageCooldownSeconds * 1000L - (System.currentTimeMillis() - session.lastPrivateMessageAt);
         return Math.max(1L, (long) Math.ceil(remainingMillis / 1000.0));
     }
+
+    private boolean hasActiveSender(Session session) {
+        return hasSessionData(session) && session.player != null;
+    }
+
+    private boolean hasSessionData(Session session) {
+        return session != null && session.data != null;
+    }
+
+    private PlayerData resolveTargetByPid(int targetPid) {
+        PlayerData targetData = sessionService.getOrLoadFromDb(targetPid);
+        if (targetData == null || targetData.uuid == null || targetData.uuid.isBlank()) {
+            return null;
+        }
+        return targetData;
+    }
+
+    private void deliverOrDispatch(PrivateMessage privateMessage, int senderPid) {
+        Session recipientSession = sessionService.get(privateMessage.toUuid);
+        if (recipientSession != null && recipientSession.player != null) {
+            privateMessage.deliveredAt = System.currentTimeMillis();
+            privateMessageRepository.save(privateMessage);
+            deliverIncoming(privateMessage, recipientSession);
+            recipientSession.lastPrivateTargetPid = senderPid;
+            return;
+        }
+
+        networkService.post(new SocketEvents.PrivateMessageEvent(
+                privateMessage.fromUuid,
+                privateMessage.fromPid,
+                privateMessage.fromName,
+                privateMessage.toUuid,
+                privateMessage.toPid,
+                privateMessage.message,
+                config.server
+        ));
+    }
+
     private String normalizeMessage(String rawMessage) {
         if (rawMessage == null) {
             return null;
