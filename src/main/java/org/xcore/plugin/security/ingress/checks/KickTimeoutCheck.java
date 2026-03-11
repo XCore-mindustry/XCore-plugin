@@ -1,11 +1,11 @@
 package org.xcore.plugin.security.ingress.checks;
 
 import arc.util.Time;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 import org.xcore.plugin.localization.BundleService;
@@ -23,10 +23,11 @@ import static mindustry.Vars.netServer;
 public class KickTimeoutCheck implements IngressCheck {
 
     private final BundleService bundle;
+    private final LocalizationFactory localizationFactory;
 
-    @Inject
-    public KickTimeoutCheck(BundleService bundle) {
+    public KickTimeoutCheck(BundleService bundle, LocalizationFactory localizationFactory) {
         this.bundle = bundle;
+        this.localizationFactory = localizationFactory;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class KickTimeoutCheck implements IngressCheck {
         if (Time.millis() < kickTime) {
             Duration remain = Duration.ofMillis(kickTime - Time.millis());
 
-            Localization local = new Localization(bundle, bundle.locale(packet.locale));
+            Localization local = localizationFactory.forLocale(bundle.locale(packet.locale));
 
             String reason = local.format(
                     "kick-recently-kicked", args(

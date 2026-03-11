@@ -1,12 +1,12 @@
 package org.xcore.plugin.security.ingress.checks;
 
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
@@ -28,12 +28,13 @@ public class BanCheck implements IngressCheck {
 
     private final BanDataRepository banDataRepository;
     private final BundleService bundle;
+    private final LocalizationFactory localizationFactory;
     private final GlobalConfig globalConfig;
 
-    @Inject
-    public BanCheck(BanDataRepository banDataRepository, BundleService bundle, GlobalConfig globalConfig) {
+    public BanCheck(BanDataRepository banDataRepository, BundleService bundle, LocalizationFactory localizationFactory, GlobalConfig globalConfig) {
         this.banDataRepository = banDataRepository;
         this.bundle = bundle;
+        this.localizationFactory = localizationFactory;
         this.globalConfig = globalConfig;
     }
 
@@ -42,7 +43,7 @@ public class BanCheck implements IngressCheck {
         String uuid = packet.uuid;
         String ip = con.address;
 
-        Localization local = new Localization(bundle, bundle.locale(packet.locale));
+        Localization local = localizationFactory.forLocale(bundle.locale(packet.locale));
 
         BanData ban = banDataRepository.find(uuid, ip);
 

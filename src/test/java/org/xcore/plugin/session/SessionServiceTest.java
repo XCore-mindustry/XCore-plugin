@@ -1,13 +1,9 @@
 package org.xcore.plugin.session;
 
-import jakarta.inject.Provider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.ui.MenuService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -23,9 +19,7 @@ class SessionServiceTest {
         when(playerDataRepository.updateConnectionData("uuid-1", "2.2.2.2", "[red]Renamed[]")).thenReturn(true);
 
         SessionService service = new SessionService(
-                mock(BundleService.class),
-                new GlobalConfig(),
-                menuProvider(),
+                mock(SessionFactory.class),
                 playerDataRepository
         );
 
@@ -51,9 +45,7 @@ class SessionServiceTest {
         when(playerDataRepository.updateAdminStatus("uuid-1", true, false)).thenReturn(true);
 
         SessionService service = new SessionService(
-                mock(BundleService.class),
-                new GlobalConfig(),
-                menuProvider(),
+                mock(SessionFactory.class),
                 playerDataRepository
         );
 
@@ -70,10 +62,5 @@ class SessionServiceTest {
         assertThat(session.data.admin).isTrue();
         assertThat(session.data.adminConfirmed).isFalse();
         verify(playerDataRepository).updateAdminStatus("uuid-1", true, false);
-    }
-
-    private static Provider<MenuService> menuProvider() {
-        MenuService menuService = mock(MenuService.class);
-        return () -> menuService;
     }
 }

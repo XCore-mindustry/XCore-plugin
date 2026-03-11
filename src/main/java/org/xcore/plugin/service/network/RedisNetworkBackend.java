@@ -17,6 +17,7 @@ import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.SocketEvents;
@@ -78,9 +79,18 @@ public final class RedisNetworkBackend {
     private final AtomicLong reclaimedMessages = new AtomicLong();
 
     @Inject
-    public RedisNetworkBackend(Config config) {
+    public RedisNetworkBackend(Config config, @Named("redis") Gson gson, RedisStreamRouter router) {
         this.config = config;
-        this.gson = new GsonBuilder()
+        this.gson = gson;
+        this.router = router;
+    }
+
+    public RedisNetworkBackend(Config config) {
+        this(config, createRedisGson(), new RedisStreamRouter());
+    }
+
+    public static Gson createRedisGson() {
+        return new GsonBuilder()
                 .registerTypeAdapter(Instant.class, (com.google.gson.JsonSerializer<Instant>)
                         (src, typeOfSrc, context) -> src == null ? null : new com.google.gson.JsonPrimitive(src.toString()))
                 .registerTypeAdapter(Instant.class, (com.google.gson.JsonDeserializer<Instant>)
@@ -88,7 +98,6 @@ public final class RedisNetworkBackend {
                                 ? null
                                 : Instant.parse(json.getAsString()))
                 .create();
-        this.router = new RedisStreamRouter();
     }
 
     public void connect() {

@@ -1,7 +1,7 @@
 package org.xcore.plugin.security.ingress;
 
 import arc.util.Log;
-import jakarta.inject.Inject;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
@@ -21,7 +21,6 @@ public class IngressService {
     private final List<IngressCheck> slowChecks;
     private final ExecutorService virtualExecutor;
 
-    @Inject
     public IngressService(List<IngressCheck> checks) {
         List<IngressCheck> sorted = checks.stream()
                 .sorted(Comparator.comparingInt(IngressCheck::priority))
@@ -39,6 +38,11 @@ public class IngressService {
 
         Log.info("[Ingress] Initialized with @ fast checks and @ slow checks",
                 fastChecks.size(), slowChecks.size());
+    }
+
+    @PreDestroy
+    void shutdown() {
+        virtualExecutor.shutdownNow();
     }
 
     public AccessResult validate(NetConnection con, ConnectPacket packet) {

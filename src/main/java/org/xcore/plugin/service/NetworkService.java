@@ -7,7 +7,7 @@ import org.xcore.plugin.event.SocketEvents.Response;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import io.avaje.inject.PostConstruct;
-import jakarta.inject.Inject;
+import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
@@ -17,7 +17,6 @@ public class NetworkService {
     private final GlobalConfig globalConfig;
     private final RedisNetworkBackend backend;
 
-    @Inject
     public NetworkService(GlobalConfig globalConfig, RedisNetworkBackend backend) {
         this.globalConfig = globalConfig;
         this.backend = backend;
@@ -47,6 +46,7 @@ public class NetworkService {
         }
     }
 
+    @PreDestroy
     public void disconnect() {
         backend.disconnect();
     }

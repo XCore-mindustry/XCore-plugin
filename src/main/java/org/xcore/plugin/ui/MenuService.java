@@ -1,7 +1,6 @@
 package org.xcore.plugin.ui;
 
 import io.avaje.inject.PostConstruct;
-import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.ui.Menus;
@@ -18,7 +17,6 @@ public class MenuService {
     private int globalMenuId;
     private int globalTextId;
 
-    @Inject
     public MenuService(Provider<SessionService> sessionService) {
         this.sessionService = sessionService;
     }

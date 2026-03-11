@@ -9,7 +9,6 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -26,6 +25,7 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.enums.FinishReason;
@@ -57,18 +57,19 @@ public class MiniHexedService {
     private final PlayerDataRepository playerDataRepository;
     private final NetworkService network;
     private final BundleService bundle;
+    private final LocalizationFactory localizationFactory;
     private final LeaderboardService leaderboardService;
     private final PlayerDisplayService playerDisplayService;
     private final GameDataService gameDataService;
 
     private static boolean gameover = false;
 
-    @Inject
     public MiniHexedService(Config config,
                             SessionService sessionService,
                             PlayerDataRepository playerDataRepository,
                             NetworkService networkService,
                             BundleService bundle,
+                            LocalizationFactory localizationFactory,
                             LeaderboardService leaderboardService,
                             PlayerDisplayService playerDisplayService,
                             GameDataService gameDataService) {
@@ -77,6 +78,7 @@ public class MiniHexedService {
         this.playerDataRepository = playerDataRepository;
         this.network = networkService;
         this.bundle = bundle;
+        this.localizationFactory = localizationFactory;
         this.leaderboardService = leaderboardService;
         this.playerDisplayService = playerDisplayService;
         this.gameDataService = gameDataService;
@@ -257,7 +259,7 @@ public class MiniHexedService {
             Call.infoMessage(p.con, generateMessage.get(session.locale()));
         });
 
-        String rawMessage = generateMessage.get(new Localization(bundle));
+        String rawMessage = generateMessage.get(localizationFactory.system());
         network.post(new SocketEvents.ServerActionEvent(Strings.stripColors(rawMessage), config.server));
 
         Events.fire("hexed_world-reload");

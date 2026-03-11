@@ -19,7 +19,11 @@ public class BundleService {
     @PostConstruct
     public void init() {
         bundle.addSource(XcorePlugin.class);
-        bundle.setDefaultValueFactory(new FallbackDefaultValueFactory(bundle));
+        bundle.setDefaultValueFactory(createDefaultValueFactory());
+    }
+
+    private FallbackDefaultValueFactory createDefaultValueFactory() {
+        return new FallbackDefaultValueFactory(bundle);
     }
 
     public Bundle getBundle() {

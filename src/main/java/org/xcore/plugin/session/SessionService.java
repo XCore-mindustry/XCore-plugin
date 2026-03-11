@@ -5,25 +5,18 @@ import arc.func.Cons;
 import arc.struct.ObjectMap;
 import arc.util.Log;
 import io.avaje.inject.PostConstruct;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import jakarta.inject.Inject;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.localization.BundleService;
-import org.xcore.plugin.ui.MenuService;
 
 import java.util.Map;
 
 @Singleton
 public class SessionService {
 
-    private final BundleService bundle;
-    private final GlobalConfig globalConfig;
-    private final Provider<MenuService> menuService;
+    private final SessionFactory sessionFactory;
     private final PlayerDataRepository playerDataRepository;
 
     /**
@@ -32,11 +25,8 @@ public class SessionService {
      */
     private final ObjectMap<String, Session> sessionCache = new ObjectMap<>();
 
-    @Inject
-    public SessionService(BundleService bundle, GlobalConfig globalConfig, Provider<MenuService> menuService, PlayerDataRepository playerDataRepository) {
-        this.bundle = bundle;
-        this.globalConfig = globalConfig;
-        this.menuService = menuService;
+    public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
+        this.sessionFactory = sessionFactory;
         this.playerDataRepository = playerDataRepository;
     }
 
@@ -318,7 +308,7 @@ public class SessionService {
     }
 
     private Session createSession(Player player, PlayerData data) {
-        return new Session(globalConfig, bundle, menuService.get(), playerDataRepository, player, data);
+        return sessionFactory.create(player, data);
     }
 
     private boolean hasData(Session session) {

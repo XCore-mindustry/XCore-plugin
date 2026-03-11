@@ -1,5 +1,7 @@
 package org.xcore.plugin.session;
 
+import io.avaje.inject.AssistFactory;
+import io.avaje.inject.Assisted;
 import lombok.Data;
 import mindustry.gen.Player;
 import org.xcore.plugin.cloud.XCoreSender;
@@ -7,6 +9,7 @@ import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.ui.MenuBuilder;
@@ -16,10 +19,12 @@ import java.util.ArrayList;
 import java.util.*;
 import java.util.function.Consumer;
 
+@AssistFactory(SessionFactory.class)
 @Data
 public class Session {
     public final GlobalConfig globalConfig;
     public final BundleService bundle;
+    public final LocalizationFactory localizationFactory;
     public final MenuService menuService;
     public final PlayerDataRepository playerDataRepository;
 
@@ -38,11 +43,14 @@ public class Session {
 
     public Session(GlobalConfig globalConfig,
                    BundleService bundle,
+                   LocalizationFactory localizationFactory,
                    MenuService menuService,
                    PlayerDataRepository playerDataRepository,
-                   Player player, PlayerData playerData) {
+                   @Assisted Player player,
+                   @Assisted PlayerData playerData) {
         this.globalConfig = globalConfig;
         this.bundle = bundle;
+        this.localizationFactory = localizationFactory;
         this.menuService = menuService;
         this.playerDataRepository = playerDataRepository;
 
@@ -57,7 +65,7 @@ public class Session {
         if (this.data.language == null) this.data.language = "auto";
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
 
-        this.localization = new Localization(bundle, this);
+        this.localization = localizationFactory.forSession(this);
     }
 
     public Session start(XCoreSender sender) {

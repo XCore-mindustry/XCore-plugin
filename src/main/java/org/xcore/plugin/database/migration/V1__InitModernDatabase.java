@@ -3,11 +3,13 @@ package org.xcore.plugin.database.migration;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
+import jakarta.inject.Singleton;
 import org.bson.Document;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Singleton
 public class V1__InitModernDatabase implements Migration {
     @Override
     public int getVersion() {

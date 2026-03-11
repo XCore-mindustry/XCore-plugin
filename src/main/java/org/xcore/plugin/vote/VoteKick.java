@@ -13,8 +13,8 @@ import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.model.PlayerData;
@@ -42,7 +42,8 @@ public class VoteKick extends VoteSession {
     public VoteKick(
             @Assisted Player starter,
             @Assisted Player target,
-            @Assisted String reason, BundleService bundle,
+            @Assisted String reason,
+            LocalizationFactory localizationFactory,
 
             SessionService sessionService,
             NetworkService network,
@@ -53,7 +54,7 @@ public class VoteKick extends VoteSession {
         this.starter = starter;
         this.target = target;
         this.reason = reason;
-        this.systemLocal = new Localization(bundle);
+        this.systemLocal = localizationFactory.system();
         this.sessionService = sessionService;
         this.network = network;
         this.voteService = voteService;

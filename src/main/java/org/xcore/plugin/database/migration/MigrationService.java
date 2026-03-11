@@ -8,13 +8,11 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.UpdateOptions;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.xcore.plugin.config.Config; // Твій звичайний конфіг з назвою сервера
 import org.xcore.plugin.config.GlobalConfig;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -23,16 +21,15 @@ public class MigrationService {
     private final MongoDatabase database;
     private final GlobalConfig globalConfig;
     private final Config config;
-    private final List<Migration> migrations = new ArrayList<>();
+    private final List<Migration> migrations;
 
-    @Inject
-    public MigrationService(MongoDatabase database, GlobalConfig globalConfig, Config config) {
+    public MigrationService(MongoDatabase database, GlobalConfig globalConfig, Config config, List<Migration> migrations) {
         this.database = database;
         this.globalConfig = globalConfig;
         this.config = config;
-
-        migrations.add(new V1__InitModernDatabase());
-        migrations.sort(Comparator.comparingInt(Migration::getVersion));
+        this.migrations = migrations.stream()
+                .sorted(Comparator.comparingInt(Migration::getVersion))
+                .toList();
     }
 
     public boolean run() {
