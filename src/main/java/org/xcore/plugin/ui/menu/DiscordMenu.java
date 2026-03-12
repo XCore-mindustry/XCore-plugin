@@ -34,7 +34,7 @@ public class DiscordMenu extends Menu {
         String statusText = status.linked()
                 ? local.t("discord-menu-status-linked", args(
                 "discordId", status.discordId(),
-                "discordUsername", status.discordUsername().isBlank() ? status.discordId() : status.discordUsername()
+                "discordUsername", status.displayName()
         ))
                 : local.t("discord-menu-status-not-linked", args());
 
@@ -74,7 +74,7 @@ public class DiscordMenu extends Menu {
                 : discordLinkService.getOrCreateActiveCode(session);
 
         if (!result.success()) {
-            if ("already-linked".equals(result.errorKey())) {
+            if (result.isError("already-linked")) {
                 local.send("commands-discord-link-already-linked", args());
             } else {
                 local.send("commands-discord-link-error", args());
@@ -83,13 +83,11 @@ public class DiscordMenu extends Menu {
             return;
         }
 
-        long remainingMinutes = Math.max(1L, (result.expiresAt() - System.currentTimeMillis() + 59_999L) / 60_000L);
-
         session.builder()
                 .title("discord-link-menu-title")
                 .content("discord-link-menu-content", args(
                         "code", result.code(),
-                        "expireMinutes", remainingMinutes,
+                        "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
                         "discordUrl", globalConfig.discordUrl
                 ))
                 .addLocal("discord-menu-open", () -> Call.openURI(session.player.con, globalConfig.discordUrl))

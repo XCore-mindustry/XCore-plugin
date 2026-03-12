@@ -109,7 +109,7 @@ public class SocialController implements CloudClientController {
         Localization local = session.locale();
         var result = discordLinkService.createCode(session);
         if (!result.success()) {
-            if ("already-linked".equals(result.errorKey())) {
+            if (result.isError("already-linked")) {
                 local.send("commands-discord-link-already-linked", args());
             } else {
                 local.send("commands-discord-link-error", args());
@@ -117,10 +117,9 @@ public class SocialController implements CloudClientController {
             return;
         }
 
-        long remainingMinutes = Math.max(1L, (result.expiresAt() - System.currentTimeMillis() + 59_999L) / 60_000L);
         local.send("commands-discord-link-created", args(
                 "code", result.code(),
-                "expireMinutes", remainingMinutes,
+                "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
                 "discordUrl", globalConfig.discordUrl
         ));
     }
@@ -139,7 +138,7 @@ public class SocialController implements CloudClientController {
 
         local.send("commands-discord-status-linked", args(
                 "discordId", status.discordId(),
-                "discordUsername", status.discordUsername().isBlank() ? status.discordId() : status.discordUsername()
+                "discordUsername", status.displayName()
         ));
     }
 

@@ -14,8 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,6 +96,66 @@ class DiscordLinkServiceTest {
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorKey()).isEqualTo("already-linked");
+    }
+
+    @Test
+    @DisplayName("getOrCreateActiveCode returns existing active code without creating new one")
+    void getOrCreateActiveCode_returnsExistingActiveCodeWithoutCreatingNewOne() {
+        RedisDiscordLinkCodeStore codeStore = mock(RedisDiscordLinkCodeStore.class);
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        SessionService sessionService = mock(SessionService.class);
+        NetworkService networkService = mock(NetworkService.class);
+        Config config = new Config();
+        config.server = "mini-pvp";
+
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+
+        Session session = mock(Session.class);
+        session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
+
+        long now = System.currentTimeMillis();
+        var pending = new RedisDiscordLinkCodeStore.LinkCodePayload(
+                "ABC123", "uuid-7", 7, "Target", "mini-pvp", now, now + 60_000L
+        );
+        when(codeStore.findPendingByPlayerUuid("uuid-7")).thenReturn(pending);
+
+        var result = service.getOrCreateActiveCode(session);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.code()).isEqualTo("ABC123");
+        verify(codeStore, never()).store(any());
+        verify(networkService, never()).post(any(SocketEvents.DiscordLinkCodeCreatedEvent.class));
+    }
+
+    @Test
+    @DisplayName("getOrCreateActiveCode clears expired code before creating new one")
+    void getOrCreateActiveCode_clearsExpiredCodeBeforeCreatingNewOne() {
+        RedisDiscordLinkCodeStore codeStore = mock(RedisDiscordLinkCodeStore.class);
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        SessionService sessionService = mock(SessionService.class);
+        NetworkService networkService = mock(NetworkService.class);
+        Config config = new Config();
+        config.server = "mini-pvp";
+
+        when(codeStore.store(any())).thenReturn(true);
+
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+
+        Session session = mock(Session.class);
+        session.data = PlayerData.builder().uuid("uuid-7").pid(7).nickname("Target").build();
+
+        long now = System.currentTimeMillis();
+        var expired = new RedisDiscordLinkCodeStore.LinkCodePayload(
+                "OLD123", "uuid-7", 7, "Target", "mini-pvp", now - 120_000L, now - 1L
+        );
+        when(codeStore.findPendingByPlayerUuid("uuid-7")).thenReturn(expired);
+
+        var result = service.getOrCreateActiveCode(session);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.code()).hasSize(6);
+        verify(codeStore, atLeastOnce()).invalidatePendingByPlayerUuid("uuid-7");
+        verify(codeStore).store(any());
     }
 
     @Test
@@ -193,5 +254,66 @@ class DiscordLinkServiceTest {
 
         assertThat(result).isTrue();
         verify(networkService).post(any(SocketEvents.DiscordLinkStatusChangedEvent.class));
+    }
+
+    @Test
+    @DisplayName("unlink by uuid clears online session discord state")
+    void unlinkByUuid_clearsOnlineSessionDiscordState() {
+        RedisDiscordLinkCodeStore codeStore = mock(RedisDiscordLinkCodeStore.class);
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        SessionService sessionService = mock(SessionService.class);
+        NetworkService networkService = mock(NetworkService.class);
+        Config config = new Config();
+        config.server = "mini-pvp";
+
+        DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config);
+
+        PlayerData playerData = PlayerData.builder()
+                .uuid("uuid-7")
+                .pid(7)
+                .nickname("Target")
+                .discordId("123")
+                .discordUsername("discord-user")
+                .discordLinkedAt(50L)
+                .build();
+
+        Session session = mock(Session.class);
+        session.data = PlayerData.builder()
+                .uuid("uuid-7")
+                .pid(7)
+                .nickname("Target")
+                .discordId("123")
+                .discordUsername("discord-user")
+                .discordLinkedAt(50L)
+                .build();
+
+        when(playerDataRepository.findByUuid("uuid-7")).thenReturn(playerData);
+        when(playerDataRepository.clearDiscordLink("uuid-7")).thenReturn(true);
+        when(sessionService.get("uuid-7")).thenReturn(session);
+
+        var result = service.unlink("uuid-7");
+
+        assertThat(result).isTrue();
+        assertThat(session.data.discordId).isBlank();
+        assertThat(session.data.discordUsername).isBlank();
+        assertThat(session.data.discordLinkedAt).isZero();
+    }
+
+    @Test
+    @DisplayName("link code result helper methods expose error and remaining minutes")
+    void linkCodeResult_helpersExposeErrorAndRemainingMinutes() {
+        var result = new DiscordLinkService.LinkCodeResult(false, "", 90_000L, "already-linked");
+
+        assertThat(result.isError("already-linked")).isTrue();
+        assertThat(result.isError("save-failed")).isFalse();
+        assertThat(result.remainingMinutes(0L)).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("status display name falls back to discord id when username missing")
+    void linkStatusResult_displayNameFallsBackToDiscordId() {
+        var status = DiscordLinkService.LinkStatusResult.linked("123", "", 50L);
+
+        assertThat(status.displayName()).isEqualTo("123");
     }
 }

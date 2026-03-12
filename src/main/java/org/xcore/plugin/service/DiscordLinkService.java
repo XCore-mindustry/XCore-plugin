@@ -41,12 +41,12 @@ public class DiscordLinkService {
     }
 
     public LinkCodeResult createCode(Session session) {
-        if (session == null || session.data == null) {
+        PlayerData data = playerData(session);
+        if (data == null) {
             return LinkCodeResult.error("session-missing");
         }
 
-        PlayerData data = session.data;
-        if (data.discordId != null && !data.discordId.isBlank()) {
+        if (isLinked(data)) {
             return LinkCodeResult.error("already-linked");
         }
 
@@ -84,12 +84,12 @@ public class DiscordLinkService {
     }
 
     public LinkCodeResult getOrCreateActiveCode(Session session) {
-        if (session == null || session.data == null) {
+        PlayerData data = playerData(session);
+        if (data == null) {
             return LinkCodeResult.error("session-missing");
         }
 
-        PlayerData data = session.data;
-        if (data.discordId != null && !data.discordId.isBlank()) {
+        if (isLinked(data)) {
             return LinkCodeResult.error("already-linked");
         }
 
@@ -107,12 +107,8 @@ public class DiscordLinkService {
     }
 
     public LinkStatusResult status(Session session) {
-        if (session == null || session.data == null) {
-            return LinkStatusResult.notLinked();
-        }
-
-        PlayerData data = session.data;
-        if (data.discordId == null || data.discordId.isBlank()) {
+        PlayerData data = playerData(session);
+        if (data == null || !isLinked(data)) {
             return LinkStatusResult.notLinked();
         }
 
@@ -120,34 +116,18 @@ public class DiscordLinkService {
     }
 
     public boolean unlink(Session session) {
-        if (session == null || session.data == null) {
-            return false;
-        }
-
-        PlayerData data = session.data;
-        if (data.discordId == null || data.discordId.isBlank()) {
+        PlayerData data = playerData(session);
+        if (data == null || !isLinked(data)) {
             return false;
         }
 
         String discordId = data.discordId;
-        boolean updated = playerDataRepository.clearDiscordLink(data.uuid);
-        if (!updated) {
+        if (!playerDataRepository.clearDiscordLink(data.uuid)) {
             return false;
         }
 
-        data.discordId = "";
-        data.discordUsername = "";
-        data.discordLinkedAt = 0L;
-        networkService.post(new SocketEvents.DiscordLinkStatusChangedEvent(
-                data.uuid,
-                data.pid,
-                data.nickname,
-                discordId,
-                "",
-                "unlinked",
-                config.server,
-                System.currentTimeMillis()
-        ));
+        clearDiscordState(data);
+        publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
     }
 
@@ -157,33 +137,23 @@ public class DiscordLinkService {
         }
 
         PlayerData data = playerDataRepository.findByUuid(playerUuid);
-        if (data == null || data.discordId == null || data.discordId.isBlank()) {
+        if (data == null || !isLinked(data)) {
             return false;
         }
 
         String discordId = data.discordId;
-        boolean updated = playerDataRepository.clearDiscordLink(playerUuid);
-        if (!updated) {
+        if (!playerDataRepository.clearDiscordLink(playerUuid)) {
             return false;
         }
 
         var session = sessionService.get(playerUuid);
-        if (session != null && session.data != null) {
-            session.data.discordId = "";
-            session.data.discordUsername = "";
-            session.data.discordLinkedAt = 0L;
+        if (session != null) {
+            clearDiscordState(session.data);
         }
 
-        networkService.post(new SocketEvents.DiscordLinkStatusChangedEvent(
-                data.uuid,
-                data.pid,
-                data.nickname,
-                discordId,
-                "",
-                "unlinked",
-                config.server,
-                System.currentTimeMillis()
-        ));
+        clearDiscordState(data);
+
+        publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
     }
 
@@ -210,7 +180,7 @@ public class DiscordLinkService {
         if (data == null) {
             return ConfirmResult.error("player-not-found");
         }
-        if (data.discordId != null && !data.discordId.isBlank() && !data.discordId.equals(discordId)) {
+        if (isLinked(data) && !data.discordId.equals(discordId)) {
             return ConfirmResult.error("already-linked-other-discord");
         }
 
@@ -224,23 +194,51 @@ public class DiscordLinkService {
             return ConfirmResult.error("link-failed");
         }
 
-        data.discordId = discordId;
-        data.discordUsername = discordUsername == null ? "" : discordUsername;
-        data.discordLinkedAt = now;
+        applyDiscordLink(data, discordId, discordUsername, now);
         sessionService.update(data);
 
+        publishStatusChanged(data, discordId, data.discordUsername, "linked", now);
+
+        return ConfirmResult.success(data);
+    }
+
+    private PlayerData playerData(Session session) {
+        return session == null ? null : session.data;
+    }
+
+    private boolean isLinked(PlayerData data) {
+        return data != null && data.discordId != null && !data.discordId.isBlank();
+    }
+
+    private void applyDiscordLink(PlayerData data, String discordId, String discordUsername, long linkedAt) {
+        if (data == null) {
+            return;
+        }
+
+        data.discordId = discordId == null ? "" : discordId;
+        data.discordUsername = discordUsername == null ? "" : discordUsername;
+        data.discordLinkedAt = linkedAt;
+    }
+
+    private void clearDiscordState(PlayerData data) {
+        applyDiscordLink(data, "", "", 0L);
+    }
+
+    private void publishStatusChanged(PlayerData data,
+                                      String discordId,
+                                      String discordUsername,
+                                      String status,
+                                      long timestamp) {
         networkService.post(new SocketEvents.DiscordLinkStatusChangedEvent(
                 data.uuid,
                 data.pid,
                 data.nickname,
                 discordId,
-                data.discordUsername,
-                "linked",
+                discordUsername,
+                status,
                 config.server,
-                now
+                timestamp
         ));
-
-        return ConfirmResult.success(data);
     }
 
     private String nextCode() {
@@ -266,6 +264,14 @@ public class DiscordLinkService {
         public static LinkCodeResult error(String errorKey) {
             return new LinkCodeResult(false, "", 0L, errorKey);
         }
+
+        public boolean isError(String key) {
+            return !success && key.equals(errorKey);
+        }
+
+        public long remainingMinutes(long now) {
+            return Math.max(1L, (expiresAt - now + 59_999L) / 60_000L);
+        }
     }
 
     public record LinkStatusResult(boolean linked, String discordId, String discordUsername, long linkedAt) {
@@ -275,6 +281,10 @@ public class DiscordLinkService {
 
         public static LinkStatusResult linked(String discordId, String discordUsername, long linkedAt) {
             return new LinkStatusResult(true, discordId, discordUsername == null ? "" : discordUsername, linkedAt);
+        }
+
+        public String displayName() {
+            return discordUsername.isBlank() ? discordId : discordUsername;
         }
     }
 

@@ -12,6 +12,7 @@
 /out/
 /server/
 /servers/
+/scripts/
 .opencode/
 .sisyphus/
 AGENTS.md
