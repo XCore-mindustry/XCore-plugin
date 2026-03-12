@@ -27,6 +27,9 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "blocked_private_uuids": [" uuid-1 ", "uuid-2", "uuid-1"],
             "is_admin": 1,
             "admin_confirmed": 0,
+            "discord_id": " 123456 ",
+            "discord_username": "  user#1 ",
+            "discord_linked_at": "77",
         }
     )
 
@@ -47,6 +50,9 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.blocked_private_uuids == ("uuid-1", "uuid-2")
     assert record.is_admin is True
     assert record.admin_confirmed is False
+    assert record.discord_id == "123456"
+    assert record.discord_username == "user#1"
+    assert record.discord_linked_at == 77
 
 
 def test_player_record_from_doc_uses_safe_defaults() -> None:
@@ -64,6 +70,9 @@ def test_player_record_from_doc_uses_safe_defaults() -> None:
     assert record.unlocked_badges == ()
     assert record.active_badge is None
     assert record.blocked_private_uuids == ()
+    assert record.discord_id is None
+    assert record.discord_username is None
+    assert record.discord_linked_at is None
 
 
 def test_ban_record_from_doc_normalizes_values() -> None:

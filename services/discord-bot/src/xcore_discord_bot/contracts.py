@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from json import loads
 from enum import StrEnum
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import (
     AliasChoices,
@@ -15,11 +15,11 @@ from pydantic import (
 
 
 class _FrozenModel(BaseModel):
-    model_config: ConfigDict = {
-        "frozen": True,
-        "extra": "ignore",
-        "populate_by_name": True,
-    }
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        frozen=True,
+        extra="ignore",
+        populate_by_name=True,
+    )
 
     @staticmethod
     def _require_non_empty_text(value: str) -> str:
@@ -210,6 +210,39 @@ class GlobalChatEvent(_FrozenModel):
         return cls._validate_payload(
             payload,
             error_message="Invalid global chat payload: expected authorName, message, server",
+        )
+
+
+class DiscordLinkStatusChangedEvent(_FrozenModel):
+    player_uuid: str = Field(validation_alias=AliasChoices("playerUuid", "player_uuid"))
+    player_pid: int = Field(validation_alias=AliasChoices("playerPid", "player_pid"))
+    player_nickname: str = Field(
+        validation_alias=AliasChoices("playerNickname", "player_nickname")
+    )
+    discord_id: str = Field(validation_alias=AliasChoices("discordId", "discord_id"))
+    discord_username: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("discordUsername", "discord_username"),
+    )
+    action: str
+    server: str
+    occurred_at: int = Field(validation_alias=AliasChoices("occurredAt", "occurred_at"))
+
+    @field_validator("player_uuid", "player_nickname", "discord_id", "action", "server")
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        return cls._require_non_empty_text(value)
+
+    @field_validator("player_pid", "occurred_at", mode="before")
+    @classmethod
+    def _parse_int_fields(cls, value: Any) -> int:
+        return _coerce_int(value)
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "DiscordLinkStatusChangedEvent":
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid discord link status payload",
         )
 
 

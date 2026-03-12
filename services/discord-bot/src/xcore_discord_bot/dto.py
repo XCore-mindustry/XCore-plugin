@@ -24,6 +24,9 @@ class PlayerRecord:
     blocked_private_uuids: tuple[str, ...] = ()
     is_admin: bool = False
     admin_confirmed: bool = False
+    discord_id: str | None = None
+    discord_username: str | None = None
+    discord_linked_at: int | None = None
     created_at: object = None
     updated_at: object = None
 

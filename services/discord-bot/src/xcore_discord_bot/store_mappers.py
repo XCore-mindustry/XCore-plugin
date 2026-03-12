@@ -77,6 +77,13 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         blocked_private_uuids=_normalized_str_tuple(doc.get("blocked_private_uuids")),
         is_admin=bool(doc.get("is_admin", False)),
         admin_confirmed=bool(doc.get("admin_confirmed", False)),
+        discord_id=_normalized_optional_str(doc.get("discord_id")),
+        discord_username=_normalized_optional_str(doc.get("discord_username")),
+        discord_linked_at=(
+            _int_or_default(doc.get("discord_linked_at"), default=0)
+            if doc.get("discord_linked_at") is not None
+            else None
+        ),
         created_at=doc.get("created_at"),
         updated_at=doc.get("updated_at"),
     )

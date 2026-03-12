@@ -14,7 +14,7 @@ from discord import Interaction, app_commands
 from discord.abc import Messageable
 from discord.ext import commands
 
-from .cogs import AdminCog, InfoCog, MapsCog
+from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog
 from .dto import BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
@@ -428,11 +428,52 @@ class XCoreDiscordBot(commands.Bot):
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)
 
+    async def find_player_by_discord_link_code(self, code: str) -> PlayerRecord | None:
+        return await self._store.find_player_by_discord_link_code(code)
+
+    async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
+        return await self._store.find_discord_link_code(code)
+
+    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
+        return await self._store.find_players_by_discord_id(discord_id)
+
     async def mark_admin_confirmed(self, *, uuid: str) -> None:
         await self._store.mark_admin_confirmed(uuid=uuid)
 
     async def publish_admin_confirm(self, *, uuid_value: str, server: str) -> None:
         await self._bus.publish_admin_confirm(uuid_value=uuid_value, server=server)
+
+    async def publish_discord_link_confirm(
+        self,
+        *,
+        code: str,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        discord_username: str,
+    ) -> None:
+        await self._bus.publish_discord_link_confirm(
+            code=code,
+            player_uuid=player_uuid,
+            player_pid=player_pid,
+            discord_id=discord_id,
+            discord_username=discord_username,
+        )
+
+    async def publish_discord_unlink(
+        self,
+        *,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        requested_by: str,
+    ) -> None:
+        await self._bus.publish_discord_unlink(
+            player_uuid=player_uuid,
+            player_pid=player_pid,
+            discord_id=discord_id,
+            requested_by=requested_by,
+        )
 
     async def reconnect_bus(self) -> None:
         await self._bus.reconnect()
@@ -482,9 +523,15 @@ class XCoreDiscordBot(commands.Bot):
     ) -> None:
         await self._bus.consume_mutes(callback)
 
+    async def consume_discord_link_status_changed_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_discord_link_status_changed(callback)
+
     async def setup_hook(self) -> None:
         await self.add_cog(InfoCog(self))
         await self.add_cog(AdminCog(self))
+        await self.add_cog(LinkingCog(self))
         await self.add_cog(MapsCog(self))
 
         @self.tree.error
@@ -544,9 +591,39 @@ class XCoreDiscordBot(commands.Bot):
         await self._update_presence_once()
 
     async def on_message(self, message: discord.Message) -> None:
-        """Only used for the game chat bridge — slash commands handle all admin operations."""
+        """Used for game chat bridge and DM-based account linking."""
         if message.author.bot:
             return
+
+        if isinstance(message.channel, discord.DMChannel):
+            code = message.content.strip().upper()
+            if code:
+                player = await self.find_player_by_discord_link_code(code)
+                code_doc = await self.find_discord_link_code(code)
+                if (
+                    player is not None
+                    and player.uuid is not None
+                    and code_doc is not None
+                ):
+                    if player.discord_id and player.discord_id != str(
+                        message.author.id
+                    ):
+                        await message.channel.send(
+                            "This Mindustry account is already linked to another Discord account."
+                        )
+                        return
+
+                    await self.publish_discord_link_confirm(
+                        code=code,
+                        player_uuid=player.uuid,
+                        player_pid=player.pid,
+                        discord_id=str(message.author.id),
+                        discord_username=message.author.display_name,
+                    )
+                    await message.channel.send(
+                        f"Link request sent for `{player.nickname}` (`pid={player.pid}`)."
+                    )
+                    return
 
         target_server = server_registry.get_server_for_channel(message.channel.id)
         if target_server is None:

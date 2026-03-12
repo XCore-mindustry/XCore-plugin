@@ -6,13 +6,14 @@ import hashlib
 import asyncio
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any, Awaitable, Callable, Mapping, cast
 
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from .contracts import (
     BanEvent,
+    DiscordLinkStatusChangedEvent,
     EventType,
     GameChatMessage,
     GlobalChatEvent,
@@ -51,7 +52,7 @@ class RedisBus:
                 return
 
             redis = Redis.from_url(self._settings.redis_url, decode_responses=True)
-            await redis.ping()
+            await cast(Any, redis).ping()
             self._redis = redis
 
     async def close(self) -> None:
@@ -74,7 +75,7 @@ class RedisBus:
                     pass
 
             redis = Redis.from_url(self._settings.redis_url, decode_responses=True)
-            await redis.ping()
+            await cast(Any, redis).ping()
             self._redis = redis
 
     async def publish_discord_message(
@@ -118,9 +119,9 @@ class RedisBus:
                 "server": target_server,
                 "payload_json": json.dumps(payload, ensure_ascii=False),
             }
-            await redis.xadd(
+            await cast(Any, redis).xadd(
                 stream,
-                fields,
+                cast(Any, fields),
                 maxlen=self._stream_maxlen(stream),
                 approximate=True,
             )
@@ -233,6 +234,16 @@ class RedisBus:
             stream="xcore:evt:moderation:mute",
             group_suffix="discord-mute",
             parse_payload=MuteEvent.from_payload,
+            callback=callback,
+        )
+
+    async def consume_discord_link_status_changed(
+        self, callback: Callable[[DiscordLinkStatusChangedEvent], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:discord:link-status",
+            group_suffix="discord-link-status",
+            parse_payload=DiscordLinkStatusChangedEvent.from_payload,
             callback=callback,
         )
 
@@ -359,7 +370,7 @@ class RedisBus:
         source: str,
     ) -> None:
         redis = self._require_redis()
-        producer = self._field_str(fields, "producer")
+        producer = self._field_str(cast(Any, fields), "producer")
         if skip_discord_producer and producer == "discord-bot":
             await redis.xack(stream, group, message_id)
             await self._clear_failure_counter(
@@ -369,9 +380,11 @@ class RedisBus:
 
         try:
             if parse_fields is not None:
-                parsed = parse_fields(self._stringify_field_map(fields))
+                parsed = parse_fields(self._stringify_field_map(cast(Any, fields)))
             elif parse_payload is not None:
-                payload = json.loads(self._field_str(fields, "payload_json", "{}"))
+                payload = json.loads(
+                    self._field_str(cast(Any, fields), "payload_json", "{}")
+                )
                 parsed = parse_payload(payload)
             else:
                 raise RuntimeError("No parser configured for stream consumer")
@@ -470,23 +483,26 @@ class RedisBus:
             "error_code": type(error).__name__,
             "error_message": str(error),
             "failed_at": now,
-            "envelope": self._stringify_field_map(fields),
+            "envelope": self._stringify_field_map(cast(Any, fields)),
         }
 
-        await redis.xadd(
+        await cast(Any, redis).xadd(
             dlq_stream,
-            {
-                "schema_version": "1",
-                "failure_stage": failure_stage,
-                "source_stream": source_stream_s,
-                "source_group": source_group_s,
-                "message_id": message_id_s,
-                "attempts": str(attempts),
-                "error_code": type(error).__name__,
-                "error_message": str(error),
-                "failed_at": str(now),
-                "payload_json": json.dumps(payload, ensure_ascii=False),
-            },
+            cast(
+                Any,
+                {
+                    "schema_version": "1",
+                    "failure_stage": failure_stage,
+                    "source_stream": source_stream_s,
+                    "source_group": source_group_s,
+                    "message_id": message_id_s,
+                    "attempts": str(attempts),
+                    "error_code": type(error).__name__,
+                    "error_message": str(error),
+                    "failed_at": str(now),
+                    "payload_json": json.dumps(payload, ensure_ascii=False),
+                },
+            ),
             maxlen=self._stream_maxlen(dlq_stream),
             approximate=True,
         )
@@ -655,6 +671,54 @@ class RedisBus:
             },
         )
 
+    async def publish_discord_link_confirm(
+        self,
+        *,
+        code: str,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        discord_username: str,
+    ) -> None:
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:discord-link-confirm",
+            event_type="discord.link_confirm",
+            ttl_ms=120_000,
+            idempotency_prefix="discord.link_confirm",
+            payload_builder=lambda server: {
+                "code": code,
+                "playerUuid": player_uuid,
+                "playerPid": player_pid,
+                "discordId": discord_id,
+                "discordUsername": discord_username,
+                "server": server,
+                "confirmedAt": int(time.time() * 1000),
+            },
+        )
+
+    async def publish_discord_unlink(
+        self,
+        *,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        requested_by: str,
+    ) -> None:
+        await self._publish_for_all_servers(
+            stream_prefix="xcore:cmd:discord-unlink",
+            event_type="discord.unlink",
+            ttl_ms=120_000,
+            idempotency_prefix="discord.unlink",
+            payload_builder=lambda server: {
+                "playerUuid": player_uuid,
+                "playerPid": player_pid,
+                "discordId": discord_id,
+                "requestedBy": requested_by,
+                "server": server,
+                "requestedAt": int(time.time() * 1000),
+            },
+        )
+
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         redis = self._require_redis()
         claimed = await redis.set(
@@ -772,9 +836,9 @@ class RedisBus:
 
         tail = await redis.xrevrange(reply_stream, count=1)
         cursor = tail[0][0] if tail else "0-0"
-        await redis.xadd(
+        await cast(Any, redis).xadd(
             request_stream,
-            fields,
+            cast(Any, fields),
             maxlen=self._stream_maxlen(request_stream),
             approximate=True,
         )
@@ -853,9 +917,9 @@ class RedisBus:
             "server": server,
             "payload_json": json.dumps(payload, ensure_ascii=False),
         }
-        await redis.xadd(
+        await cast(Any, redis).xadd(
             stream,
-            fields,
+            cast(Any, fields),
             maxlen=self._stream_maxlen(stream),
             approximate=True,
         )

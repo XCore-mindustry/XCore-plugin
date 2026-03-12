@@ -45,9 +45,24 @@ class PlayerDoc(_MongoDoc):
     blocked_private_uuids: list[str] | None = None
     is_admin: bool | None = None
     admin_confirmed: bool | None = None
+    discord_id: str | None = None
+    discord_username: str | None = None
+    discord_linked_at: int | None = None
     password_hash: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
+
+
+class DiscordLinkCodeDoc(_MongoDoc):
+    code: str | None = None
+    player_uuid: str | None = None
+    player_pid: int | None = None
+    player_nickname: str | None = None
+    server: str | None = None
+    expires_at: int | None = None
+    consumed_at: int | None = None
+    consumed_by_discord_id: str | None = None
+    status: str | None = None
 
 
 class BanDoc(_MongoDoc):
@@ -105,6 +120,45 @@ class MongoStore:
         return player_record_from_doc(
             PlayerDoc.model_validate(raw).model_dump(mode="python")
         )
+
+    async def find_player_by_discord_link_code(self, code: str) -> PlayerRecord | None:
+        raw_code = await self._db_required()["discord_link_codes"].find_one(
+            {"code": code}
+        )
+        if raw_code is None:
+            return None
+
+        code_doc = DiscordLinkCodeDoc.model_validate(raw_code)
+        if code_doc.status != "pending":
+            return None
+        if code_doc.player_uuid is None:
+            return None
+        if code_doc.expires_at is not None and code_doc.expires_at <= int(
+            self.now_utc().timestamp() * 1000
+        ):
+            return None
+
+        return await self.find_player_by_uuid(code_doc.player_uuid)
+
+    async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
+        raw = await self._db_required()["discord_link_codes"].find_one({"code": code})
+        if raw is None:
+            return None
+        return DiscordLinkCodeDoc.model_validate(raw).model_dump(mode="python")
+
+    async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
+        cursor = (
+            self._db_required()["players"]
+            .find({"discord_id": discord_id})
+            .sort("pid", DESCENDING)
+        )
+        rows = await cursor.to_list(length=100)
+        return [
+            player_record_from_doc(
+                PlayerDoc.model_validate(row).model_dump(mode="python")
+            )
+            for row in rows
+        ]
 
     async def search_players(
         self, query: str, limit: int = 6, page: int = 0

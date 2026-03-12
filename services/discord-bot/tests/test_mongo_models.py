@@ -14,6 +14,7 @@ def test_player_doc_allows_extra_fields_and_is_frozen() -> None:
             "pid": 1,
             "uuid": "u-1",
             "nickname": "Nick",
+            "discord_id": "123",
             "custom_field": "value",
         }
     )
