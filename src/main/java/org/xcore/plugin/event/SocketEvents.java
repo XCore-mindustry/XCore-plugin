@@ -55,6 +55,46 @@ public class SocketEvents {
 
     public record PlayerPasswordReset(String uuid) {}
 
+    public record DiscordLinkCodeCreatedEvent(
+            String code,
+            String playerUuid,
+            int playerPid,
+            String playerNickname,
+            String server,
+            long createdAt,
+            long expiresAt
+    ) {}
+
+    public record DiscordLinkConfirmEvent(
+            String code,
+            String playerUuid,
+            int playerPid,
+            String discordId,
+            String discordUsername,
+            String server,
+            long confirmedAt
+    ) {}
+
+    public record DiscordUnlinkEvent(
+            String playerUuid,
+            int playerPid,
+            String discordId,
+            String requestedBy,
+            String server,
+            long requestedAt
+    ) {}
+
+    public record DiscordLinkStatusChangedEvent(
+            String playerUuid,
+            int playerPid,
+            String playerNickname,
+            String discordId,
+            String discordUsername,
+            String action,
+            String server,
+            long occurredAt
+    ) {}
+
     public static class ReloadPlayerDataCache {}
 
     public record LoadMapsV2(FileURL[] urls, String server) {}

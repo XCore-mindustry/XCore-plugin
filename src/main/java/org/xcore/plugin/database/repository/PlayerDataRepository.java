@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Sorts.descending;
 
@@ -41,6 +42,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
         collection.createIndex(new Document("nickname", 1));
+        collection.createIndex(new Document("discord_id", 1));
     }
 
     @Override
@@ -78,6 +80,53 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public PlayerData findByPid(int id) {
         return collection.find(eq("pid", id)).first();
+    }
+
+    public List<PlayerData> findByDiscordId(String discordId) {
+        if (discordId == null || discordId.isBlank()) {
+            return List.of();
+        }
+
+        return collection.find(eq("discord_id", discordId)).into(new ArrayList<>());
+    }
+
+    public PlayerData findByDiscordLinkCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+
+        return collection.find(eq("discord_link_code", code)).first();
+    }
+
+    public boolean updateDiscordLink(String uuid, String discordId, String discordUsername, long linkedAt) {
+        if (uuid == null || uuid.isBlank() || discordId == null || discordId.isBlank() || isReadOnly()) {
+            return false;
+        }
+
+        return collection.updateOne(
+                Filters.and(
+                        eq("uuid", uuid),
+                        or(
+                                eq("discord_id", ""),
+                                eq("discord_id", discordId),
+                                Filters.exists("discord_id", false)
+                        )
+                ),
+                Updates.combine(
+                        Updates.set("discord_id", discordId),
+                        Updates.set("discord_username", discordUsername == null ? "" : discordUsername),
+                        Updates.set("discord_linked_at", linkedAt),
+                        Updates.set("updated_at", System.currentTimeMillis())
+                )
+        ).getMatchedCount() > 0;
+    }
+
+    public boolean clearDiscordLink(String uuid) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("discord_id", ""),
+                Updates.set("discord_username", ""),
+                Updates.set("discord_linked_at", 0L)
+        ));
     }
 
     public boolean incrementPlayTime(String uuid, int delta) {

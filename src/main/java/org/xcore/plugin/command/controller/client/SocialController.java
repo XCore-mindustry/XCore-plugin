@@ -22,7 +22,9 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.ChatFormatService;
+import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.ui.menu.DiscordMenu;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -35,6 +37,8 @@ public class SocialController implements CloudClientController {
     private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
     private final ChatFormatService chatFormatService;
+    private final DiscordLinkService discordLinkService;
+    private final DiscordMenu discordMenu;
 
     @Inject
     public SocialController(SessionService sessionService,
@@ -42,13 +46,17 @@ public class SocialController implements CloudClientController {
                             Config config,
                             GlobalConfig globalConfig,
                             TranslatorLanguagesProvider translatorLanguagesProvider,
-                            ChatFormatService chatFormatService) {
+                            ChatFormatService chatFormatService,
+                            DiscordLinkService discordLinkService,
+                            DiscordMenu discordMenu) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
         this.chatFormatService = chatFormatService;
+        this.discordLinkService = discordLinkService;
+        this.discordMenu = discordMenu;
     }
 
     @RequiresMuteCheck
@@ -89,7 +97,64 @@ public class SocialController implements CloudClientController {
 
     @Command("discord")
     public void discord(XCoreSender sender) {
-        Call.openURI(sender.player().con, globalConfig.discordUrl);
+        discordMenu.sender(sender);
+        discordMenu.main(discordMenu.getUuid(sender));
+    }
+
+    @Command("discord link")
+    public void discordLink(XCoreSender sender) {
+        Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
+
+        Localization local = session.locale();
+        var result = discordLinkService.createCode(session);
+        if (!result.success()) {
+            if ("already-linked".equals(result.errorKey())) {
+                local.send("commands-discord-link-already-linked", args());
+            } else {
+                local.send("commands-discord-link-error", args());
+            }
+            return;
+        }
+
+        long remainingMinutes = Math.max(1L, (result.expiresAt() - System.currentTimeMillis() + 59_999L) / 60_000L);
+        local.send("commands-discord-link-created", args(
+                "code", result.code(),
+                "expireMinutes", remainingMinutes,
+                "discordUrl", globalConfig.discordUrl
+        ));
+    }
+
+    @Command("discord status")
+    public void discordStatus(XCoreSender sender) {
+        Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
+
+        Localization local = session.locale();
+        var status = discordLinkService.status(session);
+        if (!status.linked()) {
+            local.send("commands-discord-status-not-linked", args());
+            return;
+        }
+
+        local.send("commands-discord-status-linked", args(
+                "discordId", status.discordId(),
+                "discordUsername", status.discordUsername().isBlank() ? status.discordId() : status.discordUsername()
+        ));
+    }
+
+    @Command("discord unlink")
+    public void discordUnlink(XCoreSender sender) {
+        Session session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) return;
+
+        Localization local = session.locale();
+        if (!discordLinkService.unlink(session)) {
+            local.send("commands-discord-unlink-not-linked", args());
+            return;
+        }
+
+        local.send("commands-discord-unlink-success", args());
     }
 
     @Command("tr <language>")

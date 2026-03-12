@@ -69,6 +69,13 @@ public class PlayerData extends ModelData {
     @Builder.Default public boolean adminConfirmed = false;
     @Builder.Default public boolean leaderboard = true;
 
+    @BsonProperty("discord_id")
+    @Builder.Default public String discordId = "";
+    @BsonProperty("discord_username")
+    @Builder.Default public String discordUsername = "";
+    @BsonProperty("discord_linked_at")
+    @Builder.Default public long discordLinkedAt = 0L;
+
     @Builder.Default @BsonIgnore public transient Player player = null;
     @Builder.Default @BsonIgnore public String adminModVersion = null;
     @Builder.Default @BsonIgnore public long historySize = 0L;

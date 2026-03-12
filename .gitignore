@@ -12,6 +12,7 @@
 /out/
 /server/
 /servers/
+.opencode/
 .sisyphus/
 AGENTS.md
 CLAUDE.md

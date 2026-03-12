@@ -47,6 +47,29 @@ commands-info-text =
     { "" }Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
+discord-menu-title = { "[" }orange]{ -xcore } — Discord
+discord-menu-content =
+    { "" }[white]Керуйте привʼязкою Discord тут.
+    { "" }
+    { "" }[white]Статус: { $status }
+    { "" }[white]Сервер: [accent]{ $discordUrl }[]
+discord-menu-open = Відкрити Discord
+discord-menu-link = Привʼязати акаунт
+discord-menu-status = Оновити статус
+discord-menu-unlink = Відвʼязати акаунт
+discord-menu-status-not-linked = [lightgray]не привʼязаний[]
+discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
+discord-link-menu-title = { "[" }orange]{ -xcore } — Привʼязка Discord акаунта
+discord-link-menu-content =
+    { "" }[white]Надішліть цей код Discord-боту:
+    { "" }
+    { "" }[accent]{ $code }[]
+    { "" }
+    { "" }[white]Спливає через: [accent]{ $expireMinutes }[] хв
+    { "" }[white]Discord: [accent]{ $discordUrl }[]
+discord-link-menu-refresh = Оновити код
+discord-link-menu-regenerate = Згенерувати новий код
+discord-link-menu-status = Назад до меню Discord
 welcome =
     { "[" }accent]Ласкаво просимо на { $serverName }!
     { "" }[lightgray]Напишіть [accent]/help[lightgray], щоб побачити список команд
@@ -55,7 +78,7 @@ welcome =
     { "" }[lightgray]Напишіть [accent]/t [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення союзникам
     { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
     { "" }[lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
-    { "" }[lightgray]Напишіть [accent]/discord[lightgray], щоб перейти на наш Discord сервер
+    { "" }[lightgray]Напишіть [accent]/discord[lightgray], щоб відкрити меню Discord і привʼязати акаунт
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
@@ -155,6 +178,17 @@ commands-login-admin-password-created =
     { "[" }green]Пароль адміністратора створено.
     { "" }[red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
 commands-login-request-approval-discord = { "[" }accent]Вам потрібно підтвердити запит на права адміністратора в каналі [orange]#admin-bots[] на нашому Discord сервері.
+commands-discord-link-created =
+    { "[" }green]Код привʼязки Discord створено: [accent]{ $code }[]
+    { "" }[lightgray]Надішліть цей код Discord-боту протягом [accent]{ $expireMinutes }[] хв.
+    { "" }[cyan]{ $discordUrl }
+commands-discord-link-confirmed = { "[" }green]Discord акаунт привʼязано: [accent]{ $discordUsername }[]
+commands-discord-link-already-linked = { "[" }lightgray]Цей акаунт Mindustry уже привʼязаний. Використайте [accent]/discord status[] або [accent]/discord unlink[].
+commands-discord-link-error = { "[" }scarlet]Не вдалося створити код привʼязки Discord. Спробуйте пізніше.
+commands-discord-status-not-linked = { "[" }lightgray]Ваш акаунт не привʼязаний до Discord.
+commands-discord-status-linked = { "[" }green]Привʼязаний Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
+commands-discord-unlink-not-linked = { "[" }lightgray]Ваш акаунт не привʼязаний до Discord.
+commands-discord-unlink-success = { "[" }green]Привʼязку Discord видалено.
 commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші права адміністратора.
 commands-logout-successful = { "[" }green]Права адміністратора відкликано.
 # ==============================================================================

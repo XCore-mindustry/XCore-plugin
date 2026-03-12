@@ -100,6 +100,29 @@ commands-info-text =
     { "" }XCore Version — [accent]{ $version }[white]
 commands-sync-description = Sync your game with the server. Run this to fix errors like ghost units.
 commands-discord-description = Redirects you to discord server.
+discord-menu-title = { "[" }orange]{ -xcore } — Discord
+discord-menu-content =
+    { "" }[white]Manage your Discord connection here.
+    { "" }
+    { "" }[white]Status: { $status }
+    { "" }[white]Server: [accent]{ $discordUrl }[]
+discord-menu-open = Open Discord
+discord-menu-link = Link account
+discord-menu-status = Refresh status
+discord-menu-unlink = Unlink account
+discord-menu-status-not-linked = [lightgray]not linked[]
+discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
+discord-link-menu-title = { "[" }orange]{ -xcore } — Link Discord account
+discord-link-menu-content =
+    { "" }[white]Send this code to the Discord bot:
+    { "" }
+    { "" }[accent]{ $code }[]
+    { "" }
+    { "" }[white]Expires in: [accent]{ $expireMinutes }[] min
+    { "" }[white]Discord: [accent]{ $discordUrl }[]
+discord-link-menu-refresh = Refresh code
+discord-link-menu-regenerate = Generate new code
+discord-link-menu-status = Back to Discord menu
 welcome =
     { "[" }accent]Welcome to { $serverName }!
     { "" }[lightgray]Type [accent]/help[lightgray] to see a list of commands
@@ -108,7 +131,7 @@ welcome =
     { "" }[lightgray]Type [accent]/t [gray]<message…>[lightgray] to send a message to your teammates
     { "" }[lightgray]Type [accent]/g [gray]<message…>[lightgray] to send a message to all servers
     { "" }[lightgray]Type [accent]/tr [gray]<language/auto>[lightgray] to enable the translator
-    { "" }[lightgray]Type [accent]/discord[lightgray] to redirect you to our discord server
+    { "" }[lightgray]Type [accent]/discord[lightgray] to open the Discord menu and link your account
 # ==============================================================================
 # Chat & Social
 # ==============================================================================
@@ -180,6 +203,17 @@ commands-login-admin-password-created =
     { "[" }green]Admin password created.
     { "" }[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
 commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [orange]#admin-bots[].
+commands-discord-link-created =
+    { "[" }green]Discord link code created: [accent]{ $code }[]
+    { "" }[lightgray]Send this code to the Discord bot within [accent]{ $expireMinutes }[] min.
+    { "" }[cyan]{ $discordUrl }
+commands-discord-link-confirmed = { "[" }green]Discord account linked: [accent]{ $discordUsername }[]
+commands-discord-link-already-linked = { "[" }lightgray]This Mindustry account is already linked. Use [accent]/discord status[] or [accent]/discord unlink[].
+commands-discord-link-error = { "[" }scarlet]Failed to create Discord link code. Try again later.
+commands-discord-status-not-linked = { "[" }lightgray]Your account is not linked to Discord.
+commands-discord-status-linked = { "[" }green]Linked Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
+commands-discord-unlink-not-linked = { "[" }lightgray]Your account is not linked to Discord.
+commands-discord-unlink-success = { "[" }green]Discord link removed.
 commands-logout-description = Log out. This will [scarlet]revoke your admin rights.
 commands-logout-successful = { "[" }green]Admin rights revoked.
 # ==============================================================================

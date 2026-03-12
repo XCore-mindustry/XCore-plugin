@@ -63,6 +63,20 @@ public final class RedisStreamRouter {
         if (event instanceof SocketEvents.PlayerPasswordReset) {
             return new Route("xcore:cmd:player-password-reset:" + defaultServer, "player.password_reset", 120000L);
         }
+        if (event instanceof SocketEvents.DiscordLinkCodeCreatedEvent) {
+            return new Route("xcore:evt:discord:link-code", "discord.link_code_created", 120000L);
+        }
+        if (event instanceof SocketEvents.DiscordLinkConfirmEvent) {
+            var server = extractServer(event, defaultServer);
+            return new Route("xcore:cmd:discord-link-confirm:" + server, "discord.link_confirm", 120000L);
+        }
+        if (event instanceof SocketEvents.DiscordUnlinkEvent) {
+            var server = extractServer(event, defaultServer);
+            return new Route("xcore:cmd:discord-unlink:" + server, "discord.unlink", 120000L);
+        }
+        if (event instanceof SocketEvents.DiscordLinkStatusChangedEvent) {
+            return new Route("xcore:evt:discord:link-status", "discord.link_status_changed", 120000L);
+        }
         if (event instanceof SocketEvents.ReloadPlayerDataCache) {
             return new Route("xcore:cmd:reload-cache:" + defaultServer, "cache.reload_player_data", 120000L);
         }
@@ -155,6 +169,22 @@ public final class RedisStreamRouter {
             streams.add("xcore:cmd:player-password-reset:" + defaultServer);
             return streams;
         }
+        if (type == SocketEvents.DiscordLinkCodeCreatedEvent.class) {
+            streams.add("xcore:evt:discord:link-code");
+            return streams;
+        }
+        if (type == SocketEvents.DiscordLinkConfirmEvent.class) {
+            streams.add("xcore:cmd:discord-link-confirm:" + defaultServer);
+            return streams;
+        }
+        if (type == SocketEvents.DiscordUnlinkEvent.class) {
+            streams.add("xcore:cmd:discord-unlink:" + defaultServer);
+            return streams;
+        }
+        if (type == SocketEvents.DiscordLinkStatusChangedEvent.class) {
+            streams.add("xcore:evt:discord:link-status");
+            return streams;
+        }
         if (type == SocketEvents.ReloadPlayerDataCache.class) {
             streams.add("xcore:cmd:reload-cache:" + defaultServer);
             return streams;
@@ -195,6 +225,8 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.DiscordMessageEvent.class
                 || type == SocketEvents.PrivateMessageEvent.class
                 || type == SocketEvents.AdminRequestEvent.class
+                || type == SocketEvents.DiscordLinkCodeCreatedEvent.class
+                || type == SocketEvents.DiscordLinkStatusChangedEvent.class
                 || type == BanData.class
                 || type == MuteData.class;
     }
@@ -206,6 +238,8 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.PlayerActiveBadgeChanged.class
                 || type == SocketEvents.PlayerBadgeInventoryChanged.class
                 || type == SocketEvents.PlayerPasswordReset.class
+                || type == SocketEvents.DiscordLinkConfirmEvent.class
+                || type == SocketEvents.DiscordUnlinkEvent.class
                 || type == SocketEvents.ReloadPlayerDataCache.class
                 || type == SocketEvents.LoadMapsV2.class
                 || type == SocketEvents.ExecuteCommand.class

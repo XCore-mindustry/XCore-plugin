@@ -12,6 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.socket.ChatSocketHandler;
+import org.xcore.plugin.event.socket.DiscordLinkSocketHandler;
 import org.xcore.plugin.event.socket.MapSocketHandler;
 import org.xcore.plugin.event.socket.ModerationSocketHandler;
 import org.xcore.plugin.service.NetworkService;
@@ -25,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 public class SocketService {
 
     private final ChatSocketHandler chatSocketHandler;
+    private final DiscordLinkSocketHandler discordLinkSocketHandler;
     private final ModerationSocketHandler moderationSocketHandler;
     private final MapSocketHandler mapSocketHandler;
     private final NetworkService network;
@@ -33,11 +35,13 @@ public class SocketService {
 
     @Inject
     public SocketService(ChatSocketHandler chatSocketHandler,
-                         ModerationSocketHandler moderationSocketHandler,
-                         MapSocketHandler mapSocketHandler,
-                         NetworkService network,
-                         Config config) {
+                         DiscordLinkSocketHandler discordLinkSocketHandler,
+                          ModerationSocketHandler moderationSocketHandler,
+                          MapSocketHandler mapSocketHandler,
+                          NetworkService network,
+                          Config config) {
         this.chatSocketHandler = chatSocketHandler;
+        this.discordLinkSocketHandler = discordLinkSocketHandler;
         this.moderationSocketHandler = moderationSocketHandler;
         this.mapSocketHandler = mapSocketHandler;
         this.network = network;
@@ -47,6 +51,7 @@ public class SocketService {
     @PostConstruct
     public void init() {
         chatSocketHandler.registerListeners();
+        discordLinkSocketHandler.registerListeners();
         moderationSocketHandler.registerListeners();
         mapSocketHandler.registerListeners();
 

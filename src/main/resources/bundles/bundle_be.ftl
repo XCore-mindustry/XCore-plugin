@@ -113,5 +113,40 @@ commands-info-text =
     { "" }
     { "" } Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Сінхранізуйце гульню з серверам. Выканайце гэта для выпраўлення памылак (напрыклад прывідныя юніты).
+commands-discord-description = Адкрывае меню Discord.
+discord-menu-title = { "[" }orange]{ -xcore } — Discord
+discord-menu-content =
+    { "" }[white]Кіруйце прывязкай Discord тут.
+    { "" }
+    { "" }[white]Статус: { $status }
+    { "" }[white]Сервер: [accent]{ $discordUrl }[]
+discord-menu-open = Адкрыць Discord
+discord-menu-link = Прывязаць акаўнт
+discord-menu-status = Абнавіць статус
+discord-menu-unlink = Адвязаць акаўнт
+discord-menu-status-not-linked = [lightgray]не прывязаны[]
+discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
+discord-link-menu-title = { "[" }orange]{ -xcore } — Прывязка Discord акаўнта
+discord-link-menu-content =
+    { "" }[white]Адпраўце гэты код Discord-боту:
+    { "" }
+    { "" }[accent]{ $code }[]
+    { "" }
+    { "" }[white]Скончыцца праз: [accent]{ $expireMinutes }[] хв
+    { "" }[white]Discord: [accent]{ $discordUrl }[]
+discord-link-menu-refresh = Абнавіць код
+discord-link-menu-regenerate = Згенераваць новы код
+discord-link-menu-status = Назад у меню Discord
 none = Няма
 error-nickname-badge-glyph = { "[" }scarlet]⚠ Карыстальніцкі нік не можа ўтрымліваць зарэзерваваныя іконкі бэйджаў.
+commands-discord-link-created =
+    { "[" }green]Код прывязкі Discord створаны: [accent]{ $code }[]
+    { "" }[lightgray]Адпраўце гэты код Discord-боту на працягу [accent]{ $expireMinutes }[] хв.
+    { "" }[cyan]{ $discordUrl }
+commands-discord-link-confirmed = { "[" }green]Discord акаўнт прывязаны: [accent]{ $discordUsername }[]
+commands-discord-link-already-linked = { "[" }lightgray]Гэты акаўнт Mindustry ужо прывязаны. Скарыстайце [accent]/discord status[] або [accent]/discord unlink[].
+commands-discord-link-error = { "[" }scarlet]Не ўдалося стварыць код прывязкі Discord. Паспрабуйце пазней.
+commands-discord-status-not-linked = { "[" }lightgray]Ваш акаўнт не прывязаны да Discord.
+commands-discord-status-linked = { "[" }green]Прывязаны Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
+commands-discord-unlink-not-linked = { "[" }lightgray]Ваш акаўнт не прывязаны да Discord.
+commands-discord-unlink-success = { "[" }green]Прывязка Discord выдалена.
