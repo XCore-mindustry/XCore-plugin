@@ -47,10 +47,9 @@ class _Bot:
         assert code == "ABC123"
         return {
             "code": code,
-            "player_uuid": "uuid-7",
-            "player_pid": 7,
+            "playerUuid": "uuid-7",
+            "playerPid": 7,
             "server": "mini-pvp",
-            "status": "pending",
             "expires_at": 9999999999999,
         }
 

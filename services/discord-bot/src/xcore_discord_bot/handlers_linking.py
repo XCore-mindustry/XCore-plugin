@@ -29,13 +29,6 @@ async def cmd_link(bot: "XCoreDiscordBot", interaction: Interaction, code: str) 
         await interaction.response.send_message("Link code not found.", ephemeral=True)
         return
 
-    status = str(code_doc.get("status") or "")
-    if status != "pending":
-        await interaction.response.send_message(
-            "This link code was already used or cancelled.", ephemeral=True
-        )
-        return
-
     expires_at_raw = code_doc.get("expires_at")
     expires_at = int(str(expires_at_raw)) if expires_at_raw is not None else 0
     now_ms = int((await bot.now_utc()).timestamp() * 1000)
@@ -45,7 +38,8 @@ async def cmd_link(bot: "XCoreDiscordBot", interaction: Interaction, code: str) 
         )
         return
 
-    player = await bot.find_player_by_uuid(str(code_doc.get("player_uuid") or ""))
+    player_uuid = str(code_doc.get("playerUuid") or code_doc.get("player_uuid") or "")
+    player = await bot.find_player_by_uuid(player_uuid)
     if player is None or player.uuid is None:
         await interaction.response.send_message(
             "Player for this code was not found.", ephemeral=True

@@ -428,11 +428,8 @@ class XCoreDiscordBot(commands.Bot):
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)
 
-    async def find_player_by_discord_link_code(self, code: str) -> PlayerRecord | None:
-        return await self._store.find_player_by_discord_link_code(code)
-
     async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
-        return await self._store.find_discord_link_code(code)
+        return await self._bus.get_discord_link_code(code)
 
     async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
         return await self._store.find_players_by_discord_id(discord_id)
@@ -598,8 +595,16 @@ class XCoreDiscordBot(commands.Bot):
         if isinstance(message.channel, discord.DMChannel):
             code = message.content.strip().upper()
             if code:
-                player = await self.find_player_by_discord_link_code(code)
                 code_doc = await self.find_discord_link_code(code)
+                player = None
+                if code_doc is not None:
+                    player = await self.find_player_by_uuid(
+                        str(
+                            code_doc.get("playerUuid")
+                            or code_doc.get("player_uuid")
+                            or ""
+                        )
+                    )
                 if (
                     player is not None
                     and player.uuid is not None

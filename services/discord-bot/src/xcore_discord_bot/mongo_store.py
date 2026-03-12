@@ -53,18 +53,6 @@ class PlayerDoc(_MongoDoc):
     updated_at: int | None = None
 
 
-class DiscordLinkCodeDoc(_MongoDoc):
-    code: str | None = None
-    player_uuid: str | None = None
-    player_pid: int | None = None
-    player_nickname: str | None = None
-    server: str | None = None
-    expires_at: int | None = None
-    consumed_at: int | None = None
-    consumed_by_discord_id: str | None = None
-    status: str | None = None
-
-
 class BanDoc(_MongoDoc):
     uuid: str | None = None
     ip: str | None = None
@@ -120,31 +108,6 @@ class MongoStore:
         return player_record_from_doc(
             PlayerDoc.model_validate(raw).model_dump(mode="python")
         )
-
-    async def find_player_by_discord_link_code(self, code: str) -> PlayerRecord | None:
-        raw_code = await self._db_required()["discord_link_codes"].find_one(
-            {"code": code}
-        )
-        if raw_code is None:
-            return None
-
-        code_doc = DiscordLinkCodeDoc.model_validate(raw_code)
-        if code_doc.status != "pending":
-            return None
-        if code_doc.player_uuid is None:
-            return None
-        if code_doc.expires_at is not None and code_doc.expires_at <= int(
-            self.now_utc().timestamp() * 1000
-        ):
-            return None
-
-        return await self.find_player_by_uuid(code_doc.player_uuid)
-
-    async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
-        raw = await self._db_required()["discord_link_codes"].find_one({"code": code})
-        if raw is None:
-            return None
-        return DiscordLinkCodeDoc.model_validate(raw).model_dump(mode="python")
 
     async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
         cursor = (

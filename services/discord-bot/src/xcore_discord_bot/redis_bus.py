@@ -126,6 +126,21 @@ class RedisBus:
                 approximate=True,
             )
 
+    async def get_discord_link_code(self, code: str) -> dict[str, object] | None:
+        redis = self._require_redis()
+        normalized = code.strip().upper()
+        if not normalized:
+            return None
+
+        payload_json = await redis.get(f"xcore:discord-link:code:{normalized}")
+        if payload_json is None or payload_json == "":
+            return None
+
+        payload = json.loads(payload_json)
+        if not isinstance(payload, dict):
+            return None
+        return cast(dict[str, object], payload)
+
     async def consume_game_chat(
         self, callback: Callable[[GameChatMessage], Awaitable[None]]
     ) -> None:
