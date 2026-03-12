@@ -3,11 +3,10 @@ package org.xcore.plugin.service;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.repository.DiscordLinkCodeRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.model.DiscordLinkCode;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -21,7 +20,7 @@ public class DiscordLinkService {
     private static final int CODE_LENGTH = 6;
     private static final long CODE_TTL_MILLIS = 10 * 60 * 1000L;
 
-    private final DiscordLinkCodeRepository discordLinkCodeRepository;
+    private final RedisDiscordLinkCodeStore discordLinkCodeStore;
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final NetworkService networkService;
@@ -29,12 +28,12 @@ public class DiscordLinkService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Inject
-    public DiscordLinkService(DiscordLinkCodeRepository discordLinkCodeRepository,
+    public DiscordLinkService(RedisDiscordLinkCodeStore discordLinkCodeStore,
                               PlayerDataRepository playerDataRepository,
                               SessionService sessionService,
                               NetworkService networkService,
                               Config config) {
-        this.discordLinkCodeRepository = discordLinkCodeRepository;
+        this.discordLinkCodeStore = discordLinkCodeStore;
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.networkService = networkService;
@@ -51,25 +50,23 @@ public class DiscordLinkService {
             return LinkCodeResult.error("already-linked");
         }
 
-        discordLinkCodeRepository.invalidatePendingByPlayerUuid(data.uuid);
+        discordLinkCodeStore.invalidatePendingByPlayerUuid(data.uuid);
 
         String code = nextCode();
         long now = System.currentTimeMillis();
         long expiresAt = now + CODE_TTL_MILLIS;
 
-        DiscordLinkCode linkCode = DiscordLinkCode.builder()
-                .code(code)
-                .playerUuid(data.uuid)
-                .playerPid(data.pid)
-                .playerNickname(data.nickname)
-                .server(config.server)
-                .createdModelTime(now)
-                .editModelTime(now)
-                .expiresAt(expiresAt)
-                .status("pending")
-                .build();
+        var linkCode = new RedisDiscordLinkCodeStore.LinkCodePayload(
+                code,
+                data.uuid,
+                data.pid,
+                data.nickname,
+                config.server,
+                now,
+                expiresAt
+        );
 
-        if (!discordLinkCodeRepository.save(linkCode)) {
+        if (!discordLinkCodeStore.store(linkCode)) {
             return LinkCodeResult.error("save-failed");
         }
 
@@ -97,13 +94,13 @@ public class DiscordLinkService {
         }
 
         long now = System.currentTimeMillis();
-        for (var pending : discordLinkCodeRepository.findPendingByPlayerUuid(data.uuid)) {
-            if (pending.isExpired(now)) {
-                discordLinkCodeRepository.expireCode(pending.code);
-                continue;
+        var pending = discordLinkCodeStore.findPendingByPlayerUuid(data.uuid);
+        if (pending != null) {
+            if (pending.expiresAt() <= now) {
+                discordLinkCodeStore.invalidatePendingByPlayerUuid(data.uuid);
+            } else {
+                return LinkCodeResult.success(pending.code(), pending.expiresAt());
             }
-
-            return LinkCodeResult.success(pending.code, pending.expiresAt);
         }
 
         return createCode(session);
@@ -197,18 +194,15 @@ public class DiscordLinkService {
                                      String discordUsername) {
         long now = System.currentTimeMillis();
 
-        DiscordLinkCode linkCode = discordLinkCodeRepository.findByCode(code);
+        var linkCode = discordLinkCodeStore.findByCode(code);
         if (linkCode == null) {
             return ConfirmResult.error("not-found");
         }
-        if (!linkCode.isPending()) {
-            return ConfirmResult.error("already-consumed");
-        }
-        if (linkCode.isExpired(now)) {
-            discordLinkCodeRepository.expireCode(code);
+        if (linkCode.expiresAt() <= now) {
+            discordLinkCodeStore.consumeCode(code);
             return ConfirmResult.error("expired");
         }
-        if (!linkCode.playerUuid.equals(playerUuid) || linkCode.playerPid != playerPid) {
+        if (!linkCode.playerUuid().equals(playerUuid) || linkCode.playerPid() != playerPid) {
             return ConfirmResult.error("player-mismatch");
         }
 
@@ -220,7 +214,7 @@ public class DiscordLinkService {
             return ConfirmResult.error("already-linked-other-discord");
         }
 
-        boolean consumed = discordLinkCodeRepository.consumeCode(code, discordId, now);
+        boolean consumed = discordLinkCodeStore.consumeCode(code);
         if (!consumed) {
             return ConfirmResult.error("consume-failed");
         }
@@ -256,7 +250,7 @@ public class DiscordLinkService {
                 builder.append(CODE_ALPHABET.charAt(secureRandom.nextInt(CODE_ALPHABET.length())));
             }
             String code = builder.toString().toUpperCase(Locale.ROOT);
-            if (discordLinkCodeRepository.findByCode(code) == null) {
+            if (discordLinkCodeStore.findByCode(code) == null) {
                 return code;
             }
         }

@@ -128,9 +128,9 @@ discord-menu-status-not-linked = [lightgray]не прывязаны[]
 discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
 discord-link-menu-title = { "[" }orange]{ -xcore } — Прывязка Discord акаўнта
 discord-link-menu-content =
-    { "" }[white]Адпраўце гэты код Discord-боту:
+    { "" }[white]На нашым Discord серверы выклічце slash-каманту бота:
     { "" }
-    { "" }[accent]{ $code }[]
+    { "" }[accent]/link { $code }[]
     { "" }
     { "" }[white]Скончыцца праз: [accent]{ $expireMinutes }[] хв
     { "" }[white]Discord: [accent]{ $discordUrl }[]
@@ -141,7 +141,7 @@ none = Няма
 error-nickname-badge-glyph = { "[" }scarlet]⚠ Карыстальніцкі нік не можа ўтрымліваць зарэзерваваныя іконкі бэйджаў.
 commands-discord-link-created =
     { "[" }green]Код прывязкі Discord створаны: [accent]{ $code }[]
-    { "" }[lightgray]Адпраўце гэты код Discord-боту на працягу [accent]{ $expireMinutes }[] хв.
+    { "" }[lightgray]На нашым Discord серверы выклічце slash-каманту бота [accent]/link { $code }[] на працягу [accent]{ $expireMinutes }[] хв.
     { "" }[cyan]{ $discordUrl }
 commands-discord-link-confirmed = { "[" }green]Discord акаўнт прывязаны: [accent]{ $discordUsername }[]
 commands-discord-link-already-linked = { "[" }lightgray]Гэты акаўнт Mindustry ужо прывязаны. Скарыстайце [accent]/discord status[] або [accent]/discord unlink[].

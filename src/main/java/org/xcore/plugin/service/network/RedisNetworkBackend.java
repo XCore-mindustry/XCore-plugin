@@ -312,6 +312,19 @@ public final class RedisNetworkBackend {
         return router.isRpcRequestType(type) && ensureConnected();
     }
 
+    public <T> T withCommands(java.util.function.Function<RedisCommands<String, String>, T> operation, T fallback) {
+        if (!ensureConnected()) {
+            return fallback;
+        }
+
+        try {
+            return operation.apply(commands);
+        } catch (Exception e) {
+            Log.warn("Redis direct command failed: @", e.getMessage());
+            return fallback;
+        }
+    }
+
     public boolean supportsRespond(Request<?> request) {
         synchronized (inboundRpcContexts) {
             return inboundRpcContexts.containsKey(request);

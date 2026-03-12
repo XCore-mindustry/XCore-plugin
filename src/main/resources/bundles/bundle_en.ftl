@@ -114,9 +114,9 @@ discord-menu-status-not-linked = [lightgray]not linked[]
 discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
 discord-link-menu-title = { "[" }orange]{ -xcore } — Link Discord account
 discord-link-menu-content =
-    { "" }[white]Send this code to the Discord bot:
+    { "" }[white]On our Discord server, run the bot slash command:
     { "" }
-    { "" }[accent]{ $code }[]
+    { "" }[accent]/link { $code }[]
     { "" }
     { "" }[white]Expires in: [accent]{ $expireMinutes }[] min
     { "" }[white]Discord: [accent]{ $discordUrl }[]
@@ -205,7 +205,7 @@ commands-login-admin-password-created =
 commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [orange]#admin-bots[].
 commands-discord-link-created =
     { "[" }green]Discord link code created: [accent]{ $code }[]
-    { "" }[lightgray]Send this code to the Discord bot within [accent]{ $expireMinutes }[] min.
+    { "" }[lightgray]On our Discord server, run the bot slash command [accent]/link { $code }[] within [accent]{ $expireMinutes }[] min.
     { "" }[cyan]{ $discordUrl }
 commands-discord-link-confirmed = { "[" }green]Discord account linked: [accent]{ $discordUsername }[]
 commands-discord-link-already-linked = { "[" }lightgray]This Mindustry account is already linked. Use [accent]/discord status[] or [accent]/discord unlink[].

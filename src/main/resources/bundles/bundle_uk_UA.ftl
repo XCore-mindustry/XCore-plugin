@@ -61,9 +61,9 @@ discord-menu-status-not-linked = [lightgray]не привʼязаний[]
 discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
 discord-link-menu-title = { "[" }orange]{ -xcore } — Привʼязка Discord акаунта
 discord-link-menu-content =
-    { "" }[white]Надішліть цей код Discord-боту:
+    { "" }[white]На нашому Discord сервері викличте slash-команду бота:
     { "" }
-    { "" }[accent]{ $code }[]
+    { "" }[accent]/link { $code }[]
     { "" }
     { "" }[white]Спливає через: [accent]{ $expireMinutes }[] хв
     { "" }[white]Discord: [accent]{ $discordUrl }[]
@@ -180,7 +180,7 @@ commands-login-admin-password-created =
 commands-login-request-approval-discord = { "[" }accent]Вам потрібно підтвердити запит на права адміністратора в каналі [orange]#admin-bots[] на нашому Discord сервері.
 commands-discord-link-created =
     { "[" }green]Код привʼязки Discord створено: [accent]{ $code }[]
-    { "" }[lightgray]Надішліть цей код Discord-боту протягом [accent]{ $expireMinutes }[] хв.
+    { "" }[lightgray]На нашому Discord сервері викличте slash-команду бота [accent]/link { $code }[] протягом [accent]{ $expireMinutes }[] хв.
     { "" }[cyan]{ $discordUrl }
 commands-discord-link-confirmed = { "[" }green]Discord акаунт привʼязано: [accent]{ $discordUsername }[]
 commands-discord-link-already-linked = { "[" }lightgray]Цей акаунт Mindustry уже привʼязаний. Використайте [accent]/discord status[] або [accent]/discord unlink[].
