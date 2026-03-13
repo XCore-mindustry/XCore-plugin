@@ -51,6 +51,10 @@ class AdminCog(commands.Cog):
         name="admin",
         description="Manage Discord-linked admin access",
     )
+    badge_group = app_commands.Group(
+        name="badge",
+        description="Manage player badges",
+    )
 
     def __init__(self, bot: "XCoreDiscordBot") -> None:
         self.bot = bot
@@ -175,8 +179,8 @@ class AdminCog(commands.Cog):
     ) -> None:
         await handlers_moderation.cmd_reset_password(self.bot, interaction, player_id)
 
-    @app_commands.command(
-        name="badge-grant",
+    @badge_group.command(
+        name="grant",
         description="Grant a badge to a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")
@@ -196,8 +200,8 @@ class AdminCog(commands.Cog):
             badge_id,
         )
 
-    @app_commands.command(
-        name="badge-revoke",
+    @badge_group.command(
+        name="revoke",
         description="Revoke a badge from a player (general admin)",
     )
     @app_commands.describe(player_id="Numeric player ID", badge_id="Badge ID")

@@ -15,13 +15,14 @@ Standalone Discord bot for XCore transport migration.
 - Game chat → Discord bridge:
   - consumes `xcore:evt:chat:message` via consumer group
 - Slash commands over streams:
-  - `/maps <server>` → `maps.list`
-  - `/remove-map <server> <map>` → `maps.remove`
-  - `/upload-map <server> <file1> [file2] [file3]` (+ `.msav` attachments) → `maps.load`
+  - `/map list <server>` → `maps.list`
+  - `/map remove <server> <map>` → `maps.remove`
+  - `/map upload <server> <file1> [file2] [file3]` (+ `.msav` attachments) → `maps.load`
 - Moderation/admin slash commands (Mongo-backed):
   - `/stats`, `/search`, `/bans`
   - `/ban`, `/unban`, `/mute`, `/unmute`
-  - `/remove-admin <player-id>`, `/reset-password`
+  - `/admin add|remove|list|sync`, `/reset-password`
+  - `/badge grant|revoke`
 - Admin request approvals:
   - consumes `xcore:evt:admin:request`
   - sends confirmation event to `xcore:cmd:admin-confirm:<server>`

@@ -30,17 +30,22 @@ async def _autocomplete_server_for_command(
 
 
 class MapsCog(commands.Cog):
+    map_group = app_commands.Group(
+        name="map",
+        description="Browse and manage server maps",
+    )
+
     def __init__(self, bot: "XCoreDiscordBot") -> None:
         self.bot = bot
 
-    @app_commands.command(name="maps", description="List maps on a server")
+    @map_group.command(name="list", description="List maps on a server")
     @app_commands.describe(server="Server name")
     @app_commands.autocomplete(server=_autocomplete_server_for_command)
     async def cmd_maps(self, interaction: Interaction, server: str) -> None:
         await handlers_misc.cmd_maps(self.bot, interaction, server)
 
-    @app_commands.command(
-        name="remove-map",
+    @map_group.command(
+        name="remove",
         description="Remove a map from a server (map reviewer)",
     )
     @app_commands.describe(
@@ -57,8 +62,8 @@ class MapsCog(commands.Cog):
     ) -> None:
         await handlers_misc.cmd_remove_map(self.bot, interaction, server, file_name)
 
-    @app_commands.command(
-        name="upload-map",
+    @map_group.command(
+        name="upload",
         description="Upload .msav map files to a server (up to 3 per command)",
     )
     @app_commands.describe(
