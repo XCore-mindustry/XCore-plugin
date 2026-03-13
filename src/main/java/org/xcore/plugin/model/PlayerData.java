@@ -65,8 +65,8 @@ public class PlayerData extends ModelData {
 
     @BsonProperty("is_admin")
     @Builder.Default public boolean admin = false;
-    @BsonProperty("admin_confirmed")
-    @Builder.Default public boolean adminConfirmed = false;
+    @BsonProperty("admin_source")
+    @Builder.Default public String adminSource = "NONE";
     @Builder.Default public boolean leaderboard = true;
 
     @BsonProperty("discord_id")

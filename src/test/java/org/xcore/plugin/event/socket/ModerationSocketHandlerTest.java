@@ -16,6 +16,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -48,84 +49,63 @@ class ModerationSocketHandlerTest {
     }
 
     @Test
-    @DisplayName("admin confirm event persists admin flags and refreshes display")
-    void adminConfirmEvent_persistsAdminFlagsAndRefreshesDisplay() {
+    @DisplayName("discord admin access event applies persisted admin flags")
+    void discordAdminAccessEvent_appliesPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         FindService find = mock(FindService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ModerationSocketHandler handler = new ModerationSocketHandler(network, sessionService, find, config, playerDisplayService);
+        ModerationSocketHandler handler = new ModerationSocketHandler(network, sessionService, find, config, playerDisplayService, discordAdminAccessService);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
 
-        Player player = Player.create();
-        player.admin = false;
-        player.name = "PlayerOne";
-
-        Administration.PlayerInfo info = new Administration.PlayerInfo();
-        info.adminUsid = "usid-1";
-        info.lastName = "PlayerOne";
-
-        Session session = mock(Session.class);
-        session.data = PlayerData.builder().uuid("uuid-1").admin(false).adminConfirmed(false).build();
-        Localization localization = mock(Localization.class);
-        when(session.locale()).thenReturn(localization);
-        when(find.playerInfo("uuid-1")).thenReturn(info);
-        when(find.playerByUuid("uuid-1")).thenReturn(player);
-        when(sessionService.get(player)).thenReturn(session);
+        when(discordAdminAccessService.applyDiscordAdminAccess("uuid-1", "123", "discord-user")).thenReturn(true);
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.AdminRequestConfirmEvent.class)
-                .get(new SocketEvents.AdminRequestConfirmEvent("uuid-1", "mini-pvp"));
+        listener(listeners, SocketEvents.DiscordAdminAccessChanged.class)
+                .get(new SocketEvents.DiscordAdminAccessChanged(
+                        "uuid-1", 7, "123", "discord-user", true,
+                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE, "tester", "sync", "mini-pvp", 10L
+                ));
 
-        verify(sessionService).updateAdminStatus(session, true, true);
-        verify(playerDisplayService).refresh(session);
-        verify(localization).send(eq("commands-login-confirmed"), any());
+        verify(discordAdminAccessService).applyDiscordAdminAccess("uuid-1", "123", "discord-user");
     }
 
     @Test
-    @DisplayName("remove admin event persists cleared admin flags and refreshes display")
-    void removeAdminEvent_persistsClearedAdminFlagsAndRefreshesDisplay() {
+    @DisplayName("discord admin revoke event clears persisted admin flags")
+    void discordAdminRevokeEvent_clearsPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         FindService find = mock(FindService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ModerationSocketHandler handler = new ModerationSocketHandler(network, sessionService, find, config, playerDisplayService);
+        ModerationSocketHandler handler = new ModerationSocketHandler(network, sessionService, find, config, playerDisplayService, discordAdminAccessService);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
 
-        Player player = Player.create();
-        player.admin = true;
-        player.name = "PlayerOne";
-
-        Administration.PlayerInfo info = new Administration.PlayerInfo();
-        info.admin = true;
-        info.lastName = "PlayerOne";
-
-        Session session = mock(Session.class);
-        session.data = PlayerData.builder().uuid("uuid-1").admin(true).adminConfirmed(true).build();
-        when(find.playerInfo("uuid-1")).thenReturn(info);
-        when(find.playerByUuid("uuid-1")).thenReturn(player);
-        when(sessionService.get(player)).thenReturn(session);
+        when(discordAdminAccessService.revokeDiscordAdminAccess("uuid-1")).thenReturn(true);
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.RemoveAdmin.class)
-                .get(new SocketEvents.RemoveAdmin("uuid-1"));
+        listener(listeners, SocketEvents.DiscordAdminAccessChanged.class)
+                .get(new SocketEvents.DiscordAdminAccessChanged(
+                        "uuid-1", 7, "123", "discord-user", false,
+                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE, "tester", "sync", "mini-pvp", 11L
+                ));
 
-        verify(sessionService).updateAdminStatus(session, false, false);
-        verify(playerDisplayService).refresh(session);
+        verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-1");
     }
 
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {

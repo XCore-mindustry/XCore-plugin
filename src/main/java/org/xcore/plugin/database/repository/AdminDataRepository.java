@@ -18,7 +18,22 @@ public class AdminDataRepository extends PlayerDataRepository {
         PlayerData playerData = findByUuid(uuid);
         if (playerData != null) {
             playerData.admin = false;
+            playerData.adminSource = DiscordAdminSource.NONE.value();
             save(playerData);
+        }
+    }
+
+    private enum DiscordAdminSource {
+        NONE("NONE");
+
+        private final String value;
+
+        DiscordAdminSource(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
         }
     }
 }

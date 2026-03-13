@@ -6,13 +6,13 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Argument;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 
@@ -27,18 +27,21 @@ public class AuthController implements CloudClientController {
     private final NetworkService network;
     private final Config config;
     private final PlayerDisplayService playerDisplayService;
+    private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
     public AuthController(AdminDataRepository adminDataRepository,
                           SessionService sessionService,
                           NetworkService network,
                           Config config,
-                          PlayerDisplayService playerDisplayService) {
+                          PlayerDisplayService playerDisplayService,
+                          DiscordAdminAccessService discordAdminAccessService) {
         this.adminDataRepository = adminDataRepository;
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
+        this.discordAdminAccessService = discordAdminAccessService;
     }
 
     @Command("login <password>")
@@ -56,20 +59,18 @@ public class AuthController implements CloudClientController {
 
         if (data.password.isEmpty()) {
             data.hashPassword(password);
-            data.admin = true;
             adminDataRepository.save(data);
             local.send("commands-login-admin-password-created", args());
         }
 
         if (data.verifyPassword(password)) {
-            if (data.adminConfirmed) {
+            if (discordAdminAccessService.hasDiscordAdminAccess(data)) {
                 sender.player().admin(true);
                 netServer.admins.adminPlayer(sender.player().uuid(), sender.player().getInfo().adminUsid);
                 playerDisplayService.refresh(session);
                 local.send("commands-login-success", args());
             } else {
                 local.send("commands-login-request-approval-discord", args());
-                network.post(new SocketEvents.AdminRequestEvent(data.pid, config.server));
             }
         } else {
             local.send("error-wrong-admin-password", args());

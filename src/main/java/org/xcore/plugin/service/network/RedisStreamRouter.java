@@ -35,18 +35,11 @@ public final class RedisStreamRouter {
         if (event instanceof SocketEvents.PrivateMessageEvent) {
             return new Route("xcore:evt:chat:private", "chat.private", 60000L);
         }
-        if (event instanceof SocketEvents.AdminRequestEvent) {
-            return new Route("xcore:evt:admin:request", "admin.request", 120000L);
-        }
         if (event instanceof BanData) {
             return new Route("xcore:evt:moderation:ban", "moderation.ban", 120000L);
         }
         if (event instanceof MuteData) {
             return new Route("xcore:evt:moderation:mute", "moderation.mute", 120000L);
-        }
-        if (event instanceof SocketEvents.AdminRequestConfirmEvent) {
-            var server = extractServer(event, defaultServer);
-            return new Route("xcore:cmd:admin-confirm:" + server, "admin.confirm", 120000L);
         }
         if (event instanceof SocketEvents.KickBannedPlayer) {
             return new Route("xcore:cmd:kick-banned:" + defaultServer, "moderation.kick_banned", 120000L);
@@ -77,6 +70,10 @@ public final class RedisStreamRouter {
         if (event instanceof SocketEvents.DiscordLinkStatusChangedEvent) {
             return new Route("xcore:evt:discord:link-status", "discord.link_status_changed", 120000L);
         }
+        if (event instanceof SocketEvents.DiscordAdminAccessChanged) {
+            var server = extractServer(event, defaultServer);
+            return new Route("xcore:cmd:discord-admin-access:" + server, "discord.admin_access_changed", 120000L);
+        }
         if (event instanceof SocketEvents.ReloadPlayerDataCache) {
             return new Route("xcore:cmd:reload-cache:" + defaultServer, "cache.reload_player_data", 120000L);
         }
@@ -89,9 +86,6 @@ public final class RedisStreamRouter {
         }
         if (event instanceof SocketEvents.PardonPlayer) {
             return new Route("xcore:cmd:pardon-player:" + defaultServer, "moderation.pardon", 120000L);
-        }
-        if (event instanceof SocketEvents.RemoveAdmin) {
-            return new Route("xcore:cmd:remove-admin:" + defaultServer, "admin.remove", 120000L);
         }
         if (event instanceof SocketEvents.MapsListRequest) {
             var server = extractServer(event, defaultServer);
@@ -133,20 +127,12 @@ public final class RedisStreamRouter {
             streams.add("xcore:evt:chat:private");
             return streams;
         }
-        if (type == SocketEvents.AdminRequestEvent.class) {
-            streams.add("xcore:evt:admin:request");
-            return streams;
-        }
         if (type == BanData.class) {
             streams.add("xcore:evt:moderation:ban");
             return streams;
         }
         if (type == MuteData.class) {
             streams.add("xcore:evt:moderation:mute");
-            return streams;
-        }
-        if (type == SocketEvents.AdminRequestConfirmEvent.class) {
-            streams.add("xcore:cmd:admin-confirm:" + defaultServer);
             return streams;
         }
         if (type == SocketEvents.KickBannedPlayer.class) {
@@ -185,6 +171,10 @@ public final class RedisStreamRouter {
             streams.add("xcore:evt:discord:link-status");
             return streams;
         }
+        if (type == SocketEvents.DiscordAdminAccessChanged.class) {
+            streams.add("xcore:cmd:discord-admin-access:" + defaultServer);
+            return streams;
+        }
         if (type == SocketEvents.ReloadPlayerDataCache.class) {
             streams.add("xcore:cmd:reload-cache:" + defaultServer);
             return streams;
@@ -199,10 +189,6 @@ public final class RedisStreamRouter {
         }
         if (type == SocketEvents.PardonPlayer.class) {
             streams.add("xcore:cmd:pardon-player:" + defaultServer);
-            return streams;
-        }
-        if (type == SocketEvents.RemoveAdmin.class) {
-            streams.add("xcore:cmd:remove-admin:" + defaultServer);
             return streams;
         }
         if (type == SocketEvents.MapsListRequest.class) {
@@ -224,7 +210,6 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.GlobalChatEvent.class
                 || type == SocketEvents.DiscordMessageEvent.class
                 || type == SocketEvents.PrivateMessageEvent.class
-                || type == SocketEvents.AdminRequestEvent.class
                 || type == SocketEvents.DiscordLinkCodeCreatedEvent.class
                 || type == SocketEvents.DiscordLinkStatusChangedEvent.class
                 || type == BanData.class
@@ -232,19 +217,18 @@ public final class RedisStreamRouter {
     }
 
     public boolean isMutatingType(Class<?> type) {
-        return type == SocketEvents.AdminRequestConfirmEvent.class
-                || type == SocketEvents.KickBannedPlayer.class
+        return type == SocketEvents.KickBannedPlayer.class
                 || type == SocketEvents.PlayerCustomNicknameChanged.class
                 || type == SocketEvents.PlayerActiveBadgeChanged.class
                 || type == SocketEvents.PlayerBadgeInventoryChanged.class
                 || type == SocketEvents.PlayerPasswordReset.class
                 || type == SocketEvents.DiscordLinkConfirmEvent.class
                 || type == SocketEvents.DiscordUnlinkEvent.class
+                || type == SocketEvents.DiscordAdminAccessChanged.class
                 || type == SocketEvents.ReloadPlayerDataCache.class
                 || type == SocketEvents.LoadMapsV2.class
                 || type == SocketEvents.ExecuteCommand.class
-                || type == SocketEvents.PardonPlayer.class
-                || type == SocketEvents.RemoveAdmin.class;
+                || type == SocketEvents.PardonPlayer.class;
     }
 
     public boolean isRpcRequestType(Class<?> type) {

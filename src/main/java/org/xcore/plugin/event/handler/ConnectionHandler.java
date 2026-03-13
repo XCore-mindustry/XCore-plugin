@@ -17,6 +17,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
@@ -38,6 +39,7 @@ public class ConnectionHandler {
     private final VoteService voteService;
     private final PrivateMessageService privateMessageService;
     private final PlayerDisplayService playerDisplayService;
+    private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -47,7 +49,8 @@ public class ConnectionHandler {
                              GlobalConfig globalConfig,
                              VoteService voteService,
                              PrivateMessageService privateMessageService,
-                             PlayerDisplayService playerDisplayService) {
+                             PlayerDisplayService playerDisplayService,
+                             DiscordAdminAccessService discordAdminAccessService) {
         this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
@@ -56,6 +59,7 @@ public class ConnectionHandler {
         this.voteService = voteService;
         this.privateMessageService = privateMessageService;
         this.playerDisplayService = playerDisplayService;
+        this.discordAdminAccessService = discordAdminAccessService;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -87,21 +91,11 @@ public class ConnectionHandler {
 
         if (data.exists && !data.ip.equals(player.ip())) {
             if (player.admin) {
-                sessionService.updateAdminStatus(session, true, false);
-
-                player.admin = false;
-                netServer.admins.unAdminPlayer(player.uuid());
+                discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
                 locale.send("error-ip-changed", args());
             }
 
             sessionService.updateConnectionData(session, player.ip(), player.coloredName());
-        }
-
-        if (data.admin && data.adminConfirmed) {
-            player.admin = true;
-            if (!netServer.admins.isAdmin(player.uuid(), player.usid())) {
-                netServer.admins.adminPlayer(player.uuid(), player.usid());
-            }
         }
 
         if (!data.exists) {

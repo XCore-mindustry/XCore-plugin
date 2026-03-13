@@ -195,14 +195,14 @@ private-message-compose-body-message = Enter a private message for [accent]{ $pi
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Admin request. Don't use if you don't know what you're doing.
+commands-login-description = Activate admin rights if your linked Discord account already has access.
 commands-login-incorrect-password = { "[" }scarlet]⚠ Incorrect password!
 commands-login-success = { "[" }green]Admin rights granted.
-commands-login-confirmed = { "[" }green]Your admin request confirmed.
+commands-login-confirmed = { "[" }green]Discord admin access confirmed.
 commands-login-admin-password-created =
     { "[" }green]Admin password created.
     { "" }[red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
-commands-login-request-approval-discord = { "[" }accent]You need to approve your admin request on discord [orange]#admin-bots[].
+commands-login-request-approval-discord = { "[" }accent]Your account does not have Discord admin access. Get the admin role in Discord and try again.
 commands-discord-link-created =
     { "[" }green]Discord link code created: [accent]{ $code }[]
     { "" }[lightgray]On our Discord server, run the bot slash command [accent]/link { $code }[] within [accent]{ $expireMinutes }[] min.

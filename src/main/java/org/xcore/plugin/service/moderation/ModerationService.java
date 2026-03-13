@@ -28,6 +28,7 @@ import static mindustry.Vars.netServer;
 public class ModerationService {
     private static final String DEFAULT_REASON = "Not Specified";
     private static final String UNKNOWN_PLAYER_NAME = "Unknown";
+    private static final String EMPTY_DISCORD_ID = "";
     private static final String PLAYER_NOT_FOUND_MESSAGE = "Player not found";
     private static final String MISSING_IDENTIFIER_MESSAGE = "Either UUID or IP must be provided";
     private static final String BAN_SAVE_FAILED_MESSAGE = "Failed to save ban";
@@ -70,7 +71,7 @@ public class ModerationService {
      * @param kickOnline  Whether to kick the player if online
      * @return Result containing BanData if successful
      */
-    public ModerationResult<BanData> banById(int id, String adminName, String reason, Duration duration, boolean kickOnline) {
+    public ModerationResult<BanData> banById(int id, String adminName, String adminDiscordId, String reason, Duration duration, boolean kickOnline) {
         var target = playerDataRepository.findByPid(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -85,6 +86,7 @@ public class ModerationService {
                 .uuid(target.uuid)
                 .ip(ip)
                 .adminName(adminName)
+                .adminDiscordId(resolveAdminDiscordId(adminDiscordId))
                 .reason(resolveReason(reason))
                 .expireDate(unbanDate)
                 .build();
@@ -130,7 +132,7 @@ public class ModerationService {
      * @param duration  Mute duration period
      * @return Result containing MuteData if successful
      */
-    public ModerationResult<MuteData> muteById(int id, String adminName, String reason, Duration duration) {
+    public ModerationResult<MuteData> muteById(int id, String adminName, String adminDiscordId, String reason, Duration duration) {
         var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -142,6 +144,7 @@ public class ModerationService {
                 .uuid(target.uuid)
                 .name(target.nickname)
                 .adminName(adminName)
+                .adminDiscordId(resolveAdminDiscordId(adminDiscordId))
                 .reason(resolveReason(reason))
                 .expireDate(expireDate)
                 .build();
@@ -185,7 +188,7 @@ public class ModerationService {
      * @param adminName Name of the admin performing the ban
      * @return Result containing BanData if successful
      */
-    public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Duration duration, String reason, String adminName) {
+    public ModerationResult<BanData> tempBanByUuidOrIp(String uuid, String ip, String name, Duration duration, String reason, String adminName, String adminDiscordId) {
         if (hasNoIdentifier(uuid, ip)) {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
@@ -197,6 +200,7 @@ public class ModerationService {
                 .uuid(uuid)
                 .ip(ip)
                 .adminName(adminName)
+                .adminDiscordId(resolveAdminDiscordId(adminDiscordId))
                 .reason(resolveReason(reason))
                 .expireDate(expire)
                 .build();
@@ -261,6 +265,10 @@ public class ModerationService {
 
     private static String resolvePlayerName(String name) {
         return name != null ? name : UNKNOWN_PLAYER_NAME;
+    }
+
+    private static String resolveAdminDiscordId(String adminDiscordId) {
+        return adminDiscordId != null ? adminDiscordId : EMPTY_DISCORD_ID;
     }
 
     private static boolean hasNoIdentifier(String uuid, String ip) {

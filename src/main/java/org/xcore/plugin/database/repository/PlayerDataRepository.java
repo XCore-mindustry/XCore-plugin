@@ -144,11 +144,19 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         ));
     }
 
-    public boolean updateAdminStatus(String uuid, boolean admin, boolean adminConfirmed) {
+    public boolean updateAdminStatus(String uuid, boolean admin, String adminSource) {
         return updateByUuid(uuid, Updates.combine(
                 Updates.set("is_admin", admin),
-                Updates.set("admin_confirmed", adminConfirmed)
+                Updates.set("admin_source", normalizeAdminSource(adminSource))
         ));
+    }
+
+    public boolean clearAdminAccess(String uuid) {
+        return updateAdminStatus(uuid, false, "NONE");
+    }
+
+    private String normalizeAdminSource(String adminSource) {
+        return adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
     }
 
     public boolean updateLanguage(String uuid, String language) {

@@ -25,6 +25,7 @@ public class DiscordLinkService {
     private final SessionService sessionService;
     private final NetworkService networkService;
     private final Config config;
+    private final DiscordAdminAccessService discordAdminAccessService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Inject
@@ -32,12 +33,14 @@ public class DiscordLinkService {
                               PlayerDataRepository playerDataRepository,
                               SessionService sessionService,
                               NetworkService networkService,
-                              Config config) {
+                              Config config,
+                              DiscordAdminAccessService discordAdminAccessService) {
         this.discordLinkCodeStore = discordLinkCodeStore;
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.networkService = networkService;
         this.config = config;
+        this.discordAdminAccessService = discordAdminAccessService;
     }
 
     public LinkCodeResult createCode(Session session) {
@@ -126,7 +129,13 @@ public class DiscordLinkService {
             return false;
         }
 
+        String discordUsername = data.discordUsername;
         clearDiscordState(data);
+        boolean revoked = discordAdminAccessService.revokeDiscordAdminAccess(data.uuid);
+        if (!revoked) {
+            return false;
+        }
+        publishAdminAccessChanged(data.uuid, data.pid, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
         publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
     }
@@ -151,7 +160,13 @@ public class DiscordLinkService {
             clearDiscordState(session.data);
         }
 
+        String discordUsername = data.discordUsername;
         clearDiscordState(data);
+        boolean revoked = discordAdminAccessService.revokeDiscordAdminAccess(playerUuid);
+        if (!revoked) {
+            return false;
+        }
+        publishAdminAccessChanged(playerUuid, data.pid, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
 
         publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
@@ -238,6 +253,28 @@ public class DiscordLinkService {
                 status,
                 config.server,
                 timestamp
+        ));
+    }
+
+    private void publishAdminAccessChanged(String playerUuid,
+                                           int playerPid,
+                                           String discordId,
+                                           String discordUsername,
+                                           boolean admin,
+                                           String adminSource,
+                                           String requestedBy,
+                                           String reason) {
+        networkService.post(new SocketEvents.DiscordAdminAccessChanged(
+                playerUuid,
+                playerPid,
+                discordId,
+                discordUsername,
+                admin,
+                adminSource,
+                requestedBy,
+                reason,
+                config.server,
+                System.currentTimeMillis()
         ));
     }
 

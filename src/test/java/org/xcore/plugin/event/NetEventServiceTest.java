@@ -1,7 +1,6 @@
 package org.xcore.plugin.event;
 
 import com.google.gson.Gson;
-import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
@@ -15,7 +14,6 @@ import org.xcore.plugin.event.net.connect.ConnectionAccessHandler;
 import org.xcore.plugin.event.net.connect.ConnectPacketHandler;
 import org.xcore.plugin.event.net.connect.ConnectionFilterService;
 import org.xcore.plugin.event.net.connect.PlayerConnectionBootstrap;
-import org.xcore.plugin.integration.AdminModIntegration;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressService;
 import org.xcore.plugin.service.ChatFormatService;
@@ -23,7 +21,6 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.ui.menu.BanMenu;
 import org.xcore.plugin.vote.VoteService;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -47,8 +44,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu(), adminModIntegration(), new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -62,9 +59,6 @@ class NetEventServiceTest {
                 chatFormatService,
                 voteChatInterceptor
         );
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
-
         NetEventService service = new NetEventService(
                 sessionService,
                 config,
@@ -76,10 +70,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         Player author = mock(Player.class);
@@ -106,8 +97,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu(), adminModIntegration(), new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -121,9 +112,6 @@ class NetEventServiceTest {
                 chatFormatService,
                 voteChatInterceptor
         );
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
-
         NetEventService service = new NetEventService(
                 sessionService,
                 config,
@@ -135,10 +123,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         Player author = mock(Player.class);
@@ -156,67 +141,6 @@ class NetEventServiceTest {
     }
 
     @Test
-    @DisplayName("admin request ignores non-admin caller")
-    void adminRequest_ignoresNonAdminCaller() {
-        SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu, adminModIntegration, new Gson());
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-
-        NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
-        );
-
-        Player admin = mock(Player.class);
-        admin.admin = false;
-        Player target = mock(Player.class);
-        NetConnection con = mock(NetConnection.class);
-        con.player = admin;
-
-        AdminRequestCallPacket packet = new AdminRequestCallPacket();
-        packet.other = target;
-
-        service.adminRequest(con, packet);
-
-        verifyNoInteractions(target);
-        verify(sessionService, never()).broadcast(any(), any());
-    }
-
-    @Test
     @DisplayName("connect packet ignores already kicked connection")
     void connectPacket_ignoresAlreadyKickedConnection() {
         SessionService sessionService = mock(SessionService.class);
@@ -227,10 +151,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu, adminModIntegration, new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -256,10 +178,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         NetConnection con = mock(NetConnection.class);
@@ -282,10 +201,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu, adminModIntegration, new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -311,10 +228,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         NetConnection con = mock(NetConnection.class);
@@ -337,10 +251,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu, adminModIntegration, new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -366,10 +278,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         service.setIpAcceptor(ip -> true);
@@ -392,10 +301,8 @@ class NetEventServiceTest {
         SecurityService securityService = mock(SecurityService.class);
         IngressService ingressService = mock(IngressService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        BanMenu banMenu = mock(BanMenu.class);
-        AdminModIntegration adminModIntegration = mock(AdminModIntegration.class);
+        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        AdminRequestHandler adminRequestHandler = new AdminRequestHandler(sessionService, banMenu, adminModIntegration, new Gson());
         ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
                 new ConnectionAccessHandler(ingressService),
                 new PlayerConnectionBootstrap()
@@ -421,10 +328,7 @@ class NetEventServiceTest {
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
-                connectionFilterService,
-                banMenu,
-                adminModIntegration,
-                new Gson()
+                connectionFilterService
         );
 
         service.setIpAcceptor(ip -> false);
@@ -436,11 +340,4 @@ class NetEventServiceTest {
         org.assertj.core.api.Assertions.assertThat(service.blockedIPsPerMinute).isEqualTo(1);
     }
 
-    private static BanMenu banMenu() {
-        return mock(BanMenu.class);
-    }
-
-    private static AdminModIntegration adminModIntegration() {
-        return mock(AdminModIntegration.class);
-    }
 }

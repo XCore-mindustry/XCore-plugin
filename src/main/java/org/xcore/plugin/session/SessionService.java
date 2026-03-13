@@ -235,11 +235,11 @@ public class SessionService {
         return playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname);
     }
 
-    public boolean updateAdminStatus(Session session, boolean admin, boolean adminConfirmed) {
+    public boolean updateAdminStatus(Session session, boolean admin, String adminSource) {
         if (!hasData(session)) return false;
         session.data.admin = admin;
-        session.data.adminConfirmed = adminConfirmed;
-        return playerDataRepository.updateAdminStatus(session.data.uuid, admin, adminConfirmed);
+        session.data.adminSource = adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
+        return playerDataRepository.updateAdminStatus(session.data.uuid, admin, session.data.adminSource);
     }
 
     public boolean updateLanguage(Session session, String language) {

@@ -42,6 +42,7 @@ class RedisStreamRouterTest {
         var passwordRoute = router.route(new SocketEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
         var discordLinkConfirmRoute = router.route(new SocketEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-hexed", 10L), "mini-pvp");
         var discordLinkStatusRoute = router.route(new SocketEvents.DiscordLinkStatusChangedEvent("uuid-7", 7, "Nick", "123", "discord-user", "linked", "mini-pvp", 10L), "mini-pvp");
+        var discordAdminAccessRoute = router.route(new SocketEvents.DiscordAdminAccessChanged("uuid-7", 7, "123", "discord-user", true, "DISCORD_ROLE", "tester", "sync", "mini-pvp", 11L), "mini-pvp");
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
@@ -53,6 +54,11 @@ class RedisStreamRouterTest {
         assertThat(discordLinkConfirmRoute.eventType()).isEqualTo("discord.link_confirm");
         assertThat(discordLinkStatusRoute.streamKey()).isEqualTo("xcore:evt:discord:link-status");
         assertThat(discordLinkStatusRoute.eventType()).isEqualTo("discord.link_status_changed");
+        assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:mini-pvp");
+        assertThat(discordAdminAccessRoute.eventType()).isEqualTo("discord.admin_access_changed");
+
+        var discordAdminAccessOtherServerRoute = router.route(new SocketEvents.DiscordAdminAccessChanged("uuid-8", 8, "456", "other-user", false, "NONE", "tester", "sync", "survival", 12L), "mini-pvp");
+        assertThat(discordAdminAccessOtherServerRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:survival");
     }
 
     @Test
@@ -76,6 +82,9 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(SocketEvents.DiscordLinkStatusChangedEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:discord:link-status");
 
+        assertThat(router.subscribeStreamsFor(SocketEvents.DiscordAdminAccessChanged.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:discord-admin-access:mini-pvp");
+
         assertThat(router.subscribeStreamsFor(BanData.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:ban");
 
@@ -86,15 +95,14 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
-        assertThat(router.isReadOnlyType(SocketEvents.AdminRequestEvent.class)).isTrue();
         assertThat(router.isReadOnlyType(SocketEvents.DiscordLinkStatusChangedEvent.class)).isTrue();
         assertThat(router.isReadOnlyType(BanData.class)).isTrue();
         assertThat(router.isReadOnlyType(MuteData.class)).isTrue();
-        assertThat(router.isReadOnlyType(SocketEvents.RemoveAdmin.class)).isFalse();
+        assertThat(router.isReadOnlyType(SocketEvents.DiscordAdminAccessChanged.class)).isFalse();
 
-        assertThat(router.isMutatingType(SocketEvents.RemoveAdmin.class)).isTrue();
         assertThat(router.isMutatingType(SocketEvents.PlayerPasswordReset.class)).isTrue();
         assertThat(router.isMutatingType(SocketEvents.DiscordLinkConfirmEvent.class)).isTrue();
+        assertThat(router.isMutatingType(SocketEvents.DiscordAdminAccessChanged.class)).isTrue();
         assertThat(router.isMutatingType(SocketEvents.MessageEvent.class)).isFalse();
 
         assertThat(router.isRpcRequestType(SocketEvents.MapsListRequest.class)).isTrue();

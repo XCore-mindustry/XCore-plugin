@@ -70,7 +70,7 @@ public class ServerModerationController implements CloudServerController {
         }
 
         String effectiveReason = reason == null || reason.isBlank() ? null : reason;
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, effectiveReason, "console");
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, effectiveReason, "console", null);
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -131,7 +131,7 @@ public class ServerModerationController implements CloudServerController {
         }
 
         String effectiveReason = reason == null || reason.isBlank() ? null : reason;
-        var result = moderationService.muteById(data.pid, "console", effectiveReason, period);
+        var result = moderationService.muteById(data.pid, "console", null, effectiveReason, period);
 
         if (result.isSuccess()) {
             Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toMillis()).toMinutes());

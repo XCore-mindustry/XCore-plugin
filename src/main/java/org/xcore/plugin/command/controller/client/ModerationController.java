@@ -50,6 +50,7 @@ public class ModerationController implements CloudClientController {
         var result = moderationService.banById(
                 id,
                 session.player.name,
+                session.data.discordId,
                 reason == null || reason.isBlank() ? null : reason,
                 period,
                 true
@@ -94,6 +95,7 @@ public class ModerationController implements CloudClientController {
         var result = moderationService.muteById(
                 id,
                 session.player.name,
+                session.data.discordId,
                 reason == null || reason.isBlank() ? null : reason,
                 period
         );

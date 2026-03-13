@@ -71,7 +71,7 @@ public class AdminModIntegration {
                 return;
             }
 
-            var result = moderationService.banById(req.pid, player.name, req.reason, duration, true);
+            var result = moderationService.banById(req.pid, player.name, session.data.discordId, req.reason, duration, true);
 
             if (!result.isSuccess() || result.getData().isEmpty()) {
                 session.locale().send("error-processing-request", args());

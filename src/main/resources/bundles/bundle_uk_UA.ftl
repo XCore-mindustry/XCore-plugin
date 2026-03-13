@@ -170,14 +170,14 @@ private-message-compose-body-message = Введіть приватне пові�
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Запит на права адміністратора. Не використовуйте, якщо не знаєте, що робите.
+commands-login-description = Активувати права адміністратора, якщо ваш прив’язаний Discord акаунт вже має доступ.
 commands-login-incorrect-password = { "[" }scarlet]⚠ Невірний пароль!
 commands-login-success = { "[" }green]Права адміністратора отримано.
-commands-login-confirmed = { "[" }green]Права адміністратора підтверджено.
+commands-login-confirmed = { "[" }green]Discord-доступ адміністратора підтверджено.
 commands-login-admin-password-created =
     { "[" }green]Пароль адміністратора створено.
     { "" }[red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
-commands-login-request-approval-discord = { "[" }accent]Вам потрібно підтвердити запит на права адміністратора в каналі [orange]#admin-bots[] на нашому Discord сервері.
+commands-login-request-approval-discord = { "[" }accent]Ваш акаунт не має Discord-доступу адміністратора. Отримайте admin role у Discord і спробуйте знову.
 commands-discord-link-created =
     { "[" }green]Код привʼязки Discord створено: [accent]{ $code }[]
     { "" }[lightgray]На нашому Discord сервері викличте slash-команду бота [accent]/link { $code }[] протягом [accent]{ $expireMinutes }[] хв.
@@ -189,7 +189,7 @@ commands-discord-status-not-linked = { "[" }lightgray]Ваш акаунт не �
 commands-discord-status-linked = { "[" }green]Привʼязаний Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
 commands-discord-unlink-not-linked = { "[" }lightgray]Ваш акаунт не привʼязаний до Discord.
 commands-discord-unlink-success = { "[" }green]Привʼязку Discord видалено.
-commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші права адміністратора.
+commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші активні права адміністратора.
 commands-logout-successful = { "[" }green]Права адміністратора відкликано.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)

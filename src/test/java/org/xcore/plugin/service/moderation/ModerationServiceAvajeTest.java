@@ -92,7 +92,7 @@ class ModerationServiceAvajeTest {
     @Test
     @DisplayName("tempBanByUuidOrIp fails when both UUID and IP are missing")
     void tempBanFailsWithoutIdentifiers() {
-        var result = moderationService.tempBanByUuidOrIp(null, null, "name", Duration.ofMinutes(10), "reason", "admin");
+        var result = moderationService.tempBanByUuidOrIp(null, null, "name", Duration.ofMinutes(10), "reason", "admin", null);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Either UUID or IP must be provided");
@@ -106,7 +106,7 @@ class ModerationServiceAvajeTest {
         var before = Instant.now();
         when(banDataRepository.save(any())).thenReturn(true);
 
-        var result = moderationService.tempBanByUuidOrIp("uuid-1", "1.2.3.4", null, duration, null, "admin");
+        var result = moderationService.tempBanByUuidOrIp("uuid-1", "1.2.3.4", null, duration, null, "admin", "12345");
 
         var after = Instant.now();
         assertThat(result.isSuccess()).isTrue();
@@ -121,6 +121,7 @@ class ModerationServiceAvajeTest {
                         && "uuid-1".equals(ban.getUuid())
                         && "1.2.3.4".equals(ban.getIp())
                         && "admin".equals(ban.getAdminName())
+                        && "12345".equals(ban.getAdminDiscordId())
                         && "Unknown".equals(ban.getName())
                         && "Not Specified".equals(ban.getReason())
                         && !ban.getExpireDate().isBefore(before.plus(duration))
@@ -141,7 +142,7 @@ class ModerationServiceAvajeTest {
     void tempBanFailsWhenSaveFails() {
         when(banDataRepository.save(any())).thenReturn(false);
 
-        var result = moderationService.tempBanByUuidOrIp("uuid-1", null, "name", Duration.ofMinutes(10), "reason", "admin");
+        var result = moderationService.tempBanByUuidOrIp("uuid-1", null, "name", Duration.ofMinutes(10), "reason", "admin", null);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save ban");
@@ -186,7 +187,7 @@ class ModerationServiceAvajeTest {
     void banById_notFound_returnsFailure() {
         when(playerDataRepository.findByPid(404)).thenReturn(null);
 
-        var result = moderationService.banById(404, "admin", "reason", Duration.ofMinutes(10), true);
+        var result = moderationService.banById(404, "admin", null, "reason", Duration.ofMinutes(10), true);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Player not found");
@@ -210,7 +211,7 @@ class ModerationServiceAvajeTest {
     void muteByIdPlayerNotFound() {
         when(sessionService.getOrLoadFromDb(100)).thenReturn(null);
 
-        var result = moderationService.muteById(100, "admin", "reason", Duration.ofMinutes(30));
+        var result = moderationService.muteById(100, "admin", null, "reason", Duration.ofMinutes(30));
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Player not found");
@@ -229,7 +230,7 @@ class ModerationServiceAvajeTest {
         var duration = Duration.ofMinutes(15);
         var before = Instant.now();
 
-        var result = moderationService.muteById(7, "admin", null, duration);
+        var result = moderationService.muteById(7, "admin", "777", null, duration);
 
         var after = Instant.now();
         assertThat(result.isSuccess()).isTrue();
@@ -239,6 +240,7 @@ class ModerationServiceAvajeTest {
                 "uuid-3".equals(mute.getUuid())
                         && "Target".equals(mute.getName())
                         && "admin".equals(mute.getAdminName())
+                        && "777".equals(mute.getAdminDiscordId())
                         && "Not Specified".equals(mute.getReason())
                         && !mute.getExpireDate().isBefore(before.plus(duration))
                         && !mute.getExpireDate().isAfter(after.plus(duration))));
@@ -259,7 +261,7 @@ class ModerationServiceAvajeTest {
         when(sessionService.getOrLoadFromDb(7)).thenReturn(target);
         when(muteDataRepository.save(any())).thenReturn(false);
 
-        var result = moderationService.muteById(7, "admin", null, Duration.ofMinutes(15));
+        var result = moderationService.muteById(7, "admin", null, null, Duration.ofMinutes(15));
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save mute");
@@ -309,12 +311,13 @@ class ModerationServiceAvajeTest {
         when(playerDataRepository.findByPid(9)).thenReturn(target);
         when(banDataRepository.save(any())).thenReturn(true);
 
-        var result = moderationService.banById(9, "admin", null, Duration.ofMinutes(10), true);
+        var result = moderationService.banById(9, "admin", "999", null, Duration.ofMinutes(10), true);
 
         assertThat(result.isSuccess()).isTrue();
         var order = inOrder(banDataRepository, network);
         order.verify(banDataRepository).save(any(BanData.class));
-        order.verify(network).post(any(BanData.class));
+        order.verify(network).post(argThat(event ->
+                event instanceof BanData ban && "999".equals(ban.getAdminDiscordId())));
         order.verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
     }
 
@@ -329,7 +332,7 @@ class ModerationServiceAvajeTest {
         when(playerDataRepository.findByPid(9)).thenReturn(target);
         when(banDataRepository.save(any())).thenReturn(false);
 
-        var result = moderationService.banById(9, "admin", null, Duration.ofMinutes(10), true);
+        var result = moderationService.banById(9, "admin", null, null, Duration.ofMinutes(10), true);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save ban");

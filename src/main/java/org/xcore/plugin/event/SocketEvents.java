@@ -41,10 +41,6 @@ public class SocketEvents {
             Integer port
     ) implements Event {}
 
-    public record AdminRequestEvent(int pid, String server) {}
-
-    public record AdminRequestConfirmEvent(String uuid, String server) {}
-
     public record KickBannedPlayer(String uuid, String ip) {}
 
     public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}
@@ -95,6 +91,19 @@ public class SocketEvents {
             long occurredAt
     ) {}
 
+    public record DiscordAdminAccessChanged(
+            String playerUuid,
+            int playerPid,
+            String discordId,
+            String discordUsername,
+            boolean admin,
+            String adminSource,
+            String requestedBy,
+            String reason,
+            String server,
+            long occurredAt
+    ) {}
+
     public static class ReloadPlayerDataCache {}
 
     public record LoadMapsV2(FileURL[] urls, String server) {}
@@ -108,8 +117,6 @@ public class SocketEvents {
     }
 
     public record PardonPlayer(String uuid) {}
-
-    public record RemoveAdmin(String uuid) {}
 
     @NoArgsConstructor
     @AllArgsConstructor

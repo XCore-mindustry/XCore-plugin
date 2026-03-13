@@ -24,6 +24,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
@@ -69,6 +70,7 @@ class ConnectionHandlerTest {
         VoteService voteService = mock(VoteService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
@@ -82,7 +84,8 @@ class ConnectionHandlerTest {
                 globalConfig,
                 voteService,
                 privateMessageService,
-                playerDisplayService
+                playerDisplayService,
+                discordAdminAccessService
         );
 
         Player player = Player.create();
@@ -105,7 +108,6 @@ class ConnectionHandlerTest {
                 .ip("1.1.1.1")
                 .nickname("OldName")
                 .admin(true)
-                .adminConfirmed(true)
                 .build();
         data.exists = true;
 
@@ -120,9 +122,8 @@ class ConnectionHandlerTest {
             handler.onPlayerJoin(new EventType.PlayerJoin(player));
         }
 
-        verify(sessionService).updateAdminStatus(session, true, false);
+        verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-1");
         verify(sessionService).updateConnectionData(session, "2.2.2.2", "[#00000000][red]Renamed[]");
-        verify(admins).unAdminPlayer("uuid-1");
         verify(localization).send(eq("error-ip-changed"), anyMap());
         verify(playerDisplayService).refresh(session);
         verify(networkService).post(any(SocketEvents.PlayerJoinLeaveEvent.class));

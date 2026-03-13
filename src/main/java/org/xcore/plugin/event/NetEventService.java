@@ -2,9 +2,7 @@ package org.xcore.plugin.event;
 
 import arc.Events;
 import arc.func.Boolf;
-import com.google.gson.Gson;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,14 +16,10 @@ import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
 import org.xcore.plugin.event.net.connect.ConnectPacketHandler;
 import org.xcore.plugin.event.net.connect.ConnectionFilterService;
-import org.xcore.plugin.integration.AdminModIntegration;
 import org.xcore.plugin.service.*;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.security.ingress.IngressService;
-import org.xcore.plugin.ui.menu.BanMenu;
 import org.xcore.plugin.vote.VoteService;
-
-import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class NetEventService {
@@ -46,9 +40,6 @@ public class NetEventService {
     private final AdminRequestHandler adminRequestHandler;
     private final ConnectPacketHandler connectPacketHandler;
     private final ConnectionFilterService connectionFilterService;
-    private final BanMenu banMenu;
-    private final AdminModIntegration adminModIntegration;
-    private final Gson rawGson;
 
     @Inject
     public NetEventService(SessionService sessionService, Config config,
@@ -59,10 +50,7 @@ public class NetEventService {
                            ChatMessageHandler chatMessageHandler,
                            AdminRequestHandler adminRequestHandler,
                            ConnectPacketHandler connectPacketHandler,
-                           ConnectionFilterService connectionFilterService,
-                           BanMenu banMenu,
-                           AdminModIntegration adminModIntegration,
-                           @Named("raw") Gson rawGson) {
+                           ConnectionFilterService connectionFilterService) {
         this.sessionService = sessionService;
         this.config = config;
         this.translatorService = translatorService;
@@ -74,18 +62,11 @@ public class NetEventService {
         this.adminRequestHandler = adminRequestHandler;
         this.connectPacketHandler = connectPacketHandler;
         this.connectionFilterService = connectionFilterService;
-        this.banMenu = banMenu;
-        this.adminModIntegration = adminModIntegration;
-        this.rawGson = rawGson;
     }
 
 
     public String chat(Player author, String text) {
         return chatMessageHandler.handle(author, text);
-    }
-
-    public void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
-        adminRequestHandler.handle(con, packet);
     }
 
     public boolean connectFilter(String address) {
@@ -97,6 +78,10 @@ public class NetEventService {
 
     public void connect(NetConnection con, Packets.Connect packet) {
         Events.fire(new EventType.ConnectionEvent(con));
+    }
+
+    public void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
+        adminRequestHandler.handle(con, packet);
     }
 
     public void connectPacket(NetConnection con, Packets.ConnectPacket packet) {

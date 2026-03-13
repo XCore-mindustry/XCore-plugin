@@ -76,8 +76,8 @@ public class XcorePlugin extends Plugin {
         });
 
         netServer.admins.addChatFilter(netEvents::chat);
-        Vars.net.handleServer(AdminRequestCallPacket.class, netEvents::adminRequest);
         Vars.net.handleServer(Packets.Connect.class, netEvents::connect);
         Vars.net.handleServer(Packets.ConnectPacket.class, netEvents::connectPacket);
+        Vars.net.handleServer(AdminRequestCallPacket.class, netEvents::adminRequest);
     }
 }

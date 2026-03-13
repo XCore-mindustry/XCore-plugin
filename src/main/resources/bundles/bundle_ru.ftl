@@ -195,14 +195,14 @@ private-message-compose-body-message = Введите личное сообще�
 # ==============================================================================
 # Authentication & Admin Access
 # ==============================================================================
-commands-login-description = Запрос на права админа. Не используйте, если не знаете, что делаете
+commands-login-description = Активировать права админа, если ваш Discord аккаунт уже имеет доступ.
 commands-login-incorrect-password = { "[" }scarlet]⚠ Некорректный пароль!
 commands-login-success = { "[" }green]Права админа получены
-commands-login-confirmed = { "[" }green]Права админа подтверждены
+commands-login-confirmed = { "[" }green]Discord-доступ администратора подтверждён
 commands-login-admin-password-created =
     { "[" }green]Пароль админа создан
     { "" }[red]Не забудьте свой пароль! Если Вы его забудете, Вам придется обратиться к главному администратору с просьбой сбросить его.
-commands-login-request-approval-discord = { "[" }accent]Вам необходимо подтвердить запрос на права администратора в Discord канале [orange]#admin-bots[].
+commands-login-request-approval-discord = { "[" }accent]У вашего аккаунта нет Discord-доступа администратора. Получите admin role в Discord и попробуйте снова.
 commands-discord-link-created =
     { "[" }green]Код привязки Discord создан: [accent]{ $code }[]
     { "" }[lightgray]На нашем Discord сервере вызовите slash-команду бота [accent]/link { $code }[] в течение [accent]{ $expireMinutes }[] мин.

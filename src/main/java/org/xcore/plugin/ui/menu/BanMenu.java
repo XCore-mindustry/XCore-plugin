@@ -126,7 +126,7 @@ public class BanMenu extends Menu {
             return;
         }
 
-        var result = moderationService.banById(draft.targetPid, session.player.name, draft.reason, draft.duration, true);
+        var result = moderationService.banById(draft.targetPid, session.player.name, session.data.discordId, draft.reason, draft.duration, true);
         session.clearDraft(BanDraft.class);
 
         if (!result.isSuccess() || result.getData().isEmpty()) {

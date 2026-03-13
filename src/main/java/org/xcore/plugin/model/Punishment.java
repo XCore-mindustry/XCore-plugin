@@ -16,6 +16,8 @@ public abstract class Punishment extends ModelData {
     @Builder.Default public String name = "Unknown";
     @BsonProperty("admin_name")
     @Builder.Default public String adminName = "Unknown";
+    @BsonProperty("admin_discord_id")
+    @Builder.Default public String adminDiscordId = "";
     @Builder.Default public String reason = "Not Specified";
 
     @BsonProperty("expire_date")
