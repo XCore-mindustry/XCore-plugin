@@ -324,6 +324,19 @@ async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
     assert fields["Skipped"] == "<@999> — - (no linked Mindustry accounts)"
 
 
+def test_add_embed_section_splits_long_values() -> None:
+    from xcore_discord_bot.handlers_moderation import _add_embed_section
+
+    embed = discord.Embed(title="Test")
+    items = ["x" * 600, "y" * 600, "z" * 10]
+
+    _add_embed_section(embed, name="Added", items=items)
+
+    assert [field.name for field in embed.fields] == ["Added", "Added (cont. 2)"]
+    assert len(embed.fields[0].value or "") <= 1024
+    assert len(embed.fields[1].value or "") <= 1024
+
+
 @pytest.mark.asyncio
 async def test_cmd_remove_admin_clears_all_linked_accounts_for_same_discord() -> None:
     bot = _Bot()

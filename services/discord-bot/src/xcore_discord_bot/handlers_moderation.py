@@ -16,6 +16,54 @@ if TYPE_CHECKING:
 
 MSG_NO_ACTIVE_BAN = "No active ban found"
 MSG_NO_ACTIVE_MUTE = "No active mute found"
+_EMBED_FIELD_VALUE_LIMIT = 1024
+
+
+def _split_embed_field_chunks(
+    items: list[str], *, limit: int = _EMBED_FIELD_VALUE_LIMIT
+) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+
+    for item in items:
+        separator = ", " if current else ""
+        candidate = f"{current}{separator}{item}"
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current)
+            current = item
+            continue
+
+        chunks.append(item[:limit])
+
+    if current:
+        chunks.append(current)
+
+    return chunks
+
+
+def _add_embed_section(embed: discord.Embed, *, name: str, items: list[str]) -> None:
+    for index, chunk in enumerate(_split_embed_field_chunks(items), start=1):
+        field_name = name if index == 1 else f"{name} (cont. {index})"
+        embed.add_field(name=field_name, value=chunk, inline=False)
+
+
+def _format_reconcile_player_item(item: dict[str, object]) -> str:
+    return f"`{str(item['nickname'])}` (pid={str(item['pid'])}, <@{str(item['discord_id'])}>)"
+
+
+def _format_reconcile_skipped_item(item: dict[str, str]) -> str:
+    discord_id = str(item["discord_id"])
+    player = str(item["player"])
+    reason = str(item["reason"])
+    return (
+        f"<@{discord_id}> — {player} ({reason})"
+        if discord_id
+        else f"{player} ({reason})"
+    )
 
 
 async def cmd_ban(
@@ -508,62 +556,37 @@ async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
 
 async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
     result = await bot.reconcile_discord_admin_access()
+    applied_count = int(cast(int, result["applied"]))
+    revoked_count = int(cast(int, result["revoked"]))
+    discord_admin_count = int(cast(int, result["discord_admins"]))
     embed = discord.Embed(
         title="Admin Reconcile Complete",
         color=discord.Color.blurple(),
         description=(
-            f"Applied: **{result['applied']}**\n"
-            f"Revoked: **{result['revoked']}**\n"
-            f"Discord role members: **{result['discord_admins']}**"
+            f"Applied: **{applied_count}**\n"
+            f"Revoked: **{revoked_count}**\n"
+            f"Discord role members: **{discord_admin_count}**"
         ),
     )
 
     applied_players = cast(list[dict[str, object]], result.get("applied_players", []))
     if applied_players:
-        applied_text = ", ".join(
-            f"`{nickname}` (pid={pid}, <@{discord_id}>)"
-            for item in applied_players
-            for nickname, pid, discord_id in [
-                (
-                    str(item["nickname"]),
-                    int(item["pid"]),
-                    str(item["discord_id"]),
-                )
-            ]
-        )
-        embed.add_field(name="Added", value=applied_text, inline=False)
+        applied_items = [
+            _format_reconcile_player_item(item) for item in applied_players
+        ]
+        _add_embed_section(embed, name="Added", items=applied_items)
 
     revoked_players = cast(list[dict[str, object]], result.get("revoked_players", []))
     if revoked_players:
-        revoked_text = ", ".join(
-            f"`{nickname}` (pid={pid}, <@{discord_id}>)"
-            for item in revoked_players
-            for nickname, pid, discord_id in [
-                (
-                    str(item["nickname"]),
-                    int(item["pid"]),
-                    str(item["discord_id"]),
-                )
-            ]
-        )
-        embed.add_field(name="Revoked", value=revoked_text, inline=False)
+        revoked_items = [
+            _format_reconcile_player_item(item) for item in revoked_players
+        ]
+        _add_embed_section(embed, name="Revoked", items=revoked_items)
 
     skipped = cast(list[dict[str, str]], result.get("skipped", []))
     if skipped:
-        skipped_text = ", ".join(
-            f"<@{discord_id}> — {player} ({reason})"
-            if discord_id
-            else f"{player} ({reason})"
-            for item in skipped
-            for discord_id, player, reason in [
-                (
-                    str(item["discord_id"]),
-                    str(item["player"]),
-                    str(item["reason"]),
-                )
-            ]
-        )
-        embed.add_field(name="Skipped", value=skipped_text, inline=False)
+        skipped_items = [_format_reconcile_skipped_item(item) for item in skipped]
+        _add_embed_section(embed, name="Skipped", items=skipped_items)
 
     await interaction.response.send_message(
         embed=embed,
