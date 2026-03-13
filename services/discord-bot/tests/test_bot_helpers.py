@@ -221,6 +221,7 @@ class _BanStore:
         ip: str | None,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
     ) -> None:
@@ -230,6 +231,7 @@ class _BanStore:
                 "ip": ip,
                 "name": name,
                 "admin_name": admin_name,
+                "admin_discord_id": admin_discord_id,
                 "reason": reason,
                 "expire_date": expire_date,
             }
@@ -266,6 +268,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
         pid: int,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire: datetime,
     ) -> None:
@@ -274,6 +277,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
                 "pid": pid,
                 "name": name,
                 "admin_name": admin_name,
+                "admin_discord_id": admin_discord_id,
                 "reason": reason,
                 "expire": expire,
             }
@@ -288,6 +292,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
         pid: int,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire: datetime,
     ) -> None:
@@ -295,6 +300,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
             pid=pid,
             name=name,
             admin_name=admin_name,
+            admin_discord_id=admin_discord_id,
             reason=reason,
             expire=expire,
         )
@@ -306,6 +312,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     first = await perform_ban(
         bot,
         actor_name="admin",
+        actor_discord_id="123",
         player_id=10,
         period="1d",
         reason="r",
@@ -315,6 +322,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     second = await perform_ban(
         bot,
         actor_name="admin",
+        actor_discord_id="123",
         player_id=10,
         period="1d",
         reason="r",
@@ -325,8 +333,10 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     assert first.startswith("Banned `Nick`")
     assert second == "This ban was already processed recently."
     assert len(store.bans) == 1
+    assert store.bans[0]["admin_discord_id"] == "123"
     assert bus.kicks == [("u-1", "1.2.3.4")]
     assert len(calls) == 1
+    assert calls[0]["admin_discord_id"] == "123"
     handlers_moderation.post_ban_log = original_post_ban_log
 
 

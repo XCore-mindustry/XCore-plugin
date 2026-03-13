@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import secrets
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from .contracts import EventType, ServerHeartbeatEvent
 from .handlers_moderation import post_ban_log, post_mute_log
-from .moderation_views import AdminRequestView
 from .registry import server_registry
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
@@ -28,15 +26,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-async def _player_nickname_for_pid(store: PlayerLookupService, pid: int) -> str:
-    player = await store.find_player_by_pid(pid)
-    if player is None:
-        return "Unknown"
-
-    nickname = str(player.nickname).strip()
-    return nickname or "Unknown"
 
 
 async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> int:
@@ -122,43 +111,6 @@ async def consume_raw_events(bot: "XCoreDiscordBot") -> None:
     )
 
 
-async def consume_admin_requests(bot: "XCoreDiscordBot") -> None:
-    async def claim_idempotency_for_view(key: str, ttl_seconds: int) -> bool:
-        return await bot.claim_idempotency(key, ttl_seconds=ttl_seconds)
-
-    async def dispatch(pid: int, server: str) -> None:
-        nickname = await _player_nickname_for_pid(bot, pid)
-        request_nonce = secrets.token_hex(6)
-
-        channel = await bot._resolve_messageable_channel(
-            bot.private_channel_id,
-            context="admin requests",
-        )
-        if channel is None:
-            return
-
-        view = AdminRequestView(
-            settings=bot.settings,
-            server=server,
-            pid=pid,
-            request_nonce=request_nonce,
-            find_player_by_pid=bot.find_player_by_pid,
-            claim_idempotency=claim_idempotency_for_view,
-            mark_admin_confirmed=bot.mark_admin_confirmed,
-            publish_admin_confirm=bot.publish_admin_confirm,
-            finalize_message=bot._finalize_admin_request_message,
-        )
-        message = await channel.send(
-            f"Admin request: **{nickname}** (`pid={pid}`) on `{server}`",
-            view=view,
-        )
-        view.message = message
-
-    await run_consumer_forever(
-        bot, "Admin request", bot.consume_admin_requests_stream, dispatch
-    )
-
-
 async def consume_server_heartbeats(bot: "XCoreDiscordBot") -> None:
     async def dispatch(_event: ServerHeartbeatEvent) -> None:
         return None
@@ -231,6 +183,7 @@ async def consume_bans(bot: "XCoreDiscordBot") -> None:
             pid=event.pid if event.pid is not None else player_id,
             name=event.name,
             admin_name=event.admin_name,
+            admin_discord_id=event.admin_discord_id,
             reason=event.reason,
             expire=expire_dt,
         )
@@ -251,6 +204,7 @@ async def consume_mutes(bot: "XCoreDiscordBot") -> None:
             pid=event.pid if event.pid is not None else player_id,
             name=event.name,
             admin_name=event.admin_name,
+            admin_discord_id=event.admin_discord_id,
             reason=event.reason,
             expire=expire_dt,
         )

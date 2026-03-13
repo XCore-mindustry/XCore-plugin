@@ -23,7 +23,7 @@ class PlayerRecord:
     active_badge: str | None = None
     blocked_private_uuids: tuple[str, ...] = ()
     is_admin: bool = False
-    admin_confirmed: bool = False
+    admin_source: str | None = None
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None
@@ -34,12 +34,13 @@ class PlayerRecord:
         return getattr(self, key, default)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class BanRecord:
     name: str
     admin_name: str
     reason: str
     expire_date: object
+    admin_discord_id: str | None = None
     uuid: str | None = None
     ip: str | None = None
     pid: int | None = None
@@ -48,12 +49,13 @@ class BanRecord:
         return getattr(self, key, default)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class MuteRecord:
     name: str
     admin_name: str
     reason: str
     expire_date: object
+    admin_discord_id: str | None = None
     uuid: str | None = None
 
     def get(self, key: str, default: object = None) -> object:

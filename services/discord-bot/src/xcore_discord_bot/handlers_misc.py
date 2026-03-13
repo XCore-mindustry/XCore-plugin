@@ -63,10 +63,10 @@ async def cmd_stats(
     )
 
     admin_status = "✅" if player.is_admin else "❌"
-    admin_confirmed = "✅" if player.admin_confirmed else "❌"
+    admin_source = str(player.admin_source or "NONE").strip() or "NONE"
     embed.add_field(
         name="Permissions",
-        value=(f"Admin: {admin_status}\nAdmin confirmed: {admin_confirmed}"),
+        value=(f"Admin: {admin_status}\nAdmin source: `{admin_source}`"),
         inline=False,
     )
 
@@ -189,7 +189,7 @@ def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
         "active_badge": player.active_badge,
         "blocked_private_uuids": player.blocked_private_uuids,
         "is_admin": player.is_admin,
-        "admin_confirmed": player.admin_confirmed,
+        "admin_source": player.admin_source,
         "created_at": player.created_at,
         "updated_at": player.updated_at,
     }

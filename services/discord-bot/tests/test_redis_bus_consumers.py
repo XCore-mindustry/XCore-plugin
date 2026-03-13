@@ -54,111 +54,6 @@ def test_stream_maxlen_policy() -> None:
     assert RedisBus._stream_maxlen("xcore:dlq:evt") == 100_000
 
 
-# --- consume_admin_requests ---
-
-
-@pytest.mark.asyncio
-async def test_consume_admin_requests_dispatches_pid_and_server(
-    settings: Settings, mock_redis: AsyncMock
-) -> None:
-    payload = {"pid": 42, "server": "test-server"}
-    mock_redis.xreadgroup.side_effect = [
-        [
-            [
-                b"xcore:evt:admin:request",
-                [
-                    (
-                        b"1-0",
-                        {"payload_json": json.dumps(payload)},
-                    )
-                ],
-            ]
-        ],
-        KeyboardInterrupt("stop"),
-    ]
-
-    bus = RedisBus(settings)
-    bus._redis = mock_redis
-
-    callback = AsyncMock()
-    try:
-        await bus.consume_admin_requests(callback)
-    except KeyboardInterrupt:
-        pass
-
-    callback.assert_called_once_with(42, "test-server")
-    mock_redis.xack.assert_called_once_with(
-        b"xcore:evt:admin:request",
-        f"{settings.redis_group_prefix}:discord-admin-request",
-        b"1-0",
-    )
-
-
-@pytest.mark.asyncio
-async def test_consume_admin_requests_skips_malformed_payload(
-    settings: Settings, mock_redis: AsyncMock
-) -> None:
-    mock_redis.xreadgroup.side_effect = [
-        [
-            [
-                b"xcore:evt:admin:request",
-                [
-                    (
-                        b"2-0",
-                        {"payload_json": "not-json"},
-                    )
-                ],
-            ]
-        ],
-        KeyboardInterrupt("stop"),
-    ]
-
-    bus = RedisBus(settings)
-    bus._redis = mock_redis
-
-    callback = AsyncMock()
-    try:
-        await bus.consume_admin_requests(callback)
-    except KeyboardInterrupt:
-        pass
-
-    callback.assert_not_called()
-    mock_redis.xack.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_consume_admin_requests_callback_failure_not_acked(
-    settings: Settings, mock_redis: AsyncMock
-) -> None:
-    payload = {"pid": 42, "server": "test-server"}
-    mock_redis.xreadgroup.side_effect = [
-        [
-            [
-                b"xcore:evt:admin:request",
-                [
-                    (
-                        b"2-1",
-                        {"payload_json": json.dumps(payload)},
-                    )
-                ],
-            ]
-        ],
-        KeyboardInterrupt("stop"),
-    ]
-
-    bus = RedisBus(settings)
-    bus._redis = mock_redis
-
-    callback = AsyncMock(side_effect=RuntimeError("discord down"))
-    try:
-        await bus.consume_admin_requests(callback)
-    except KeyboardInterrupt:
-        pass
-
-    callback.assert_called_once_with(42, "test-server")
-    mock_redis.xack.assert_not_called()
-
-
 # --- consume_player_join_leave ---
 
 
@@ -314,6 +209,7 @@ async def test_consume_bans_dispatches_event(
         "uuid": "u-1",
         "name": "pizduk",
         "admin_name": "admin",
+        "admin_discord_id": "123",
         "reason": "rule",
         "expire_date": "2026-03-01T10:00:00+00:00",
     }
@@ -347,6 +243,7 @@ async def test_consume_bans_dispatches_event(
             ip=None,
             name="pizduk",
             admin_name="admin",
+            admin_discord_id="123",
             reason="rule",
             expire_date="2026-03-01T10:00:00+00:00",
         )
@@ -366,6 +263,7 @@ async def test_consume_mutes_dispatches_event(
         "uuid": "u-1",
         "name": "pizduk",
         "admin_name": "admin",
+        "admin_discord_id": "456",
         "reason": "rule",
         "expire_date": "2026-03-01T10:00:00+00:00",
     }
@@ -398,6 +296,7 @@ async def test_consume_mutes_dispatches_event(
             uuid="u-1",
             name="pizduk",
             admin_name="admin",
+            admin_discord_id="456",
             reason="rule",
             expire_date="2026-03-01T10:00:00+00:00",
         )

@@ -44,6 +44,7 @@ def test_ban_event_from_payload_snake_case() -> None:
         "ip": "1.2.3.4",
         "name": "pizduk",
         "admin_name": "admin",
+        "admin_discord_id": "123",
         "reason": "rule",
         "expire_date": "2026-03-01T10:00:00+00:00",
     }
@@ -53,6 +54,7 @@ def test_ban_event_from_payload_snake_case() -> None:
     assert event.ip == "1.2.3.4"
     assert event.name == "pizduk"
     assert event.admin_name == "admin"
+    assert event.admin_discord_id == "123"
     assert event.reason == "rule"
     assert event.expire_date == "2026-03-01T10:00:00+00:00"
 
@@ -63,12 +65,14 @@ def test_ban_event_from_payload_camel_case_admin_and_expire() -> None:
         "uuid": "u-2",
         "name": "player",
         "adminName": "mod",
+        "adminDiscordId": "555",
         "reason": "abuse",
         "expireDate": "2026-03-01T11:00:00+00:00",
     }
     event = BanEvent.from_payload(payload)
     assert event.pid == 12
     assert event.admin_name == "mod"
+    assert event.admin_discord_id == "555"
     assert event.expire_date == "2026-03-01T11:00:00+00:00"
 
 
@@ -78,6 +82,7 @@ def test_mute_event_from_payload_camel_case_admin_and_expire() -> None:
         "uuid": "u-2",
         "name": "player",
         "adminName": "mod",
+        "adminDiscordId": "777",
         "reason": "spam",
         "expireDate": "2026-03-01T11:00:00+00:00",
     }
@@ -85,6 +90,7 @@ def test_mute_event_from_payload_camel_case_admin_and_expire() -> None:
     assert event.pid == 12
     assert event.uuid == "u-2"
     assert event.admin_name == "mod"
+    assert event.admin_discord_id == "777"
     assert event.reason == "spam"
     assert event.expire_date == "2026-03-01T11:00:00+00:00"
 

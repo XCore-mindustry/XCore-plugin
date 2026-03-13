@@ -44,7 +44,7 @@ class PlayerDoc(_MongoDoc):
     active_badge: str | None = None
     blocked_private_uuids: list[str] | None = None
     is_admin: bool | None = None
-    admin_confirmed: bool | None = None
+    admin_source: str | None = None
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None
@@ -58,6 +58,7 @@ class BanDoc(_MongoDoc):
     ip: str | None = None
     name: str | None = None
     admin_name: str | None = None
+    admin_discord_id: str | None = None
     reason: str | None = None
     expire_date: Any | None = None
 
@@ -66,6 +67,7 @@ class MuteDoc(_MongoDoc):
     uuid: str
     name: str
     admin_name: str
+    admin_discord_id: str | None = None
     reason: str
     expire_date: datetime
 
@@ -115,7 +117,21 @@ class MongoStore:
             .find({"discord_id": discord_id})
             .sort("pid", DESCENDING)
         )
-        rows = await cursor.to_list(length=100)
+        rows = await cursor.to_list(length=None)
+        return [
+            player_record_from_doc(
+                PlayerDoc.model_validate(row).model_dump(mode="python")
+            )
+            for row in rows
+        ]
+
+    async def find_discord_admin_players(self) -> list[PlayerRecord]:
+        cursor = (
+            self._db_required()["players"]
+            .find({"is_admin": True, "admin_source": "DISCORD_ROLE"})
+            .sort("pid", DESCENDING)
+        )
+        rows = await cursor.to_list(length=None)
         return [
             player_record_from_doc(
                 PlayerDoc.model_validate(row).model_dump(mode="python")
@@ -272,6 +288,7 @@ class MongoStore:
         ip: str | None,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
     ) -> None:
@@ -282,6 +299,7 @@ class MongoStore:
             ip=ip,
             name=name,
             admin_name=admin_name,
+            admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
         ).model_dump(mode="python")
@@ -307,6 +325,7 @@ class MongoStore:
         uuid: str,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
     ) -> None:
@@ -314,6 +333,7 @@ class MongoStore:
             uuid=uuid,
             name=name,
             admin_name=admin_name,
+            admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
         ).model_dump(mode="python")
@@ -333,12 +353,14 @@ class MongoStore:
             MuteDoc.model_validate(raw).model_dump(mode="python")
         )
 
-    async def remove_admin(self, *, uuid: str) -> bool:
+    async def set_admin_access(
+        self, *, uuid: str, is_admin: bool, admin_source: str
+    ) -> tuple[bool, bool]:
         result = await self._db_required()["players"].update_one(
             {"uuid": uuid},
-            {"$set": {"is_admin": False, "admin_confirmed": False}},
+            {"$set": {"is_admin": is_admin, "admin_source": admin_source}},
         )
-        return result.modified_count > 0
+        return result.matched_count > 0, result.modified_count > 0
 
     async def reset_password(self, *, uuid: str) -> bool:
         result = await self._db_required()["players"].update_one(
@@ -377,13 +399,6 @@ class MongoStore:
                     }
                 }
             ],
-        )
-        return result.modified_count > 0
-
-    async def mark_admin_confirmed(self, *, uuid: str) -> bool:
-        result = await self._db_required()["players"].update_one(
-            {"uuid": uuid},
-            {"$set": {"admin_confirmed": True}},
         )
         return result.modified_count > 0
 

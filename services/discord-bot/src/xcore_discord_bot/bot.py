@@ -18,7 +18,6 @@ from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog
 from .dto import BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
-    AdminRequestView,
     BanConfirmView,
     MapRemoveConfirmView,
     MuteUndoView,
@@ -185,7 +184,6 @@ StatsActionsView.__name__ = "_StatsActionsView"
 BanConfirmView.__name__ = "_BanConfirmView"
 MapRemoveConfirmView.__name__ = "_MapRemoveConfirmView"
 MuteUndoView.__name__ = "_MuteUndoView"
-AdminRequestView.__name__ = "_AdminRequestView"
 StatsBanModal.__name__ = "_StatsBanModal"
 StatsMuteModal.__name__ = "_StatsMuteModal"
 PaginatorView.__name__ = "_PaginatorView"
@@ -195,7 +193,6 @@ _StatsActionsView = StatsActionsView
 _BanConfirmView = BanConfirmView
 _MapRemoveConfirmView = MapRemoveConfirmView
 _MuteUndoView = MuteUndoView
-_AdminRequestView = AdminRequestView
 _StatsBanModal = StatsBanModal
 _StatsMuteModal = StatsMuteModal
 _PaginatorView = PaginatorView
@@ -206,6 +203,7 @@ class XCoreDiscordBot(commands.Bot):
     def __init__(self, settings: Settings, bus: RedisBus, store: MongoStore) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         intents.guild_messages = True
         intents.guilds = True
         super().__init__(
@@ -224,9 +222,9 @@ class XCoreDiscordBot(commands.Bot):
         self._server_action_consumer_task: asyncio.Task[None] | None = None
         self._ban_consumer_task: asyncio.Task[None] | None = None
         self._mute_consumer_task: asyncio.Task[None] | None = None
-        self._admin_request_task: asyncio.Task[None] | None = None
         self._heartbeat_consumer_task: asyncio.Task[None] | None = None
         self._presence_task: asyncio.Task[None] | None = None
+        self._admin_reconcile_task: asyncio.Task[None] | None = None
         self._presence_rotation_index = 0
         self._map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
 
@@ -331,6 +329,7 @@ class XCoreDiscordBot(commands.Bot):
         ip: str | None,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
     ) -> None:
@@ -339,6 +338,7 @@ class XCoreDiscordBot(commands.Bot):
             ip=ip,
             name=name,
             admin_name=admin_name,
+            admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
         )
@@ -366,6 +366,7 @@ class XCoreDiscordBot(commands.Bot):
         uuid: str,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: datetime,
     ) -> None:
@@ -373,6 +374,7 @@ class XCoreDiscordBot(commands.Bot):
             uuid=uuid,
             name=name,
             admin_name=admin_name,
+            admin_discord_id=admin_discord_id,
             reason=reason,
             expire_date=expire_date,
         )
@@ -383,11 +385,35 @@ class XCoreDiscordBot(commands.Bot):
     async def find_mute(self, *, uuid: str) -> MuteRecord | None:
         return await self._store.find_mute(uuid=uuid)
 
-    async def remove_admin(self, *, uuid: str) -> bool:
-        return await self._store.remove_admin(uuid=uuid)
+    async def set_admin_access(
+        self, *, uuid: str, is_admin: bool, admin_source: str
+    ) -> tuple[bool, bool]:
+        return await self._store.set_admin_access(
+            uuid=uuid, is_admin=is_admin, admin_source=admin_source
+        )
 
-    async def publish_remove_admin(self, *, uuid_value: str) -> None:
-        await self._bus.publish_remove_admin(uuid_value=uuid_value)
+    async def publish_discord_admin_access_changed(
+        self,
+        *,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        discord_username: str | None,
+        admin: bool,
+        admin_source: str,
+        requested_by: str,
+        reason: str,
+    ) -> None:
+        await self._bus.publish_discord_admin_access_changed(
+            player_uuid=player_uuid,
+            player_pid=player_pid,
+            discord_id=discord_id,
+            discord_username=discord_username,
+            admin=admin,
+            admin_source=admin_source,
+            requested_by=requested_by,
+            reason=reason,
+        )
 
     async def reset_password(self, *, uuid: str) -> bool:
         return await self._store.reset_password(uuid=uuid)
@@ -434,11 +460,184 @@ class XCoreDiscordBot(commands.Bot):
     async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:
         return await self._store.find_players_by_discord_id(discord_id)
 
-    async def mark_admin_confirmed(self, *, uuid: str) -> None:
-        await self._store.mark_admin_confirmed(uuid=uuid)
+    async def find_discord_admin_players(self) -> list[PlayerRecord]:
+        return await self._store.find_discord_admin_players()
 
-    async def publish_admin_confirm(self, *, uuid_value: str, server: str) -> None:
-        await self._bus.publish_admin_confirm(uuid_value=uuid_value, server=server)
+    async def set_discord_admin_role(
+        self,
+        *,
+        discord_id: str,
+        should_have_role: bool,
+        reason: str,
+    ) -> bool:
+        guild_id = self._settings.discord_guild_id
+        if guild_id <= 0:
+            raise RuntimeError(
+                "DISCORD_GUILD_ID must be configured for /admin add/remove"
+            )
+
+        guild = self.get_guild(guild_id)
+        if guild is None:
+            guild = await self.fetch_guild(guild_id)
+
+        member = guild.get_member(int(discord_id))
+        if member is None:
+            member = await guild.fetch_member(int(discord_id))
+
+        role = guild.get_role(self._settings.discord_admin_role_id)
+        if role is None:
+            raise RuntimeError("Configured admin role was not found in the guild")
+
+        has_role = any(
+            getattr(existing_role, "id", None) == role.id
+            for existing_role in member.roles
+        )
+        if should_have_role:
+            if has_role:
+                return False
+            await member.add_roles(role, reason=reason)
+            return True
+
+        if not has_role:
+            return False
+        await member.remove_roles(role, reason=reason)
+        return True
+
+    async def get_discord_admin_member_ids(self) -> set[str]:
+        guild_id = self._settings.discord_guild_id
+        if guild_id <= 0:
+            raise RuntimeError(
+                "DISCORD_GUILD_ID must be configured for admin reconcile"
+            )
+
+        guild = self.get_guild(guild_id)
+        if guild is None:
+            guild = await self.fetch_guild(guild_id)
+
+        role = guild.get_role(self._settings.discord_admin_role_id)
+        if role is None:
+            raise RuntimeError("Configured admin role was not found in the guild")
+
+        members = getattr(role, "members", None)
+        if not members:
+            await guild.chunk()
+            members = getattr(role, "members", [])
+
+        return {
+            str(member.id)
+            for member in members
+            if getattr(member, "id", None) is not None
+        }
+
+    async def reconcile_discord_admin_access(self) -> dict[str, int]:
+        discord_admin_ids = await self.get_discord_admin_member_ids()
+        linked_admin_players = await self.find_discord_admin_players()
+
+        if not discord_admin_ids and linked_admin_players:
+            logger.warning(
+                "Skipping admin revoke because Discord admin snapshot is empty while %s linked admins exist; this is likely a cache/intents issue.",
+                len(linked_admin_players),
+            )
+            return {
+                "applied": 0,
+                "revoked": 0,
+                "discord_admins": 0,
+                "skipped_empty_snapshot": 1,
+            }
+
+        applied = 0
+        revoked = 0
+
+        processed_ids: set[str] = set()
+        for player in linked_admin_players:
+            discord_id = str(player.discord_id or "").strip()
+            if not discord_id:
+                continue
+
+            processed_ids.add(discord_id)
+            uuid_value = str(player.uuid or "").strip()
+            if not uuid_value:
+                continue
+
+            should_be_admin = discord_id in discord_admin_ids
+            if should_be_admin:
+                continue
+
+            matched, changed = await self.set_admin_access(
+                uuid=uuid_value,
+                is_admin=False,
+                admin_source="NONE",
+            )
+            if not matched:
+                continue
+            await self.publish_discord_admin_access_changed(
+                player_uuid=uuid_value,
+                player_pid=player.pid,
+                discord_id=discord_id,
+                discord_username=player.discord_username,
+                admin=False,
+                admin_source="NONE",
+                requested_by="system/reconcile",
+                reason="discord role missing during reconcile",
+            )
+            if changed:
+                revoked += 1
+
+        for discord_id in discord_admin_ids:
+            if discord_id in processed_ids:
+                continue
+
+            players = await self.find_players_by_discord_id(discord_id)
+            if len(players) != 1:
+                logger.warning(
+                    "Skipping admin apply for discord_id=%s during reconcile because linked account count is %s",
+                    discord_id,
+                    len(players),
+                )
+                continue
+
+            player = players[0]
+            uuid_value = str(player.uuid or "").strip()
+            if not uuid_value:
+                continue
+
+            matched, changed = await self.set_admin_access(
+                uuid=uuid_value,
+                is_admin=True,
+                admin_source="DISCORD_ROLE",
+            )
+            if not matched:
+                continue
+            await self.publish_discord_admin_access_changed(
+                player_uuid=uuid_value,
+                player_pid=player.pid,
+                discord_id=discord_id,
+                discord_username=player.discord_username,
+                admin=True,
+                admin_source="DISCORD_ROLE",
+                requested_by="system/reconcile",
+                reason="discord role present during reconcile",
+            )
+            if changed:
+                applied += 1
+
+        return {
+            "applied": applied,
+            "revoked": revoked,
+            "discord_admins": len(discord_admin_ids),
+            "skipped_empty_snapshot": 0,
+        }
+
+    async def _admin_reconcile_loop(self) -> None:
+        await self.wait_until_ready()
+        while not self.is_closed():
+            await asyncio.sleep(self._settings.admin_reconcile_interval_seconds)
+            try:
+                await self.reconcile_discord_admin_access()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Failed to reconcile Discord admin access")
 
     async def publish_discord_link_confirm(
         self,
@@ -489,11 +688,6 @@ class XCoreDiscordBot(commands.Bot):
         self, callback: Callable[..., Awaitable[None]]
     ) -> None:
         await self._bus.consume_raw_events(callback)
-
-    async def consume_admin_requests_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_admin_requests(callback)
 
     async def consume_server_heartbeats_stream(
         self, callback: Callable[..., Awaitable[None]]
@@ -564,13 +758,13 @@ class XCoreDiscordBot(commands.Bot):
         self._mute_consumer_task = asyncio.create_task(
             runtime_consumers.consume_mutes(self), name="redis-mute-consumer"
         )
-        self._admin_request_task = asyncio.create_task(
-            runtime_consumers.consume_admin_requests(self),
-            name="redis-admin-request-consumer",
-        )
         self._heartbeat_consumer_task = asyncio.create_task(
             runtime_consumers.consume_server_heartbeats(self),
             name="redis-server-heartbeat-consumer",
+        )
+        self._admin_reconcile_task = asyncio.create_task(
+            self._admin_reconcile_loop(),
+            name="discord-admin-reconcile",
         )
         self._presence_task = asyncio.create_task(
             self._update_presence_loop(), name="discord-presence-updater"
@@ -586,6 +780,16 @@ class XCoreDiscordBot(commands.Bot):
     async def on_ready(self) -> None:
         logger.info("Discord bot connected as %s", self.user)
         await self._update_presence_once()
+        try:
+            result = await self.reconcile_discord_admin_access()
+            logger.info(
+                "Startup admin reconcile complete: applied=%s revoked=%s discord_admins=%s",
+                result["applied"],
+                result["revoked"],
+                result["discord_admins"],
+            )
+        except Exception:
+            logger.exception("Startup admin reconcile failed")
 
     async def on_message(self, message: discord.Message) -> None:
         """Used for game chat bridge and DM-based account linking."""
@@ -650,8 +854,8 @@ class XCoreDiscordBot(commands.Bot):
             self._server_action_consumer_task,
             self._ban_consumer_task,
             self._mute_consumer_task,
-            self._admin_request_task,
             self._heartbeat_consumer_task,
+            self._admin_reconcile_task,
             self._presence_task,
         ):
             if task is not None:
@@ -668,8 +872,8 @@ class XCoreDiscordBot(commands.Bot):
         self._server_action_consumer_task = None
         self._ban_consumer_task = None
         self._mute_consumer_task = None
-        self._admin_request_task = None
         self._heartbeat_consumer_task = None
+        self._admin_reconcile_task = None
         self._presence_task = None
 
         await self._bus.close()
@@ -760,22 +964,6 @@ class XCoreDiscordBot(commands.Bot):
             except Exception:
                 logger.exception("Failed to update Discord presence")
 
-    async def _finalize_admin_request_message(
-        self,
-        interaction: Interaction,
-        status: str,
-    ) -> None:
-        if interaction.message is None:
-            await interaction.response.send_message(status)
-            return
-
-        content = interaction.message.content
-        if status not in content:
-            content = f"{content}\n{status}" if content else status
-
-        view = self._disabled_interaction_buttons_view(interaction)
-        await interaction.response.edit_message(content=content, view=view)
-
     @staticmethod
     def _disabled_interaction_buttons_view(
         interaction: Interaction,
@@ -802,6 +990,9 @@ class XCoreDiscordBot(commands.Bot):
         self,
         interaction: Interaction,
         fetch_page: Callable[[int], Awaitable[tuple[discord.Embed, bool]]],
+        *,
+        ephemeral: bool = False,
+        allowed_mentions: discord.AllowedMentions | None = None,
     ) -> None:
         """Send an embed with Prev/Next pagination buttons via an Interaction."""
         page = 0
@@ -809,7 +1000,19 @@ class XCoreDiscordBot(commands.Bot):
         view = _PaginatorView(
             page=page, has_prev=False, has_next=has_next, fetch_page=fetch_page
         )
-        await interaction.response.send_message(embed=embed, view=view)
+        if allowed_mentions is None:
+            await interaction.response.send_message(
+                embed=embed,
+                view=view,
+                ephemeral=ephemeral,
+            )
+        else:
+            await interaction.response.send_message(
+                embed=embed,
+                view=view,
+                ephemeral=ephemeral,
+                allowed_mentions=allowed_mentions,
+            )
         view.bot_message = await interaction.original_response()
 
     async def _handle_app_command_error(

@@ -18,17 +18,12 @@ from .ui_helpers import (
 )
 
 MSG_PLAYER_NOT_FOUND = "Player not found"
-MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
 
 PerformBanFn = Callable[..., Awaitable[str]]
 PerformRemoveMapFn = Callable[..., Awaitable[str]]
 DeleteMuteFn = Callable[..., Awaitable[int]]
 CreateModalFn = Callable[..., discord.ui.Modal]
 FindPlayerByPidFn = Callable[[int], Awaitable[PlayerRecord | None]]
-ClaimIdempotencyFn = Callable[[str, int], Awaitable[bool]]
-MarkAdminConfirmedFn = Callable[..., Awaitable[object]]
-PublishAdminConfirmFn = Callable[..., Awaitable[object]]
-FinalizeMessageFn = Callable[[Interaction, str], Awaitable[None]]
 
 
 class BanConfirmView(discord.ui.View):
@@ -66,6 +61,7 @@ class BanConfirmView(discord.ui.View):
 
         result = await self._perform_ban(
             actor_name=interaction.user.display_name,
+            actor_discord_id=str(interaction.user.id),
             player_id=self._player_id,
             period=self._period,
             reason=self._reason,
@@ -255,110 +251,3 @@ StatsMuteModal.__name__ = "_StatsMuteModal"
 
 _StatsBanModal = StatsBanModal
 _StatsMuteModal = StatsMuteModal
-
-
-class AdminRequestView(discord.ui.View):
-    def __init__(
-        self,
-        *,
-        settings: Settings,
-        server: str,
-        pid: int,
-        request_nonce: str,
-        find_player_by_pid: FindPlayerByPidFn,
-        claim_idempotency: ClaimIdempotencyFn,
-        mark_admin_confirmed: MarkAdminConfirmedFn,
-        publish_admin_confirm: PublishAdminConfirmFn,
-        finalize_message: FinalizeMessageFn,
-    ) -> None:
-        super().__init__(timeout=900)
-        self._settings = settings
-        self._server = server
-        self._pid = pid
-        self._request_nonce = request_nonce
-        self._find_player_by_pid = find_player_by_pid
-        self._claim_idempotency = claim_idempotency
-        self._mark_admin_confirmed = mark_admin_confirmed
-        self._publish_admin_confirm = publish_admin_confirm
-        self._finalize_message = finalize_message
-        self.message: discord.Message | None = None
-
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        return await ensure_any_role(
-            interaction,
-            role_ids=admin_role_ids(self._settings),
-            denied_message="Access denied. Required admin role.",
-        )
-
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
-    async def _confirm(
-        self,
-        interaction: Interaction,
-        button: discord.ui.Button,
-    ) -> None:  # noqa: ARG002
-        player = await self._find_player_by_pid(self._pid)
-        if player is None:
-            await interaction.response.send_message(
-                MSG_PLAYER_NOT_FOUND, ephemeral=True
-            )
-            return
-
-        uuid_value = str(player.uuid or "").strip()
-        if not uuid_value:
-            await interaction.response.send_message(
-                MSG_PLAYER_UUID_MISSING,
-                ephemeral=True,
-            )
-            return
-
-        claim_key = f"admin-confirm:{self._server}:{uuid_value}:{self._request_nonce}"
-        if not await self._claim_idempotency(claim_key, 600):
-            await interaction.response.send_message(
-                "This admin confirmation was already processed.",
-                ephemeral=True,
-            )
-            return
-
-        await self._mark_admin_confirmed(uuid=uuid_value)
-        await self._publish_admin_confirm(
-            uuid_value=uuid_value,
-            server=self._server,
-        )
-        confirmer = getattr(
-            interaction.user,
-            "mention",
-            f"`{interaction.user.display_name}`",
-        )
-        status = (
-            f"✅ Confirmed admin request for `{player.nickname}` "
-            f"on `{self._server}` by {confirmer}"
-        )
-        await self._finalize_message(interaction, status)
-
-    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
-    async def _decline(
-        self,
-        interaction: Interaction,
-        button: discord.ui.Button,
-    ) -> None:  # noqa: ARG002
-        player = await self._find_player_by_pid(self._pid)
-        if player is None:
-            await interaction.response.send_message(
-                MSG_PLAYER_NOT_FOUND, ephemeral=True
-            )
-            return
-
-        confirmer = getattr(
-            interaction.user,
-            "mention",
-            f"`{interaction.user.display_name}`",
-        )
-        status = (
-            f"❌ Declined admin request for `{player.nickname}` "
-            f"on `{self._server}` by {confirmer}"
-        )
-        await self._finalize_message(interaction, status)
-
-    async def on_timeout(self) -> None:
-        disable_view_buttons(self)
-        await safe_edit_view_message(self.message, view=self)

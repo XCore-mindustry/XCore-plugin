@@ -93,7 +93,7 @@ class _Store:
             unlocked_badges=("developer", "translator"),
             active_badge="translator",
             is_admin=False,
-            admin_confirmed=False,
+            admin_source="NONE",
             created_at=0,
             updated_at=0,
         )
@@ -139,6 +139,9 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert isinstance(sent["view"], _StatsActionsView)
     assert sent["view"].message is interaction._message
     fields = {field.name: field.value for field in sent["embed"].fields}
+    assert "Permissions" in fields
+    assert "Admin: ❌" in fields["Permissions"]
+    assert "Admin source: `NONE`" in fields["Permissions"]
     assert "Profile" in fields
     assert "Description: `Profile text`" in fields["Profile"]
     assert "Language: `ru`" in fields["Profile"]

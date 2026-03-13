@@ -77,6 +77,7 @@ class _BanBot:
                 uuid="uuid-1",
                 name="Target",
                 admin_name="Admin",
+                admin_discord_id="123",
                 reason="Rule 1",
                 expire_date="bad-date",
             )
@@ -112,6 +113,7 @@ class _MuteBot:
                 uuid="uuid-1",
                 name="Target",
                 admin_name="Admin",
+                admin_discord_id="456",
                 reason="Rule 1",
                 expire_date="bad-date",
             )
@@ -161,7 +163,14 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
     captured: dict[str, Any] = {}
 
     async def fake_post_ban_log(
-        bot, *, pid: int, name: str, admin_name: str, reason: str, expire
+        bot,
+        *,
+        pid: int,
+        name: str,
+        admin_name: str,
+        admin_discord_id: str | None,
+        reason: str,
+        expire,
     ):
         captured.update(
             {
@@ -169,6 +178,7 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
                 "pid": pid,
                 "name": name,
                 "admin_name": admin_name,
+                "admin_discord_id": admin_discord_id,
                 "reason": reason,
                 "expire": expire,
             }
@@ -187,6 +197,7 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
     assert captured["pid"] == 42
     assert captured["name"] == "Target"
     assert captured["admin_name"] == "Admin"
+    assert captured["admin_discord_id"] == "123"
     assert captured["reason"] == "Rule 1"
     assert captured["expire"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
 
@@ -221,7 +232,14 @@ async def test_consume_mutes_uses_now_when_expire_date_invalid(
     captured: dict[str, Any] = {}
 
     async def fake_post_mute_log(
-        bot, *, pid: int, name: str, admin_name: str, reason: str, expire
+        bot,
+        *,
+        pid: int,
+        name: str,
+        admin_name: str,
+        admin_discord_id: str | None,
+        reason: str,
+        expire,
     ):
         captured.update(
             {
@@ -229,6 +247,7 @@ async def test_consume_mutes_uses_now_when_expire_date_invalid(
                 "pid": pid,
                 "name": name,
                 "admin_name": admin_name,
+                "admin_discord_id": admin_discord_id,
                 "reason": reason,
                 "expire": expire,
             }
@@ -250,6 +269,7 @@ async def test_consume_mutes_uses_now_when_expire_date_invalid(
     assert captured["pid"] == 42
     assert captured["name"] == "Target"
     assert captured["admin_name"] == "Admin"
+    assert captured["admin_discord_id"] == "456"
     assert captured["reason"] == "Rule 1"
     assert captured["expire"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
 

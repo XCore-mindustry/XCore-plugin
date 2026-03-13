@@ -47,6 +47,11 @@ async def _autocomplete_period(
 
 
 class AdminCog(commands.Cog):
+    admin_group = app_commands.Group(
+        name="admin",
+        description="Manage Discord-linked admin access",
+    )
+
     def __init__(self, bot: "XCoreDiscordBot") -> None:
         self.bot = bot
 
@@ -125,15 +130,38 @@ class AdminCog(commands.Cog):
     async def cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_unmute(self.bot, interaction, player_id)
 
-    @app_commands.command(
-        name="remove-admin",
-        description="Remove admin from a player (general admin)",
+    @admin_group.command(
+        name="add", description="Grant admin to a player (general admin)"
     )
     @app_commands.describe(player_id="Numeric player ID")
     @app_commands.autocomplete(player_id=_autocomplete_player_id)
     @general_admin_check()
-    async def cmd_remove_admin(self, interaction: Interaction, player_id: int) -> None:
+    async def cmd_admin_add(self, interaction: Interaction, player_id: int) -> None:
+        await handlers_moderation.cmd_add_admin(self.bot, interaction, player_id)
+
+    @admin_group.command(
+        name="remove", description="Revoke admin from a player (general admin)"
+    )
+    @app_commands.describe(player_id="Numeric player ID")
+    @app_commands.autocomplete(player_id=_autocomplete_player_id)
+    @general_admin_check()
+    async def cmd_admin_remove(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_remove_admin(self.bot, interaction, player_id)
+
+    @admin_group.command(
+        name="list", description="List Discord-linked admins (general admin)"
+    )
+    @general_admin_check()
+    async def cmd_admin_list(self, interaction: Interaction) -> None:
+        await handlers_moderation.cmd_list_admins(self.bot, interaction)
+
+    @admin_group.command(
+        name="sync",
+        description="Reconcile Discord admin role with plugin state (general admin)",
+    )
+    @general_admin_check()
+    async def cmd_admin_sync(self, interaction: Interaction) -> None:
+        await handlers_moderation.cmd_sync_admins(self.bot, interaction)
 
     @app_commands.command(
         name="reset-password",

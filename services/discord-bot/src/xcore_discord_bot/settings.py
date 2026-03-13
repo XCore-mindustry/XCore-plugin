@@ -62,6 +62,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="DISCORD_ERROR_LOG_CHANNEL_ID",
     )
+    admin_reconcile_interval_seconds: int = Field(
+        default=300,
+        validation_alias="ADMIN_RECONCILE_INTERVAL_SECONDS",
+    )
 
     @field_validator(
         "discord_general_admin_role_id",
@@ -99,6 +103,17 @@ class Settings(BaseSettings):
                 return 5000
             if not normalized.lstrip("-").isdigit():
                 raise ValueError("RPC_TIMEOUT_MS must be an integer")
+        return value
+
+    @field_validator("admin_reconcile_interval_seconds", mode="before")
+    @classmethod
+    def _admin_reconcile_interval_parse(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return 300
+            if not normalized.lstrip("-").isdigit():
+                raise ValueError("ADMIN_RECONCILE_INTERVAL_SECONDS must be an integer")
         return value
 
     @property
@@ -160,6 +175,9 @@ class Settings(BaseSettings):
 
         if self.rpc_timeout_ms <= 0:
             raise ValueError("RPC_TIMEOUT_MS must be > 0")
+
+        if self.admin_reconcile_interval_seconds <= 0:
+            raise ValueError("ADMIN_RECONCILE_INTERVAL_SECONDS must be > 0")
 
         return self
 

@@ -195,23 +195,6 @@ class RedisBus:
             callback=wrapped,
         )
 
-    async def consume_admin_requests(
-        self, callback: Callable[[int, str], Awaitable[None]]
-    ) -> None:
-        def parse(payload: dict[str, Any]) -> tuple[int, str]:
-            return int(payload["pid"]), str(payload["server"])
-
-        async def wrapped(parsed: tuple[int, str]) -> None:
-            pid, server = parsed
-            await callback(pid, server)
-
-        await self._consume_events(
-            stream="xcore:evt:admin:request",
-            group_suffix="discord-admin-request",
-            parse_payload=parse,
-            callback=wrapped,
-        )
-
     async def consume_player_join_leave(
         self, callback: Callable[[PlayerJoinLeaveEvent], Awaitable[None]]
     ) -> None:
@@ -585,23 +568,35 @@ class RedisBus:
             return value.decode("utf-8", errors="replace")
         return str(value)
 
-    async def publish_admin_confirm(self, uuid_value: str, server: str) -> None:
-        await self._publish_event(
-            stream=f"xcore:cmd:admin-confirm:{server}",
-            event_type="admin.confirm",
-            ttl_ms=120_000,
-            server=server,
-            payload={"uuid": uuid_value, "server": server},
-            idempotency_prefix="admin.confirm",
-        )
-
-    async def publish_remove_admin(self, uuid_value: str) -> None:
+    async def publish_discord_admin_access_changed(
+        self,
+        *,
+        player_uuid: str,
+        player_pid: int,
+        discord_id: str,
+        discord_username: str | None,
+        admin: bool,
+        admin_source: str,
+        requested_by: str,
+        reason: str,
+    ) -> None:
         await self._publish_for_all_servers(
-            stream_prefix="xcore:cmd:remove-admin",
-            event_type="admin.remove",
+            stream_prefix="xcore:cmd:discord-admin-access",
+            event_type="discord.admin_access_changed",
             ttl_ms=120_000,
-            idempotency_prefix="admin.remove",
-            payload_builder=lambda server: {"uuid": uuid_value, "server": server},
+            idempotency_prefix="discord.admin_access_changed",
+            payload_builder=lambda server: {
+                "playerUuid": player_uuid,
+                "playerPid": player_pid,
+                "discordId": discord_id,
+                "discordUsername": discord_username or "",
+                "admin": admin,
+                "adminSource": admin_source,
+                "requestedBy": requested_by,
+                "reason": reason,
+                "server": server,
+                "occurredAt": int(time.time() * 1000),
+            },
         )
 
     async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:

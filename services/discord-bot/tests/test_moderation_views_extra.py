@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.moderation_views import (
-    AdminRequestView,
     BanConfirmView,
     MapRemoveConfirmView,
     MuteUndoView,
@@ -17,15 +14,9 @@ from xcore_discord_bot.moderation_views import (
 
 
 @dataclass
-class _Role:
-    id: int
-
-
-@dataclass
 class _User:
     id: int
     display_name: str = "moderator"
-    roles: list[_Role] = field(default_factory=list)
     mention: str = "@moderator"
 
 
@@ -154,97 +145,3 @@ async def test_mute_undo_view_reports_already_inactive_mute() -> None:
     assert interaction.response.edits == [
         {"content": "Mute was already inactive for Target.", "view": None}
     ]
-
-
-@pytest.mark.asyncio
-async def test_admin_request_view_confirm_rejects_missing_player() -> None:
-    async def find_player_by_pid(pid: int) -> None:
-        assert pid == 5
-        return None
-
-    async def no_op(*args, **kwargs):
-        return None
-
-    view = AdminRequestView(
-        settings=SimpleNamespace(discord_admin_role_id=10),
-        server="mini-pvp",
-        pid=5,
-        request_nonce="nonce-1",
-        find_player_by_pid=find_player_by_pid,
-        claim_idempotency=no_op,
-        mark_admin_confirmed=no_op,
-        publish_admin_confirm=no_op,
-        finalize_message=no_op,
-    )
-    interaction = _Interaction(user=_User(id=1, roles=[_Role(10)]))
-
-    callback = view.children[0].callback
-    assert callback is not None
-    await callback(interaction)
-
-    assert interaction.response.replies == [("Player not found", True)]
-
-
-@pytest.mark.asyncio
-async def test_admin_request_view_confirm_rejects_missing_uuid() -> None:
-    async def find_player_by_pid(pid: int) -> PlayerRecord:
-        assert pid == 5
-        return PlayerRecord(pid=5, nickname="Nick", uuid="")
-
-    async def no_op(*args, **kwargs):
-        return None
-
-    view = AdminRequestView(
-        settings=SimpleNamespace(discord_admin_role_id=10),
-        server="mini-pvp",
-        pid=5,
-        request_nonce="nonce-2",
-        find_player_by_pid=find_player_by_pid,
-        claim_idempotency=no_op,
-        mark_admin_confirmed=no_op,
-        publish_admin_confirm=no_op,
-        finalize_message=no_op,
-    )
-    interaction = _Interaction(user=_User(id=1, roles=[_Role(10)]))
-
-    callback = view.children[0].callback
-    assert callback is not None
-    await callback(interaction)
-
-    assert interaction.response.replies == [("Player UUID is missing", True)]
-
-
-@pytest.mark.asyncio
-async def test_admin_request_view_decline_finalizes_message() -> None:
-    finalized: list[str] = []
-
-    async def find_player_by_pid(pid: int) -> PlayerRecord:
-        assert pid == 5
-        return PlayerRecord(pid=5, nickname="Nick", uuid="uuid-1")
-
-    async def finalize_message(_interaction: _Interaction, status: str) -> None:
-        finalized.append(status)
-
-    async def no_op(*args, **kwargs):
-        return None
-
-    view = AdminRequestView(
-        settings=SimpleNamespace(discord_admin_role_id=10),
-        server="mini-pvp",
-        pid=5,
-        request_nonce="nonce-3",
-        find_player_by_pid=find_player_by_pid,
-        claim_idempotency=no_op,
-        mark_admin_confirmed=no_op,
-        publish_admin_confirm=no_op,
-        finalize_message=finalize_message,
-    )
-    interaction = _Interaction(
-        user=_User(id=1, display_name="boss", roles=[_Role(10)], mention="@boss")
-    )
-
-    callback = view.children[1].callback
-    assert callback is not None
-    await callback(interaction)
-
-    assert finalized == ["❌ Declined admin request for `Nick` on `mini-pvp` by @boss"]

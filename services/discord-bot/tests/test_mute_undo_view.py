@@ -86,6 +86,7 @@ class _Store:
         uuid: str,
         name: str,
         admin_name: str,
+        admin_discord_id: str | None,
         reason: str,
         expire_date: Any,
     ) -> None:
@@ -94,6 +95,7 @@ class _Store:
                 "uuid": uuid,
                 "name": name,
                 "admin_name": admin_name,
+                "admin_discord_id": admin_discord_id,
                 "reason": reason,
                 "expire_date": expire_date,
             }

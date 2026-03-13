@@ -76,7 +76,7 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
         active_badge=_normalized_optional_str(doc.get("active_badge")),
         blocked_private_uuids=_normalized_str_tuple(doc.get("blocked_private_uuids")),
         is_admin=bool(doc.get("is_admin", False)),
-        admin_confirmed=bool(doc.get("admin_confirmed", False)),
+        admin_source=_normalized_optional_str(doc.get("admin_source")),
         discord_id=_normalized_optional_str(doc.get("discord_id")),
         discord_username=_normalized_optional_str(doc.get("discord_username")),
         discord_linked_at=(
@@ -100,6 +100,7 @@ def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
         ),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",
         admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
+        admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),
         reason=_normalized_optional_str(doc.get("reason")) or "Not Specified",
         expire_date=doc.get("expire_date"),
     )
@@ -110,6 +111,7 @@ def mute_record_from_doc(doc: Mapping[str, object]) -> MuteRecord:
         uuid=_normalized_optional_str(doc.get("uuid")),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",
         admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
+        admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),
         reason=_normalized_optional_str(doc.get("reason")) or "Not Specified",
         expire_date=doc.get("expire_date"),
     )

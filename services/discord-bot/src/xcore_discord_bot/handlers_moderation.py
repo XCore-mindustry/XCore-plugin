@@ -61,6 +61,7 @@ async def perform_ban(
     bot: "XCoreDiscordBot",
     *,
     actor_name: str,
+    actor_discord_id: str | None,
     player_id: int,
     period: str,
     reason: str,
@@ -84,6 +85,7 @@ async def perform_ban(
         ip=ip_value,
         name=bot._player_name(player),
         admin_name=actor_name,
+        admin_discord_id=actor_discord_id,
         reason=reason,
         expire_date=expire,
     )
@@ -93,6 +95,7 @@ async def perform_ban(
         pid=player_id,
         name=bot._player_name(player),
         admin_name=actor_name,
+        admin_discord_id=actor_discord_id,
         reason=reason,
         expire=expire,
     )
@@ -214,6 +217,7 @@ async def cmd_mute(
         uuid=uuid_value,
         name=bot._player_name(player),
         admin_name=interaction.user.display_name,
+        admin_discord_id=str(interaction.user.id),
         reason=reason,
         expire_date=expire,
     )
@@ -223,6 +227,7 @@ async def cmd_mute(
         pid=player_id,
         name=player_name,
         admin_name=interaction.user.display_name,
+        admin_discord_id=str(interaction.user.id),
         reason=reason,
         expire=expire,
     )
@@ -309,12 +314,186 @@ async def cmd_remove_admin(
     if uuid_value is None:
         return
 
-    changed = await bot.remove_admin(uuid=uuid_value)
-    await bot.publish_remove_admin(uuid_value=uuid_value)
+    if player.discord_id:
+        linked_players = await bot.find_players_by_discord_id(player.discord_id)
+        if (
+            len(linked_players) != 1
+            or str(linked_players[0].uuid or "").strip() != uuid_value
+        ):
+            await interaction.response.send_message(
+                "Cannot remove admin: this Discord account must be linked to exactly one Mindustry account.",
+                ephemeral=True,
+            )
+            return
+
+    role_changed = False
+    if player.discord_id:
+        role_changed = await bot.set_discord_admin_role(
+            discord_id=player.discord_id,
+            should_have_role=False,
+            reason=f"/admin remove by {interaction.user.display_name}",
+        )
+
+    matched, changed = await bot.set_admin_access(
+        uuid=uuid_value,
+        is_admin=False,
+        admin_source="NONE",
+    )
+    if matched:
+        await bot.publish_discord_admin_access_changed(
+            player_uuid=uuid_value,
+            player_pid=player.pid,
+            discord_id=player.discord_id or "",
+            discord_username=player.discord_username,
+            admin=False,
+            admin_source="NONE",
+            requested_by=interaction.user.display_name,
+            reason="/admin remove",
+        )
     await interaction.response.send_message(
         f"Removed admin for `{bot._player_name(player)}`"
-        if changed
+        if changed or role_changed
         else "No admin state was changed"
+    )
+
+
+async def cmd_add_admin(
+    bot: "XCoreDiscordBot",
+    interaction: Interaction,
+    player_id: int,
+) -> None:
+    player = await bot._get_player_or_reply(interaction, player_id)
+    if player is None:
+        return
+
+    if not await bot._claim_mutation(
+        interaction,
+        operation="add-admin",
+        scope=str(player_id),
+    ):
+        return
+
+    uuid_value = await bot._require_player_uuid(
+        interaction,
+        player,
+        action="grant admin",
+    )
+    if uuid_value is None:
+        return
+    if not player.discord_id:
+        await interaction.response.send_message(
+            "Cannot grant admin: Discord account is not linked.",
+            ephemeral=True,
+        )
+        return
+
+    linked_players = await bot.find_players_by_discord_id(player.discord_id)
+    if (
+        len(linked_players) != 1
+        or str(linked_players[0].uuid or "").strip() != uuid_value
+    ):
+        await interaction.response.send_message(
+            "Cannot grant admin: this Discord account must be linked to exactly one Mindustry account.",
+            ephemeral=True,
+        )
+        return
+
+    role_changed = await bot.set_discord_admin_role(
+        discord_id=player.discord_id,
+        should_have_role=True,
+        reason=f"/admin add by {interaction.user.display_name}",
+    )
+
+    matched, changed = await bot.set_admin_access(
+        uuid=uuid_value,
+        is_admin=True,
+        admin_source="DISCORD_ROLE",
+    )
+    if matched:
+        await bot.publish_discord_admin_access_changed(
+            player_uuid=uuid_value,
+            player_pid=player.pid,
+            discord_id=player.discord_id,
+            discord_username=player.discord_username,
+            admin=True,
+            admin_source="DISCORD_ROLE",
+            requested_by=interaction.user.display_name,
+            reason="/admin add",
+        )
+    await interaction.response.send_message(
+        f"Granted admin for `{bot._player_name(player)}`"
+        if changed or role_changed
+        else "No admin state was changed"
+    )
+
+
+async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+    players = await bot.find_discord_admin_players()
+    if not players:
+        await interaction.response.send_message(
+            "No Discord admins found.", ephemeral=True
+        )
+        return
+
+    page_size = 10
+    total_entries = len(players)
+    total_pages = max(1, (total_entries + page_size - 1) // page_size)
+
+    async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
+        start = page * page_size
+        end = start + page_size
+        entries = players[start:end]
+
+        embed = discord.Embed(
+            title="Discord Admin Access",
+            color=discord.Color.blurple(),
+            description="Linked admin accounts with Discord role-backed access.",
+        )
+
+        for player in entries:
+            discord_id = str(player.discord_id or "").strip()
+            discord_ref = f"<@{discord_id}>" if discord_id else "not linked"
+            discord_username = str(player.discord_username or "").strip()
+            source = str(player.admin_source or "NONE").strip() or "NONE"
+
+            value_lines = [
+                f"PID: `{player.pid}`",
+                f"Source: `{source}`",
+                f"Discord: {discord_ref}",
+            ]
+            if discord_username:
+                value_lines.append(f"Discord username: `{discord_username}`")
+
+            embed.add_field(
+                name=bot._player_name(player),
+                value="\n".join(value_lines),
+                inline=False,
+            )
+
+        embed.set_footer(
+            text=(
+                f"Page {page + 1}/{total_pages} • total admins: {total_entries} "
+                f"• entries on page: {len(entries)}"
+            )
+        )
+        return embed, end < total_entries
+
+    await bot._send_paginated(
+        interaction,
+        fetch_page,
+        ephemeral=True,
+    )
+
+
+async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+    result = await bot.reconcile_discord_admin_access()
+    await interaction.response.send_message(
+        (
+            "Admin reconcile complete. "
+            f"Applied: {result['applied']}, revoked: {result['revoked']}, "
+            f"Discord role members: {result['discord_admins']}"
+        ),
+        ephemeral=True,
     )
 
 
@@ -358,6 +537,7 @@ async def post_ban_log(
     pid: int,
     name: str,
     admin_name: str,
+    admin_discord_id: str | None,
     reason: str,
     expire: datetime,
 ) -> None:
@@ -377,6 +557,10 @@ async def post_ban_log(
     safe_admin_name = (
         strip_mindustry_colors(str(admin_name).replace("`", "")).strip() or "Unknown"
     )
+    admin_value = _format_admin_value(
+        admin_name=safe_admin_name,
+        admin_discord_id=admin_discord_id,
+    )
     safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
     if not safe_reason:
         safe_reason = "No reason provided"
@@ -395,7 +579,7 @@ async def post_ban_log(
 
     embed = discord.Embed(title="Ban Issued", color=discord.Color.red())
     embed.add_field(name="Violator", value=violator_value, inline=False)
-    embed.add_field(name="Admin", value=safe_admin_name, inline=False)
+    embed.add_field(name="Admin", value=admin_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
     embed.add_field(name="Expires", value=unban_value, inline=False)
     await channel.send(embed=embed)
@@ -407,6 +591,7 @@ async def post_mute_log(
     pid: int,
     name: str,
     admin_name: str,
+    admin_discord_id: str | None,
     reason: str,
     expire: datetime,
 ) -> None:
@@ -426,6 +611,10 @@ async def post_mute_log(
     safe_admin_name = (
         strip_mindustry_colors(str(admin_name).replace("`", "")).strip() or "Unknown"
     )
+    admin_value = _format_admin_value(
+        admin_name=safe_admin_name,
+        admin_discord_id=admin_discord_id,
+    )
     safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
     if not safe_reason:
         safe_reason = "No reason provided"
@@ -444,7 +633,12 @@ async def post_mute_log(
 
     embed = discord.Embed(title="Mute Issued", color=discord.Color.orange())
     embed.add_field(name="Violator", value=violator_value, inline=False)
-    embed.add_field(name="Admin", value=safe_admin_name, inline=False)
+    embed.add_field(name="Admin", value=admin_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
     embed.add_field(name="Expires", value=unmute_value, inline=False)
     await channel.send(embed=embed)
+
+
+def _format_admin_value(*, admin_name: str, admin_discord_id: str | None) -> str:
+    discord_id = str(admin_discord_id or "").strip()
+    return f"{admin_name} (<@{discord_id}>)" if discord_id else admin_name

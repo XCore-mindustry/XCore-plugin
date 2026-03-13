@@ -131,6 +131,10 @@ class BanEvent(_FrozenModel):
     ip: str | None = None
     name: str
     admin_name: str = Field(validation_alias=AliasChoices("adminName", "admin_name"))
+    admin_discord_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("adminDiscordId", "admin_discord_id"),
+    )
     reason: str
     expire_date: str | None = Field(
         default=None,
@@ -167,6 +171,10 @@ class MuteEvent(_FrozenModel):
     uuid: str | None = None
     name: str
     admin_name: str = Field(validation_alias=AliasChoices("adminName", "admin_name"))
+    admin_discord_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("adminDiscordId", "admin_discord_id"),
+    )
     reason: str
     expire_date: str | None = Field(
         default=None,
@@ -243,6 +251,45 @@ class DiscordLinkStatusChangedEvent(_FrozenModel):
         return cls._validate_payload(
             payload,
             error_message="Invalid discord link status payload",
+        )
+
+
+class DiscordAdminAccessChangedEvent(_FrozenModel):
+    player_uuid: str = Field(validation_alias=AliasChoices("playerUuid", "player_uuid"))
+    player_pid: int = Field(validation_alias=AliasChoices("playerPid", "player_pid"))
+    discord_id: str = Field(validation_alias=AliasChoices("discordId", "discord_id"))
+    discord_username: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("discordUsername", "discord_username"),
+    )
+    admin: bool
+    admin_source: str = Field(
+        validation_alias=AliasChoices("adminSource", "admin_source")
+    )
+    requested_by: str = Field(
+        validation_alias=AliasChoices("requestedBy", "requested_by")
+    )
+    reason: str
+    server: str
+    occurred_at: int = Field(validation_alias=AliasChoices("occurredAt", "occurred_at"))
+
+    @field_validator(
+        "player_uuid", "discord_id", "admin_source", "requested_by", "reason", "server"
+    )
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        return cls._require_non_empty_text(value)
+
+    @field_validator("player_pid", "occurred_at", mode="before")
+    @classmethod
+    def _parse_int_fields(cls, value: Any) -> int:
+        return _coerce_int(value)
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "DiscordAdminAccessChangedEvent":
+        return cls._validate_payload(
+            payload,
+            error_message="Invalid discord admin access payload",
         )
 
 

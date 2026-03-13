@@ -27,12 +27,15 @@ def test_player_doc_allows_extra_fields_and_is_frozen() -> None:
 
 
 def test_ban_doc_and_mute_doc_frozen() -> None:
-    ban = BanDoc.model_validate({"uuid": "u-1", "name": "Nick"})
+    ban = BanDoc.model_validate(
+        {"uuid": "u-1", "name": "Nick", "admin_discord_id": "123"}
+    )
     mute = MuteDoc.model_validate(
         {
             "uuid": "u-1",
             "name": "Nick",
             "admin_name": "mod",
+            "admin_discord_id": "456",
             "reason": "spam",
             "expire_date": "2026-03-01T10:00:00+00:00",
         }

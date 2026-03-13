@@ -26,7 +26,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "active_badge": "  translator  ",
             "blocked_private_uuids": [" uuid-1 ", "uuid-2", "uuid-1"],
             "is_admin": 1,
-            "admin_confirmed": 0,
             "discord_id": " 123456 ",
             "discord_username": "  user#1 ",
             "discord_linked_at": "77",
@@ -49,7 +48,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.active_badge == "translator"
     assert record.blocked_private_uuids == ("uuid-1", "uuid-2")
     assert record.is_admin is True
-    assert record.admin_confirmed is False
     assert record.discord_id == "123456"
     assert record.discord_username == "user#1"
     assert record.discord_linked_at == 77
@@ -82,6 +80,7 @@ def test_ban_record_from_doc_normalizes_values() -> None:
             "ip": " 1.2.3.4 ",
             "name": " Target ",
             "admin_name": " Admin ",
+            "admin_discord_id": " 123 ",
             "reason": " griefing ",
             "expire_date": 123,
         }
@@ -91,6 +90,7 @@ def test_ban_record_from_doc_normalizes_values() -> None:
     assert record.ip == "1.2.3.4"
     assert record.name == "Target"
     assert record.admin_name == "Admin"
+    assert record.admin_discord_id == "123"
     assert record.reason == "griefing"
     assert record.expire_date == 123
 
@@ -100,6 +100,7 @@ def test_ban_record_from_doc_uses_safe_defaults() -> None:
 
     assert record.name == "Unknown"
     assert record.admin_name == "Unknown"
+    assert record.admin_discord_id is None
     assert record.reason == "Not Specified"
     assert record.expire_date is None
 
@@ -110,6 +111,7 @@ def test_mute_record_from_doc_normalizes_values() -> None:
             "uuid": " uuid-2 ",
             "name": " Target ",
             "admin_name": " Admin ",
+            "admin_discord_id": " 456 ",
             "reason": " spam ",
             "expire_date": 456,
         }
@@ -118,6 +120,7 @@ def test_mute_record_from_doc_normalizes_values() -> None:
     assert record.uuid == "uuid-2"
     assert record.name == "Target"
     assert record.admin_name == "Admin"
+    assert record.admin_discord_id == "456"
     assert record.reason == "spam"
     assert record.expire_date == 456
 
@@ -127,5 +130,6 @@ def test_mute_record_from_doc_uses_safe_defaults() -> None:
 
     assert record.name == "Unknown"
     assert record.admin_name == "Unknown"
+    assert record.admin_discord_id is None
     assert record.reason == "Not Specified"
     assert record.expire_date is None
