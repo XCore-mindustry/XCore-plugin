@@ -322,25 +322,21 @@ async def cmd_remove_admin(
     ):
         return
 
-    uuid_value = await bot._require_player_uuid(
-        interaction,
-        player,
-        action="remove admin",
-    )
-    if uuid_value is None:
-        return
-
+    linked_players = [player]
     if player.discord_id:
         linked_players = await bot.find_players_by_discord_id(player.discord_id)
-        if (
-            len(linked_players) != 1
-            or str(linked_players[0].uuid or "").strip() != uuid_value
-        ):
-            await interaction.response.send_message(
-                "Cannot remove admin: this Discord account must be linked to exactly one Mindustry account.",
-                ephemeral=True,
-            )
-            return
+
+    target_players = [
+        linked_player
+        for linked_player in linked_players
+        if str(linked_player.uuid or "").strip()
+    ]
+    if not target_players:
+        await interaction.response.send_message(
+            "Cannot remove admin: no linked Mindustry account has a UUID.",
+            ephemeral=True,
+        )
+        return
 
     role_changed = False
     if player.discord_id:
@@ -350,25 +346,32 @@ async def cmd_remove_admin(
             reason=f"/admin remove by {interaction.user.display_name}",
         )
 
-    matched, changed = await bot.set_admin_access(
-        uuid=uuid_value,
-        is_admin=False,
-        admin_source="NONE",
-    )
-    if matched:
+    any_changed = False
+    for target_player in target_players:
+        target_uuid = str(target_player.uuid or "").strip()
+        matched, changed = await bot.set_admin_access(
+            uuid=target_uuid,
+            is_admin=False,
+            admin_source="NONE",
+        )
+        if not matched:
+            continue
         await bot.publish_discord_admin_access_changed(
-            player_uuid=uuid_value,
-            player_pid=player.pid,
-            discord_id=player.discord_id or "",
-            discord_username=player.discord_username,
+            player_uuid=target_uuid,
+            player_pid=target_player.pid,
+            discord_id=target_player.discord_id or "",
+            discord_username=target_player.discord_username,
             admin=False,
             admin_source="NONE",
             requested_by=interaction.user.display_name,
             reason="/admin remove",
         )
+        any_changed = any_changed or changed
+
+    target_names = ", ".join(f"`{bot._player_name(item)}`" for item in target_players)
     await interaction.response.send_message(
-        f"Removed admin for `{bot._player_name(player)}`"
-        if changed or role_changed
+        f"Removed admin for {target_names}"
+        if any_changed or role_changed
         else "No admin state was changed"
     )
 
@@ -389,13 +392,6 @@ async def cmd_add_admin(
     ):
         return
 
-    uuid_value = await bot._require_player_uuid(
-        interaction,
-        player,
-        action="grant admin",
-    )
-    if uuid_value is None:
-        return
     if not player.discord_id:
         await interaction.response.send_message(
             "Cannot grant admin: Discord account is not linked.",
@@ -404,12 +400,14 @@ async def cmd_add_admin(
         return
 
     linked_players = await bot.find_players_by_discord_id(player.discord_id)
-    if (
-        len(linked_players) != 1
-        or str(linked_players[0].uuid or "").strip() != uuid_value
-    ):
+    target_players = [
+        linked_player
+        for linked_player in linked_players
+        if str(linked_player.uuid or "").strip()
+    ]
+    if not target_players:
         await interaction.response.send_message(
-            "Cannot grant admin: this Discord account must be linked to exactly one Mindustry account.",
+            "Cannot grant admin: no linked Mindustry account has a UUID.",
             ephemeral=True,
         )
         return
@@ -420,25 +418,32 @@ async def cmd_add_admin(
         reason=f"/admin add by {interaction.user.display_name}",
     )
 
-    matched, changed = await bot.set_admin_access(
-        uuid=uuid_value,
-        is_admin=True,
-        admin_source="DISCORD_ROLE",
-    )
-    if matched:
+    any_changed = False
+    for target_player in target_players:
+        target_uuid = str(target_player.uuid or "").strip()
+        matched, changed = await bot.set_admin_access(
+            uuid=target_uuid,
+            is_admin=True,
+            admin_source="DISCORD_ROLE",
+        )
+        if not matched:
+            continue
         await bot.publish_discord_admin_access_changed(
-            player_uuid=uuid_value,
-            player_pid=player.pid,
-            discord_id=player.discord_id,
-            discord_username=player.discord_username,
+            player_uuid=target_uuid,
+            player_pid=target_player.pid,
+            discord_id=target_player.discord_id or "",
+            discord_username=target_player.discord_username,
             admin=True,
             admin_source="DISCORD_ROLE",
             requested_by=interaction.user.display_name,
             reason="/admin add",
         )
+        any_changed = any_changed or changed
+
+    target_names = ", ".join(f"`{bot._player_name(item)}`" for item in target_players)
     await interaction.response.send_message(
-        f"Granted admin for `{bot._player_name(player)}`"
-        if changed or role_changed
+        f"Granted admin for {target_names}"
+        if any_changed or role_changed
         else "No admin state was changed"
     )
 
@@ -503,12 +508,39 @@ async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
 
 async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
     result = await bot.reconcile_discord_admin_access()
+    lines = [
+        "Admin reconcile complete.",
+        f"Applied: {result['applied']}, revoked: {result['revoked']}, Discord role members: {result['discord_admins']}",
+    ]
+
+    applied_players = result.get("applied_players", [])
+    if applied_players:
+        applied_text = ", ".join(
+            f"`{item['nickname']}` (pid={item['pid']}, <@{item['discord_id']}>)"
+            for item in applied_players
+        )
+        lines.append(f"Added: {applied_text}")
+
+    revoked_players = result.get("revoked_players", [])
+    if revoked_players:
+        revoked_text = ", ".join(
+            f"`{item['nickname']}` (pid={item['pid']}, <@{item['discord_id']}>)"
+            for item in revoked_players
+        )
+        lines.append(f"Revoked: {revoked_text}")
+
+    skipped = result.get("skipped", [])
+    if skipped:
+        skipped_text = ", ".join(
+            f"<@{item['discord_id']}> — {item['player']} ({item['reason']})"
+            if item["discord_id"]
+            else f"{item['player']} ({item['reason']})"
+            for item in skipped
+        )
+        lines.append(f"Skipped: {skipped_text}")
+
     await interaction.response.send_message(
-        (
-            "Admin reconcile complete. "
-            f"Applied: {result['applied']}, revoked: {result['revoked']}, "
-            f"Discord role members: {result['discord_admins']}"
-        ),
+        "\n".join(lines),
     )
 
 

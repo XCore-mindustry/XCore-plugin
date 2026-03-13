@@ -73,7 +73,14 @@ class _Bot:
         self.set_admin_calls: list[tuple[str, bool, str]] = []
         self.published: list[dict[str, Any]] = []
         self.list_players: list[PlayerRecord] = []
-        self.reconcile_result = {"applied": 0, "revoked": 0, "discord_admins": 0}
+        self.reconcile_result = {
+            "applied": 0,
+            "revoked": 0,
+            "discord_admins": 0,
+            "applied_players": [],
+            "revoked_players": [],
+            "skipped": [],
+        }
 
     async def _get_player_or_reply(
         self, interaction: _Interaction, player_id: int
@@ -214,9 +221,7 @@ async def test_cmd_add_admin_requires_discord_link() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cmd_add_admin_rejects_multiple_linked_accounts_for_same_discord() -> (
-    None
-):
+async def test_cmd_add_admin_grants_all_linked_accounts_for_same_discord() -> None:
     bot = _Bot()
     other = PlayerRecord(pid=9, uuid="uuid-9", nickname="Other", discord_id="123")
 
@@ -229,12 +234,15 @@ async def test_cmd_add_admin_rejects_multiple_linked_accounts_for_same_discord()
 
     await cmd_add_admin(cast(Any, bot), cast(Any, interaction), 7)
 
-    assert bot.set_admin_calls == []
-    assert bot.published == []
+    assert bot.set_admin_calls == [
+        ("uuid-7", True, "DISCORD_ROLE"),
+        ("uuid-9", True, "DISCORD_ROLE"),
+    ]
+    assert len(bot.published) == 2
     assert interaction.response.sent == [
         {
-            "text": "Cannot grant admin: this Discord account must be linked to exactly one Mindustry account.",
-            "ephemeral": True,
+            "text": "Granted admin for `Target`, `Other`",
+            "ephemeral": False,
             "embed": None,
             "view": None,
             "allowed_mentions": None,
@@ -267,23 +275,70 @@ async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
     assert isinstance(sent["embed"], discord.Embed)
     assert sent["embed"].title == "Discord Admin Access"
     assert sent["embed"].fields[0].name == "Target"
-    assert "PID: `7`" in sent["embed"].fields[0].value
-    assert "Source: `DISCORD_ROLE`" in sent["embed"].fields[0].value
-    assert "Discord: <@123>" in sent["embed"].fields[0].value
+    field_value = sent["embed"].fields[0].value or ""
+    assert "PID: `7`" in field_value
+    assert "Source: `DISCORD_ROLE`" in field_value
+    assert "Discord: <@123>" in field_value
     assert sent["allowed_mentions"] is None
 
 
 @pytest.mark.asyncio
 async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
     bot = _Bot()
-    bot.reconcile_result = {"applied": 2, "revoked": 1, "discord_admins": 4}
+    bot.reconcile_result = {
+        "applied": 2,
+        "revoked": 1,
+        "discord_admins": 4,
+        "applied_players": [
+            {"nickname": "Target", "pid": 7, "discord_id": "123"},
+            {"nickname": "Other", "pid": 9, "discord_id": "123"},
+        ],
+        "revoked_players": [{"nickname": "Former", "pid": 11, "discord_id": "555"}],
+        "skipped": [
+            {
+                "discord_id": "999",
+                "player": "-",
+                "reason": "no linked Mindustry accounts",
+            }
+        ],
+    }
     interaction = _Interaction(id=34)
 
     await cmd_sync_admins(cast(Any, bot), cast(Any, interaction))
 
     assert interaction.response.sent == [
         {
-            "text": "Admin reconcile complete. Applied: 2, revoked: 1, Discord role members: 4",
+            "text": "Admin reconcile complete.\nApplied: 2, revoked: 1, Discord role members: 4\nAdded: `Target` (pid=7, <@123>), `Other` (pid=9, <@123>)\nRevoked: `Former` (pid=11, <@555>)\nSkipped: <@999> — - (no linked Mindustry accounts)",
+            "ephemeral": False,
+            "embed": None,
+            "view": None,
+            "allowed_mentions": None,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cmd_remove_admin_clears_all_linked_accounts_for_same_discord() -> None:
+    bot = _Bot()
+    other = PlayerRecord(pid=9, uuid="uuid-9", nickname="Other", discord_id="123")
+
+    async def duplicate_find(discord_id: str) -> list[PlayerRecord]:
+        assert discord_id == "123"
+        return [bot.player, other]
+
+    bot.find_players_by_discord_id = duplicate_find  # type: ignore[attr-defined]
+    interaction = _Interaction(id=36)
+
+    await cmd_remove_admin(cast(Any, bot), cast(Any, interaction), 7)
+
+    assert bot.set_admin_calls == [
+        ("uuid-7", False, "NONE"),
+        ("uuid-9", False, "NONE"),
+    ]
+    assert len(bot.published) == 2
+    assert interaction.response.sent == [
+        {
+            "text": "Removed admin for `Target`, `Other`",
             "ephemeral": False,
             "embed": None,
             "view": None,

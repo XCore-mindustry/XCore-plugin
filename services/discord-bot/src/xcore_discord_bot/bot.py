@@ -533,7 +533,7 @@ class XCoreDiscordBot(commands.Bot):
             if getattr(member, "id", None) is not None
         }
 
-    async def reconcile_discord_admin_access(self) -> dict[str, int]:
+    async def reconcile_discord_admin_access(self) -> dict[str, object]:
         discord_admin_ids = await self.get_discord_admin_member_ids()
         linked_admin_players = await self.find_discord_admin_players()
 
@@ -547,10 +547,16 @@ class XCoreDiscordBot(commands.Bot):
                 "revoked": 0,
                 "discord_admins": 0,
                 "skipped_empty_snapshot": 1,
+                "applied_players": [],
+                "revoked_players": [],
+                "skipped": [],
             }
 
         applied = 0
         revoked = 0
+        applied_players: list[dict[str, object]] = []
+        revoked_players: list[dict[str, object]] = []
+        skipped: list[dict[str, str]] = []
 
         processed_ids: set[str] = set()
         for player in linked_admin_players:
@@ -561,6 +567,13 @@ class XCoreDiscordBot(commands.Bot):
             processed_ids.add(discord_id)
             uuid_value = str(player.uuid or "").strip()
             if not uuid_value:
+                skipped.append(
+                    {
+                        "discord_id": discord_id,
+                        "player": player.nickname,
+                        "reason": "linked admin account is missing UUID",
+                    }
+                )
                 continue
 
             should_be_admin = discord_id in discord_admin_ids
@@ -586,50 +599,80 @@ class XCoreDiscordBot(commands.Bot):
             )
             if changed:
                 revoked += 1
+                revoked_players.append(
+                    {
+                        "discord_id": discord_id,
+                        "pid": player.pid,
+                        "nickname": player.nickname,
+                    }
+                )
 
         for discord_id in discord_admin_ids:
             if discord_id in processed_ids:
                 continue
 
             players = await self.find_players_by_discord_id(discord_id)
-            if len(players) != 1:
+            if not players:
                 logger.warning(
-                    "Skipping admin apply for discord_id=%s during reconcile because linked account count is %s",
+                    "Skipping admin apply for discord_id=%s during reconcile because there are no linked accounts",
                     discord_id,
-                    len(players),
+                )
+                skipped.append(
+                    {
+                        "discord_id": discord_id,
+                        "player": "-",
+                        "reason": "no linked Mindustry accounts",
+                    }
                 )
                 continue
 
-            player = players[0]
-            uuid_value = str(player.uuid or "").strip()
-            if not uuid_value:
-                continue
+            for player in players:
+                uuid_value = str(player.uuid or "").strip()
+                if not uuid_value:
+                    skipped.append(
+                        {
+                            "discord_id": discord_id,
+                            "player": player.nickname,
+                            "reason": "linked account is missing UUID",
+                        }
+                    )
+                    continue
 
-            matched, changed = await self.set_admin_access(
-                uuid=uuid_value,
-                is_admin=True,
-                admin_source="DISCORD_ROLE",
-            )
-            if not matched:
-                continue
-            await self.publish_discord_admin_access_changed(
-                player_uuid=uuid_value,
-                player_pid=player.pid,
-                discord_id=discord_id,
-                discord_username=player.discord_username,
-                admin=True,
-                admin_source="DISCORD_ROLE",
-                requested_by="system/reconcile",
-                reason="discord role present during reconcile",
-            )
-            if changed:
-                applied += 1
+                matched, changed = await self.set_admin_access(
+                    uuid=uuid_value,
+                    is_admin=True,
+                    admin_source="DISCORD_ROLE",
+                )
+                if not matched:
+                    continue
+                await self.publish_discord_admin_access_changed(
+                    player_uuid=uuid_value,
+                    player_pid=player.pid,
+                    discord_id=discord_id,
+                    discord_username=player.discord_username,
+                    admin=True,
+                    admin_source="DISCORD_ROLE",
+                    requested_by="system/reconcile",
+                    reason="discord role present during reconcile",
+                )
+                if changed:
+                    applied += 1
+                    applied_players.append(
+                        {
+                            "discord_id": discord_id,
+                            "pid": player.pid,
+                            "nickname": player.nickname,
+                        }
+                    )
 
         return {
             "applied": applied,
             "revoked": revoked,
             "discord_admins": len(discord_admin_ids),
             "skipped_empty_snapshot": 0,
+            "applied_players": applied_players,
+            "revoked_players": revoked_players,
+            "skipped": skipped,
         }
 
     async def _admin_reconcile_loop(self) -> None:
