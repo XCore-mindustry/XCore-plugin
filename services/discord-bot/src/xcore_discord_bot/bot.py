@@ -665,6 +665,28 @@ class XCoreDiscordBot(commands.Bot):
                         }
                     )
 
+        applied_players.sort(
+            key=lambda item: (
+                str(item["discord_id"]),
+                int(item["pid"]),
+                str(item["nickname"]),
+            )
+        )
+        revoked_players.sort(
+            key=lambda item: (
+                str(item["discord_id"]),
+                int(item["pid"]),
+                str(item["nickname"]),
+            )
+        )
+        skipped.sort(
+            key=lambda item: (
+                str(item["discord_id"]),
+                str(item["player"]),
+                str(item["reason"]),
+            )
+        )
+
         return {
             "applied": applied,
             "revoked": revoked,
