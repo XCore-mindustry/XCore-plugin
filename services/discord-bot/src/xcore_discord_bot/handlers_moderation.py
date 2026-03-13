@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import discord
 from discord import Interaction
@@ -508,39 +508,65 @@ async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
 
 async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
     result = await bot.reconcile_discord_admin_access()
-    lines = [
-        "Admin reconcile complete.",
-        f"Applied: {result['applied']}, revoked: {result['revoked']}, Discord role members: {result['discord_admins']}",
-    ]
+    embed = discord.Embed(
+        title="Admin Reconcile Complete",
+        color=discord.Color.blurple(),
+        description=(
+            f"Applied: **{result['applied']}**\n"
+            f"Revoked: **{result['revoked']}**\n"
+            f"Discord role members: **{result['discord_admins']}**"
+        ),
+    )
 
-    applied_players = result.get("applied_players", [])
+    applied_players = cast(list[dict[str, object]], result.get("applied_players", []))
     if applied_players:
         applied_text = ", ".join(
-            f"`{item['nickname']}` (pid={item['pid']}, <@{item['discord_id']}>)"
+            f"`{nickname}` (pid={pid}, <@{discord_id}>)"
             for item in applied_players
+            for nickname, pid, discord_id in [
+                (
+                    str(item["nickname"]),
+                    int(item["pid"]),
+                    str(item["discord_id"]),
+                )
+            ]
         )
-        lines.append(f"Added: {applied_text}")
+        embed.add_field(name="Added", value=applied_text, inline=False)
 
-    revoked_players = result.get("revoked_players", [])
+    revoked_players = cast(list[dict[str, object]], result.get("revoked_players", []))
     if revoked_players:
         revoked_text = ", ".join(
-            f"`{item['nickname']}` (pid={item['pid']}, <@{item['discord_id']}>)"
+            f"`{nickname}` (pid={pid}, <@{discord_id}>)"
             for item in revoked_players
+            for nickname, pid, discord_id in [
+                (
+                    str(item["nickname"]),
+                    int(item["pid"]),
+                    str(item["discord_id"]),
+                )
+            ]
         )
-        lines.append(f"Revoked: {revoked_text}")
+        embed.add_field(name="Revoked", value=revoked_text, inline=False)
 
-    skipped = result.get("skipped", [])
+    skipped = cast(list[dict[str, str]], result.get("skipped", []))
     if skipped:
         skipped_text = ", ".join(
-            f"<@{item['discord_id']}> — {item['player']} ({item['reason']})"
-            if item["discord_id"]
-            else f"{item['player']} ({item['reason']})"
+            f"<@{discord_id}> — {player} ({reason})"
+            if discord_id
+            else f"{player} ({reason})"
             for item in skipped
+            for discord_id, player, reason in [
+                (
+                    str(item["discord_id"]),
+                    str(item["player"]),
+                    str(item["reason"]),
+                )
+            ]
         )
-        lines.append(f"Skipped: {skipped_text}")
+        embed.add_field(name="Skipped", value=skipped_text, inline=False)
 
     await interaction.response.send_message(
-        "\n".join(lines),
+        embed=embed,
     )
 
 

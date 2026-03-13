@@ -306,15 +306,22 @@ async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
 
     await cmd_sync_admins(cast(Any, bot), cast(Any, interaction))
 
-    assert interaction.response.sent == [
-        {
-            "text": "Admin reconcile complete.\nApplied: 2, revoked: 1, Discord role members: 4\nAdded: `Target` (pid=7, <@123>), `Other` (pid=9, <@123>)\nRevoked: `Former` (pid=11, <@555>)\nSkipped: <@999> — - (no linked Mindustry accounts)",
-            "ephemeral": False,
-            "embed": None,
-            "view": None,
-            "allowed_mentions": None,
-        }
-    ]
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["text"] is None
+    assert sent["ephemeral"] is False
+    assert sent["view"] is None
+    assert sent["allowed_mentions"] is None
+    embed = sent["embed"]
+    assert isinstance(embed, discord.Embed)
+    assert embed.title == "Admin Reconcile Complete"
+    assert embed.description == (
+        "Applied: **2**\nRevoked: **1**\nDiscord role members: **4**"
+    )
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["Added"] == "`Target` (pid=7, <@123>), `Other` (pid=9, <@123>)"
+    assert fields["Revoked"] == "`Former` (pid=11, <@555>)"
+    assert fields["Skipped"] == "<@999> — - (no linked Mindustry accounts)"
 
 
 @pytest.mark.asyncio
