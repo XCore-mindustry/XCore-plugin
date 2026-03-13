@@ -64,6 +64,7 @@ class _Store:
         return BanRecord(
             name="Vortex",
             admin_name="mod-1",
+            admin_discord_id="111",
             reason="griefing",
             expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=timezone.utc),
         )
@@ -74,8 +75,10 @@ class _Store:
     async def find_mute(self, *, uuid: str) -> MuteRecord | None:  # noqa: ARG002
         return MuteRecord(
             uuid=uuid,
+            pid=123,
             name="Vortex",
             admin_name="mod-2",
+            admin_discord_id="222",
             reason="spam",
             expire_date=datetime(2026, 12, 31, 16, 0, tzinfo=timezone.utc),
         )
@@ -113,7 +116,7 @@ async def test_cmd_unban_sends_rich_embed() -> None:
     assert embed.title == "Unbanned Vortex"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["PID"] == "123"
-    assert fields["Admin who banned"] == "mod-1"
+    assert fields["Admin who banned"] == "mod-1 (<@111>)"
     assert fields["Reason"] == "griefing"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unbanned by"] == "admin-x"
@@ -135,7 +138,7 @@ async def test_cmd_unmute_sends_rich_embed() -> None:
     assert embed.title == "Unmuted Vortex"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["PID"] == "123"
-    assert fields["Admin who muted"] == "mod-2"
+    assert fields["Admin who muted"] == "mod-2 (<@222>)"
     assert fields["Reason"] == "spam"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unmuted by"] == "admin-y"

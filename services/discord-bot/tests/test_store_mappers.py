@@ -78,6 +78,7 @@ def test_ban_record_from_doc_normalizes_values() -> None:
         {
             "uuid": " uuid-1 ",
             "ip": " 1.2.3.4 ",
+            "pid": " 42 ",
             "name": " Target ",
             "admin_name": " Admin ",
             "admin_discord_id": " 123 ",
@@ -88,6 +89,7 @@ def test_ban_record_from_doc_normalizes_values() -> None:
 
     assert record.uuid == "uuid-1"
     assert record.ip == "1.2.3.4"
+    assert record.pid == 42
     assert record.name == "Target"
     assert record.admin_name == "Admin"
     assert record.admin_discord_id == "123"
@@ -100,6 +102,7 @@ def test_ban_record_from_doc_uses_safe_defaults() -> None:
 
     assert record.name == "Unknown"
     assert record.admin_name == "Unknown"
+    assert record.pid is None
     assert record.admin_discord_id is None
     assert record.reason == "Not Specified"
     assert record.expire_date is None
@@ -109,6 +112,7 @@ def test_mute_record_from_doc_normalizes_values() -> None:
     record = mute_record_from_doc(
         {
             "uuid": " uuid-2 ",
+            "pid": " 84 ",
             "name": " Target ",
             "admin_name": " Admin ",
             "admin_discord_id": " 456 ",
@@ -118,6 +122,7 @@ def test_mute_record_from_doc_normalizes_values() -> None:
     )
 
     assert record.uuid == "uuid-2"
+    assert record.pid == 84
     assert record.name == "Target"
     assert record.admin_name == "Admin"
     assert record.admin_discord_id == "456"
@@ -128,6 +133,7 @@ def test_mute_record_from_doc_normalizes_values() -> None:
 def test_mute_record_from_doc_uses_safe_defaults() -> None:
     record = mute_record_from_doc({})
 
+    assert record.pid is None
     assert record.name == "Unknown"
     assert record.admin_name == "Unknown"
     assert record.admin_discord_id is None

@@ -327,6 +327,7 @@ class XCoreDiscordBot(commands.Bot):
         *,
         uuid: str,
         ip: str | None,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -336,6 +337,7 @@ class XCoreDiscordBot(commands.Bot):
         await self._store.upsert_ban(
             uuid=uuid,
             ip=ip,
+            pid=pid,
             name=name,
             admin_name=admin_name,
             admin_discord_id=admin_discord_id,
@@ -364,6 +366,7 @@ class XCoreDiscordBot(commands.Bot):
         self,
         *,
         uuid: str,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -372,6 +375,7 @@ class XCoreDiscordBot(commands.Bot):
     ) -> None:
         await self._store.upsert_mute(
             uuid=uuid,
+            pid=pid,
             name=name,
             admin_name=admin_name,
             admin_discord_id=admin_discord_id,

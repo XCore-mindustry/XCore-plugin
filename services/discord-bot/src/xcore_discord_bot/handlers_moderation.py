@@ -83,6 +83,7 @@ async def perform_ban(
     await bot.upsert_ban(
         uuid=uuid_value or "",
         ip=ip_value,
+        pid=player_id,
         name=bot._player_name(player),
         admin_name=actor_name,
         admin_discord_id=actor_discord_id,
@@ -144,7 +145,14 @@ async def cmd_unban(
         subject_name=bot._player_name(player),
         player_id=player_id,
         previous_actor_label="Admin who banned",
-        previous_actor_value=ban_doc.admin_name if ban_doc is not None else "Unknown",
+        previous_actor_value=(
+            _format_admin_value(
+                admin_name=ban_doc.admin_name,
+                admin_discord_id=ban_doc.admin_discord_id,
+            )
+            if ban_doc is not None
+            else "Unknown"
+        ),
         reason=ban_doc.reason if ban_doc is not None else "Not specified",
         expire_value=ban_doc.expire_date if ban_doc is not None else None,
         actor_label="Unbanned by",
@@ -215,6 +223,7 @@ async def cmd_mute(
     expire = await bot.now_utc() + duration
     await bot.upsert_mute(
         uuid=uuid_value,
+        pid=player_id,
         name=bot._player_name(player),
         admin_name=interaction.user.display_name,
         admin_discord_id=str(interaction.user.id),
@@ -280,7 +289,14 @@ async def cmd_unmute(
         subject_name=bot._player_name(player),
         player_id=player_id,
         previous_actor_label="Admin who muted",
-        previous_actor_value=mute_doc.admin_name if mute_doc is not None else "Unknown",
+        previous_actor_value=(
+            _format_admin_value(
+                admin_name=mute_doc.admin_name,
+                admin_discord_id=mute_doc.admin_discord_id,
+            )
+            if mute_doc is not None
+            else "Unknown"
+        ),
         reason=mute_doc.reason if mute_doc is not None else "Not specified",
         expire_value=mute_doc.expire_date if mute_doc is not None else None,
         actor_label="Unmuted by",

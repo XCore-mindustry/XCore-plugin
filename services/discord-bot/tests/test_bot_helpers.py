@@ -219,6 +219,7 @@ class _BanStore:
         *,
         uuid: str,
         ip: str | None,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -229,6 +230,7 @@ class _BanStore:
             {
                 "uuid": uuid,
                 "ip": ip,
+                "pid": pid,
                 "name": name,
                 "admin_name": admin_name,
                 "admin_discord_id": admin_discord_id,
@@ -333,6 +335,7 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     assert first.startswith("Banned `Nick`")
     assert second == "This ban was already processed recently."
     assert len(store.bans) == 1
+    assert store.bans[0]["pid"] == 10
     assert store.bans[0]["admin_discord_id"] == "123"
     assert bus.kicks == [("u-1", "1.2.3.4")]
     assert len(calls) == 1

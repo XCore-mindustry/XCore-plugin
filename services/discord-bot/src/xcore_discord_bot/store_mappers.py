@@ -109,6 +109,11 @@ def ban_record_from_doc(doc: Mapping[str, object]) -> BanRecord:
 def mute_record_from_doc(doc: Mapping[str, object]) -> MuteRecord:
     return MuteRecord(
         uuid=_normalized_optional_str(doc.get("uuid")),
+        pid=(
+            _int_or_default(doc.get("pid"), default=-1)
+            if doc.get("pid") is not None
+            else None
+        ),
         name=_normalized_optional_str(doc.get("name")) or "Unknown",
         admin_name=_normalized_optional_str(doc.get("admin_name")) or "Unknown",
         admin_discord_id=_normalized_optional_str(doc.get("admin_discord_id")),

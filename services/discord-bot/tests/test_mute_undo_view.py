@@ -84,6 +84,7 @@ class _Store:
         self,
         *,
         uuid: str,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -93,6 +94,7 @@ class _Store:
         self.upserts.append(
             {
                 "uuid": uuid,
+                "pid": pid,
                 "name": name,
                 "admin_name": admin_name,
                 "admin_discord_id": admin_discord_id,

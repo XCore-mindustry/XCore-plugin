@@ -56,6 +56,7 @@ class PlayerDoc(_MongoDoc):
 class BanDoc(_MongoDoc):
     uuid: str | None = None
     ip: str | None = None
+    pid: int | None = None
     name: str | None = None
     admin_name: str | None = None
     admin_discord_id: str | None = None
@@ -65,6 +66,7 @@ class BanDoc(_MongoDoc):
 
 class MuteDoc(_MongoDoc):
     uuid: str
+    pid: int | None = None
     name: str
     admin_name: str
     admin_discord_id: str | None = None
@@ -286,6 +288,7 @@ class MongoStore:
         *,
         uuid: str,
         ip: str | None,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -297,6 +300,7 @@ class MongoStore:
         payload = BanDoc(
             uuid=uuid,
             ip=ip,
+            pid=pid,
             name=name,
             admin_name=admin_name,
             admin_discord_id=admin_discord_id,
@@ -323,6 +327,7 @@ class MongoStore:
         self,
         *,
         uuid: str,
+        pid: int | None,
         name: str,
         admin_name: str,
         admin_discord_id: str | None,
@@ -331,6 +336,7 @@ class MongoStore:
     ) -> None:
         payload = MuteDoc(
             uuid=uuid,
+            pid=pid,
             name=name,
             admin_name=admin_name,
             admin_discord_id=admin_discord_id,

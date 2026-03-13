@@ -27,6 +27,11 @@ if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
 
+def _format_admin_label(*, admin_name: str, admin_discord_id: str | None) -> str:
+    discord_id = str(admin_discord_id or "").strip()
+    return f"{admin_name} (<@{discord_id}>)" if discord_id else admin_name
+
+
 async def cmd_stats(
     bot: "XCoreDiscordBot",
     interaction: Interaction,
@@ -213,13 +218,19 @@ async def cmd_bans(
         if bans:
             for ban in bans:
                 unban_date = format_ban_expire_date(ban.expire_date)
+                ban_value = (
+                    (
+                        f"PID: `{ban.pid}`\n"
+                        if ban.pid is not None and ban.pid > 0
+                        else ""
+                    )
+                    + f"Admin: {_format_admin_label(admin_name=ban.admin_name, admin_discord_id=ban.admin_discord_id)}\n"
+                    + f"Reason: {ban.reason}\n"
+                    + f"Unban: {unban_date}"
+                )
                 embed.add_field(
                     name=ban.name,
-                    value=(
-                        f"Admin: {ban.admin_name}\n"
-                        f"Reason: {ban.reason}\n"
-                        f"Unban: {unban_date}"
-                    ),
+                    value=ban_value,
                     inline=False,
                 )
         else:

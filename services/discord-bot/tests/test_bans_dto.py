@@ -55,7 +55,9 @@ class _Bot:
         return [
             BanRecord(
                 name="Target",
+                pid=42,
                 admin_name="Admin",
+                admin_discord_id="123456",
                 reason="griefing",
                 expire_date=datetime(2026, 1, 2, tzinfo=timezone.utc),
             )
@@ -78,5 +80,6 @@ async def test_cmd_bans_renders_ban_record_rows() -> None:
     assert embed.title == "Bans"
     assert len(embed.fields) == 1
     assert embed.fields[0].name == "Target"
-    assert "Admin: Admin" in embed.fields[0].value
+    assert "PID: `42`" in embed.fields[0].value
+    assert "Admin: Admin (<@123456>)" in embed.fields[0].value
     assert "Reason: griefing" in embed.fields[0].value

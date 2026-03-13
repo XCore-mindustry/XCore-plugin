@@ -57,6 +57,7 @@ class MuteRecord:
     expire_date: object
     admin_discord_id: str | None = None
     uuid: str | None = None
+    pid: int | None = None
 
     def get(self, key: str, default: object = None) -> object:
         return getattr(self, key, default)
