@@ -263,7 +263,7 @@ async def test_cmd_list_admins_returns_paginated_embed_with_mentions() -> None:
     assert len(interaction.response.sent) == 1
     sent = interaction.response.sent[0]
     assert sent["text"] is None
-    assert sent["ephemeral"] is True
+    assert sent["ephemeral"] is False
     assert isinstance(sent["embed"], discord.Embed)
     assert sent["embed"].title == "Discord Admin Access"
     assert sent["embed"].fields[0].name == "Target"
@@ -284,7 +284,7 @@ async def test_cmd_sync_admins_reports_reconcile_summary() -> None:
     assert interaction.response.sent == [
         {
             "text": "Admin reconcile complete. Applied: 2, revoked: 1, Discord role members: 4",
-            "ephemeral": True,
+            "ephemeral": False,
             "embed": None,
             "view": None,
             "allowed_mentions": None,

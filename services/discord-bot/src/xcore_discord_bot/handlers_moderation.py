@@ -497,7 +497,7 @@ async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
     await bot._send_paginated(
         interaction,
         fetch_page,
-        ephemeral=True,
+        ephemeral=False,
     )
 
 
@@ -509,7 +509,6 @@ async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
             f"Applied: {result['applied']}, revoked: {result['revoked']}, "
             f"Discord role members: {result['discord_admins']}"
         ),
-        ephemeral=True,
     )
 
 
