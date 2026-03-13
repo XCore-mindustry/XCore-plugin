@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.1.8] - 2026-03-13
+
+No changelog entries were recorded in the Unreleased section.
+
 ## [3.1.7] - 2026-03-11
 
 ### Added
@@ -189,7 +193,8 @@ All notable changes to this project will be documented in this file.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...HEAD
+[3.1.8]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...3.1.8
 [3.1.7]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...3.1.7
 [3.1.6]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...3.1.6
 [3.1.5]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.4...3.1.5
