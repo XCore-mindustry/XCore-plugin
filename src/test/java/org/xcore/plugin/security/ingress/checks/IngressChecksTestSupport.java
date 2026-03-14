@@ -11,15 +11,8 @@ import mindustry.mod.Mods;
 import mindustry.net.Net;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
-import org.xcore.plugin.localization.BundleService;
 
 import java.util.Locale;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
 final class IngressChecksTestSupport {
 
@@ -58,19 +51,23 @@ final class IngressChecksTestSupport {
         return packet;
     }
 
-    static BundleService mockBundleService() {
-        var bundle = mock(BundleService.class);
-        when(bundle.locale(any(String.class))).thenReturn(Locale.ENGLISH);
-        when(bundle.locale(any(Locale.class))).thenAnswer(invocation -> invocation.getArgument(0, Locale.class));
-        when(bundle.getDefaultLocale()).thenReturn(Locale.ENGLISH);
-        when(bundle.format(any(Locale.class), any(String.class), anyMap()))
-                .thenAnswer(invocation -> invocation.getArgument(1, String.class));
-        lenient().when(bundle.localizer(any(Locale.class))).thenAnswer(invocation -> {
-            Locale locale = invocation.getArgument(0, Locale.class);
-            Bundle delegate = new Bundle(locale == null ? Locale.ENGLISH : locale);
-            return delegate.localizer(locale == null ? Locale.ENGLISH : locale);
-        });
-        return bundle;
+    static Bundle testBundle() {
+        return new Bundle(Locale.ENGLISH) {
+            @Override
+            public Locale resolveLocale(String code) {
+                return Locale.ENGLISH;
+            }
+
+            @Override
+            public Locale resolveLocale(Locale locale) {
+                return locale == null ? Locale.ENGLISH : locale;
+            }
+
+            @Override
+            public String format(Locale locale, String id, java.util.Map<String, Object> args) {
+                return id;
+            }
+        };
     }
 
     static class DummyConnection extends NetConnection {

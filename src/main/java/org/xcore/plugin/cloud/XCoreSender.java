@@ -1,10 +1,10 @@
 package org.xcore.plugin.cloud;
 
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import lombok.Getter;
 import mindustry.gen.Player;
 import org.xcore.cloud.mindustry.MindustrySender;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Locale;
@@ -16,10 +16,10 @@ public class XCoreSender {
 
     @Getter
     private final MindustrySender handle;
-    private final BundleService bundle;
+    private final Bundle bundle;
     private final Provider<SessionService> sessionService;
 
-    public XCoreSender(MindustrySender handle, BundleService bundle, Provider<SessionService> sessionService) {
+    public XCoreSender(MindustrySender handle, Bundle bundle, Provider<SessionService> sessionService) {
         this.handle = handle;
         this.bundle = bundle;
         this.sessionService = sessionService;

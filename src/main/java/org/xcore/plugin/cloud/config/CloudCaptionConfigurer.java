@@ -1,5 +1,6 @@
 package org.xcore.plugin.cloud.config;
 
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -7,7 +8,6 @@ import org.xcore.plugin.XcorePlugin;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.localization.BundlePlaceholderRegistry;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Map;
@@ -15,14 +15,14 @@ import java.util.Map;
 @Singleton
 public class CloudCaptionConfigurer {
 
-    private final BundleService bundleService;
+    private final Bundle bundle;
     private final Provider<SessionService> sessionService;
     private final BundlePlaceholderRegistry placeholderRegistry;
 
     @Inject
-    public CloudCaptionConfigurer(BundleService bundleService,
+    public CloudCaptionConfigurer(Bundle bundle,
                                   Provider<SessionService> sessionService) {
-        this.bundleService = bundleService;
+        this.bundle = bundle;
         this.sessionService = sessionService;
         this.placeholderRegistry = BundlePlaceholderRegistry.fromMod(XcorePlugin.class);
     }
@@ -41,7 +41,7 @@ public class CloudCaptionConfigurer {
                     return session.locale().format(key, args);
                 }
             }
-            return bundleService.format(recipient.locale(), key, args);
+            return bundle.format(recipient.locale(), key, args);
         });
     }
 }

@@ -1,5 +1,6 @@
 package org.xcore.plugin.localization;
 
+import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.BundleContext;
 import com.ospx.flubundle.Localizer;
 import org.xcore.plugin.session.Session;
@@ -12,27 +13,27 @@ import static com.ospx.flubundle.Bundle.args;
 
 public class Localization {
 
-    private final BundleService bundle;
+    private final Bundle bundle;
     private final Session session;
     private final Localizer localizer;
     private final BundleContext context;
 
-    public Localization(BundleService bundle, Session session) {
+    public Localization(Bundle bundle, Session session) {
         this.bundle = bundle;
         this.session = session;
-        this.localizer = bundle.localizer(() -> resolveLocale(session));
-        this.context = bundle.context(session.player, () -> resolveLocale(session));
+        this.localizer = bundle.localizer(() -> resolveLocale(bundle, session));
+        this.context = bundle.context(session.player, () -> resolveLocale(bundle, session));
     }
 
-    public Localization(BundleService bundle, Locale locale) {
+    public Localization(Bundle bundle, Locale locale) {
         this.bundle = bundle;
         this.session = null;
-        Locale resolvedLocale = bundle.locale(locale);
+        Locale resolvedLocale = bundle.resolveLocale(locale);
         this.localizer = bundle.localizer(resolvedLocale);
         this.context = null;
     }
 
-    public Localization(BundleService bundle) {
+    public Localization(Bundle bundle) {
         this(bundle, (Locale) null);
     }
 
@@ -45,7 +46,7 @@ public class Localization {
             return t(fallbackKey);
         }
 
-        Locale loc = bundle.locale(langCode);
+        Locale loc = bundle.resolveLocale(langCode);
         return arc.util.Strings.capitalize(loc.getDisplayLanguage(loc));
     }
 
@@ -84,7 +85,7 @@ public class Localization {
         if (session != null) {
             context.infoMessage(key, args);
         } else {
-            bundle.getBundle().infoMessage(key, args);
+            bundle.infoMessage(key, args);
         }
     }
 
@@ -92,7 +93,7 @@ public class Localization {
         if (session != null) {
             context.announce(key, args);
         } else {
-            bundle.getBundle().announce(key, args);
+            bundle.announce(key, args);
         }
     }
 
@@ -100,7 +101,7 @@ public class Localization {
         if (session != null) {
             context.toast(icon, key, args);
         } else {
-            bundle.getBundle().toast(icon, key, args);
+            bundle.toast(icon, key, args);
         }
     }
 
@@ -108,14 +109,14 @@ public class Localization {
         if (session != null) {
             context.setHud(key, args);
         } else {
-            bundle.getBundle().setHud(key, args);
+            bundle.setHud(key, args);
         }
     }
 
     public Localization setLocale(Locale locale) {
         if (session == null) {return this;}
 
-        Locale resolved = bundle.locale(locale);
+        Locale resolved = bundle.resolveLocale(locale);
         String languageCode = resolved.toString();
         if (Objects.equals(languageCode, session.data.language)) return this;
         session.playerDataRepository.updateLanguage(session.data.uuid, languageCode);
@@ -141,7 +142,7 @@ public class Localization {
         return this;
     }
 
-    private Locale resolveLocale(Session session) {
+    private static Locale resolveLocale(Bundle bundle, Session session) {
         if (session == null) {
             return bundle.getDefaultLocale();
         }
@@ -150,6 +151,6 @@ public class Localization {
             return bundle.locale(session.player);
         }
 
-        return bundle.locale(session.data.language);
+        return bundle.resolveLocale(session.data.language);
     }
 }

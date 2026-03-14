@@ -1,6 +1,7 @@
 package org.xcore.plugin.cloud;
 
 import arc.util.CommandHandler;
+import com.ospx.flubundle.Bundle;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.annotations.Argument;
@@ -15,7 +16,6 @@ import org.xcore.plugin.cloud.config.CloudGuardConfigurer;
 import org.xcore.plugin.cloud.config.DisabledCommandPolicy;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.session.SessionService;
 
@@ -37,7 +37,7 @@ class CloudCommandPipelineIntegrationTest {
     void setUp() {
         var securityService = mock(SecurityService.class);
         var sessionService = mock(SessionService.class);
-        var bundleService = mock(BundleService.class);
+        var bundle = mock(Bundle.class);
         var globalConfig = new GlobalConfig();
         var config = new Config();
         config.disabledCommands = Set.of("test foo", "root");
@@ -47,11 +47,11 @@ class CloudCommandPipelineIntegrationTest {
         player.admin = false;
 
         MindustrySender rawSender = new MindustrySender.PlayerSender(player);
-        sender = new XCoreSender(rawSender, bundleService, () -> sessionService);
+        sender = new XCoreSender(rawSender, bundle, () -> sessionService);
 
         CommandHandler handler = new CommandHandler("");
         SenderMapper<MindustrySender, XCoreSender> senderMapper = SenderMapper.create(
-                base -> new XCoreSender(base, bundleService, () -> sessionService),
+                base -> new XCoreSender(base, bundle, () -> sessionService),
                 XCoreSender::getHandle
         );
 

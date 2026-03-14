@@ -7,7 +7,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.security.ingress.AccessResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +26,7 @@ class NameValidationCheckTest {
         netServer = mock(NetServer.class);
         Vars.netServer = netServer;
 
-        BundleService bundle = IngressChecksTestSupport.mockBundleService();
+        var bundle = IngressChecksTestSupport.testBundle();
         check = new NameValidationCheck(bundle);
     }
 

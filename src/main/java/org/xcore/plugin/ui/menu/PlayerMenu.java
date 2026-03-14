@@ -2,6 +2,7 @@ package org.xcore.plugin.ui.menu;
 
 import arc.struct.Seq;
 import arc.util.Strings;
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
@@ -10,7 +11,6 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
@@ -40,7 +40,7 @@ public class PlayerMenu extends Menu {
 
     private final PlayerDataRepository playerDataRepository;
     private final GameDataRepository gameDataRepository;
-    private final BundleService bundle;
+    private final Bundle bundle;
     private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
 
@@ -50,7 +50,7 @@ public class PlayerMenu extends Menu {
                       SessionService sessionService,
                       PlayerDataRepository playerDataRepository,
                       GameDataRepository gameDataRepository,
-                      BundleService bundle,
+                      Bundle bundle,
                       NetworkService network,
                       PlayerDisplayService playerDisplayService) {
         super(config, globalConfig, sessionService);

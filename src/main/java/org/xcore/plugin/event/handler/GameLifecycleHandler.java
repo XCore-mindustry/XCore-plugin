@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Time;
 import arc.util.Timer;
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType.GameOverEvent;
 import mindustry.game.EventType.PlayEvent;
@@ -19,7 +20,6 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.FinishReason;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.event.SocketEvents;
@@ -37,7 +37,7 @@ public class GameLifecycleHandler {
     private final MapDataRepository mapDataRepository;
     private final NetworkService network;
     private final Config config;
-    private final BundleService bundleService;
+    private final Bundle bundle;
     private final SessionService sessionService;
     private final PluginState pluginState;
     private final GameDataService gameDataService;
@@ -45,13 +45,13 @@ public class GameLifecycleHandler {
     public GameLifecycleHandler(MapDataRepository mapDataRepository,
                                 NetworkService network,
                                 Config config,
-                                BundleService bundleService, SessionService sessionService,
+                                Bundle bundle, SessionService sessionService,
                                 PluginState pluginState,
                                 GameDataService gameDataService) {
         this.mapDataRepository = mapDataRepository;
         this.network = network;
         this.config = config;
-        this.bundleService = bundleService;
+        this.bundle = bundle;
         this.sessionService = sessionService;
         this.pluginState = pluginState;
         this.gameDataService = gameDataService;
@@ -163,7 +163,7 @@ public class GameLifecycleHandler {
         Timer.schedule(() -> {
             Groups.player.each((p) -> {
                 Session session = sessionService.get(p);
-                Localization systemLocal = new Localization(bundleService);
+                Localization systemLocal = new Localization(bundle);
                 var message = session == null
                         ? systemLocal.format("server-restart-countdown",
                         args("seconds", secondsLeft.get()))

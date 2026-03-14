@@ -1,5 +1,6 @@
 package org.xcore.plugin.cloud.config;
 
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -12,7 +13,6 @@ import org.incendo.cloud.exception.parsing.ParserException;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.HashMap;
@@ -23,13 +23,13 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class CloudExceptionConfigurer {
 
-    private final BundleService bundleService;
+    private final Bundle bundle;
     private final Provider<SessionService> sessionService;
 
     @Inject
-    public CloudExceptionConfigurer(BundleService bundleService,
+    public CloudExceptionConfigurer(Bundle bundle,
                                     Provider<SessionService> sessionService) {
-        this.bundleService = bundleService;
+        this.bundle = bundle;
         this.sessionService = sessionService;
     }
 
@@ -157,7 +157,7 @@ public class CloudExceptionConfigurer {
             sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
             return;
         }
-        sender.sendMessage(bundleService.format(sender.locale(), ex.getKey(), ex.getArgs()));
+        sender.sendMessage(bundle.format(sender.locale(), ex.getKey(), ex.getArgs()));
     }
 
     private void sendToPlayer(Player player, String key, Map<String, Object> args) {
@@ -166,6 +166,6 @@ public class CloudExceptionConfigurer {
             session.locale().send(key, args);
             return;
         }
-        player.sendMessage(bundleService.format(bundleService.locale(player), key, args));
+        player.sendMessage(bundle.format(bundle.locale(player), key, args));
     }
 }

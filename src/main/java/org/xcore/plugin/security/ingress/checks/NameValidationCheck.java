@@ -2,13 +2,13 @@
 package org.xcore.plugin.security.ingress.checks;
 
 import arc.struct.Seq;
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
-import org.xcore.plugin.localization.BundleService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -25,9 +25,9 @@ public class NameValidationCheck implements IngressCheck {
             "igruhaorg", "freetp.org", "goldberg", "rog"
     );
 
-    private final BundleService bundle;
+    private final Bundle bundle;
 
-    public NameValidationCheck(BundleService bundle) {
+    public NameValidationCheck(Bundle bundle) {
         this.bundle = bundle;
     }
 
@@ -35,7 +35,7 @@ public class NameValidationCheck implements IngressCheck {
     public AccessResult check(NetConnection con, ConnectPacket packet) {
         String name = packet.name;
 
-        Localization local = new Localization(bundle, bundle.locale(packet.locale));
+        Localization local = new Localization(bundle, bundle.resolveLocale(packet.locale));
 
         if (name != null && BANNED_NAMES.contains(name.toLowerCase())) {
             String reason = local.format(

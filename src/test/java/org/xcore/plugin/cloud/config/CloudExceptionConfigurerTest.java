@@ -1,12 +1,12 @@
 package org.xcore.plugin.cloud.config;
 
+import com.ospx.flubundle.Bundle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.session.SessionService;
 
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -18,15 +18,15 @@ import static org.mockito.Mockito.when;
 
 class CloudExceptionConfigurerTest {
 
-    private BundleService bundleService;
+    private Bundle bundle;
     private SessionService sessionService;
     private CloudExceptionConfigurer configurer;
 
     @BeforeEach
     void setUp() {
-        bundleService = mock(BundleService.class);
+        bundle = mock(Bundle.class);
         sessionService = mock(SessionService.class);
-        configurer = new CloudExceptionConfigurer(bundleService, () -> sessionService);
+        configurer = new CloudExceptionConfigurer(bundle, () -> sessionService);
     }
 
     @Test
@@ -47,7 +47,7 @@ class CloudExceptionConfigurerTest {
 
         org.assertj.core.api.Assertions.assertThat(exception.isSilent()).isTrue();
         org.assertj.core.api.Assertions.assertThat(exception.getKey()).isNull();
-        verify(bundleService, never()).format(org.mockito.ArgumentMatchers.any(), eq("error-access-denied"), anyMap());
+        verify(bundle, never()).format(org.mockito.ArgumentMatchers.any(), eq("error-access-denied"), anyMap());
     }
 
     @Test

@@ -8,6 +8,7 @@ import arc.util.Align;
 import arc.util.Log;
 import arc.util.Strings;
 import arc.util.Timer;
+import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -23,7 +24,6 @@ import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -55,7 +55,7 @@ public class MiniHexedService {
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final NetworkService network;
-    private final BundleService bundle;
+    private final Bundle bundle;
     private final LeaderboardService leaderboardService;
     private final PlayerDisplayService playerDisplayService;
     private final GameDataService gameDataService;
@@ -66,7 +66,7 @@ public class MiniHexedService {
                             SessionService sessionService,
                             PlayerDataRepository playerDataRepository,
                             NetworkService networkService,
-                            BundleService bundle,
+                            Bundle bundle,
                             LeaderboardService leaderboardService,
                             PlayerDisplayService playerDisplayService,
                             GameDataService gameDataService) {

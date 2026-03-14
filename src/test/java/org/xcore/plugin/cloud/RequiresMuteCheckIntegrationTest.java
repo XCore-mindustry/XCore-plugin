@@ -1,6 +1,7 @@
 package org.xcore.plugin.cloud;
 
 import arc.util.CommandHandler;
+import com.ospx.flubundle.Bundle;
 import org.incendo.cloud.SenderMapper;
 import org.incendo.cloud.annotations.AnnotationParser;
 import org.incendo.cloud.annotations.Argument;
@@ -16,7 +17,6 @@ import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.session.SessionService;
 
@@ -47,18 +47,18 @@ class RequiresMuteCheckIntegrationTest {
     void setUp() {
         securityService = mock(SecurityService.class);
         var sessionService = mock(SessionService.class);
-        var bundleService = mock(BundleService.class);
+        var bundle = mock(Bundle.class);
 
         player = mock(mindustry.gen.Player.class);
         when(player.uuid()).thenReturn("test-uuid");
         player.admin = false;
 
         MindustrySender rawSender = new MindustrySender.PlayerSender(player);
-        sender = new XCoreSender(rawSender, bundleService, () -> sessionService);
+        sender = new XCoreSender(rawSender, bundle, () -> sessionService);
 
         CommandHandler handler = new CommandHandler("");
         SenderMapper<MindustrySender, XCoreSender> senderMapper = SenderMapper.create(
-                base -> new XCoreSender(base, bundleService, () -> sessionService),
+                base -> new XCoreSender(base, bundle, () -> sessionService),
                 XCoreSender::getHandle
         );
 

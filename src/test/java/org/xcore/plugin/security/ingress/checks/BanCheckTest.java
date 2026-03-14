@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.ospx.flubundle.Bundle;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
@@ -17,9 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,7 +40,7 @@ class BanCheckTest {
         Vars.netServer = netServer;
 
         banDataRepository = mock(BanDataRepository.class);
-        var bundle = IngressChecksTestSupport.mockBundleService();
+        var bundle = IngressChecksTestSupport.testBundle();
         var globalConfig = new GlobalConfig();
         globalConfig.discordUrl = "https://discord.example";
 
@@ -108,9 +106,25 @@ class BanCheckTest {
         when(banDataRepository.find(packet.uuid, con.address)).thenReturn(ban);
 
         // Surface the reason field directly in test output to validate formatting arguments.
-        var bundle = IngressChecksTestSupport.mockBundleService();
-        when(bundle.format(any(Locale.class), eq("tempban-content"), anyMap()))
-                .thenAnswer(invocation -> "tempban: " + ((Map<?, ?>) invocation.getArgument(2)).get("reason"));
+        Bundle bundle = new Bundle(Locale.ENGLISH) {
+            @Override
+            public Locale resolveLocale(String code) {
+                return Locale.ENGLISH;
+            }
+
+            @Override
+            public Locale resolveLocale(Locale locale) {
+                return locale == null ? Locale.ENGLISH : locale;
+            }
+
+            @Override
+            public String format(Locale locale, String id, Map<String, Object> args) {
+                if ("tempban-content".equals(id)) {
+                    return "tempban: " + args.get("reason");
+                }
+                return id;
+            }
+        };
         check = new BanCheck(banDataRepository, bundle, new GlobalConfig());
 
         var result = check.check(con, packet);
