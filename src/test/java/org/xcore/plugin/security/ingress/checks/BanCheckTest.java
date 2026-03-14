@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
-import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
 
@@ -47,7 +46,7 @@ class BanCheckTest {
         var globalConfig = new GlobalConfig();
         globalConfig.discordUrl = "https://discord.example";
 
-        check = new BanCheck(banDataRepository, bundle, new LocalizationFactory(() -> bundle), globalConfig);
+        check = new BanCheck(banDataRepository, bundle, globalConfig);
     }
 
     @AfterEach
@@ -112,7 +111,7 @@ class BanCheckTest {
         var bundle = IngressChecksTestSupport.mockBundleService();
         when(bundle.format(any(Locale.class), eq("tempban-content"), anyMap()))
                 .thenAnswer(invocation -> "tempban: " + ((Map<?, ?>) invocation.getArgument(2)).get("reason"));
-        check = new BanCheck(banDataRepository, bundle, new LocalizationFactory(() -> bundle), new GlobalConfig());
+        check = new BanCheck(banDataRepository, bundle, new GlobalConfig());
 
         var result = check.check(con, packet);
 

@@ -6,7 +6,6 @@ import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.localization.Localization;
-import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 import org.xcore.plugin.localization.BundleService;
@@ -27,18 +26,16 @@ public class NameValidationCheck implements IngressCheck {
     );
 
     private final BundleService bundle;
-    private final LocalizationFactory localizationFactory;
 
-    public NameValidationCheck(BundleService bundle, LocalizationFactory localizationFactory) {
+    public NameValidationCheck(BundleService bundle) {
         this.bundle = bundle;
-        this.localizationFactory = localizationFactory;
     }
 
     @Override
     public AccessResult check(NetConnection con, ConnectPacket packet) {
         String name = packet.name;
 
-        Localization local = localizationFactory.forLocale(bundle.locale(packet.locale));
+        Localization local = new Localization(bundle, bundle.locale(packet.locale));
 
         if (name != null && BANNED_NAMES.contains(name.toLowerCase())) {
             String reason = local.format(

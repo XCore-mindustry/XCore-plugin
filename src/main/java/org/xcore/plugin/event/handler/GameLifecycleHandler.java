@@ -17,7 +17,6 @@ import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
-import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.localization.BundleService;
@@ -42,15 +41,13 @@ public class GameLifecycleHandler {
     private final SessionService sessionService;
     private final PluginState pluginState;
     private final GameDataService gameDataService;
-    private final LocalizationFactory localizationFactory;
 
     public GameLifecycleHandler(MapDataRepository mapDataRepository,
                                 NetworkService network,
                                 Config config,
                                 BundleService bundleService, SessionService sessionService,
                                 PluginState pluginState,
-                                GameDataService gameDataService,
-                                LocalizationFactory localizationFactory) {
+                                GameDataService gameDataService) {
         this.mapDataRepository = mapDataRepository;
         this.network = network;
         this.config = config;
@@ -58,7 +55,6 @@ public class GameLifecycleHandler {
         this.sessionService = sessionService;
         this.pluginState = pluginState;
         this.gameDataService = gameDataService;
-        this.localizationFactory = localizationFactory;
     }
 
     public void onPlayEvent(PlayEvent event) {
@@ -167,7 +163,7 @@ public class GameLifecycleHandler {
         Timer.schedule(() -> {
             Groups.player.each((p) -> {
                 Session session = sessionService.get(p);
-                Localization systemLocal = localizationFactory.system();
+                Localization systemLocal = new Localization(bundleService);
                 var message = session == null
                         ? systemLocal.format("server-restart-countdown",
                         args("seconds", secondsLeft.get()))

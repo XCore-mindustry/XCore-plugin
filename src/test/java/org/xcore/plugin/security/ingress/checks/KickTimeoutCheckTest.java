@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.localization.BundleService;
-import org.xcore.plugin.localization.LocalizationFactory;
 import org.xcore.plugin.security.ingress.AccessResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +31,7 @@ class KickTimeoutCheckTest {
         Vars.netServer = netServer;
 
         BundleService bundle = IngressChecksTestSupport.mockBundleService();
-        check = new KickTimeoutCheck(bundle, new LocalizationFactory(() -> bundle));
+        check = new KickTimeoutCheck(bundle);
     }
 
     @AfterEach
