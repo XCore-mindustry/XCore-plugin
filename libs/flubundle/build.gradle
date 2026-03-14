@@ -52,6 +52,7 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:6.0.2')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "com.github.Anuken.Mindustry:core:$mindustryVersion"
     testImplementation "com.github.Anuken.Arc:arc-core:$mindustryVersion"
 }
 

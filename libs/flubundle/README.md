@@ -11,7 +11,7 @@ repositories {
 ### 2. Add dependency
 ```groovy
 dependencies {
-    implementation "com.ospx:flubundle:1.0"
+    implementation "com.ospx:flubundle:1.3"
 }
 ```
 ## Usage
@@ -22,3 +22,9 @@ bundle.addSource(ExampleMod.class);// gets the bundles from mod classpath bundle
 bundle.format(new Locale("en"), "hello-user", 
         Map.of("userName", "Billy")) // Hello, Billy!
 ```
+
+## Features
+- Locale normalization for codes like `en-US`, `en_US`, and `EN_us`
+- Configurable locale aliases via `addLocaleAlias(...)`
+- Built-in fallback chain: exact locale -> language locale -> default locale -> default value factory
+- Immutable `Localizer` and `BundleContext` helpers for locale-bound formatting and player delivery
