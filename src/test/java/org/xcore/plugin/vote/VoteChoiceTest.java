@@ -13,8 +13,6 @@ class VoteChoiceTest {
     void parseYesVariants() {
         assertThat(VoteChoice.parse("yes")).isEqualTo(VoteChoice.YES);
         assertThat(VoteChoice.parse(" y ")).isEqualTo(VoteChoice.YES);
-        assertThat(VoteChoice.parse("1")).isEqualTo(VoteChoice.YES);
-        assertThat(VoteChoice.parse("+")).isEqualTo(VoteChoice.YES);
     }
 
     @Test
@@ -22,8 +20,6 @@ class VoteChoiceTest {
     void parseNoVariants() {
         assertThat(VoteChoice.parse("no")).isEqualTo(VoteChoice.NO);
         assertThat(VoteChoice.parse(" n ")).isEqualTo(VoteChoice.NO);
-        assertThat(VoteChoice.parse("-1")).isEqualTo(VoteChoice.NO);
-        assertThat(VoteChoice.parse("-")).isEqualTo(VoteChoice.NO);
     }
 
     @Test
@@ -32,6 +28,11 @@ class VoteChoiceTest {
         assertThat(VoteChoice.parse("")).isEqualTo(VoteChoice.ABSTAIN);
         assertThat(VoteChoice.parse("   ")).isEqualTo(VoteChoice.ABSTAIN);
         assertThat(VoteChoice.parse("maybe")).isEqualTo(VoteChoice.ABSTAIN);
+        assertThat(VoteChoice.parse("1")).isEqualTo(VoteChoice.ABSTAIN);
+        assertThat(VoteChoice.parse("0")).isEqualTo(VoteChoice.ABSTAIN);
+        assertThat(VoteChoice.parse("-1")).isEqualTo(VoteChoice.ABSTAIN);
+        assertThat(VoteChoice.parse("+")).isEqualTo(VoteChoice.ABSTAIN);
+        assertThat(VoteChoice.parse("-")).isEqualTo(VoteChoice.ABSTAIN);
     }
 
     @Test

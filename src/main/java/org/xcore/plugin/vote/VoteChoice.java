@@ -25,8 +25,8 @@ public enum VoteChoice {
         return switch (input) {
             case String s when s.isBlank() -> ABSTAIN;
             case String s -> switch (TextUtils.stripFooCharacters(s.toLowerCase().trim())) {
-                case "y", "yes", "1", "+" -> YES;
-                case "n", "no", "-1", "-" -> NO;
+                case "y", "yes" -> YES;
+                case "n", "no" -> NO;
                 default -> ABSTAIN;
             };
         };
