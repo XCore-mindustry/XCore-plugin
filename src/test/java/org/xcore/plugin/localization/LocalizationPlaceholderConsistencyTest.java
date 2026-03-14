@@ -2,6 +2,7 @@ package org.xcore.plugin.localization;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.incendo.cloud.caption.StandardCaptionKeys;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +25,35 @@ class LocalizationPlaceholderConsistencyTest {
     private static final Path PROJECT_ROOT = Path.of("").toAbsolutePath();
     private static final Path BUNDLES_DIR = PROJECT_ROOT.resolve("src/main/resources/bundles");
     private static final Path JAVA_DIR = PROJECT_ROOT.resolve("src/main/java");
+    private static final Set<String> REQUIRED_CLOUD_CAPTION_KEYS = StandardCaptionKeys.standardCaptionKeys().stream()
+            .map(caption -> caption.key().replace('.', '-'))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    private static final Set<String> PRIMARY_CLOUD_CAPTION_KEYS = Set.of(
+            "argument-parse-failure-boolean",
+            "argument-parse-failure-number",
+            "argument-parse-failure-char",
+            "argument-parse-failure-string",
+            "argument-parse-failure-uuid",
+            "argument-parse-failure-enum",
+            "argument-parse-failure-regex",
+            "argument-parse-failure-flag-unknown",
+            "argument-parse-failure-flag-duplicate-flag",
+            "argument-parse-failure-flag-no-flag-started",
+            "argument-parse-failure-flag-missing-argument",
+            "argument-parse-failure-flag-no-permission",
+            "argument-parse-failure-color",
+            "argument-parse-failure-duration",
+            "argument-parse-failure-aggregate-missing",
+            "argument-parse-failure-aggregate-failure",
+            "argument-parse-failure-either",
+            "exception-unexpected",
+            "exception-invalid-argument",
+            "exception-no-such-command",
+            "exception-no-permission",
+            "exception-invalid-sender",
+            "exception-invalid-sender-list",
+            "exception-invalid-syntax"
+    );
 
     private static final Pattern BUNDLE_KEY_PATTERN = Pattern.compile("^([a-z][a-z0-9-]*)\\s*=");
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\s*\\$([A-Za-z0-9_-]+)");
@@ -81,6 +111,32 @@ class LocalizationPlaceholderConsistencyTest {
 
         assertThat(mismatches)
                 .withFailMessage("Found Java/bundle placeholder mismatches:%n%s", String.join(System.lineSeparator(), mismatches))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("primary locales cover all standard cloud caption keys")
+    void primaryLocalesCoverAllStandardCloudCaptionKeys() throws IOException {
+        var bundles = loadBundlePlaceholders();
+        var primaryLocales = List.of("bundle_en.ftl", "bundle_ru.ftl", "bundle_uk_UA.ftl");
+        var missing = new ArrayList<String>();
+
+        for (var locale : primaryLocales) {
+            var keys = bundles.get(locale);
+            assertThat(keys)
+                    .withFailMessage("Bundle file %s was not loaded", locale)
+                    .isNotNull();
+
+            var missingKeys = new LinkedHashSet<>(PRIMARY_CLOUD_CAPTION_KEYS);
+            missingKeys.removeAll(keys.keySet());
+            if (!missingKeys.isEmpty()) {
+                missing.add(locale + " -> " + missingKeys);
+            }
+        }
+
+        assertThat(missing)
+                .withFailMessage("Primary locale bundles are missing standard cloud caption keys:%n%s",
+                        String.join(System.lineSeparator(), missing))
                 .isEmpty();
     }
 
