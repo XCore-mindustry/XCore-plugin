@@ -32,7 +32,7 @@ public class CloudCaptionConfigurer {
                     return session.locale().format(key, args());
                 }
             }
-            return bundleService.format(bundleService.getDefaultLocale(), key, args());
+            return bundleService.format(recipient.locale(), key, args());
         });
     }
 }

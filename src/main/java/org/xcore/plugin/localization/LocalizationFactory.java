@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.session.Session;
 
 import java.util.Locale;
+import java.util.Objects;
 
 @Singleton
 public class LocalizationFactory {
@@ -20,7 +21,7 @@ public class LocalizationFactory {
     }
 
     public Localization forLocale(Locale locale) {
-        return new Localization(bundleService.get(), locale);
+        return new Localization(bundleService.get(), Objects.requireNonNullElse(locale, bundleService.get().getDefaultLocale()));
     }
 
     public Localization forSession(Session session) {

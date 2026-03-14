@@ -41,12 +41,12 @@ public class XCoreSender {
         if (isPlayer()) {
             var session = sessionService.get().get(player());
             if (session == null) {
-                handle.sendMessage(bundle.format(bundle.getDefaultLocale(), key, args));
+                handle.sendMessage(bundle.format(locale(), key, args));
                 return;
             }
             session.locale().send(key, args);
         } else {
-            handle.sendMessage(bundle.format(bundle.getDefaultLocale(), key, args));
+            handle.sendMessage(bundle.format(locale(), key, args));
         }
     }
 
@@ -60,6 +60,7 @@ public class XCoreSender {
             if (session != null) {
                 return session.locale().getLocale();
             }
+            return bundle.locale(player());
         }
         return bundle.getDefaultLocale();
     }
@@ -71,7 +72,7 @@ public class XCoreSender {
                 return session.locale().format(key, args);
             }
         }
-        return bundle.format(bundle.getDefaultLocale(), key, args);
+        return bundle.format(locale(), key, args);
     }
 
     public String format(String key) {

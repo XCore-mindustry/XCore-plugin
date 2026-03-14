@@ -157,7 +157,7 @@ public class CloudExceptionConfigurer {
             sendToPlayer(sender.player(), ex.getKey(), ex.getArgs());
             return;
         }
-        sender.sendMessage(bundleService.format(bundleService.getDefaultLocale(), ex.getKey(), ex.getArgs()));
+        sender.sendMessage(bundleService.format(sender.locale(), ex.getKey(), ex.getArgs()));
     }
 
     private void sendToPlayer(Player player, String key, Map<String, Object> args) {
@@ -166,6 +166,6 @@ public class CloudExceptionConfigurer {
             session.locale().send(key, args);
             return;
         }
-        player.sendMessage(bundleService.format(bundleService.getDefaultLocale(), key, args));
+        player.sendMessage(bundleService.format(bundleService.locale(player), key, args));
     }
 }

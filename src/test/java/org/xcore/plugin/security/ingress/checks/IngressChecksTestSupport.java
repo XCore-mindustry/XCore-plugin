@@ -1,6 +1,7 @@
 package org.xcore.plugin.security.ingress.checks;
 
 import arc.struct.Seq;
+import com.ospx.flubundle.Bundle;
 import mindustry.Vars;
 import mindustry.core.NetServer;
 import mindustry.entities.EntityGroup;
@@ -17,6 +18,7 @@ import java.util.Locale;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 final class IngressChecksTestSupport {
@@ -59,9 +61,15 @@ final class IngressChecksTestSupport {
     static BundleService mockBundleService() {
         var bundle = mock(BundleService.class);
         when(bundle.locale(any(String.class))).thenReturn(Locale.ENGLISH);
+        when(bundle.locale(any(Locale.class))).thenAnswer(invocation -> invocation.getArgument(0, Locale.class));
         when(bundle.getDefaultLocale()).thenReturn(Locale.ENGLISH);
         when(bundle.format(any(Locale.class), any(String.class), anyMap()))
                 .thenAnswer(invocation -> invocation.getArgument(1, String.class));
+        lenient().when(bundle.localizer(any(Locale.class))).thenAnswer(invocation -> {
+            Locale locale = invocation.getArgument(0, Locale.class);
+            Bundle delegate = new Bundle(locale == null ? Locale.ENGLISH : locale);
+            return delegate.localizer(locale == null ? Locale.ENGLISH : locale);
+        });
         return bundle;
     }
 

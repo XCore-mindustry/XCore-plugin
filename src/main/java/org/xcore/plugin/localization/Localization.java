@@ -1,5 +1,7 @@
 package org.xcore.plugin.localization;
 
+import com.ospx.flubundle.BundleContext;
+import com.ospx.flubundle.Localizer;
 import org.xcore.plugin.session.Session;
 
 import java.util.Locale;
@@ -12,34 +14,30 @@ public class Localization {
 
     private final BundleService bundle;
     private final Session session;
-    public Locale systemLocale;
+    private final Localizer localizer;
+    private final BundleContext context;
 
     public Localization(BundleService bundle, Session session) {
         this.bundle = bundle;
         this.session = session;
-        this.systemLocale = null;
+        this.localizer = bundle.localizer(() -> resolveLocale(session));
+        this.context = bundle.context(session.player, () -> resolveLocale(session));
     }
 
     public Localization(BundleService bundle, Locale locale) {
         this.bundle = bundle;
         this.session = null;
-        this.systemLocale = locale;
+        Locale resolvedLocale = bundle.locale(locale);
+        this.localizer = bundle.localizer(resolvedLocale);
+        this.context = null;
     }
 
     public Localization(BundleService bundle) {
         this(bundle, (Locale) null);
     }
 
-
     public Locale getLocale() {
-        if (session == null) {
-            return systemLocale != null ? systemLocale : bundle.getDefaultLocale();
-        }
-
-        if (session.data.language == null || session.data.language.equals("auto")) {
-            return bundle.locale(session.player);
-        }
-        return session.data.language.equals("uk") ? bundle.locale("uk_UA") : bundle.locale(session.data.language);
+        return localizer.locale();
     }
 
     public String getLanguageName(String langCode, String fallbackKey) {
@@ -60,11 +58,14 @@ public class Localization {
     }
 
     public String format(String key, Map<String, Object> args) {
-        return bundle.format(getLocale(), key, args);
+        if (session == null) {
+            return bundle.format(getLocale(), key, args);
+        }
+        return localizer.format(key, args);
     }
 
     public String format(String key) {
-        return bundle.format(getLocale(), key, args());
+        return format(key, args());
     }
 
     public void send(String key) {
@@ -73,7 +74,7 @@ public class Localization {
 
     public void send(String key, Map<String, Object> args) {
         if (session != null) {
-            bundle.send(session.player, key, args);
+            context.send(key, args);
         } else {
             bundle.send(key, args);
         }
@@ -81,7 +82,7 @@ public class Localization {
 
     public void infoMessage(String key, Map<String, Object> args) {
         if (session != null) {
-            bundle.getBundle().infoMessage(session.player, key, args);
+            context.infoMessage(key, args);
         } else {
             bundle.getBundle().infoMessage(key, args);
         }
@@ -89,7 +90,7 @@ public class Localization {
 
     public void announce(String key, Map<String, Object> args) {
         if (session != null) {
-            bundle.getBundle().announce(session.player, key, args);
+            context.announce(key, args);
         } else {
             bundle.getBundle().announce(key, args);
         }
@@ -97,7 +98,7 @@ public class Localization {
 
     public void toast(int icon, String key, Map<String, Object> args) {
         if (session != null) {
-            bundle.getBundle().toast(session.player, icon, key, args);
+            context.toast(icon, key, args);
         } else {
             bundle.getBundle().toast(icon, key, args);
         }
@@ -105,7 +106,7 @@ public class Localization {
 
     public void setHud(String key, Map<String, Object> args) {
         if (session != null) {
-            bundle.getBundle().setHud(session.player, key, args);
+            context.setHud(key, args);
         } else {
             bundle.getBundle().setHud(key, args);
         }
@@ -114,9 +115,11 @@ public class Localization {
     public Localization setLocale(Locale locale) {
         if (session == null) {return this;}
 
-        if (Objects.equals(locale.getLanguage(), session.data.language)) return this;
-        session.playerDataRepository.updateLanguage(session.data.uuid, locale.getLanguage());
-        session.data.language = locale.getLanguage();
+        Locale resolved = bundle.locale(locale);
+        String languageCode = resolved.toString();
+        if (Objects.equals(languageCode, session.data.language)) return this;
+        session.playerDataRepository.updateLanguage(session.data.uuid, languageCode);
+        session.data.language = languageCode;
         return this;
     }
 
@@ -136,5 +139,17 @@ public class Localization {
         session.playerDataRepository.updateLanguage(session.data.uuid, "auto");
         session.data.language = "auto";
         return this;
+    }
+
+    private Locale resolveLocale(Session session) {
+        if (session == null) {
+            return bundle.getDefaultLocale();
+        }
+
+        if (session.data.language == null || session.data.language.equals("auto")) {
+            return bundle.locale(session.player);
+        }
+
+        return bundle.locale(session.data.language);
     }
 }
