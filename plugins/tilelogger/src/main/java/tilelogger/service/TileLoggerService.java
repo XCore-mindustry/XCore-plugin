@@ -3,6 +3,7 @@ package tilelogger.service;
 import arc.struct.ObjectMap;
 import arc.util.Log;
 import arc.util.Nullable;
+import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -16,9 +17,9 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.ConstructBlock.ConstructBuild;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.localization.BundleService;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import tilelogger.*;
 
@@ -39,14 +40,14 @@ public class TileLoggerService {
     private final PlayerDataRepository playerDataRepository;
     private final SessionService playerSessionService;
     private final FindService findService;
-    private final BundleService bundle;
+    private final Bundle bundle;
 
     private final ObjectMap<String, PlayerConfig> playerConfigs = new ObjectMap<>();
 
     @Inject
     public TileLoggerService(PlayerDataRepository playerDataRepository,
                              SessionService playerSessionService,
-                             FindService findService, BundleService bundle) {
+                             FindService findService, Bundle bundle) {
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.findService = findService;
@@ -114,7 +115,7 @@ public class TileLoggerService {
 
 
     public void showHistory(@Nullable Player caller, PlayerDescriptor target, long size) {
-        var locale = caller == null ? bundle.getDefaultLocale() : bundle.locale(caller);
+        var locale = resolveLocale(caller);
 
         StringBuilder str = new StringBuilder();
         str.append(bundle.format(locale, "tilelogger-history-player", args(
@@ -132,7 +133,7 @@ public class TileLoggerService {
     }
 
     public void showHistory(@Nullable Player caller, short x, short y, long size) {
-        var locale = caller == null ? bundle.getDefaultLocale() : bundle.locale(caller);
+        var locale = resolveLocale(caller);
 
         StringBuilder str = new StringBuilder();
         str.append(bundle.format(locale, "tilelogger-history-tile", args(
@@ -160,11 +161,12 @@ public class TileLoggerService {
 
         int finalCount = count;
         Groups.player.each(p -> {
+            var locale = resolveLocale(p);
             String callerName = caller == null
-                    ? bundle.format(bundle.locale(p), "tilelogger-server", args())
+                    ? bundle.format(locale, "tilelogger-server", args())
                     : caller.coloredName();
 
-            p.sendMessage(bundle.format(bundle.locale(p), "tilelogger-rollback-broadcast", args(
+            p.sendMessage(bundle.format(locale, "tilelogger-rollback-broadcast", args(
                     "caller", callerName,
                     "target", target.toString(),
                     "count", finalCount
@@ -229,7 +231,7 @@ public class TileLoggerService {
     }
 
     public String getMemoryUsage(@Nullable Player viewer) {
-        var locale = viewer == null ? bundle.getDefaultLocale() : bundle.locale(viewer);
+        var locale = resolveLocale(viewer);
 
         Runtime runtime = Runtime.getRuntime();
         return bundle.format(locale, "tilelogger-memory", args(
@@ -282,6 +284,19 @@ public class TileLoggerService {
 
     private String getCurrentTimeFormatted() {
         return LocalTime.MIN.plusSeconds(TileLogger.duration()).format(DateTimeFormatter.ISO_LOCAL_TIME);
+    }
+
+    private java.util.Locale resolveLocale(@Nullable Player player) {
+        if (player == null) {
+            return bundle.getDefaultLocale();
+        }
+
+        Session session = playerSessionService.get(player.uuid());
+        if (session != null) {
+            return session.locale().localizer().locale();
+        }
+
+        return bundle.locale(player);
     }
 
     private void appendStateLine(StringBuilder str, TileState state) {

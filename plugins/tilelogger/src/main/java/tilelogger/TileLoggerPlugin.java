@@ -2,10 +2,10 @@ package tilelogger;
 
 import arc.util.Log;
 import io.avaje.inject.BeanScope;
+import com.ospx.flubundle.Bundle;
 import mindustry.mod.Plugin;
 import org.xcore.plugin.XcorePlugin;
 import org.xcore.plugin.cloud.CloudService;
-import org.xcore.plugin.localization.BundleService;
 import tilelogger.command.HistoryController;
 import tilelogger.command.RollbackController;
 import tilelogger.command.TileLoggerController;
@@ -28,8 +28,8 @@ public class TileLoggerPlugin extends Plugin {
                 .modules(new TileLoggerModule())
                 .build();
 
-        var bundleService = scope.get(BundleService.class);
-        bundleService.getBundle().addSource(getClass());
+        var bundle = scope.get(Bundle.class);
+        bundle.addSource(getClass());
 
         var cloudService = scope.get(CloudService.class);
 
