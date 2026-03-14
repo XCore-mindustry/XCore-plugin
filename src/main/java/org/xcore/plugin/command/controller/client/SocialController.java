@@ -166,16 +166,16 @@ public class SocialController implements CloudClientController {
         String input = language.toLowerCase();
 
         if (input.equals("off")) {
-            sessionService.updateTranslatorLanguage(session, "off");
+            session.updateTranslatorLanguage("off");
             local.send("commands-tr-off", args());
             return;
         }
 
         if (input.equals("auto")) {
             var lang = findTranslatorLanguage(session.player.locale);
-            sessionService.updateTranslatorLanguage(session, (lang == null) ? "en" : lang);
+            session.updateTranslatorLanguage((lang == null) ? "en" : lang);
         } else {
-            sessionService.updateTranslatorLanguage(session, input);
+            session.updateTranslatorLanguage(input);
         }
 
         String langName = translatorLanguagesProvider.getLanguages().get(data.translatorLanguage);

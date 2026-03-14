@@ -37,6 +37,22 @@ public class Localization {
         this(bundle, (Locale) null);
     }
 
+    public Bundle bundle() {
+        return bundle;
+    }
+
+    public Localizer localizer() {
+        return localizer;
+    }
+
+    public BundleContext context() {
+        return Objects.requireNonNull(context, "This localization is not bound to a player context");
+    }
+
+    public BundleContext contextOrNull() {
+        return context;
+    }
+
     public Locale getLocale() {
         return localizer.locale();
     }
@@ -81,46 +97,13 @@ public class Localization {
         }
     }
 
-    public void infoMessage(String key, Map<String, Object> args) {
-        if (session != null) {
-            context.infoMessage(key, args);
-        } else {
-            bundle.infoMessage(key, args);
-        }
-    }
-
-    public void announce(String key, Map<String, Object> args) {
-        if (session != null) {
-            context.announce(key, args);
-        } else {
-            bundle.announce(key, args);
-        }
-    }
-
-    public void toast(int icon, String key, Map<String, Object> args) {
-        if (session != null) {
-            context.toast(icon, key, args);
-        } else {
-            bundle.toast(icon, key, args);
-        }
-    }
-
-    public void setHud(String key, Map<String, Object> args) {
-        if (session != null) {
-            context.setHud(key, args);
-        } else {
-            bundle.setHud(key, args);
-        }
-    }
-
     public Localization setLocale(Locale locale) {
         if (session == null) {return this;}
 
         Locale resolved = bundle.resolveLocale(locale);
         String languageCode = resolved.toString();
         if (Objects.equals(languageCode, session.data.language)) return this;
-        session.playerDataRepository.updateLanguage(session.data.uuid, languageCode);
-        session.data.language = languageCode;
+        session.updateLanguage(languageCode);
         return this;
     }
 
@@ -128,8 +111,7 @@ public class Localization {
         if (session == null) {return this;}
 
         if (Objects.equals(language, session.data.language)) return this;
-        session.playerDataRepository.updateLanguage(session.data.uuid, language);
-        session.data.language = language;
+        session.updateLanguage(language);
         return this;
     }
 
@@ -137,8 +119,7 @@ public class Localization {
         if (session == null) {return this;}
 
         if (Objects.equals("auto", session.data.language)) return this;
-        session.playerDataRepository.updateLanguage(session.data.uuid, "auto");
-        session.data.language = "auto";
+        session.updateLanguage("auto");
         return this;
     }
 

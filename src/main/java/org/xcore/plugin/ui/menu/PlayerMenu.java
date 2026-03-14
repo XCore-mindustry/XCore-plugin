@@ -458,6 +458,12 @@ public class PlayerMenu extends Menu {
     }
 
     private void updateLanguage(PlayerData targetData, String language) {
+        Session targetSession = sessionService.get(targetData.uuid);
+        if (targetSession != null) {
+            targetSession.updateLanguage(language);
+            return;
+        }
+
         updatePlayerData(targetData,
                 data -> data.language = language,
                 data -> playerDataRepository.updateLanguage(data.uuid, language),
@@ -467,6 +473,12 @@ public class PlayerMenu extends Menu {
     }
 
     private void updateTranslatorLanguage(PlayerData targetData, String language) {
+        Session targetSession = sessionService.get(targetData.uuid);
+        if (targetSession != null) {
+            targetSession.updateTranslatorLanguage(language);
+            return;
+        }
+
         updatePlayerData(targetData,
                 data -> data.translatorLanguage = language,
                 data -> playerDataRepository.updateTranslatorLanguage(data.uuid, language),

@@ -58,7 +58,7 @@ public class XCoreSender {
         if (isPlayer()) {
             var session = sessionService.get().get(player());
             if (session != null) {
-                return session.locale().getLocale();
+                return session.locale().localizer().locale();
             }
             return bundle.locale(player());
         }

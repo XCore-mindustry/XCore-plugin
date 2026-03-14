@@ -242,18 +242,6 @@ public class SessionService {
         return playerDataRepository.updateAdminStatus(session.data.uuid, admin, session.data.adminSource);
     }
 
-    public boolean updateLanguage(Session session, String language) {
-        if (!hasData(session)) return false;
-        session.data.language = language;
-        return playerDataRepository.updateLanguage(session.data.uuid, language);
-    }
-
-    public boolean updateTranslatorLanguage(Session session, String language) {
-        if (!hasData(session)) return false;
-        session.data.translatorLanguage = language;
-        return playerDataRepository.updateTranslatorLanguage(session.data.uuid, language);
-    }
-
     public boolean updateLeaderboard(Session session, boolean leaderboard) {
         if (!hasData(session)) return false;
         session.data.leaderboard = leaderboard;

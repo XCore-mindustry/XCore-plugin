@@ -145,6 +145,18 @@ public class Session {
         sortStatus.clear();
     }
 
+    public boolean updateLanguage(String language) {
+        String normalized = language == null || language.isBlank() ? "auto" : language;
+        data.language = normalized;
+        return playerDataRepository.updateLanguage(data.uuid, normalized);
+    }
+
+    public boolean updateTranslatorLanguage(String language) {
+        String normalized = language == null || language.isBlank() ? "off" : language;
+        data.translatorLanguage = normalized;
+        return playerDataRepository.updateTranslatorLanguage(data.uuid, normalized);
+    }
+
     public void setNextStatus(String key) {
         StatusEnum current = sortStatus.getOrDefault(key, StatusEnum.Neutral);
         StatusEnum next;
