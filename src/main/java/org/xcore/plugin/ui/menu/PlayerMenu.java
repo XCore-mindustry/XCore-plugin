@@ -24,6 +24,7 @@ import org.xcore.plugin.session.SessionService;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -182,13 +183,19 @@ public class PlayerMenu extends Menu {
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid).clear();
         if (session == null || session.data == null) return;
-        int totalPlayers = (int) playerDataRepository.count(session.sortStatus);
+
+        List<Session> onlinePlayers = getFilteredOnlinePlayers(session);
+        int totalPlayers = onlinePlayers.size();
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(totalPlayers, perPage);
+        int totalPages = Math.max(1, pagination.totalPages());
 
-        int validPage = pagination.clampPage(page);
+        int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(page);
         int skip = (validPage - 1) * perPage;
-        List<PlayerData> players = playerDataRepository.findPage(skip, perPage, session.sortStatus);
+        List<Session> players = onlinePlayers.stream()
+                .skip(skip)
+                .limit(perPage)
+                .toList();
 
         String menuContent;
         if (totalPlayers == 0) {
@@ -196,7 +203,7 @@ public class PlayerMenu extends Menu {
         } else {
             menuContent = session.locale().t("player-menu-players-content", args(
                 "page", validPage,
-                "total", pagination.totalPages()
+                "total", totalPages
             ));
         }
 
@@ -208,16 +215,52 @@ public class PlayerMenu extends Menu {
 
                 .start()
                     .ifAddLocal(validPage > 1, "previous", () -> players(uuid, validPage - 1))
-                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> players(uuid, validPage + 1))
+                    .ifAddLocal(validPage < totalPages, "next", () -> players(uuid, validPage + 1))
                 .end()
 
-                .addForEach(players, (b, pData) -> b.addRow(pData.nickname, () -> {
+                .addForEach(players, (b, onlinePlayer) -> b.addRow(session.locale().t("player-menu-players-row", args(
+                        "nickname", playerDisplayService.resolveBaseName(onlinePlayer.data, onlinePlayer.player),
+                        "pid", onlinePlayer.data.pid
+                )), () -> {
                     session.pushHistory(() -> players(uuid, validPage));
-                    player(uuid, pData);
+                    player(uuid, onlinePlayer.data);
                 }))
 
                 .addNavigationRow()
                 .show();
+    }
+
+    private List<Session> getFilteredOnlinePlayers(Session viewerSession) {
+        return streamCachedPlayers()
+                .filter(onlineSession -> onlineSession != null && onlineSession.data != null && onlineSession.player != null)
+                .filter(onlineSession -> matchesAdminFilter(viewerSession, onlineSession))
+                .sorted(Comparator
+                        .comparing((Session onlineSession) -> playerDisplayService.resolveBaseName(onlineSession.data, onlineSession.player), String.CASE_INSENSITIVE_ORDER)
+                        .thenComparingInt(onlineSession -> onlineSession.data.pid))
+                .toList();
+    }
+
+    private java.util.stream.Stream<Session> streamCachedPlayers() {
+        List<Session> cachedPlayers = new ArrayList<>();
+        for (Session cachedPlayer : sessionService.getAllCached()) {
+            cachedPlayers.add(cachedPlayer);
+        }
+        return cachedPlayers.stream();
+    }
+
+    private boolean matchesAdminFilter(Session viewerSession, Session onlineSession) {
+        var adminFilter = viewerSession.sortStatus.get("admin");
+        boolean isAdmin = onlineSession.player.admin || onlineSession.data.admin;
+
+        if (adminFilter == null) {
+            return true;
+        }
+
+        return switch (adminFilter) {
+            case Active -> isAdmin;
+            case Inactive -> !isAdmin;
+            case Neutral -> true;
+        };
     }
 
     public void settings(String uuid, PlayerData targetData) {

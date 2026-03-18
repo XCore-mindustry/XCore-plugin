@@ -355,10 +355,11 @@ player-menu-player-content =
     { "" }[accent]■ Combat Efficiency[]
     { "" }[gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
     { "" }[gray]Units (Prod/Kills): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
-player-menu-players = Players list
-player-menu-players-title = { "[" }orange]{ -xcore } — Players List
+player-menu-players = Online players
+player-menu-players-title = { "[" }orange]{ -xcore } — Online players
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
-player-menu-players-empty = No players found
+player-menu-players-empty = No online players found
+player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Settings
 player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
 player-menu-settings-content =

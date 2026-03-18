@@ -356,10 +356,11 @@ player-menu-player-content =
     { "" }[accent]■ Боевая эффективность[]
     { "" }[gray]Блоки (Стр/Разб/Уничт): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
     { "" }[gray]Юниты (Созд/Убито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
-player-menu-players = Список игроков
-player-menu-players-title = { "[" }orange]{ -xcore } — Список игроков
+player-menu-players = Онлайн игроки
+player-menu-players-title = { "[" }orange]{ -xcore } — Онлайн игроки
 player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
-player-menu-players-empty = Игроки не найдены
+player-menu-players-empty = Онлайн игроков не найдено
+player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Настройки
 player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки игрока
 player-menu-settings-content =
