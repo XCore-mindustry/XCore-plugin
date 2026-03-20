@@ -1,10 +1,24 @@
-name: Build
+name: Build And Snapshot Publish
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  buildJar:
+  build:
     runs-on: ubuntu-latest
+    env:
+      XCORE_USERNAME: ${{ secrets.XCORE_USERNAME }}
+      XCORE_PASSWORD: ${{ secrets.XCORE_PASSWORD }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -14,27 +28,35 @@ jobs:
       - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '25-ea'
-
-      - name: Cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: previous-version.txt
-          key: previous-version
+          distribution: temurin
+          java-version: '25'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build
-        run: |
-          chmod +x gradlew
-          ./gradlew test jar
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Resolve snapshot version
+        if: github.event_name != 'pull_request'
+        run: echo "XCORE_PUBLISH_VERSION=$(./gradlew getProjectVersion -q)-SNAPSHOT" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
+        run: ./gradlew test shadowJar
+
+      - name: Build, test and publish snapshot
+        if: github.event_name != 'pull_request' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
+        run: ./gradlew test publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: ${{ secrets.XCORE_PASSWORD }}
 
       - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
+          name: build-libs
           path: build/libs/
 
       - name: Upload test reports
@@ -45,18 +67,3 @@ jobs:
           path: |
             build/reports/tests/test/
             build/test-results/test/
-
-      - name: Obtain versions
-        run: |
-          echo "PROJECT_VERSION=$(./gradlew getProjectVersion -q)" >> $GITHUB_ENV
-          echo "PREVIOUS_VERSION=$(cat previous-version.txt 2>/dev/null || echo '')" >> $GITHUB_ENV
-
-      # - name: Publish to XCore
-      #   if: ${{ steps.cache.outputs.cache-hit != 'true' || env.PROJECT_VERSION != env.PREVIOUS_VERSION }}
-      #   run: ./gradlew publish
-      #   env:
-      #     ORG_GRADLE_PROJECT_xcoreRepositoryUsername: ${{ secrets.MAVEN_USERNAME }}
-      #     ORG_GRADLE_PROJECT_xcoreRepositoryPassword: ${{ secrets.MAVEN_PASSWORD }}
-
-      - name: Cache version
-        run: echo $PROJECT_VERSION > previous-version.txt

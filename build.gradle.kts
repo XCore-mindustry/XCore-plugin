@@ -5,15 +5,21 @@ import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.credentials.PasswordCredentials
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.authentication.http.BasicAuthentication
 
 plugins {
     java
+    `maven-publish`
     alias(libs.plugins.toxopid)
     alias(libs.plugins.shadow)
 }
 
 group = "org.xcore.plugin"
-version = "3.1.8"
+val baseVersion = "3.1.8"
+version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
+val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 val mindustryVersion = libs.versions.mindustry.get()
 
 java {
@@ -37,6 +43,11 @@ val metadata = ModMetadata(
     minGameVersion = mindustryVersion,
     mainClass = "${project.group}.XcorePlugin"
 )
+
+val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
+    .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
+    .orElse("https://maven.x-core.org/releases")
 
 repositories {
     mavenCentral()
@@ -112,9 +123,51 @@ tasks.named<ShadowJar>("shadowJar") {
 
 tasks.register<ShadowJar>("shadowJarRelease") {
     applyCommonSettings()
-    archiveClassifier.set("release")
+    destinationDirectory.set(layout.buildDirectory.dir("libs/release"))
     from(sourceSets.main.get().output)
     configurations = listOf(project.configurations.runtimeClasspath.get())
+}
+
+val publishJarTask = if (isSnapshotVersion) {
+    tasks.named<ShadowJar>("shadowJar")
+} else {
+    tasks.named<ShadowJar>("shadowJarRelease")
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "xcoreRepositorySnapshots"
+            url = uri(xcoreSnapshotsRepositoryUrl.get())
+            credentials(PasswordCredentials::class)
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+        }
+
+        maven {
+            name = "xcoreRepositoryReleases"
+            url = uri(xcoreReleasesRepositoryUrl.get())
+            credentials(PasswordCredentials::class)
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+        }
+    }
+
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = project.group.toString()
+            artifactId = project.name
+            version = project.version.toString()
+            artifact(publishJarTask)
+
+            pom {
+                name.set("XCore-plugin")
+                description.set("The main plugin for XCore servers.")
+            }
+        }
+    }
 }
 
 tasks.register("printArtifacts") {

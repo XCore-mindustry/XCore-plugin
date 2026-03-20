@@ -23,8 +23,12 @@ Multifunctional plugin for Mindustry server.
 4. Copy the resulting `.jar` file from `build/libs/` to your Mindustry server's `config/mods` folder.
 5. Configure your MongoDB connection in `config/mods/XCore/servers.json`.
 
-### Localization
-We encourage you to localize our plugin into any language. We use Weblate for translation management. Please visit [our localization portal](https://xcore.eradication.fun/) to contribute.
+### Maven Publishing
+- GitHub Actions publishes snapshots to `https://maven.x-core.org/snapshots` on every non-PR push.
+- GitHub Actions publishes releases to `https://maven.x-core.org/releases` when a GitHub Release is published.
+- Gradle repository names follow the Reposilite pattern: `xcoreRepositorySnapshots` and `xcoreRepositoryReleases`.
+- GitHub Actions maps `XCORE_USERNAME` and `XCORE_PASSWORD` to the matching Gradle properties for snapshots and releases.
+- Snapshot retention should be limited on the Reposilite side because GitHub Actions only uploads new `-SNAPSHOT` versions.
 
 ### License
 This project is licensed under the **MIT** License. For more details, see the [LICENSE](LICENSE.txt) file.

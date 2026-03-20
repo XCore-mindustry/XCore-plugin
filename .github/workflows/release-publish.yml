@@ -1,0 +1,57 @@
+name: Publish Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Resolve release version
+        run: echo "XCORE_PUBLISH_VERSION=$(./gradlew getProjectVersion -q)" >> "$GITHUB_ENV"
+
+      - name: Build, test and publish release
+        run: ./gradlew test publishMavenPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-libs
+          path: build/libs/
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-reports
+          path: |
+            build/reports/tests/test/
+            build/test-results/test/
