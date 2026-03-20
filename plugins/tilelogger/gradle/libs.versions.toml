@@ -2,7 +2,7 @@
 java = "25"
 mindustry = "v155.1"
 avaje = "12.3"
-cloud = "5021268676"
+cloud = "0.2.0-SNAPSHOT"
 shadow = "9.3.0"
 xcore-plugin = "3.1.8-SNAPSHOT"
 flubundle = "1.3"
@@ -13,7 +13,7 @@ mindustry-core    = { module = "com.github.Anuken.Mindustry:core", version.ref =
 
 xcore-plugin      = { module = "org.xcore.plugin:XCore-plugin", version.ref = "xcore-plugin" }
 flubundle         = { module = "com.ospx:flubundle", version.ref = "flubundle" }
-cloud-mindustry   = { module = "com.github.XCore-mindustry:cloud-mindustry", version.ref = "cloud" }
+cloud-mindustry   = { module = "org.xcore:cloud-mindustry", version.ref = "cloud" }
 
 avaje-inject      = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
 avaje-inject-gen  = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
