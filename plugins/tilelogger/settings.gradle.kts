@@ -13,14 +13,9 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
         maven("https://www.jitpack.io")
+        maven("https://maven.x-core.org/releases")
+        maven("https://maven.x-core.org/snapshots")
     }
 }
 
 include("native")
-
-includeBuild("XCore-plugin") {
-    dependencySubstitution {
-        substitute(module("org.xcore:xcore-plugin")).using(project(":"))
-        substitute(module("org.xcore:flubundle")).using(project(":flubundle"))
-    }
-}

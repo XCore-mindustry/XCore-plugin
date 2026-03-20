@@ -159,3 +159,5 @@ android/libs/
 
 /bin/
 /xcore-plugin/
+/XCore-plugin/
+/native/build/
