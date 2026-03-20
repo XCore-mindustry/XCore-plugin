@@ -5,7 +5,7 @@ Java 25 is required.
 ### 1. Add gradle repository
 ```groovy
 repositories {
-    maven { url "https://n1.x-core.fun/maven/releases"}
+    maven { url "https://maven.x-core.org/releases" }
 }
 ```
 ### 2. Add dependency
@@ -14,6 +14,12 @@ dependencies {
     implementation "com.ospx:flubundle:1.3"
 }
 ```
+
+### Publishing
+- Snapshots are published to `https://maven.x-core.org/snapshots` on every non-PR push.
+- Releases are published to `https://maven.x-core.org/releases` when a GitHub Release is published.
+- Gradle repository names are `xcoreRepositorySnapshots` and `xcoreRepositoryReleases`.
+
 ## Usage
 ```java
 Bundle bundle = new Bundle();// or Bundle.INSTANCE for global usage
