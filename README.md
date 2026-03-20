@@ -8,6 +8,7 @@ Multifunctional plugin for Mindustry server.
 - Java 25+
 - MongoDB 6.0+
 - Mindustry v155.4+ (or compatible forks)
+- FluBundle `1.3+` from `https://maven.x-core.org/releases`
 
 ### Installation
 1. Install **Java SDK 25** (or newer).

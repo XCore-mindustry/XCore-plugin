@@ -54,13 +54,15 @@ repositories {
     anukeXpdustry()
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     maven(url = "https://www.jitpack.io")
+    maven(url = xcoreReleasesRepositoryUrl)
+    maven(url = xcoreSnapshotsRepositoryUrl)
 }
 
 dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.arcCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
-    implementation(project(":flubundle"))
+    implementation(libs.flubundle)
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)
     implementation(libs.gson)
