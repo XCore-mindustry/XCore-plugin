@@ -1,9 +1,18 @@
+import org.gradle.api.credentials.PasswordCredentials
+import org.gradle.authentication.http.BasicAuthentication
+
 plugins {
     `java-library`
     `maven-publish`
 }
 
 group = "org.xcore"
+
+val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
+    .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
+    .orElse("https://maven.x-core.org/releases")
+val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 
 java {
     toolchain {
@@ -33,6 +42,26 @@ tasks.named<Test>("test") {
 }
 
 publishing {
+    repositories {
+        maven {
+            name = "xcoreRepositorySnapshots"
+            url = uri(xcoreSnapshotsRepositoryUrl.get())
+            credentials(PasswordCredentials::class)
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+        }
+
+        maven {
+            name = "xcoreRepositoryReleases"
+            url = uri(xcoreReleasesRepositoryUrl.get())
+            credentials(PasswordCredentials::class)
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+        }
+    }
+
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
@@ -41,5 +70,11 @@ publishing {
             artifactId = "cloud-mindustry"
             version = version
         }
+    }
+}
+
+tasks.register("getProjectVersion") {
+    doLast {
+        println(project.version.toString())
     }
 }

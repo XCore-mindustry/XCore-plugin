@@ -1,6 +1,5 @@
 # cloud-mindustry
 
-[![Release](https://jitpack.io/v/XCore-mindustry/cloud-mindustry.svg)](https://jitpack.io/#XCore-mindustry/cloud-mindustry)
 [![Build](https://github.com/XCore-mindustry/cloud-mindustry/actions/workflows/build.yml/badge.svg)](https://github.com/XCore-mindustry/cloud-mindustry/actions/workflows/build.yml)
 
 This is a standalone implementation of the [Incendo Cloud v2](https://github.com/Incendo/cloud) bridge for Mindustry.
@@ -18,18 +17,19 @@ The project is based on the integration found in [Xpdustry's Distributor](https:
 
 ### Gradle (Kotlin DSL)
 
-1. Add JitPack to your repositories:
+1. Add the XCore Maven repositories:
 ```kotlin
 repositories {
     mavenCentral()
-    maven("https://jitpack.io")
+    maven("https://maven.x-core.org/releases")
+    maven("https://maven.x-core.org/snapshots")
 }
 ```
 
 2. Add the library:
 ```kotlin
 dependencies {
-    implementation("com.github.XCore-mindustry:cloud-mindustry:0.1.0")
+    implementation("org.xcore:cloud-mindustry:0.2.0")
 }
 ```
 

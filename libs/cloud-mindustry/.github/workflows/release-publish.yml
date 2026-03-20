@@ -1,0 +1,49 @@
+name: Publish Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        if: runner.os != 'Windows'
+        run: chmod +x gradlew
+
+      - name: Resolve release version
+        run: echo "XCORE_PUBLISH_VERSION=$(./gradlew :lib:getProjectVersion -q)" >> "$GITHUB_ENV"
+
+      - name: Build, test and publish release
+        run: ./gradlew build :lib:publishMavenPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-mindustry-release-libs
+          path: |
+            lib/build/libs/
+            example-plugin/build/libs/
