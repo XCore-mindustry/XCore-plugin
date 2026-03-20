@@ -31,7 +31,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Resolve release version
-        run: echo "XCORE_PUBLISH_VERSION=$(./gradlew :lib:getProjectVersion -q)" >> "$GITHUB_ENV"
+        run: |
+          VERSION=$(./gradlew :lib:getProjectVersion -q | tail -n 1)
+          echo "XCORE_PUBLISH_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Build, test and publish release
         run: ./gradlew build :lib:publishMavenPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"

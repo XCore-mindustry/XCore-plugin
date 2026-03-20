@@ -38,7 +38,9 @@ jobs:
 
       - name: Resolve snapshot version
         if: github.event_name != 'pull_request'
-        run: echo "XCORE_PUBLISH_VERSION=$(./gradlew :lib:getProjectVersion -q)-SNAPSHOT" >> "$GITHUB_ENV"
+        run: |
+          VERSION=$(./gradlew :lib:getProjectVersion -q | tail -n 1)
+          echo "XCORE_PUBLISH_VERSION=${VERSION}-SNAPSHOT" >> "$GITHUB_ENV"
 
       - name: Build and test
         if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
