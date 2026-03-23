@@ -241,11 +241,7 @@ public class PlayerMenu extends Menu {
     }
 
     private java.util.stream.Stream<Session> streamCachedPlayers() {
-        List<Session> cachedPlayers = new ArrayList<>();
-        for (Session cachedPlayer : sessionService.getAllCached()) {
-            cachedPlayers.add(cachedPlayer);
-        }
-        return cachedPlayers.stream();
+        return sessionService.streamCached();
     }
 
     private boolean matchesAdminFilter(Session viewerSession, Session onlineSession) {

@@ -6,12 +6,18 @@ import arc.struct.ObjectMap;
 import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
+import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @Singleton
 public class SessionService {
@@ -216,6 +222,29 @@ public class SessionService {
         return sessionCache.values();
     }
 
+    public Stream<Session> streamCached() {
+        return StreamSupport.stream(getAllCached().spliterator(), false);
+    }
+
+    public List<Session> findByTeam(Team team) {
+        if (team == null) {
+            return List.of();
+        }
+
+        return streamCached()
+                .filter(this::hasOnlinePlayer)
+                .filter(session -> session.player.team() == team)
+                .toList();
+    }
+
+    public void forEachOnline(Consumer<Session> consumer) {
+        Objects.requireNonNull(consumer, "consumer");
+
+        streamCached()
+                .filter(this::hasOnlinePlayer)
+                .forEach(consumer);
+    }
+
     public boolean incrementPlayTime(Session session, int delta) {
         if (!hasData(session)) return false;
         session.data.totalPlayTime += delta;
@@ -308,5 +337,17 @@ public class SessionService {
             if (session == null || session.data == null) continue;
             session.locale().send(key, args);
         }
+    }
+
+    public void broadcastToTeam(Team team, String key, Map<String, Object> args) {
+        if (team == null) {
+            return;
+        }
+
+        findByTeam(team).forEach(session -> session.locale().send(key, args));
+    }
+
+    private boolean hasOnlinePlayer(Session session) {
+        return hasData(session) && session.player != null;
     }
 }

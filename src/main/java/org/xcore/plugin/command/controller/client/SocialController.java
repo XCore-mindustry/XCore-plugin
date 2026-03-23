@@ -3,7 +3,6 @@ package org.xcore.plugin.command.controller.client;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
-import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
@@ -64,15 +63,10 @@ public class SocialController implements CloudClientController {
     public void teamChat(XCoreSender sender, @Argument("message") @Greedy String message) {
         Player author = sender.player();
 
-        Groups.player.each(
-                other -> other.team() == author.team(),
-                p -> {
-                    Session session = sessionService.get(p.uuid());
-                    if (session == null || session.data == null) return;
-                    String formatted = chatFormatService.formatTeamChat(author, session.locale(), message);
-                    p.sendMessage(formatted, author);
-                }
-        );
+        sessionService.findByTeam(author.team()).forEach(session -> {
+            String formatted = chatFormatService.formatTeamChat(author, session.locale(), message);
+            session.player.sendMessage(formatted, author);
+        });
     }
 
     @RequiresMuteCheck
