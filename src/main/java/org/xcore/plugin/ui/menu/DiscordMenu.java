@@ -93,6 +93,7 @@ public class DiscordMenu extends Menu {
                         "discordUrl", globalConfig.discordUrl
                 ))
                 .addLocal("discord-menu-open", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
+                .addLocal("discord-link-menu-copy", () -> Call.copyToClipboard(session.player.con, result.code()))
                 .addLocal("discord-link-menu-refresh", () -> linking(uuid, false))
                 .end()
                 .addLocal("discord-link-menu-regenerate", () -> linking(uuid, true))

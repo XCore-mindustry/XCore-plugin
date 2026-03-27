@@ -121,6 +121,7 @@ discord-link-menu-content =
     { "" }[white]Истекает через: [accent]{ $expireMinutes }[] мин
     { "" }[white]Discord: [accent]{ $discordUrl }[]
 discord-link-menu-refresh = Обновить код
+discord-link-menu-copy = Скопировать код
 discord-link-menu-regenerate = Сгенерировать новый код
 discord-link-menu-status = Назад в меню Discord
 welcome =

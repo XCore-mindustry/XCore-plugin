@@ -137,6 +137,7 @@ discord-link-menu-content =
     { "" }[white]Скончыцца праз: [accent]{ $expireMinutes }[] хв
     { "" }[white]Discord: [accent]{ $discordUrl }[]
 discord-link-menu-refresh = Абнавіць код
+discord-link-menu-copy = Скапіяваць код
 discord-link-menu-regenerate = Згенераваць новы код
 discord-link-menu-status = Назад у меню Discord
 none = Няма

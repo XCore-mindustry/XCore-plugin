@@ -121,6 +121,7 @@ discord-link-menu-content =
     { "" }[white]Expires in: [accent]{ $expireMinutes }[] min
     { "" }[white]Discord: [accent]{ $discordUrl }[]
 discord-link-menu-refresh = Refresh code
+discord-link-menu-copy = Copy code
 discord-link-menu-regenerate = Generate new code
 discord-link-menu-status = Back to Discord menu
 welcome =

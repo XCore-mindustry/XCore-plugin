@@ -68,6 +68,7 @@ discord-link-menu-content =
     { "" }[white]Спливає через: [accent]{ $expireMinutes }[] хв
     { "" }[white]Discord: [accent]{ $discordUrl }[]
 discord-link-menu-refresh = Оновити код
+discord-link-menu-copy = Скопіювати код
 discord-link-menu-regenerate = Згенерувати новий код
 discord-link-menu-status = Назад до меню Discord
 welcome =
