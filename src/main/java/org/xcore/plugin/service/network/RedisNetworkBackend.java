@@ -291,8 +291,14 @@ public final class RedisNetworkBackend {
         fields.put("error_message", "");
         fields.put("responded_at", String.valueOf(System.currentTimeMillis()));
         fields.put("payload_json", gson.toJson(response));
-        xaddWithTrim(commands, context.replyTo(), fields);
+
         rpcResponses.incrementAndGet();
+        try {
+            xaddWithTrim(commands, context.replyTo(), fields);
+        } catch (RuntimeException e) {
+            rpcResponses.decrementAndGet();
+            throw e;
+        }
     }
 
     public boolean supportsSubscribeType(Class<?> type) {
