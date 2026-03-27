@@ -18,6 +18,7 @@ BADGES: Final[tuple[BadgeDef, ...]] = (
     BadgeDef(id="translator", label="Translator"),
     BadgeDef(id="map-maker", label="Map Maker"),
     BadgeDef(id="contributor", label="Contributor"),
+    BadgeDef(id="bug-finder", label="Bug Finder"),
     BadgeDef(id="event-winner", label="Event Winner"),
     BadgeDef(id="veteran", label="Veteran"),
 )

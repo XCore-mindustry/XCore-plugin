@@ -41,6 +41,16 @@ async def test_autocomplete_badge_id_returns_all_grantable_badges_for_empty_quer
         "translator",
         "map-maker",
         "contributor",
+        "bug-finder",
         "event-winner",
         "veteran",
     ]
+
+
+@pytest.mark.asyncio
+async def test_autocomplete_badge_id_finds_bug_finder() -> None:
+    choices = await _autocomplete_badge_id(_Interaction(), "bug")
+
+    assert len(choices) == 1
+    assert choices[0].name == "Bug Finder (bug-finder)"
+    assert choices[0].value == "bug-finder"
