@@ -15,9 +15,12 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.model.PlayerData;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static arc.util.Strings.stripColors;
 import static com.ospx.flubundle.Bundle.args;
@@ -108,6 +111,77 @@ public class VoteKick extends VoteSession {
         }
     }
 
+    private SocketEvents.VoteKickEvent buildVoteKickEvent(String status) {
+        var targetData = sessionService.getOrLoadFromDb(target.uuid());
+        var starterData = sessionService.getOrLoadFromDb(starter.uuid());
+
+        var votesFor = new ArrayList<SocketEvents.VoteKickParticipant>();
+        var votesAgainst = new ArrayList<SocketEvents.VoteKickParticipant>();
+
+        sessionService.forEachOnline(session -> {
+            var onlinePlayer = session.player;
+            if (onlinePlayer == null || onlinePlayer.team() != starter.team()) {
+                return;
+            }
+
+            var participant = toParticipant(session.data);
+            int vote = voted.get(onlinePlayer.id);
+            if (vote > 0) {
+                votesFor.add(participant);
+            } else if (vote < 0) {
+                votesAgainst.add(participant);
+            }
+        });
+
+        return new SocketEvents.VoteKickEvent(
+                safePlayerName(targetData, target),
+                safePid(targetData),
+                target.uuid(),
+                safePlayerName(starterData, starter),
+                safePid(starterData),
+                safeDiscordId(starterData),
+                reason,
+                List.copyOf(votesFor),
+                List.copyOf(votesAgainst),
+                status,
+                config.server,
+                System.currentTimeMillis()
+        );
+    }
+
+    private SocketEvents.VoteKickParticipant toParticipant(PlayerData data) {
+        return new SocketEvents.VoteKickParticipant(
+                safeNickname(data),
+                safePid(data),
+                safeDiscordId(data)
+        );
+    }
+
+    private static String safePlayerName(PlayerData data, Player fallback) {
+        if (data != null && data.nickname != null && !data.nickname.isBlank()) {
+            return data.nickname;
+        }
+        return fallback == null ? "Unknown" : fallback.plainName();
+    }
+
+    private static String safeNickname(PlayerData data) {
+        if (data != null && data.nickname != null && !data.nickname.isBlank()) {
+            return data.nickname;
+        }
+        return "Unknown";
+    }
+
+    private static Integer safePid(PlayerData data) {
+        return data == null || data.pid <= 0 ? null : data.pid;
+    }
+
+    private static String safeDiscordId(PlayerData data) {
+        if (data == null || data.discordId == null || data.discordId.isBlank()) {
+            return null;
+        }
+        return data.discordId;
+    }
+
     @Override
     public void left(Player player) {
         if (voted.remove(player.id) != 0) {
@@ -132,6 +206,7 @@ public class VoteKick extends VoteSession {
         target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
 
         if (network != null) {
+            network.post(buildVoteKickEvent("success"));
             network.post(new SocketEvents.ServerActionEvent(
                     systemLocal.format("votekick-success", bundleArgs), config.server));
         }

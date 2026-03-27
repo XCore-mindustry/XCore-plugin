@@ -14,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.Punishment;
 
 import java.time.Instant;
 import java.util.List;
@@ -164,14 +165,9 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(BanData.builder()
-                .uuid("u-1")
-                .ip("1.2.3.4")
-                .name("player")
-                .adminName("admin")
-                .reason("rule")
-                .expireDate(Instant.now().plusSeconds(3600))
-                .build());
+        BanData banData = punishment(new BanData(), "u-1", "player");
+        banData.ip = "1.2.3.4";
+        requesterBackend.send(banData);
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
@@ -185,6 +181,46 @@ class RedisNetworkBackendIntegrationTest {
             var last = messages.get(messages.size() - 1).getBody();
             assertThat(last.get("event_type")).isEqualTo("moderation.ban");
             assertThat(last.get("payload_json")).contains("expireDate");
+        }
+    }
+
+    @Test
+    @DisplayName("send serializes vote-kick event to moderation votekick stream")
+    void sendSerializesVoteKickEvent() {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        requesterBackend.send(new SocketEvents.VoteKickEvent(
+                "Target",
+                42,
+                "uuid-target",
+                "Starter",
+                7,
+                "123456",
+                "griefing",
+                List.of(new SocketEvents.VoteKickParticipant("Starter", 7, "123456")),
+                List.of(new SocketEvents.VoteKickParticipant("Voter2", 8, "654321")),
+                "started",
+                "alpha",
+                123456789L
+        ));
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
+
+        try (RedisClient client = RedisClient.create(config.redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            List<StreamMessage<String, String>> messages = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:evt:moderation:votekick", "0-0")
+            );
+
+            assertThat(messages).isNotEmpty();
+            var last = messages.get(messages.size() - 1).getBody();
+            assertThat(last.get("event_type")).isEqualTo("moderation.votekick");
+            assertThat(last.get("payload_json")).contains("Target");
+            assertThat(last.get("payload_json")).contains("votesFor");
+            assertThat(last.get("payload_json")).contains("votesAgainst");
+            assertThat(last.get("payload_json")).doesNotContain("participants");
         }
     }
 
@@ -258,17 +294,17 @@ class RedisNetworkBackendIntegrationTest {
                 serverBackend.subscribe(SocketEvents.MapsListRequest.class,
                         request -> serverBackend.respond(
                                 request,
-                                new SocketEvents.MapsListResponse(new SocketEvents.MapEntry[]{
-                                        new SocketEvents.MapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
-                                        new SocketEvents.MapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
-                                })
+                                mapsListResponse(
+                                        mapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
+                                        mapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
+                                )
                         ));
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
         AtomicReference<SocketEvents.MapsListResponse> responseRef = new AtomicReference<>();
 
-        requesterBackend.request(new SocketEvents.MapsListRequest("target"), response -> {
+        requesterBackend.request(mapsListRequest("target"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -301,22 +337,22 @@ class RedisNetworkBackendIntegrationTest {
                     listLatch.countDown();
                     serverBackend.respond(
                             request,
-                            new SocketEvents.MapsListResponse(new SocketEvents.MapEntry[]{
-                                    new SocketEvents.MapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
-                                    new SocketEvents.MapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
-                            })
+                            mapsListResponse(
+                                    mapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
+                                    mapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
+                            )
                     );
                 });
 
         Subscription<SocketEvents.MapRemoveRequest> removeSubscription =
                 serverBackend.subscribe(SocketEvents.MapRemoveRequest.class,
-                        request -> serverBackend.respond(request, new SocketEvents.MapRemoveResponse("Removed")));
+                        request -> serverBackend.respond(request, mapRemoveResponse("Removed")));
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
         AtomicReference<SocketEvents.MapRemoveResponse> responseRef = new AtomicReference<>();
 
-        requesterBackend.request(new SocketEvents.MapRemoveRequest("target", "MapX"), response -> {
+        requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -470,5 +506,57 @@ class RedisNetworkBackendIntegrationTest {
         config.redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
         config.redisReclaimEnabled = false;
         return config;
+    }
+
+    private static <T extends Punishment> T punishment(T value, String uuid, String name) {
+        value.uuid = uuid;
+        value.name = name;
+        value.adminName = "admin";
+        value.reason = "rule";
+        value.expireDate = Instant.now().plusSeconds(3600);
+        return value;
+    }
+
+    private static SocketEvents.MapsListRequest mapsListRequest(String server) {
+        SocketEvents.MapsListRequest request = new SocketEvents.MapsListRequest();
+        request.server = server;
+        return request;
+    }
+
+    private static SocketEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
+        SocketEvents.MapRemoveRequest request = new SocketEvents.MapRemoveRequest();
+        request.server = server;
+        request.fileName = fileName;
+        return request;
+    }
+
+    private static SocketEvents.MapsListResponse mapsListResponse(SocketEvents.MapEntry... entries) {
+        SocketEvents.MapsListResponse response = new SocketEvents.MapsListResponse();
+        response.maps = entries;
+        return response;
+    }
+
+    private static SocketEvents.MapRemoveResponse mapRemoveResponse(String result) {
+        SocketEvents.MapRemoveResponse response = new SocketEvents.MapRemoveResponse();
+        response.result = result;
+        return response;
+    }
+
+    private static SocketEvents.MapEntry mapEntry(
+            String name,
+            String fileName,
+            String author,
+            Integer width,
+            Integer height,
+            Long fileSizeBytes
+    ) {
+        SocketEvents.MapEntry entry = new SocketEvents.MapEntry();
+        entry.name = name;
+        entry.fileName = fileName;
+        entry.author = author;
+        entry.width = width;
+        entry.height = height;
+        entry.fileSizeBytes = fileSizeBytes;
+        return entry;
     }
 }

@@ -3,6 +3,7 @@ package org.xcore.plugin.event;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Set;
 
 public class SocketEvents {
@@ -103,6 +104,27 @@ public class SocketEvents {
             String server,
             long occurredAt
     ) {}
+
+    public record VoteKickParticipant(
+            String name,
+            Integer pid,
+            String discordId
+    ) {}
+
+    public record VoteKickEvent(
+            String targetName,
+            Integer targetPid,
+            String targetUuid,
+            String starterName,
+            Integer starterPid,
+            String starterDiscordId,
+            String reason,
+            List<VoteKickParticipant> votesFor,
+            List<VoteKickParticipant> votesAgainst,
+            String status,
+            String server,
+            long occurredAt
+    ) implements Event {}
 
     public static class ReloadPlayerDataCache {}
 
