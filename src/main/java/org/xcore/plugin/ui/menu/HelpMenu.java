@@ -40,8 +40,9 @@ public class HelpMenu extends Menu {
     }
 
     public void help(String uuid, int page) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         XCoreSender sender = session.sender;
 
         if (sender == null) {
@@ -85,7 +86,9 @@ public class HelpMenu extends Menu {
     }
 
     private void details(String uuid, UnifiedCommand cmd, int returnPage) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
+        if (session == null || session.data == null) return;
+        session.clear();
 
         String title = session.locale().t("help-command-title", args("name", cmd.name()));
         String content = buildCommandContent(session, cmd);

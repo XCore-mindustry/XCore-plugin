@@ -41,18 +41,28 @@ public class PlayerController implements CloudClientController {
 
     @Command("player|stats|player-statistics [id]")
     public void player(XCoreSender sender, @Argument("id") @Default("-1") int id) {
+        var session = sessionService.get(sender.player().uuid());
         PlayerData data = id == -1
-                ? sessionService.get(sender.player().uuid()).data
+                ? (session != null ? session.data : sessionService.getOrLoadFromDb(sender.player().uuid()))
                 : sessionService.getOrLoadFromDb(id);
+
+        if (data == null) {
+            return;
+        }
 
         menu.player(menu.getUuid(sender), data);
     }
 
     @Command("settings [id]")
     public void settings(XCoreSender sender, @Argument("id") @Default("-1") int id) {
+        var session = sessionService.get(sender.player().uuid());
         PlayerData data = id == -1
-                ? sessionService.get(sender.player().uuid()).data
+                ? (session != null ? session.data : sessionService.getOrLoadFromDb(sender.player().uuid()))
                 : sessionService.getOrLoadFromDb(id);
+
+        if (data == null) {
+            return;
+        }
 
         menu.settings(menu.getUuid(sender), data);
     }
@@ -60,11 +70,14 @@ public class PlayerController implements CloudClientController {
     @Command("observer")
     public void observer(XCoreSender sender) {
         var player = sender.player();
+        var session = sessionService.get(player.uuid());
 
         player.clearUnit();
         player.team(Team.derelict);
 
-        sessionService.get(sender.player().uuid()).locale().send("commands-spectate-success");
+        if (session != null) {
+            session.locale().send("commands-spectate-success");
+        }
     }
 
     @Permission("admin")
@@ -92,6 +105,10 @@ public class PlayerController implements CloudClientController {
     @Command("lb")
     public void leaderboard(XCoreSender sender) {
         var session = sessionService.get(sender.player().uuid());
+        if (session == null || session.data == null) {
+            return;
+        }
+
         session.data.leaderboard = !session.data.leaderboard;
 
         sender.send("commands-lb-success", args(

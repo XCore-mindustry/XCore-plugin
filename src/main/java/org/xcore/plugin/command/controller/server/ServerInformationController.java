@@ -36,8 +36,10 @@ public class ServerInformationController implements CloudServerController {
         Log.info("Online players (@):", Groups.player.size());
         Groups.player.each(p -> {
             PlayerInfo i = p.getInfo();
-            var d = sessionService.get(p.uuid()).data;
-            Log.info(" @&lm @ #@ / IP: @", i.admin ? "&r[A]&c" : "&b[P]&c", i.plainLastName(), d.pid, i.lastIP);
+            var session = sessionService.get(p.uuid());
+            var data = session != null ? session.data : sessionService.getOrLoadFromDb(p.uuid());
+            Object pid = data != null ? data.pid : "?";
+            Log.info(" @&lm @ #@ / IP: @", i.admin ? "&r[A]&c" : "&b[P]&c", i.plainLastName(), pid, i.lastIP);
         });
     }
 

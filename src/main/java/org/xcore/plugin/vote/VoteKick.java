@@ -74,13 +74,20 @@ public class VoteKick extends VoteSession {
     @Override
     public void vote(Player player, int sign) {
         super.vote(player, sign);
-        PlayerData playerData = sessionService.get(player.uuid()).data;
-        PlayerData targetData = sessionService.get(target.uuid()).data;
+        var playerSession = sessionService.get(player.uuid());
+        var targetSession = sessionService.get(target.uuid());
+        PlayerData playerData = playerSession != null ? playerSession.data : sessionService.getOrLoadFromDb(player.uuid());
+        PlayerData targetData = targetSession != null ? targetSession.data : sessionService.getOrLoadFromDb(target.uuid());
+
+        int playerPid = playerData != null ? playerData.pid : -1;
+        int targetPid = targetData != null ? targetData.pid : -1;
+        String targetNickname = targetData != null ? targetData.nickname : target.plainName();
+
         var bundleArgs = args(
                 "starter", player.coloredName(),
-                "starterId", playerData.pid,
+                "starterId", playerPid,
                 "target", target.coloredName(),
-                "targetId", targetData.pid,
+                "targetId", targetPid,
                 "reason", reason,
                 "votes", votes(),
                 "required", votesRequired());
@@ -92,7 +99,7 @@ public class VoteKick extends VoteSession {
             sessionService.getCachedAdminTools(
                     (v) -> VersionComparator.compareVersions(v, "0") >= 0,
                     data -> Call.clientPacketReliable(data.player.con, "adm_mod_votekick",
-                            targetData.pid + "," + targetData.nickname)
+                            targetPid + "," + targetNickname)
             );
         }
 

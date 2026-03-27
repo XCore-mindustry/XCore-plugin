@@ -63,8 +63,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void player(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         if (targetData == null) {
             session.locale().send("error-player-not-found");
@@ -181,8 +182,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void players(String uuid, int page) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         List<Session> onlinePlayers = getFilteredOnlinePlayers(session);
         int totalPlayers = onlinePlayers.size();
@@ -260,8 +262,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void settings(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         if (targetData == null) {
             session.locale().send("error-player-not-found");
             return;
@@ -354,8 +357,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         Seq<Locale> locales = bundle.getAvailableLocales();
         Localization local = session.locale();
 
@@ -390,8 +394,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void badges(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         if (targetData == null) {
             session.locale().send("error-player-not-found");
             return;
@@ -438,8 +443,9 @@ public class PlayerMenu extends Menu {
     }
 
     public void allBadges(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         if (targetData == null) {
             session.locale().send("error-player-not-found");
             return;

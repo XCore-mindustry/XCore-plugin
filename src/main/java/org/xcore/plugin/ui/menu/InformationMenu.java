@@ -35,8 +35,9 @@ public class InformationMenu extends Menu {
     }
 
     public void main(String uuid) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         Runnable lambda = () -> {session.pushHistory(() -> {main(uuid); }); };
         session.builder().title("menu-main-title").content("menu-main-content")
@@ -54,8 +55,9 @@ public class InformationMenu extends Menu {
     }
 
     public void information(String uuid) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         session.builder().title("commands-info-title", args("server-name", config.server))
                 .content("commands-info-text", args("version", buildInfo.getVersion()))

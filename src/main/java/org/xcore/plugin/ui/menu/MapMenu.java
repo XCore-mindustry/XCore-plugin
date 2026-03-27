@@ -45,8 +45,9 @@ public class MapMenu extends Menu {
     }
 
     public void map(String uuid, MapData m) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         Map mindustryMap = mapService.findPersistedMap(m);
 
         String last = m.playedTimes == 0
@@ -99,8 +100,9 @@ public class MapMenu extends Menu {
     }
 
     public void maps(String uuid, int page) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         Seq<Map> availableMaps = mapService.getAvailableMaps();
         var pagination = CustomGatherers.calculatePagination(availableMaps.size, globalConfig.mapsPerPage);
 
@@ -136,8 +138,9 @@ public class MapMenu extends Menu {
         String nextAuthor = next != null ? next.author : "Unknown";
 
         Groups.player.each(player -> {
-            Session session = sessionService.get(player.uuid()).clear();
+            Session session = sessionService.get(player.uuid());
             if (session == null || session.data == null) return;
+            session.clear();
 
             Boolean currentVote = session.data.mapVotes.get(current.id.toString());
             String likeButtonText = Boolean.TRUE.equals(currentVote)

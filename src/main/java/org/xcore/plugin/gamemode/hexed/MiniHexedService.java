@@ -112,7 +112,12 @@ public class MiniHexedService {
                 info("Found @ green cores.", greenCores);
             }, 5);
         });
-        Events.on(EventType.PlayerLeave.class, event -> members.get(event.player.uuid()).leave());
+        Events.on(EventType.PlayerLeave.class, event -> {
+            var member = members.get(event.player.uuid());
+            if (member != null) {
+                member.leave();
+            }
+        });
         Events.on(EventType.GameOverEvent.class, e -> winScore = 1800);
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
@@ -213,19 +218,24 @@ public class MiniHexedService {
         if (!teams.isEmpty()) {
             var winnerTeam = teams.get(0);
             var player = winnerTeam.players.first();
-            var data = sessionService.get(player.uuid()).data;
+            var winnerSession = sessionService.get(player.uuid());
+            var data = winnerSession != null ? winnerSession.data : sessionService.getOrLoadFromDb(player.uuid());
 
-            var ranked = rankings.get(data.hexedRank());
-            if (ranked != null && ranked.size > 1 ||
-                    rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
-                data.hexedPoints++;
-                if (data.hexedRank().checkNext(data.hexedPoints)) {
-                    data.hexedRank(data.hexedRank().next);
-                    data.hexedPoints = 0;
-                    playerDisplayService.refresh(player, data);
+            if (data != null) {
+                var ranked = rankings.get(data.hexedRank());
+                if (ranked != null && ranked.size > 1 ||
+                        rankings.keys().toSeq().contains(r -> data.hexedRank().ordinal() < r.ordinal())) {
+                    data.hexedPoints++;
+                    if (data.hexedRank().checkNext(data.hexedPoints)) {
+                        data.hexedRank(data.hexedRank().next);
+                        data.hexedPoints = 0;
+                        if (winnerSession != null) {
+                            playerDisplayService.refresh(player, data);
+                        }
+                    }
                 }
+                playerDataRepository.updateHexedProgress(data.uuid, data.hexedRank, data.hexedPoints);
             }
-            playerDataRepository.updateHexedProgress(data.uuid, data.hexedRank, data.hexedPoints);
         }
 
         Func<Localization, String> generateMessage = locale -> {

@@ -26,8 +26,9 @@ public class DiscordMenu extends Menu {
     }
 
     public void main(String uuid) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         var local = session.locale();
         var status = discordLinkService.status(session);
@@ -65,8 +66,9 @@ public class DiscordMenu extends Menu {
     }
 
     public void linking(String uuid, boolean regenerate) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
 
         var local = session.locale();
         var result = regenerate

@@ -23,11 +23,17 @@ public class Menu {
     }
 
     public void sender(XCoreSender sender) {
-        sessionService.get(sender.player().uuid()).sender = sender;
+        var session = sessionService.get(sender.player().uuid());
+        if (session != null) {
+            session.sender = sender;
+        }
     }
 
     public void sender(XCoreSender sender, String uuid) {
-        sessionService.get(uuid).sender = sender;
+        var session = sessionService.get(uuid);
+        if (session != null) {
+            session.sender = sender;
+        }
     }
 
     public String getUuid(Player player) {

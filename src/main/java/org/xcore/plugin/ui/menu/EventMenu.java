@@ -55,8 +55,9 @@ public class EventMenu extends Menu {
     }
 
     public void main(String uuid) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         EventData active = eventDataRepository.findActive().orElse(null);
 
         var builder = session.builder()
@@ -95,8 +96,9 @@ public class EventMenu extends Menu {
     }
 
     public void createStart(String uuid, MapData map) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         EventData draft = session.getDraft(EventData.class);
         draft.author = session.data.id;
         if (map != null) draft.map = map.id;
@@ -113,8 +115,9 @@ public class EventMenu extends Menu {
     }
 
     public void edit(String uuid) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         if (!session.hasDraft(EventData.class)) { main(uuid); return; }
 
         EventData draft = session.getDraft(EventData.class);
@@ -187,8 +190,9 @@ public class EventMenu extends Menu {
     }
 
     public void event(String uuid, EventData event) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         MapData mapData = mapDataRepository.findById(event.map);
         PlayerData authorData = playerDataRepository.findById(event.author);
 
@@ -245,8 +249,9 @@ public class EventMenu extends Menu {
     }
 
     public void events(String uuid, int page) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         int total = (int) eventDataRepository.count(session.sortStatus);
         int perPage = globalConfig.eventsPerPage;
         var pagination = CustomGatherers.calculatePagination(total, perPage);
@@ -287,8 +292,9 @@ public class EventMenu extends Menu {
     }
 
     public void mapSelection(String uuid, int page) {
-        Session session = sessionService.get(uuid).clear();
+        Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
+        session.clear();
         Seq<Map> maps = mapService.getAvailableMaps();
         var pagination = CustomGatherers.calculatePagination(maps.size, globalConfig.mapsPerPage);
 

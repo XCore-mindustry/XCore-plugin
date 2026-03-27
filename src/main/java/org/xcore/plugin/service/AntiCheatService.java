@@ -22,7 +22,8 @@ public class AntiCheatService {
     public void init() {
         Vars.netServer.admins.addActionFilter(action -> {
             if (action.type == ActionType.depositItem) {
-                PlayerData playerData = sessionService.get(action.player.uuid()).data;
+                var session = sessionService.get(action.player.uuid());
+                PlayerData playerData = session != null ? session.data : null;
                 if (playerData == null) return true;
                 if (System.nanoTime() - playerData.lastUnload < 1_000_000_000) {
                     return false;
