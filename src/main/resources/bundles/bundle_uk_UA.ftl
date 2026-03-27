@@ -203,25 +203,32 @@ commands-mute-description = Заглушити гравця. [scarlet]Тільк
 commands-mute-success = { "[" }accent]Успішно заглушено гравця { $nickname }
 commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
 commands-unmute-success = { "[" }green]Успішно знято заглушення з гравця []{ $nickname }
-ban-content =
-    { $nickname } [accent]був [scarlet]заблокований[].
-    Щоб оскаржити блокування, відвідайте Discord (канал [gray]{ support-channel }[]):
+ban-content = { "[" }scarlet]⚠ Доступ заборонено[]
+    { "[" }accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+    { "[" }lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     { "" }[cyan]{ $discordUrl }
 ban-cancelled = { "[" }accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
-tempban-content =
-    { $nickname }[accent] був заблокований.
-    Адміністратор: { $adminName }[accent]
-    Причина: "[gold]{ $reason }[]"
-    Ви будете розблоковані через: { $days } днів, { $hours } годин та { $minutes } хвилин
-    Щоб оскаржити блокування, відвідайте Discord (канал [gray]{ support-channel }[]):
+tempban-content = { "[" }scarlet]⚠ Доступ заборонено[]
+    { "[" }accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+    { "" }
+    { "" }[orange]» [accent]Адміністратор: [white]{ $adminName }
+    { "" }[orange]» [accent]Причина: [gold]{ $reason }
+    { "" }[orange]» [accent]До розблокування: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв
+    { "" }
+    { "[" }lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     { "" }[cyan]{ $discordUrl }
 tempban-player-banned = { "[" }scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
-    { "[" }scarlet]Ви були заглушені адміністратором [accent]{ $adminName }[blue] на { $remainMinutes }:{ $remainSeconds } хвилин,
-    причина: { $reason }
+    { "[" }orange]⚠ Чат обмежено[]
+    { "" }[lightgray]Адміністратор [accent]{ $adminName }[lightgray] видав вам мут.
+    { "" }[orange]» [accent]Причина: [gold]{ $reason }
+    { "" }[orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
 you-are-muted =
-    { "[" }scarlet]Ви не можете писати в чат. [accent]Ви були заглушені адміністратором { $adminName }[blue] на { $remainMinutes }:{ $remainSeconds } хвилин,
-    причина: { $reason }
+    { "[" }orange]⚠ Чат обмежено[]
+    { "" }[lightgray]Ви не можете надсилати повідомлення, доки діє мут.
+    { "" }[orange]» [accent]Адміністратор: [white]{ $adminName }
+    { "" }[orange]» [accent]Причина: [gold]{ $reason }
+    { "" }[orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
 kick-pirated-game = { "[" }accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked =
     { "[" }accent]Ви були нещодавно вигнані з цього сервера.

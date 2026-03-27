@@ -11,8 +11,8 @@ import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
 import java.time.Instant;
-
-import static com.ospx.flubundle.Bundle.args;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Singleton
 public class SecurityService {
@@ -35,18 +35,31 @@ public class SecurityService {
             Session session = sessionService.get().get(player);
             if (session != null && session.data != null) {
                 Duration remain = Duration.between(Instant.now(), mute.expireDate);
-                session.locale().send("you-are-muted",
-                        args("adminName", mute.adminName,
-                                "reason", mute.reason,
-                                "remainMinutes", remain.toMinutes(),
-                                "remainSeconds", remain.toSecondsPart()
-                        )
-                );
+                session.locale().send("you-are-muted", muteMessageArgs(mute.adminName, mute.reason, remain));
             }
             return true;
         }
 
         muteDataRepository.delete(player.uuid());
         return false;
+    }
+
+    public static Map<String, Object> durationParts(Duration duration) {
+        Duration safeDuration = duration.isNegative() ? Duration.ZERO : duration;
+
+        return Map.of(
+                "days", safeDuration.toDays(),
+                "hours", safeDuration.toHoursPart(),
+                "minutes", safeDuration.toMinutesPart(),
+                "seconds", safeDuration.toSecondsPart()
+        );
+    }
+
+    public static Map<String, Object> muteMessageArgs(String adminName, String reason, Duration duration) {
+        var args = new LinkedHashMap<String, Object>();
+        args.put("adminName", adminName);
+        args.put("reason", reason);
+        args.putAll(durationParts(duration));
+        return args;
     }
 }

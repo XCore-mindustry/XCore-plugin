@@ -16,10 +16,12 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.time.Instant;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -114,7 +116,7 @@ class SecurityServiceTest {
         var result = securityService.isMuted(player);
 
         assertThat(result).isTrue();
-        verify(localization).send(eq("you-are-muted"), anyMap());
+        verify(localization).send(eq("you-are-muted"), argThat(args -> hasMuteMessageArgs(args, "admin", "rule violation")));
     }
 
     @Test
@@ -145,6 +147,15 @@ class SecurityServiceTest {
         var session = mock(Session.class);
         session.data = PlayerData.builder().uuid("session-uuid").build();
         return session;
+    }
+
+    private static boolean hasMuteMessageArgs(Map<String, Object> args, String adminName, String reason) {
+        return adminName.equals(args.get("adminName"))
+                && reason.equals(args.get("reason"))
+                && args.get("days") instanceof Long
+                && args.get("hours") instanceof Integer
+                && args.get("minutes") instanceof Integer
+                && args.get("seconds") instanceof Integer;
     }
 
     private static final class SecurityServiceModule implements AvajeModule {

@@ -228,25 +228,32 @@ commands-mute-description = Mute a player. [scarlet]Admin only.
 commands-mute-success = { "[" }accent]Successfully muted { $nickname }
 commands-unmute-description = Unmute player. [scarlet]Admin only.
 commands-unmute-success = { "[" }green]Successfully unmuted []{ $nickname }
-ban-content =
-    { $nickname } [accent]have been [scarlet]banned[].
-    To appeal the ban, visit discord(channel [gray]{ support-channel }[])
+ban-content = { "[" }scarlet]⚠ Banned[]
+    { "[" }accent]{ $nickname }[white] — you are permanently banned from this server.
+    { "[" }lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     { "" }[cyan]{ $discordUrl }
 ban-cancelled = { "[" }accent]Player [scarlet]{ $nickname }[accent] ban has been cancelled
-tempban-content =
-    { $nickname }[accent] have been banned.
-    Admin: { $adminName }[accent]
-    Reason: "[gold]{ $reason }[]"
-    You will be unbanned in: { $days } days, { $hours } hours and { $minutes } minutes
-    To appeal your ban, visit discord(channel [gray]{ support-channel }[]):
+tempban-content = { "[" }scarlet]⚠ Banned[]
+    { "[" }accent]{ $nickname }[white] — you are temporarily banned from this server.
+    { "" }
+    { "" }[orange]» [accent]Admin: [white]{ $adminName }
+    { "" }[orange]» [accent]Reason: [gold]{ $reason }
+    { "" }[orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m
+    { "" }
+    { "[" }lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     { "" }[cyan]{ $discordUrl }
 tempban-player-banned = { "[" }scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
-    { "[" }scarlet]You were muted by administrator [accent]{ $adminName }[blue] for { $remainMinutes }:{ $remainSeconds } minutes,
-    reason: { $reason }
+    { "[" }orange]⚠ Chat restricted[]
+    { "" }[lightgray]You were muted by administrator [accent]{ $adminName }[lightgray].
+    { "" }[orange]» [accent]Reason: [gold]{ $reason }
+    { "" }[orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m [white]{ $seconds }[lightgray]s
 you-are-muted =
-    { "[" }scarlet]You can't write in the chat. [accent]You have been muted by an admin { $adminName }[blue] for { $remainMinutes }:{ $remainSeconds } minutes,
-    reason: { $reason }
+    { "[" }orange]⚠ Chat restricted[]
+    { "" }[lightgray]You cannot send messages while this mute is active.
+    { "" }[orange]» [accent]Admin: [white]{ $adminName }
+    { "" }[orange]» [accent]Reason: [gold]{ $reason }
+    { "" }[orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m [white]{ $seconds }[lightgray]s
 kick-pirated-game = { "[" }accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
 kick-recently-kicked =
     { "[" }accent]You were recently kicked from this server.

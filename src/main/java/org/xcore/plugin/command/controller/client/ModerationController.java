@@ -13,6 +13,7 @@ import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.service.FindService;
+import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.ModerationService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -107,12 +108,7 @@ public class ModerationController implements CloudClientController {
             Player p = find.playerByUuid(mute.uuid);
             if (p != null) {
                 Session s = sessionService.get(p.uuid());
-                s.locale().send("you-are-muted-by", args(
-                        "adminName", sender.player().coloredName(),
-                        "reason", mute.reason,
-                        "remainMinutes", period.toMinutes(),
-                        "remainSeconds", period.toSecondsPart()
-                ));
+                s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
             }
         } else {
             sendModerationFailure(local, result);
