@@ -2,32 +2,37 @@ package org.xcore.plugin.service;
 
 import arc.func.Cons;
 import arc.struct.StringMap;
-import arc.util.Http;
-import arc.util.Strings;
-import arc.util.serialization.JsonReader;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.localization.TranslationResult;
 import org.xcore.plugin.session.SessionService;
 
 @Singleton
 public class TranslatorService {
-    private static final JsonReader reader = new JsonReader();
     private final SessionService sessionService;
     private final ChatFormatService chatFormatService;
+    private final TranslationFallbackService translationFallbackService;
 
     @Inject
-    public TranslatorService(SessionService sessionService, ChatFormatService chatFormatService) {
+    public TranslatorService(SessionService sessionService,
+                             ChatFormatService chatFormatService,
+                             TranslationFallbackService translationFallbackService) {
         this.sessionService = sessionService;
         this.chatFormatService = chatFormatService;
+        this.translationFallbackService = translationFallbackService;
     }
 
-    public static void translate(String text, String from, String to, Cons<String> result, Runnable error) {
-        Http.post("https://clients5.google.com/translate_a/t?client=dict-chrome-ex&dt=t",
-                        "tl=" + to + "&sl=" + from + "&q=" + Strings.encode(text))
-                .error(throwable -> error.run())
-                .submit(response -> result.get(reader.parse(response.getResultAsString()).get(0).get(0).asString()));
+    public void translate(String text, String from, String to, Cons<String> result, Runnable error) {
+        translationFallbackService.translate(new org.xcore.plugin.localization.TranslationProvider.Request(text, from, to), translationResult -> {
+            if (translationResult instanceof TranslationResult.Success(var translatedText)) {
+                result.get(translatedText);
+                return;
+            }
+
+            error.run();
+        });
     }
 
     public void translate(Player author, String text) {

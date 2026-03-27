@@ -1,6 +1,5 @@
 package org.xcore.plugin.cloud.parser;
 
-import arc.struct.ObjectMap;
 import jakarta.inject.Inject;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.incendo.cloud.context.CommandContext;
@@ -15,6 +14,7 @@ import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class LanguageParser implements ArgumentParser<XCoreSender, String>, BlockingSuggestionProvider.Strings<XCoreSender> {
 
@@ -31,28 +31,14 @@ public class LanguageParser implements ArgumentParser<XCoreSender, String>, Bloc
 
     @Override
     public @NonNull ArgumentParseResult<String> parse(@NonNull CommandContext<XCoreSender> commandContext, @NonNull CommandInput commandInput) {
-        String input = commandInput.readString();
+        String input = commandInput.readString().trim();
 
         if (input.equalsIgnoreCase("off")) return ArgumentParseResult.success("off");
         if (input.equalsIgnoreCase("auto")) return ArgumentParseResult.success("auto");
 
-        String lang = provider.getLanguages().orderedKeys().find(key -> key.equalsIgnoreCase(input));
-
-        if (lang != null) {
-            return ArgumentParseResult.success(lang);
-        }
-
-        String keyByName = null;
-
-        for (ObjectMap.Entry<String, String> entry : provider.getLanguages()) {
-            if (entry.value.equalsIgnoreCase(input)) {
-                keyByName = entry.key;
-                break;
-            }
-        }
-
-        if (keyByName != null) {
-            return ArgumentParseResult.success(keyByName);
+        String languageCode = provider.findLanguageCode(input);
+        if (languageCode != null) {
+            return ArgumentParseResult.success(languageCode);
         }
 
         return ArgumentParseResult.failure(new XCoreCommandException("commands-tr-not-found"));
@@ -63,7 +49,12 @@ public class LanguageParser implements ArgumentParser<XCoreSender, String>, Bloc
         List<String> suggestions = new ArrayList<>();
         suggestions.add("off");
         suggestions.add("auto");
-        suggestions.addAll(provider.getLanguages().keys().toSeq().list());
+        String normalizedInput = input.lastRemainingToken().trim().toLowerCase(Locale.ROOT);
+        for (String languageCode : provider.languageCodes()) {
+            if (normalizedInput.isEmpty() || languageCode.startsWith(normalizedInput)) {
+                suggestions.add(languageCode);
+            }
+        }
         return suggestions;
     }
 }
