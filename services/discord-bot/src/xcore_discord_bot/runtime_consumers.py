@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from .contracts import EventType, ServerHeartbeatEvent
-from .handlers_moderation import post_ban_log, post_mute_log
+from .handlers_moderation import post_ban_log, post_mute_log, post_vote_kick_log
 from .registry import server_registry
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         RawEvent,
         ServerActionEvent,
         ServerHeartbeatEvent,
+        VoteKickEvent,
     )
 
 
@@ -210,6 +211,28 @@ async def consume_mutes(bot: "XCoreDiscordBot") -> None:
         )
 
     await run_consumer_forever(bot, "Mute", bot.consume_mutes_stream, dispatch)
+
+
+async def consume_vote_kicks(bot: "XCoreDiscordBot") -> None:
+    async def dispatch(event: VoteKickEvent) -> None:
+        if not bot.votekicks_channel_id:
+            return
+
+        await post_vote_kick_log(
+            bot,
+            target_name=event.target_name,
+            target_pid=event.target_pid,
+            starter_name=event.starter_name,
+            starter_pid=event.starter_pid,
+            starter_discord_id=event.starter_discord_id,
+            reason=event.reason,
+            votes_for=event.votes_for,
+            votes_against=event.votes_against,
+        )
+
+    await run_consumer_forever(
+        bot, "Vote-kick", bot.consume_vote_kicks_stream, dispatch
+    )
 
 
 async def run_consumer_forever(

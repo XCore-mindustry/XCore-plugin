@@ -14,6 +14,8 @@ from xcore_discord_bot.contracts import (
     RawEvent,
     ServerHeartbeatEvent,
     ServerActionEvent,
+    VoteKickEvent,
+    VoteKickParticipant,
 )
 from xcore_discord_bot.registry import server_registry
 
@@ -305,6 +307,77 @@ async def test_consume_mutes_dispatches_event(
         b"xcore:evt:moderation:mute",
         f"{settings.redis_group_prefix}:discord-mute",
         b"7-1",
+    )
+
+
+@pytest.mark.asyncio
+async def test_consume_vote_kicks_dispatches_event(
+    settings: Settings, mock_redis: AsyncMock
+) -> None:
+    payload = {
+        "targetName": "Target",
+        "targetPid": 42,
+        "targetUuid": "uuid-target",
+        "starterName": "Starter",
+        "starterPid": 7,
+        "starterDiscordId": "123456",
+        "reason": "griefing",
+        "participants": [
+            {"playerName": "Starter", "playerPid": 7, "discordId": "123456"},
+            {"playerName": "Voter2", "playerPid": 8, "discordId": "654321"},
+        ],
+        "votesFor": [{"playerName": "Starter", "playerPid": 7, "discordId": "123456"}],
+        "votesAgainst": [
+            {"playerName": "Voter2", "playerPid": 8, "discordId": "654321"}
+        ],
+    }
+    mock_redis.xreadgroup.side_effect = [
+        [
+            [
+                b"xcore:evt:moderation:votekick",
+                [
+                    (
+                        b"7-2",
+                        {"payload_json": json.dumps(payload)},
+                    )
+                ],
+            ]
+        ],
+        KeyboardInterrupt("stop"),
+    ]
+
+    bus = RedisBus(settings)
+    bus._redis = mock_redis
+
+    callback = AsyncMock()
+    try:
+        await bus.consume_vote_kicks(callback)
+    except KeyboardInterrupt:
+        pass
+
+    callback.assert_called_once_with(
+        VoteKickEvent(
+            target_name="Target",
+            target_pid=42,
+            target_uuid="uuid-target",
+            starter_name="Starter",
+            starter_pid=7,
+            starter_discord_id="123456",
+            reason="griefing",
+            participants=[
+                VoteKickParticipant(name="Starter", pid=7, discord_id="123456"),
+                VoteKickParticipant(name="Voter2", pid=8, discord_id="654321"),
+            ],
+            votes_for=[VoteKickParticipant(name="Starter", pid=7, discord_id="123456")],
+            votes_against=[
+                VoteKickParticipant(name="Voter2", pid=8, discord_id="654321")
+            ],
+        )
+    )
+    mock_redis.xack.assert_called_once_with(
+        b"xcore:evt:moderation:votekick",
+        f"{settings.redis_group_prefix}:discord-votekick",
+        b"7-2",
     )
 
 

@@ -7,12 +7,19 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.contracts import BanEvent, GameChatMessage, MuteEvent
+from xcore_discord_bot.contracts import (
+    BanEvent,
+    GameChatMessage,
+    MuteEvent,
+    VoteKickEvent,
+    VoteKickParticipant,
+)
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.runtime_consumers import (
     consume_bans,
     consume_game_chat,
     consume_mutes,
+    consume_vote_kicks,
 )
 
 
@@ -135,6 +142,34 @@ class _MuteBot:
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
         del raw
         return None
+
+
+class _VoteKickBot:
+    def __init__(self, *, votekicks_channel_id: int) -> None:
+        self.votekicks_channel_id = votekicks_channel_id
+
+    async def consume_vote_kicks_stream(self, callback) -> None:
+        await callback(
+            VoteKickEvent(
+                target_name="Target",
+                target_pid=42,
+                target_uuid="uuid-target",
+                starter_name="Starter",
+                starter_pid=7,
+                starter_discord_id="123456",
+                reason="griefing",
+                votes_for=[
+                    VoteKickParticipant(name="Starter", pid=7, discord_id="123456")
+                ],
+                votes_against=[
+                    VoteKickParticipant(name="Voter2", pid=8, discord_id="654321")
+                ],
+            )
+        )
+        raise asyncio.CancelledError()
+
+    async def reconnect_bus(self) -> None:
+        raise AssertionError("reconnect should not be called")
 
 
 @pytest.mark.asyncio
@@ -294,4 +329,79 @@ async def test_consume_mutes_returns_early_when_mute_logs_disabled(
         await consume_mutes(bot)
 
     assert bot.now_calls == 0
+    assert called is False
+
+
+@pytest.mark.asyncio
+async def test_consume_vote_kicks_dispatches_vote_payload_to_log_handler(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    async def fake_post_vote_kick_log(
+        bot,
+        *,
+        target_name: str,
+        target_pid: int | None,
+        starter_name: str,
+        starter_pid: int | None,
+        starter_discord_id: str | None,
+        reason: str,
+        votes_for,
+        votes_against,
+    ):
+        captured.update(
+            {
+                "bot": bot,
+                "target_name": target_name,
+                "target_pid": target_pid,
+                "starter_name": starter_name,
+                "starter_pid": starter_pid,
+                "starter_discord_id": starter_discord_id,
+                "reason": reason,
+                "votes_for": votes_for,
+                "votes_against": votes_against,
+            }
+        )
+
+    monkeypatch.setattr(
+        "xcore_discord_bot.runtime_consumers.post_vote_kick_log",
+        fake_post_vote_kick_log,
+    )
+
+    bot = _VoteKickBot(votekicks_channel_id=779)
+
+    with pytest.raises(asyncio.CancelledError):
+        await consume_vote_kicks(bot)
+
+    assert captured["target_name"] == "Target"
+    assert captured["target_pid"] == 42
+    assert captured["starter_name"] == "Starter"
+    assert captured["starter_pid"] == 7
+    assert captured["starter_discord_id"] == "123456"
+    assert captured["reason"] == "griefing"
+    assert [item.name for item in captured["votes_for"]] == ["Starter"]
+    assert [item.name for item in captured["votes_against"]] == ["Voter2"]
+
+
+@pytest.mark.asyncio
+async def test_consume_vote_kicks_returns_early_when_logs_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called = False
+
+    async def fake_post_vote_kick_log(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(
+        "xcore_discord_bot.runtime_consumers.post_vote_kick_log",
+        fake_post_vote_kick_log,
+    )
+
+    bot = _VoteKickBot(votekicks_channel_id=0)
+
+    with pytest.raises(asyncio.CancelledError):
+        await consume_vote_kicks(bot)
+
     assert called is False

@@ -6,7 +6,12 @@ from typing import Any
 
 import pytest
 
-from xcore_discord_bot.handlers_moderation import post_ban_log, post_mute_log
+from xcore_discord_bot.contracts import VoteKickParticipant
+from xcore_discord_bot.handlers_moderation import (
+    post_ban_log,
+    post_mute_log,
+    post_vote_kick_log,
+)
 
 
 @dataclass
@@ -18,9 +23,16 @@ class _Channel:
 
 
 class _Bot:
-    def __init__(self, *, bans_channel_id: int = 0, mutes_channel_id: int = 0) -> None:
+    def __init__(
+        self,
+        *,
+        bans_channel_id: int = 0,
+        mutes_channel_id: int = 0,
+        votekicks_channel_id: int = 0,
+    ) -> None:
         self.bans_channel_id = bans_channel_id
         self.mutes_channel_id = mutes_channel_id
+        self.votekicks_channel_id = votekicks_channel_id
         self.channel = _Channel()
 
     async def _resolve_messageable_channel(
@@ -30,6 +42,8 @@ class _Bot:
             assert channel_id == self.bans_channel_id
         if context == "mute logs":
             assert channel_id == self.mutes_channel_id
+        if context == "vote-kick logs":
+            assert channel_id == self.votekicks_channel_id
         return self.channel
 
 
@@ -69,3 +83,28 @@ async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> N
     embed = bot.channel.sent[0]["embed"]
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Admin"] == "AdminNick"
+
+
+@pytest.mark.asyncio
+async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> None:
+    bot = _Bot(votekicks_channel_id=12)
+
+    await post_vote_kick_log(
+        bot,
+        target_name="Target",
+        target_pid=42,
+        starter_name="Starter",
+        starter_pid=7,
+        starter_discord_id="123456",
+        reason="griefing",
+        votes_for=[VoteKickParticipant(name="Starter", pid=7, discord_id="123456")],
+        votes_against=[VoteKickParticipant(name="Voter2", pid=8, discord_id="654321")],
+    )
+
+    embed = bot.channel.sent[0]["embed"]
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["Target"] == "Target (pid=42)"
+    assert fields["Initiator"] == "Starter (pid=7) (<@123456> / 123456)"
+    assert fields["Reason"] == "griefing"
+    assert fields["For (1)"] == "`Starter` (pid=7, <@123456> (123456))"
+    assert fields["Against (1)"] == "`Voter2` (pid=8, <@654321> (654321))"

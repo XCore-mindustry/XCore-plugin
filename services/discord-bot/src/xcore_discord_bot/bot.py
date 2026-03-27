@@ -222,6 +222,7 @@ class XCoreDiscordBot(commands.Bot):
         self._server_action_consumer_task: asyncio.Task[None] | None = None
         self._ban_consumer_task: asyncio.Task[None] | None = None
         self._mute_consumer_task: asyncio.Task[None] | None = None
+        self._votekick_consumer_task: asyncio.Task[None] | None = None
         self._heartbeat_consumer_task: asyncio.Task[None] | None = None
         self._presence_task: asyncio.Task[None] | None = None
         self._admin_reconcile_task: asyncio.Task[None] | None = None
@@ -250,6 +251,13 @@ class XCoreDiscordBot(commands.Bot):
         if settings is None:
             return 0
         return settings.discord_mutes_channel_id
+
+    @property
+    def votekicks_channel_id(self) -> int:
+        settings = getattr(self, "_settings", None)
+        if settings is None:
+            return 0
+        return settings.discord_votekicks_channel_id
 
     async def autocomplete_players(
         self,
@@ -783,6 +791,11 @@ class XCoreDiscordBot(commands.Bot):
     ) -> None:
         await self._bus.consume_mutes(callback)
 
+    async def consume_vote_kicks_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_vote_kicks(callback)
+
     async def consume_discord_link_status_changed_stream(
         self, callback: Callable[..., Awaitable[None]]
     ) -> None:
@@ -826,6 +839,9 @@ class XCoreDiscordBot(commands.Bot):
         )
         self._mute_consumer_task = asyncio.create_task(
             runtime_consumers.consume_mutes(self), name="redis-mute-consumer"
+        )
+        self._votekick_consumer_task = asyncio.create_task(
+            runtime_consumers.consume_vote_kicks(self), name="redis-votekick-consumer"
         )
         self._heartbeat_consumer_task = asyncio.create_task(
             runtime_consumers.consume_server_heartbeats(self),
@@ -923,6 +939,7 @@ class XCoreDiscordBot(commands.Bot):
             self._server_action_consumer_task,
             self._ban_consumer_task,
             self._mute_consumer_task,
+            self._votekick_consumer_task,
             self._heartbeat_consumer_task,
             self._admin_reconcile_task,
             self._presence_task,
@@ -941,6 +958,7 @@ class XCoreDiscordBot(commands.Bot):
         self._server_action_consumer_task = None
         self._ban_consumer_task = None
         self._mute_consumer_task = None
+        self._votekick_consumer_task = None
         self._heartbeat_consumer_task = None
         self._admin_reconcile_task = None
         self._presence_task = None

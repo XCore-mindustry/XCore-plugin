@@ -14,6 +14,7 @@ ENV_KEYS = [
     "DISCORD_PRIVATE_CHANNEL_ID",
     "DISCORD_BANS_CHANNEL_ID",
     "DISCORD_MUTES_CHANNEL_ID",
+    "DISCORD_VOTEKICKS_CHANNEL_ID",
     "DISCORD_GUILD_ID",
     "DISCORD_INTERACTION_HMAC_SECRET",
     "DISCORD_ERROR_LOG_CHANNEL_ID",
@@ -131,3 +132,13 @@ def test_settings_mutes_channel_id_defaults_to_zero(
     settings = Settings.from_env()
 
     assert settings.discord_mutes_channel_id == 0
+
+
+def test_settings_votekicks_channel_id_defaults_to_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_votekicks_channel_id == 0

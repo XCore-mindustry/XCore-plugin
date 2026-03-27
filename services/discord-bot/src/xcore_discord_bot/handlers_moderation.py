@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, cast
 import discord
 from discord import Interaction
 
+from .contracts import VoteKickParticipant
 from .dto import PlayerRecord
 from .moderation_views import BanConfirmView, MuteUndoView
 from .presentation import format_ban_expire_date
@@ -49,6 +50,26 @@ def _add_embed_section(embed: discord.Embed, *, name: str, items: list[str]) -> 
     for index, chunk in enumerate(_split_embed_field_chunks(items), start=1):
         field_name = name if index == 1 else f"{name} (cont. {index})"
         embed.add_field(name=field_name, value=chunk, inline=False)
+
+
+def _format_vote_kick_party_value(*, name: str, pid: int | None) -> str:
+    safe_name = str(name).strip() or "Unknown"
+    return f"{safe_name} (pid={pid})" if pid is not None and pid > 0 else safe_name
+
+
+def _format_vote_kick_participant(item: VoteKickParticipant) -> str:
+    name = str(item.name).strip() or "Unknown"
+    segments = [f"`{name}`"]
+    if item.pid is not None and item.pid > 0:
+        segments.append(f"pid={item.pid}")
+    discord_id = str(item.discord_id or "").strip()
+    if discord_id:
+        segments.append(f"<@{discord_id}> ({discord_id})")
+    return (
+        f"{segments[0]} ({', '.join(segments[1:])})"
+        if len(segments) > 1
+        else segments[0]
+    )
 
 
 def _format_reconcile_player_item(item: dict[str, object]) -> str:
@@ -732,6 +753,79 @@ async def post_mute_log(
     embed.add_field(name="Admin", value=admin_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
     embed.add_field(name="Expires", value=unmute_value, inline=False)
+    await channel.send(embed=embed)
+
+
+async def post_vote_kick_log(
+    bot: "XCoreDiscordBot",
+    *,
+    target_name: str,
+    target_pid: int | None,
+    starter_name: str,
+    starter_pid: int | None,
+    starter_discord_id: str | None,
+    reason: str,
+    votes_for: list[VoteKickParticipant],
+    votes_against: list[VoteKickParticipant],
+) -> None:
+    from .bot import strip_mindustry_colors
+
+    votekicks_channel_id = bot.votekicks_channel_id
+    if not votekicks_channel_id:
+        return
+
+    channel = await bot._resolve_messageable_channel(
+        votekicks_channel_id, context="vote-kick logs"
+    )
+    if channel is None:
+        return
+
+    safe_target_name = (
+        strip_mindustry_colors(str(target_name).replace("`", "")).strip() or "Unknown"
+    )
+    safe_starter_name = (
+        strip_mindustry_colors(str(starter_name).replace("`", "")).strip() or "Unknown"
+    )
+    safe_reason = strip_mindustry_colors(str(reason).replace("`", "")).strip()
+    if not safe_reason:
+        safe_reason = "No reason provided"
+
+    target_value = _format_vote_kick_party_value(
+        name=safe_target_name,
+        pid=target_pid,
+    )
+    starter_value = _format_vote_kick_party_value(
+        name=safe_starter_name,
+        pid=starter_pid,
+    )
+    starter_mention = str(starter_discord_id or "").strip()
+    if starter_mention:
+        starter_value = f"{starter_value} (<@{starter_mention}> / {starter_mention})"
+
+    embed = discord.Embed(title="Vote-kick Started", color=discord.Color.blurple())
+    embed.add_field(name="Target", value=target_value, inline=False)
+    embed.add_field(name="Initiator", value=starter_value, inline=False)
+    embed.add_field(name="Reason", value=safe_reason, inline=False)
+
+    yes_items = [_format_vote_kick_participant(item) for item in votes_for]
+    no_items = [_format_vote_kick_participant(item) for item in votes_against]
+
+    embed.add_field(
+        name=f"For ({len(yes_items)})",
+        value="No yes votes" if not yes_items else yes_items[0],
+        inline=False,
+    )
+    if len(yes_items) > 1:
+        _add_embed_section(embed, name="For", items=yes_items[1:])
+
+    embed.add_field(
+        name=f"Against ({len(no_items)})",
+        value="No no votes" if not no_items else no_items[0],
+        inline=False,
+    )
+    if len(no_items) > 1:
+        _add_embed_section(embed, name="Against", items=no_items[1:])
+
     await channel.send(embed=embed)
 
 

@@ -11,6 +11,7 @@ from xcore_discord_bot.contracts import (
     RawEvent,
     ServerHeartbeatEvent,
     ServerActionEvent,
+    VoteKickEvent,
 )
 
 
@@ -101,6 +102,34 @@ def test_global_chat_event_from_payload() -> None:
     assert event.author_name == "pizduk"
     assert event.message == "hello all"
     assert event.server == "mini-pvp"
+
+
+def test_vote_kick_event_from_payload_with_votes() -> None:
+    payload = {
+        "targetName": "Target",
+        "targetPid": "42",
+        "targetUuid": "uuid-target",
+        "starterName": "Starter",
+        "starterPid": "7",
+        "starterDiscordId": "123456",
+        "reason": "griefing",
+        "votesFor": [
+            {"playerName": "Starter", "playerPid": "7", "discordId": "123456"}
+        ],
+        "votesAgainst": [
+            {"playerName": "Voter2", "playerPid": 8, "discordId": "654321"}
+        ],
+    }
+    event = VoteKickEvent.from_payload(payload)
+    assert event.target_name == "Target"
+    assert event.target_pid == 42
+    assert event.target_uuid == "uuid-target"
+    assert event.starter_name == "Starter"
+    assert event.starter_pid == 7
+    assert event.starter_discord_id == "123456"
+    assert event.reason == "griefing"
+    assert event.votes_for[0].discord_id == "123456"
+    assert event.votes_against[0].name == "Voter2"
 
 
 def test_raw_event_from_fields() -> None:

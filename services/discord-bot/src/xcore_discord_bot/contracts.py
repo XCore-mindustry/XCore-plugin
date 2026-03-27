@@ -203,6 +203,130 @@ class MuteEvent(_FrozenModel):
         )
 
 
+class VoteKickParticipant(_FrozenModel):
+    name: str = Field(
+        validation_alias=AliasChoices("name", "nickname", "playerName", "player_name")
+    )
+    pid: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("pid", "playerPid", "player_pid"),
+    )
+    discord_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("discordId", "discord_id"),
+    )
+
+    @field_validator("name")
+    @classmethod
+    def _required_text(cls, value: str) -> str:
+        return cls._require_non_empty_text(value)
+
+    @field_validator("pid", mode="before")
+    @classmethod
+    def _optional_int(cls, value: Any) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return _coerce_int(value)
+
+
+class VoteKickEvent(_FrozenModel):
+    target_name: str = Field(
+        validation_alias=AliasChoices("targetName", "target_name", "target", "name")
+    )
+    target_pid: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetPid", "target_pid", "targetId", "pid"),
+    )
+    target_uuid: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetUuid", "target_uuid", "uuid"),
+    )
+    starter_name: str = Field(
+        validation_alias=AliasChoices(
+            "starterName",
+            "starter_name",
+            "starter",
+            "initiatorName",
+            "initiator_name",
+            "adminName",
+            "admin_name",
+        )
+    )
+    starter_pid: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "starterPid",
+            "starter_pid",
+            "starterId",
+            "initiatorPid",
+            "initiator_pid",
+            "adminPid",
+            "admin_pid",
+        ),
+    )
+    starter_discord_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "starterDiscordId",
+            "starter_discord_id",
+            "initiatorDiscordId",
+            "initiator_discord_id",
+            "adminDiscordId",
+            "admin_discord_id",
+        ),
+    )
+    reason: str
+    votes_for: list[VoteKickParticipant] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("votesFor", "votes_for", "yesVotes", "yes_votes"),
+    )
+    votes_against: list[VoteKickParticipant] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices(
+            "votesAgainst",
+            "votes_against",
+            "noVotes",
+            "no_votes",
+        ),
+    )
+
+    @field_validator("target_name", "starter_name", "reason")
+    @classmethod
+    def _required_text_fields(cls, value: str) -> str:
+        return cls._require_non_empty_text(value)
+
+    @field_validator("target_pid", "starter_pid", mode="before")
+    @classmethod
+    def _optional_pid(cls, value: Any) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return _coerce_int(value)
+
+    @field_validator("votes_for", "votes_against", mode="before")
+    @classmethod
+    def _default_participant_lists(cls, value: Any) -> list[dict[str, Any]]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        if isinstance(value, tuple):
+            return list(value)
+        raise ValueError("Expected participant list")
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> "VoteKickEvent":
+        return cls._validate_payload(
+            payload,
+            error_message=(
+                "Invalid vote-kick payload: expected target, starter, reason, and optional vote lists"
+            ),
+        )
+
+
 class GlobalChatEvent(_FrozenModel):
     author_name: str = Field(validation_alias=AliasChoices("authorName", "author_name"))
     message: str

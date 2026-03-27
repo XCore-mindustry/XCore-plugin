@@ -22,6 +22,7 @@ from .contracts import (
     RawEvent,
     ServerHeartbeatEvent,
     ServerActionEvent,
+    VoteKickEvent,
 )
 from .registry import server_registry
 from .settings import Settings
@@ -232,6 +233,16 @@ class RedisBus:
             stream="xcore:evt:moderation:mute",
             group_suffix="discord-mute",
             parse_payload=MuteEvent.from_payload,
+            callback=callback,
+        )
+
+    async def consume_vote_kicks(
+        self, callback: Callable[[VoteKickEvent], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:moderation:votekick",
+            group_suffix="discord-votekick",
+            parse_payload=VoteKickEvent.from_payload,
             callback=callback,
         )
 
