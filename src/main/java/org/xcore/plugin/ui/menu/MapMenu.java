@@ -47,7 +47,7 @@ public class MapMenu extends Menu {
     public void map(String uuid, MapData m) {
         Session session = sessionService.get(uuid).clear();
         if (session == null || session.data == null) return;
-        Map mindustryMap = mapService.findMap(m.name);
+        Map mindustryMap = mapService.findPersistedMap(m);
 
         String last = m.playedTimes == 0
                 ? session.locale().t("never")

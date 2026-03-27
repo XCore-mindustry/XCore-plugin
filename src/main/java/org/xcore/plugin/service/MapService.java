@@ -78,6 +78,22 @@ public class MapService {
         return available.find(map -> TextUtils.deepEquals(map.name(), nameOrIndex));
     }
 
+    public Map findPersistedMap(MapData mapData) {
+        if (mapData == null) {
+            return null;
+        }
+
+        Map byFileName = findMapByFileName(mapData.fileName);
+        if (byFileName != null) {
+            return byFileName;
+        }
+
+        return getAvailableMaps().find(map ->
+                map.plainName().equals(mapData.name)
+                        && map.author().equals(mapData.author)
+        );
+    }
+
     public Map findMapByFileName(String fileName) {
         if (fileName == null || fileName.isBlank()) {
             return null;
@@ -190,15 +206,7 @@ public class MapService {
             return null;
         }
 
-        Map byFileName = findMapByFileName(mapData.fileName);
-        if (byFileName != null) {
-            return byFileName;
-        }
-
-        return getAvailableMaps().find(map ->
-                map.plainName().equals(mapData.name)
-                        && map.author().equals(mapData.author)
-        );
+        return findPersistedMap(mapData);
     }
 
     private void switchMapImmediately(Map target) {

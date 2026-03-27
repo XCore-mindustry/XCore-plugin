@@ -59,11 +59,9 @@ class MapServiceTest {
         EventDataRepository eventDataRepository = mock(EventDataRepository.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
         MapData eventMapData = new MapData("Event Map", "event-map.msav", "Author", "pvp");
-        EventData eventData = EventData.builder()
-                .id(new ObjectId())
-                .map(new ObjectId())
-                .isActive(true)
-                .build();
+        EventData eventData = new EventData("Event", new ObjectId(), new ObjectId());
+        eventData.id = new ObjectId();
+        eventData.isActive = true;
 
         when(eventDataRepository.findActive()).thenReturn(Optional.of(eventData));
         when(mapDataRepository.findById(eventData.map)).thenReturn(eventMapData);
@@ -118,5 +116,47 @@ class MapServiceTest {
 
         assertThat(resolved).isSameAs(next);
         verify(maps).getNextMap(Gamemode.pvp, previous);
+    }
+
+    @Test
+    @DisplayName("findPersistedMap prefers exact persisted identity over fuzzy name matching")
+    void findPersistedMapPrefersExactPersistedIdentity() {
+        originalMaps = Vars.maps;
+
+        Maps maps = mock(Maps.class);
+        Vars.maps = maps;
+
+        Map wrongSubstringMatch = new Map(
+                new Fi("tower-defense.msav"),
+                100,
+                100,
+                StringMap.of("name", "Tower Defense", "author", "Wrong Author"),
+                true
+        );
+        Map exactPersistedMap = new Map(
+                new Fi("tower.msav"),
+                120,
+                120,
+                StringMap.of("name", "Tower", "author", "Correct Author"),
+                true
+        );
+
+        when(maps.customMaps()).thenReturn(Seq.with(wrongSubstringMatch, exactPersistedMap));
+
+        MapService service = new MapService(
+                mock(EventDataRepository.class),
+                mock(MapDataRepository.class),
+                mock(SessionService.class),
+                new Config(),
+                new GlobalConfig(),
+                mock(VoteService.class),
+                mock(VoteRtvFactory.class),
+                mock(GameStateService.class)
+        );
+
+        MapData persisted = new MapData("Tower", "tower.msav", "Correct Author", "pvp");
+
+        assertThat(service.findMap("Tower")).isSameAs(wrongSubstringMatch);
+        assertThat(service.findPersistedMap(persisted)).isSameAs(exactPersistedMap);
     }
 }
