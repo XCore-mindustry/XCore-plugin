@@ -112,4 +112,42 @@ public class TranslatorService {
             });
         }
     }
+
+    public void translateTeamChat(Player author, String text) {
+        var cache = new StringMap();
+
+        for (var session : sessionService.findByTeam(author.team())) {
+            var player = session.player;
+            if (player == null) continue;
+
+            var message = chatFormatService.formatTeamChat(author, session.locale(), text);
+            if (player == author || session.data.translatorLanguage.equals("off")) {
+                player.sendMessage(message, author);
+                continue;
+            }
+
+            if (!translationFallbackService.supports(session.data.translatorLanguage)) {
+                translationMetricsService.incrementGlobal("unsupported_language_total");
+                Log.debug("[Translation] Player '@' has unsupported translator language '@'",
+                        session.data.uuid, session.data.translatorLanguage);
+                player.sendMessage(message, author);
+                continue;
+            }
+
+            if (cache.containsKey(session.data.translatorLanguage)) {
+                player.sendMessage(appendTranslation(message, cache.get(session.data.translatorLanguage)), author);
+            } else translate(text, "auto", session.data.translatorLanguage, result -> {
+                cache.put(session.data.translatorLanguage, result);
+                player.sendMessage(appendTranslation(message, result), author);
+            }, () -> {
+                if (config.translation.preserveOriginalMessageOnFailure) {
+                    player.sendMessage(message, author);
+                }
+            });
+        }
+    }
+
+    private String appendTranslation(String message, String translatedText) {
+        return message + " [white]([lightgray]" + translatedText + "[])";
+    }
 }

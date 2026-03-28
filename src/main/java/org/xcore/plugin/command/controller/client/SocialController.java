@@ -23,6 +23,7 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.ui.menu.DiscordMenu;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -36,24 +37,27 @@ public class SocialController implements CloudClientController {
     private final GlobalConfig globalConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
     private final ChatFormatService chatFormatService;
+    private final TranslatorService translatorService;
     private final DiscordLinkService discordLinkService;
     private final DiscordMenu discordMenu;
 
     @Inject
     public SocialController(SessionService sessionService,
                             NetworkService network,
-                            Config config,
-                            GlobalConfig globalConfig,
-                            TranslatorLanguagesProvider translatorLanguagesProvider,
-                            ChatFormatService chatFormatService,
-                            DiscordLinkService discordLinkService,
-                            DiscordMenu discordMenu) {
+                             Config config,
+                             GlobalConfig globalConfig,
+                             TranslatorLanguagesProvider translatorLanguagesProvider,
+                             ChatFormatService chatFormatService,
+                             TranslatorService translatorService,
+                             DiscordLinkService discordLinkService,
+                             DiscordMenu discordMenu) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
         this.globalConfig = globalConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
         this.chatFormatService = chatFormatService;
+        this.translatorService = translatorService;
         this.discordLinkService = discordLinkService;
         this.discordMenu = discordMenu;
     }
@@ -61,12 +65,7 @@ public class SocialController implements CloudClientController {
     @RequiresMuteCheck
     @Command("t <message>")
     public void teamChat(XCoreSender sender, @Argument("message") @Greedy String message) {
-        Player author = sender.player();
-
-        sessionService.findByTeam(author.team()).forEach(session -> {
-            String formatted = chatFormatService.formatTeamChat(author, session.locale(), message);
-            session.player.sendMessage(formatted, author);
-        });
+        translatorService.translateTeamChat(sender.player(), message);
     }
 
     @RequiresMuteCheck

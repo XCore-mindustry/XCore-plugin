@@ -2,6 +2,7 @@ package org.xcore.plugin.service;
 
 import arc.func.Boolf;
 import mindustry.entities.EntityGroup;
+import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.junit.jupiter.api.AfterEach;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.localization.TranslationFailure;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
@@ -203,5 +205,185 @@ class TranslatorServiceTest {
         service.translate(author, "hello");
 
         verify(recipient, never()).sendMessage("formatted-message", author, "hello");
+    }
+
+    @Test
+    @DisplayName("translateTeamChat sends translated team message when translator is enabled")
+    void translateTeamChat_sendsTranslatedTeamMessage_whenTranslatorIsEnabled() {
+        Config config = new Config();
+        SessionService sessionService = mock(SessionService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
+        TranslatorService service = new TranslatorService(
+                config,
+                sessionService,
+                chatFormatService,
+                translationFallbackService,
+                translationCacheService,
+                translationMetricsService
+        );
+
+        Team team = mock(Team.class);
+        Player author = mock(Player.class);
+        Player recipient = mock(Player.class);
+        when(author.team()).thenReturn(team);
+
+        Localization authorLocalization = mock(Localization.class);
+        Localization recipientLocalization = mock(Localization.class);
+
+        Session authorSession = mock(Session.class);
+        PlayerData authorData = new PlayerData("author-uuid", true);
+        authorData.translatorLanguage = "off";
+        authorSession.player = author;
+        authorSession.data = authorData;
+        when(authorSession.locale()).thenReturn(authorLocalization);
+
+        Session recipientSession = mock(Session.class);
+        PlayerData recipientData = new PlayerData("recipient-uuid", true);
+        recipientData.translatorLanguage = "ru";
+        recipientSession.player = recipient;
+        recipientSession.data = recipientData;
+        when(recipientSession.locale()).thenReturn(recipientLocalization);
+
+        when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, recipientSession));
+        when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
+        when(chatFormatService.formatTeamChat(author, recipientLocalization, "hello")).thenReturn("team-recipient");
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.success("привет"));
+            return null;
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translateTeamChat(author, "hello");
+
+        verify(author).sendMessage("team-author", author);
+        verify(recipient).sendMessage("team-recipient [white]([lightgray]привет[])", author);
+    }
+
+    @Test
+    @DisplayName("translateTeamChat reuses translation for same target language")
+    void translateTeamChat_reusesTranslation_forSameTargetLanguage() {
+        Config config = new Config();
+        SessionService sessionService = mock(SessionService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
+        TranslatorService service = new TranslatorService(
+                config,
+                sessionService,
+                chatFormatService,
+                translationFallbackService,
+                translationCacheService,
+                translationMetricsService
+        );
+
+        Team team = mock(Team.class);
+        Player author = mock(Player.class);
+        Player firstRecipient = mock(Player.class);
+        Player secondRecipient = mock(Player.class);
+        when(author.team()).thenReturn(team);
+
+        Localization authorLocalization = mock(Localization.class);
+        Localization firstLocalization = mock(Localization.class);
+        Localization secondLocalization = mock(Localization.class);
+
+        Session authorSession = mock(Session.class);
+        PlayerData authorData = new PlayerData("author-uuid", true);
+        authorData.translatorLanguage = "off";
+        authorSession.player = author;
+        authorSession.data = authorData;
+        when(authorSession.locale()).thenReturn(authorLocalization);
+
+        Session firstSession = mock(Session.class);
+        PlayerData firstData = new PlayerData("recipient-1", true);
+        firstData.translatorLanguage = "ru";
+        firstSession.player = firstRecipient;
+        firstSession.data = firstData;
+        when(firstSession.locale()).thenReturn(firstLocalization);
+
+        Session secondSession = mock(Session.class);
+        PlayerData secondData = new PlayerData("recipient-2", true);
+        secondData.translatorLanguage = "ru";
+        secondSession.player = secondRecipient;
+        secondSession.data = secondData;
+        when(secondSession.locale()).thenReturn(secondLocalization);
+
+        when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, firstSession, secondSession));
+        when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
+        when(chatFormatService.formatTeamChat(author, firstLocalization, "hello")).thenReturn("team-recipient-1");
+        when(chatFormatService.formatTeamChat(author, secondLocalization, "hello")).thenReturn("team-recipient-2");
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.success("привет"));
+            return null;
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translateTeamChat(author, "hello");
+
+        verify(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+        verify(firstRecipient).sendMessage("team-recipient-1 [white]([lightgray]привет[])", author);
+        verify(secondRecipient).sendMessage("team-recipient-2 [white]([lightgray]привет[])", author);
+    }
+
+    @Test
+    @DisplayName("translateTeamChat does not send original message when preserveOriginalMessageOnFailure is disabled")
+    void translateTeamChat_doesNotSendOriginalMessage_whenPreserveOriginalMessageOnFailureDisabled() {
+        Config config = new Config();
+        config.translation.preserveOriginalMessageOnFailure = false;
+        SessionService sessionService = mock(SessionService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
+        TranslatorService service = new TranslatorService(
+                config,
+                sessionService,
+                chatFormatService,
+                translationFallbackService,
+                translationCacheService,
+                translationMetricsService
+        );
+
+        Team team = mock(Team.class);
+        Player author = mock(Player.class);
+        Player recipient = mock(Player.class);
+        when(author.team()).thenReturn(team);
+
+        Localization authorLocalization = mock(Localization.class);
+        Localization recipientLocalization = mock(Localization.class);
+
+        Session authorSession = mock(Session.class);
+        PlayerData authorData = new PlayerData("author-uuid", true);
+        authorData.translatorLanguage = "off";
+        authorSession.player = author;
+        authorSession.data = authorData;
+        when(authorSession.locale()).thenReturn(authorLocalization);
+
+        Session recipientSession = mock(Session.class);
+        PlayerData recipientData = new PlayerData("recipient-uuid", true);
+        recipientData.translatorLanguage = "ru";
+        recipientSession.player = recipient;
+        recipientSession.data = recipientData;
+        when(recipientSession.locale()).thenReturn(recipientLocalization);
+
+        when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, recipientSession));
+        when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
+        when(chatFormatService.formatTeamChat(author, recipientLocalization, "hello")).thenReturn("team-recipient");
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.failure(TranslationFailure.unavailable("fallback", "all translation providers failed")));
+            return null;
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translateTeamChat(author, "hello");
+
+        verify(author).sendMessage("team-author", author);
+        verify(recipient, never()).sendMessage("team-recipient", author);
     }
 }
