@@ -52,6 +52,7 @@ class TranslatorServiceTest {
         Config config = new Config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -59,6 +60,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -96,6 +98,7 @@ class TranslatorServiceTest {
         Config config = new Config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -103,6 +106,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -137,6 +141,7 @@ class TranslatorServiceTest {
         Config config = new Config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -144,6 +149,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -168,6 +174,7 @@ class TranslatorServiceTest {
         config.translation.preserveOriginalMessageOnFailure = false;
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -175,6 +182,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -213,6 +221,7 @@ class TranslatorServiceTest {
         Config config = new Config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -220,6 +229,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -250,6 +260,8 @@ class TranslatorServiceTest {
         when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, recipientSession));
         when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
         when(chatFormatService.formatTeamChat(author, recipientLocalization, "hello")).thenReturn("team-recipient");
+        when(clientCompatibilityService.isLikelyFoosClient(author)).thenReturn(false);
+        when(clientCompatibilityService.isLikelyFoosClient(recipient)).thenReturn(false);
         when(translationFallbackService.supports("ru")).thenReturn(true);
         doAnswer(invocation -> {
             arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
@@ -269,6 +281,7 @@ class TranslatorServiceTest {
         Config config = new Config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -276,6 +289,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -316,6 +330,9 @@ class TranslatorServiceTest {
         when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
         when(chatFormatService.formatTeamChat(author, firstLocalization, "hello")).thenReturn("team-recipient-1");
         when(chatFormatService.formatTeamChat(author, secondLocalization, "hello")).thenReturn("team-recipient-2");
+        when(clientCompatibilityService.isLikelyFoosClient(author)).thenReturn(false);
+        when(clientCompatibilityService.isLikelyFoosClient(firstRecipient)).thenReturn(false);
+        when(clientCompatibilityService.isLikelyFoosClient(secondRecipient)).thenReturn(false);
         when(translationFallbackService.supports("ru")).thenReturn(true);
         doAnswer(invocation -> {
             arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
@@ -337,6 +354,7 @@ class TranslatorServiceTest {
         config.translation.preserveOriginalMessageOnFailure = false;
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
         TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
         TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
         TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
@@ -344,6 +362,7 @@ class TranslatorServiceTest {
                 config,
                 sessionService,
                 chatFormatService,
+                clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
                 translationMetricsService
@@ -374,6 +393,8 @@ class TranslatorServiceTest {
         when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, recipientSession));
         when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
         when(chatFormatService.formatTeamChat(author, recipientLocalization, "hello")).thenReturn("team-recipient");
+        when(clientCompatibilityService.isLikelyFoosClient(author)).thenReturn(false);
+        when(clientCompatibilityService.isLikelyFoosClient(recipient)).thenReturn(false);
         when(translationFallbackService.supports("ru")).thenReturn(true);
         doAnswer(invocation -> {
             arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
@@ -385,5 +406,65 @@ class TranslatorServiceTest {
 
         verify(author).sendMessage("team-author", author);
         verify(recipient, never()).sendMessage("team-recipient", author);
+    }
+
+    @Test
+    @DisplayName("translateTeamChat sends foos-compatible raw message for likely foos client")
+    void translateTeamChat_sendsFoosCompatibleRawMessage_forLikelyFoosClient() {
+        Config config = new Config();
+        SessionService sessionService = mock(SessionService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
+        TranslatorService service = new TranslatorService(
+                config,
+                sessionService,
+                chatFormatService,
+                clientCompatibilityService,
+                translationFallbackService,
+                translationCacheService,
+                translationMetricsService
+        );
+
+        Team team = mock(Team.class);
+        Player author = mock(Player.class);
+        Player recipient = mock(Player.class);
+        when(author.team()).thenReturn(team);
+
+        Localization authorLocalization = mock(Localization.class);
+        Localization recipientLocalization = mock(Localization.class);
+
+        Session authorSession = mock(Session.class);
+        PlayerData authorData = new PlayerData("author-uuid", true);
+        authorData.translatorLanguage = "off";
+        authorSession.player = author;
+        authorSession.data = authorData;
+        when(authorSession.locale()).thenReturn(authorLocalization);
+
+        Session recipientSession = mock(Session.class);
+        PlayerData recipientData = new PlayerData("recipient-uuid", true);
+        recipientData.translatorLanguage = "ru";
+        recipientSession.player = recipient;
+        recipientSession.data = recipientData;
+        when(recipientSession.locale()).thenReturn(recipientLocalization);
+
+        when(sessionService.findByTeam(team)).thenReturn(List.of(authorSession, recipientSession));
+        when(chatFormatService.formatTeamChat(author, authorLocalization, "hello")).thenReturn("team-author");
+        when(chatFormatService.formatTeamChat(author, recipientLocalization, "hello")).thenReturn("team-recipient");
+        when(clientCompatibilityService.isLikelyFoosClient(author)).thenReturn(false);
+        when(clientCompatibilityService.isLikelyFoosClient(recipient)).thenReturn(true);
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.success("привет"));
+            return null;
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translateTeamChat(author, "hello");
+
+        verify(author).sendMessage("team-author", author);
+        verify(recipient).sendMessage("team-recipient [white]([lightgray]привет[])", author, "hello (привет)");
     }
 }

@@ -18,6 +18,7 @@ public class TranslatorService {
     private final Config config;
     private final SessionService sessionService;
     private final ChatFormatService chatFormatService;
+    private final ClientCompatibilityService clientCompatibilityService;
     private final TranslationFallbackService translationFallbackService;
     private final TranslationCacheService translationCacheService;
     private final TranslationMetricsService translationMetricsService;
@@ -26,12 +27,14 @@ public class TranslatorService {
     public TranslatorService(Config config,
                              SessionService sessionService,
                              ChatFormatService chatFormatService,
+                             ClientCompatibilityService clientCompatibilityService,
                              TranslationFallbackService translationFallbackService,
                              TranslationCacheService translationCacheService,
                              TranslationMetricsService translationMetricsService) {
         this.config = config;
         this.sessionService = sessionService;
         this.chatFormatService = chatFormatService;
+        this.clientCompatibilityService = clientCompatibilityService;
         this.translationFallbackService = translationFallbackService;
         this.translationCacheService = translationCacheService;
         this.translationMetricsService = translationMetricsService;
@@ -101,10 +104,12 @@ public class TranslatorService {
             }
 
             if (cache.containsKey(data.data.translatorLanguage)) {
-                player.sendMessage(cache.get(data.data.translatorLanguage), author, text);
+                player.sendMessage(cache.get(data.data.translatorLanguage), author,
+                        buildCompatibilityText(text, extractTranslatedText(cache.get(data.data.translatorLanguage))));
             } else translate(text, "auto", data.data.translatorLanguage, result -> {
                 cache.put(data.data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
-                player.sendMessage(cache.get(data.data.translatorLanguage), author, text);
+                player.sendMessage(cache.get(data.data.translatorLanguage), author,
+                        buildCompatibilityText(text, result));
             }, () -> {
                 if (config.translation.preserveOriginalMessageOnFailure) {
                     player.sendMessage(message, author, text);
@@ -121,8 +126,9 @@ public class TranslatorService {
             if (player == null) continue;
 
             var message = chatFormatService.formatTeamChat(author, session.locale(), text);
+            boolean foosCompatible = clientCompatibilityService.isLikelyFoosClient(player);
             if (player == author || session.data.translatorLanguage.equals("off")) {
-                player.sendMessage(message, author);
+                sendTeamChat(player, message, author, text, foosCompatible);
                 continue;
             }
 
@@ -130,18 +136,26 @@ public class TranslatorService {
                 translationMetricsService.incrementGlobal("unsupported_language_total");
                 Log.debug("[Translation] Player '@' has unsupported translator language '@'",
                         session.data.uuid, session.data.translatorLanguage);
-                player.sendMessage(message, author);
+                sendTeamChat(player, message, author, text, foosCompatible);
                 continue;
             }
 
             if (cache.containsKey(session.data.translatorLanguage)) {
-                player.sendMessage(appendTranslation(message, cache.get(session.data.translatorLanguage)), author);
+                sendTeamChat(player,
+                        appendTranslation(message, cache.get(session.data.translatorLanguage)),
+                        author,
+                        buildCompatibilityText(text, cache.get(session.data.translatorLanguage)),
+                        foosCompatible);
             } else translate(text, "auto", session.data.translatorLanguage, result -> {
                 cache.put(session.data.translatorLanguage, result);
-                player.sendMessage(appendTranslation(message, result), author);
+                sendTeamChat(player,
+                        appendTranslation(message, result),
+                        author,
+                        buildCompatibilityText(text, result),
+                        foosCompatible);
             }, () -> {
                 if (config.translation.preserveOriginalMessageOnFailure) {
-                    player.sendMessage(message, author);
+                    sendTeamChat(player, message, author, text, foosCompatible);
                 }
             });
         }
@@ -149,5 +163,45 @@ public class TranslatorService {
 
     private String appendTranslation(String message, String translatedText) {
         return message + " [white]([lightgray]" + translatedText + "[])";
+    }
+
+    private String buildCompatibilityText(String originalText, String translatedText) {
+        if (translatedText == null || translatedText.isBlank()) {
+            return originalText;
+        }
+
+        return originalText + " (" + translatedText + ")";
+    }
+
+    private String extractTranslatedText(String formattedMessage) {
+        if (formattedMessage == null) {
+            return "";
+        }
+
+        int suffixStart = formattedMessage.lastIndexOf(" [white]([lightgray]");
+        if (suffixStart < 0) {
+            return "";
+        }
+
+        int translatedStart = suffixStart + " [white]([lightgray]".length();
+        int translatedEnd = formattedMessage.indexOf("[])", translatedStart);
+        if (translatedEnd < 0 || translatedEnd <= translatedStart) {
+            return "";
+        }
+
+        return formattedMessage.substring(translatedStart, translatedEnd);
+    }
+
+    private void sendTeamChat(Player player,
+                              String formattedMessage,
+                              Player author,
+                              String rawMessage,
+                              boolean foosCompatible) {
+        if (foosCompatible) {
+            player.sendMessage(formattedMessage, author, rawMessage);
+            return;
+        }
+
+        player.sendMessage(formattedMessage, author);
     }
 }
