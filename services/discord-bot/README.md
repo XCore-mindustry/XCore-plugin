@@ -38,6 +38,7 @@ Required:
 Optional:
 
 - `DISCORD_GUILD_ID` (default: `0`; set non-zero for fast guild-scoped slash sync)
+- `DISCORD_CLEAR_STALE_COMMANDS` (default: `false`; one-shot cleanup of stale global/guild slash commands before sync)
 - `DISCORD_GENERAL_ADMIN_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
 - `DISCORD_MAP_REVIEWER_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
 - `REDIS_URL` (default: `redis://127.0.0.1:6379`)

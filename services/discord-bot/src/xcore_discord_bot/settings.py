@@ -58,6 +58,10 @@ class Settings(BaseSettings):
         default=0,
         validation_alias="DISCORD_GUILD_ID",
     )  # 0 = global slash command sync (slower)
+    discord_clear_stale_commands: bool = Field(
+        default=False,
+        validation_alias="DISCORD_CLEAR_STALE_COMMANDS",
+    )
     discord_interaction_hmac_secret: str = Field(
         default="",
         validation_alias="DISCORD_INTERACTION_HMAC_SECRET",

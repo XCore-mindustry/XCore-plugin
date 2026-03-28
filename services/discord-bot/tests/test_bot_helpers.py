@@ -138,6 +138,75 @@ def test_build_servers_embed_includes_address_when_available() -> None:
     assert "Address: `play.example.com:6567`" in (embed.fields[0].value or "")
 
 
+class _FakeTree:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int | None]] = []
+
+    def clear_commands(self, *, guild=None) -> None:
+        self.calls.append(("clear", getattr(guild, "id", None)))
+
+    def copy_global_to(self, *, guild) -> None:
+        self.calls.append(("copy", getattr(guild, "id", None)))
+
+    async def sync(self, *, guild=None):
+        self.calls.append(("sync", getattr(guild, "id", None)))
+        return []
+
+
+@pytest.mark.asyncio
+async def test_sync_application_commands_clears_global_and_guild_when_enabled() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(
+        discord_guild_id=123,
+        discord_clear_stale_commands=True,
+    )
+    bot.__dict__["_BotBase__tree"] = _FakeTree()
+
+    await XCoreDiscordBot._sync_application_commands(bot)
+
+    assert bot.tree.calls == [
+        ("clear", None),
+        ("sync", None),
+        ("clear", 123),
+        ("copy", 123),
+        ("sync", 123),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_sync_application_commands_only_syncs_guild_by_default() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(
+        discord_guild_id=123,
+        discord_clear_stale_commands=False,
+    )
+    bot.__dict__["_BotBase__tree"] = _FakeTree()
+
+    await XCoreDiscordBot._sync_application_commands(bot)
+
+    assert bot.tree.calls == [
+        ("copy", 123),
+        ("sync", 123),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_sync_application_commands_clears_global_only_without_guild() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_settings"] = SimpleNamespace(
+        discord_guild_id=0,
+        discord_clear_stale_commands=True,
+    )
+    bot.__dict__["_BotBase__tree"] = _FakeTree()
+
+    await XCoreDiscordBot._sync_application_commands(bot)
+
+    assert bot.tree.calls == [
+        ("clear", None),
+        ("sync", None),
+    ]
+
+
 # ── _claim_mutation tests ─────────────────────────────────────────────────────
 
 

@@ -16,6 +16,7 @@ ENV_KEYS = [
     "DISCORD_MUTES_CHANNEL_ID",
     "DISCORD_VOTEKICKS_CHANNEL_ID",
     "DISCORD_GUILD_ID",
+    "DISCORD_CLEAR_STALE_COMMANDS",
     "DISCORD_INTERACTION_HMAC_SECRET",
     "DISCORD_ERROR_LOG_CHANNEL_ID",
     "REDIS_URL",
@@ -142,3 +143,24 @@ def test_settings_votekicks_channel_id_defaults_to_zero(
     settings = Settings.from_env()
 
     assert settings.discord_votekicks_channel_id == 0
+
+
+def test_settings_clear_stale_commands_defaults_to_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.discord_clear_stale_commands is False
+
+
+def test_settings_clear_stale_commands_parses_bool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("DISCORD_CLEAR_STALE_COMMANDS", "true")
+
+    settings = Settings.from_env()
+
+    assert settings.discord_clear_stale_commands is True

@@ -855,11 +855,27 @@ class XCoreDiscordBot(commands.Bot):
             self._update_presence_loop(), name="discord-presence-updater"
         )
 
-        if self._settings.discord_guild_id:
-            guild_obj = discord.Object(id=self._settings.discord_guild_id)
+        await self._sync_application_commands()
+
+    async def _sync_application_commands(self) -> None:
+        guild_id = self._settings.discord_guild_id
+        clear_stale = self._settings.discord_clear_stale_commands
+
+        if guild_id:
+            guild_obj = discord.Object(id=guild_id)
+            if clear_stale:
+                logger.warning(
+                    "Clearing stale global and guild slash commands before sync"
+                )
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+                self.tree.clear_commands(guild=guild_obj)
             self.tree.copy_global_to(guild=guild_obj)
             await self.tree.sync(guild=guild_obj)
         else:
+            if clear_stale:
+                logger.warning("Clearing stale global slash commands before sync")
+                self.tree.clear_commands(guild=None)
             await self.tree.sync()
 
     async def on_ready(self) -> None:
