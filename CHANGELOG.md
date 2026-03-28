@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.2] - 2026-03-28
+
+### Added
+- Added a configurable translation pipeline with ordered fallback providers and an OpenAI-compatible provider path.
+- Added translation cache, metrics, safety checks, debug logging, and a translation stats command for runtime visibility.
+- Added translation delivery for team chat (`/t`) plus a compatibility-aware delivery path for likely Foo's Client users.
+- Added reusable cached team-session helpers so team-aware features can stop duplicating online-player traversal.
+- Added successful vote-kick event publishing for downstream consumers.
+- Added a Discord link-code copy action for Mindustry 156.1 clients.
+- Added a bug finder badge and localized badge copy updates.
+- Added localization placeholder consistency coverage and user language preference tests.
+
+### Changed
+- Reworked localization internals around FluBundle locale resolvers, direct bundle injection, and unified language update flow.
+- Improved translation pipeline behavior to better support NVIDIA Integrate / chat-completions-compatible providers.
+- Automated release publishing to XCore Maven / Reposilite and aligned dependency resolution for `cloud-mindustry` and `flubundle` with XCore Maven.
+- Redesigned moderation ban and mute notices with clearer localized presentation.
+
+### Fixed
+- Fixed vote choice parser aliases so only explicit yes/no inputs are accepted during voting.
+- Fixed standard Cloud caption localization coverage and added missing placeholder support for bundled captions.
+- Fixed player-menu PID lookup so online players are shown correctly.
+- Fixed persisted map resolution to use exact persisted identity when opening details.
+- Fixed Redis RPC response metric timing so observers do not see stale values after successful replies.
+- Fixed cached session lookup edge cases across gameplay, menu, and voting flows.
+- Fixed translation provider ordering so configured providers are used in the intended sequence.
+- Fixed help command/controller lifecycle regressions affecting server and client help flows.
+
 ## [3.1.8] - 2026-03-13
 
 No changelog entries were recorded in the Unreleased section.
@@ -193,7 +221,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...HEAD
+[3.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...3.2
 [3.1.8]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...3.1.8
 [3.1.7]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...3.1.7
 [3.1.6]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.5...3.1.6
