@@ -4,12 +4,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.localization.TranslationFailure;
 import org.xcore.plugin.localization.TranslationProvider;
+import org.xcore.plugin.localization.TranslationProviderPipeline;
 import org.xcore.plugin.localization.TranslationResult;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class TranslationFallbackServiceTest {
 
@@ -26,7 +28,10 @@ class TranslationFallbackServiceTest {
                 true,
                 TranslationResult.success("translated-secondary")
         );
-        TranslationFallbackService service = new TranslationFallbackService(List.of(primary, secondary));
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(primary, secondary)),
+                mock(TranslationMetricsService.class)
+        );
         AtomicReference<TranslationResult> result = new AtomicReference<>();
 
         service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
@@ -51,7 +56,10 @@ class TranslationFallbackServiceTest {
                 true,
                 TranslationResult.success("translated-secondary")
         );
-        TranslationFallbackService service = new TranslationFallbackService(List.of(primary, secondary));
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(primary, secondary)),
+                mock(TranslationMetricsService.class)
+        );
         AtomicReference<TranslationResult> result = new AtomicReference<>();
 
         service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
@@ -76,7 +84,10 @@ class TranslationFallbackServiceTest {
                 true,
                 TranslationResult.failure(TranslationFailure.unavailable("secondary", "unavailable"))
         );
-        TranslationFallbackService service = new TranslationFallbackService(List.of(primary, secondary));
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(primary, secondary)),
+                mock(TranslationMetricsService.class)
+        );
         AtomicReference<TranslationResult> result = new AtomicReference<>();
 
         service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
@@ -88,6 +99,73 @@ class TranslationFallbackServiceTest {
                 });
         assertThat(primary.calls).isEqualTo(1);
         assertThat(secondary.calls).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("translate returns unavailable failure when no providers are configured")
+    void translate_returnsUnavailableFailure_whenNoProvidersAreConfigured() {
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of()),
+                mock(TranslationMetricsService.class)
+        );
+        AtomicReference<TranslationResult> result = new AtomicReference<>();
+
+        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+
+        assertThat(result.get())
+                .isInstanceOfSatisfying(TranslationResult.Failure.class, failure -> {
+                    assertThat(failure.failure().providerName()).isEqualTo("fallback");
+                    assertThat(failure.failure().reason()).isEqualTo("translation is unavailable: no providers configured");
+                });
+    }
+
+    @Test
+    @DisplayName("translate skips unsupported provider before using supported fallback")
+    void translate_skipsUnsupportedProvider_beforeUsingSupportedFallback() {
+        StubProvider unsupportedPrimary = new StubProvider(
+                "primary",
+                false,
+                TranslationResult.success("should-not-be-used")
+        );
+        StubProvider supportedFallback = new StubProvider(
+                "fallback",
+                true,
+                TranslationResult.success("translated-secondary")
+        );
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(unsupportedPrimary, supportedFallback)),
+                mock(TranslationMetricsService.class)
+        );
+        AtomicReference<TranslationResult> result = new AtomicReference<>();
+
+        service.translate(new TranslationProvider.Request("hello", "auto", "ru"), result::set);
+
+        assertThat(result.get())
+                .isInstanceOfSatisfying(TranslationResult.Success.class,
+                        success -> assertThat(success.translatedText()).isEqualTo("translated-secondary"));
+        assertThat(unsupportedPrimary.calls).isZero();
+        assertThat(supportedFallback.calls).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("pipeline signature reflects configured provider order")
+    void pipelineSignature_reflectsConfiguredProviderOrder() {
+        StubProvider primary = new StubProvider(
+                "nvidia-mistral-small",
+                true,
+                TranslationResult.success("ok")
+        );
+        StubProvider secondary = new StubProvider(
+                "google",
+                true,
+                TranslationResult.success("ok")
+        );
+        TranslationFallbackService service = new TranslationFallbackService(
+                new TranslationProviderPipeline(List.of(primary, secondary)),
+                mock(TranslationMetricsService.class)
+        );
+
+        assertThat(service.pipelineSignature()).isEqualTo("nvidia-mistral-small:nvidia-mistral-small,google:google");
     }
 
     private static final class StubProvider implements TranslationProvider {

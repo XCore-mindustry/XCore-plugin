@@ -34,7 +34,7 @@ public class CloudService {
     private final DisabledCommandPolicy disabledCommandPolicy;
     private final CloudExceptionConfigurer cloudExceptionConfigurer;
 
-    private MindustryCommandManager<XCoreSender> clientManager;
+    @Getter private MindustryCommandManager<XCoreSender> clientManager;
     @Getter private MindustryCommandManager<XCoreSender> serverManager;
     private AnnotationParser<XCoreSender> clientAnnotationParser;
     private AnnotationParser<XCoreSender> serverAnnotationParser;

@@ -22,11 +22,15 @@ public class ConfigFactory {
 
     @Bean
     public Config config(@Named("pretty") Gson gson) {
+        Config config;
         if (configFile.exists()) {
-            return gson.fromJson(configFile.reader(), Config.class);
+            config = gson.fromJson(configFile.reader(), Config.class);
+        } else {
+            config = new Config();
+            configFile.writeString(gson.toJson(config));
         }
-        Config config = new Config();
-        configFile.writeString(gson.toJson(config));
+
+        config.normalize();
         return config;
     }
 
@@ -44,6 +48,7 @@ public class ConfigFactory {
             globalConfigFile.writeString(gson.toJson(globalConfig));
         }
 
+        globalConfig.normalize();
         globalConfig.postInit(globalConfigFile);
         return globalConfig;
     }

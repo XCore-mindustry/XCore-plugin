@@ -1,7 +1,12 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
+
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static org.xcore.plugin.common.PLog.err;
 
@@ -35,8 +40,25 @@ public class GlobalConfig {
 
     public boolean isDataBaseReadOnly = false;
     public boolean isDataBaseMigration = false;
+    public Map<String, TranslationProviderConfig> translationProviders = defaultTranslationProviders();
+
+    public void normalize() {
+        if (translationProviders == null || translationProviders.isEmpty()) {
+            translationProviders = defaultTranslationProviders();
+        }
+
+        translationProviders.replaceAll((providerId, providerConfig) -> {
+            TranslationProviderConfig normalized = providerConfig == null
+                    ? new TranslationProviderConfig()
+                    : providerConfig;
+            normalized.normalize();
+            return normalized;
+        });
+    }
 
     public void postInit(Fi globalConfigFile) {
+        normalize();
+
         var errors = new ArrayList<String>();
 
         if (mongoConnectionString == null || mongoConnectionString.isBlank()) {
@@ -62,7 +84,58 @@ public class GlobalConfig {
             err("===========================================");
             throw new IllegalStateException(
                     "Missing required config in " + globalConfigFile.name() + ": " + String.join(", ", errors)
-            );
+                );
+        }
+    }
+
+    private static Map<String, TranslationProviderConfig> defaultTranslationProviders() {
+        var providers = new LinkedHashMap<String, TranslationProviderConfig>();
+        providers.put("google", new TranslationProviderConfig());
+        return providers;
+    }
+
+    public static class TranslationProviderConfig {
+        public String type = "google";
+        public boolean enabled = true;
+        public String apiKey = null;
+        public String baseUrl = "https://api.openai.com/v1";
+        public String model = "gpt-5.4";
+        public String apiMode = null;
+        public String organization = null;
+        public String project = null;
+        public int timeoutSeconds = 15;
+        public int maxRetries = 1;
+        public double temperature = 0.0;
+        public Set<String> supportedLanguages = new LinkedHashSet<>();
+
+        public void normalize() {
+            if (type == null || type.isBlank()) {
+                type = "google";
+            }
+
+            if (baseUrl == null || baseUrl.isBlank()) {
+                baseUrl = "https://api.openai.com/v1";
+            }
+
+            if (model == null || model.isBlank()) {
+                model = "gpt-5.4";
+            }
+
+            if (apiMode != null && !apiMode.isBlank()) {
+                apiMode = apiMode.trim().toLowerCase();
+            }
+
+            if (timeoutSeconds <= 0) {
+                timeoutSeconds = 15;
+            }
+
+            if (maxRetries < 0) {
+                maxRetries = 1;
+            }
+
+            if (supportedLanguages == null) {
+                supportedLanguages = new LinkedHashSet<>();
+            }
         }
     }
 }

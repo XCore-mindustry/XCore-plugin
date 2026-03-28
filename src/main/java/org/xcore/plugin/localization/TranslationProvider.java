@@ -6,6 +6,10 @@ public interface TranslationProvider {
 
     String name();
 
+    default String type() {
+        return name();
+    }
+
     void translate(Request request, Cons<TranslationResult> callback);
 
     default boolean supports(String languageCode) {

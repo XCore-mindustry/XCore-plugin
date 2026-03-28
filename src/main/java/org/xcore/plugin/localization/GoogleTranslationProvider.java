@@ -17,6 +17,11 @@ public final class GoogleTranslationProvider implements TranslationProvider {
     }
 
     @Override
+    public String type() {
+        return "google";
+    }
+
+    @Override
     public void translate(Request request, arc.func.Cons<TranslationResult> callback) {
         Http.post(ENDPOINT,
                         "tl=" + request.targetLanguage() + "&sl=" + request.sourceLanguage() + "&q=" + Strings.encode(request.text()))

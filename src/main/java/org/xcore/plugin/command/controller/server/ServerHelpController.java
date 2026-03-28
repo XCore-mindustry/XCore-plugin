@@ -3,8 +3,8 @@ package org.xcore.plugin.command.controller.server;
 import arc.util.CommandHandler;
 import arc.util.Log;
 import arc.util.Strings;
-import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.server.ServerControl;
 import org.incendo.cloud.annotation.specifier.Greedy;
@@ -27,26 +27,21 @@ import java.util.*;
 @Singleton
 public class ServerHelpController implements CloudServerController {
 
-    private final CloudService cloud;
-    private HelpHandler<XCoreSender> helpHandler;
+    private final Provider<CloudService> cloud;
 
     @Inject
-    public ServerHelpController(CloudService cloud) {
+    public ServerHelpController(Provider<CloudService> cloud) {
         this.cloud = cloud;
     }
 
-    @PostConstruct
-    public void init() {
-        this.helpHandler = cloud.getServerHelpHandler();
+    @Command("help")
+    public void help(XCoreSender sender) {
+        showIndex(sender);
     }
 
-    @Command("help [query]")
-    public void help(XCoreSender sender, @Argument("query") @Greedy String query) {
-        if (query == null || query.isBlank()) {
-            showIndex(sender);
-        } else {
-            showQuery(sender, query);
-        }
+    @Command("help <query>")
+    public void helpQuery(XCoreSender sender, @Argument("query") @Greedy String query) {
+        showQuery(sender, query);
     }
 
     private void showIndex(XCoreSender sender) {
@@ -65,10 +60,11 @@ public class ServerHelpController implements CloudServerController {
 
     private void showQuery(XCoreSender sender, String query) {
         List<UnifiedCommand> allCommands = collectAllCommands(sender);
+        HelpHandler<XCoreSender> helpHandler = cloud.get().getServerHelpHandler();
         HelpQueryResult<XCoreSender> result = helpHandler.query(org.incendo.cloud.help.HelpQuery.of(sender, query));
 
         if (result instanceof VerboseCommandResult<XCoreSender> verbose) {
-            if (cloud.isCommandDisabled(verbose.entry().command())) {
+            if (cloud.get().isCommandDisabled(verbose.entry().command())) {
                 Log.info("Command '@' not found.", query);
                 return;
             }
@@ -92,7 +88,7 @@ public class ServerHelpController implements CloudServerController {
 
         // If not found in cloud (or it's just an index result), check vanilla commands specifically
         CommandHandler.Command legacyCmd = findLegacyCommand(query);
-        if (legacyCmd != null && !cloud.isCommandDisabled(legacyCmd.text)) {
+        if (legacyCmd != null && !cloud.get().isCommandDisabled(legacyCmd.text)) {
             printEntryDetails(UnifiedCommand.fromLegacy(legacyCmd));
         } else {
             Log.info("Command '@' not found.", query);
@@ -167,6 +163,8 @@ public class ServerHelpController implements CloudServerController {
     private List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
         Map<String, UnifiedCommandBuilder> commandMap = new LinkedHashMap<>();
         var handler = ServerControl.instance.handler;
+        CloudService cloudService = cloud.get();
+        HelpHandler<XCoreSender> helpHandler = cloudService.getServerHelpHandler();
 
         IndexCommandResult<XCoreSender> index = helpHandler.queryRootIndex(sender);
         Set<String> cloudNames = new HashSet<>();
@@ -179,7 +177,7 @@ public class ServerHelpController implements CloudServerController {
                 cloudNames.add(alias.toLowerCase(Locale.ROOT));
             }
 
-            if (cloud.isCommandDisabled(entry.command())) {
+            if (cloudService.isCommandDisabled(entry.command())) {
                 continue;
             }
 
@@ -194,7 +192,7 @@ public class ServerHelpController implements CloudServerController {
                 continue;
             }
 
-            if (cloud.isCommandDisabled(cmd.text)) {
+            if (cloudService.isCommandDisabled(cmd.text)) {
                 continue;
             }
 

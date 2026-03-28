@@ -71,6 +71,7 @@ dependencies {
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
     implementation(libs.bundles.jline)
     implementation(libs.avaje.inject)
+    implementation(libs.openai.java)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     annotationProcessor(libs.avaje.inject.generator)

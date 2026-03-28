@@ -1,8 +1,8 @@
 package org.xcore.plugin.ui.menu;
 
 import arc.util.CommandHandler;
-import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import org.incendo.cloud.component.CommandComponent;
@@ -24,19 +24,13 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class HelpMenu extends Menu {
 
-    private final CloudService cloud;
-    private HelpHandler<XCoreSender> helpHandler;
+    private final Provider<CloudService> cloud;
     private static final int MAX_DESC_LEN = 40;
 
     @Inject
-    public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, CloudService cloud) {
+    public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, Provider<CloudService> cloud) {
         super(config, globalConfig, sessionService);
         this.cloud = cloud;
-    }
-
-    @PostConstruct
-    public void init() {
-        this.helpHandler = cloud.getHelpHandler();
     }
 
     public void help(String uuid, int page) {
@@ -164,6 +158,8 @@ public class HelpMenu extends Menu {
     private List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
         Map<String, UnifiedCommandBuilder> commandMap = new LinkedHashMap<>();
         var handler = Vars.netServer.clientCommands;
+        CloudService cloudService = cloud.get();
+        HelpHandler<XCoreSender> helpHandler = cloudService.getHelpHandler();
 
         Set<String> cloudNames = new HashSet<>();
         helpHandler.queryRootIndex(sender).entries().forEach(entry -> {
@@ -176,7 +172,7 @@ public class HelpMenu extends Menu {
                 cloudNames.add(alias.toLowerCase(Locale.ROOT));
             }
 
-            if (cloud.isCommandDisabled(entry.command())) {
+            if (cloudService.isCommandDisabled(entry.command())) {
                 return;
             }
 
@@ -186,7 +182,7 @@ public class HelpMenu extends Menu {
 
         for (var cmd : handler.getCommandList()) {
             String nameLower = cmd.text.toLowerCase(Locale.ROOT);
-            if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower) || cloud.isCommandDisabled(cmd.text)) {
+            if (cmd instanceof MindustryCloudCommand<?> || cloudNames.contains(nameLower) || cloudService.isCommandDisabled(cmd.text)) {
                 continue;
             }
 

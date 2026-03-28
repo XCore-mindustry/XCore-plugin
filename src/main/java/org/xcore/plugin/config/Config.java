@@ -3,7 +3,9 @@ package org.xcore.plugin.config;
 import mindustry.gen.Groups;
 import org.xcore.plugin.model.enums.Feature;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Config {
@@ -52,5 +54,99 @@ public class Config {
 
     public boolean isEventHubMap = false;
     public String eventHubMapID = "";
+    public TranslationConfig translation = new TranslationConfig();
+
+    public void normalize() {
+        if (disabledCommands == null) {
+            disabledCommands = new HashSet<>();
+        }
+
+        if (disabledFeatures == null) {
+            disabledFeatures = new HashSet<>();
+        }
+
+        if (translation == null) {
+            translation = new TranslationConfig();
+        }
+
+        translation.normalize();
+    }
+
+    public static class TranslationConfig {
+        public boolean enabled = true;
+        public List<String> pipeline = new ArrayList<>(List.of("google"));
+        public boolean preserveOriginalMessageOnFailure = true;
+        public TranslationCacheConfig cache = new TranslationCacheConfig();
+        public TranslationMetricsConfig metrics = new TranslationMetricsConfig();
+        public LlmTranslationPolicyConfig llm = new LlmTranslationPolicyConfig();
+
+        public void normalize() {
+            if (pipeline == null || pipeline.isEmpty()) {
+                pipeline = new ArrayList<>(List.of("google"));
+            }
+
+            if (cache == null) {
+                cache = new TranslationCacheConfig();
+            }
+
+            if (metrics == null) {
+                metrics = new TranslationMetricsConfig();
+            }
+
+            if (llm == null) {
+                llm = new LlmTranslationPolicyConfig();
+            }
+
+            cache.normalize();
+            metrics.normalize();
+            llm.normalize();
+        }
+    }
+
+    public static class TranslationCacheConfig {
+        public boolean enabled = true;
+        public int ttlSeconds = 1800;
+        public int maxTextLength = 500;
+
+        public void normalize() {
+            if (ttlSeconds <= 0) {
+                ttlSeconds = 1800;
+            }
+
+            if (maxTextLength <= 0) {
+                maxTextLength = 500;
+            }
+        }
+    }
+
+    public static class TranslationMetricsConfig {
+        public boolean enabled = true;
+        public boolean minuteBucketsEnabled = true;
+        public int minuteBucketTtlSeconds = 21600;
+
+        public void normalize() {
+            if (minuteBucketTtlSeconds <= 0) {
+                minuteBucketTtlSeconds = 21600;
+            }
+        }
+    }
+
+    public static class LlmTranslationPolicyConfig {
+        public boolean preserveFormattingTokens = true;
+        public boolean structuredOutputRequired = true;
+        public int maxInputChars = 500;
+        public int maxOutputChars = 1200;
+        public boolean stripControlCharacters = true;
+
+        public void normalize() {
+            if (maxInputChars <= 0) {
+                maxInputChars = 500;
+            }
+
+            if (maxOutputChars <= 0) {
+                maxOutputChars = 1200;
+            }
+        }
+    }
 
 }
