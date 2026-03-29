@@ -25,7 +25,8 @@ public class TranslationProviderFactory {
 
     @Bean
     public TranslationProviderPipeline translationProviderPipeline(GoogleTranslationProvider googleTranslationProvider,
-                                                                  TranslationSafetyService translationSafetyService) {
+                                                                  TranslationSafetyService translationSafetyService,
+                                                                  TranslationExecutor translationExecutor) {
         if (!config.translation.enabled) {
             PLog.info("Translation pipeline is disabled in config");
             return new TranslationProviderPipeline(List.of());
@@ -47,7 +48,13 @@ public class TranslationProviderFactory {
                 continue;
             }
 
-            TranslationProvider translationProvider = createProvider(providerId, providerConfig, googleTranslationProvider, translationSafetyService);
+            TranslationProvider translationProvider = createProvider(
+                    providerId,
+                    providerConfig,
+                    googleTranslationProvider,
+                    translationSafetyService,
+                    translationExecutor
+            );
             if (translationProvider == null) {
                 PLog.err("Translation provider '@' has unsupported type '@'", providerId, providerConfig.type);
                 continue;
@@ -66,10 +73,11 @@ public class TranslationProviderFactory {
     private TranslationProvider createProvider(String providerId,
                                                GlobalConfig.TranslationProviderConfig providerConfig,
                                                GoogleTranslationProvider googleTranslationProvider,
-                                               TranslationSafetyService translationSafetyService) {
+                                               TranslationSafetyService translationSafetyService,
+                                               TranslationExecutor translationExecutor) {
         return switch (providerConfig.type) {
             case "google" -> googleTranslationProvider;
-            case "openai" -> new OpenAITranslationProvider(providerId, providerConfig, translationSafetyService);
+            case "openai" -> new OpenAITranslationProvider(providerId, providerConfig, translationSafetyService, translationExecutor);
             default -> null;
         };
     }

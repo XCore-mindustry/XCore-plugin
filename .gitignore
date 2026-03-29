@@ -10,6 +10,7 @@
 /.idea/
 /.vscode/
 /out/
+.factorypath
 /server/
 /servers/
 /scripts/
