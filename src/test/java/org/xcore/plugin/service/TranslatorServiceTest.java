@@ -75,7 +75,7 @@ class TranslatorServiceTest {
         recipientData.translatorLanguage = "ru";
         recipientSession.data = recipientData;
 
-        when(sessionService.getAllCached()).thenReturn(List.of(recipientSession));
+        when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(recipientSession));
         when(chatFormatService.formatChat(author, "hello")).thenReturn("formatted-message");
         doAnswer(invocation -> {
             Boolf<Player> predicate = invocation.getArgument(0);
@@ -121,7 +121,7 @@ class TranslatorServiceTest {
         recipientData.translatorLanguage = "ru";
         recipientSession.data = recipientData;
 
-        when(sessionService.getAllCached()).thenReturn(List.of(recipientSession));
+        when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(recipientSession));
         when(chatFormatService.formatChat(author, "hello")).thenReturn("formatted-message");
         when(translationFallbackService.supports("ru")).thenReturn(false);
         doAnswer(invocation -> {
@@ -197,7 +197,7 @@ class TranslatorServiceTest {
         recipientData.translatorLanguage = "ru";
         recipientSession.data = recipientData;
 
-        when(sessionService.getAllCached()).thenReturn(List.of(recipientSession));
+        when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(recipientSession));
         when(chatFormatService.formatChat(author, "hello")).thenReturn("formatted-message");
         when(translationFallbackService.supports("ru")).thenReturn(true);
         doAnswer(invocation -> {

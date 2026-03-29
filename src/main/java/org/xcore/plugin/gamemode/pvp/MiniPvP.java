@@ -47,7 +47,7 @@ public class MiniPvP {
 
         leaderboardService.start((builder, player, locale) -> {
             Seq<PlayerData> sorted = new Seq<>();
-            for (var d : sessionService.getAllCached()) {
+            for (var d : sessionService.getAllCachedSnapshot()) {
                 if (d.data.pvpRating != 0) {
                     sorted.add(d.data);
                 }

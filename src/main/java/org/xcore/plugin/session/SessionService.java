@@ -12,6 +12,7 @@ import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -91,7 +92,7 @@ public class SessionService {
      * @return PlayerData from cache or database, or null if not found
      */
     public PlayerData getOrLoadFromDb(int pid) {
-        for (var data : sessionCache.values()) {
+        for (var data : getAllCachedSnapshot()) {
             if (data.data.pid == pid) {
                 return data.data;
             }
@@ -195,7 +196,7 @@ public class SessionService {
      * @param consumer consumer for matched players
      */
     public void getCachedAdminTools(Boolf<String> versionCompare, Cons<PlayerData> consumer) {
-        for (var data : sessionCache.values()) {
+        for (var data : getAllCachedSnapshot()) {
             if (data.data.adminModVersion != null && versionCompare.get(data.data.adminModVersion)) {
                 consumer.get(data.data);
             }
@@ -212,18 +213,24 @@ public class SessionService {
     }
 
     /**
-     * Gets all cached player data.
-     * <p>
-     * Use with caution - returns live collection.
+     * Gets a snapshot of all cached player sessions.
      *
-     * @return all cached PlayerData entries
+     * @return snapshot of all cached session entries
      */
     public Iterable<Session> getAllCached() {
-        return sessionCache.values();
+        return getAllCachedSnapshot();
+    }
+
+    public List<Session> getAllCachedSnapshot() {
+        var sessions = new ArrayList<Session>(sessionCache.size);
+        for (var session : sessionCache.values()) {
+            sessions.add(session);
+        }
+        return sessions;
     }
 
     public Stream<Session> streamCached() {
-        return StreamSupport.stream(getAllCached().spliterator(), false);
+        return getAllCachedSnapshot().stream();
     }
 
     public List<Session> findByTeam(Team team) {
@@ -333,7 +340,7 @@ public class SessionService {
     }
 
     public void broadcast(String key, Map<String, Object> args) {
-        for (Session session : getAllCached()) {
+        for (Session session : getAllCachedSnapshot()) {
             if (session == null || session.data == null) continue;
             session.locale().send(key, args);
         }

@@ -36,7 +36,7 @@ public class PlayerActivityService {
         Timer.schedule(() -> {
             discoveryService.updateFooter();
 
-            for (Session session : sessionService.getAllCached()) {
+            for (Session session : sessionService.getAllCachedSnapshot()) {
                 if (session == null || session.data == null) continue;
                 var player = findService.playerByUuid(session.data.uuid);
                 if (player == null) continue;

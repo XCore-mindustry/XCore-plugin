@@ -88,6 +88,43 @@ class SessionServiceTest {
     }
 
     @Test
+    @DisplayName("getAllCachedSnapshot returns stable snapshot independent of later cache changes")
+    void getAllCachedSnapshot_returnsStableSnapshotIndependentOfLaterCacheChanges() {
+        SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        Session alpha = session("uuid-1", Team.sharded);
+        Session beta = session("uuid-2", Team.crux);
+
+        service.update(alpha);
+
+        List<Session> snapshot = service.getAllCachedSnapshot();
+
+        service.update(beta);
+
+        assertThat(snapshot).containsExactly(alpha);
+        assertThat(service.getAllCachedSnapshot()).containsExactlyInAnyOrder(alpha, beta);
+    }
+
+    @Test
+    @DisplayName("getAllCached exposes snapshot semantics for enhanced for iteration")
+    void getAllCached_exposesSnapshotSemanticsForEnhancedForIteration() {
+        SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        Session alpha = session("uuid-1", Team.sharded);
+        Session beta = session("uuid-2", Team.crux);
+
+        service.update(alpha);
+
+        ArrayList<String> visited = new ArrayList<>();
+
+        for (Session session : service.getAllCached()) {
+            visited.add(session.data.uuid);
+            service.update(beta);
+        }
+
+        assertThat(visited).containsExactly("uuid-1");
+        assertThat(service.getAllCachedSnapshot()).containsExactlyInAnyOrder(alpha, beta);
+    }
+
+    @Test
     @DisplayName("findByTeam returns only matching online sessions")
     void findByTeam_returnsOnlyMatchingOnlineSessions() {
         SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));

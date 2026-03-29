@@ -86,7 +86,7 @@ public class TranslatorService {
         var cache = new StringMap();
         var message = chatFormatService.formatChat(author, text);
 
-        for (var data : sessionService.getAllCached()) {
+        for (var data : sessionService.getAllCachedSnapshot()) {
             var player = Groups.player.find(p -> p.uuid().equals(data.data.uuid));
             if (player == null || player == author) continue;
 

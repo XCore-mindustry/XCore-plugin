@@ -148,7 +148,7 @@ public class BadgeAdminController implements CloudServerController {
             return sessionService.getOrLoadFromDb(Integer.parseInt(playerRef.substring(1)));
         }
 
-        for (Session session : sessionService.getAllCached()) {
+        for (Session session : sessionService.getAllCachedSnapshot()) {
             if (session == null || session.data == null) continue;
             if (playerRef.equalsIgnoreCase(session.data.uuid)
                     || playerRef.equalsIgnoreCase(session.data.nickname)
