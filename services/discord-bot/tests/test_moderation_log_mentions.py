@@ -97,14 +97,41 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
         starter_pid=7,
         starter_discord_id="123456",
         reason="griefing",
-        votes_for=[VoteKickParticipant(name="Starter", pid=7, discord_id="123456")],
+        votes_for=[
+            VoteKickParticipant(name="[green]Starter[]", pid=7, discord_id="123456"),
+            VoteKickParticipant(name="[#2CABFEFF]mix", pid=45410, discord_id=None),
+        ],
         votes_against=[VoteKickParticipant(name="Voter2", pid=8, discord_id="654321")],
     )
 
     embed = bot.channel.sent[0]["embed"]
+    assert embed.title == "Vote-kick Passed"
     fields = {field.name: field.value for field in embed.fields}
     assert fields["Target"] == "Target (pid=42)"
     assert fields["Initiator"] == "Starter (pid=7) (<@123456> / 123456)"
     assert fields["Reason"] == "griefing"
-    assert fields["For (1)"] == "`Starter` (pid=7, <@123456> (123456))"
+    assert fields["For (2)"] == (
+        "`Starter` (pid=7, <@123456> (123456))\n`mix` (pid=45410)"
+    )
     assert fields["Against (1)"] == "`Voter2` (pid=8, <@654321> (654321))"
+
+
+@pytest.mark.asyncio
+async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> None:
+    bot = _Bot(votekicks_channel_id=12)
+
+    await post_vote_kick_log(
+        bot,
+        target_name="Target",
+        target_pid=42,
+        starter_name="Starter",
+        starter_pid=7,
+        starter_discord_id=None,
+        reason="griefing",
+        votes_for=[VoteKickParticipant(name="Starter", pid=7, discord_id=None)],
+        votes_against=[],
+    )
+
+    embed = bot.channel.sent[0]["embed"]
+    fields = {field.name: field.value for field in embed.fields}
+    assert fields["Against (0)"] == "None"

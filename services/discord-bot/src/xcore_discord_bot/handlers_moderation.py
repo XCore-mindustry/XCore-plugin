@@ -21,14 +21,14 @@ _EMBED_FIELD_VALUE_LIMIT = 1024
 
 
 def _split_embed_field_chunks(
-    items: list[str], *, limit: int = _EMBED_FIELD_VALUE_LIMIT
+    items: list[str], *, limit: int = _EMBED_FIELD_VALUE_LIMIT, separator: str = ", "
 ) -> list[str]:
     chunks: list[str] = []
     current = ""
 
     for item in items:
-        separator = ", " if current else ""
-        candidate = f"{current}{separator}{item}"
+        joiner = separator if current else ""
+        candidate = f"{current}{joiner}{item}"
         if len(candidate) <= limit:
             current = candidate
             continue
@@ -46,8 +46,12 @@ def _split_embed_field_chunks(
     return chunks
 
 
-def _add_embed_section(embed: discord.Embed, *, name: str, items: list[str]) -> None:
-    for index, chunk in enumerate(_split_embed_field_chunks(items), start=1):
+def _add_embed_section(
+    embed: discord.Embed, *, name: str, items: list[str], separator: str = ", "
+) -> None:
+    for index, chunk in enumerate(
+        _split_embed_field_chunks(items, separator=separator), start=1
+    ):
         field_name = name if index == 1 else f"{name} (cont. {index})"
         embed.add_field(name=field_name, value=chunk, inline=False)
 
@@ -58,7 +62,9 @@ def _format_vote_kick_party_value(*, name: str, pid: int | None) -> str:
 
 
 def _format_vote_kick_participant(item: VoteKickParticipant) -> str:
-    name = str(item.name).strip() or "Unknown"
+    from .bot import strip_mindustry_colors
+
+    name = strip_mindustry_colors(str(item.name).replace("`", "")).strip() or "Unknown"
     segments = [f"`{name}`"]
     if item.pid is not None and item.pid > 0:
         segments.append(f"pid={item.pid}")
@@ -802,7 +808,7 @@ async def post_vote_kick_log(
     if starter_mention:
         starter_value = f"{starter_value} (<@{starter_mention}> / {starter_mention})"
 
-    embed = discord.Embed(title="Vote-kick Started", color=discord.Color.blurple())
+    embed = discord.Embed(title="Vote-kick Passed", color=discord.Color.blurple())
     embed.add_field(name="Target", value=target_value, inline=False)
     embed.add_field(name="Initiator", value=starter_value, inline=False)
     embed.add_field(name="Reason", value=safe_reason, inline=False)
@@ -810,21 +816,25 @@ async def post_vote_kick_log(
     yes_items = [_format_vote_kick_participant(item) for item in votes_for]
     no_items = [_format_vote_kick_participant(item) for item in votes_against]
 
-    embed.add_field(
-        name=f"For ({len(yes_items)})",
-        value="No yes votes" if not yes_items else yes_items[0],
-        inline=False,
-    )
-    if len(yes_items) > 1:
-        _add_embed_section(embed, name="For", items=yes_items[1:])
+    if yes_items:
+        _add_embed_section(
+            embed,
+            name=f"For ({len(yes_items)})",
+            items=yes_items,
+            separator="\n",
+        )
+    else:
+        embed.add_field(name="For (0)", value="None", inline=False)
 
-    embed.add_field(
-        name=f"Against ({len(no_items)})",
-        value="No no votes" if not no_items else no_items[0],
-        inline=False,
-    )
-    if len(no_items) > 1:
-        _add_embed_section(embed, name="Against", items=no_items[1:])
+    if no_items:
+        _add_embed_section(
+            embed,
+            name=f"Against ({len(no_items)})",
+            items=no_items,
+            separator="\n",
+        )
+    else:
+        embed.add_field(name="Against (0)", value="None", inline=False)
 
     await channel.send(embed=embed)
 
