@@ -4,15 +4,11 @@ import arc.func.Cons;
 import arc.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.xcore.plugin.event.SocketEvents.Request;
-import org.xcore.plugin.event.SocketEvents.Response;
 import io.lettuce.core.Consumer;
 import io.lettuce.core.RedisClient;
-import io.lettuce.core.XAddArgs;
 import io.lettuce.core.StreamMessage;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.XAutoClaimArgs;
-import io.lettuce.core.XGroupCreateArgs;
 import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -21,13 +17,10 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.SocketEvents.Request;
+import org.xcore.plugin.event.SocketEvents.Response;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,23 +43,18 @@ public final class RedisNetworkBackend {
     public abstract static class RequestSubscription<T> {
         public abstract void cancel();
     }
-    private static final long MAXLEN_EVT = 50_000L;
-    private static final long MAXLEN_CMD = 10_000L;
-    private static final long MAXLEN_RPC_REQ = 5_000L;
-    private static final long MAXLEN_RPC_RESP = 20_000L;
-    private static final long MAXLEN_DLQ = 100_000L;
-
-
     private final Config config;
     private final Gson gson;
     private final RedisStreamRouter router;
+    private final RedisEnvelopeFactory envelopeFactory;
+    private final RedisStreamSupport streamSupport;
+    private final RedisRpcTracker rpcTracker;
     private RedisClient client;
     private StatefulRedisConnection<String, String> connection;
     private RedisCommands<String, String> commands;
     private boolean connectionWarningLogged;
     private boolean publishWarningLogged;
     private final List<Thread> subscriberThreads = new CopyOnWriteArrayList<>();
-    private final Map<Request<?>, RpcInboundContext> inboundRpcContexts = Collections.synchronizedMap(new IdentityHashMap<>());
     private final Map<String, Integer> deliveryFailures = new ConcurrentHashMap<>();
     private final AtomicLong publishedEvents = new AtomicLong();
     private final AtomicLong publishFailures = new AtomicLong();
@@ -83,6 +71,9 @@ public final class RedisNetworkBackend {
         this.config = config;
         this.gson = gson;
         this.router = router;
+        this.envelopeFactory = new RedisEnvelopeFactory(config, gson);
+        this.streamSupport = new RedisStreamSupport(config);
+        this.rpcTracker = new RedisRpcTracker(gson);
     }
 
     public RedisNetworkBackend(Config config) {
@@ -138,29 +129,8 @@ public final class RedisNetworkBackend {
         try {
             var route = router.route(event, config.server);
             long now = System.currentTimeMillis();
-            String eventId = UUID.randomUUID().toString();
             String payloadJson = gson.toJson(event);
-
-            Map<String, String> fields = new LinkedHashMap<>();
-            fields.put("schema_version", "1");
-            fields.put("event_type", route.eventType());
-            fields.put("event_id", eventId);
-            fields.put(
-                    "idempotency_key",
-                    deterministicIdempotencyKey(
-                            route.eventType(),
-                            config.server,
-                            payloadJson,
-                            now,
-                            Math.max(60_000L, route.ttlMillis())
-                    )
-            );
-            fields.put("producer", "server:" + config.server);
-            fields.put("created_at", String.valueOf(now));
-            fields.put("expires_at", String.valueOf(now + route.ttlMillis()));
-            fields.put("server", config.server);
-            fields.put("payload_json", payloadJson);
-            xaddWithTrim(commands, route.streamKey(), fields);
+            streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
             publishedEvents.incrementAndGet();
             publishWarningLogged = false;
         } catch (Exception e) {
@@ -189,7 +159,7 @@ public final class RedisNetworkBackend {
 
         for (String stream : streams) {
             var thread = Thread.ofVirtual()
-                    .name("redis-sub-" + type.getSimpleName() + "-" + stream)
+                .name("redis-sub-" + type.getSimpleName() + "-" + stream)
                     .start(() -> consumeLoop(stream, type, listener));
             subscriberThreads.add(thread);
             localThreads.add(thread);
@@ -239,40 +209,16 @@ public final class RedisNetworkBackend {
             return null;
         }
 
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("schema_version", "1");
-        fields.put("rpc_type", route.eventType());
-        fields.put("correlation_id", correlationId);
-        fields.put("request_id", UUID.randomUUID().toString());
-        fields.put(
-                "idempotency_key",
-                deterministicIdempotencyKey(
-                        "rpc." + route.eventType(),
-                        config.server,
-                        gson.toJson(request),
-                        now,
-                        Math.max(60_000L, timeoutMs)
-                )
-        );
-        fields.put("reply_to", replyTo);
-        fields.put("requested_by", "server:" + config.server);
-        fields.put("server", config.server);
-        fields.put("timeout_ms", String.valueOf(timeoutMs));
-        fields.put("created_at", String.valueOf(now));
-        fields.put("expires_at", String.valueOf(now + timeoutMs));
-        fields.put("payload_json", gson.toJson(request));
-
-        xaddWithTrim(commands, route.streamKey(), fields);
+        String requestJson = gson.toJson(request);
+        streamSupport.xaddWithTrim(commands, route.streamKey(),
+                envelopeFactory.rpcRequestFields(route, requestJson, replyTo, correlationId, now, timeoutMs));
         rpcRequests.incrementAndGet();
 
         return null;
     }
 
     public <T extends Response> void respond(Request<T> request, T response) {
-        RpcInboundContext context;
-        synchronized (inboundRpcContexts) {
-            context = inboundRpcContexts.remove(request);
-        }
+        RedisRpcTracker.RpcInboundContext context = rpcTracker.take(request);
         if (context == null) {
             Log.warn("Redis respond context is missing for request: @", request.getClass().getName());
             return;
@@ -281,20 +227,10 @@ public final class RedisNetworkBackend {
             return;
         }
 
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("schema_version", "1");
-        fields.put("rpc_type", context.rpcType());
-        fields.put("correlation_id", context.correlationId());
-        fields.put("server", config.server);
-        fields.put("status", "ok");
-        fields.put("error_code", "");
-        fields.put("error_message", "");
-        fields.put("responded_at", String.valueOf(System.currentTimeMillis()));
-        fields.put("payload_json", gson.toJson(response));
-
         rpcResponses.incrementAndGet();
         try {
-            xaddWithTrim(commands, context.replyTo(), fields);
+            streamSupport.xaddWithTrim(commands, context.replyTo(),
+                    envelopeFactory.rpcResponseFields(context, gson.toJson(response), System.currentTimeMillis()));
         } catch (RuntimeException e) {
             rpcResponses.decrementAndGet();
             throw e;
@@ -332,9 +268,7 @@ public final class RedisNetworkBackend {
     }
 
     public boolean supportsRespond(Request<?> request) {
-        synchronized (inboundRpcContexts) {
-            return inboundRpcContexts.containsKey(request);
-        }
+        return rpcTracker.contains(request);
     }
 
     private boolean ensureConnected() {
@@ -501,7 +435,7 @@ public final class RedisNetworkBackend {
         if (router.isMutatingType(type)) {
             String idempotencyKey = message.getBody().getOrDefault("idempotency_key", "");
             if (!idempotencyKey.isBlank()) {
-                long ttlSeconds = resolveIdempotencyTtlSeconds(expiresAt);
+                long ttlSeconds = envelopeFactory.resolveIdempotencyTtlSeconds(expiresAt);
                 idempotencyRedisKey = "xcore:idmp:consume:" + config.server + ":" + idempotencyKey;
                 String claimed = consumerCommands.set(
                         idempotencyRedisKey,
@@ -534,10 +468,7 @@ public final class RedisNetworkBackend {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
                 String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server);
                 String rpcType = message.getBody().getOrDefault("rpc_type", "rpc.unknown");
-                synchronized (inboundRpcContexts) {
-                    cleanupExpiredRpcContexts(System.currentTimeMillis());
-                    inboundRpcContexts.put(request, new RpcInboundContext(correlationId, replyTo, rpcType, System.currentTimeMillis()));
-                }
+                rpcTracker.registerInbound(request, correlationId, replyTo, rpcType, System.currentTimeMillis());
             }
             consumedEvents.incrementAndGet();
             listener.get(event);
@@ -552,15 +483,6 @@ public final class RedisNetworkBackend {
         }
     }
 
-    private long resolveIdempotencyTtlSeconds(long expiresAtMillis) {
-        if (expiresAtMillis <= 0L) {
-            return 600L;
-        }
-        long ttlMillis = expiresAtMillis - System.currentTimeMillis();
-        long ttlSeconds = Math.max(1L, ttlMillis / 1000L);
-        return Math.min(ttlSeconds, 86_400L);
-    }
-
     private <T extends Response> void awaitRpcResponse(String replyTo,
                                                        String correlationId,
                                                        Class<? extends Response> responseType,
@@ -568,60 +490,7 @@ public final class RedisNetworkBackend {
                                                        Runnable timeout,
                                                        long timeoutMs,
                                                        CountDownLatch listenerReady) {
-        if (client == null) {
-            listenerReady.countDown();
-            timeout.run();
-            return;
-        }
-
-        long deadline = System.currentTimeMillis() + timeoutMs;
-        try (StatefulRedisConnection<String, String> rpcConnection = client.connect()) {
-            RedisCommands<String, String> rpcCommands = rpcConnection.sync();
-            listenerReady.countDown();
-            String lastId = "$";
-
-            while (!Thread.currentThread().isInterrupted() && System.currentTimeMillis() < deadline) {
-                List<StreamMessage<String, String>> messages = rpcCommands.xread(
-                        XReadArgs.Builder.block(250).count(50),
-                        XReadArgs.StreamOffset.from(replyTo, lastId)
-                );
-
-                if (messages == null || messages.isEmpty()) {
-                    continue;
-                }
-
-                for (StreamMessage<String, String> message : messages) {
-                    lastId = message.getId();
-                    String foundCorrelationId = message.getBody().get("correlation_id");
-                    if (!correlationId.equals(foundCorrelationId)) {
-                        continue;
-                    }
-
-                    String payloadJson = message.getBody().get("payload_json");
-                    if (payloadJson == null || payloadJson.isBlank()) {
-                        rpcTimeouts.incrementAndGet();
-                        timeout.run();
-                        return;
-                    }
-
-                    Response response = gson.fromJson(payloadJson, responseType);
-                    if (responseType.isInstance(response)) {
-                        listener.get((T) responseType.cast(response));
-                    }
-                    return;
-                }
-            }
-        } catch (Exception e) {
-            Log.warn("Redis RPC response await failed: @", e.getMessage());
-        } finally {
-            listenerReady.countDown();
-        }
-
-        rpcTimeouts.incrementAndGet();
-        timeout.run();
-    }
-
-    private record RpcInboundContext(String correlationId, String replyTo, String rpcType, long createdAtMillis) {
+        rpcTracker.awaitResponse(client, replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady, rpcTimeouts);
     }
 
     private static final class RedisSubscription<T> extends Subscription<T> {
@@ -649,36 +518,11 @@ public final class RedisNetworkBackend {
     }
 
     private String groupFor(Class<?> type, String stream) {
-        return config.redisGroupPrefix
-                + ":"
-                + config.server
-                + ":"
-                + type.getSimpleName().toLowerCase()
-                + ":"
-                + Math.abs(stream.hashCode());
+        return streamSupport.groupFor(type, stream);
     }
 
     private void ensureGroup(RedisCommands<String, String> subCommands, String stream, String group) {
-        try {
-            subCommands.xgroupCreate(XReadArgs.StreamOffset.from(stream, "0-0"), group, new XGroupCreateArgs().mkstream(true));
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (msg == null || !msg.toUpperCase().contains("BUSYGROUP")) {
-                throw e;
-            }
-        }
-    }
-
-    private void cleanupExpiredRpcContexts(long nowMillis) {
-        List<Request<?>> toRemove = new ArrayList<>();
-        for (Map.Entry<Request<?>, RpcInboundContext> entry : inboundRpcContexts.entrySet()) {
-            if (nowMillis - entry.getValue().createdAtMillis() > 120000L) {
-                toRemove.add(entry.getKey());
-            }
-        }
-        for (Request<?> request : toRemove) {
-            inboundRpcContexts.remove(request);
-        }
+        streamSupport.ensureGroup(subCommands, stream, group);
     }
 
     private void clearFailureCounter(String stream, String messageId) {
@@ -710,92 +554,21 @@ public final class RedisNetworkBackend {
                             int attempts,
                             String reason) {
         String dlqStream = dlqStreamFor(sourceStream);
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("source_stream", sourceStream);
-        fields.put("source_group", sourceGroup);
-        fields.put("source_id", message.getId());
-        fields.put("failed_at", String.valueOf(System.currentTimeMillis()));
-        fields.put("attempts", String.valueOf(attempts));
-        fields.put("failure_reason", reason);
-        fields.put("event_type", message.getBody().getOrDefault("event_type", ""));
-        fields.put("rpc_type", message.getBody().getOrDefault("rpc_type", ""));
-        fields.put("message_json", gson.toJson(message.getBody()));
-        xaddWithTrim(commands, dlqStream, fields);
+        streamSupport.xaddWithTrim(commands, dlqStream,
+                envelopeFactory.dlqFields(sourceStream, sourceGroup, message, attempts, reason, System.currentTimeMillis()));
         dlqRouted.incrementAndGet();
     }
 
-    private void xaddWithTrim(RedisCommands<String, String> commands,
-                              String stream,
-                              Map<String, String> fields) {
-        long maxLen = streamMaxLen(stream);
-        commands.xadd(
-                stream,
-                XAddArgs.Builder.maxlen(maxLen).approximateTrimming(true),
-                fields
-        );
-    }
-
-    private long streamMaxLen(String stream) {
-        if (stream.startsWith("xcore:evt:")) {
-            return MAXLEN_EVT;
-        }
-        if (stream.startsWith("xcore:cmd:")) {
-            return MAXLEN_CMD;
-        }
-        if (stream.startsWith("xcore:rpc:req:")) {
-            return MAXLEN_RPC_REQ;
-        }
-        if (stream.startsWith("xcore:rpc:resp:")) {
-            return MAXLEN_RPC_RESP;
-        }
-        if (stream.startsWith(config.redisDlqPrefix + ":")) {
-            return MAXLEN_DLQ;
-        }
-        return MAXLEN_EVT;
-    }
-
-    private String deterministicIdempotencyKey(String prefix,
-                                               String server,
-                                               String payloadJson,
-                                               long nowMs,
-                                               long ttlMs) {
-        long windowMs = Math.max(60_000L, Math.min(ttlMs, 600_000L));
-        long window = nowMs / windowMs;
-        String material = prefix + "|" + server + "|" + payloadJson + "|" + window;
-        return prefix + ":" + sha256Hex(material).substring(0, 24);
-    }
-
-    private String sha256Hex(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(bytes.length * 2);
-            for (byte b : bytes) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm is unavailable", e);
-        }
-    }
-
     private String dlqStreamFor(String sourceStream) {
-        if (sourceStream.startsWith("xcore:rpc:")) {
-            return config.redisDlqPrefix + ":rpc";
-        }
-        if (sourceStream.startsWith("xcore:cmd:")) {
-            return config.redisDlqPrefix + ":cmd";
-        }
-        return config.redisDlqPrefix + ":evt";
+        return streamSupport.dlqStreamFor(sourceStream);
     }
 
     private String failureKey(String stream, String messageId) {
-        return stream + "|" + messageId;
+        return streamSupport.failureKey(stream, messageId);
     }
 
     private boolean isNoGroupError(Exception e) {
-        String msg = e.getMessage();
-        return msg != null && msg.toUpperCase().contains("NOGROUP");
+        return streamSupport.isNoGroupError(e);
     }
 
     public Map<String, Long> metricsSnapshot() {
@@ -810,7 +583,7 @@ public final class RedisNetworkBackend {
         metrics.put("dlq_routed", dlqRouted.get());
         metrics.put("reclaimed_messages", reclaimedMessages.get());
         metrics.put("active_subscriber_threads", (long) subscriberThreads.size());
-        metrics.put("pending_rpc_contexts", (long) inboundRpcContexts.size());
+        metrics.put("pending_rpc_contexts", (long) rpcTracker.size());
         metrics.put("tracked_failures", (long) deliveryFailures.size());
         return metrics;
     }

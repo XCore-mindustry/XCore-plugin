@@ -19,7 +19,6 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.enums.Feature;
@@ -28,10 +27,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
-import java.util.TreeSet;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -48,9 +44,7 @@ public class MaintainController implements CloudServerController {
     private final PlayerDataRepository playerDataRepository;
     private final PluginState pluginState;
     private final SessionService sessionService;
-    private final Config config;
-    private final Fi configFile;
-    private final Gson prettyGson;
+    private final RuntimeToggleConfigService toggleConfigService;
 
     @Inject
     public MaintainController(NetworkService network,
@@ -64,9 +58,7 @@ public class MaintainController implements CloudServerController {
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
         this.sessionService = sessionService;
-        this.config = config;
-        this.configFile = configFile;
-        this.prettyGson = prettyGson;
+        this.toggleConfigService = new RuntimeToggleConfigService(config, configFile, prettyGson);
     }
 
     @Command("exit")
@@ -193,67 +185,52 @@ public class MaintainController implements CloudServerController {
     @Command("disable-cmd <command>")
     @CommandDescription("Disables a command or command path at runtime.")
     public void disableCmd(XCoreSender sender, @Argument("command") @Greedy String command) {
-        String normalized = normalizeCommandName(command);
+        String normalized = toggleConfigService.normalizeCommandName(command);
         if (normalized == null) {
             Log.err("Command name cannot be empty.");
             return;
         }
 
-        String rootCommand = extractRootCommand(normalized);
+        String rootCommand = toggleConfigService.extractRootCommand(normalized);
         if (PROTECTED_DISABLE_COMMANDS.contains(rootCommand)) {
             Log.err("Command '@' cannot be disabled.", rootCommand);
             return;
         }
 
-        Set<String> disabledCommands = mutableDisabledCommands();
-        if (!disabledCommands.add(normalized)) {
+        if (!toggleConfigService.disable(RuntimeToggleConfigService.ToggleTarget.COMMAND, normalized).changed()) {
             Log.info("Command '@' is already disabled.", normalized);
             return;
         }
 
-        saveConfig();
         Log.info("Command '@' disabled.", normalized);
     }
 
     @Command("enable-cmd <command>")
     @CommandDescription("Re-enables a disabled command or command path.")
     public void enableCmd(XCoreSender sender, @Argument("command") @Greedy String command) {
-        String normalized = normalizeCommandName(command);
+        String normalized = toggleConfigService.normalizeCommandName(command);
         if (normalized == null) {
             Log.err("Command name cannot be empty.");
             return;
         }
 
-        Set<String> disabledCommands = mutableDisabledCommands();
-        if (!disabledCommands.remove(normalized)) {
+        if (!toggleConfigService.enable(RuntimeToggleConfigService.ToggleTarget.COMMAND, normalized).changed()) {
             Log.info("Command '@' was not disabled.", normalized);
             return;
         }
 
-        saveConfig();
         Log.info("Command '@' enabled.", normalized);
     }
 
     @Command("disabled-cmds")
     @CommandDescription("Lists all disabled commands.")
     public void disabledCmds(XCoreSender sender) {
-        if (config.disabledCommands == null || config.disabledCommands.isEmpty()) {
+        if (toggleConfigService.isEmpty(RuntimeToggleConfigService.ToggleTarget.COMMAND)) {
             Log.info("No commands are disabled.");
             return;
         }
 
-        Set<String> ordered = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        ordered.addAll(config.disabledCommands);
-        Log.info("Disabled commands: @", String.join(", ", ordered));
-    }
-
-    private Set<String> mutableDisabledCommands() {
-        if (config.disabledCommands == null) {
-            config.disabledCommands = new HashSet<>();
-        } else if (!(config.disabledCommands instanceof HashSet<?>)) {
-            config.disabledCommands = new HashSet<>(config.disabledCommands);
-        }
-        return config.disabledCommands;
+        Log.info("Disabled commands: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.COMMAND));
     }
 
     @Command("disable-feature <feature>")
@@ -266,13 +243,11 @@ public class MaintainController implements CloudServerController {
             return;
         }
 
-        Set<String> disabledFeatures = mutableDisabledFeatures();
-        if (!disabledFeatures.add(feature.get().key())) {
+        if (!toggleConfigService.disable(RuntimeToggleConfigService.ToggleTarget.FEATURE, feature.get().key()).changed()) {
             Log.info("Feature '@' is already disabled.", feature.get().key());
             return;
         }
 
-        saveConfig();
         Log.info("Feature '@' disabled.", feature.get().key());
     }
 
@@ -286,56 +261,23 @@ public class MaintainController implements CloudServerController {
             return;
         }
 
-        Set<String> disabledFeatures = mutableDisabledFeatures();
-        if (!disabledFeatures.remove(feature.get().key())) {
+        if (!toggleConfigService.enable(RuntimeToggleConfigService.ToggleTarget.FEATURE, feature.get().key()).changed()) {
             Log.info("Feature '@' was not disabled.", feature.get().key());
             return;
         }
 
-        saveConfig();
         Log.info("Feature '@' enabled.", feature.get().key());
     }
 
     @Command("disabled-features")
     @CommandDescription("Lists all disabled features.")
     public void disabledFeatures(XCoreSender sender) {
-        if (config.disabledFeatures == null || config.disabledFeatures.isEmpty()) {
+        if (toggleConfigService.isEmpty(RuntimeToggleConfigService.ToggleTarget.FEATURE)) {
             Log.info("No features are disabled.");
             return;
         }
 
-        var ordered = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        ordered.addAll(config.disabledFeatures);
-        Log.info("Disabled features: @", String.join(", ", ordered));
-    }
-
-    private Set<String> mutableDisabledFeatures() {
-        if (config.disabledFeatures == null) {
-            config.disabledFeatures = new HashSet<>();
-        } else if (!(config.disabledFeatures instanceof HashSet<?>)) {
-            config.disabledFeatures = new HashSet<>(config.disabledFeatures);
-        }
-        return config.disabledFeatures;
-    }
-
-    private String extractRootCommand(String normalizedCommand) {
-        return normalizedCommand.split(" ", 2)[0];
-    }
-
-    private String normalizeCommandName(String commandName) {
-        if (commandName == null) {
-            return null;
-        }
-        String normalized = commandName.trim().toLowerCase(Locale.ROOT);
-        if (normalized.startsWith("/")) {
-            normalized = normalized.substring(1).trim();
-        }
-        normalized = normalized.replaceAll("\\s+", " ");
-        return normalized.isEmpty() ? null : normalized;
-    }
-
-    private void saveConfig() {
-        configFile.writeString(prettyGson.toJson(config));
+        Log.info("Disabled features: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.FEATURE));
     }
 
 }

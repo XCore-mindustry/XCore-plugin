@@ -16,9 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 @Singleton
 public class SessionService {
@@ -253,77 +253,77 @@ public class SessionService {
     }
 
     public boolean incrementPlayTime(Session session, int delta) {
-        if (!hasData(session)) return false;
-        session.data.totalPlayTime += delta;
-        return playerDataRepository.incrementPlayTime(session.data.uuid, delta);
+        return mutateSession(session,
+                data -> data.totalPlayTime += delta,
+                () -> playerDataRepository.incrementPlayTime(session.data.uuid, delta));
     }
 
     public boolean updateIp(Session session, String ip) {
-        if (!hasData(session)) return false;
-        session.data.ip = ip;
-        return playerDataRepository.updateIp(session.data.uuid, ip);
+        return mutateSession(session,
+                data -> data.ip = ip,
+                () -> playerDataRepository.updateIp(session.data.uuid, ip));
     }
 
     public boolean updateConnectionData(Session session, String ip, String nickname) {
-        if (!hasData(session)) return false;
-        session.data.ip = ip;
-        session.data.nickname = nickname;
-        return playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname);
+        return mutateSession(session, data -> {
+            data.ip = ip;
+            data.nickname = nickname;
+        }, () -> playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname));
     }
 
     public boolean updateAdminStatus(Session session, boolean admin, String adminSource) {
-        if (!hasData(session)) return false;
-        session.data.admin = admin;
-        session.data.adminSource = adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
-        return playerDataRepository.updateAdminStatus(session.data.uuid, admin, session.data.adminSource);
+        return mutateSession(session, data -> {
+            data.admin = admin;
+            data.adminSource = adminSource == null || adminSource.isBlank() ? "NONE" : adminSource;
+        }, () -> playerDataRepository.updateAdminStatus(session.data.uuid, admin, session.data.adminSource));
     }
 
     public boolean updateLeaderboard(Session session, boolean leaderboard) {
-        if (!hasData(session)) return false;
-        session.data.leaderboard = leaderboard;
-        return playerDataRepository.updateLeaderboard(session.data.uuid, leaderboard);
+        return mutateSession(session,
+                data -> data.leaderboard = leaderboard,
+                () -> playerDataRepository.updateLeaderboard(session.data.uuid, leaderboard));
     }
 
     public boolean updateCustomNickname(Session session, String customNickname) {
-        if (!hasData(session)) return false;
-        session.data.customNickname = customNickname;
-        return playerDataRepository.updateCustomNickname(session.data.uuid, customNickname);
+        return mutateSession(session,
+                data -> data.customNickname = customNickname,
+                () -> playerDataRepository.updateCustomNickname(session.data.uuid, customNickname));
     }
 
     public boolean updateDescription(Session session, String description) {
-        if (!hasData(session)) return false;
-        session.data.description = description;
-        return playerDataRepository.updateDescription(session.data.uuid, description);
+        return mutateSession(session,
+                data -> data.description = description,
+                () -> playerDataRepository.updateDescription(session.data.uuid, description));
     }
 
     public boolean setActiveBadge(Session session, String badgeId) {
-        if (!hasData(session)) return false;
-        session.data.activeBadge = badgeId;
-        return playerDataRepository.setActiveBadge(session.data.uuid, badgeId);
+        return mutateSession(session,
+                data -> data.activeBadge = badgeId,
+                () -> playerDataRepository.setActiveBadge(session.data.uuid, badgeId));
     }
 
     public boolean addBlockedPrivateUuid(Session session, String blockedUuid) {
-        if (!hasData(session)) return false;
-        session.data.blockedPrivateUuids.add(blockedUuid);
-        return playerDataRepository.addBlockedPrivateUuid(session.data.uuid, blockedUuid);
+        return mutateSession(session,
+                data -> data.blockedPrivateUuids.add(blockedUuid),
+                () -> playerDataRepository.addBlockedPrivateUuid(session.data.uuid, blockedUuid));
     }
 
     public boolean removeBlockedPrivateUuid(Session session, String blockedUuid) {
-        if (!hasData(session)) return false;
-        session.data.blockedPrivateUuids.remove(blockedUuid);
-        return playerDataRepository.removeBlockedPrivateUuid(session.data.uuid, blockedUuid);
+        return mutateSession(session,
+                data -> data.blockedPrivateUuids.remove(blockedUuid),
+                () -> playerDataRepository.removeBlockedPrivateUuid(session.data.uuid, blockedUuid));
     }
 
     public boolean putMapVote(Session session, String mapId, boolean like) {
-        if (!hasData(session)) return false;
-        session.data.mapVotes.put(mapId, like);
-        return playerDataRepository.putMapVote(session.data.uuid, mapId, like);
+        return mutateSession(session,
+                data -> data.mapVotes.put(mapId, like),
+                () -> playerDataRepository.putMapVote(session.data.uuid, mapId, like));
     }
 
     public boolean putEventVote(Session session, String eventId, boolean like) {
-        if (!hasData(session)) return false;
-        session.data.eventVotes.put(eventId, like);
-        return playerDataRepository.putEventVote(session.data.uuid, eventId, like);
+        return mutateSession(session,
+                data -> data.eventVotes.put(eventId, like),
+                () -> playerDataRepository.putEventVote(session.data.uuid, eventId, like));
     }
 
     private PlayerData loadOrCreatePlayerData(Player player) {
@@ -337,6 +337,15 @@ public class SessionService {
 
     private boolean hasData(Session session) {
         return session != null && session.data != null;
+    }
+
+    private boolean mutateSession(Session session, Consumer<PlayerData> mutation, BooleanSupplier persistence) {
+        if (!hasData(session)) {
+            return false;
+        }
+
+        mutation.accept(session.data);
+        return persistence.getAsBoolean();
     }
 
     public void broadcast(String key, Map<String, Object> args) {

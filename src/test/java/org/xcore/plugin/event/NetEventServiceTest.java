@@ -60,13 +60,6 @@ class NetEventServiceTest {
                 voteChatInterceptor
         );
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
@@ -113,13 +106,6 @@ class NetEventServiceTest {
                 voteChatInterceptor
         );
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
@@ -168,13 +154,6 @@ class NetEventServiceTest {
         );
 
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
@@ -218,13 +197,6 @@ class NetEventServiceTest {
         );
 
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
@@ -268,13 +240,6 @@ class NetEventServiceTest {
         );
 
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,
@@ -318,13 +283,6 @@ class NetEventServiceTest {
         );
 
         NetEventService service = new NetEventService(
-                sessionService,
-                config,
-                translatorService,
-                network,
-                voteService,
-                securityService,
-                ingressService,
                 chatMessageHandler,
                 adminRequestHandler,
                 connectPacketHandler,

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.NetworkService;
@@ -15,7 +14,9 @@ import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.session.SessionService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class MaintainControllerTest {
@@ -117,5 +118,90 @@ class MaintainControllerTest {
         assertThat(event.command()).isEqualTo("say hello world");
         assertThat(event.expectServers()).containsExactly("mini-pvp", "mini-hexed");
         assertThat(event.isExclusion()).isTrue();
+    }
+
+    @Test
+    @DisplayName("disable-cmd normalizes command and persists config")
+    void disableCmd_normalizesCommandAndPersistsConfig() {
+        var network = mock(NetworkService.class);
+        var repository = mock(PlayerDataRepository.class);
+        var pluginState = new PluginState();
+        var sessionService = mock(SessionService.class);
+        var config = new Config();
+        var configFile = mock(Fi.class);
+        var gson = new Gson();
+        var sender = mock(XCoreSender.class);
+
+        var controller = new MaintainController(
+                network,
+                repository,
+                pluginState,
+                sessionService,
+                config,
+                configFile,
+                gson
+        );
+
+        controller.disableCmd(sender, " /Help   Me ");
+
+        assertThat(config.disabledCommands).containsExactly("help me");
+        verify(configFile).writeString(anyString());
+    }
+
+    @Test
+    @DisplayName("disable-cmd does not persist protected commands")
+    void disableCmd_doesNotPersistProtectedCommands() {
+        var network = mock(NetworkService.class);
+        var repository = mock(PlayerDataRepository.class);
+        var pluginState = new PluginState();
+        var sessionService = mock(SessionService.class);
+        var config = new Config();
+        var configFile = mock(Fi.class);
+        var gson = new Gson();
+        var sender = mock(XCoreSender.class);
+
+        var controller = new MaintainController(
+                network,
+                repository,
+                pluginState,
+                sessionService,
+                config,
+                configFile,
+                gson
+        );
+
+        controller.disableCmd(sender, "disable-cmd nested");
+
+        assertThat(config.disabledCommands).isEmpty();
+        verify(configFile, never()).writeString(anyString());
+    }
+
+    @Test
+    @DisplayName("enable-feature removes disabled feature and persists config")
+    void enableFeature_removesDisabledFeatureAndPersistsConfig() {
+        var network = mock(NetworkService.class);
+        var repository = mock(PlayerDataRepository.class);
+        var pluginState = new PluginState();
+        var sessionService = mock(SessionService.class);
+        var config = new Config();
+        config.disabledFeatures.add("rtv");
+        var configFile = mock(Fi.class);
+        var gson = new Gson();
+        var sender = mock(XCoreSender.class);
+
+        var controller = new MaintainController(
+                network,
+                repository,
+                pluginState,
+                sessionService,
+                config,
+                configFile,
+                gson
+        );
+
+        controller.enableFeature(sender, "rtv");
+
+        assertThat(config.disabledFeatures).doesNotContain("rtv");
+        verify(configFile).writeString(anyString());
     }
 }
