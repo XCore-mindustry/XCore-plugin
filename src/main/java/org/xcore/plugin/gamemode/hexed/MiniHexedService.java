@@ -49,7 +49,7 @@ public class MiniHexedService {
     public Schematic startBase;
     private int greenCores = 0;
 
-    private static int winScore = 1800;
+    private static int winScore = 2400;
 
     private final Config config;
     private final SessionService sessionService;
@@ -118,7 +118,7 @@ public class MiniHexedService {
                 member.leave();
             }
         });
-        Events.on(EventType.GameOverEvent.class, e -> winScore = 1800);
+        Events.on(EventType.GameOverEvent.class, e -> winScore = 2400);
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
             var block = event.tile.block();
@@ -205,7 +205,7 @@ public class MiniHexedService {
     }
 
     private void endGame() {
-        winScore = 1800;
+        winScore = 2400;
         gameover = true;
         var rankedTeams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         Map<String, Integer> placements = buildPlacements(rankedTeams);
