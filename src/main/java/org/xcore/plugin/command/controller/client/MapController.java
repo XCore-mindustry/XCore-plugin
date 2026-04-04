@@ -73,6 +73,17 @@ public class MapController implements CloudClientController {
         mapService.startRtvSession(sender.player(), target, map != null, true);
     }
 
+    @Command("vnw")
+    public void vnw(XCoreSender sender) {
+        mapService.startNewWaveSession(sender.player(), false);
+    }
+
+    @Permission("admin")
+    @Command("avnw")
+    public void avnw(XCoreSender sender) {
+        mapService.startNewWaveSession(sender.player(), true);
+    }
+
     @Command("like|+")
     public void like(XCoreSender sender) {
         mapService.handleReputation(sender.player(), true);

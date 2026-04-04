@@ -18,6 +18,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.vote.VoteNewWaveFactory;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
 
@@ -76,6 +77,7 @@ class MapServiceTest {
                 config,
                 new GlobalConfig(),
                 mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
                 mock(GameStateService.class)
         );
@@ -108,6 +110,7 @@ class MapServiceTest {
                 config,
                 new GlobalConfig(),
                 mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
                 mock(GameStateService.class)
         );
@@ -150,6 +153,7 @@ class MapServiceTest {
                 new Config(),
                 new GlobalConfig(),
                 mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
                 mock(GameStateService.class)
         );

@@ -3,7 +3,8 @@ package org.xcore.plugin.model.enums;
 import java.util.Optional;
 
 public enum Feature {
-    RTV("rtv");
+    RTV("rtv"),
+    VNW("vnw");
 
     private final String key;
 

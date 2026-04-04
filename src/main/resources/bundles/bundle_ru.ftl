@@ -309,6 +309,8 @@ commands-maps-text-content =
 commands-artv-description = Изменить карту. [scarlet]Только для админов
 commands-artv-map-skipped = { $nickname }[accent] пропустил карту. Следующая карта: { $name }.
 commands-rtv-description = Голосование за изменение карты
+commands-vnw-description = Голосование за досрочный старт следующей волны
+commands-avnw-description = Принудительно запустить следующую волну досрочно. [scarlet]Только для админов
 commands-like-description = Проголосовать за карту (повышает репутацию)
 commands-dislike-description = Проголосовать против карты
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ИГРА ОКОНЧЕНА!
@@ -334,6 +336,14 @@ rtv-left = { $nickname }[lightgray] покинул игру. Голос за с�
 rtv-fail = { "[" }lightgray]Голосование провалилось. Не хватило голосов, чтобы изменить текущую карту на [orange]{ $mapName }[].
 rtv-success = { "[" }orange]Голосование завершено успешно. Карта [accent]{ $mapName }[] будет загружена через [accent]{ $mapLoadDelay }[] секунд…
 rtv-cancelled = { "[" }lightgray]Голосование за смену карты на [orange]{ $mapName }[lightgray] было отменено администратором { $admin }.
+vnw-vote =
+    { $nickname }[lightgray] проголосовал за досрочный запуск волны [orange]{ $wave }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Напишите [orange]y[] или [orange]n[], чтобы проголосовать.
+vnw-left = { $nickname }[lightgray] вышел. Его голос за досрочный запуск волны [orange]{ $wave }[lightgray] отменён. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+vnw-fail = { "[" }lightgray]Голосование не прошло. Недостаточно голосов для досрочного запуска волны [orange]{ $wave }[].
+vnw-success = { "[" }orange]Голосование прошло. Волна [accent]{ $wave }[] запускается прямо сейчас.
+vnw-cancelled = { "[" }lightgray]Голосование за досрочный запуск волны [orange]{ $wave }[lightgray] было отменено администратором { $admin }.
+vnw-obsolete = { "[" }lightgray]Волна [orange]{ $wave }[lightgray] уже началась, поэтому результат голосования больше не нужен.
 # ==============================================================================
 # Statistics & Ranks & Players
 # ==============================================================================
@@ -588,6 +598,7 @@ error-votekick-total-playtime = { "[" }scarlet]⚠ Для того чтобы п
 error-vote-yourself = { "[" }scarlet]⚠ Вы не можете голосовать за себя.
 error-vote-in-progress = { "[" }scarlet]⚠ Голосование уже идет
 error-no-voting = { "[" }scarlet]⚠ На данный момент голосование не проводится.
+error-wave-vote-unavailable = { "[" }scarlet]⚠ Досрочный запуск новой волны доступен только в режимах с волнами.
 error-no-map = { "[" }scarlet]⚠ Карта не выбрана.
 error-map-not-event = { "[" }scarlet]⚠ Карта не относится к текущему событию.
 error-map-not-found = { "[" }scarlet]⚠ Карта не найдена! [accent]Используйте [cyan]/maps[] для просмотра списка всех доступных карт

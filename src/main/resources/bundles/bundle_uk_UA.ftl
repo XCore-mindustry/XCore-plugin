@@ -285,6 +285,8 @@ commands-artv-description = Примусово змінити мапу. [scarlet
 commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. Наступна мапа: { $name }.
 commands-artv-event-skipped = { $nickname }[accent] пропустив подію. Наступна подія: { $name }
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
+commands-vnw-description = Голосування за достроковий запуск наступної хвилі.
+commands-avnw-description = Примусово достроково запустити наступну хвилю. [scarlet]Тільки для адміністраторів.
 commands-like-description = Проголосувати за мапу (підвищує репутацію).
 commands-dislike-description = Проголосувати проти мапи.
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
@@ -308,6 +310,14 @@ rtv-left = { $nickname }[lightgray] вийшов. Його голос за зм�
 rtv-fail = { "[" }lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{ $mapName }[].
 rtv-success = { "[" }orange]Голосування пройшло. Мапа [accent]{ $mapName }[] буде завантажена через [accent]{ $mapLoadDelay }[] секунд…
 rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи на [orange]{ $mapName }[lightgray] було скасовано адміністратором { $admin }.
+vnw-vote =
+    { $nickname }[lightgray] проголосував за достроковий запуск хвилі [orange]{ $wave }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
+vnw-left = { $nickname }[lightgray] вийшов. Його голос за достроковий запуск хвилі [orange]{ $wave }[lightgray] скасовано. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+vnw-fail = { "[" }lightgray]Голосування не пройшло. Недостатньо голосів для дострокового запуску хвилі [orange]{ $wave }[].
+vnw-success = { "[" }orange]Голосування пройшло. Хвиля [accent]{ $wave }[] запускається просто зараз.
+vnw-cancelled = { "[" }lightgray]Голосування за достроковий запуск хвилі [orange]{ $wave }[lightgray] було скасовано адміністратором { $admin }.
+vnw-obsolete = { "[" }lightgray]Хвиля [orange]{ $wave }[lightgray] вже почалась, тому результат голосування більше не потрібний.
 # ==============================================================================
 # Statistics & Ranks
 # ==============================================================================
@@ -500,6 +510,7 @@ error-votekick-total-playtime = { "[" }scarlet]⚠ Щоб почати голо�
 error-vote-yourself = { "[" }scarlet]⚠ Ви не можете голосувати у власному голосуванні.
 error-vote-in-progress = { "[" }scarlet]⚠ Голосування вже триває.
 error-no-voting = { "[" }scarlet]⚠ На даний момент голосування не проводиться.
+error-wave-vote-unavailable = { "[" }scarlet]⚠ Достроковий запуск нової хвилі доступний лише в режимах із хвилями.
 error-no-map = { "[" }scarlet]⚠ Мапу не задано.
 error-map-not-event = { "[" }scarlet]⚠ Мапа не входить у теперішню подію.
 error-map-not-found = { "[" }scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.

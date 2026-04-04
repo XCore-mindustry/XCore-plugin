@@ -19,6 +19,8 @@ import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.vote.VoteNewWave;
+import org.xcore.plugin.vote.VoteNewWaveFactory;
 import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
@@ -41,6 +43,7 @@ public class MapService {
     private final Config config;
     private final GlobalConfig globalConfig;
     private final VoteService voteService;
+    private final VoteNewWaveFactory voteNewWaveFactory;
     private final VoteRtvFactory voteRtvFactory;
     private final GameStateService gameStateService;
 
@@ -51,6 +54,7 @@ public class MapService {
                       Config config,
                       GlobalConfig globalConfig,
                       VoteService voteService,
+                      VoteNewWaveFactory voteNewWaveFactory,
                       VoteRtvFactory voteRtvFactory,
                       GameStateService gameStateService) {
         this.eventDataRepository = eventDataRepository;
@@ -59,6 +63,7 @@ public class MapService {
         this.config = config;
         this.globalConfig = globalConfig;
         this.voteService = voteService;
+        this.voteNewWaveFactory = voteNewWaveFactory;
         this.voteRtvFactory = voteRtvFactory;
         this.gameStateService = gameStateService;
     }
@@ -157,6 +162,36 @@ public class MapService {
         }
     }
 
+    public void startNewWaveSession(Player player, boolean forced) {
+        var session = sessionService.get(player.uuid());
+
+        if (config.isFeatureDisabled(Feature.VNW)) {
+            session.locale().send("error-feature-disabled");
+            return;
+        }
+
+        if (!state.rules.waves) {
+            session.locale().send("error-wave-vote-unavailable");
+            return;
+        }
+
+        if (voteService.shouldBlockVoteStart(VoteNewWave.class, forced)) {
+            session.locale().send("error-vote-in-progress");
+            return;
+        }
+
+        if (forced && voteService.isVoting()) {
+            voteService.endVote();
+        }
+
+        if (forced) {
+            skipWaveImmediately(player);
+            return;
+        }
+
+        startWaveVote(player);
+    }
+
     public void handleReputation(Player player, boolean like) {
         if (Vars.state.map == null) return;
         MapData map = mapDataRepository.findOrCreate(Vars.state.map.plainName(), Vars.state.map.file.name(), Vars.state.map.author(), Vars.state.rules.mode().name());
@@ -230,6 +265,19 @@ public class MapService {
         var vote = voteRtvFactory.create(target, isManual);
         voteService.startVote(vote);
         vote.vote(player, 1);
+    }
+
+    private void startWaveVote(Player player) {
+        var vote = voteNewWaveFactory.create(state.wave);
+        voteService.startVote(vote);
+        vote.vote(player, 1);
+    }
+
+    private void skipWaveImmediately(Player player) {
+        Vars.logic.skipWave();
+        sessionService.broadcast("notification-admin-wave-skip", args(
+                "admin", player.coloredName()
+        ));
     }
 
     private EventData getActiveEventOrNull() {

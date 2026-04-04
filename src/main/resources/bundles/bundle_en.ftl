@@ -308,6 +308,8 @@ commands-maps-text-content =
 commands-artv-description = Force change map. [scarlet]Admin only.
 commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
 commands-rtv-description = Rock the vote to change map.
+commands-vnw-description = Vote to start the next wave early.
+commands-avnw-description = Force start the next wave early. [scarlet]Admin only.
 commands-like-description = Vote for the current map (increases reputation).
 commands-dislike-description = Vote against the current map.
 map-vote-title = { "[" }orange]{ -xcore } — [scarlet]GAME OVER!
@@ -333,6 +335,14 @@ rtv-left = { $nickname }[lightgray] left. Their vote to change the current map w
 rtv-fail = { "[" }lightgray]Vote failed. Not enough votes to change the current map to [orange]{ $mapName }[].
 rtv-success = { "[" }orange]Vote passed. Map [accent]{ $mapName }[] will be loaded in [accent]{ $mapLoadDelay }[] seconds…
 rtv-cancelled = { "[" }lightgray]Vote to change the current map to [orange]{ $mapName }[lightgray] was cancelled by { $admin }.
+vnw-vote =
+    { $nickname }[lightgray] voted to start wave [orange]{ $wave }[lightgray] early. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+    Type [orange]y[] or [orange]n[] to vote.
+vnw-left = { $nickname }[lightgray] left. Their vote to start wave [orange]{ $wave }[lightgray] early was cancelled. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
+vnw-fail = { "[" }lightgray]Vote failed. Not enough votes to start wave [orange]{ $wave }[] early.
+vnw-success = { "[" }orange]Vote passed. Wave [accent]{ $wave }[] is starting now.
+vnw-cancelled = { "[" }lightgray]Vote to start wave [orange]{ $wave }[lightgray] early was cancelled by { $admin }.
+vnw-obsolete = { "[" }lightgray]Wave [orange]{ $wave }[lightgray] has already started, so the vote result is no longer needed.
 # ==============================================================================
 # Statistics & Ranks & Players
 # ==============================================================================
@@ -589,6 +599,7 @@ error-votekick-total-playtime = { "[" }scarlet]⚠ In order to start a vote-kick
 error-vote-yourself = { "[" }scarlet]⚠ You cannot vote on your own vote session.
 error-vote-in-progress = { "[" }scarlet]⚠ A vote session is already in progress.
 error-no-voting = { "[" }scarlet]⚠ There is no vote session at the moment.
+error-wave-vote-unavailable = { "[" }scarlet]⚠ Starting a new wave early is only available in wave-based modes.
 error-no-map = { "[" }scarlet]⚠ Map not set.
 error-map-not-event = { "[" }scarlet]⚠ Map is not part of the current event.
 error-map-not-found = { "[" }scarlet]⚠ Map not found! [accent]Use [cyan]/maps[] to see a list of all available maps.
