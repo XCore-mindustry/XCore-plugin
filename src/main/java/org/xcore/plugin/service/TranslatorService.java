@@ -104,9 +104,20 @@ public class TranslatorService {
             }
 
             if (cache.containsKey(data.data.translatorLanguage)) {
+                String translatedText = extractTranslatedText(cache.get(data.data.translatorLanguage));
+                if (!hasMeaningfulTranslation(text, translatedText)) {
+                    player.sendMessage(message, author, text);
+                    continue;
+                }
+
                 player.sendMessage(cache.get(data.data.translatorLanguage), author,
-                        buildCompatibilityText(text, extractTranslatedText(cache.get(data.data.translatorLanguage))));
+                        buildCompatibilityText(text, translatedText));
             } else translate(text, "auto", data.data.translatorLanguage, result -> {
+                if (!hasMeaningfulTranslation(text, result)) {
+                    player.sendMessage(message, author, text);
+                    return;
+                }
+
                 cache.put(data.data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
                 player.sendMessage(cache.get(data.data.translatorLanguage), author,
                         buildCompatibilityText(text, result));
@@ -141,12 +152,23 @@ public class TranslatorService {
             }
 
             if (cache.containsKey(session.data.translatorLanguage)) {
+                String translatedText = cache.get(session.data.translatorLanguage);
+                if (!hasMeaningfulTranslation(text, translatedText)) {
+                    sendTeamChat(player, message, author, text, foosCompatible);
+                    continue;
+                }
+
                 sendTeamChat(player,
-                        appendTranslation(message, cache.get(session.data.translatorLanguage)),
+                        appendTranslation(message, translatedText),
                         author,
-                        buildCompatibilityText(text, cache.get(session.data.translatorLanguage)),
+                        buildCompatibilityText(text, translatedText),
                         foosCompatible);
             } else translate(text, "auto", session.data.translatorLanguage, result -> {
+                if (!hasMeaningfulTranslation(text, result)) {
+                    sendTeamChat(player, message, author, text, foosCompatible);
+                    return;
+                }
+
                 cache.put(session.data.translatorLanguage, result);
                 sendTeamChat(player,
                         appendTranslation(message, result),
@@ -166,11 +188,30 @@ public class TranslatorService {
     }
 
     private String buildCompatibilityText(String originalText, String translatedText) {
-        if (translatedText == null || translatedText.isBlank()) {
+        if (!hasMeaningfulTranslation(originalText, translatedText)) {
             return originalText;
         }
 
         return originalText + " (" + translatedText + ")";
+    }
+
+    private boolean hasMeaningfulTranslation(String originalText, String translatedText) {
+        String normalizedOriginal = normalizeForComparison(originalText);
+        String normalizedTranslation = normalizeForComparison(translatedText);
+
+        if (normalizedTranslation.isEmpty()) {
+            return false;
+        }
+
+        return !normalizedTranslation.equalsIgnoreCase(normalizedOriginal);
+    }
+
+    private String normalizeForComparison(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.trim().replaceAll("\\s+", " ");
     }
 
     private String extractTranslatedText(String formattedMessage) {
