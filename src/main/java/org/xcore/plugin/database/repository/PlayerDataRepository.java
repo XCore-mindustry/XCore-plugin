@@ -167,6 +167,14 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuid(uuid, Updates.set("translator_language", language));
     }
 
+    public boolean updateGlobalChatVisible(String uuid, boolean visible) {
+        return updateByUuid(uuid, Updates.set("show_global_chat", visible));
+    }
+
+    public boolean updateDiscordRelayVisible(String uuid, boolean visible) {
+        return updateByUuid(uuid, Updates.set("show_discord_relay", visible));
+    }
+
     public boolean updateLeaderboard(String uuid, boolean leaderboard) {
         return updateByUuid(uuid, Updates.set("leaderboard", leaderboard));
     }

@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 @Singleton
@@ -284,6 +285,18 @@ public class SessionService {
                 () -> playerDataRepository.updateLeaderboard(session.data.uuid, leaderboard));
     }
 
+    public boolean updateGlobalChatVisible(Session session, boolean visible) {
+        return mutateSession(session,
+                data -> data.globalChatVisible = visible,
+                () -> playerDataRepository.updateGlobalChatVisible(session.data.uuid, visible));
+    }
+
+    public boolean updateDiscordRelayVisible(Session session, boolean visible) {
+        return mutateSession(session,
+                data -> data.discordRelayVisible = visible,
+                () -> playerDataRepository.updateDiscordRelayVisible(session.data.uuid, visible));
+    }
+
     public boolean updateCustomNickname(Session session, String customNickname) {
         return mutateSession(session,
                 data -> data.customNickname = customNickname,
@@ -351,6 +364,14 @@ public class SessionService {
     public void broadcast(String key, Map<String, Object> args) {
         for (Session session : getAllCachedSnapshot()) {
             if (session == null || session.data == null) continue;
+            session.locale().send(key, args);
+        }
+    }
+
+    public void broadcastFiltered(String key, Map<String, Object> args, Predicate<Session> filter) {
+        for (Session session : getAllCachedSnapshot()) {
+            if (session == null || session.data == null) continue;
+            if (filter != null && !filter.test(session)) continue;
             session.locale().send(key, args);
         }
     }

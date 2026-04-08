@@ -384,12 +384,26 @@ player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки и�
 player-menu-settings-content =
     { "" }[white]Установленное имя: [green]{ $customNickname }[]
     { "" }[white]Системный бейдж: [green]{ $systemBadge }[] | Активный бейдж: [green]{ $activeBadge }[]
+    { "" }[white]Настройки чата: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
     { "" }[white]Таблица лидеров: [green]{ $leaderboard }[]
-    { "" }[white]Язык: [green]{ $language }[] | Язык переводчика: [green]{ $translatorLanguage }[]
+    { "" }[white]Язык: [green]{ $language }[]
     { "" }[green]{ $description }[white]
+player-menu-settings-chat = Настройки чата
+player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Настройки чата
+player-menu-settings-chat-content =
+    { "" }[white]Global чат: [green]{ $globalChat }[]
+    { "" }[white]Discord relay: [green]{ $discordRelay }[]
+    { "" }[white]Язык переводчика: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
+player-menu-settings-customNickname = Изменить имя
+player-menu-settings-customNickname-message = [lightgray]Оставьте пустым, чтобы сбросить
+player-menu-settings-description = Изменить описание
 player-menu-settings-badges = Бейджи
+player-menu-settings-global-chat-on = [green]Global чат
+player-menu-settings-global-chat-off = [red]Global чат
+player-menu-settings-discord-relay-on = [green]Discord relay
+player-menu-settings-discord-relay-off = [red]Discord relay
 player-menu-player-max-rank = Максимальный ранг достигнут
 player-menu-player-hexed-progress = { "[" }gray]До [white]{ $nextRankName } [gray]осталось побед: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = { "[" }gray]нет данных[]

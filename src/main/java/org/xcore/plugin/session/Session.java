@@ -60,6 +60,8 @@ public class Session {
         if (this.data.activeBadge == null) this.data.activeBadge = "";
         if (this.data.language == null) this.data.language = "auto";
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
+        if (this.data.globalChatVisible == null) this.data.globalChatVisible = true;
+        if (this.data.discordRelayVisible == null) this.data.discordRelayVisible = true;
 
         this.localization = new Localization(bundle, this);
     }
@@ -155,6 +157,16 @@ public class Session {
         String normalized = language == null || language.isBlank() ? "off" : language;
         data.translatorLanguage = normalized;
         return playerDataRepository.updateTranslatorLanguage(data.uuid, normalized);
+    }
+
+    public boolean updateGlobalChatVisible(boolean visible) {
+        data.globalChatVisible = visible;
+        return playerDataRepository.updateGlobalChatVisible(data.uuid, visible);
+    }
+
+    public boolean updateDiscordRelayVisible(boolean visible) {
+        data.discordRelayVisible = visible;
+        return playerDataRepository.updateDiscordRelayVisible(data.uuid, visible);
     }
 
     public void setNextStatus(String key) {

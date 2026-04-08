@@ -42,6 +42,10 @@ public class PlayerData extends ModelData {
     @Builder.Default public String language = "auto";
     @BsonProperty("translator_language")
     @Builder.Default public String translatorLanguage = "off";
+    @BsonProperty("show_global_chat")
+    @Builder.Default public Boolean globalChatVisible = true;
+    @BsonProperty("show_discord_relay")
+    @Builder.Default public Boolean discordRelayVisible = true;
 
     @BsonProperty("pvp_rating")
     @Builder.Default public int pvpRating = 0;

@@ -283,6 +283,8 @@ public class PlayerMenu extends Menu {
                 ? local.t("no-description") : targetData.description;
         String activeBadge = activeBadgeName(local, targetData);
         String systemBadge = systemBadgeName(local, targetData);
+        String globalChat = targetData.globalChatVisible ? local.t("yes") : local.t("no");
+        String discordRelay = targetData.discordRelayVisible ? local.t("yes") : local.t("no");
 
         session.builder().title("player-menu-settings-title")
                 .content("player-menu-settings-content", args(
@@ -293,11 +295,13 @@ public class PlayerMenu extends Menu {
                         "description", descDisplay,
                         "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
                         "language", local.getLanguageName(targetData.language, "auto"),
-                        "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
+                        "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off"),
+                        "globalChat", globalChat,
+                        "discordRelay", discordRelay
                 ))
                 .start()
                     .addLocal("player-menu-settings-customNickname", () -> {
-                        session.setTextHandler(t -> {
+                        session.textHandler = t -> {
                             boolean isReset = (t == null || t.trim().isEmpty());
                             String newNick = isReset ? "" : t;
 
@@ -319,7 +323,7 @@ public class PlayerMenu extends Menu {
                             updateCustomNickname(targetData, newNick, true, true);
 
                             settings(uuid, targetData);
-                        });
+                        };
 
                         Call.textInput(session.player.con, session.menuService.getTextId(),
                             local.t("event-menu-edit-name-title"),
@@ -327,13 +331,17 @@ public class PlayerMenu extends Menu {
                             256, targetData.customNickname, false);
                     })
                     .addLocal("player-menu-settings-description", () -> {
-                        session.setTextHandler(t -> {
+                        session.textHandler = t -> {
                             updateDescription(targetData, t);
                             settings(uuid, targetData);
-                        });
+                        };
                         Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
                     })
                 .end()
+                .addLocalRow("player-menu-settings-chat", () -> {
+                    session.pushHistory(() -> settings(uuid, targetData));
+                    chatSettings(uuid, targetData);
+                })
                 .addLocalRow("player-menu-settings-badges", () -> {
                     session.pushHistory(() -> settings(uuid, targetData));
                     badges(uuid, targetData);
@@ -347,11 +355,46 @@ public class PlayerMenu extends Menu {
                         session.pushHistory(() -> settings(uuid, targetData));
                         languageSelectionMenu(uuid, targetData, false);
                     })
-                    .add(local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))), () -> {
-                        session.pushHistory(() -> settings(uuid, targetData));
-                        languageSelectionMenu(uuid, targetData, true);
-                    })
                 .end()
+                .addNavigationRow()
+                .show();
+    }
+
+    public void chatSettings(String uuid, PlayerData targetData) {
+        Session session = sessionService.get(uuid);
+        if (session == null || session.data == null) return;
+        session.clear();
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return;
+        }
+
+        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
+            session.locale().send("error-no-access");
+            return;
+        }
+
+        Localization local = session.locale();
+
+        session.builder()
+                .title("player-menu-settings-chat-title")
+                .content("player-menu-settings-chat-content", args(
+                        "globalChat", targetData.globalChatVisible ? local.t("yes") : local.t("no"),
+                        "discordRelay", targetData.discordRelayVisible ? local.t("yes") : local.t("no"),
+                        "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
+                ))
+                .addLocalRow(targetData.globalChatVisible ? "player-menu-settings-global-chat-on" : "player-menu-settings-global-chat-off", () -> {
+                    updateGlobalChatVisible(targetData, !targetData.globalChatVisible);
+                    chatSettings(uuid, targetData);
+                })
+                .addLocalRow(targetData.discordRelayVisible ? "player-menu-settings-discord-relay-on" : "player-menu-settings-discord-relay-off", () -> {
+                    updateDiscordRelayVisible(targetData, !targetData.discordRelayVisible);
+                    chatSettings(uuid, targetData);
+                })
+                .addRow(local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))), () -> {
+                    session.pushHistory(() -> chatSettings(uuid, targetData));
+                    languageSelectionMenu(uuid, targetData, true);
+                })
                 .addNavigationRow()
                 .show();
     }
@@ -527,6 +570,36 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.translatorLanguage = language,
                 data -> playerDataRepository.updateTranslatorLanguage(data.uuid, language),
+                null,
+                false,
+                false);
+    }
+
+    private void updateGlobalChatVisible(PlayerData targetData, boolean visible) {
+        Session targetSession = sessionService.get(targetData.uuid);
+        if (targetSession != null) {
+            targetSession.updateGlobalChatVisible(visible);
+            return;
+        }
+
+        updatePlayerData(targetData,
+                data -> data.globalChatVisible = visible,
+                data -> playerDataRepository.updateGlobalChatVisible(data.uuid, visible),
+                null,
+                false,
+                false);
+    }
+
+    private void updateDiscordRelayVisible(PlayerData targetData, boolean visible) {
+        Session targetSession = sessionService.get(targetData.uuid);
+        if (targetSession != null) {
+            targetSession.updateDiscordRelayVisible(visible);
+            return;
+        }
+
+        updatePlayerData(targetData,
+                data -> data.discordRelayVisible = visible,
+                data -> playerDataRepository.updateDiscordRelayVisible(data.uuid, visible),
                 null,
                 false,
                 false);

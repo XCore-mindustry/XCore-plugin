@@ -383,15 +383,26 @@ player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
 player-menu-settings-content =
     { "" }[white]Custom Nickname: [green]{ $customNickname }[]
     { "" }[white]System Badge: [green]{ $systemBadge }[] | Active Badge: [green]{ $activeBadge }[]
+    { "" }[white]Chat Settings: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
     { "" }[white]Show Leaderboard: [green]{ $leaderboard }[]
-    { "" }[white]Language: [green]{ $language }[] | Translator Language: [green]{ $translatorLanguage }[]
+    { "" }[white]Language: [green]{ $language }[]
     { "" }[green]{ $description }[white]
+player-menu-settings-chat = Chat settings
+player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Chat Settings
+player-menu-settings-chat-content =
+    { "" }[white]Global Chat: [green]{ $globalChat }[]
+    { "" }[white]Discord Relay: [green]{ $discordRelay }[]
+    { "" }[white]Translator Language: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
 player-menu-settings-customNickname = Edit name
 player-menu-settings-customNickname-message = [lightgray]Leave blank to reset
 player-menu-settings-description = Edit description
 player-menu-settings-badges = Badges
+player-menu-settings-global-chat-on = [green]Global chat
+player-menu-settings-global-chat-off = [red]Global chat
+player-menu-settings-discord-relay-on = [green]Discord relay
+player-menu-settings-discord-relay-off = [red]Discord relay
 player-menu-player-max-rank = Max rank reached
 player-menu-player-hexed-progress = [gray]Wins needed for [white]{ $nextRankName }[gray]: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = [gray]no data[]

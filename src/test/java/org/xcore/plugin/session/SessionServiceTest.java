@@ -32,11 +32,9 @@ class SessionServiceTest {
         );
 
         Session session = mock(Session.class);
-        session.data = PlayerData.builder()
-                .uuid("uuid-1")
-                .ip("1.1.1.1")
-                .nickname("Old")
-                .build();
+        session.data = new PlayerData("uuid-1", true);
+        session.data.ip = "1.1.1.1";
+        session.data.nickname = "Old";
 
         boolean result = service.updateConnectionData(session, "2.2.2.2", "[red]Renamed[]");
 
@@ -58,11 +56,9 @@ class SessionServiceTest {
         );
 
         Session session = mock(Session.class);
-        session.data = PlayerData.builder()
-                .uuid("uuid-1")
-                .admin(false)
-                .adminSource("NONE")
-                .build();
+        session.data = new PlayerData("uuid-1", true);
+        session.data.admin = false;
+        session.data.adminSource = "NONE";
 
         boolean result = service.updateAdminStatus(session, true, "DISCORD_ROLE");
 
@@ -70,6 +66,50 @@ class SessionServiceTest {
         assertThat(session.data.admin).isTrue();
         assertThat(session.data.adminSource).isEqualTo("DISCORD_ROLE");
         verify(playerDataRepository).updateAdminStatus("uuid-1", true, "DISCORD_ROLE");
+    }
+
+    @Test
+    @DisplayName("updateGlobalChatVisible updates session and persists visibility")
+    void updateGlobalChatVisible_updatesSessionAndPersistsVisibility() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        when(playerDataRepository.updateGlobalChatVisible("uuid-1", false)).thenReturn(true);
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+        session.data.globalChatVisible = true;
+
+        boolean result = service.updateGlobalChatVisible(session, false);
+
+        assertThat(result).isTrue();
+        assertThat(session.data.globalChatVisible).isFalse();
+        verify(playerDataRepository).updateGlobalChatVisible("uuid-1", false);
+    }
+
+    @Test
+    @DisplayName("updateDiscordRelayVisible updates session and persists visibility")
+    void updateDiscordRelayVisible_updatesSessionAndPersistsVisibility() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        when(playerDataRepository.updateDiscordRelayVisible("uuid-1", false)).thenReturn(true);
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+        session.data.discordRelayVisible = true;
+
+        boolean result = service.updateDiscordRelayVisible(session, false);
+
+        assertThat(result).isTrue();
+        assertThat(session.data.discordRelayVisible).isFalse();
+        verify(playerDataRepository).updateDiscordRelayVisible("uuid-1", false);
     }
 
     @Test
@@ -174,12 +214,48 @@ class SessionServiceTest {
         verify(blue.locale(), never()).send("team-key", args("value", 1));
     }
 
+    @Test
+    @DisplayName("broadcastFiltered sends only to sessions matching predicate")
+    void broadcastFiltered_sendsOnlyToSessionsMatchingPredicate() {
+        SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        Session globalOn = session("uuid-on", Team.sharded);
+        globalOn.data.globalChatVisible = true;
+        Session globalOff = session("uuid-off", Team.crux);
+        globalOff.data.globalChatVisible = false;
+
+        service.update(globalOn);
+        service.update(globalOff);
+
+        service.broadcastFiltered("global-chat-format", args("message", "hello"), session -> session.data.globalChatVisible);
+
+        verify(globalOn.locale()).send("global-chat-format", args("message", "hello"));
+        verify(globalOff.locale(), never()).send("global-chat-format", args("message", "hello"));
+    }
+
+    @Test
+    @DisplayName("broadcastFiltered can treat legacy null chat preference as enabled")
+    void broadcastFiltered_treatsLegacyNullChatPreferenceAsEnabled() {
+        SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        Session legacy = session("uuid-legacy", Team.sharded);
+        legacy.data.globalChatVisible = null;
+        Session disabled = session("uuid-disabled", Team.crux);
+        disabled.data.globalChatVisible = false;
+
+        service.update(legacy);
+        service.update(disabled);
+
+        service.broadcastFiltered("global-chat-format", args("message", "hello"), session -> !Boolean.FALSE.equals(session.data.globalChatVisible));
+
+        verify(legacy.locale()).send("global-chat-format", args("message", "hello"));
+        verify(disabled.locale(), never()).send("global-chat-format", args("message", "hello"));
+    }
+
     private Session session(String uuid, Team team) {
         Session session = mock(Session.class);
         Player player = mock(Player.class);
         Localization localization = mock(Localization.class);
 
-        session.data = PlayerData.builder().uuid(uuid).build();
+        session.data = new PlayerData(uuid, true);
         session.player = player;
         session.localization = localization;
 
@@ -190,7 +266,7 @@ class SessionServiceTest {
 
     private Session sessionWithoutPlayer(String uuid) {
         Session session = mock(Session.class);
-        session.data = PlayerData.builder().uuid(uuid).build();
+        session.data = new PlayerData(uuid, true);
         return session;
     }
 }

@@ -591,14 +591,26 @@ player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштуванн
 player-menu-settings-content =
     { "" }[white]Встановлене ім'я: [green]{ $customNickname }[]
     { "" }[white]Системний відзнака: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
+    { "" }[white]Налаштування чату: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
     { "" }[white]Таблиця лідерів: [green]{ $leaderboard }[]
-    { "" }[white]Мова: [green]{ $language }[] | Мова перекладача: [green]{ $translatorLanguage }[]
+    { "" }[white]Мова: [green]{ $language }[]
     { "" }[green]{ $description }[white]
+player-menu-settings-chat = Налаштування чату
+player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Налаштування чату
+player-menu-settings-chat-content =
+    { "" }[white]Global чат: [green]{ $globalChat }[]
+    { "" }[white]Discord relay: [green]{ $discordRelay }[]
+    { "" }[white]Мова перекладача: [green]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
 player-menu-settings-customNickname = Редагувати ім'я
 player-menu-settings-customNickname-message = { "[" }lightgray]Залиште пустим для скидання
 player-menu-settings-description = Редагувати опис
+player-menu-settings-badges = Відзнаки
+player-menu-settings-global-chat-on = [green]Global чат
+player-menu-settings-global-chat-off = [red]Global чат
+player-menu-settings-discord-relay-on = [green]Discord relay
+player-menu-settings-discord-relay-off = [red]Discord relay
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
 event-end = Подія [green]{ $name }[] завершилася!
@@ -657,7 +669,6 @@ error-feature-disabled = { "[" }scarlet]⚠ Цю функцію вимкнено
 error-nickname-badge-glyph = { "[" }scarlet]⚠ Користувацький нік не може містити зарезервовані іконки відзнак.
 player-leaderboard-active = { "[" }green]Список лідерів
 player-leaderboard-inactive = { "[" }red]Список лідерів
-player-menu-settings-badges = Відзнаки
 badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
 badge-menu-content =
     { "" }[white]Системна відзнака: [green]{ $systemBadge }[]

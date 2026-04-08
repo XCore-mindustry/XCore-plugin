@@ -35,11 +35,11 @@ public class ChatSocketHandler {
 
     public void registerListeners() {
         network.subscribe(SocketEvents.GlobalChatEvent.class, e -> {
-            sessionService.broadcast("global-chat-format", args(
+            sessionService.broadcastFiltered("global-chat-format", args(
                     "server", e.server(),
                     "author", e.authorName(),
                     "message", e.message()
-            ));
+            ), session -> !Boolean.FALSE.equals(session.data.globalChatVisible));
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
@@ -48,10 +48,10 @@ public class ChatSocketHandler {
                 return;
             }
 
-            sessionService.broadcast("discord-chat-format", args(
+            sessionService.broadcastFiltered("discord-chat-format", args(
                     "author", e.authorName(),
                     "message", e.message()
-            ));
+            ), session -> !Boolean.FALSE.equals(session.data.discordRelayVisible));
             Log.infoTag("DISCORD-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
