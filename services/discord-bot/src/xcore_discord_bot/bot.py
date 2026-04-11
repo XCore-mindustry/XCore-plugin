@@ -15,7 +15,7 @@ from discord.abc import Messageable
 from discord.ext import commands
 
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog
-from .dto import BanRecord, MuteRecord, PlayerRecord
+from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
     BanConfirmView,
@@ -465,6 +465,54 @@ class XCoreDiscordBot(commands.Bot):
 
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)
+
+    async def list_audit_for_player(
+        self, *, uuid: str, limit: int, page: int
+    ) -> list[AuditRecordSummary]:
+        return await self._store.list_audit_for_player(
+            uuid=uuid, limit=limit, page=page
+        )
+
+    async def count_audit_for_player(self, *, uuid: str) -> int:
+        return await self._store.count_audit_for_player(uuid=uuid)
+
+    async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
+        return await self._store.find_audit_by_id(audit_id=audit_id)
+
+    async def append_moderation_audit(
+        self,
+        *,
+        action: str,
+        target_uuid: str,
+        target_pid: int | None,
+        target_name: str,
+        target_ip: str | None,
+        actor_discord_id: str | None,
+        actor_name: str,
+        reason: str,
+        occurred_at: datetime,
+        duration_ms: int | None = None,
+        expires_at: datetime | None = None,
+        related_audit_id: str | None = None,
+        supersedes_audit_id: str | None = None,
+        request_id: str | None = None,
+    ) -> str:
+        return await self._store.append_moderation_audit(
+            action=action,
+            target_uuid=target_uuid,
+            target_pid=target_pid,
+            target_name=target_name,
+            target_ip=target_ip,
+            actor_discord_id=actor_discord_id,
+            actor_name=actor_name,
+            reason=reason,
+            occurred_at=occurred_at,
+            duration_ms=duration_ms,
+            expires_at=expires_at,
+            related_audit_id=related_audit_id,
+            supersedes_audit_id=supersedes_audit_id,
+            request_id=request_id,
+        )
 
     async def find_discord_link_code(self, code: str) -> dict[str, object] | None:
         return await self._bus.get_discord_link_code(code)

@@ -15,6 +15,7 @@ from xcore_discord_bot.mongo_store import MuteDoc
 class _Store:
     def __init__(self) -> None:
         self.upserts: list[dict[str, Any]] = []
+        self.audit_rows: list[dict[str, Any]] = []
 
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 55:
@@ -46,6 +47,10 @@ class _Store:
                 "expire_date": expire_date,
             }
         )
+
+    async def append_moderation_audit(self, **kwargs: Any) -> str:
+        self.audit_rows.append(dict(kwargs))
+        return f"audit-{len(self.audit_rows)}"
 
 
 class _Bus:

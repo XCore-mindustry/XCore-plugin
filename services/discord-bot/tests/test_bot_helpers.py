@@ -279,6 +279,7 @@ async def test_claim_mutation_duplicate() -> None:
 class _BanStore:
     def __init__(self) -> None:
         self.bans: list[dict[str, object]] = []
+        self.audit_rows: list[dict[str, object]] = []
 
     def now_utc(self) -> datetime:
         return datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -307,6 +308,10 @@ class _BanStore:
                 "expire_date": expire_date,
             }
         )
+
+    async def append_moderation_audit(self, **kwargs: object) -> str:
+        self.audit_rows.append(dict(kwargs))
+        return "audit-1"
 
 
 class _BanBus:
@@ -406,6 +411,13 @@ async def test_perform_ban_idempotent_by_entity_key() -> None:
     assert len(store.bans) == 1
     assert store.bans[0]["pid"] == 10
     assert store.bans[0]["admin_discord_id"] == "123"
+    assert len(store.audit_rows) == 1
+    assert store.audit_rows[0]["action"] == "BAN"
+    assert store.audit_rows[0]["target_pid"] == 10
+    assert store.audit_rows[0]["target_uuid"] == "u-1"
+    assert store.audit_rows[0]["actor_discord_id"] == "123"
+    assert store.audit_rows[0]["actor_name"] == "admin"
+    assert store.audit_rows[0]["duration_ms"] == 86400000
     assert bus.kicks == [("u-1", "1.2.3.4")]
     assert len(calls) == 1
     assert calls[0]["admin_discord_id"] == "123"

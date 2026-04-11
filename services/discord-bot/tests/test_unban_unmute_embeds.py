@@ -55,6 +55,12 @@ class _Bus:
 
 
 class _Store:
+    def __init__(self) -> None:
+        self.audit_rows: list[dict[str, Any]] = []
+
+    def now_utc(self) -> datetime:
+        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
@@ -86,6 +92,10 @@ class _Store:
     async def delete_mute(self, *, uuid: str) -> int:  # noqa: ARG002
         return 1
 
+    async def append_moderation_audit(self, **kwargs: Any) -> str:
+        self.audit_rows.append(dict(kwargs))
+        return f"audit-{len(self.audit_rows)}"
+
 
 class _NoActiveStore(_Store):
     async def delete_ban(self, *, uuid: str, ip: str | None) -> int:  # noqa: ARG002
@@ -99,8 +109,9 @@ class _NoActiveStore(_Store):
 async def test_cmd_unban_sends_rich_embed() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bus = _Bus()
+    store = _Store()
     bot.__dict__["_bus"] = bus
-    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_store"] = store
 
     interaction = _Interaction(id=1, user=_User(id=7, display_name="admin-x"))
     await cmd_unban(bot, interaction, 123)
@@ -120,13 +131,19 @@ async def test_cmd_unban_sends_rich_embed() -> None:
     assert fields["Reason"] == "griefing"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unbanned by"] == "admin-x"
+    assert len(store.audit_rows) == 1
+    assert store.audit_rows[0]["action"] == "UNBAN"
+    assert store.audit_rows[0]["reason"] == "griefing"
+    assert store.audit_rows[0]["actor_discord_id"] == "7"
+    assert store.audit_rows[0]["request_id"] == "1"
 
 
 @pytest.mark.asyncio
 async def test_cmd_unmute_sends_rich_embed() -> None:
     bot = object.__new__(XCoreDiscordBot)
+    store = _Store()
     bot.__dict__["_bus"] = _Bus()
-    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_store"] = store
 
     interaction = _Interaction(id=2, user=_User(id=7, display_name="admin-y"))
     await cmd_unmute(bot, interaction, 123)
@@ -142,6 +159,11 @@ async def test_cmd_unmute_sends_rich_embed() -> None:
     assert fields["Reason"] == "spam"
     assert "<t:" in fields["Was set to expire"]
     assert fields["Unmuted by"] == "admin-y"
+    assert len(store.audit_rows) == 1
+    assert store.audit_rows[0]["action"] == "UNMUTE"
+    assert store.audit_rows[0]["reason"] == "spam"
+    assert store.audit_rows[0]["actor_discord_id"] == "7"
+    assert store.audit_rows[0]["request_id"] == "2"
 
 
 @pytest.mark.asyncio

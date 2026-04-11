@@ -125,9 +125,78 @@ async def cmd_stats(
         player=_player_record_as_mapping(player),
         create_ban_modal=lambda **kwargs: create_stats_ban_modal(bot, **kwargs),
         create_mute_modal=lambda **kwargs: create_stats_mute_modal(bot, **kwargs),
+        open_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
+            bot, interaction, pid, player_mapping
+        ),
     )
     await interaction.response.send_message(embed=embed, view=view)
     view.message = await interaction.original_response()
+
+
+def _summarize_audit_reason(reason: str | None) -> str:
+    normalized = str(reason or "Not Specified").strip() or "Not Specified"
+    return normalized if len(normalized) <= 80 else normalized[:77] + "..."
+
+
+def _format_audit_entry_name(action: str, occurred_at: object) -> str:
+    when = (
+        format_epoch_millis(occurred_at)
+        if isinstance(occurred_at, (int, float))
+        else str(occurred_at or "Unknown time")
+    )
+    return f"{action} • {when}"
+
+
+async def cmd_stats_audit(
+    bot: "XCoreDiscordBot",
+    interaction: Interaction,
+    player_id: int,
+    player: dict[str, object],
+) -> None:
+    uuid_value = str(player.get("uuid") or "").strip()
+    if not uuid_value:
+        await interaction.response.send_message(
+            "Cannot open audit: UUID is missing in player data.",
+            ephemeral=True,
+        )
+        return
+
+    page_size = 6
+    total_entries = await bot.count_audit_for_player(uuid=uuid_value)
+    total_pages = max(1, (total_entries + page_size - 1) // page_size)
+
+    async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
+        rows = await bot.list_audit_for_player(
+            uuid=uuid_value, limit=page_size, page=page
+        )
+        embed = discord.Embed(
+            title=f"Audit • {str(player.get('nickname') or 'Unknown')}",
+            color=discord.Color.orange() if rows else discord.Color.red(),
+        )
+        if rows:
+            for row in rows:
+                embed.add_field(
+                    name=_format_audit_entry_name(row.action, row.occurred_at),
+                    value=(
+                        f"Actor: `{str(row.actor_name or 'Unknown')}`\n"
+                        f"Reason: `{_summarize_audit_reason(row.reason)}`\n"
+                        f"Audit ID: `{row.audit_id}`"
+                    ),
+                    inline=False,
+                )
+        else:
+            embed.description = "No audit entries found."
+
+        has_next = len(rows) == page_size
+        embed.set_footer(
+            text=(
+                f"Page {page + 1}/{total_pages} • total entries: {total_entries} "
+                f"• entries on page: {len(rows)}"
+            )
+        )
+        return embed, has_next
+
+    await bot._send_paginated(interaction, fetch_page, ephemeral=True)
 
 
 async def cmd_servers(bot: "XCoreDiscordBot", interaction: Interaction) -> None:

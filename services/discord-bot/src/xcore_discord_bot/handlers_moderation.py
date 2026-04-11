@@ -93,6 +93,46 @@ def _format_reconcile_skipped_item(item: dict[str, str]) -> str:
     )
 
 
+def _normalize_audit_reason(reason: str | None) -> str:
+    return str(reason or "Not Specified").strip() or "Not Specified"
+
+
+async def _append_discord_moderation_audit(
+    bot: "XCoreDiscordBot",
+    *,
+    interaction: Interaction | None,
+    action: str,
+    player: PlayerRecord,
+    reason: str,
+    actor_name: str,
+    actor_discord_id: str | None,
+    duration: timedelta | None = None,
+    expires_at: datetime | None = None,
+    related_audit_id: str | None = None,
+    supersedes_audit_id: str | None = None,
+) -> str:
+    request_id = str(getattr(interaction, "id", "") or "").strip() or None
+    occurred_at = await bot.now_utc()
+    duration_ms = int(duration.total_seconds() * 1000) if duration is not None else None
+    uuid_value, ip_value = bot._player_identifiers(player)
+    return await bot.append_moderation_audit(
+        action=action,
+        target_uuid=uuid_value or "",
+        target_pid=player.pid,
+        target_name=bot._player_name(player),
+        target_ip=ip_value,
+        actor_discord_id=actor_discord_id,
+        actor_name=actor_name,
+        reason=_normalize_audit_reason(reason),
+        occurred_at=occurred_at,
+        duration_ms=duration_ms,
+        expires_at=expires_at,
+        related_audit_id=related_audit_id,
+        supersedes_audit_id=supersedes_audit_id,
+        request_id=request_id,
+    )
+
+
 async def cmd_ban(
     bot: "XCoreDiscordBot",
     interaction: Interaction,
@@ -165,6 +205,17 @@ async def perform_ban(
         reason=reason,
         expire_date=expire,
     )
+    await _append_discord_moderation_audit(
+        bot,
+        interaction=None,
+        action="BAN",
+        player=player,
+        reason=reason,
+        actor_name=actor_name,
+        actor_discord_id=actor_discord_id,
+        duration=duration,
+        expires_at=expire,
+    )
     await bot.publish_kick_banned(uuid_value=uuid_value or "", ip=ip_value)
     await post_ban_log(
         bot,
@@ -214,6 +265,15 @@ async def cmd_unban(
         return
     if uuid_value is not None:
         await bot.publish_pardon_player(uuid_value=uuid_value)
+    await _append_discord_moderation_audit(
+        bot,
+        interaction=interaction,
+        action="UNBAN",
+        player=player,
+        reason=ban_doc.reason if ban_doc is not None else "Not Specified",
+        actor_name=interaction.user.display_name,
+        actor_discord_id=str(interaction.user.id),
+    )
 
     embed = bot._build_moderation_reversal_embed(
         action_label="Unbanned",
@@ -305,6 +365,17 @@ async def cmd_mute(
         reason=reason,
         expire_date=expire,
     )
+    await _append_discord_moderation_audit(
+        bot,
+        interaction=interaction,
+        action="MUTE",
+        player=player,
+        reason=reason,
+        actor_name=interaction.user.display_name,
+        actor_discord_id=str(interaction.user.id),
+        duration=duration,
+        expires_at=expire,
+    )
     player_name = bot._player_name(player)
     await post_mute_log(
         bot,
@@ -358,6 +429,15 @@ async def cmd_unmute(
     if deleted == 0:
         await interaction.response.send_message(MSG_NO_ACTIVE_MUTE, ephemeral=True)
         return
+    await _append_discord_moderation_audit(
+        bot,
+        interaction=interaction,
+        action="UNMUTE",
+        player=player,
+        reason=mute_doc.reason if mute_doc is not None else "Not Specified",
+        actor_name=interaction.user.display_name,
+        actor_discord_id=str(interaction.user.id),
+    )
 
     embed = bot._build_moderation_reversal_embed(
         action_label="Unmuted",

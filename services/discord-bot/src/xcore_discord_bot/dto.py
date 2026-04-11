@@ -61,3 +61,22 @@ class MuteRecord:
 
     def get(self, key: str, default: object = None) -> object:
         return getattr(self, key, default)
+
+
+@dataclass(frozen=True, kw_only=True)
+class AuditRecordSummary:
+    audit_id: str
+    action: str
+    target_uuid: str | None = None
+    target_name: str | None = None
+    actor_type: str | None = None
+    actor_id: str | None = None
+    actor_name: str | None = None
+    reason: str | None = None
+    duration_ms: int | None = None
+    expires_at: object = None
+    occurred_at: object = None
+    created_at_epoch_ms: int = 0
+
+    def get(self, key: str, default: object = None) -> object:
+        return getattr(self, key, default)

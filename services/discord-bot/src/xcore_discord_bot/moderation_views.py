@@ -24,6 +24,7 @@ PerformRemoveMapFn = Callable[..., Awaitable[str]]
 DeleteMuteFn = Callable[..., Awaitable[int]]
 CreateModalFn = Callable[..., discord.ui.Modal]
 FindPlayerByPidFn = Callable[[int], Awaitable[PlayerRecord | None]]
+OpenAuditFn = Callable[[Interaction, int, Mapping[str, object]], Awaitable[None]]
 
 
 class BanConfirmView(discord.ui.View):
@@ -205,6 +206,7 @@ class StatsActionsView(discord.ui.View):
         player: Mapping[str, object],
         create_ban_modal: CreateModalFn,
         create_mute_modal: CreateModalFn,
+        open_audit: OpenAuditFn,
     ) -> None:
         super().__init__(timeout=180)
         self._settings = settings
@@ -212,6 +214,7 @@ class StatsActionsView(discord.ui.View):
         self._player = dict(player)
         self._create_ban_modal = create_ban_modal
         self._create_mute_modal = create_mute_modal
+        self._open_audit = open_audit
         self.message: discord.Message | None = None
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -240,6 +243,12 @@ class StatsActionsView(discord.ui.View):
             player=self._player,
         )
         await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Audit", style=discord.ButtonStyle.primary)
+    async def _audit_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        await self._open_audit(interaction, self._player_id, self._player)
 
     async def on_timeout(self) -> None:
         disable_view_buttons(self)
