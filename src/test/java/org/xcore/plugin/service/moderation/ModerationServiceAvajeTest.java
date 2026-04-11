@@ -14,6 +14,7 @@ import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
@@ -48,6 +49,7 @@ class ModerationServiceAvajeTest {
     private NetworkService network;
     private FindService find;
     private TimeService time;
+    private AuditService auditService;
     private Administration admins;
 
     @BeforeEach
@@ -71,6 +73,7 @@ class ModerationServiceAvajeTest {
                 .mock(NetworkService.class)
                 .mock(FindService.class)
                 .mock(TimeService.class)
+                .mock(AuditService.class)
                 .build();
 
         moderationService = scope.get(ModerationService.class);
@@ -81,6 +84,11 @@ class ModerationServiceAvajeTest {
         network = scope.get(NetworkService.class);
         find = scope.get(FindService.class);
         time = scope.get(TimeService.class);
+        auditService = scope.get(AuditService.class);
+
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
+                AuditRecord.builder().auditId("audit-1").build()
+        ));
     }
 
     @AfterEach
@@ -114,8 +122,9 @@ class ModerationServiceAvajeTest {
         assertThat(result.getData().orElseThrow().getName()).isEqualTo("Unknown");
         assertThat(result.getData().orElseThrow().getReason()).isEqualTo("Not Specified");
 
-        var order = inOrder(banDataRepository, network);
+        var order = inOrder(banDataRepository, auditService, network);
         order.verify(banDataRepository).save(any(BanData.class));
+        order.verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
                 event instanceof BanData ban
                         && "uuid-1".equals(ban.getUuid())
@@ -126,6 +135,7 @@ class ModerationServiceAvajeTest {
                         && "Not Specified".equals(ban.getReason())
                         && !ban.getExpireDate().isBefore(before.plus(duration))
                         && !ban.getExpireDate().isAfter(after.plus(duration))));
+        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
         order.verify(network).post(argThat(event ->
                 event instanceof SocketEvents.KickBannedPlayer kick
                         && "uuid-1".equals(kick.uuid())
@@ -147,7 +157,21 @@ class ModerationServiceAvajeTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save ban");
         verify(banDataRepository).save(any(BanData.class));
-        verifyNoInteractions(network);
+        verifyNoInteractions(network, auditService);
+    }
+
+    @Test
+    @DisplayName("tempBanByUuidOrIp still succeeds when audit append fails after ban persistence")
+    void tempBanAuditFailureDoesNotFlipResultToFailure() {
+        when(banDataRepository.save(any())).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.tempBanByUuidOrIp("uuid-1", "1.2.3.4", "name", Duration.ofMinutes(10), "reason", "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event -> event instanceof BanData));
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
     }
 
     @Test
@@ -169,6 +193,18 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(banDataRepository).delete("uuid-2", null);
+    }
+
+    @Test
+    @DisplayName("tempUnban still succeeds when audit append fails after delete")
+    void tempUnbanAuditFailureDoesNotFlipResultToFailure() {
+        when(banDataRepository.delete("uuid-2", null)).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.tempUnban("uuid-2", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -247,8 +283,10 @@ class ModerationServiceAvajeTest {
 
         var order = inOrder(muteDataRepository, network);
         order.verify(muteDataRepository).save(any(MuteData.class));
+        verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
                 event instanceof MuteData mute && "uuid-3".equals(mute.getUuid())));
+        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -265,7 +303,22 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save mute");
-        verifyNoInteractions(network);
+        verifyNoInteractions(network, auditService);
+    }
+
+    @Test
+    @DisplayName("muteById still succeeds when audit append fails after mute persistence")
+    void muteByIdAuditFailureDoesNotFlipResultToFailure() {
+        var target = PlayerData.builder().uuid("uuid-3").nickname("Target").build();
+        when(sessionService.getOrLoadFromDb(7)).thenReturn(target);
+        when(muteDataRepository.save(any())).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.muteById(7, "admin", null, null, Duration.ofMinutes(15));
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event -> event instanceof MuteData));
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -282,6 +335,20 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(muteDataRepository).delete("uuid-4");
+    }
+
+    @Test
+    @DisplayName("unmuteById still succeeds when audit append fails after delete")
+    void unmuteByIdAuditFailureDoesNotFlipResultToFailure() {
+        var target = PlayerData.builder().uuid("uuid-4").nickname("Target2").build();
+        when(sessionService.getOrLoadFromDb(8)).thenReturn(target);
+        when(muteDataRepository.delete("uuid-4")).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.unmuteById(8);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -316,8 +383,10 @@ class ModerationServiceAvajeTest {
         assertThat(result.isSuccess()).isTrue();
         var order = inOrder(banDataRepository, network);
         order.verify(banDataRepository).save(any(BanData.class));
+        verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
                 event instanceof BanData ban && "999".equals(ban.getAdminDiscordId())));
+        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
         order.verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
     }
 
@@ -336,7 +405,23 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to save ban");
-        verifyNoInteractions(network);
+        verifyNoInteractions(network, auditService);
+    }
+
+    @Test
+    @DisplayName("banById still succeeds when audit append fails after ban persistence")
+    void banByIdAuditFailureDoesNotFlipResultToFailure() {
+        var target = PlayerData.builder().pid(9).uuid("uuid-9").nickname("Target9").build();
+        when(playerDataRepository.findByPid(9)).thenReturn(target);
+        when(banDataRepository.save(any())).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.banById(9, "admin", null, null, Duration.ofMinutes(10), true);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event -> event instanceof BanData));
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
     }
 
     @Test
@@ -354,6 +439,20 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to delete ban");
+    }
+
+    @Test
+    @DisplayName("unbanById still succeeds when audit append fails after delete")
+    void unbanByIdAuditFailureDoesNotFlipResultToFailure() {
+        var target = PlayerData.builder().pid(10).uuid("uuid-10").nickname("Target10").build();
+        when(playerDataRepository.findByPid(10)).thenReturn(target);
+        when(banDataRepository.delete("uuid-10", null)).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
+
+        var result = moderationService.unbanById(10);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -417,7 +516,8 @@ class ModerationServiceAvajeTest {
                         builder.get(SessionService.class),
                         builder.get(NetworkService.class),
                         builder.get(FindService.class),
-                        builder.get(TimeService.class)
+                        builder.get(TimeService.class),
+                        builder.get(AuditService.class)
                 ));
             }
         }

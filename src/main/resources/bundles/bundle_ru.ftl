@@ -700,6 +700,50 @@ admin-active = { "[" }green]Админ
 admin-inactive = { "[" }red]Админ
 player-leaderboard-active = { "[" }green]Таблица лидеров
 player-leaderboard-inactive = { "[" }red]Таблица лидеров
+audit-menu-open = История аудита
+audit-menu-history-title = { "[" }orange]{ -xcore } — История аудита
+audit-menu-history-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Показано записей: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-history-page-first = Новые записи
+audit-menu-history-page-older = Более старые записи
+audit-menu-history-more = Есть ещё записи
+audit-menu-history-end = Конец истории
+audit-menu-history-empty = Для этого игрока пока нет записей аудита.
+audit-menu-history-hint = Выберите запись ниже, чтобы посмотреть детали.
+audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-details-title = { "[" }orange]{ -xcore } — Детали аудита
+audit-menu-details-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }
+    { "" }[accent]■ Событие аудита[]
+    { "" }[gray]Действие: [white]{ $action }[]
+    { "" }[gray]Кто выполнил: [white]{ $actor }[]
+    { "" }[gray]Причина: [white]{ $reason }[]
+    { "" }
+    { "" }[accent]■ Время[]
+    { "" }[gray]Когда: [white]{ $occurredAt }[]
+    { "" }[gray]Длительность: [white]{ $duration }[]
+    { "" }[gray]Истекает: [white]{ $expiresAt }[]
+    { "" }
+    { "" }[accent]■ Метаданные[]
+    { "" }[gray]Audit ID: [white]{ $auditId }[]
+audit-menu-unknown-actor = Неизвестно
+audit-menu-reason-unspecified = Не указано
+audit-menu-duration-permanent = Постоянно
+audit-menu-action-ban = Бан
+audit-menu-action-unban = Разбан
+audit-menu-action-mute = Мут
+audit-menu-action-unmute = Размут
+audit-menu-action-warn = Предупреждение
+audit-menu-action-kick = Кик
+audit-menu-action-note = Заметка
+audit-menu-action-quarantine = Карантин
+audit-menu-action-unquarantine = Снятие карантина
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================

@@ -403,6 +403,50 @@ player-menu-settings-global-chat-on = [green]Global chat
 player-menu-settings-global-chat-off = [red]Global chat
 player-menu-settings-discord-relay-on = [green]Discord relay
 player-menu-settings-discord-relay-off = [red]Discord relay
+audit-menu-open = Audit history
+audit-menu-history-title = { "[" }orange]{ -xcore } — Audit history
+audit-menu-history-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Entries shown: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-history-page-first = Newest entries
+audit-menu-history-page-older = Older entries
+audit-menu-history-more = More entries available
+audit-menu-history-end = End of history
+audit-menu-history-empty = No audit entries found for this player yet.
+audit-menu-history-hint = Select an entry below to inspect details.
+audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-details-title = { "[" }orange]{ -xcore } — Audit details
+audit-menu-details-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }
+    { "" }[accent]■ Audit event[]
+    { "" }[gray]Action: [white]{ $action }[]
+    { "" }[gray]Actor: [white]{ $actor }[]
+    { "" }[gray]Reason: [white]{ $reason }[]
+    { "" }
+    { "" }[accent]■ Timing[]
+    { "" }[gray]Occurred: [white]{ $occurredAt }[]
+    { "" }[gray]Duration: [white]{ $duration }[]
+    { "" }[gray]Expires: [white]{ $expiresAt }[]
+    { "" }
+    { "" }[accent]■ Metadata[]
+    { "" }[gray]Audit ID: [white]{ $auditId }[]
+audit-menu-unknown-actor = Unknown
+audit-menu-reason-unspecified = Not specified
+audit-menu-duration-permanent = Permanent
+audit-menu-action-ban = Ban
+audit-menu-action-unban = Unban
+audit-menu-action-mute = Mute
+audit-menu-action-unmute = Unmute
+audit-menu-action-warn = Warn
+audit-menu-action-kick = Kick
+audit-menu-action-note = Note
+audit-menu-action-quarantine = Quarantine
+audit-menu-action-unquarantine = Unquarantine
 player-menu-player-max-rank = Max rank reached
 player-menu-player-hexed-progress = [gray]Wins needed for [white]{ $nextRankName }[gray]: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = [gray]no data[]

@@ -45,6 +45,13 @@ class RedisStreamRouterTest {
                 ),
                 "mini-pvp"
         );
+        var auditRoute = router.route(
+                new SocketEvents.ModerationAuditAppendedEvent(
+                        "audit-1", "BAN", "uuid-target", 42, "target", "PLAYER_ADMIN", "admin-1", "Admin", "reason", 60000L,
+                        Instant.now().plusSeconds(60), null, "mini-pvp", Instant.now()
+                ),
+                "mini-pvp"
+        );
 
         assertThat(messageRoute.streamKey()).isEqualTo("xcore:evt:chat:message");
         assertThat(messageRoute.eventType()).isEqualTo("chat.message");
@@ -60,6 +67,9 @@ class RedisStreamRouterTest {
 
         assertThat(voteKickRoute.streamKey()).isEqualTo("xcore:evt:moderation:votekick");
         assertThat(voteKickRoute.eventType()).isEqualTo("moderation.votekick");
+
+        assertThat(auditRoute.streamKey()).isEqualTo("xcore:evt:moderation:audit");
+        assertThat(auditRoute.eventType()).isEqualTo("moderation.audit");
     }
 
     @Test
@@ -122,6 +132,9 @@ class RedisStreamRouterTest {
 
         assertThat(router.subscribeStreamsFor(VoteKickEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:votekick");
+
+        assertThat(router.subscribeStreamsFor(SocketEvents.ModerationAuditAppendedEvent.class, "mini-pvp"))
+                .containsExactly("xcore:evt:moderation:audit");
     }
 
     @Test
@@ -131,6 +144,7 @@ class RedisStreamRouterTest {
         assertThat(router.isReadOnlyType(BanData.class)).isTrue();
         assertThat(router.isReadOnlyType(MuteData.class)).isTrue();
         assertThat(router.isReadOnlyType(VoteKickEvent.class)).isTrue();
+        assertThat(router.isReadOnlyType(SocketEvents.ModerationAuditAppendedEvent.class)).isTrue();
         assertThat(router.isReadOnlyType(SocketEvents.DiscordAdminAccessChanged.class)).isFalse();
 
         assertThat(router.isMutatingType(SocketEvents.PlayerPasswordReset.class)).isTrue();

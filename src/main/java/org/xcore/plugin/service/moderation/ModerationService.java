@@ -6,6 +6,15 @@ import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.model.AuditAction;
+import org.xcore.plugin.model.AuditActor;
+import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.model.AuditAppendCommand;
+import org.xcore.plugin.model.AuditDetails;
+import org.xcore.plugin.model.AuditOrigin;
+import org.xcore.plugin.model.AuditOriginChannel;
+import org.xcore.plugin.model.AuditRecord;
+import org.xcore.plugin.model.AuditTarget;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
@@ -43,6 +52,7 @@ public class ModerationService {
     private final NetworkService network;
     private final FindService find;
     private final TimeService time;
+    private final AuditService auditService;
 
     @Inject
     public ModerationService(PlayerDataRepository playerDataRepository,
@@ -51,7 +61,8 @@ public class ModerationService {
                              SessionService sessionService,
                              NetworkService network,
                              FindService find,
-                             TimeService timeService) {
+                             TimeService timeService,
+                             AuditService auditService) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.muteDataRepository = muteDataRepository;
@@ -59,6 +70,7 @@ public class ModerationService {
         this.network = network;
         this.find = find;
         this.time = timeService;
+        this.auditService = auditService;
     }
 
     /**
@@ -95,7 +107,18 @@ public class ModerationService {
             return ModerationResult.failure(BAN_SAVE_FAILED_MESSAGE);
         }
 
+        AuditRecord audit = appendAudit(
+                AuditAction.BAN,
+                auditTarget(target.uuid, target.pid, target.nickname, ip),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
+                ban.reason,
+                auditDetails(duration, unbanDate),
+                null
+        );
+
         network.post(ban);
+        postAuditEvent(audit);
 
         if (kickOnline) {
             network.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
@@ -119,6 +142,18 @@ public class ModerationService {
         if (!banDataRepository.delete(target.uuid, null)) {
             return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
         }
+
+        AuditRecord audit = appendAudit(
+                AuditAction.UNBAN,
+                auditTarget(target.uuid, target.pid, target.nickname, null),
+                legacyActor("system", null),
+                AuditOrigin.builder().channel(AuditOriginChannel.SYSTEM).source("xcore-plugin").build(),
+                DEFAULT_REASON,
+                new AuditDetails(),
+                null
+        );
+
+        postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -153,7 +188,18 @@ public class ModerationService {
             return ModerationResult.failure(MUTE_SAVE_FAILED_MESSAGE);
         }
 
+        AuditRecord audit = appendAudit(
+                AuditAction.MUTE,
+                auditTarget(target.uuid, target.pid, target.nickname, null),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
+                mute.reason,
+                auditDetails(duration, expireDate),
+                null
+        );
+
         network.post(mute);
+        postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
     }
@@ -173,6 +219,18 @@ public class ModerationService {
         if (!muteDataRepository.delete(target.uuid)) {
             return ModerationResult.failure(MUTE_DELETE_FAILED_MESSAGE);
         }
+
+        AuditRecord audit = appendAudit(
+                AuditAction.UNMUTE,
+                auditTarget(target.uuid, target.pid, target.nickname, null),
+                legacyActor("system", null),
+                AuditOrigin.builder().channel(AuditOriginChannel.SYSTEM).source("xcore-plugin").build(),
+                DEFAULT_REASON,
+                new AuditDetails(),
+                null
+        );
+
+        postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
@@ -209,7 +267,18 @@ public class ModerationService {
             return ModerationResult.failure(BAN_SAVE_FAILED_MESSAGE);
         }
 
+        AuditRecord audit = appendAudit(
+                AuditAction.BAN,
+                auditTarget(uuid, null, ban.name, ip),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
+                ban.reason,
+                auditDetails(duration, expire),
+                null
+        );
+
         network.post(ban);
+        postAuditEvent(audit);
         network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
 
         return ModerationResult.success("Player '" + ban.name + "' banned until " + expire, ban);
@@ -230,6 +299,18 @@ public class ModerationService {
         if (!banDataRepository.delete(uuid, ip)) {
             return ModerationResult.failure(BAN_DELETE_FAILED_MESSAGE);
         }
+
+        AuditRecord audit = appendAudit(
+                AuditAction.UNBAN,
+                auditTarget(uuid, null, UNKNOWN_PLAYER_NAME, ip),
+                legacyActor("console", null),
+                legacyOrigin("console"),
+                DEFAULT_REASON,
+                new AuditDetails(),
+                null
+        );
+
+        postAuditEvent(audit);
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
@@ -269,6 +350,99 @@ public class ModerationService {
 
     private static String resolveAdminDiscordId(String adminDiscordId) {
         return adminDiscordId != null ? adminDiscordId : EMPTY_DISCORD_ID;
+    }
+
+    private AuditRecord appendAudit(AuditAction action,
+                                    AuditTarget target,
+                                    AuditActor actor,
+                                    AuditOrigin origin,
+                                    String reason,
+                                    AuditDetails details,
+                                    String relatedAuditId) {
+        var result = auditService.append(AuditAppendCommand.builder()
+                .action(action)
+                .target(target)
+                .actor(actor)
+                .origin(origin)
+                .reason(reason)
+                .details(details)
+                .relatedAuditId(relatedAuditId)
+                .build());
+        return result.getRecord().orElse(null);
+    }
+
+    private void postAuditEvent(AuditRecord audit) {
+        if (audit != null) {
+            network.post(toAuditEvent(audit));
+        }
+    }
+
+    private static AuditTarget auditTarget(String uuid, Integer pid, String nameSnapshot, String ipSnapshot) {
+        return AuditTarget.builder()
+                .uuid(uuid == null ? "" : uuid)
+                .pid(pid)
+                .nameSnapshot(resolvePlayerName(nameSnapshot))
+                .ipSnapshot(ipSnapshot)
+                .build();
+    }
+
+    private static AuditActor legacyActor(String adminName, String adminDiscordId) {
+        String normalizedName = resolvePlayerName(adminName);
+        String normalizedDiscordId = resolveAdminDiscordId(adminDiscordId);
+        if ("console".equalsIgnoreCase(normalizedName)) {
+            return AuditActor.builder()
+                    .type(AuditActorType.SERVER_CONSOLE)
+                    .id("console")
+                    .nameSnapshot("console")
+                    .serverId(null)
+                    .build();
+        }
+
+        return AuditActor.builder()
+                .type(AuditActorType.PLAYER_ADMIN)
+                .id(!normalizedDiscordId.isBlank() ? normalizedDiscordId : normalizedName)
+                .nameSnapshot(normalizedName)
+                .discordId(normalizedDiscordId.isBlank() ? null : normalizedDiscordId)
+                .build();
+    }
+
+    private static AuditOrigin legacyOrigin(String adminName) {
+        if ("console".equalsIgnoreCase(resolvePlayerName(adminName))) {
+            return AuditOrigin.builder()
+                    .channel(AuditOriginChannel.SERVER_CONSOLE)
+                    .source("xcore-plugin")
+                    .build();
+        }
+        return AuditOrigin.builder()
+                .channel(AuditOriginChannel.IN_GAME)
+                .source("xcore-plugin")
+                .build();
+    }
+
+    private static AuditDetails auditDetails(Duration duration, Instant expiresAt) {
+        return AuditDetails.builder()
+                .durationMs(duration == null ? null : duration.toMillis())
+                .expiresAt(expiresAt)
+                .build();
+    }
+
+    private static SocketEvents.ModerationAuditAppendedEvent toAuditEvent(AuditRecord record) {
+        return new SocketEvents.ModerationAuditAppendedEvent(
+                record.auditId,
+                record.action.name(),
+                record.target == null ? null : record.target.getUuid(),
+                record.target == null ? null : record.target.getPid(),
+                record.target == null ? null : record.target.getNameSnapshot(),
+                record.actor == null || record.actor.getType() == null ? null : record.actor.getType().name(),
+                record.actor == null ? null : record.actor.getId(),
+                record.actor == null ? null : record.actor.getNameSnapshot(),
+                record.reason,
+                record.details == null ? null : record.details.getDurationMs(),
+                record.details == null ? null : record.details.getExpiresAt(),
+                record.relatedAuditId,
+                record.origin == null ? null : record.origin.getServerId(),
+                record.occurredAt
+        );
     }
 
     private static boolean hasNoIdentifier(String uuid, String ip) {

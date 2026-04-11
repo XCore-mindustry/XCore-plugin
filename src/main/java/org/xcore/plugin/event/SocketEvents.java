@@ -3,6 +3,7 @@ package org.xcore.plugin.event;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -124,6 +125,23 @@ public class SocketEvents {
             String status,
             String server,
             long occurredAt
+    ) implements Event {}
+
+    public record ModerationAuditAppendedEvent(
+            String auditId,
+            String action,
+            String targetUuid,
+            Integer targetPid,
+            String targetName,
+            String actorType,
+            String actorId,
+            String actorName,
+            String reason,
+            Long durationMs,
+            Instant expiresAt,
+            String relatedAuditId,
+            String server,
+            Instant occurredAt
     ) implements Event {}
 
     public static class ReloadPlayerDataCache {}

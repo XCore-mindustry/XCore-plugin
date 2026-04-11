@@ -44,6 +44,7 @@ public class PlayerMenu extends Menu {
     private final Bundle bundle;
     private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
+    private final AuditHistoryMenu auditHistoryMenu;
 
     @Inject
     public PlayerMenu(Config config,
@@ -53,13 +54,15 @@ public class PlayerMenu extends Menu {
                       GameDataRepository gameDataRepository,
                       Bundle bundle,
                       NetworkService network,
-                      PlayerDisplayService playerDisplayService) {
+                      PlayerDisplayService playerDisplayService,
+                      AuditHistoryMenu auditHistoryMenu) {
         super(config, globalConfig, sessionService);
         this.playerDataRepository = playerDataRepository;
         this.gameDataRepository = gameDataRepository;
         this.bundle = bundle;
         this.network = network;
         this.playerDisplayService = playerDisplayService;
+        this.auditHistoryMenu = auditHistoryMenu;
     }
 
     public void player(String uuid, PlayerData targetData) {
@@ -121,6 +124,10 @@ public class PlayerMenu extends Menu {
                 .ifAddLocal((isOwner || session.player.admin), "player-menu-settings", () -> {
                     session.pushHistory(() -> player(uuid, targetData));
                     settings(uuid, targetData);
+                })
+                .ifAddLocal(session.player.admin, "audit-menu-open", () -> {
+                    session.pushHistory(() -> player(uuid, targetData));
+                    auditHistoryMenu.history(uuid, targetData);
                 })
                 .end()
                 .addLocalRow("player-menu-players", () -> {

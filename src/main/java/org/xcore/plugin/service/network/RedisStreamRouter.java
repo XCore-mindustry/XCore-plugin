@@ -45,6 +45,9 @@ public final class RedisStreamRouter {
         if (event instanceof VoteKickEvent) {
             return new Route("xcore:evt:moderation:votekick", "moderation.votekick", 120000L);
         }
+        if (event instanceof SocketEvents.ModerationAuditAppendedEvent) {
+            return new Route("xcore:evt:moderation:audit", "moderation.audit", 120000L);
+        }
         if (event instanceof SocketEvents.KickBannedPlayer) {
             return new Route("xcore:cmd:kick-banned:" + defaultServer, "moderation.kick_banned", 120000L);
         }
@@ -143,6 +146,10 @@ public final class RedisStreamRouter {
             streams.add("xcore:evt:moderation:votekick");
             return streams;
         }
+        if (type == SocketEvents.ModerationAuditAppendedEvent.class) {
+            streams.add("xcore:evt:moderation:audit");
+            return streams;
+        }
         if (type == SocketEvents.KickBannedPlayer.class) {
             streams.add("xcore:cmd:kick-banned:" + defaultServer);
             return streams;
@@ -222,7 +229,8 @@ public final class RedisStreamRouter {
                 || type == SocketEvents.DiscordLinkStatusChangedEvent.class
                 || type == BanData.class
                 || type == MuteData.class
-                || type == VoteKickEvent.class;
+                || type == VoteKickEvent.class
+                || type == SocketEvents.ModerationAuditAppendedEvent.class;
     }
 
     public boolean isMutatingType(Class<?> type) {

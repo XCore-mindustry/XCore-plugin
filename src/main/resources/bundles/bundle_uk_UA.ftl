@@ -611,6 +611,50 @@ player-menu-settings-global-chat-on = [green]Global чат
 player-menu-settings-global-chat-off = [red]Global чат
 player-menu-settings-discord-relay-on = [green]Discord relay
 player-menu-settings-discord-relay-off = [red]Discord relay
+audit-menu-open = Історія аудиту
+audit-menu-history-title = { "[" }orange]{ -xcore } — Історія аудиту
+audit-menu-history-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Показано записів: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-history-page-first = Новіші записи
+audit-menu-history-page-older = Старіші записи
+audit-menu-history-more = Є ще записи
+audit-menu-history-end = Кінець історії
+audit-menu-history-empty = Для цього гравця ще немає записів аудиту.
+audit-menu-history-hint = Виберіть запис нижче, щоб переглянути деталі.
+audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-details-title = { "[" }orange]{ -xcore } — Деталі аудиту
+audit-menu-details-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }
+    { "" }[accent]■ Подія аудиту[]
+    { "" }[gray]Дія: [white]{ $action }[]
+    { "" }[gray]Хто виконав: [white]{ $actor }[]
+    { "" }[gray]Причина: [white]{ $reason }[]
+    { "" }
+    { "" }[accent]■ Час[]
+    { "" }[gray]Коли: [white]{ $occurredAt }[]
+    { "" }[gray]Тривалість: [white]{ $duration }[]
+    { "" }[gray]Закінчується: [white]{ $expiresAt }[]
+    { "" }
+    { "" }[accent]■ Метадані[]
+    { "" }[gray]Audit ID: [white]{ $auditId }[]
+audit-menu-unknown-actor = Невідомо
+audit-menu-reason-unspecified = Не вказано
+audit-menu-duration-permanent = Постійно
+audit-menu-action-ban = Бан
+audit-menu-action-unban = Розбан
+audit-menu-action-mute = Мут
+audit-menu-action-unmute = Розмут
+audit-menu-action-warn = Попередження
+audit-menu-action-kick = Кік
+audit-menu-action-note = Нотатка
+audit-menu-action-quarantine = Карантин
+audit-menu-action-unquarantine = Зняття карантину
 settings-language-label = Переклад: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
 event-end = Подія [green]{ $name }[] завершилася!
