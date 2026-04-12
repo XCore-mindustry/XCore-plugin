@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+No changelog entries were recorded in the Unreleased section.
+
+## [3.2.1] - 2026-04-12
+
+### Added
+- Added wave-vote flow for map progression and surfaced map ratings through the `maps.list` RPC.
+- Added moderation audit history plus chat-visibility settings for player UX and admin parity.
+
+### Changed
+- Updated Mindustry to version 157.
+- Refactored transport and translation services to further decompose runtime infrastructure.
+
+### Fixed
+- Fixed veteran badge icon rendering to use the overdrive icon.
+- Fixed no-op chat translation delivery, cached-session iteration safety, and translation provider footprint.
+
 ## [3.2] - 2026-03-28
 
 ### Added
@@ -221,7 +237,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...HEAD
+[3.2.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...3.2.1
 [3.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...3.2
 [3.1.8]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...3.1.8
 [3.1.7]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.6...3.1.7
