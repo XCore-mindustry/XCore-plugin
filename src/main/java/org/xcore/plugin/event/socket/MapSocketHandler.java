@@ -6,11 +6,15 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.maps.Map;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
 
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static mindustry.Vars.state;
 
 import static mindustry.Vars.customMapDirectory;
 import static mindustry.Vars.maps;
@@ -22,14 +26,17 @@ public class MapSocketHandler {
     private final NetworkService network;
     private final Config config;
     private final MapService mapService;
+    private final MapDataRepository mapDataRepository;
 
     @Inject
     public MapSocketHandler(NetworkService network,
                             Config config,
-                            MapService mapService) {
+                            MapService mapService,
+                            MapDataRepository mapDataRepository) {
         this.network = network;
         this.config = config;
         this.mapService = mapService;
+        this.mapDataRepository = mapDataRepository;
     }
 
     public void registerListeners() {
@@ -37,21 +44,34 @@ public class MapSocketHandler {
             if (!request.server.equals(config.server)) return;
 
             var customMaps = maps.customMaps();
+            String currentGameMode = state.rules.mode().name();
             var mapsList = new SocketEvents.MapEntry[customMaps.size];
             for (int i = 0; i < customMaps.size; i++) {
                 Map map = customMaps.get(i);
-                mapsList[i] = new SocketEvents.MapEntry(
-                        map.plainName(),
-                        map.file == null ? "" : map.file.name(),
-                        map.author() == null ? "Unknown" : map.author(),
-                        map.width,
-                        map.height,
-                        map.file == null ? null : map.file.length()
-                );
+                String fileName = map.file == null ? "" : map.file.name();
+                String rawAuthor = map.author();
+                String author = rawAuthor == null ? "Unknown" : rawAuthor;
+                MapData persistedMap = mapDataRepository.find(map.plainName(), rawAuthor, currentGameMode)
+                        .orElse(null);
+                SocketEvents.MapEntry entry = new SocketEvents.MapEntry();
+                entry.name = map.plainName();
+                entry.fileName = fileName;
+                entry.author = author;
+                entry.width = map.width;
+                entry.height = map.height;
+                entry.fileSizeBytes = map.file == null ? null : map.file.length();
+                entry.like = persistedMap == null ? null : persistedMap.like;
+                entry.dislike = persistedMap == null ? null : persistedMap.dislike;
+                entry.reputation = persistedMap == null ? null : persistedMap.reputation;
+                entry.popularity = persistedMap == null ? null : persistedMap.popularity;
+                entry.interest = persistedMap == null ? null : persistedMap.interest;
+                entry.gameMode = persistedMap == null ? currentGameMode : persistedMap.gameMode;
+                mapsList[i] = entry;
             }
 
-            network.respond(request, new SocketEvents.MapsListResponse(
-                    mapsList));
+            SocketEvents.MapsListResponse response = new SocketEvents.MapsListResponse();
+            response.maps = mapsList;
+            network.respond(request, response);
         });
 
         network.subscribe(SocketEvents.MapRemoveRequest.class, request -> {
@@ -63,10 +83,11 @@ public class MapSocketHandler {
                 maps.reload();
             }
 
-            network.respond(request, new SocketEvents.MapRemoveResponse(
-                    map == null
-                            ? "Map file not found"
-                            : "Successfully removed map " + map.plainName() + " (" + map.file.name() + ")"));
+            SocketEvents.MapRemoveResponse response = new SocketEvents.MapRemoveResponse();
+            response.result = map == null
+                    ? "Map file not found"
+                    : "Successfully removed map " + map.plainName() + " (" + map.file.name() + ")";
+            network.respond(request, response);
 
             if (map != null) info("Removed map @", map.plainName());
         });
@@ -89,4 +110,5 @@ public class MapSocketHandler {
             }
         });
     }
+
 }

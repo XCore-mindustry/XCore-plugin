@@ -179,6 +179,12 @@ public class SocketEvents {
         public Integer width;
         public Integer height;
         public Long fileSizeBytes;
+        public Integer like;
+        public Integer dislike;
+        public Integer reputation;
+        public Double popularity;
+        public Double interest;
+        public String gameMode;
     }
 
     @NoArgsConstructor

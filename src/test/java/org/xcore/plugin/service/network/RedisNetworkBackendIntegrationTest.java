@@ -295,7 +295,7 @@ class RedisNetworkBackendIntegrationTest {
                         request -> serverBackend.respond(
                                 request,
                                 mapsListResponse(
-                                        mapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
+                                        mapEntry("A", "a.msav", "author-a", 100, 120, 1024L, 3, 1, 2, 4.5, 1.5, "pvp"),
                                         mapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
                                 )
                         ));
@@ -313,6 +313,9 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
         assertThat(responseRef.get().maps).extracting(entry -> entry.name).containsExactly("A", "B");
+        assertThat(responseRef.get().maps).extracting(entry -> entry.like).containsExactly(3, null);
+        assertThat(responseRef.get().maps).extracting(entry -> entry.reputation).containsExactly(2, null);
+        assertThat(responseRef.get().maps).extracting(entry -> entry.gameMode).containsExactly("pvp", null);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("rpc_requests", 0L)).isGreaterThanOrEqualTo(1L);
         assertThat(serverBackend.metricsSnapshot().getOrDefault("rpc_responses", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -338,7 +341,7 @@ class RedisNetworkBackendIntegrationTest {
                     serverBackend.respond(
                             request,
                             mapsListResponse(
-                                    mapEntry("A", "a.msav", "author-a", 100, 120, 1024L),
+                                    mapEntry("A", "a.msav", "author-a", 100, 120, 1024L, 3, 1, 2, 4.5, 1.5, "pvp"),
                                     mapEntry("B", "b.msav", "author-b", 80, 80, 2048L)
                             )
                     );
@@ -550,6 +553,23 @@ class RedisNetworkBackendIntegrationTest {
             Integer height,
             Long fileSizeBytes
     ) {
+        return mapEntry(name, fileName, author, width, height, fileSizeBytes, null, null, null, null, null, null);
+    }
+
+    private static SocketEvents.MapEntry mapEntry(
+            String name,
+            String fileName,
+            String author,
+            Integer width,
+            Integer height,
+            Long fileSizeBytes,
+            Integer like,
+            Integer dislike,
+            Integer reputation,
+            Double popularity,
+            Double interest,
+            String gameMode
+    ) {
         SocketEvents.MapEntry entry = new SocketEvents.MapEntry();
         entry.name = name;
         entry.fileName = fileName;
@@ -557,6 +577,12 @@ class RedisNetworkBackendIntegrationTest {
         entry.width = width;
         entry.height = height;
         entry.fileSizeBytes = fileSizeBytes;
+        entry.like = like;
+        entry.dislike = dislike;
+        entry.reputation = reputation;
+        entry.popularity = popularity;
+        entry.interest = interest;
+        entry.gameMode = gameMode;
         return entry;
     }
 }
