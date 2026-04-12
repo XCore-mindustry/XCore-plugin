@@ -800,6 +800,12 @@ class RedisBus:
                 "file_size_bytes": str(
                     value.get("fileSizeBytes", value.get("file_size_bytes", ""))
                 ),
+                "like": str(value.get("like", "")),
+                "dislike": str(value.get("dislike", "")),
+                "reputation": str(value.get("reputation", "")),
+                "popularity": str(value.get("popularity", "")),
+                "interest": str(value.get("interest", "")),
+                "game_mode": str(value.get("gameMode", value.get("game_mode", ""))),
             }
 
         return {
@@ -809,6 +815,12 @@ class RedisBus:
             "width": "",
             "height": "",
             "file_size_bytes": "",
+            "like": "",
+            "dislike": "",
+            "reputation": "",
+            "popularity": "",
+            "interest": "",
+            "game_mode": "",
         }
 
     async def rpc_remove_map(self, server: str, file_name: str, timeout_ms: int) -> str:

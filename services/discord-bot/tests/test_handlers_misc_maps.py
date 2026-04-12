@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from xcore_discord_bot.handlers_misc import cmd_maps, perform_remove_map
+from xcore_discord_bot.server_views import MapsListView
 
 
 @dataclass
@@ -101,6 +102,75 @@ async def test_cmd_maps_reports_empty_server_map_list() -> None:
     assert interaction.followup.messages == [
         {"content": "No maps found on server `mini-pvp`", "embed": None, "view": None}
     ]
+
+
+@pytest.mark.asyncio
+async def test_cmd_maps_renders_rating_metadata() -> None:
+    bot = _MapsBot(
+        maps=[
+            {
+                "name": "Arena",
+                "file_name": "arena.msav",
+                "author": "Alice",
+                "width": "120",
+                "height": "80",
+                "file_size_bytes": "2048",
+                "like": "5",
+                "dislike": "2",
+                "reputation": "3",
+                "popularity": "7.5",
+                "game_mode": "pvp",
+            }
+        ]
+    )
+    interaction = _Interaction()
+
+    await cmd_maps(bot, interaction, "mini-pvp")
+
+    assert interaction.response.deferred is True
+    assert len(interaction.followup.messages) == 1
+    embed = interaction.followup.messages[0]["embed"]
+    assert embed is not None
+    assert embed.description == (
+        "- Arena (`arena.msav`) — by `Alice` • 120x80 • 2.0 KB"
+        " • 👍 5 / 👎 2 • rep 3 • pop 7.5 • mode `pvp`"
+    )
+    assert (
+        embed.footer.text
+        == "Sort: reputation • Page 1/1 • total maps: 1 • entries on page: 1"
+    )
+    view = interaction.followup.messages[0]["view"]
+    assert isinstance(view, MapsListView)
+
+
+@pytest.mark.asyncio
+async def test_cmd_maps_defaults_to_reputation_sort() -> None:
+    bot = _MapsBot(
+        maps=[
+            {
+                "name": "LowRep",
+                "file_name": "low.msav",
+                "author": "A",
+                "reputation": "1",
+                "like": "1",
+            },
+            {
+                "name": "HighRep",
+                "file_name": "high.msav",
+                "author": "B",
+                "reputation": "5",
+                "like": "2",
+            },
+        ]
+    )
+    interaction = _Interaction()
+
+    await cmd_maps(bot, interaction, "mini-pvp")
+
+    embed = interaction.followup.messages[0]["embed"]
+    assert embed is not None
+    assert embed.description is not None
+    assert embed.description.splitlines()[0].startswith("- HighRep")
 
 
 @pytest.mark.asyncio

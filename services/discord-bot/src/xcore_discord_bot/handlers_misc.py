@@ -21,7 +21,7 @@ from .presentation import (
     format_size,
 )
 from .retry import retry_read_rpc
-from .server_views import PaginatorView, ServersView
+from .server_views import MapsListView, ServersView
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -30,6 +30,71 @@ if TYPE_CHECKING:
 def _format_admin_label(*, admin_name: str, admin_discord_id: str | None) -> str:
     discord_id = str(admin_discord_id or "").strip()
     return f"{admin_name} (<@{discord_id}>)" if discord_id else admin_name
+
+
+def _map_rating_part(item: dict[str, str]) -> str:
+    like = str(item.get("like", "")).strip()
+    dislike = str(item.get("dislike", "")).strip()
+    reputation = str(item.get("reputation", "")).strip()
+    popularity = str(item.get("popularity", "")).strip()
+    game_mode = str(item.get("game_mode", "")).strip()
+
+    parts: list[str] = []
+    if like.lstrip("-").isdigit() or dislike.lstrip("-").isdigit():
+        like_value = like if like.lstrip("-").isdigit() else "0"
+        dislike_value = dislike if dislike.lstrip("-").isdigit() else "0"
+        parts.append(f"👍 {like_value} / 👎 {dislike_value}")
+
+    if reputation.lstrip("-").isdigit():
+        parts.append(f"rep {reputation}")
+
+    try:
+        popularity_value = float(popularity)
+    except ValueError:
+        popularity_value = None
+
+    if popularity_value is not None:
+        parts.append(f"pop {popularity_value:.1f}")
+
+    if game_mode:
+        parts.append(f"mode `{game_mode}`")
+
+    return f" • {' • '.join(parts)}" if parts else ""
+
+
+def _map_int_value(item: dict[str, str], key: str) -> int:
+    value = str(item.get(key, "")).strip()
+    return int(value) if value.lstrip("-").isdigit() else -(10**9)
+
+
+def _map_float_value(item: dict[str, str], key: str) -> float:
+    value = str(item.get(key, "")).strip()
+    try:
+        return float(value)
+    except ValueError:
+        return float("-inf")
+
+
+def _sort_maps(maps: list[dict[str, str]], mode: str) -> list[dict[str, str]]:
+    if mode == "name":
+        return sorted(maps, key=lambda item: str(item.get("name", "")).lower())
+    if mode == "popularity":
+        return sorted(
+            maps,
+            key=lambda item: (
+                -_map_float_value(item, "popularity"),
+                -_map_int_value(item, "reputation"),
+                str(item.get("name", "")).lower(),
+            ),
+        )
+    return sorted(
+        maps,
+        key=lambda item: (
+            -_map_int_value(item, "reputation"),
+            -_map_int_value(item, "like"),
+            str(item.get("name", "")).lower(),
+        ),
+    )
 
 
 async def cmd_stats(
@@ -334,11 +399,13 @@ async def cmd_maps(
         return
 
     page_size = 15
+    default_sort_mode = "reputation"
 
-    async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
+    async def fetch_page(page: int, sort_mode: str) -> tuple[discord.Embed, bool]:
+        sorted_maps = _sort_maps(maps, sort_mode)
         start = page * page_size
         end = start + page_size
-        chunk = maps[start:end]
+        chunk = sorted_maps[start:end]
 
         embed = discord.Embed(
             title=f"Maps on `{server}`",
@@ -364,25 +431,30 @@ async def cmd_maps(
                     if width.isdigit() and height.isdigit()
                     else ""
                 )
+                rating_part = _map_rating_part(item)
                 lines.append(
-                    f"- {name}{file_part} — by `{author}`{dims_part}{size_part}"
+                    f"- {name}{file_part} — by `{author}`{dims_part}{size_part}{rating_part}"
                 )
             embed.description = "\n".join(lines)
         else:
             embed.description = "No maps found."
-        has_next = end < len(maps)
-        total_pages = max(1, (len(maps) + page_size - 1) // page_size)
+        has_next = end < len(sorted_maps)
+        total_pages = max(1, (len(sorted_maps) + page_size - 1) // page_size)
         embed.set_footer(
             text=(
-                f"Page {page + 1}/{total_pages} • total maps: {len(maps)} "
-                f"• entries on page: {len(chunk)}"
+                f"Sort: {sort_mode} • Page {page + 1}/{total_pages} "
+                f"• total maps: {len(sorted_maps)} • entries on page: {len(chunk)}"
             )
         )
         return embed, has_next
 
-    first_embed, has_next = await fetch_page(0)
-    view = PaginatorView(
-        page=0, has_prev=False, has_next=has_next, fetch_page=fetch_page
+    first_embed, has_next = await fetch_page(0, default_sort_mode)
+    view = MapsListView(
+        page=0,
+        has_prev=False,
+        has_next=has_next,
+        sort_mode=default_sort_mode,
+        fetch_page=fetch_page,
     )
     sent = await interaction.followup.send(embed=first_embed, view=view)
     view.bot_message = sent
