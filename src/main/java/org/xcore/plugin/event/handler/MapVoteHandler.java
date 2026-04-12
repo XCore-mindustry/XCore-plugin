@@ -75,8 +75,18 @@ public class MapVoteHandler {
                 gameDataService.startNewGame(nextMapData, state.rules.modeName, config.isEvent() ? eventDataRepository.findActive().orElse(null) : null);
                 Groups.player.each(gameDataService::addPlayer);
 
-                ServerControl.instance.play(() -> world.loadMap(nextMap,
-                        nextMap.applyRules(ServerControl.instance.lastMode)));
+                ServerControl.instance.play(() -> {
+                    try {
+                        world.loadMap(nextMap, nextMap.applyRules(ServerControl.instance.lastMode));
+                    } catch (Exception e) {
+                        Log.err("Failed to load next map '@' (file='@', author='@', mode='@')",
+                                nextMap.plainName(),
+                                nextMap.file == null ? "<null>" : nextMap.file.name(),
+                                nextMap.author(),
+                                ServerControl.instance.lastMode == null ? "<null>" : ServerControl.instance.lastMode.name());
+                        throw e;
+                    }
+                });
             } else {
                 netServer.kickAll(Packets.KickReason.gameover);
                 state.set(GameState.State.menu);
