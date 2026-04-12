@@ -76,15 +76,22 @@ public class MapVoteHandler {
                 Groups.player.each(gameDataService::addPlayer);
 
                 ServerControl.instance.play(() -> {
+                    String nextMapName = nextMap.plainName();
+                    String nextMapFile = nextMap.file == null ? "<null>" : nextMap.file.name();
+                    String nextMapAuthor = nextMap.author();
+                    String nextMapMode = ServerControl.instance.lastMode == null
+                            ? "<null>"
+                            : ServerControl.instance.lastMode.name();
+
+                    Log.err("About to load next map '@' (file='@', author='@', mode='@')",
+                            nextMapName, nextMapFile, nextMapAuthor, nextMapMode);
+
                     try {
                         world.loadMap(nextMap, nextMap.applyRules(ServerControl.instance.lastMode));
-                    } catch (Exception e) {
-                        Log.err("Failed to load next map '@' (file='@', author='@', mode='@')",
-                                nextMap.plainName(),
-                                nextMap.file == null ? "<null>" : nextMap.file.name(),
-                                nextMap.author(),
-                                ServerControl.instance.lastMode == null ? "<null>" : ServerControl.instance.lastMode.name());
-                        throw e;
+                    } catch (Throwable t) {
+                        Log.err("Failed to load next map '@' (file='@', author='@', mode='@')", t,
+                                nextMapName, nextMapFile, nextMapAuthor, nextMapMode);
+                        throw t;
                     }
                 });
             } else {

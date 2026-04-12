@@ -60,7 +60,17 @@ public class GameLifecycleHandler {
     public void onPlayEvent(PlayEvent event) {
         pluginState.gameStartTime = Time.millis();
 
-        var mapRules = JsonIO.read(Rules.class, state.map.tags.get("rules"));
+        String mapName = state.map == null ? "<null>" : state.map.plainName();
+        String mapFile = state.map == null || state.map.file == null ? "<null>" : state.map.file.name();
+        String rawRules = state.map == null ? null : state.map.tags.get("rules");
+
+        if (rawRules == null || rawRules.isBlank()) {
+            Log.err("Loaded map '@' (file='@') without rules tag; skipping JsonIO rules merge",
+                    mapName, mapFile);
+            return;
+        }
+
+        var mapRules = JsonIO.read(Rules.class, rawRules);
         if (mapRules != null) {
             state.rules.bannedBlocks.addAll(mapRules.bannedBlocks);
             state.rules.bannedUnits.addAll(mapRules.bannedUnits);
