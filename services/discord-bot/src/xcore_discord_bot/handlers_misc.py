@@ -36,28 +36,16 @@ def _map_rating_part(item: dict[str, str]) -> str:
     like = str(item.get("like", "")).strip()
     dislike = str(item.get("dislike", "")).strip()
     reputation = str(item.get("reputation", "")).strip()
-    popularity = str(item.get("popularity", "")).strip()
-    game_mode = str(item.get("game_mode", "")).strip()
 
     parts: list[str] = []
     if like.lstrip("-").isdigit() or dislike.lstrip("-").isdigit():
         like_value = like if like.lstrip("-").isdigit() else "0"
         dislike_value = dislike if dislike.lstrip("-").isdigit() else "0"
-        parts.append(f"👍 {like_value} / 👎 {dislike_value}")
+        parts.append(f"👍 {like_value}")
+        parts.append(f"👎 {dislike_value}")
 
     if reputation.lstrip("-").isdigit():
         parts.append(f"rep {reputation}")
-
-    try:
-        popularity_value = float(popularity)
-    except ValueError:
-        popularity_value = None
-
-    if popularity_value is not None:
-        parts.append(f"pop {popularity_value:.1f}")
-
-    if game_mode:
-        parts.append(f"mode `{game_mode}`")
 
     return f" • {' • '.join(parts)}" if parts else ""
 
@@ -421,7 +409,6 @@ async def cmd_maps(
                 height = str(item.get("height", "")).strip()
                 file_size_raw = str(item.get("file_size_bytes", "")).strip()
 
-                file_part = f" (`{file_name}`)" if file_name else ""
                 size_part = ""
                 if file_size_raw.isdigit():
                     size_part = f" • {format_size(int(file_size_raw))}"
@@ -433,7 +420,10 @@ async def cmd_maps(
                 )
                 rating_part = _map_rating_part(item)
                 lines.append(
-                    f"- {name}{file_part} — by `{author}`{dims_part}{size_part}{rating_part}"
+                    f"• {name} — by `{author}`\n"
+                    f"  `{file_name}`{dims_part}{size_part}{rating_part}"
+                    if file_name
+                    else f"• {name} — by `{author}`{dims_part}{size_part}{rating_part}"
                 )
             embed.description = "\n".join(lines)
         else:

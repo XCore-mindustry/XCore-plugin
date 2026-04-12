@@ -132,8 +132,7 @@ async def test_cmd_maps_renders_rating_metadata() -> None:
     embed = interaction.followup.messages[0]["embed"]
     assert embed is not None
     assert embed.description == (
-        "- Arena (`arena.msav`) — by `Alice` • 120x80 • 2.0 KB"
-        " • 👍 5 / 👎 2 • rep 3 • pop 7.5 • mode `pvp`"
+        "• Arena — by `Alice`\n  `arena.msav` • 120x80 • 2.0 KB • 👍 5 • 👎 2 • rep 3"
     )
     assert (
         embed.footer.text
@@ -170,7 +169,7 @@ async def test_cmd_maps_defaults_to_reputation_sort() -> None:
     embed = interaction.followup.messages[0]["embed"]
     assert embed is not None
     assert embed.description is not None
-    assert embed.description.splitlines()[0].startswith("- HighRep")
+    assert embed.description.splitlines()[0].startswith("• HighRep")
 
 
 @pytest.mark.asyncio
