@@ -83,7 +83,7 @@ public class MapVoteHandler {
                             ? "<null>"
                             : ServerControl.instance.lastMode.name();
 
-                    Log.err("About to load next map '@' (file='@', author='@', mode='@')",
+                    Log.info("About to load next map '@' (file='@', author='@', mode='@')",
                             nextMapName, nextMapFile, nextMapAuthor, nextMapMode);
 
                     try {
