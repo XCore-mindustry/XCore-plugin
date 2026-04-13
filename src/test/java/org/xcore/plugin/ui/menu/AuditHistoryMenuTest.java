@@ -43,4 +43,25 @@ class AuditHistoryMenuTest {
         assertThat(AuditHistoryMenu.formatSummaryRow(local, summary))
                 .contains("Griefing spawn repeatedly and ignoring warnin...");
     }
+
+    @Test
+    @DisplayName("formatSummaryRow renders target in actor mode")
+    void formatSummaryRowRendersTargetInActorMode() {
+        Localization local = Mockito.mock(Localization.class);
+        Mockito.when(local.t(Mockito.eq("audit-menu-action-mute"))).thenReturn("Mute");
+        Mockito.when(local.t(Mockito.eq("audit-menu-action-summary-row"), Mockito.any())).thenReturn("Mute • Target — Flood");
+        AuditRecordSummary summary = new AuditRecordSummary(
+                "audit-2",
+                AuditAction.MUTE,
+                "Target",
+                "Moderator",
+                "Flood",
+                null,
+                null,
+                10L
+        );
+
+        assertThat(AuditHistoryMenu.formatSummaryRow(local, summary, AuditHistoryMenu.AuditViewMode.ACTOR))
+                .isEqualTo("Mute • Target — Flood");
+    }
 }

@@ -701,6 +701,7 @@ admin-inactive = { "[" }red]Админ
 player-leaderboard-active = { "[" }green]Таблица лидеров
 player-leaderboard-inactive = { "[" }red]Таблица лидеров
 audit-menu-open = История аудита
+audit-menu-actions-open = Действия
 audit-menu-history-title = { "[" }orange]{ -xcore } — История аудита
 audit-menu-history-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -714,7 +715,17 @@ audit-menu-history-more = Есть ещё записи
 audit-menu-history-end = Конец истории
 audit-menu-history-empty = Для этого игрока пока нет записей аудита.
 audit-menu-history-hint = Выберите запись ниже, чтобы посмотреть детали.
+audit-menu-actions-title = { "[" }orange]{ -xcore } — Действия аудита
+audit-menu-actions-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Показано записей: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-actions-empty = Для этого игрока пока нет действий аудита.
+audit-menu-actions-hint = Выберите запись ниже, чтобы посмотреть, что делал этот игрок.
 audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-action-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $target }[] [gray]— { $reason }
 audit-menu-details-title = { "[" }orange]{ -xcore } — Детали аудита
 audit-menu-details-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -733,6 +744,7 @@ audit-menu-details-content =
     { "" }[accent]■ Метаданные[]
     { "" }[gray]Audit ID: [white]{ $auditId }[]
 audit-menu-unknown-actor = Неизвестно
+audit-menu-unknown-target = Неизвестно
 audit-menu-reason-unspecified = Не указано
 audit-menu-duration-permanent = Постоянно
 audit-menu-action-ban = Бан

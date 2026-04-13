@@ -612,6 +612,7 @@ player-menu-settings-global-chat-off = [red]Global чат
 player-menu-settings-discord-relay-on = [green]Discord relay
 player-menu-settings-discord-relay-off = [red]Discord relay
 audit-menu-open = Історія аудиту
+audit-menu-actions-open = Дії
 audit-menu-history-title = { "[" }orange]{ -xcore } — Історія аудиту
 audit-menu-history-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -625,7 +626,17 @@ audit-menu-history-more = Є ще записи
 audit-menu-history-end = Кінець історії
 audit-menu-history-empty = Для цього гравця ще немає записів аудиту.
 audit-menu-history-hint = Виберіть запис нижче, щоб переглянути деталі.
+audit-menu-actions-title = { "[" }orange]{ -xcore } — Дії аудиту
+audit-menu-actions-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Показано записів: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-actions-empty = Для цього гравця ще немає дій аудиту.
+audit-menu-actions-hint = Виберіть запис нижче, щоб переглянути, що робив цей гравець.
 audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-action-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $target }[] [gray]— { $reason }
 audit-menu-details-title = { "[" }orange]{ -xcore } — Деталі аудиту
 audit-menu-details-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -644,6 +655,7 @@ audit-menu-details-content =
     { "" }[accent]■ Метадані[]
     { "" }[gray]Audit ID: [white]{ $auditId }[]
 audit-menu-unknown-actor = Невідомо
+audit-menu-unknown-target = Невідомо
 audit-menu-reason-unspecified = Не вказано
 audit-menu-duration-permanent = Постійно
 audit-menu-action-ban = Бан

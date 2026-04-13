@@ -129,6 +129,10 @@ public class PlayerMenu extends Menu {
                     session.pushHistory(() -> player(uuid, targetData));
                     auditHistoryMenu.history(uuid, targetData);
                 })
+                .ifAddLocal(session.player.admin, "audit-menu-actions-open", () -> {
+                    session.pushHistory(() -> player(uuid, targetData));
+                    auditHistoryMenu.actions(uuid, targetData);
+                })
                 .end()
                 .addLocalRow("player-menu-players", () -> {
                     session.pushHistory(() -> player(uuid, targetData));

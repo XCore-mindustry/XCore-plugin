@@ -177,7 +177,7 @@ class ModerationServiceAvajeTest {
     @Test
     @DisplayName("tempUnban fails when both UUID and IP are missing")
     void tempUnbanFailsWithoutIdentifiers() {
-        var result = moderationService.tempUnban(null, null);
+        var result = moderationService.tempUnban(null, null, "console", null);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Either UUID or IP must be provided");
@@ -189,7 +189,7 @@ class ModerationServiceAvajeTest {
     void tempUnbanSuccess() {
         when(banDataRepository.delete("uuid-2", null)).thenReturn(true);
 
-        var result = moderationService.tempUnban("uuid-2", null);
+        var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
         verify(banDataRepository).delete("uuid-2", null);
@@ -201,7 +201,7 @@ class ModerationServiceAvajeTest {
         when(banDataRepository.delete("uuid-2", null)).thenReturn(true);
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
 
-        var result = moderationService.tempUnban("uuid-2", null);
+        var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
         verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
@@ -212,7 +212,7 @@ class ModerationServiceAvajeTest {
     void tempUnbanFailsWhenDeleteFails() {
         when(banDataRepository.delete("uuid-2", null)).thenReturn(false);
 
-        var result = moderationService.tempUnban("uuid-2", null);
+        var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to delete ban");
@@ -235,7 +235,7 @@ class ModerationServiceAvajeTest {
     void unbanById_notFound_returnsFailure() {
         when(playerDataRepository.findByPid(405)).thenReturn(null);
 
-        var result = moderationService.unbanById(405);
+        var result = moderationService.unbanById(405, "admin", "123");
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Player not found");
@@ -331,7 +331,7 @@ class ModerationServiceAvajeTest {
         when(sessionService.getOrLoadFromDb(8)).thenReturn(target);
         when(muteDataRepository.delete("uuid-4")).thenReturn(true);
 
-        var result = moderationService.unmuteById(8);
+        var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
         verify(muteDataRepository).delete("uuid-4");
@@ -345,7 +345,7 @@ class ModerationServiceAvajeTest {
         when(muteDataRepository.delete("uuid-4")).thenReturn(true);
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
 
-        var result = moderationService.unmuteById(8);
+        var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
         verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
@@ -361,7 +361,7 @@ class ModerationServiceAvajeTest {
         when(sessionService.getOrLoadFromDb(8)).thenReturn(target);
         when(muteDataRepository.delete("uuid-4")).thenReturn(false);
 
-        var result = moderationService.unmuteById(8);
+        var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to delete mute");
@@ -435,7 +435,7 @@ class ModerationServiceAvajeTest {
         when(playerDataRepository.findByPid(10)).thenReturn(target);
         when(banDataRepository.delete("uuid-10", null)).thenReturn(false);
 
-        var result = moderationService.unbanById(10);
+        var result = moderationService.unbanById(10, "admin", "123");
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getMessage()).contains("Failed to delete ban");
@@ -449,7 +449,7 @@ class ModerationServiceAvajeTest {
         when(banDataRepository.delete("uuid-10", null)).thenReturn(true);
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.failure("boom"));
 
-        var result = moderationService.unbanById(10);
+        var result = moderationService.unbanById(10, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
         verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));

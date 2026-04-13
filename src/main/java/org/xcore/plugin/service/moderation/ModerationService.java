@@ -133,7 +133,7 @@ public class ModerationService {
      * @param id Player ID
      * @return Result containing PlayerData if successful
      */
-    public ModerationResult<PlayerData> unbanById(int id) {
+    public ModerationResult<PlayerData> unbanById(int id, String adminName, String adminDiscordId) {
         var target = playerDataRepository.findByPid(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -146,8 +146,8 @@ public class ModerationService {
         AuditRecord audit = appendAudit(
                 AuditAction.UNBAN,
                 auditTarget(target.uuid, target.pid, target.nickname, null),
-                legacyActor("system", null),
-                AuditOrigin.builder().channel(AuditOriginChannel.SYSTEM).source("xcore-plugin").build(),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
                 DEFAULT_REASON,
                 new AuditDetails(),
                 null
@@ -210,7 +210,7 @@ public class ModerationService {
      * @param id Player ID
      * @return Result containing PlayerData if successful
      */
-    public ModerationResult<PlayerData> unmuteById(int id) {
+    public ModerationResult<PlayerData> unmuteById(int id, String adminName, String adminDiscordId) {
         var target = sessionService.getOrLoadFromDb(id);
         if (target == null) {
             return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
@@ -223,8 +223,8 @@ public class ModerationService {
         AuditRecord audit = appendAudit(
                 AuditAction.UNMUTE,
                 auditTarget(target.uuid, target.pid, target.nickname, null),
-                legacyActor("system", null),
-                AuditOrigin.builder().channel(AuditOriginChannel.SYSTEM).source("xcore-plugin").build(),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
                 DEFAULT_REASON,
                 new AuditDetails(),
                 null
@@ -291,7 +291,7 @@ public class ModerationService {
      * @param ip   Player IP (can be null)
      * @return Result indicating success or failure
      */
-    public ModerationResult<Void> tempUnban(String uuid, String ip) {
+    public ModerationResult<Void> tempUnban(String uuid, String ip, String adminName, String adminDiscordId) {
         if (hasNoIdentifier(uuid, ip)) {
             return ModerationResult.failure(MISSING_IDENTIFIER_MESSAGE);
         }
@@ -303,8 +303,8 @@ public class ModerationService {
         AuditRecord audit = appendAudit(
                 AuditAction.UNBAN,
                 auditTarget(uuid, null, UNKNOWN_PLAYER_NAME, ip),
-                legacyActor("console", null),
-                legacyOrigin("console"),
+                legacyActor(adminName, adminDiscordId),
+                legacyOrigin(adminName),
                 DEFAULT_REASON,
                 new AuditDetails(),
                 null

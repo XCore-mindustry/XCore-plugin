@@ -17,6 +17,8 @@ import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.AuditRecordSummary;
 import org.xcore.plugin.model.Slice;
 
+import java.util.List;
+
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -85,6 +87,15 @@ public class DefaultAuditService implements AuditService {
     @Override
     public Slice<AuditRecord> findByActor(AuditActorType actorType, String actorId, AuditCursor cursor, int limit) {
         return repository.findByActor(actorType, actorId, cursor, limit);
+    }
+
+    @Override
+    public Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType, String actorId, AuditCursor cursor, int limit) {
+        return repository.findSummaryByActor(actorType, actorId, cursor, limit);
+    }
+
+    public Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType, List<String> actorIds, AuditCursor cursor, int limit) {
+        return repository.findSummaryByActor(actorType, actorIds, cursor, limit);
     }
 
     @Override

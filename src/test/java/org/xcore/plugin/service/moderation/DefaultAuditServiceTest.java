@@ -167,19 +167,36 @@ class DefaultAuditServiceTest {
         when(repository.findByTargetUuid("target-9", cursor, 5)).thenReturn(records);
         when(repository.findSummaryByTargetUuid("target-9", cursor, 5)).thenReturn(summaries);
         when(repository.findByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5)).thenReturn(records);
+        when(repository.findSummaryByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5)).thenReturn(summaries);
         when(repository.findGlobal(cursor, 5)).thenReturn(records);
         when(repository.findByAuditId("audit-99")).thenReturn(Optional.of(record));
 
         assertThat(service.findByTargetUuid("target-9", cursor, 5)).isSameAs(records);
         assertThat(service.findSummaryByTargetUuid("target-9", cursor, 5)).isSameAs(summaries);
         assertThat(service.findByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5)).isSameAs(records);
+        assertThat(service.findSummaryByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5)).isSameAs(summaries);
         assertThat(service.findGlobal(cursor, 5)).isSameAs(records);
         assertThat(service.findByAuditId("audit-99")).contains(record);
 
         verify(repository).findByTargetUuid("target-9", cursor, 5);
         verify(repository).findSummaryByTargetUuid("target-9", cursor, 5);
         verify(repository).findByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5);
+        verify(repository).findSummaryByActor(AuditActorType.SYSTEM, "system:automod", cursor, 5);
         verify(repository).findGlobal(cursor, 5);
         verify(repository).findByAuditId(eq("audit-99"));
+    }
+
+    @Test
+    @DisplayName("actor summary multi-id method delegates to repository")
+    void actorSummaryMultiIdDelegatesToRepository() {
+        AuditCursor cursor = new AuditCursor(10L, "audit-10");
+        Slice<AuditRecordSummary> summaries = new Slice<>(List.of(new AuditRecordSummary("a", AuditAction.BAN, "t", "a", "r", null, null, 1L)), false, null);
+        var actorIds = List.of("discord-1", "LegacyName");
+
+        when(repository.findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorIds, cursor, 5)).thenReturn(summaries);
+
+        assertThat(service.findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorIds, cursor, 5)).isSameAs(summaries);
+
+        verify(repository).findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorIds, cursor, 5);
     }
 }

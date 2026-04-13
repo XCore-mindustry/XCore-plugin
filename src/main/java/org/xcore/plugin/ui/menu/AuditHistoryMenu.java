@@ -5,9 +5,11 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.AuditCursor;
+import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.AuditRecordSummary;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.Slice;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.session.Session;
@@ -16,6 +18,7 @@ import org.xcore.plugin.session.SessionService;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -34,10 +37,14 @@ public class AuditHistoryMenu extends Menu {
     }
 
     public void history(String viewerUuid, PlayerData targetData) {
-        history(viewerUuid, targetData, null, true);
+        history(viewerUuid, targetData, AuditViewMode.TARGET, null, true);
     }
 
-    private void history(String viewerUuid, PlayerData targetData, AuditCursor cursor, boolean resetState) {
+    public void actions(String viewerUuid, PlayerData targetData) {
+        history(viewerUuid, targetData, AuditViewMode.ACTOR, null, true);
+    }
+
+    private void history(String viewerUuid, PlayerData targetData, AuditViewMode mode, AuditCursor cursor, boolean resetState) {
         Session session = sessionService.get(viewerUuid);
         if (session == null || session.data == null || targetData == null) {
             return;
@@ -50,35 +57,39 @@ public class AuditHistoryMenu extends Menu {
             return;
         }
 
-        if (resetState || !targetData.uuid.equals(state.targetUuid)) {
+        if (resetState || !targetData.uuid.equals(state.targetUuid) || state.mode != mode) {
             state.targetUuid = targetData.uuid;
+            state.mode = mode;
             state.backStack.clear();
             state.currentCursor = null;
             state.nextCursor = null;
         }
 
-        var slice = auditService.findSummaryByTargetUuid(targetData.uuid, cursor, globalConfig.eventsPerPage);
+        var slice = switch (mode) {
+            case TARGET -> auditService.findSummaryByTargetUuid(targetData.uuid, cursor, globalConfig.eventsPerPage);
+            case ACTOR -> findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorLookupIds(targetData), cursor, globalConfig.eventsPerPage);
+        };
         state.currentCursor = cursor;
         state.nextCursor = slice.nextCursor();
 
-        String content = buildSummaryContent(session, targetData, slice.items().size(), cursor, slice.hasNext());
+        String content = buildSummaryContent(session, targetData, mode, slice.items().size(), cursor, slice.hasNext());
 
         var builder = session.builder()
-                .title("audit-menu-history-title")
+                .title(mode == AuditViewMode.TARGET ? "audit-menu-history-title" : "audit-menu-actions-title")
                 .rawContent(content)
                 .start()
                 .ifAddLocal(!state.backStack.isEmpty(), "previous", () -> {
                     AuditCursor previous = state.backStack.pollLast();
-                    history(viewerUuid, targetData, previous, false);
+                    history(viewerUuid, targetData, mode, previous, false);
                 })
                 .ifAddLocal(slice.hasNext() && state.nextCursor != null, "next", () -> {
                     state.backStack.addLast(state.currentCursor);
-                    history(viewerUuid, targetData, state.nextCursor, false);
+                    history(viewerUuid, targetData, mode, state.nextCursor, false);
                 })
                 .end();
 
-        builder.addForEach(slice.items(), (menu, item) -> menu.addRow(formatSummaryRow(session.locale(), item), () -> {
-            session.pushHistory(() -> history(viewerUuid, targetData, state.currentCursor, false));
+        builder.addForEach(slice.items(), (menu, item) -> menu.addRow(formatSummaryRow(session.locale(), item, mode), () -> {
+            session.pushHistory(() -> history(viewerUuid, targetData, mode, state.currentCursor, false));
             details(viewerUuid, targetData, item.auditId());
         }));
 
@@ -110,15 +121,23 @@ public class AuditHistoryMenu extends Menu {
     }
 
     static String formatSummaryRow(Localization local, AuditRecordSummary item) {
+        return formatSummaryRow(local, item, AuditViewMode.TARGET);
+    }
+
+    static String formatSummaryRow(Localization local, AuditRecordSummary item, AuditViewMode mode) {
         String actor = item.actorName() == null || item.actorName().isBlank()
                 ? local.t("audit-menu-unknown-actor")
                 : item.actorName();
+        String target = item.targetName() == null || item.targetName().isBlank()
+                ? local.t("audit-menu-unknown-target")
+                : item.targetName();
         String reason = item.reason() == null || item.reason().isBlank()
                 ? local.t("audit-menu-reason-unspecified")
                 : item.reason();
-        return local.t("audit-menu-summary-row", args(
+        return local.t(mode == AuditViewMode.TARGET ? "audit-menu-summary-row" : "audit-menu-action-summary-row", args(
                 "action", actionLabel(local, item.action().name()),
                 "actor", actor,
+                "target", target,
                 "reason", summarizeReason(reason)
         ));
     }
@@ -132,6 +151,7 @@ public class AuditHistoryMenu extends Menu {
 
     private String buildSummaryContent(Session session,
                                        PlayerData targetData,
+                                       AuditViewMode mode,
                                        int itemCount,
                                        AuditCursor cursor,
                                        boolean hasNext) {
@@ -143,10 +163,10 @@ public class AuditHistoryMenu extends Menu {
                 ? local.t("audit-menu-history-more")
                 : local.t("audit-menu-history-end");
         String emptyState = itemCount == 0
-                ? local.t("audit-menu-history-empty")
-                : local.t("audit-menu-history-hint");
+                ? local.t(mode == AuditViewMode.TARGET ? "audit-menu-history-empty" : "audit-menu-actions-empty")
+                : local.t(mode == AuditViewMode.TARGET ? "audit-menu-history-hint" : "audit-menu-actions-hint");
 
-        return local.t("audit-menu-history-content", args(
+        return local.t(mode == AuditViewMode.TARGET ? "audit-menu-history-content" : "audit-menu-actions-content", args(
                 "player", targetData.nickname,
                 "pid", targetData.pid,
                 "entriesShown", itemCount,
@@ -201,8 +221,41 @@ public class AuditHistoryMenu extends Menu {
 
     public static final class AuditHistoryState {
         public String targetUuid;
+        public AuditViewMode mode = AuditViewMode.TARGET;
         public Deque<AuditCursor> backStack = new ArrayDeque<>();
         public AuditCursor currentCursor;
         public AuditCursor nextCursor;
+    }
+
+    enum AuditViewMode {
+        TARGET,
+        ACTOR
+    }
+
+    private Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType,
+                                                         List<String> actorIds,
+                                                         AuditCursor cursor,
+                                                         int limit) {
+        if (auditService instanceof org.xcore.plugin.service.moderation.DefaultAuditService defaultAuditService) {
+            return defaultAuditService.findSummaryByActor(actorType, actorIds, cursor, limit);
+        }
+        if (actorIds == null || actorIds.isEmpty()) {
+            return new Slice<>(List.of(), false, null);
+        }
+        for (String actorId : actorIds) {
+            if (actorId != null && !actorId.isBlank()) {
+                return auditService.findSummaryByActor(actorType, actorId, cursor, limit);
+            }
+        }
+        return new Slice<>(List.of(), false, null);
+    }
+
+    private static List<String> actorLookupIds(PlayerData targetData) {
+        String discordId = targetData.discordId;
+        String nickname = targetData.nickname;
+        if (discordId != null && !discordId.isBlank()) {
+            return List.of(discordId, nickname);
+        }
+        return List.of(nickname);
     }
 }

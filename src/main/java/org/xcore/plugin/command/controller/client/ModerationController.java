@@ -70,7 +70,11 @@ public class ModerationController implements CloudClientController {
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unbanById(id);
+        var result = moderationService.unbanById(
+                id,
+                session.player.name,
+                session.data.discordId
+        );
 
         if (result.isSuccess()) {
             var target = result.getData().get();
@@ -121,7 +125,11 @@ public class ModerationController implements CloudClientController {
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unmuteById(id);
+        var result = moderationService.unmuteById(
+                id,
+                session.player.name,
+                session.data.discordId
+        );
 
         if (result.isSuccess()) {
             local.send("commands-unmute-success",

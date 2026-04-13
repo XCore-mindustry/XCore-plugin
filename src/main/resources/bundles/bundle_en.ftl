@@ -404,6 +404,7 @@ player-menu-settings-global-chat-off = [red]Global chat
 player-menu-settings-discord-relay-on = [green]Discord relay
 player-menu-settings-discord-relay-off = [red]Discord relay
 audit-menu-open = Audit history
+audit-menu-actions-open = Actions
 audit-menu-history-title = { "[" }orange]{ -xcore } — Audit history
 audit-menu-history-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -417,7 +418,17 @@ audit-menu-history-more = More entries available
 audit-menu-history-end = End of history
 audit-menu-history-empty = No audit entries found for this player yet.
 audit-menu-history-hint = Select an entry below to inspect details.
+audit-menu-actions-title = { "[" }orange]{ -xcore } — Audit actions
+audit-menu-actions-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    { "" }[gray]Entries shown: [accent]{ $entriesShown }[]
+    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
+    { "" }[lightgray]{ $hint }[]
+audit-menu-actions-empty = No audit actions found for this player yet.
+audit-menu-actions-hint = Select an entry below to inspect what this player did.
 audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
+audit-menu-action-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $target }[] [gray]— { $reason }
 audit-menu-details-title = { "[" }orange]{ -xcore } — Audit details
 audit-menu-details-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
@@ -436,6 +447,7 @@ audit-menu-details-content =
     { "" }[accent]■ Metadata[]
     { "" }[gray]Audit ID: [white]{ $auditId }[]
 audit-menu-unknown-actor = Unknown
+audit-menu-unknown-target = Unknown
 audit-menu-reason-unspecified = Not specified
 audit-menu-duration-permanent = Permanent
 audit-menu-action-ban = Ban

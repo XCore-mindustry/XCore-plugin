@@ -96,7 +96,7 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        var result = moderationService.tempUnban(uuid, ip);
+        var result = moderationService.tempUnban(uuid, ip, "console", null);
         if (result.isSuccess()) {
             Log.info("Unbanned: UUID=@ / IP=@", uuid, ip);
         } else {
@@ -151,7 +151,7 @@ public class ServerModerationController implements CloudServerController {
             return;
         }
 
-        var result = moderationService.unmuteById(data.pid);
+        var result = moderationService.unmuteById(data.pid, "console", null);
         if (result.isSuccess()) {
             Log.info("Unmuted @", data.nickname);
         } else {

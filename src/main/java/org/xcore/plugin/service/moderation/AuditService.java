@@ -20,6 +20,8 @@ public interface AuditService {
 
     Slice<AuditRecord> findByActor(AuditActorType actorType, String actorId, AuditCursor cursor, int limit);
 
+    Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType, String actorId, AuditCursor cursor, int limit);
+
     Slice<AuditRecord> findGlobal(AuditCursor cursor, int limit);
 
     Optional<AuditRecord> findByAuditId(String auditId);

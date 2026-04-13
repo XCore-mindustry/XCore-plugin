@@ -76,6 +76,32 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
         return readSlice(and(eq("actor.type", actorType), eq("actor.id", actorId)), cursor, limit);
     }
 
+    public Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType, String actorId, AuditCursor cursor, int limit) {
+        if (actorType == null || actorId == null || actorId.isBlank()) {
+            return new Slice<>(List.of(), false, null);
+        }
+        return readSummarySlice(and(eq("actor.type", actorType), eq("actor.id", actorId)), cursor, limit);
+    }
+
+    public Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType, List<String> actorIds, AuditCursor cursor, int limit) {
+        if (actorType == null || actorIds == null || actorIds.isEmpty()) {
+            return new Slice<>(List.of(), false, null);
+        }
+
+        List<Bson> actorFilters = actorIds.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .map(value -> and(eq("actor.type", actorType), eq("actor.id", value)))
+                .toList();
+
+        if (actorFilters.isEmpty()) {
+            return new Slice<>(List.of(), false, null);
+        }
+
+        Bson filter = actorFilters.size() == 1 ? actorFilters.getFirst() : or(actorFilters);
+        return readSummarySlice(filter, cursor, limit);
+    }
+
     public Slice<AuditRecord> findGlobal(AuditCursor cursor, int limit) {
         return readSlice(new Document(), cursor, limit);
     }
