@@ -206,7 +206,8 @@ class StatsActionsView(discord.ui.View):
         player: Mapping[str, object],
         create_ban_modal: CreateModalFn,
         create_mute_modal: CreateModalFn,
-        open_audit: OpenAuditFn,
+        open_target_audit: OpenAuditFn,
+        open_actor_audit: OpenAuditFn,
     ) -> None:
         super().__init__(timeout=180)
         self._settings = settings
@@ -214,7 +215,8 @@ class StatsActionsView(discord.ui.View):
         self._player = dict(player)
         self._create_ban_modal = create_ban_modal
         self._create_mute_modal = create_mute_modal
-        self._open_audit = open_audit
+        self._open_target_audit = open_target_audit
+        self._open_actor_audit = open_actor_audit
         self.message: discord.Message | None = None
 
     async def interaction_check(self, interaction: Interaction) -> bool:
@@ -244,11 +246,17 @@ class StatsActionsView(discord.ui.View):
         )
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Audit", style=discord.ButtonStyle.primary)
-    async def _audit_btn(
+    @discord.ui.button(label="History", style=discord.ButtonStyle.primary)
+    async def _history_btn(
         self, interaction: Interaction, button: discord.ui.Button
     ) -> None:  # noqa: ARG002
-        await self._open_audit(interaction, self._player_id, self._player)
+        await self._open_target_audit(interaction, self._player_id, self._player)
+
+    @discord.ui.button(label="Actions", style=discord.ButtonStyle.primary)
+    async def _actions_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:  # noqa: ARG002
+        await self._open_actor_audit(interaction, self._player_id, self._player)
 
     async def on_timeout(self) -> None:
         disable_view_buttons(self)

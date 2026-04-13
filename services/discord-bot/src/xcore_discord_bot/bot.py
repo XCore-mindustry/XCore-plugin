@@ -476,6 +476,32 @@ class XCoreDiscordBot(commands.Bot):
     async def count_audit_for_player(self, *, uuid: str) -> int:
         return await self._store.count_audit_for_player(uuid=uuid)
 
+    async def list_audit_for_actor(
+        self,
+        *,
+        actor_id: str,
+        actor_discord_id: str | None,
+        limit: int,
+        page: int,
+    ) -> list[AuditRecordSummary]:
+        return await self._store.list_audit_for_actor(
+            actor_id=actor_id,
+            actor_discord_id=actor_discord_id,
+            limit=limit,
+            page=page,
+        )
+
+    async def count_audit_for_actor(
+        self,
+        *,
+        actor_id: str,
+        actor_discord_id: str | None,
+    ) -> int:
+        return await self._store.count_audit_for_actor(
+            actor_id=actor_id,
+            actor_discord_id=actor_discord_id,
+        )
+
     async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
         return await self._store.find_audit_by_id(audit_id=audit_id)
 

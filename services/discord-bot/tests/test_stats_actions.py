@@ -81,6 +81,8 @@ class _Store:
         return PlayerRecord(
             pid=123,
             nickname="Vortex",
+            uuid="uuid-123",
+            discord_id="discord-123",
             custom_nickname="",
             description="Profile text",
             language="ru",
@@ -102,6 +104,13 @@ class _Store:
         assert uuid == "uuid-123"
         return 1
 
+    async def count_audit_for_actor(
+        self, *, actor_id: str, actor_discord_id: str | None
+    ) -> int:
+        assert actor_id == "Vortex"
+        assert actor_discord_id == "discord-123"
+        return 1
+
     async def list_audit_for_player(self, *, uuid: str, limit: int, page: int):
         assert uuid == "uuid-123"
         assert limit == 6
@@ -114,6 +123,31 @@ class _Store:
                 action="BAN",
                 actor_name="Admin",
                 reason="Rule 1",
+                occurred_at="2026-04-11T15:30:00Z",
+            )
+        ]
+
+    async def list_audit_for_actor(
+        self,
+        *,
+        actor_id: str,
+        actor_discord_id: str | None,
+        limit: int,
+        page: int,
+    ):
+        assert actor_id == "Vortex"
+        assert actor_discord_id == "discord-123"
+        assert limit == 6
+        assert page == 0
+        from xcore_discord_bot.dto import AuditRecordSummary
+
+        return [
+            AuditRecordSummary(
+                audit_id="audit-2",
+                action="MUTE",
+                target_name="Target",
+                actor_name="Moderator",
+                reason="Flood",
                 occurred_at="2026-04-11T15:30:00Z",
             )
         ]
@@ -158,7 +192,7 @@ async def test_cmd_stats_attaches_actions_view() -> None:
     assert sent["embed"] is not None
     assert isinstance(sent["view"], _StatsActionsView)
     assert sent["view"].message is interaction._message
-    assert len(sent["view"].children) == 3
+    assert len(sent["view"].children) == 4
     fields = {field.name: field.value for field in sent["embed"].fields}
     assert "Permissions" in fields
     assert "Admin: ❌" in fields["Permissions"]
@@ -243,7 +277,8 @@ async def test_stats_actions_view_blocks_non_admin() -> None:
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
         ),
-        open_audit=lambda *_args, **_kwargs: None,
+        open_target_audit=lambda *_args, **_kwargs: None,
+        open_actor_audit=lambda *_args, **_kwargs: None,
     )
 
     interaction = _Interaction(
@@ -292,7 +327,8 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
         ),
-        open_audit=lambda *_args, **_kwargs: None,
+        open_target_audit=lambda *_args, **_kwargs: None,
+        open_actor_audit=lambda *_args, **_kwargs: None,
     )
 
     interaction = _Interaction(
@@ -310,7 +346,7 @@ async def test_stats_actions_view_ban_button_opens_modal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stats_actions_view_audit_button_opens_paginated_audit() -> None:
+async def test_stats_actions_view_history_button_opens_paginated_audit() -> None:
     bot = object.__new__(XCoreDiscordBot)
     bot.__dict__["_store"] = _Store()
     bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
@@ -352,7 +388,7 @@ async def test_stats_actions_view_audit_button_opens_paginated_audit() -> None:
     view = _StatsActionsView(
         settings=bot._settings,
         player_id=123,
-        player={"nickname": "Vortex", "uuid": "uuid-123"},
+        player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
         create_ban_modal=lambda **kwargs: _StatsBanModal(
             player_id=kwargs["player_id"],
             player=kwargs["player"],
@@ -363,15 +399,78 @@ async def test_stats_actions_view_audit_button_opens_paginated_audit() -> None:
             player=kwargs["player"],
             on_submit_mute=cast(Any, _no_op_mute),
         ),
-        open_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+        open_target_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+        open_actor_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
     )
 
-    audit_button = view.children[2]
-    callback = audit_button.callback
+    history_button = view.children[2]
+    callback = history_button.callback
     assert callback is not None
     await callback(cast(Any, interaction))
 
     assert len(interaction.response.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_stats_actions_view_actions_button_opens_actor_audit() -> None:
+    bot = object.__new__(XCoreDiscordBot)
+    bot.__dict__["_store"] = _Store()
+    bot.__dict__["_settings"] = SimpleNamespace(discord_admin_role_id=5)
+
+    async def _no_op_ban(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _no_op_mute(
+        _interaction: Any, _player_id: int, _period: str, _reason: str
+    ) -> None:
+        return None
+
+    async def _send_paginated(
+        interaction: Any, fetch_page, *, ephemeral: bool = False, allowed_mentions=None
+    ) -> None:
+        del allowed_mentions
+        embed, _has_next = await fetch_page(0)
+        await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
+
+    bot.__dict__["_send_paginated"] = _send_paginated
+
+    from xcore_discord_bot.handlers_misc import cmd_stats_audit
+
+    interaction = _Interaction(
+        id=7,
+        user=_User(id=9, display_name="admin", roles=[_Role(5)]),
+    )
+    view = _StatsActionsView(
+        settings=bot._settings,
+        player_id=123,
+        player={"nickname": "Vortex", "uuid": "uuid-123", "discord_id": "discord-123"},
+        create_ban_modal=lambda **kwargs: _StatsBanModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_ban=cast(Any, _no_op_ban),
+        ),
+        create_mute_modal=lambda **kwargs: _StatsMuteModal(
+            player_id=kwargs["player_id"],
+            player=kwargs["player"],
+            on_submit_mute=cast(Any, _no_op_mute),
+        ),
+        open_target_audit=lambda inter, pid, player: cmd_stats(bot, inter, pid),
+        open_actor_audit=lambda inter, pid, player: cmd_stats_audit(
+            bot, inter, pid, player, mode="actor"
+        ),
+    )
+
+    actions_button = view.children[3]
+    callback = actions_button.callback
+    assert callback is not None
+    await callback(cast(Any, interaction))
+
+    assert len(interaction.response.sent) == 1
+    sent = interaction.response.sent[0]
+    assert sent["embed"] is not None
+    assert sent["embed"].title == "Actions • Vortex"
 
 
 @pytest.mark.asyncio

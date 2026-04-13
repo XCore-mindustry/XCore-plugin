@@ -430,6 +430,61 @@ class MongoStore:
             )
         )
 
+    async def list_audit_for_actor(
+        self,
+        *,
+        actor_id: str,
+        actor_discord_id: str | None = None,
+        limit: int = 6,
+        page: int = 0,
+    ) -> list[AuditRecordSummary]:
+        actor_filter = self._audit_actor_lookup_filter(
+            actor_id=actor_id,
+            actor_discord_id=actor_discord_id,
+        )
+        if actor_filter is None:
+            return []
+
+        skip = page * limit
+        cursor = (
+            self._db_required()["moderation_audit"]
+            .find(
+                actor_filter,
+                {
+                    "_id": 0,
+                    "audit_id": 1,
+                    "action": 1,
+                    "target": 1,
+                    "actor": 1,
+                    "reason": 1,
+                    "details": 1,
+                    "occurred_at": 1,
+                    "created_at_epoch_ms": 1,
+                },
+            )
+            .sort("created_at_epoch_ms", DESCENDING)
+            .skip(skip)
+            .limit(limit)
+        )
+        rows = await cursor.to_list(length=limit)
+        return [self._audit_record_from_doc(row) for row in rows]
+
+    async def count_audit_for_actor(
+        self,
+        *,
+        actor_id: str,
+        actor_discord_id: str | None = None,
+    ) -> int:
+        actor_filter = self._audit_actor_lookup_filter(
+            actor_id=actor_id,
+            actor_discord_id=actor_discord_id,
+        )
+        if actor_filter is None:
+            return 0
+        return int(
+            await self._db_required()["moderation_audit"].count_documents(actor_filter)
+        )
+
     async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
         if not audit_id.strip():
             return None
@@ -616,3 +671,25 @@ class MongoStore:
         if ip:
             return {"$or": [{"uuid": uuid}, {"ip": ip}]}
         return {"uuid": uuid}
+
+    @staticmethod
+    def _audit_actor_lookup_filter(
+        *,
+        actor_id: str,
+        actor_discord_id: str | None,
+    ) -> dict[str, Any] | None:
+        normalized_actor_id = str(actor_id or "").strip()
+        normalized_discord_id = str(actor_discord_id or "").strip()
+
+        filters: list[dict[str, Any]] = []
+        if normalized_discord_id:
+            filters.append({"actor.id": normalized_discord_id})
+            filters.append({"actor.discord_id": normalized_discord_id})
+        if normalized_actor_id:
+            filters.append({"actor.id": normalized_actor_id})
+
+        if not filters:
+            return None
+        if len(filters) == 1:
+            return filters[0]
+        return {"$or": filters}

@@ -178,8 +178,11 @@ async def cmd_stats(
         player=_player_record_as_mapping(player),
         create_ban_modal=lambda **kwargs: create_stats_ban_modal(bot, **kwargs),
         create_mute_modal=lambda **kwargs: create_stats_mute_modal(bot, **kwargs),
-        open_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
+        open_target_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
             bot, interaction, pid, player_mapping
+        ),
+        open_actor_audit=lambda interaction, pid, player_mapping: cmd_stats_audit(
+            bot, interaction, pid, player_mapping, mode="actor"
         ),
     )
     await interaction.response.send_message(embed=embed, view=view)
@@ -205,40 +208,66 @@ async def cmd_stats_audit(
     interaction: Interaction,
     player_id: int,
     player: dict[str, object],
+    mode: str = "target",
 ) -> None:
-    uuid_value = str(player.get("uuid") or "").strip()
-    if not uuid_value:
-        await interaction.response.send_message(
-            "Cannot open audit: UUID is missing in player data.",
-            ephemeral=True,
-        )
-        return
-
     page_size = 6
-    total_entries = await bot.count_audit_for_player(uuid=uuid_value)
+    nickname = str(player.get("nickname") or "Unknown")
+    if mode == "actor":
+        actor_discord_id = str(player.get("discord_id") or "").strip() or None
+        actor_id = nickname
+        total_entries = await bot.count_audit_for_actor(
+            actor_id=actor_id,
+            actor_discord_id=actor_discord_id,
+        )
+    else:
+        uuid_value = str(player.get("uuid") or "").strip()
+        if not uuid_value:
+            await interaction.response.send_message(
+                "Cannot open audit: UUID is missing in player data.",
+                ephemeral=True,
+            )
+            return
+        total_entries = await bot.count_audit_for_player(uuid=uuid_value)
     total_pages = max(1, (total_entries + page_size - 1) // page_size)
 
     async def fetch_page(page: int) -> tuple[discord.Embed, bool]:
-        rows = await bot.list_audit_for_player(
-            uuid=uuid_value, limit=page_size, page=page
-        )
+        if mode == "actor":
+            rows = await bot.list_audit_for_actor(
+                actor_id=actor_id,
+                actor_discord_id=actor_discord_id,
+                limit=page_size,
+                page=page,
+            )
+        else:
+            rows = await bot.list_audit_for_player(
+                uuid=uuid_value, limit=page_size, page=page
+            )
         embed = discord.Embed(
-            title=f"Audit • {str(player.get('nickname') or 'Unknown')}",
+            title=f"{'Actions' if mode == 'actor' else 'History'} • {nickname}",
             color=discord.Color.orange() if rows else discord.Color.red(),
         )
         if rows:
             for row in rows:
+                counterpart = (
+                    str(row.target_name or "Unknown")
+                    if mode == "actor"
+                    else str(row.actor_name or "Unknown")
+                )
                 embed.add_field(
                     name=_format_audit_entry_name(row.action, row.occurred_at),
                     value=(
-                        f"Actor: `{str(row.actor_name or 'Unknown')}`\n"
+                        f"{'Target' if mode == 'actor' else 'Actor'}: `{counterpart}`\n"
                         f"Reason: `{_summarize_audit_reason(row.reason)}`\n"
                         f"Audit ID: `{row.audit_id}`"
                     ),
                     inline=False,
                 )
         else:
-            embed.description = "No audit entries found."
+            embed.description = (
+                "No audit actions found."
+                if mode == "actor"
+                else "No audit entries found."
+            )
 
         has_next = len(rows) == page_size
         embed.set_footer(
@@ -317,6 +346,7 @@ def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
         "blocked_private_uuids": player.blocked_private_uuids,
         "is_admin": player.is_admin,
         "admin_source": player.admin_source,
+        "discord_id": player.discord_id,
         "created_at": player.created_at,
         "updated_at": player.updated_at,
     }
