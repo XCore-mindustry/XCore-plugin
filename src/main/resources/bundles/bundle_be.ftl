@@ -24,8 +24,16 @@ badge-menu-title = { "[" }orange]{ -xcore } — Бэйджы
 badge-menu-content =
     { "" }[white]Сістэмны бэйдж: [green]{ $systemBadge }[]
     { "" }[white]Актыўны бэйдж: [green]{ $activeBadge }[]
+    { "" }[white]Колер сімвала: [green]{ $symbolColorMode }[]
 badge-menu-empty = { "[" }lightgray]У вас пакуль няма адкрытых бэйджаў.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-symbol-color-button = Колер сімвала: [green]{ $mode }[]
+badge-menu-symbol-color-title = { "[" }orange]{ -xcore } — Колер сімвала бэйджа
+badge-menu-symbol-color-content =
+    { "" }[white]Бягучы рэжым: [green]{ $mode }[]
+    { "" }[lightgray]Выберыце, як павінен афарбоўвацца сімвал бэйджа.
+badge-menu-symbol-color-default = Стандартны колер бэйджа
+badge-menu-symbol-color-player-color = Колер гульца
 badge-menu-view-all = Усе бэйджы
 badge-menu-all-title = { "[" }orange]{ -xcore } — Усе бэйджы
 badge-menu-all-content = { "[" }lightgray]Прагляд усіх бэйджаў, іх статусу і апісання.

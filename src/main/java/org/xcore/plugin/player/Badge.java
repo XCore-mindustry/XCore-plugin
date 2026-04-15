@@ -44,6 +44,14 @@ public enum Badge {
         return tagPrefix + glyph + tagSuffix;
     }
 
+    public String tagWithGlyphColor(String glyphColorTag) {
+        if (glyphColorTag == null || glyphColorTag.isBlank()) {
+            return tag();
+        }
+
+        return tagPrefix + glyphColorTag + glyph + tagSuffix;
+    }
+
     public String nameKey() {
         return nameKey;
     }

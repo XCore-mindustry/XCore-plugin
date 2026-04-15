@@ -315,6 +315,12 @@ public class SessionService {
                 () -> playerDataRepository.setActiveBadge(session.data.uuid, badgeId));
     }
 
+    public boolean updateBadgeSymbolColorMode(Session session, String mode) {
+        return mutateSession(session,
+                data -> data.badgeSymbolColorMode = mode,
+                () -> playerDataRepository.updateBadgeSymbolColorMode(session.data.uuid, mode));
+    }
+
     public boolean addBlockedPrivateUuid(Session session, String blockedUuid) {
         return mutateSession(session,
                 data -> data.blockedPrivateUuids.add(blockedUuid),

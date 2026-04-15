@@ -58,6 +58,7 @@ public class Session {
         if (this.data.blockedPrivateUuids == null) this.data.blockedPrivateUuids = new HashSet<>();
         if (this.data.unlockedBadges == null) this.data.unlockedBadges = new HashSet<>();
         if (this.data.activeBadge == null) this.data.activeBadge = "";
+        if (this.data.badgeSymbolColorMode == null || this.data.badgeSymbolColorMode.isBlank()) this.data.badgeSymbolColorMode = "default";
         if (this.data.language == null) this.data.language = "auto";
         if (this.data.translatorLanguage == null) this.data.translatorLanguage = "off";
         if (this.data.globalChatVisible == null) this.data.globalChatVisible = true;

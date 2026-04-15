@@ -57,6 +57,9 @@ public final class RedisStreamRouter {
         if (event instanceof SocketEvents.PlayerActiveBadgeChanged) {
             return new Route("xcore:cmd:player-active-badge:" + defaultServer, "player.active_badge", 120000L);
         }
+        if (event instanceof SocketEvents.PlayerBadgeSymbolColorModeChanged) {
+            return new Route("xcore:cmd:player-badge-symbol-color-mode:" + defaultServer, "player.badge_symbol_color_mode", 120000L);
+        }
         if (event instanceof SocketEvents.PlayerBadgeInventoryChanged) {
             return new Route("xcore:cmd:player-badge-inventory:" + defaultServer, "player.badge_inventory", 120000L);
         }
@@ -162,6 +165,10 @@ public final class RedisStreamRouter {
             streams.add("xcore:cmd:player-active-badge:" + defaultServer);
             return streams;
         }
+        if (type == SocketEvents.PlayerBadgeSymbolColorModeChanged.class) {
+            streams.add("xcore:cmd:player-badge-symbol-color-mode:" + defaultServer);
+            return streams;
+        }
         if (type == SocketEvents.PlayerBadgeInventoryChanged.class) {
             streams.add("xcore:cmd:player-badge-inventory:" + defaultServer);
             return streams;
@@ -237,6 +244,7 @@ public final class RedisStreamRouter {
         return type == SocketEvents.KickBannedPlayer.class
                 || type == SocketEvents.PlayerCustomNicknameChanged.class
                 || type == SocketEvents.PlayerActiveBadgeChanged.class
+                || type == SocketEvents.PlayerBadgeSymbolColorModeChanged.class
                 || type == SocketEvents.PlayerBadgeInventoryChanged.class
                 || type == SocketEvents.PlayerPasswordReset.class
                 || type == SocketEvents.DiscordLinkConfirmEvent.class

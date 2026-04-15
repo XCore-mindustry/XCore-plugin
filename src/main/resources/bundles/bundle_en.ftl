@@ -474,8 +474,16 @@ badge-menu-title = { "[" }orange]{ -xcore } — Badges
 badge-menu-content =
     { "" }[white]System Badge: [green]{ $systemBadge }[]
     { "" }[white]Active Badge: [green]{ $activeBadge }[]
+    { "" }[white]Symbol Color: [green]{ $symbolColorMode }[]
 badge-menu-empty = [lightgray]You do not have any unlocked badges yet.
 badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
+badge-menu-symbol-color-button = Symbol color: [green]{ $mode }[]
+badge-menu-symbol-color-title = [orange]{ -xcore } — Badge symbol color
+badge-menu-symbol-color-content =
+    { "" }[white]Current mode: [green]{ $mode }[]
+    { "" }[lightgray]Choose how the badge symbol should be colored.
+badge-menu-symbol-color-default = Default badge color
+badge-menu-symbol-color-player-color = Match player color
 badge-menu-view-all = View all badges
 badge-menu-all-title = [orange]{ -xcore } — All badges
 badge-menu-all-content = [lightgray]Browse all badges, their status, and descriptions.

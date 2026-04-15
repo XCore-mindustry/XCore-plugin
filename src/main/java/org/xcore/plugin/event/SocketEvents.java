@@ -49,6 +49,8 @@ public class SocketEvents {
 
     public record PlayerActiveBadgeChanged(String uuid, String activeBadge) {}
 
+    public record PlayerBadgeSymbolColorModeChanged(String uuid, String badgeSymbolColorMode) {}
+
     public record PlayerBadgeInventoryChanged(String uuid, String activeBadge, Set<String> unlockedBadges) {}
 
     public record PlayerPasswordReset(String uuid) {}

@@ -66,6 +66,8 @@ public class PlayerData extends ModelData {
     @Builder.Default public Set<String> unlockedBadges = new HashSet<>();
     @BsonProperty("active_badge")
     @Builder.Default public String activeBadge = "";
+    @BsonProperty("badge_symbol_color_mode")
+    @Builder.Default public String badgeSymbolColorMode = "default";
 
     @BsonProperty("is_admin")
     @Builder.Default public boolean admin = false;

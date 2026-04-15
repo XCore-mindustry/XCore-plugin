@@ -465,7 +465,8 @@ public class PlayerMenu extends Menu {
         List<Badge> badges = unlockedSelectableBadges(targetData);
         String header = local.t("badge-menu-content", args(
                 "systemBadge", systemBadgeName(local, targetData),
-                "activeBadge", activeBadgeName(local, targetData)
+                "activeBadge", activeBadgeName(local, targetData),
+                "symbolColorMode", badgeSymbolColorModeLabel(local, targetData)
         ));
 
         var builder = session.builder()
@@ -483,6 +484,12 @@ public class PlayerMenu extends Menu {
         }
 
         builder.start()
+                .addLocal("badge-menu-symbol-color-button", () -> {
+                    session.pushHistory(() -> badges(uuid, targetData));
+                    badgeSymbolColorMode(uuid, targetData);
+                }, args("mode", badgeSymbolColorModeLabel(local, targetData)))
+                .end()
+                .start()
                 .addLocal("badge-menu-view-all", () -> {
                     session.pushHistory(() -> badges(uuid, targetData));
                     allBadges(uuid, targetData);
@@ -492,6 +499,39 @@ public class PlayerMenu extends Menu {
                     badges(uuid, targetData);
                 })
                 .end()
+                .addNavigationRow()
+                .show();
+    }
+
+    public void badgeSymbolColorMode(String uuid, PlayerData targetData) {
+        Session session = sessionService.get(uuid);
+        if (session == null || session.data == null) return;
+        session.clear();
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return;
+        }
+
+        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
+            session.locale().send("error-no-access");
+            return;
+        }
+
+        Localization local = session.locale();
+
+        session.builder()
+                .title("badge-menu-symbol-color-title")
+                .content("badge-menu-symbol-color-content", args(
+                        "mode", badgeSymbolColorModeLabel(local, targetData)
+                ))
+                .addLocalRow("badge-menu-symbol-color-default", () -> {
+                    updateBadgeSymbolColorMode(targetData, "default", true, true);
+                    badgeSymbolColorMode(uuid, targetData);
+                })
+                .addLocalRow("badge-menu-symbol-color-player-color", () -> {
+                    updateBadgeSymbolColorMode(targetData, "player-color", true, true);
+                    badgeSymbolColorMode(uuid, targetData);
+                })
                 .addNavigationRow()
                 .show();
     }
@@ -625,6 +665,15 @@ public class PlayerMenu extends Menu {
                 sync);
     }
 
+    private void updateBadgeSymbolColorMode(PlayerData targetData, String mode, boolean refreshDisplay, boolean sync) {
+        updatePlayerData(targetData,
+                data -> data.badgeSymbolColorMode = mode,
+                data -> playerDataRepository.updateBadgeSymbolColorMode(data.uuid, mode),
+                data -> new org.xcore.plugin.event.SocketEvents.PlayerBadgeSymbolColorModeChanged(data.uuid, data.badgeSymbolColorMode),
+                refreshDisplay,
+                sync);
+    }
+
     private void updatePlayerData(PlayerData targetData,
                                   Consumer<PlayerData> updater,
                                   Consumer<PlayerData> partialUpdater,
@@ -662,6 +711,12 @@ public class PlayerMenu extends Menu {
         return targetData.admin ? badgeLabel(local, Badge.ADMIN) : local.t("none");
     }
 
+    private String badgeSymbolColorModeLabel(Localization local, PlayerData targetData) {
+        return usesPlayerBadgeSymbolColor(targetData)
+                ? local.t("badge-menu-symbol-color-player-color")
+                : local.t("badge-menu-symbol-color-default");
+    }
+
     private List<Badge> unlockedSelectableBadges(PlayerData targetData) {
         List<Badge> result = new ArrayList<>();
         for (Badge badge : Badge.selectableManualBadges()) {
@@ -690,6 +745,12 @@ public class PlayerMenu extends Menu {
 
     private boolean ownsBadge(PlayerData targetData, Badge badge) {
         return targetData.unlockedBadges != null && targetData.unlockedBadges.contains(badge.id());
+    }
+
+    private boolean usesPlayerBadgeSymbolColor(PlayerData targetData) {
+        return targetData != null
+                && targetData.badgeSymbolColorMode != null
+                && targetData.badgeSymbolColorMode.equalsIgnoreCase("player-color");
     }
 
     private boolean containsBadgeLikeGlyphs(String input) {

@@ -32,7 +32,7 @@ public class PlayerDisplayService {
             parts.add(systemBadge);
         }
 
-        String selectedBadge = resolveSelectedBadgeTag(data);
+        String selectedBadge = resolveSelectedBadgeTag(data, player);
         if (!selectedBadge.isEmpty()) {
             parts.add(selectedBadge);
         }
@@ -87,12 +87,16 @@ public class PlayerDisplayService {
     }
 
     public String resolveSelectedBadgeTag(PlayerData data) {
+        return resolveSelectedBadgeTag(data, null);
+    }
+
+    public String resolveSelectedBadgeTag(PlayerData data, Player player) {
         if (data == null || data.activeBadge == null || data.activeBadge.isBlank()) return "";
 
         Badge badge = Badge.byId(data.activeBadge);
         if (badge == null || !badge.selectable() || badge.system()) return "";
         if (data.unlockedBadges == null || !data.unlockedBadges.contains(badge.id())) return "";
-        return badge.tag();
+        return renderBadgeTag(badge, data, player);
     }
 
     public String resolveHexedTag(PlayerData data) {
@@ -108,7 +112,7 @@ public class PlayerDisplayService {
             parts.add(systemBadge);
         }
 
-        String selectedBadge = resolveSelectedBadgeTag(data);
+        String selectedBadge = resolveSelectedBadgeTag(data, player);
         if (!selectedBadge.isEmpty()) {
             parts.add(selectedBadge);
         }
@@ -143,5 +147,34 @@ public class PlayerDisplayService {
 
     public String plainDisplayName(PlayerData data, Player player) {
         return Strings.stripColors(buildDisplayName(data, player));
+    }
+
+    private String renderBadgeTag(Badge badge, PlayerData data, Player player) {
+        if (!usesPlayerColorMode(data)) {
+            return badge.tag();
+        }
+
+        String glyphColorTag = playerGlyphColorTag(player);
+        if (glyphColorTag.isEmpty()) {
+            return badge.tag();
+        }
+
+        return badge.tagWithGlyphColor(glyphColorTag);
+    }
+
+    private boolean usesPlayerColorMode(PlayerData data) {
+        if (data == null || data.badgeSymbolColorMode == null) {
+            return false;
+        }
+
+        return "player-color".equalsIgnoreCase(data.badgeSymbolColorMode);
+    }
+
+    private String playerGlyphColorTag(Player player) {
+        if (player == null || player.color == null) {
+            return "";
+        }
+
+        return "[#" + player.color.toString().substring(0, 6) + "]";
     }
 }

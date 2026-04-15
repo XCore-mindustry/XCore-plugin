@@ -729,8 +729,16 @@ badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
 badge-menu-content =
     { "" }[white]Системна відзнака: [green]{ $systemBadge }[]
     { "" }[white]Активна відзнака: [green]{ $activeBadge }[]
+    { "" }[white]Колір символу: [green]{ $symbolColorMode }[]
 badge-menu-empty = { "[" }lightgray]У вас поки що немає відкритих відзнак.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-symbol-color-button = Колір символу: [green]{ $mode }[]
+badge-menu-symbol-color-title = { "[" }orange]{ -xcore } — Колір символу відзнаки
+badge-menu-symbol-color-content =
+    { "" }[white]Поточний режим: [green]{ $mode }[]
+    { "" }[lightgray]Виберіть, як має зафарбовуватися символ відзнаки.
+badge-menu-symbol-color-default = Стандартний колір відзнаки
+badge-menu-symbol-color-player-color = Колір гравця
 badge-menu-view-all = Усі відзнаки
 badge-menu-all-title = { "[" }orange]{ -xcore } — Усі відзнаки
 badge-menu-all-content = { "[" }lightgray]Перегляд усіх відзнак, їхнього статусу та опису.

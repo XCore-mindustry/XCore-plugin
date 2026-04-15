@@ -191,6 +191,10 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuid(uuid, Updates.set("active_badge", badgeId));
     }
 
+    public boolean updateBadgeSymbolColorMode(String uuid, String mode) {
+        return updateByUuid(uuid, Updates.set("badge_symbol_color_mode", mode));
+    }
+
     public boolean addUnlockedBadge(String uuid, String badgeId) {
         return updateByUuid(uuid, Updates.addToSet("unlocked_badges", badgeId));
     }

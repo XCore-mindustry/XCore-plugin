@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import arc.graphics.Color;
 import mindustry.gen.Iconc;
 import mindustry.gen.Player;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,34 @@ class PlayerDisplayServiceTest {
         var data = basePlayer();
         data.unlockedBadges.add("developer");
         data.activeBadge = "developer";
+
+        assertThat(service.buildDisplayName(data, null)).isEqualTo("[#86dca2]<[white]" + Iconc.wrench + "[]>[] PlayerOne");
+    }
+
+    @Test
+    @DisplayName("buildDisplayName uses player color for selected badge symbol when mode is player-color")
+    void selectedBadgeUsesPlayerColorWhenConfigured() {
+        var service = new PlayerDisplayService(config("mini-pvp"));
+        var data = basePlayer();
+        data.unlockedBadges.add("developer");
+        data.activeBadge = "developer";
+        data.badgeSymbolColorMode = "player-color";
+
+        Player player = Mockito.mock(Player.class);
+        player.color = new Color();
+        player.color.set(Color.valueOf("ff8844"));
+
+        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#86dca2]<[white][#ff8844]" + Iconc.wrench + "[]>[] PlayerOne");
+    }
+
+    @Test
+    @DisplayName("buildDisplayName falls back to default badge color when player color is unavailable")
+    void selectedBadgeFallsBackWhenPlayerColorUnavailable() {
+        var service = new PlayerDisplayService(config("mini-pvp"));
+        var data = basePlayer();
+        data.unlockedBadges.add("developer");
+        data.activeBadge = "developer";
+        data.badgeSymbolColorMode = "player-color";
 
         assertThat(service.buildDisplayName(data, null)).isEqualTo("[#86dca2]<[white]" + Iconc.wrench + "[]>[] PlayerOne");
     }
@@ -93,6 +122,23 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
+    @DisplayName("chat badge prefix uses player color for selected badge symbol when mode is player-color")
+    void chatBadgePrefixUsesPlayerColorWhenConfigured() {
+        var service = new PlayerDisplayService(config("mini-pvp"));
+        var data = basePlayer();
+        data.unlockedBadges.add("translator");
+        data.activeBadge = "translator";
+        data.badgeSymbolColorMode = "player-color";
+
+        Player player = Mockito.mock(Player.class);
+        player.color = new Color();
+        player.color.set(Color.valueOf("44ccff"));
+
+        assertThat(service.buildChatBadgePrefix(data, player))
+                .isEqualTo("[#79d7ff]<[white][#44ccff]" + Iconc.bookOpen + "[]>[]");
+    }
+
+    @Test
     @DisplayName("buildDisplayName includes hexed rank on mini-hexed server")
     void hexedRankIncluded() {
         var service = new PlayerDisplayService(config("mini-hexed"));
@@ -129,7 +175,7 @@ class PlayerDisplayServiceTest {
     }
 
     private static PlayerData basePlayer() {
-        var data = new PlayerData();
+        var data = new PlayerData("uuid-test", true);
         data.nickname = "PlayerOne";
         data.unlockedBadges = new HashSet<>();
         data.activeBadge = "";

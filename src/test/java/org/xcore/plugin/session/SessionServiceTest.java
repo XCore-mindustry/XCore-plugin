@@ -113,6 +113,28 @@ class SessionServiceTest {
     }
 
     @Test
+    @DisplayName("updateBadgeSymbolColorMode updates session and persists mode")
+    void updateBadgeSymbolColorMode_updatesSessionAndPersistsMode() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        when(playerDataRepository.updateBadgeSymbolColorMode("uuid-1", "player-color")).thenReturn(true);
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+        session.data.badgeSymbolColorMode = "default";
+
+        boolean result = service.updateBadgeSymbolColorMode(session, "player-color");
+
+        assertThat(result).isTrue();
+        assertThat(session.data.badgeSymbolColorMode).isEqualTo("player-color");
+        verify(playerDataRepository).updateBadgeSymbolColorMode("uuid-1", "player-color");
+    }
+
+    @Test
     @DisplayName("streamCached returns cached sessions")
     void streamCached_returnsCachedSessions() {
         SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));

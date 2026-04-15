@@ -419,8 +419,16 @@ badge-menu-title = { "[" }orange]{ -xcore } — Бейджи
 badge-menu-content =
     { "" }[white]Системный бейдж: [green]{ $systemBadge }[]
     { "" }[white]Активный бейдж: [green]{ $activeBadge }[]
+    { "" }[white]Цвет символа: [green]{ $symbolColorMode }[]
 badge-menu-empty = { "[" }lightgray]У вас пока нет открытых бейджей.
 badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+badge-menu-symbol-color-button = Цвет символа: [green]{ $mode }[]
+badge-menu-symbol-color-title = { "[" }orange]{ -xcore } — Цвет символа бейджа
+badge-menu-symbol-color-content =
+    { "" }[white]Текущий режим: [green]{ $mode }[]
+    { "" }[lightgray]Выберите, как должен окрашиваться символ бейджа.
+badge-menu-symbol-color-default = Стандартный цвет бейджа
+badge-menu-symbol-color-player-color = Цвет игрока
 badge-menu-view-all = Все бейджи
 badge-menu-all-title = { "[" }orange]{ -xcore } — Все бейджи
 badge-menu-all-content = { "[" }lightgray]Просмотр всех бейджей, их статуса и описания.

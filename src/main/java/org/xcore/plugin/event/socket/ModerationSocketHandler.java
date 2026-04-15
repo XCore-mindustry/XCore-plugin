@@ -90,6 +90,13 @@ public class ModerationSocketHandler {
                 "active badge"
         ));
 
+        network.subscribe(SocketEvents.PlayerBadgeSymbolColorModeChanged.class, e -> updatePlayerSession(
+                e.uuid(),
+                data -> data.badgeSymbolColorMode = e.badgeSymbolColorMode(),
+                true,
+                "badge symbol color mode"
+        ));
+
         network.subscribe(SocketEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> {
