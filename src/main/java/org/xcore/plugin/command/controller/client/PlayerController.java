@@ -1,7 +1,5 @@
 package org.xcore.plugin.command.controller.client;
 
-import arc.struct.Seq;
-import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
@@ -11,12 +9,12 @@ import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
+import org.xcore.plugin.ui.menu.TopMenu;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -25,18 +23,18 @@ public class PlayerController implements CloudClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
-    private final Config config;
     private final PlayerMenu menu;
+    private final TopMenu topMenu;
 
     @Inject
     public PlayerController(PlayerDataRepository playerDataRepository,
                             SessionService sessionService,
-                            Config config,
-                            PlayerMenu menu) {
+                            PlayerMenu menu,
+                            TopMenu topMenu) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
-        this.config = config;
         this.menu = menu;
+        this.topMenu = topMenu;
     }
 
     @Command("player|stats|player-statistics [id]")
@@ -120,31 +118,6 @@ public class PlayerController implements CloudClientController {
 
     @Command("top")
     public void top(XCoreSender sender) {
-        boolean isHexed = config.isMiniHexed();
-
-        Seq<PlayerData> leaders = isHexed
-                ? playerDataRepository.findLeaders("hexed_rank", "hexed_points")
-                : playerDataRepository.findLeaders("pvp_rating");
-
-        if (leaders.isEmpty()) {
-            sender.send("empty", args());
-            return;
-        }
-
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < leaders.size; i++) {
-            var d = leaders.get(i);
-            String key = isHexed ? "commands-top-hexed-content" : "commands-top-pvp-content";
-
-            builder.append(sender.format(key, args(
-                    "index", i + 1,
-                    "nickname", d.nickname,
-                    "rating", d.pvpRating,
-                    "rankName", sender.format("hexed-ranks-" + d.hexedRank().name(), args()),
-                    "points", d.hexedPoints
-            ))).append("\n");
-        }
-
-        sender.player().sendMessage(builder.toString());
+        topMenu.top(sender.player().uuid());
     }
 }

@@ -484,6 +484,24 @@ commands-ranks-footer = Количество побед увеличиваетс
 commands-top-description = Топ-игроки
 commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []побед
 commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
+top-menu-title = { "[" }orange]{ -xcore } — Топ игроков: [accent]{ $category }
+top-menu-content =
+    { "" }[lightgray]Нажмите на игрока, чтобы открыть его профиль.[]
+    { "" }[lightgray]Страница [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Игроков: [green]{ $totalEntries }[]
+top-menu-empty =
+    { "" }[accent]Категория: [green]{ $category }[]
+    { "" }[gray]Игроков пока нет.
+top-menu-categories-title = { "[" }orange]{ -xcore } — Категория топа
+top-menu-categories-content =
+    { "" }[lightgray]Выберите параметр рейтинга.[]
+    { "" }[lightgray]Текущая: [green]{ $category }[]
+top-menu-category-button = [accent]Категория: [green]{ $category }[]
+top-menu-category-mini-pvp = MiniPvP
+top-menu-category-playtime = Время игры
+top-menu-category-hexed = Hexed
+top-menu-entry-mini-pvp = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
+top-menu-entry-playtime = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
+top-menu-entry-hexed = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================

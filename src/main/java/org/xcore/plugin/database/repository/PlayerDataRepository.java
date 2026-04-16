@@ -18,6 +18,7 @@ import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.enums.TopCategory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,9 @@ import java.util.Set;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Filters.lt;
+import static com.mongodb.client.model.Sorts.ascending;
 import static com.mongodb.client.model.Sorts.descending;
+import static com.mongodb.client.model.Sorts.orderBy;
 
 @Singleton
 public class PlayerDataRepository extends DataRepository<PlayerData> {
@@ -280,6 +283,29 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public Seq<PlayerData> findLeaders(String... fields) {
         return Seq.with(collection.find().sort(descending(fields)).limit(10));
+    }
+
+    public long countTopEntries() {
+        return collection.countDocuments();
+    }
+
+    public List<PlayerData> findTopPage(TopCategory category, int limit, int page) {
+        int safeLimit = Math.max(1, limit);
+        int safePage = Math.max(1, page);
+
+        return collection.find()
+                .sort(leaderboardSort(category))
+                .skip((safePage - 1) * safeLimit)
+                .limit(safeLimit)
+                .into(new ArrayList<>());
+    }
+
+    private Bson leaderboardSort(TopCategory category) {
+        return switch (category) {
+            case HEXED -> orderBy(descending("hexed_rank"), descending("hexed_points"), ascending("pid"));
+            case PLAYTIME -> orderBy(descending("total_play_time"), ascending("pid"));
+            case MINI_PVP -> orderBy(descending("pvp_rating"), ascending("pid"));
+        };
     }
 
     public List<PlayerData> findAllWithMapVotes() {
