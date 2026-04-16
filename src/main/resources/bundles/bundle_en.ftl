@@ -543,6 +543,7 @@ top-menu-title = { "[" }orange]{ -xcore } — Top Players: [accent]{ $category }
 top-menu-content =
     { "" }[lightgray]Select a player to open their profile.[]
     { "" }[lightgray]Page [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Players: [green]{ $totalEntries }[]
+    { "" }{ $selfRankLine }
 top-menu-empty =
     { "" }[accent]Category: [green]{ $category }[]
     { "" }[gray]No players found yet.
@@ -554,9 +555,11 @@ top-menu-category-button = [accent]Category: [green]{ $category }[]
 top-menu-category-mini-pvp = MiniPvP
 top-menu-category-playtime = Playtime
 top-menu-category-hexed = Hexed
-top-menu-entry-mini-pvp = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
-top-menu-entry-playtime = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
-top-menu-entry-hexed = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
+top-menu-self-rank-known = [lightgray]Your position: [accent]#{ $rank }[]
+top-menu-self-rank-unknown = [lightgray]Your position: [gray]not found[]
+top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
+top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
+top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================

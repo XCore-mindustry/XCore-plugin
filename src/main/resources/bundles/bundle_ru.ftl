@@ -488,6 +488,7 @@ top-menu-title = { "[" }orange]{ -xcore } — Топ игроков: [accent]{ $
 top-menu-content =
     { "" }[lightgray]Нажмите на игрока, чтобы открыть его профиль.[]
     { "" }[lightgray]Страница [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Игроков: [green]{ $totalEntries }[]
+    { "" }{ $selfRankLine }
 top-menu-empty =
     { "" }[accent]Категория: [green]{ $category }[]
     { "" }[gray]Игроков пока нет.
@@ -499,9 +500,11 @@ top-menu-category-button = [accent]Категория: [green]{ $category }[]
 top-menu-category-mini-pvp = MiniPvP
 top-menu-category-playtime = Время игры
 top-menu-category-hexed = Hexed
-top-menu-entry-mini-pvp = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
-top-menu-entry-playtime = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
-top-menu-entry-hexed = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
+top-menu-self-rank-known = [lightgray]Ваша позиция: [accent]#{ $rank }[]
+top-menu-self-rank-unknown = [lightgray]Ваша позиция: [gray]не найдена[]
+top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
+top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
+top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================

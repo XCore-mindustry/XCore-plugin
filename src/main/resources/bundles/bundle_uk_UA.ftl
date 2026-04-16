@@ -380,6 +380,7 @@ top-menu-title = { "[" }orange]{ -xcore } — Топ гравців: [accent]{ $
 top-menu-content =
     { "" }[lightgray]Натисніть на гравця, щоб відкрити його профіль.[]
     { "" }[lightgray]Сторінка [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Гравців: [green]{ $totalEntries }[]
+    { "" }{ $selfRankLine }
 top-menu-empty =
     { "" }[accent]Категорія: [green]{ $category }[]
     { "" }[gray]Гравців поки немає.
@@ -391,9 +392,11 @@ top-menu-category-button = [accent]Категорія: [green]{ $category }[]
 top-menu-category-mini-pvp = MiniPvP
 top-menu-category-playtime = Час гри
 top-menu-category-hexed = Hexed
-top-menu-entry-mini-pvp = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
-top-menu-entry-playtime = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
-top-menu-entry-hexed = [lightgray]{ $rank }.[] [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
+top-menu-self-rank-known = [lightgray]Ваша позиція: [accent]#{ $rank }[]
+top-menu-self-rank-unknown = [lightgray]Ваша позиція: [gray]не знайдена[]
+top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
+top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
+top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================

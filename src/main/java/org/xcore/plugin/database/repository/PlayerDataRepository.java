@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.gt;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Sorts.ascending;
@@ -300,11 +301,55 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                 .into(new ArrayList<>());
     }
 
+    public Integer findTopRank(TopCategory category, PlayerData playerData) {
+        if (playerData == null || playerData.uuid == null || playerData.uuid.isBlank()) {
+            return null;
+        }
+
+        if (collection.find(eq("uuid", playerData.uuid)).first() == null) {
+            return null;
+        }
+
+        long aheadCount = collection.countDocuments(higherRankFilter(category, playerData));
+        return Math.toIntExact(aheadCount + 1);
+    }
+
     private Bson leaderboardSort(TopCategory category) {
         return switch (category) {
             case HEXED -> orderBy(descending("hexed_rank"), descending("hexed_points"), ascending("pid"));
             case PLAYTIME -> orderBy(descending("total_play_time"), ascending("pid"));
             case MINI_PVP -> orderBy(descending("pvp_rating"), ascending("pid"));
+        };
+    }
+
+    private Bson higherRankFilter(TopCategory category, PlayerData playerData) {
+        return switch (category) {
+            case HEXED -> Filters.or(
+                    gt("hexed_rank", playerData.hexedRank),
+                    Filters.and(
+                            eq("hexed_rank", playerData.hexedRank),
+                            gt("hexed_points", playerData.hexedPoints)
+                    ),
+                    Filters.and(
+                            eq("hexed_rank", playerData.hexedRank),
+                            eq("hexed_points", playerData.hexedPoints),
+                            lt("pid", playerData.pid)
+                    )
+            );
+            case PLAYTIME -> Filters.or(
+                    gt("total_play_time", playerData.totalPlayTime),
+                    Filters.and(
+                            eq("total_play_time", playerData.totalPlayTime),
+                            lt("pid", playerData.pid)
+                    )
+            );
+            case MINI_PVP -> Filters.or(
+                    gt("pvp_rating", playerData.pvpRating),
+                    Filters.and(
+                            eq("pvp_rating", playerData.pvpRating),
+                            lt("pid", playerData.pid)
+                    )
+            );
         };
     }
 

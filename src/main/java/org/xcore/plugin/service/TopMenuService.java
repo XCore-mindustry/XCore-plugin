@@ -34,20 +34,21 @@ public class TopMenuService {
         return TopCategory.PLAYTIME;
     }
 
-    public TopPage loadPage(TopCategory category, int page, int pageSize) {
+    public TopPage loadPage(TopCategory category, int page, int pageSize, PlayerData viewerData) {
         TopCategory resolvedCategory = category == null ? resolveDefaultCategory() : category;
         int safePageSize = Math.max(1, pageSize);
         long totalEntries = playerDataRepository.countTopEntries();
+        Integer selfRank = playerDataRepository.findTopRank(resolvedCategory, viewerData);
 
         if (totalEntries <= 0) {
-            return new TopPage(resolvedCategory, 1, 1, safePageSize, 0, List.of());
+            return new TopPage(resolvedCategory, 1, 1, safePageSize, 0, selfRank, List.of());
         }
 
         var pagination = CustomGatherers.calculatePagination(totalEntries, safePageSize);
         int currentPage = pagination.clampPage(page);
         List<PlayerData> players = playerDataRepository.findTopPage(resolvedCategory, safePageSize, currentPage);
 
-        return new TopPage(resolvedCategory, currentPage, pagination.totalPages(), safePageSize, totalEntries, players);
+        return new TopPage(resolvedCategory, currentPage, pagination.totalPages(), safePageSize, totalEntries, selfRank, players);
     }
 
     public record TopPage(
@@ -56,6 +57,7 @@ public class TopMenuService {
             int totalPages,
             int pageSize,
             long totalEntries,
+            Integer selfRank,
             List<PlayerData> players
     ) {
         public boolean hasPrevious() {

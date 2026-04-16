@@ -42,7 +42,7 @@ public class TopMenu extends Menu {
         if (session == null || session.data == null) return;
         session.clear();
 
-        var topPage = topMenuService.loadPage(category, page, PLAYERS_PER_PAGE);
+        var topPage = topMenuService.loadPage(category, page, PLAYERS_PER_PAGE, session.data);
         TopCategory resolvedCategory = topPage.category();
         Localization local = session.locale();
         String categoryName = local.t(resolvedCategory.bundleKey());
@@ -57,7 +57,8 @@ public class TopMenu extends Menu {
                     "page", topPage.currentPage(),
                     "totalPages", topPage.totalPages(),
                     "totalEntries", topPage.totalEntries(),
-                    "category", categoryName
+                    "category", categoryName,
+                    "selfRankLine", selfRankLine(local, topPage)
             ));
 
             addPlayerRows(builder, session, topPage, resolvedCategory);
@@ -129,20 +130,21 @@ public class TopMenu extends Menu {
         Localization local = session.locale();
         NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
         int displayRank = topPage.displayRank(zeroBasedIndexOnPage);
+        String rankLabel = rankLabel(displayRank);
 
         return switch (category) {
             case MINI_PVP -> local.t("top-menu-entry-mini-pvp", args(
-                    "rank", displayRank,
+                    "rankLabel", rankLabel,
                     "nickname", playerData.nickname,
                     "value", numberFormat.format(playerData.pvpRating)
             ));
             case PLAYTIME -> local.t("top-menu-entry-playtime", args(
-                    "rank", displayRank,
+                    "rankLabel", rankLabel,
                     "nickname", playerData.nickname,
                     "value", formatPlayTime(playerData.totalPlayTime, local)
             ));
             case HEXED -> local.t("top-menu-entry-hexed", args(
-                    "rank", displayRank,
+                    "rankLabel", rankLabel,
                     "nickname", playerData.nickname,
                     "rankName", local.t("hexed-ranks-" + playerData.hexedRank().name()),
                     "value", numberFormat.format(playerData.hexedPoints)
@@ -153,5 +155,22 @@ public class TopMenu extends Menu {
     private String categoryButton(Session session, TopCategory category, TopCategory currentCategory) {
         String label = session.locale().t(category.bundleKey());
         return category == currentCategory ? "[accent]●[] " + label : label;
+    }
+
+    private String selfRankLine(Localization local, TopMenuService.TopPage topPage) {
+        if (topPage.selfRank() == null) {
+            return local.t("top-menu-self-rank-unknown");
+        }
+
+        return local.t("top-menu-self-rank-known", args("rank", topPage.selfRank()));
+    }
+
+    private String rankLabel(int displayRank) {
+        return switch (displayRank) {
+            case 1 -> "[gold]1.[]";
+            case 2 -> "[lightgray]2.[]";
+            case 3 -> "[orange]3.[]";
+            default -> "[lightgray]" + displayRank + ".[]";
+        };
     }
 }
