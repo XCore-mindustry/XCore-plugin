@@ -22,6 +22,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.enums.Feature;
+import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -45,12 +46,14 @@ public class MaintainController implements CloudServerController {
     private final PluginState pluginState;
     private final SessionService sessionService;
     private final RuntimeToggleConfigService toggleConfigService;
+    private final MapIdentityAuditService mapIdentityAuditService;
 
     @Inject
     public MaintainController(NetworkService network,
                               PlayerDataRepository playerDataRepository,
                               PluginState pluginState,
                               SessionService sessionService,
+                              MapIdentityAuditService mapIdentityAuditService,
                               Config config,
                               @Named("xcConfigFile") Fi configFile,
                               @Named("pretty") Gson prettyGson) {
@@ -58,6 +61,7 @@ public class MaintainController implements CloudServerController {
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
         this.sessionService = sessionService;
+        this.mapIdentityAuditService = mapIdentityAuditService;
         this.toggleConfigService = new RuntimeToggleConfigService(config, configFile, prettyGson);
     }
 
@@ -138,6 +142,45 @@ public class MaintainController implements CloudServerController {
         long deleted = playerDataRepository.deleteBots();
         network.post(new SocketEvents.ReloadPlayerDataCache());
         Log.info("Deleted @ bots from database.", deleted);
+    }
+
+    @Command("audit-map-votes")
+    @CommandDescription("Runs a read-only audit for legacy map identity collisions and affected map votes.")
+    public void auditMapVotes(XCoreSender sender) {
+        var report = mapIdentityAuditService.audit();
+
+        Log.info("Map identity audit: mapsScanned=@ playersScanned=@ conflictGroups=@ conflictingMaps=@ affectedPlayers=@ affectedVoteReferences=@",
+                report.mapsScanned(),
+                report.playersScanned(),
+                report.conflictGroups().size(),
+                report.conflictingMapCount(),
+                report.affectedPlayerCount(),
+                report.affectedVoteReferenceCount());
+
+        if (!report.hasConflicts()) {
+            Log.info("No legacy map identity collisions found.");
+            return;
+        }
+
+        for (var group : report.conflictGroups()) {
+            Log.info("Conflict group '@' for map '@' mode='@': maps=@ affectedPlayers=@ affectedVoteReferences=@",
+                    group.legacyKey(),
+                    group.mapName(),
+                    group.gameMode(),
+                    group.maps().size(),
+                    group.affectedPlayers().size(),
+                    group.affectedVoteReferences());
+
+            for (var map : group.maps()) {
+                Log.info("  mapId=@ file='@' author='@' like=@ dislike=@ reputation=@",
+                        map.mapId(),
+                        map.fileName(),
+                        map.author(),
+                        map.like(),
+                        map.dislike(),
+                        map.reputation());
+            }
+        }
     }
 
     @Command("gcmd <command>")

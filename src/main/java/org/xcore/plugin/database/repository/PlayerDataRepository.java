@@ -281,4 +281,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     public Seq<PlayerData> findLeaders(String... fields) {
         return Seq.with(collection.find().sort(descending(fields)).limit(10));
     }
+
+    public List<PlayerData> findAllWithMapVotes() {
+        return collection.find(Filters.exists("map_votes", true)).into(new ArrayList<>());
+    }
 }

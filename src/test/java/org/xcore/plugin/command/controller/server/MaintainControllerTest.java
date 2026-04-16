@@ -9,6 +9,7 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.session.SessionService;
@@ -28,6 +29,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -38,6 +40,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson
@@ -61,6 +64,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -71,6 +75,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson
@@ -94,6 +99,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -104,6 +110,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson
@@ -127,6 +134,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -137,6 +145,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson
@@ -155,6 +164,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
         var gson = new Gson();
@@ -165,6 +175,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson
@@ -183,6 +194,7 @@ class MaintainControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var pluginState = new PluginState();
         var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         config.disabledFeatures.add("rtv");
         var configFile = mock(Fi.class);
@@ -194,6 +206,7 @@ class MaintainControllerTest {
                 repository,
                 pluginState,
                 sessionService,
+                auditService,
                 config,
                 configFile,
                 gson

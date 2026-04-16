@@ -16,6 +16,8 @@ import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.MapData;
 
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.mongodb.client.model.Filters.*;
 
@@ -46,22 +48,31 @@ public class MapDataRepository extends DataRepository<MapData> {
     );
 }
 
+    public Optional<MapData> findByFileName(String fileName, String gameMode) {
+        if (fileName == null || fileName.isBlank() || gameMode == null || gameMode.isBlank()) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                collection.find(and(
+                        eq("file_name", fileName),
+                        eq("game_mode", gameMode)
+                )).first()
+        );
+    }
+
+    public List<MapData> findAll() {
+        return collection.find().into(new ArrayList<>());
+    }
+
     public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
-        return find(name, author, gameMode).orElseGet(() -> {
-
-            MapData existing = collection.find(and(eq("name", name), eq("game_mode", gameMode))).first();
-
-            if (existing != null) {
-                existing.author = author;
-                existing.fileName = fileName;
-                save(existing);
-                return existing;
-            }
-
-            MapData newData = new MapData(name, fileName, author, gameMode);
-            save(newData);
-            return newData;
-        });
+        return findByFileName(fileName, gameMode)
+                .or(() -> find(name, author, gameMode))
+                .orElseGet(() -> {
+                    MapData newData = new MapData(name, fileName, author, gameMode);
+                    save(newData);
+                    return newData;
+                });
     }
 
     public void incrementStats(ObjectId id, double popularityDelta, double interestDelta, int reputationDelta) {
