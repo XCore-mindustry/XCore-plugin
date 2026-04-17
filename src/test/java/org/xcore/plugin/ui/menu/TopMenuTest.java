@@ -71,6 +71,54 @@ class TopMenuTest {
     }
 
     @Test
+    @DisplayName("next from first page stores first-page marker and previous returns to page one")
+    void nextFromFirstPage_storesMarkerAndPreviousReturnsToPageOne() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+
+        Session session = session("viewer-1");
+        MenuBuilder firstBuilder = builder();
+        MenuBuilder secondBuilder = builder();
+        MenuBuilder thirdBuilder = builder();
+        when(session.builder()).thenReturn(firstBuilder, secondBuilder, thirdBuilder);
+        when(sessionService.get("viewer-1")).thenReturn(session);
+
+        LeaderboardCursor secondPageCursor = new LeaderboardCursor(1400, 0, 10);
+        LeaderboardCursor thirdPageCursor = new LeaderboardCursor(1300, 0, 20);
+        TopMenuService.TopCursorPage firstPage = new TopMenuService.TopCursorPage(
+                TopCategory.MINI_PVP, 1, 5, 10, 50, 3,
+                List.of(player("top-1", 10)), null, secondPageCursor, true
+        );
+        TopMenuService.TopCursorPage secondPage = new TopMenuService.TopCursorPage(
+                TopCategory.MINI_PVP, 2, 5, 10, 50, 3,
+                List.of(player("top-2", 20)), secondPageCursor, thirdPageCursor, true
+        );
+
+        when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 1, 10, session.data)).thenReturn(firstPage, firstPage);
+        when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, secondPageCursor, 2, 10, session.data)).thenReturn(secondPage);
+
+        AtomicReference<Runnable> firstNextAction = new AtomicReference<>();
+        AtomicReference<Runnable> secondPreviousAction = new AtomicReference<>();
+        captureIfAddLocal(firstBuilder, "next", firstNextAction, new AtomicReference<>());
+        captureIfAddLocal(secondBuilder, "next", new AtomicReference<>(), secondPreviousAction);
+
+        menu.top("viewer-1", TopCategory.MINI_PVP, 1);
+        firstNextAction.get().run();
+
+        TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
+        assertThat(state.backStack).hasSize(1);
+        assertThat(state.backStack.getLast().pid()).isEqualTo(-2);
+
+        secondPreviousAction.get().run();
+
+        assertThat(state.currentPage).isEqualTo(1);
+        assertThat(state.currentCursor).isNull();
+        verify(topMenuService, times(2)).loadCursorPage(TopCategory.MINI_PVP, null, 1, 10, session.data);
+    }
+
+    @Test
     @DisplayName("next action pushes current cursor to back stack and loads next cursor page")
     void nextAction_pushesCurrentCursorToBackStackAndLoadsNextCursorPage() {
         SessionService sessionService = mock(SessionService.class);

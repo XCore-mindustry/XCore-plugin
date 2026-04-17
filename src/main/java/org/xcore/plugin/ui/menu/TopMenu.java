@@ -22,6 +22,7 @@ import static com.ospx.flubundle.Bundle.args;
 public class TopMenu extends Menu {
 
     private static final int PLAYERS_PER_PAGE = 10;
+    private static final LeaderboardCursor FIRST_PAGE_MARKER = new LeaderboardCursor(0, 0, -2);
 
     private final TopMenuService topMenuService;
     private final PlayerMenu playerMenu;
@@ -106,7 +107,8 @@ public class TopMenu extends Menu {
         builder.start()
                 .ifAddLocal(!state.backStack.isEmpty(), "previous", () -> {
                     LeaderboardCursor previous = state.backStack.pollLast();
-                    top(uuid, resolvedCategory, previous, Math.max(1, state.currentPage - 1), false);
+                    LeaderboardCursor previousCursor = previous == FIRST_PAGE_MARKER ? null : previous;
+                    top(uuid, resolvedCategory, previousCursor, Math.max(1, state.currentPage - 1), false);
                 })
                 .add(local.t("top-menu-category-button", args("category", categoryName)), () -> {
                     TopCategory savedCategory = resolvedCategory;
@@ -116,7 +118,7 @@ public class TopMenu extends Menu {
                     categories(uuid, resolvedCategory);
                 })
                 .ifAddLocal(topPage.hasNext() && state.nextCursor != null, "next", () -> {
-                    state.backStack.addLast(state.currentCursor);
+                    state.backStack.addLast(state.currentCursor == null ? FIRST_PAGE_MARKER : state.currentCursor);
                     top(uuid, resolvedCategory, state.nextCursor, state.currentPage + 1, false);
                 })
                 .end()
