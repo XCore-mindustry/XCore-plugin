@@ -24,6 +24,7 @@ import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -47,6 +48,7 @@ public class MaintainController implements CloudServerController {
     private final SessionService sessionService;
     private final RuntimeToggleConfigService toggleConfigService;
     private final MapIdentityAuditService mapIdentityAuditService;
+    private final TopMenuCacheService topMenuCacheService;
 
     @Inject
     public MaintainController(NetworkService network,
@@ -54,6 +56,7 @@ public class MaintainController implements CloudServerController {
                               PluginState pluginState,
                               SessionService sessionService,
                               MapIdentityAuditService mapIdentityAuditService,
+                              TopMenuCacheService topMenuCacheService,
                               Config config,
                               @Named("xcConfigFile") Fi configFile,
                               @Named("pretty") Gson prettyGson) {
@@ -62,7 +65,19 @@ public class MaintainController implements CloudServerController {
         this.pluginState = pluginState;
         this.sessionService = sessionService;
         this.mapIdentityAuditService = mapIdentityAuditService;
+        this.topMenuCacheService = topMenuCacheService;
         this.toggleConfigService = new RuntimeToggleConfigService(config, configFile, prettyGson);
+    }
+
+    public MaintainController(NetworkService network,
+                              PlayerDataRepository playerDataRepository,
+                              PluginState pluginState,
+                              SessionService sessionService,
+                              MapIdentityAuditService mapIdentityAuditService,
+                              Config config,
+                              Fi configFile,
+                              Gson prettyGson) {
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, config, configFile, prettyGson);
     }
 
     @Command("exit")
@@ -140,6 +155,9 @@ public class MaintainController implements CloudServerController {
     @CommandDescription("Deletes players with less than 2 minutes of playtime from the database.")
     public void deleteBots(XCoreSender sender) {
         long deleted = playerDataRepository.deleteBots();
+        if (deleted > 0 && topMenuCacheService != null) {
+            topMenuCacheService.invalidateAll();
+        }
         network.post(new SocketEvents.ReloadPlayerDataCache());
         Log.info("Deleted @ bots from database.", deleted);
     }

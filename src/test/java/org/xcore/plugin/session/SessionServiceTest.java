@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -132,6 +133,53 @@ class SessionServiceTest {
         assertThat(result).isTrue();
         assertThat(session.data.badgeSymbolColorMode).isEqualTo("player-color");
         verify(playerDataRepository).updateBadgeSymbolColorMode("uuid-1", "player-color");
+    }
+
+    @Test
+    @DisplayName("incrementPlayTime invalidates top cache after persistence")
+    void incrementPlayTime_invalidatesTopCacheAfterPersistence() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        TopMenuCacheService topMenuCacheService = mock(TopMenuCacheService.class);
+        when(playerDataRepository.incrementPlayTime("uuid-1", 5)).thenReturn(true);
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository,
+                topMenuCacheService
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+
+        boolean result = service.incrementPlayTime(session, 5);
+
+        assertThat(result).isTrue();
+        assertThat(session.data.totalPlayTime).isEqualTo(5);
+        verify(playerDataRepository).incrementPlayTime("uuid-1", 5);
+        verify(topMenuCacheService).invalidateAll();
+    }
+
+    @Test
+    @DisplayName("persistPlayer invalidates top cache after successful save")
+    void persistPlayer_invalidatesTopCacheAfterSuccessfulSave() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        TopMenuCacheService topMenuCacheService = mock(TopMenuCacheService.class);
+        when(playerDataRepository.save(org.mockito.ArgumentMatchers.any(PlayerData.class))).thenReturn(true);
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository,
+                topMenuCacheService
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+
+        boolean result = service.persistPlayer(session);
+
+        assertThat(result).isTrue();
+        verify(playerDataRepository).save(session.data);
+        verify(topMenuCacheService).invalidateAll();
     }
 
     @Test

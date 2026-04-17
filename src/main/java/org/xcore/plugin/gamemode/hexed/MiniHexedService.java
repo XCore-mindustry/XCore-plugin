@@ -32,6 +32,7 @@ import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.GameDataService;
+import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.Locale;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ public class MiniHexedService {
     private final LeaderboardService leaderboardService;
     private final PlayerDisplayService playerDisplayService;
     private final GameDataService gameDataService;
+    private final TopMenuCacheService topMenuCacheService;
 
     private static boolean gameover = false;
 
@@ -69,7 +71,8 @@ public class MiniHexedService {
                             Bundle bundle,
                             LeaderboardService leaderboardService,
                             PlayerDisplayService playerDisplayService,
-                            GameDataService gameDataService) {
+                            GameDataService gameDataService,
+                            TopMenuCacheService topMenuCacheService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
@@ -78,6 +81,7 @@ public class MiniHexedService {
         this.leaderboardService = leaderboardService;
         this.playerDisplayService = playerDisplayService;
         this.gameDataService = gameDataService;
+        this.topMenuCacheService = topMenuCacheService;
     }
 
     @PostConstruct
@@ -234,7 +238,9 @@ public class MiniHexedService {
                         }
                     }
                 }
-                playerDataRepository.updateHexedProgress(data.uuid, data.hexedRank, data.hexedPoints);
+                if (playerDataRepository.updateHexedProgress(data.uuid, data.hexedRank, data.hexedPoints)) {
+                    topMenuCacheService.invalidateAll();
+                }
             }
         }
 

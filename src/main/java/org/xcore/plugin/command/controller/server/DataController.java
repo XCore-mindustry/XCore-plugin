@@ -19,6 +19,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
+import org.xcore.plugin.service.TopMenuCacheService;
 
 @Singleton
 public class DataController implements CloudServerController {
@@ -28,18 +29,29 @@ public class DataController implements CloudServerController {
     private Config config;
     private final Gson prettyGson;
     private final FindService find;
+    private final TopMenuCacheService topMenuCacheService;
 
     @Inject
     public DataController(PlayerDataRepository playerDataRepository,
                           @Named("xcConfigFile") Fi configFile,
                           Config config,
                           @Named("pretty") Gson prettyGson,
-                          FindService find) {
+                          FindService find,
+                          TopMenuCacheService topMenuCacheService) {
         this.playerDataRepository = playerDataRepository;
         this.configFile = configFile;
         this.config = config;
         this.prettyGson = prettyGson;
         this.find = find;
+        this.topMenuCacheService = topMenuCacheService;
+    }
+
+    public DataController(PlayerDataRepository playerDataRepository,
+                          Fi configFile,
+                          Config config,
+                          Gson prettyGson,
+                          FindService find) {
+        this(playerDataRepository, configFile, config, prettyGson, find, null);
     }
 
     @Command("xconfig")
@@ -91,7 +103,9 @@ public class DataController implements CloudServerController {
         modifyJson(root.get(field), value);
         PlayerData result = prettyGson.fromJson(root.toJson(JsonWriter.OutputType.json), PlayerData.class);
         result.id = data.id;
-        playerDataRepository.save(result);
+        if (playerDataRepository.save(result) && topMenuCacheService != null) {
+            topMenuCacheService.invalidateAll();
+        }
         Log.info("PlayerData for @ updated. Field '@' -> '@'.", data.nickname, field, value);
     }
 

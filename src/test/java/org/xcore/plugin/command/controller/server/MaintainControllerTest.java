@@ -11,6 +11,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.SocketEvents;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.session.SessionService;
 
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class MaintainControllerTest {
 
@@ -216,5 +218,40 @@ class MaintainControllerTest {
 
         assertThat(config.disabledFeatures).doesNotContain("rtv");
         verify(configFile).writeString(anyString());
+    }
+
+    @Test
+    @DisplayName("deleteBots invalidates top cache when players are removed")
+    void deleteBots_invalidatesTopCacheWhenPlayersAreRemoved() {
+        var network = mock(NetworkService.class);
+        var repository = mock(PlayerDataRepository.class);
+        var pluginState = new PluginState();
+        var sessionService = mock(SessionService.class);
+        var auditService = mock(MapIdentityAuditService.class);
+        var topMenuCacheService = mock(TopMenuCacheService.class);
+        var config = new Config();
+        var configFile = mock(Fi.class);
+        var gson = new Gson();
+        var sender = mock(XCoreSender.class);
+
+        when(repository.deleteBots()).thenReturn(3L);
+
+        var controller = new MaintainController(
+                network,
+                repository,
+                pluginState,
+                sessionService,
+                auditService,
+                topMenuCacheService,
+                config,
+                configFile,
+                gson
+        );
+
+        controller.deleteBots(sender);
+
+        verify(repository).deleteBots();
+        verify(topMenuCacheService).invalidateAll();
+        verify(network).post(org.mockito.ArgumentMatchers.any(SocketEvents.ReloadPlayerDataCache.class));
     }
 }

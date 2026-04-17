@@ -17,6 +17,8 @@ import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
+import org.xcore.plugin.model.LeaderboardCursor;
+import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.TopCategory;
 
@@ -47,6 +49,9 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         collection.createIndex(new Document("pid", 1));
         collection.createIndex(new Document("nickname", 1));
         collection.createIndex(new Document("discord_id", 1));
+        collection.createIndex(new Document("total_play_time", -1).append("pid", 1));
+        collection.createIndex(new Document("pvp_rating", -1).append("pid", 1));
+        collection.createIndex(new Document("hexed_rank", -1).append("hexed_points", -1).append("pid", 1));
     }
 
     @Override
@@ -290,15 +295,27 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return collection.countDocuments();
     }
 
-    public List<PlayerData> findTopPage(TopCategory category, int limit, int page) {
-        int safeLimit = Math.max(1, limit);
-        int safePage = Math.max(1, page);
+    public LeaderboardSlice<PlayerData> findTopSlice(TopCategory category, LeaderboardCursor cursor, int limit) {
+        int normalizedLimit = normalizeLeaderboardLimit(limit);
+        Bson effectiveFilter = leaderboardCursorFilter(category, cursor);
 
-        return collection.find()
+        var iterable = effectiveFilter == null ? collection.find() : collection.find(effectiveFilter);
+        var data = iterable
                 .sort(leaderboardSort(category))
-                .skip((safePage - 1) * safeLimit)
-                .limit(safeLimit)
+                .limit(normalizedLimit + 1)
                 .into(new ArrayList<>());
+
+        boolean hasNext = data.size() > normalizedLimit;
+        if (hasNext) {
+            data.removeLast();
+        }
+
+        LeaderboardCursor nextCursor = null;
+        if (hasNext && !data.isEmpty()) {
+            nextCursor = leaderboardCursor(category, data.getLast());
+        }
+
+        return new LeaderboardSlice<>(List.copyOf(data), hasNext, nextCursor);
     }
 
     public Integer findTopRank(TopCategory category, PlayerData playerData) {
@@ -350,6 +367,56 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
                             lt("pid", playerData.pid)
                     )
             );
+        };
+    }
+
+    private static int normalizeLeaderboardLimit(int limit) {
+        if (limit <= 0) {
+            return 10;
+        }
+        return Math.min(limit, 100);
+    }
+
+    private Bson leaderboardCursorFilter(TopCategory category, LeaderboardCursor cursor) {
+        if (cursor == null || !cursor.isValid()) {
+            return null;
+        }
+
+        return switch (category) {
+            case PLAYTIME -> Filters.or(
+                    lt("total_play_time", cursor.primaryValue()),
+                    Filters.and(
+                            eq("total_play_time", cursor.primaryValue()),
+                            gt("pid", cursor.pid())
+                    )
+            );
+            case MINI_PVP -> Filters.or(
+                    lt("pvp_rating", cursor.primaryValue()),
+                    Filters.and(
+                            eq("pvp_rating", cursor.primaryValue()),
+                            gt("pid", cursor.pid())
+                    )
+            );
+            case HEXED -> Filters.or(
+                    lt("hexed_rank", cursor.primaryValue()),
+                    Filters.and(
+                            eq("hexed_rank", cursor.primaryValue()),
+                            lt("hexed_points", cursor.secondaryValue())
+                    ),
+                    Filters.and(
+                            eq("hexed_rank", cursor.primaryValue()),
+                            eq("hexed_points", cursor.secondaryValue()),
+                            gt("pid", cursor.pid())
+                    )
+            );
+        };
+    }
+
+    private LeaderboardCursor leaderboardCursor(TopCategory category, PlayerData playerData) {
+        return switch (category) {
+            case PLAYTIME -> new LeaderboardCursor(playerData.totalPlayTime, 0, playerData.pid);
+            case MINI_PVP -> new LeaderboardCursor(playerData.pvpRating, 0, playerData.pid);
+            case HEXED -> new LeaderboardCursor(playerData.hexedRank, playerData.hexedPoints, playerData.pid);
         };
     }
 

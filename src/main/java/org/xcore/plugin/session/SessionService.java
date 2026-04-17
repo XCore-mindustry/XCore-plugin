@@ -4,6 +4,7 @@ import arc.func.Boolf;
 import arc.func.Cons;
 import arc.struct.ObjectMap;
 import arc.util.Log;
+import jakarta.inject.Inject;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
@@ -11,6 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.TopMenuCacheService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,7 @@ public class SessionService {
 
     private final SessionFactory sessionFactory;
     private final PlayerDataRepository playerDataRepository;
+    private final TopMenuCacheService topMenuCacheService;
 
     /**
      * In-memory cache of online players.
@@ -33,9 +36,17 @@ public class SessionService {
      */
     private final ObjectMap<String, Session> sessionCache = new ObjectMap<>();
 
-    public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
+    @Inject
+    public SessionService(SessionFactory sessionFactory,
+                          PlayerDataRepository playerDataRepository,
+                          TopMenuCacheService topMenuCacheService) {
         this.sessionFactory = sessionFactory;
         this.playerDataRepository = playerDataRepository;
+        this.topMenuCacheService = topMenuCacheService;
+    }
+
+    public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
+        this(sessionFactory, playerDataRepository, null);
     }
 
     @PostConstruct
@@ -167,8 +178,11 @@ public class SessionService {
             return false;
         }
 
-        playerDataRepository.save(session.data);
-        return true;
+        boolean persisted = playerDataRepository.save(session.data);
+        if (persisted) {
+            invalidateLeaderboardCache();
+        }
+        return persisted;
     }
 
     /**
@@ -254,9 +268,13 @@ public class SessionService {
     }
 
     public boolean incrementPlayTime(Session session, int delta) {
-        return mutateSession(session,
+        boolean updated = mutateSession(session,
                 data -> data.totalPlayTime += delta,
                 () -> playerDataRepository.incrementPlayTime(session.data.uuid, delta));
+        if (updated) {
+            invalidateLeaderboardCache();
+        }
+        return updated;
     }
 
     public boolean updateIp(Session session, String ip) {
@@ -392,5 +410,11 @@ public class SessionService {
 
     private boolean hasOnlinePlayer(Session session) {
         return hasData(session) && session.player != null;
+    }
+
+    private void invalidateLeaderboardCache() {
+        if (topMenuCacheService != null) {
+            topMenuCacheService.invalidateAll();
+        }
     }
 }

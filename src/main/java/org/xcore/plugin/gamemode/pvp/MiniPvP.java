@@ -17,6 +17,7 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.TopMenuCacheService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.common.PLog.info;
@@ -29,16 +30,19 @@ public class MiniPvP {
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final LeaderboardService leaderboardService;
+    private final TopMenuCacheService topMenuCacheService;
 
     @Inject
     public MiniPvP(Config config,
                    SessionService sessionService,
                    PlayerDataRepository playerDataRepository,
-                   LeaderboardService leaderboardService) {
+                   LeaderboardService leaderboardService,
+                   TopMenuCacheService topMenuCacheService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.leaderboardService = leaderboardService;
+        this.topMenuCacheService = topMenuCacheService;
     }
 
     @PostConstruct
@@ -94,7 +98,9 @@ public class MiniPvP {
                 session.locale().send("pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                playerDataRepository.updatePvpRating(data.uuid, data.pvpRating);
+                if (playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)) {
+                    topMenuCacheService.invalidateAll();
+                }
             });
         });
 
@@ -126,7 +132,9 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        playerDataRepository.updatePvpRating(data.uuid, data.pvpRating);
+                        if (playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)) {
+                            topMenuCacheService.invalidateAll();
+                        }
                     });
                 }
             }
