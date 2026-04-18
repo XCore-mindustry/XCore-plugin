@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
@@ -135,9 +135,9 @@ class ModerationServiceAvajeTest {
                         && "Not Specified".equals(ban.getReason())
                         && !ban.getExpireDate().isBefore(before.plus(duration))
                         && !ban.getExpireDate().isAfter(after.plus(duration))));
-        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
         order.verify(network).post(argThat(event ->
-                event instanceof SocketEvents.KickBannedPlayer kick
+                event instanceof TransportEvents.KickBannedPlayer kick
                         && "uuid-1".equals(kick.uuid())
                         && "1.2.3.4".equals(kick.ip())));
 
@@ -170,8 +170,8 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(network).post(argThat(event -> event instanceof BanData));
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
-        verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
     }
 
     @Test
@@ -204,7 +204,7 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -286,7 +286,7 @@ class ModerationServiceAvajeTest {
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
                 event instanceof MuteData mute && "uuid-3".equals(mute.getUuid())));
-        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -318,7 +318,7 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(network).post(argThat(event -> event instanceof MuteData));
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -348,7 +348,7 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
     }
 
     @Test
@@ -386,8 +386,8 @@ class ModerationServiceAvajeTest {
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
                 event instanceof BanData ban && "999".equals(ban.getAdminDiscordId())));
-        order.verify(network).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
-        order.verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
+        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        order.verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
     }
 
     @Test
@@ -420,8 +420,8 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(network).post(argThat(event -> event instanceof BanData));
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
-        verify(network).post(argThat(event -> event instanceof SocketEvents.KickBannedPlayer));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
     }
 
     @Test
@@ -452,7 +452,7 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unbanById(10, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof SocketEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
     }
 
     @Test

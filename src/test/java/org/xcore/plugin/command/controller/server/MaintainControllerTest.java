@@ -8,7 +8,7 @@ import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -50,7 +50,7 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", false);
 
-        var captor = ArgumentCaptor.forClass(SocketEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
@@ -85,7 +85,7 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", null, false);
 
-        var captor = ArgumentCaptor.forClass(SocketEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
@@ -120,7 +120,7 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", true);
 
-        var captor = ArgumentCaptor.forClass(SocketEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
@@ -252,6 +252,6 @@ class MaintainControllerTest {
 
         verify(repository).deleteBots();
         verify(topMenuCacheService).invalidateAll();
-        verify(network).post(org.mockito.ArgumentMatchers.any(SocketEvents.ReloadPlayerDataCache.class));
+        verify(network).post(org.mockito.ArgumentMatchers.any(TransportEvents.ReloadPlayerDataCache.class));
     }
 }

@@ -1,10 +1,10 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-class ChatSocketHandlerTest {
+class ChatTransportHandlerTest {
 
     @Test
     @DisplayName("global chat event is broadcast only to players with global chat enabled")
@@ -30,15 +30,15 @@ class ChatSocketHandlerTest {
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ChatSocketHandler handler = new ChatSocketHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.GlobalChatEvent.class)
-                .get(new SocketEvents.GlobalChatEvent("player", "hello", "alpha"));
+        listener(listeners, TransportEvents.GlobalChatEvent.class)
+                .get(new TransportEvents.GlobalChatEvent("player", "hello", "alpha"));
 
         verify(sessionService).broadcastFiltered(
                 org.mockito.Mockito.eq("global-chat-format"),
@@ -60,15 +60,15 @@ class ChatSocketHandlerTest {
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ChatSocketHandler handler = new ChatSocketHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.DiscordMessageEvent.class)
-                .get(new SocketEvents.DiscordMessageEvent("bot", "hello", "other-server"));
+        listener(listeners, TransportEvents.DiscordMessageEvent.class)
+                .get(new TransportEvents.DiscordMessageEvent("bot", "hello", "other-server"));
 
         verifyNoInteractions(sessionService);
     }

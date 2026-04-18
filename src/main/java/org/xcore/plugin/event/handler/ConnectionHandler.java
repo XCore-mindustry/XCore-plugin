@@ -21,7 +21,7 @@ import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 
 import java.util.Objects;
 
@@ -85,7 +85,8 @@ public class ConnectionHandler {
 
         locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
 
-        data.setNickname(player.coloredName()).setPlayer(player);
+        data.nickname = player.coloredName();
+        data.player = player;
 
         Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
@@ -99,7 +100,7 @@ public class ConnectionHandler {
         }
 
         if (!data.exists) {
-            data.setIp(player.ip());
+            data.ip = player.ip();
             data.exists = true;
             sessionService.persistPlayer(session);
         }
@@ -119,7 +120,7 @@ public class ConnectionHandler {
         sessionService.broadcast("player-joined", args(
                 "nickname", player.coloredName(),
                 "pid", data.pid));
-        network.post(new SocketEvents.PlayerJoinLeaveEvent(
+        network.post(new TransportEvents.PlayerJoinLeaveEvent(
                 player.plainName() + " #" + data.pid,
                 config.server,
                 true)
@@ -141,7 +142,7 @@ public class ConnectionHandler {
                     "pid", data.pid)
             );
 
-            network.post(new SocketEvents.PlayerJoinLeaveEvent(
+            network.post(new TransportEvents.PlayerJoinLeaveEvent(
                     player.plainName() + " #" + data.pid,
                     config.server,
                     false)

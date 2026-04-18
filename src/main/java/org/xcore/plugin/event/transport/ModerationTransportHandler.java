@@ -1,4 +1,4 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import arc.util.Log;
 import arc.util.Structs;
@@ -9,23 +9,22 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
-import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.HashSet;
 import java.util.function.Consumer;
 
-import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
-public class ModerationSocketHandler {
+public class ModerationTransportHandler {
 
     private final NetworkService network;
     private final SessionService sessionService;
@@ -35,12 +34,12 @@ public class ModerationSocketHandler {
     private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
-    public ModerationSocketHandler(NetworkService network,
-                                   SessionService sessionService,
-                                   FindService find,
-                                   Config config,
-                                   PlayerDisplayService playerDisplayService,
-                                   DiscordAdminAccessService discordAdminAccessService) {
+    public ModerationTransportHandler(NetworkService network,
+                                      SessionService sessionService,
+                                      FindService find,
+                                      Config config,
+                                      PlayerDisplayService playerDisplayService,
+                                      DiscordAdminAccessService discordAdminAccessService) {
         this.network = network;
         this.sessionService = sessionService;
         this.find = find;
@@ -50,10 +49,10 @@ public class ModerationSocketHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(SocketEvents.KickBannedPlayer.class, e -> Groups.player
+        network.subscribe(TransportEvents.KickBannedPlayer.class, e -> Groups.player
                 .each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
 
-        network.subscribe(SocketEvents.DiscordAdminAccessChanged.class, e -> {
+        network.subscribe(TransportEvents.DiscordAdminAccessChanged.class, e -> {
             if (e.admin()) {
                 if (discordAdminAccessService.applyDiscordAdminAccess(e.playerUuid(), e.discordId(), e.discordUsername())) {
                     info("Granted discord admin access: @", e.playerUuid());
@@ -66,7 +65,7 @@ public class ModerationSocketHandler {
             }
         });
 
-        network.subscribe(SocketEvents.PardonPlayer.class, e -> {
+        network.subscribe(TransportEvents.PardonPlayer.class, e -> {
             Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.uuid());
 
             if (info != null) {
@@ -76,28 +75,28 @@ public class ModerationSocketHandler {
             }
         });
 
-        network.subscribe(SocketEvents.PlayerCustomNicknameChanged.class, e -> updatePlayerSession(
+        network.subscribe(TransportEvents.PlayerCustomNicknameChanged.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> data.customNickname = e.customNickname(),
                 false,
                 "custom nickname"
         ));
 
-        network.subscribe(SocketEvents.PlayerActiveBadgeChanged.class, e -> updatePlayerSession(
+        network.subscribe(TransportEvents.PlayerActiveBadgeChanged.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> data.activeBadge = e.activeBadge(),
                 true,
                 "active badge"
         ));
 
-        network.subscribe(SocketEvents.PlayerBadgeSymbolColorModeChanged.class, e -> updatePlayerSession(
+        network.subscribe(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> data.badgeSymbolColorMode = e.badgeSymbolColorMode(),
                 true,
                 "badge symbol color mode"
         ));
 
-        network.subscribe(SocketEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
+        network.subscribe(TransportEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> {
                     data.activeBadge = e.activeBadge();
@@ -107,19 +106,19 @@ public class ModerationSocketHandler {
                 "badge inventory"
         ));
 
-        network.subscribe(SocketEvents.PlayerPasswordReset.class, e -> updatePlayerSession(
+        network.subscribe(TransportEvents.PlayerPasswordReset.class, e -> updatePlayerSession(
                 e.uuid(),
                 data -> data.password = "",
                 false,
                 "password reset"
         ));
 
-        network.subscribe(SocketEvents.ReloadPlayerDataCache.class, _ -> {
+        network.subscribe(TransportEvents.ReloadPlayerDataCache.class, _ -> {
             sessionService.reloadCache();
             info("Reloaded player data cache.");
         });
 
-        network.subscribe(SocketEvents.ExecuteCommand.class, e -> {
+        network.subscribe(TransportEvents.ExecuteCommand.class, e -> {
             if (e.expectServers() != null) {
                 if (e.isExclusion()) {
                     if (Structs.contains(e.expectServers(), config.server)) return;

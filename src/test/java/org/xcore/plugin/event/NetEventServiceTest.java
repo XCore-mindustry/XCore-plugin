@@ -123,7 +123,7 @@ class NetEventServiceTest {
         verify(chatFormatService).formatChat(author, "he`llo");
         verify(author).sendMessage("formatted", author, "he`llo");
         verify(translatorService).translate(author, "he`llo");
-        verify(network).post(new SocketEvents.MessageEvent("Tester", "he*llo", "main"));
+        verify(network).post(new TransportEvents.MessageEvent("Tester", "he*llo", "main"));
     }
 
     @Test

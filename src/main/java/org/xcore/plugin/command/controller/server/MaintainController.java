@@ -20,7 +20,7 @@ import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
@@ -128,9 +128,11 @@ public class MaintainController implements CloudServerController {
     @Command("redis-reload")
     @CommandDescription("Reloads Redis transport connection.")
     public void redisReload(XCoreSender sender) {
-        network.disconnect();
-        network.safeConnect();
-        Log.info("Redis transport reloaded.");
+        if (network.reloadBackend()) {
+            Log.info("Redis transport reloaded: backend=@", network.backendName());
+        } else {
+            Log.err("Redis transport reload failed. Transport backend is now disconnected.");
+        }
     }
 
     @Command("transport-reload")
@@ -139,7 +141,7 @@ public class MaintainController implements CloudServerController {
         if (network.reloadBackend()) {
             Log.info("Transport backend reloaded: backend=@", network.backendName());
         } else {
-            Log.err("Transport backend reload failed. Previous backend remains active.");
+            Log.err("Transport backend reload failed. Transport backend is now disconnected.");
         }
     }
 
@@ -158,7 +160,7 @@ public class MaintainController implements CloudServerController {
         if (deleted > 0 && topMenuCacheService != null) {
             topMenuCacheService.invalidateAll();
         }
-        network.post(new SocketEvents.ReloadPlayerDataCache());
+        network.post(new TransportEvents.ReloadPlayerDataCache());
         Log.info("Deleted @ bots from database.", deleted);
     }
 
@@ -218,7 +220,7 @@ public class MaintainController implements CloudServerController {
 
         if (targets.length == 0) {
             Log.info("Dispatching '@' to [ALL]", normalizedCommand);
-            network.post(new SocketEvents.ExecuteCommand(normalizedCommand, new String[0], false));
+            network.post(new TransportEvents.ExecuteCommand(normalizedCommand, new String[0], false));
             return;
         }
 
@@ -228,7 +230,7 @@ public class MaintainController implements CloudServerController {
             Log.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
         }
 
-        network.post(new SocketEvents.ExecuteCommand(normalizedCommand, targets, except));
+        network.post(new TransportEvents.ExecuteCommand(normalizedCommand, targets, except));
     }
 
     private String[] parseTargetList(String targetsCsv) {

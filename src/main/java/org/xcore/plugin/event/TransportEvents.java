@@ -7,21 +7,25 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
-public class SocketEvents {
+public class TransportEvents {
     public interface Event {}
+
+    public interface ServerScopedEvent {
+        String server();
+    }
 
     public static abstract class Response {}
     public static abstract class Request<T> {}
 
-    public record MessageEvent(String authorName, String message, String server) {}
+    public record MessageEvent(String authorName, String message, String server) implements ServerScopedEvent {}
 
-    public record ServerActionEvent(String message, String server) {}
+    public record ServerActionEvent(String message, String server) implements ServerScopedEvent {}
 
-    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) {}
+    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements ServerScopedEvent {}
 
-    public record GlobalChatEvent(String authorName, String message, String server) {}
+    public record GlobalChatEvent(String authorName, String message, String server) implements ServerScopedEvent {}
 
-    public record DiscordMessageEvent(String authorName, String message, String server) {}
+    public record DiscordMessageEvent(String authorName, String message, String server) implements ServerScopedEvent {}
 
     public record PrivateMessageEvent(
             String fromUuid,
@@ -31,7 +35,7 @@ public class SocketEvents {
             int toPid,
             String message,
             String server
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record ServerHeartbeatEvent(
             String serverName,
@@ -63,7 +67,7 @@ public class SocketEvents {
             String server,
             long createdAt,
             long expiresAt
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record DiscordLinkConfirmEvent(
             String code,
@@ -73,7 +77,7 @@ public class SocketEvents {
             String discordUsername,
             String server,
             long confirmedAt
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record DiscordUnlinkEvent(
             String playerUuid,
@@ -82,7 +86,7 @@ public class SocketEvents {
             String requestedBy,
             String server,
             long requestedAt
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record DiscordLinkStatusChangedEvent(
             String playerUuid,
@@ -93,7 +97,7 @@ public class SocketEvents {
             String action,
             String server,
             long occurredAt
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record DiscordAdminAccessChanged(
             String playerUuid,
@@ -106,7 +110,7 @@ public class SocketEvents {
             String reason,
             String server,
             long occurredAt
-    ) {}
+    ) implements ServerScopedEvent {}
 
     public record VoteKickParticipant(
             String name,
@@ -127,7 +131,7 @@ public class SocketEvents {
             String status,
             String server,
             long occurredAt
-    ) implements Event {}
+    ) implements Event, ServerScopedEvent {}
 
     public record ModerationAuditAppendedEvent(
             String auditId,
@@ -144,11 +148,11 @@ public class SocketEvents {
             String relatedAuditId,
             String server,
             Instant occurredAt
-    ) implements Event {}
+    ) implements Event, ServerScopedEvent {}
 
     public static class ReloadPlayerDataCache {}
 
-    public record LoadMapsV2(FileURL[] urls, String server) {}
+    public record LoadMapsV2(FileURL[] urls, String server) implements ServerScopedEvent {}
 
     public record FileURL(String url, String filename) {}
 
@@ -162,8 +166,13 @@ public class SocketEvents {
 
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class MapsListRequest extends Request<MapsListResponse> {
+    public static class MapsListRequest extends Request<MapsListResponse> implements ServerScopedEvent {
         public String server;
+
+        @Override
+        public String server() {
+            return server;
+        }
     }
 
     @NoArgsConstructor
@@ -191,8 +200,13 @@ public class SocketEvents {
 
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class MapRemoveRequest extends Request<MapRemoveResponse> {
+    public static class MapRemoveRequest extends Request<MapRemoveResponse> implements ServerScopedEvent {
         public String server, fileName;
+
+        @Override
+        public String server() {
+            return server;
+        }
     }
 
     @NoArgsConstructor

@@ -22,7 +22,7 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -95,7 +95,7 @@ public class GameLifecycleHandler {
                     Strings.capitalize(Strings.stripColors(state.map.name())));
         }
 
-        network.post(new SocketEvents.ServerActionEvent(message, config.server));
+        network.post(new TransportEvents.ServerActionEvent(message, config.server));
 
         if (state.map != null && !state.isMenu()) {
             try {

@@ -6,7 +6,7 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
@@ -49,7 +49,7 @@ public class BadgeController implements CloudClientController {
 
         sessionService.setActiveBadge(session, "");
         playerDisplayService.refresh(session);
-        network.post(new SocketEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
+        network.post(new TransportEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
         session.locale().send("badge-clear-success", args());
     }
 
@@ -76,7 +76,7 @@ public class BadgeController implements CloudClientController {
 
         sessionService.setActiveBadge(session, badge.id());
         playerDisplayService.refresh(session);
-        network.post(new SocketEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
+        network.post(new TransportEvents.PlayerActiveBadgeChanged(session.data.uuid, session.data.activeBadge));
         session.locale().send("badge-set-success", args("badge", session.locale().t(badge.nameKey())));
     }
 }

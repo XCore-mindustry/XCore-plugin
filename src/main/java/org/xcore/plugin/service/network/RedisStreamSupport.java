@@ -4,10 +4,12 @@ import io.lettuce.core.XAddArgs;
 import io.lettuce.core.XGroupCreateArgs;
 import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.sync.RedisCommands;
+import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 
 import java.util.Map;
 
+@Singleton
 final class RedisStreamSupport {
     private static final long MAXLEN_EVT = 50_000L;
     private static final long MAXLEN_CMD = 10_000L;

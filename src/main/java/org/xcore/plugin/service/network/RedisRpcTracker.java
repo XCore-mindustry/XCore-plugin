@@ -8,8 +8,9 @@ import io.lettuce.core.StreamMessage;
 import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
-import org.xcore.plugin.event.SocketEvents.Request;
-import org.xcore.plugin.event.SocketEvents.Response;
+import jakarta.inject.Singleton;
+import org.xcore.plugin.event.TransportEvents.Request;
+import org.xcore.plugin.event.TransportEvents.Response;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Singleton
 final class RedisRpcTracker {
     private static final long DEFAULT_CONTEXT_TTL_MILLIS = 120_000L;
 
@@ -74,20 +76,27 @@ final class RedisRpcTracker {
                                             Runnable timeout,
                                             long timeoutMs,
                                             CountDownLatch listenerReady,
-                                            AtomicLong rpcTimeouts) {
+                                            AtomicLong rpcTimeouts,
+                                            RedisRequestHandle<T> requestHandle) {
         if (client == null) {
             listenerReady.countDown();
-            timeout.run();
+            if (!requestHandle.isCancelled()) {
+                timeout.run();
+            }
+            requestHandle.markFinished();
             return;
         }
 
         long deadline = System.currentTimeMillis() + timeoutMs;
+        StatefulRedisConnection<String, String> boundConnection = null;
         try (StatefulRedisConnection<String, String> rpcConnection = client.connect()) {
+            boundConnection = rpcConnection;
+            requestHandle.bindConnection(rpcConnection);
             RedisCommands<String, String> rpcCommands = rpcConnection.sync();
             listenerReady.countDown();
             String lastId = "$";
 
-            while (!Thread.currentThread().isInterrupted() && System.currentTimeMillis() < deadline) {
+            while (!Thread.currentThread().isInterrupted() && !requestHandle.isCancelled() && System.currentTimeMillis() < deadline) {
                 List<StreamMessage<String, String>> messages = rpcCommands.xread(
                         XReadArgs.Builder.block(250).count(50),
                         XReadArgs.StreamOffset.from(replyTo, lastId)
@@ -104,24 +113,38 @@ final class RedisRpcTracker {
                         continue;
                     }
 
+                    if (requestHandle.isCancelled()) {
+                        return;
+                    }
+
                     String payloadJson = message.getBody().get("payload_json");
                     if (payloadJson == null || payloadJson.isBlank()) {
                         rpcTimeouts.incrementAndGet();
-                        timeout.run();
+                        if (!requestHandle.isCancelled()) {
+                            timeout.run();
+                        }
                         return;
                     }
 
                     Response response = gson.fromJson(payloadJson, responseType);
-                    if (responseType.isInstance(response)) {
+                    if (!requestHandle.isCancelled() && responseType.isInstance(response)) {
                         listener.get((T) responseType.cast(response));
                     }
                     return;
                 }
             }
         } catch (Exception e) {
-            Log.warn("Redis RPC response await failed: @", e.getMessage());
+            if (!requestHandle.isCancelled()) {
+                Log.warn("Redis RPC response await failed: @", e.getMessage());
+            }
         } finally {
+            requestHandle.clearConnection(boundConnection);
             listenerReady.countDown();
+            requestHandle.markFinished();
+        }
+
+        if (requestHandle.isCancelled()) {
+            return;
         }
 
         rpcTimeouts.incrementAndGet();

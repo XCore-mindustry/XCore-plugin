@@ -4,7 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
@@ -73,7 +73,7 @@ public class DiscordLinkService {
             return LinkCodeResult.error("save-failed");
         }
 
-        networkService.post(new SocketEvents.DiscordLinkCodeCreatedEvent(
+        networkService.post(new TransportEvents.DiscordLinkCodeCreatedEvent(
                 code,
                 data.uuid,
                 data.pid,
@@ -244,7 +244,7 @@ public class DiscordLinkService {
                                       String discordUsername,
                                       String status,
                                       long timestamp) {
-        networkService.post(new SocketEvents.DiscordLinkStatusChangedEvent(
+        networkService.post(new TransportEvents.DiscordLinkStatusChangedEvent(
                 data.uuid,
                 data.pid,
                 data.nickname,
@@ -264,7 +264,7 @@ public class DiscordLinkService {
                                            String adminSource,
                                            String requestedBy,
                                            String reason) {
-        networkService.post(new SocketEvents.DiscordAdminAccessChanged(
+        networkService.post(new TransportEvents.DiscordAdminAccessChanged(
                 playerUuid,
                 playerPid,
                 discordId,

@@ -8,7 +8,7 @@ import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
@@ -115,7 +115,7 @@ public class BadgeAdminController implements CloudServerController {
             persistBadgeState(target);
         }
 
-        network.post(new SocketEvents.PlayerBadgeInventoryChanged(
+        network.post(new TransportEvents.PlayerBadgeInventoryChanged(
                 target.uuid,
                 updatedActiveBadge,
                 copyBadges(updatedBadges)

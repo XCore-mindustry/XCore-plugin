@@ -5,7 +5,6 @@ import arc.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.lettuce.core.Consumer;
-import io.lettuce.core.RedisClient;
 import io.lettuce.core.StreamMessage;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.XAutoClaimArgs;
@@ -16,9 +15,9 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.event.SocketEvents.Request;
-import org.xcore.plugin.event.SocketEvents.Response;
+import org.xcore.plugin.event.TransportEvents;
+import org.xcore.plugin.event.TransportEvents.Request;
+import org.xcore.plugin.event.TransportEvents.Response;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -49,12 +48,11 @@ public final class RedisNetworkBackend {
     private final RedisEnvelopeFactory envelopeFactory;
     private final RedisStreamSupport streamSupport;
     private final RedisRpcTracker rpcTracker;
-    private RedisClient client;
-    private StatefulRedisConnection<String, String> connection;
-    private RedisCommands<String, String> commands;
-    private boolean connectionWarningLogged;
+    private final RedisConnectionManager connectionManager;
+    private final RedisTransportHealth transportHealth;
     private boolean publishWarningLogged;
     private final List<Thread> subscriberThreads = new CopyOnWriteArrayList<>();
+    private final List<RedisRequestHandle<?>> requestHandles = new CopyOnWriteArrayList<>();
     private final Map<String, Integer> deliveryFailures = new ConcurrentHashMap<>();
     private final AtomicLong publishedEvents = new AtomicLong();
     private final AtomicLong publishFailures = new AtomicLong();
@@ -67,17 +65,49 @@ public final class RedisNetworkBackend {
     private final AtomicLong reclaimedMessages = new AtomicLong();
 
     @Inject
-    public RedisNetworkBackend(Config config, @Named("redis") Gson gson, RedisStreamRouter router) {
+    public RedisNetworkBackend(Config config,
+                               @Named("redis") Gson gson,
+                               RedisStreamRouter router,
+                               RedisStreamSupport streamSupport,
+                               RedisRpcTracker rpcTracker,
+                               RedisConnectionManager connectionManager,
+                               RedisTransportHealth transportHealth) {
         this.config = config;
         this.gson = gson;
         this.router = router;
+        this.streamSupport = streamSupport;
+        this.rpcTracker = rpcTracker;
+        this.connectionManager = connectionManager;
+        this.transportHealth = transportHealth;
         this.envelopeFactory = new RedisEnvelopeFactory(config, gson);
-        this.streamSupport = new RedisStreamSupport(config);
-        this.rpcTracker = new RedisRpcTracker(gson);
     }
 
     public RedisNetworkBackend(Config config) {
-        this(config, createRedisGson(), new RedisStreamRouter());
+        this(config, createRedisGson(), new RedisStreamRouter(), createStandaloneDependencies(config));
+    }
+
+    private RedisNetworkBackend(Config config,
+                                Gson gson,
+                                RedisStreamRouter router,
+                                StandaloneDependencies dependencies) {
+        this(config,
+                gson,
+                router,
+                new RedisStreamSupport(config),
+                new RedisRpcTracker(gson),
+                dependencies.connectionManager(),
+                dependencies.transportHealth());
+    }
+
+    private static StandaloneDependencies createStandaloneDependencies(Config config) {
+        RedisTransportHealth transportHealth = new RedisTransportHealth();
+        return new StandaloneDependencies(new RedisConnectionManager(config, transportHealth), transportHealth);
+    }
+
+    private record StandaloneDependencies(
+            RedisConnectionManager connectionManager,
+            RedisTransportHealth transportHealth
+    ) {
     }
 
     public static Gson createRedisGson() {
@@ -92,15 +122,7 @@ public final class RedisNetworkBackend {
     }
 
     public void connect() {
-        if (commands != null) {
-            return;
-        }
-
-        client = RedisClient.create(config.redisUrl);
-        connection = client.connect();
-        commands = connection.sync();
-        connectionWarningLogged = false;
-        Log.info("Redis backend connected, url=@", config.redisUrl);
+        connectionManager.connect();
     }
 
     public void disconnect() {
@@ -108,17 +130,13 @@ public final class RedisNetworkBackend {
             thread.interrupt();
         }
         subscriberThreads.clear();
+        for (RedisRequestHandle<?> requestHandle : new ArrayList<>(requestHandles)) {
+            requestHandle.cancel();
+        }
+        requestHandles.clear();
+        transportHealth.setActiveSubscriberThreads(0);
         deliveryFailures.clear();
-
-        commands = null;
-        if (connection != null) {
-            connection.close();
-            connection = null;
-        }
-        if (client != null) {
-            client.shutdown();
-            client = null;
-        }
+        connectionManager.disconnect();
     }
 
     public void send(Object event) {
@@ -130,6 +148,7 @@ public final class RedisNetworkBackend {
             var route = router.route(event, config.server);
             long now = System.currentTimeMillis();
             String payloadJson = gson.toJson(event);
+            RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
             publishedEvents.incrementAndGet();
             publishWarningLogged = false;
@@ -155,25 +174,23 @@ public final class RedisNetworkBackend {
             throw new UnsupportedOperationException("Redis subscribe has no stream mapping for type: " + type.getName());
         }
 
-        List<Thread> localThreads = new CopyOnWriteArrayList<>();
+        RedisSubscriber<T> subscription = new RedisSubscriber<>(this::removeSubscriberThreads);
 
         for (String stream : streams) {
-            var thread = Thread.ofVirtual()
-                .name("redis-sub-" + type.getSimpleName() + "-" + stream)
+            Thread thread = Thread.ofVirtual()
+                    .name("redis-sub-" + type.getSimpleName() + "-" + stream)
                     .start(() -> consumeLoop(stream, type, listener));
-            subscriberThreads.add(thread);
-            localThreads.add(thread);
+            registerSubscriberThread(subscription, thread);
 
             if (config.redisReclaimEnabled) {
                 String group = groupFor(type, stream);
-                var reclaimThread = Thread.ofVirtual()
+                Thread reclaimThread = Thread.ofVirtual()
                         .name("redis-reclaim-" + type.getSimpleName() + "-" + stream)
                         .start(() -> reclaimLoop(stream, group, type, listener));
-                subscriberThreads.add(reclaimThread);
-                localThreads.add(reclaimThread);
+                registerSubscriberThread(subscription, reclaimThread);
             }
         }
-        return new RedisSubscription<>(localThreads, subscriberThreads);
+        return subscription;
     }
 
     public <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
@@ -185,9 +202,13 @@ public final class RedisNetworkBackend {
         }
 
         Class<? extends Response> responseType = router.responseTypeForRequest(request.getClass());
+        RedisRequestHandle<T> requestHandle = new RedisRequestHandle<>(null);
+        requestHandles.add(requestHandle);
+        requestHandle.onFinish(() -> requestHandles.remove(requestHandle));
         if (responseType == null) {
             timeout.run();
-            return null;
+            requestHandle.markFinished();
+            return requestHandle;
         }
 
         var route = router.route(request, config.server);
@@ -197,24 +218,35 @@ public final class RedisNetworkBackend {
         long timeoutMs = 5000L;
 
         CountDownLatch listenerReady = new CountDownLatch(1);
-        Thread.ofVirtual().name("redis-rpc-await-" + request.getClass().getSimpleName()).start(() ->
-                awaitRpcResponse(replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady)
+        Thread awaitThread = Thread.ofVirtual().name("redis-rpc-await-" + request.getClass().getSimpleName()).start(() ->
+                awaitRpcResponse(replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady, requestHandle)
         );
+        requestHandle.bindWorker(awaitThread);
 
         try {
             listenerReady.await(1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            timeout.run();
-            return null;
+            requestHandle.cancel();
+            return requestHandle;
+        }
+
+        if (requestHandle.isCancelled()) {
+            return requestHandle;
         }
 
         String requestJson = gson.toJson(request);
-        streamSupport.xaddWithTrim(commands, route.streamKey(),
-                envelopeFactory.rpcRequestFields(route, requestJson, replyTo, correlationId, now, timeoutMs));
-        rpcRequests.incrementAndGet();
+        RedisCommands<String, String> commands = connectionManager.commands();
+        try {
+            streamSupport.xaddWithTrim(commands, route.streamKey(),
+                    envelopeFactory.rpcRequestFields(route, requestJson, replyTo, correlationId, now, timeoutMs));
+            rpcRequests.incrementAndGet();
+        } catch (RuntimeException e) {
+            requestHandle.cancel();
+            throw e;
+        }
 
-        return null;
+        return requestHandle;
     }
 
     public <T extends Response> void respond(Request<T> request, T response) {
@@ -229,6 +261,7 @@ public final class RedisNetworkBackend {
 
         rpcResponses.incrementAndGet();
         try {
+            RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, context.replyTo(),
                     envelopeFactory.rpcResponseFields(context, gson.toJson(response), System.currentTimeMillis()));
         } catch (RuntimeException e) {
@@ -241,7 +274,7 @@ public final class RedisNetworkBackend {
         if (router.isReadOnlyType(type)) {
             return true;
         }
-        if (type == SocketEvents.KickBannedPlayer.class) {
+        if (type == TransportEvents.KickBannedPlayer.class) {
             return true;
         }
         if (router.isRpcRequestType(type)) {
@@ -260,7 +293,7 @@ public final class RedisNetworkBackend {
         }
 
         try {
-            return operation.apply(commands);
+            return operation.apply(connectionManager.commands());
         } catch (Exception e) {
             Log.warn("Redis direct command failed: @", e.getMessage());
             return fallback;
@@ -272,23 +305,11 @@ public final class RedisNetworkBackend {
     }
 
     private boolean ensureConnected() {
-        if (commands != null) {
-            return true;
-        }
-
-        try {
-            connect();
-            return commands != null;
-        } catch (Exception e) {
-            if (!connectionWarningLogged) {
-                connectionWarningLogged = true;
-                Log.warn("Redis backend unavailable, continuing without publish: @", e.getMessage());
-            }
-            return false;
-        }
+        return connectionManager.ensureConnected();
     }
 
     private <T> void consumeLoop(String stream, Class<T> type, Cons<T> listener) {
+        var client = connectionManager.client();
         if (client == null) {
             return;
         }
@@ -343,6 +364,7 @@ public final class RedisNetworkBackend {
     }
 
     private <T> void reclaimLoop(String stream, String group, Class<T> type, Cons<T> listener) {
+        var client = connectionManager.client();
         if (client == null) {
             return;
         }
@@ -489,32 +511,20 @@ public final class RedisNetworkBackend {
                                                        Cons<T> listener,
                                                        Runnable timeout,
                                                        long timeoutMs,
-                                                       CountDownLatch listenerReady) {
-        rpcTracker.awaitResponse(client, replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady, rpcTimeouts);
+                                                       CountDownLatch listenerReady,
+                                                       RedisRequestHandle<T> requestHandle) {
+        rpcTracker.awaitResponse(connectionManager.client(), replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady, rpcTimeouts, requestHandle);
     }
 
-    private static final class RedisSubscription<T> extends Subscription<T> {
-        private final List<Thread> localThreads;
-        private final List<Thread> allThreads;
+    private <T> void registerSubscriberThread(RedisSubscriber<T> subscription, Thread thread) {
+        subscriberThreads.add(thread);
+        subscription.attach(thread);
+        transportHealth.setActiveSubscriberThreads(subscriberThreads.size());
+    }
 
-        private RedisSubscription(List<Thread> localThreads, List<Thread> allThreads) {
-            this.localThreads = localThreads;
-            this.allThreads = allThreads;
-        }
-
-        @Override
-        public void call(Object object) {
-        }
-
-        @Override
-        public boolean unsubscribe() {
-            for (Thread thread : localThreads) {
-                thread.interrupt();
-                allThreads.remove(thread);
-            }
-            localThreads.clear();
-            return true;
-        }
+    private void removeSubscriberThreads(List<Thread> threads) {
+        subscriberThreads.removeAll(threads);
+        transportHealth.setActiveSubscriberThreads(subscriberThreads.size());
     }
 
     private String groupFor(Class<?> type, String stream) {
@@ -583,8 +593,15 @@ public final class RedisNetworkBackend {
         metrics.put("dlq_routed", dlqRouted.get());
         metrics.put("reclaimed_messages", reclaimedMessages.get());
         metrics.put("active_subscriber_threads", (long) subscriberThreads.size());
+        metrics.put("active_request_handles", (long) requestHandles.size());
         metrics.put("pending_rpc_contexts", (long) rpcTracker.size());
         metrics.put("tracked_failures", (long) deliveryFailures.size());
+        RedisTransportHealth.Snapshot snapshot = transportHealth.snapshot();
+        metrics.put("redis_available", snapshot.available() ? 1L : 0L);
+        metrics.put("redis_lifecycle_connected", snapshot.lifecycleState() == RedisTransportHealth.LifecycleState.CONNECTED ? 1L : 0L);
+        metrics.put("redis_last_connect_attempt_at", snapshot.lastConnectAttemptAt());
+        metrics.put("redis_last_connected_at", snapshot.lastConnectedAt());
+        metrics.put("redis_last_disconnected_at", snapshot.lastDisconnectedAt());
         return metrics;
     }
 }

@@ -2,8 +2,8 @@ package org.xcore.plugin.service;
 
 import arc.func.Cons;
 import arc.util.Log;
-import org.xcore.plugin.event.SocketEvents.Request;
-import org.xcore.plugin.event.SocketEvents.Response;
+import org.xcore.plugin.event.TransportEvents.Request;
+import org.xcore.plugin.event.TransportEvents.Response;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import io.avaje.inject.PostConstruct;
@@ -11,9 +11,13 @@ import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 @Singleton
 public class NetworkService {
     private final RedisNetworkBackend backend;
+    private final List<Runnable> reconnectHooks = new CopyOnWriteArrayList<>();
 
     public NetworkService(RedisNetworkBackend backend) {
         this.backend = backend;
@@ -33,13 +37,21 @@ public class NetworkService {
     }
 
     public synchronized boolean reloadBackend() {
+        backend.disconnect();
         try {
-            backend.disconnect();
             backend.connect();
+            replayReconnectHooks();
             return true;
         } catch (Exception e) {
             Log.err("Failed to reload Redis transport backend", e);
+            backend.disconnect();
             return false;
+        }
+    }
+
+    public void registerReconnectHook(Runnable hook) {
+        if (!reconnectHooks.contains(hook)) {
+            reconnectHooks.add(hook);
         }
     }
 
@@ -66,5 +78,11 @@ public class NetworkService {
 
     public String backendName() {
         return backend.getClass().getSimpleName();
+    }
+
+    private void replayReconnectHooks() {
+        for (Runnable hook : reconnectHooks) {
+            hook.run();
+        }
     }
 }

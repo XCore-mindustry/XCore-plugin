@@ -11,10 +11,10 @@ import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.socket.ChatSocketHandler;
-import org.xcore.plugin.event.socket.DiscordLinkSocketHandler;
-import org.xcore.plugin.event.socket.MapSocketHandler;
-import org.xcore.plugin.event.socket.ModerationSocketHandler;
+import org.xcore.plugin.event.transport.ChatTransportHandler;
+import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
+import org.xcore.plugin.event.transport.MapTransportHandler;
+import org.xcore.plugin.event.transport.ModerationTransportHandler;
 import org.xcore.plugin.service.NetworkService;
 
 import java.io.InputStream;
@@ -23,44 +23,42 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 @Singleton
-public class SocketService {
+public class TransportService {
 
-    private final ChatSocketHandler chatSocketHandler;
-    private final DiscordLinkSocketHandler discordLinkSocketHandler;
-    private final ModerationSocketHandler moderationSocketHandler;
-    private final MapSocketHandler mapSocketHandler;
+    private final ChatTransportHandler chatTransportHandler;
+    private final DiscordLinkTransportHandler discordLinkTransportHandler;
+    private final ModerationTransportHandler moderationTransportHandler;
+    private final MapTransportHandler mapTransportHandler;
     private final NetworkService network;
     private final Config config;
     private volatile String cachedPublicHost;
 
     @Inject
-    public SocketService(ChatSocketHandler chatSocketHandler,
-                         DiscordLinkSocketHandler discordLinkSocketHandler,
-                          ModerationSocketHandler moderationSocketHandler,
-                          MapSocketHandler mapSocketHandler,
-                          NetworkService network,
-                          Config config) {
-        this.chatSocketHandler = chatSocketHandler;
-        this.discordLinkSocketHandler = discordLinkSocketHandler;
-        this.moderationSocketHandler = moderationSocketHandler;
-        this.mapSocketHandler = mapSocketHandler;
+    public TransportService(ChatTransportHandler chatTransportHandler,
+                            DiscordLinkTransportHandler discordLinkTransportHandler,
+                            ModerationTransportHandler moderationTransportHandler,
+                            MapTransportHandler mapTransportHandler,
+                            NetworkService network,
+                            Config config) {
+        this.chatTransportHandler = chatTransportHandler;
+        this.discordLinkTransportHandler = discordLinkTransportHandler;
+        this.moderationTransportHandler = moderationTransportHandler;
+        this.mapTransportHandler = mapTransportHandler;
         this.network = network;
         this.config = config;
     }
 
     @PostConstruct
     public void init() {
-        chatSocketHandler.registerListeners();
-        discordLinkSocketHandler.registerListeners();
-        moderationSocketHandler.registerListeners();
-        mapSocketHandler.registerListeners();
+        network.registerReconnectHook(this::registerListeners);
+        registerListeners();
 
         Events.on(EventType.ServerLoadEvent.class, event -> {
-            network.post(new SocketEvents.ServerActionEvent("Server loaded", config.server));
+            network.post(new TransportEvents.ServerActionEvent("Server loaded", config.server));
 
             Timer.schedule(() -> {
                 try {
-                    network.post(new SocketEvents.ServerHeartbeatEvent(
+                    network.post(new TransportEvents.ServerHeartbeatEvent(
                             config.server,
                             config.discordChannelId,
                             Groups.player.size(),
@@ -76,7 +74,14 @@ public class SocketService {
         });
     }
 
-    private String resolveHostAddress() {
+    private void registerListeners() {
+        chatTransportHandler.registerListeners();
+        discordLinkTransportHandler.registerListeners();
+        moderationTransportHandler.registerListeners();
+        mapTransportHandler.registerListeners();
+    }
+
+    protected String resolveHostAddress() {
         String cached = cachedPublicHost;
         if (cached != null && !cached.isBlank()) {
             return cached;

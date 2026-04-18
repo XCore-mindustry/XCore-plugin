@@ -2,9 +2,9 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.event.SocketEvents;
-import org.xcore.plugin.event.SocketEvents.VoteKickEvent;
-import org.xcore.plugin.event.SocketEvents.VoteKickParticipant;
+import org.xcore.plugin.event.TransportEvents;
+import org.xcore.plugin.event.TransportEvents.VoteKickEvent;
+import org.xcore.plugin.event.TransportEvents.VoteKickParticipant;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;
@@ -24,8 +24,8 @@ class RedisStreamRouterTest {
         BanData banData = punishment(new BanData(), "u", "n");
         MuteData muteData = punishment(new MuteData(), "u", "n");
 
-        var messageRoute = router.route(new SocketEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
-        var joinRoute = router.route(new SocketEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
+        var messageRoute = router.route(new TransportEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
+        var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
         var banRoute = router.route(banData, "mini-pvp");
         var muteRoute = router.route(muteData, "mini-pvp");
         var voteKickRoute = router.route(
@@ -46,7 +46,7 @@ class RedisStreamRouterTest {
                 "mini-pvp"
         );
         var auditRoute = router.route(
-                new SocketEvents.ModerationAuditAppendedEvent(
+                new TransportEvents.ModerationAuditAppendedEvent(
                         "audit-1", "BAN", "uuid-target", 42, "target", "PLAYER_ADMIN", "admin-1", "Admin", "reason", 60000L,
                         Instant.now().plusSeconds(60), null, "mini-pvp", Instant.now()
                 ),
@@ -75,14 +75,14 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("route maps server-targeted events using event payload server")
     void routeServerTargetedEvents() {
-        var discordRoute = router.route(new SocketEvents.DiscordMessageEvent("bot", "hello", "mini-hexed"), "mini-pvp");
-        var mapsRoute = router.route(new SocketEvents.LoadMapsV2(new SocketEvents.FileURL[0], "event"), "mini-pvp");
-        var badgeRoute = router.route(new SocketEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
-        var badgeColorModeRoute = router.route(new SocketEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
-        var passwordRoute = router.route(new SocketEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
-        var discordLinkConfirmRoute = router.route(new SocketEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-hexed", 10L), "mini-pvp");
-        var discordLinkStatusRoute = router.route(new SocketEvents.DiscordLinkStatusChangedEvent("uuid-7", 7, "Nick", "123", "discord-user", "linked", "mini-pvp", 10L), "mini-pvp");
-        var discordAdminAccessRoute = router.route(new SocketEvents.DiscordAdminAccessChanged("uuid-7", 7, "123", "discord-user", true, "DISCORD_ROLE", "tester", "sync", "mini-pvp", 11L), "mini-pvp");
+        var discordRoute = router.route(new TransportEvents.DiscordMessageEvent("bot", "hello", "mini-hexed"), "mini-pvp");
+        var mapsRoute = router.route(new TransportEvents.LoadMapsV2(new TransportEvents.FileURL[0], "event"), "mini-pvp");
+        var badgeRoute = router.route(new TransportEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
+        var badgeColorModeRoute = router.route(new TransportEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
+        var passwordRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
+        var discordLinkConfirmRoute = router.route(new TransportEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-hexed", 10L), "mini-pvp");
+        var discordLinkStatusRoute = router.route(new TransportEvents.DiscordLinkStatusChangedEvent("uuid-7", 7, "Nick", "123", "discord-user", "linked", "mini-pvp", 10L), "mini-pvp");
+        var discordAdminAccessRoute = router.route(new TransportEvents.DiscordAdminAccessChanged("uuid-7", 7, "123", "discord-user", true, "DISCORD_ROLE", "tester", "sync", "mini-pvp", 11L), "mini-pvp");
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
@@ -99,35 +99,35 @@ class RedisStreamRouterTest {
         assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:mini-pvp");
         assertThat(discordAdminAccessRoute.eventType()).isEqualTo("discord.admin_access_changed");
 
-        var discordAdminAccessOtherServerRoute = router.route(new SocketEvents.DiscordAdminAccessChanged("uuid-8", 8, "456", "other-user", false, "NONE", "tester", "sync", "survival", 12L), "mini-pvp");
+        var discordAdminAccessOtherServerRoute = router.route(new TransportEvents.DiscordAdminAccessChanged("uuid-8", 8, "456", "other-user", false, "NONE", "tester", "sync", "survival", 12L), "mini-pvp");
         assertThat(discordAdminAccessOtherServerRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:survival");
     }
 
     @Test
     @DisplayName("subscribe streams include read-only and rpc request streams")
     void subscribeStreamsForTypes() {
-        assertThat(router.subscribeStreamsFor(SocketEvents.GlobalChatEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.GlobalChatEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.MapsListRequest.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.MapsListRequest.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.MapRemoveRequest.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.MapRemoveRequest.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.PlayerPasswordReset.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.PlayerPasswordReset.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-password-reset:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.PlayerBadgeSymbolColorModeChanged.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.DiscordLinkConfirmEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordLinkConfirmEvent.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-link-confirm:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.DiscordLinkStatusChangedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordLinkStatusChangedEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:discord:link-status");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.DiscordAdminAccessChanged.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordAdminAccessChanged.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-admin-access:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(BanData.class, "mini-pvp"))
@@ -139,37 +139,37 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(VoteKickEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:votekick");
 
-        assertThat(router.subscribeStreamsFor(SocketEvents.ModerationAuditAppendedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationAuditAppendedEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:audit");
     }
 
     @Test
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
-        assertThat(router.isReadOnlyType(SocketEvents.DiscordLinkStatusChangedEvent.class)).isTrue();
+        assertThat(router.isReadOnlyType(TransportEvents.DiscordLinkStatusChangedEvent.class)).isTrue();
         assertThat(router.isReadOnlyType(BanData.class)).isTrue();
         assertThat(router.isReadOnlyType(MuteData.class)).isTrue();
         assertThat(router.isReadOnlyType(VoteKickEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(SocketEvents.ModerationAuditAppendedEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(SocketEvents.DiscordAdminAccessChanged.class)).isFalse();
+        assertThat(router.isReadOnlyType(TransportEvents.ModerationAuditAppendedEvent.class)).isTrue();
+        assertThat(router.isReadOnlyType(TransportEvents.DiscordAdminAccessChanged.class)).isFalse();
 
-        assertThat(router.isMutatingType(SocketEvents.PlayerPasswordReset.class)).isTrue();
-        assertThat(router.isMutatingType(SocketEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();
-        assertThat(router.isMutatingType(SocketEvents.DiscordLinkConfirmEvent.class)).isTrue();
-        assertThat(router.isMutatingType(SocketEvents.DiscordAdminAccessChanged.class)).isTrue();
-        assertThat(router.isMutatingType(SocketEvents.MessageEvent.class)).isFalse();
+        assertThat(router.isMutatingType(TransportEvents.PlayerPasswordReset.class)).isTrue();
+        assertThat(router.isMutatingType(TransportEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();
+        assertThat(router.isMutatingType(TransportEvents.DiscordLinkConfirmEvent.class)).isTrue();
+        assertThat(router.isMutatingType(TransportEvents.DiscordAdminAccessChanged.class)).isTrue();
+        assertThat(router.isMutatingType(TransportEvents.MessageEvent.class)).isFalse();
 
-        assertThat(router.isRpcRequestType(SocketEvents.MapsListRequest.class)).isTrue();
-        assertThat(router.isRpcRequestType(SocketEvents.MessageEvent.class)).isFalse();
+        assertThat(router.isRpcRequestType(TransportEvents.MapsListRequest.class)).isTrue();
+        assertThat(router.isRpcRequestType(TransportEvents.MessageEvent.class)).isFalse();
 
-        assertThat(router.responseTypeForRequest(SocketEvents.MapsListRequest.class))
-                .isEqualTo(SocketEvents.MapsListResponse.class);
-        assertThat(router.responseTypeForRequest(SocketEvents.MapRemoveRequest.class))
-                .isEqualTo(SocketEvents.MapRemoveResponse.class);
+        assertThat(router.responseTypeForRequest(TransportEvents.MapsListRequest.class))
+                .isEqualTo(TransportEvents.MapsListResponse.class);
+        assertThat(router.responseTypeForRequest(TransportEvents.MapRemoveRequest.class))
+                .isEqualTo(TransportEvents.MapRemoveResponse.class);
 
-        assertThat(router.rpcTypeForRequestClass(SocketEvents.MapsListRequest.class))
+        assertThat(router.rpcTypeForRequestClass(TransportEvents.MapsListRequest.class))
                 .isEqualTo("maps.list");
-        assertThat(router.rpcTypeForRequestClass(SocketEvents.MapRemoveRequest.class))
+        assertThat(router.rpcTypeForRequestClass(TransportEvents.MapRemoveRequest.class))
                 .isEqualTo("maps.remove");
     }
 

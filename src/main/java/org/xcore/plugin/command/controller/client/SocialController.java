@@ -12,7 +12,7 @@ import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
@@ -75,13 +75,13 @@ public class SocialController implements CloudClientController {
         Session session = sessionService.get(sender.player().uuid());
         if (session == null || session.data == null) return;
 
-        network.post(new SocketEvents.GlobalChatEvent(
+        network.post(new TransportEvents.GlobalChatEvent(
                 session.player.coloredName(),
                 message,
                 config.server
         ));
 
-        network.post(new SocketEvents.MessageEvent(
+        network.post(new TransportEvents.MessageEvent(
                 session.player.plainName(),
                 "[" + config.server + "] " + message.replace("`", "*"),
                 "global"

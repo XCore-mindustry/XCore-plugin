@@ -7,7 +7,7 @@ import org.bson.types.ObjectId;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.session.Session;
@@ -92,14 +92,13 @@ public class PrivateMessageService {
             return false;
         }
 
-        PrivateMessage privateMessage = PrivateMessage.builder()
-                .fromUuid(senderSession.data.uuid)
-                .fromPid(senderSession.data.pid)
-                .fromName(senderSession.player.coloredName())
-                .toUuid(targetData.uuid)
-                .toPid(targetData.pid)
-                .message(message)
-                .build();
+        PrivateMessage privateMessage = new PrivateMessage();
+        privateMessage.fromUuid = senderSession.data.uuid;
+        privateMessage.fromPid = senderSession.data.pid;
+        privateMessage.fromName = senderSession.player.coloredName();
+        privateMessage.toUuid = targetData.uuid;
+        privateMessage.toPid = targetData.pid;
+        privateMessage.message = message;
 
         if (!privateMessageRepository.save(privateMessage)) {
             senderSession.locale().send("error-processing-request", args());
@@ -333,7 +332,7 @@ public class PrivateMessageService {
             return;
         }
 
-        networkService.post(new SocketEvents.PrivateMessageEvent(
+        networkService.post(new TransportEvents.PrivateMessageEvent(
                 privateMessage.fromUuid,
                 privateMessage.fromPid,
                 privateMessage.fromName,

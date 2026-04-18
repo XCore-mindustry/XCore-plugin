@@ -18,7 +18,7 @@ import org.mockito.MockedStatic;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
@@ -102,13 +102,11 @@ class ConnectionHandlerTest {
         when(admins.isAdmin("uuid-1", "usid-1")).thenReturn(false);
         when(privateMessageService.countUnread("uuid-1")).thenReturn(0L);
 
-        PlayerData data = PlayerData.builder()
-                .uuid("uuid-1")
-                .pid(7)
-                .ip("1.1.1.1")
-                .nickname("OldName")
-                .admin(true)
-                .build();
+        PlayerData data = new PlayerData("uuid-1", true);
+        data.pid = 7;
+        data.ip = "1.1.1.1";
+        data.nickname = "OldName";
+        data.admin = true;
         data.exists = true;
 
         Session session = mock(Session.class);
@@ -126,7 +124,7 @@ class ConnectionHandlerTest {
         verify(sessionService).updateConnectionData(session, "2.2.2.2", "[#00000000][red]Renamed[]");
         verify(localization).send(eq("error-ip-changed"), anyMap());
         verify(playerDisplayService).refresh(session);
-        verify(networkService).post(any(SocketEvents.PlayerJoinLeaveEvent.class));
+        verify(networkService).post(any(TransportEvents.PlayerJoinLeaveEvent.class));
         verify(sessionService, never()).persistPlayer(session);
     }
 

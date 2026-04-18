@@ -1,4 +1,4 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import arc.util.Http;
 import arc.util.Log;
@@ -7,21 +7,20 @@ import jakarta.inject.Singleton;
 import mindustry.maps.Map;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static mindustry.Vars.state;
-
 import static mindustry.Vars.customMapDirectory;
 import static mindustry.Vars.maps;
+import static mindustry.Vars.state;
 import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
-public class MapSocketHandler {
+public class MapTransportHandler {
 
     private final NetworkService network;
     private final Config config;
@@ -29,10 +28,10 @@ public class MapSocketHandler {
     private final MapDataRepository mapDataRepository;
 
     @Inject
-    public MapSocketHandler(NetworkService network,
-                            Config config,
-                            MapService mapService,
-                            MapDataRepository mapDataRepository) {
+    public MapTransportHandler(NetworkService network,
+                               Config config,
+                               MapService mapService,
+                               MapDataRepository mapDataRepository) {
         this.network = network;
         this.config = config;
         this.mapService = mapService;
@@ -40,12 +39,12 @@ public class MapSocketHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(SocketEvents.MapsListRequest.class, request -> {
+        network.subscribe(TransportEvents.MapsListRequest.class, request -> {
             if (!request.server.equals(config.server)) return;
 
             var customMaps = maps.customMaps();
             String currentGameMode = state.rules.mode().name();
-            var mapsList = new SocketEvents.MapEntry[customMaps.size];
+            var mapsList = new TransportEvents.MapEntry[customMaps.size];
             for (int i = 0; i < customMaps.size; i++) {
                 Map map = customMaps.get(i);
                 String fileName = map.file == null ? "" : map.file.name();
@@ -53,7 +52,7 @@ public class MapSocketHandler {
                 String author = rawAuthor == null ? "Unknown" : rawAuthor;
                 MapData persistedMap = mapDataRepository.find(map.plainName(), rawAuthor, currentGameMode)
                         .orElse(null);
-                SocketEvents.MapEntry entry = new SocketEvents.MapEntry();
+                TransportEvents.MapEntry entry = new TransportEvents.MapEntry();
                 entry.name = map.plainName();
                 entry.fileName = fileName;
                 entry.author = author;
@@ -69,12 +68,12 @@ public class MapSocketHandler {
                 mapsList[i] = entry;
             }
 
-            SocketEvents.MapsListResponse response = new SocketEvents.MapsListResponse();
+            TransportEvents.MapsListResponse response = new TransportEvents.MapsListResponse();
             response.maps = mapsList;
             network.respond(request, response);
         });
 
-        network.subscribe(SocketEvents.MapRemoveRequest.class, request -> {
+        network.subscribe(TransportEvents.MapRemoveRequest.class, request -> {
             if (!request.server.equals(config.server)) return;
 
             var map = mapService.findMapByFileName(request.fileName);
@@ -83,7 +82,7 @@ public class MapSocketHandler {
                 maps.reload();
             }
 
-            SocketEvents.MapRemoveResponse response = new SocketEvents.MapRemoveResponse();
+            TransportEvents.MapRemoveResponse response = new TransportEvents.MapRemoveResponse();
             response.result = map == null
                     ? "Map file not found"
                     : "Successfully removed map " + map.plainName() + " (" + map.file.name() + ")";
@@ -92,11 +91,11 @@ public class MapSocketHandler {
             if (map != null) info("Removed map @", map.plainName());
         });
 
-        network.subscribe(SocketEvents.LoadMapsV2.class, e -> {
+        network.subscribe(TransportEvents.LoadMapsV2.class, e -> {
             if (!config.server.equals(e.server())) return;
 
             AtomicInteger counter = new AtomicInteger();
-            for (SocketEvents.FileURL file : e.urls()) {
+            for (TransportEvents.FileURL file : e.urls()) {
                 Http.get(file.url())
                         .error(Log::err)
                         .submit(result -> {

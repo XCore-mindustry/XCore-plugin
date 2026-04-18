@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
@@ -46,7 +46,7 @@ class DiscordLinkServiceTest {
         assertThat(result.code()).hasSize(6);
         verify(codeStore).invalidatePendingByPlayerUuid("uuid-7");
         verify(codeStore).store(any());
-        verify(networkService).post(any(SocketEvents.DiscordLinkCodeCreatedEvent.class));
+        verify(networkService).post(any(TransportEvents.DiscordLinkCodeCreatedEvent.class));
     }
 
     @Test
@@ -128,7 +128,7 @@ class DiscordLinkServiceTest {
         assertThat(result.success()).isTrue();
         assertThat(result.code()).isEqualTo("ABC123");
         verify(codeStore, never()).store(any());
-        verify(networkService, never()).post(any(SocketEvents.DiscordLinkCodeCreatedEvent.class));
+        verify(networkService, never()).post(any(TransportEvents.DiscordLinkCodeCreatedEvent.class));
     }
 
     @Test
@@ -197,7 +197,7 @@ class DiscordLinkServiceTest {
         assertThat(result.success()).isTrue();
         assertThat(playerData.discordId).isEqualTo("123");
         assertThat(playerData.discordUsername).isEqualTo("discord-user");
-        verify(networkService).post(any(SocketEvents.DiscordLinkStatusChangedEvent.class));
+        verify(networkService).post(any(TransportEvents.DiscordLinkStatusChangedEvent.class));
     }
 
     @Test
@@ -262,8 +262,8 @@ class DiscordLinkServiceTest {
         var result = service.unlink("uuid-7");
 
         assertThat(result).isTrue();
-        verify(networkService).post(any(SocketEvents.DiscordLinkStatusChangedEvent.class));
-        verify(networkService).post(any(SocketEvents.DiscordAdminAccessChanged.class));
+        verify(networkService).post(any(TransportEvents.DiscordLinkStatusChangedEvent.class));
+        verify(networkService).post(any(TransportEvents.DiscordAdminAccessChanged.class));
         verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-7");
     }
 
@@ -310,7 +310,7 @@ class DiscordLinkServiceTest {
         assertThat(session.data.discordId).isBlank();
         assertThat(session.data.discordUsername).isBlank();
         assertThat(session.data.discordLinkedAt).isZero();
-        verify(networkService).post(any(SocketEvents.DiscordAdminAccessChanged.class));
+        verify(networkService).post(any(TransportEvents.DiscordAdminAccessChanged.class));
         verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-7");
     }
 

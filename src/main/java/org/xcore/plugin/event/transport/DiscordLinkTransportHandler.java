@@ -1,9 +1,9 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
@@ -11,7 +11,7 @@ import org.xcore.plugin.session.SessionService;
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
-public class DiscordLinkSocketHandler {
+public class DiscordLinkTransportHandler {
 
     private final NetworkService network;
     private final DiscordLinkService discordLinkService;
@@ -19,10 +19,10 @@ public class DiscordLinkSocketHandler {
     private final Config config;
 
     @Inject
-    public DiscordLinkSocketHandler(NetworkService network,
-                                    DiscordLinkService discordLinkService,
-                                    SessionService sessionService,
-                                    Config config) {
+    public DiscordLinkTransportHandler(NetworkService network,
+                                       DiscordLinkService discordLinkService,
+                                       SessionService sessionService,
+                                       Config config) {
         this.network = network;
         this.discordLinkService = discordLinkService;
         this.sessionService = sessionService;
@@ -30,7 +30,7 @@ public class DiscordLinkSocketHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(SocketEvents.DiscordLinkConfirmEvent.class, e -> {
+        network.subscribe(TransportEvents.DiscordLinkConfirmEvent.class, e -> {
             var result = discordLinkService.confirmLink(
                     e.code(),
                     e.playerUuid(),
@@ -50,7 +50,7 @@ public class DiscordLinkSocketHandler {
             }
         });
 
-        network.subscribe(SocketEvents.DiscordUnlinkEvent.class, e -> {
+        network.subscribe(TransportEvents.DiscordUnlinkEvent.class, e -> {
             var session = sessionService.get(e.playerUuid());
             if (discordLinkService.unlink(e.playerUuid()) && session != null) {
                 session.locale().send("commands-discord-unlink-success", args());

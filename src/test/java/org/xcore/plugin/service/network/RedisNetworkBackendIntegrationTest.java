@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.StreamMessage;
@@ -12,7 +13,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.Punishment;
 
@@ -53,7 +54,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new SocketEvents.MessageEvent("tester", "hello", "alpha"));
+        requesterBackend.send(new TransportEvents.MessageEvent("tester", "hello", "alpha"));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -83,25 +84,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.GlobalChatEvent> alphaReceived = new AtomicReference<>();
-        AtomicReference<SocketEvents.GlobalChatEvent> betaReceived = new AtomicReference<>();
+        AtomicReference<TransportEvents.GlobalChatEvent> alphaReceived = new AtomicReference<>();
+        AtomicReference<TransportEvents.GlobalChatEvent> betaReceived = new AtomicReference<>();
 
-        Subscription<SocketEvents.GlobalChatEvent> alphaSubscription = serverBackend.subscribe(
-                SocketEvents.GlobalChatEvent.class,
+        Subscription<TransportEvents.GlobalChatEvent> alphaSubscription = serverBackend.subscribe(
+                TransportEvents.GlobalChatEvent.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<SocketEvents.GlobalChatEvent> betaSubscription = requesterBackend.subscribe(
-                SocketEvents.GlobalChatEvent.class,
+        Subscription<TransportEvents.GlobalChatEvent> betaSubscription = requesterBackend.subscribe(
+                TransportEvents.GlobalChatEvent.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new SocketEvents.GlobalChatEvent("player", "hello world", "alpha"));
+        serverBackend.send(new TransportEvents.GlobalChatEvent("player", "hello world", "alpha"));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -127,25 +128,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.ExecuteCommand> alphaReceived = new AtomicReference<>();
-        AtomicReference<SocketEvents.ExecuteCommand> betaReceived = new AtomicReference<>();
+        AtomicReference<TransportEvents.ExecuteCommand> alphaReceived = new AtomicReference<>();
+        AtomicReference<TransportEvents.ExecuteCommand> betaReceived = new AtomicReference<>();
 
-        Subscription<SocketEvents.ExecuteCommand> alphaSubscription = serverBackend.subscribe(
-                SocketEvents.ExecuteCommand.class,
+        Subscription<TransportEvents.ExecuteCommand> alphaSubscription = serverBackend.subscribe(
+                TransportEvents.ExecuteCommand.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<SocketEvents.ExecuteCommand> betaSubscription = requesterBackend.subscribe(
-                SocketEvents.ExecuteCommand.class,
+        Subscription<TransportEvents.ExecuteCommand> betaSubscription = requesterBackend.subscribe(
+                TransportEvents.ExecuteCommand.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new SocketEvents.ExecuteCommand("status", new String[0], false));
+        serverBackend.send(new TransportEvents.ExecuteCommand("status", new String[0], false));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -191,7 +192,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new SocketEvents.VoteKickEvent(
+        requesterBackend.send(new TransportEvents.VoteKickEvent(
                 "Target",
                 42,
                 "uuid-target",
@@ -199,8 +200,8 @@ class RedisNetworkBackendIntegrationTest {
                 7,
                 "123456",
                 "griefing",
-                List.of(new SocketEvents.VoteKickParticipant("Starter", 7, "123456")),
-                List.of(new SocketEvents.VoteKickParticipant("Voter2", 8, "654321")),
+                List.of(new TransportEvents.VoteKickParticipant("Starter", 7, "123456")),
+                List.of(new TransportEvents.VoteKickParticipant("Voter2", 8, "654321")),
                 "started",
                 "alpha",
                 123456789L
@@ -233,14 +234,14 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.MessageEvent> received = new AtomicReference<>();
+        AtomicReference<TransportEvents.MessageEvent> received = new AtomicReference<>();
 
-        Subscription<SocketEvents.MessageEvent> subscription = requesterBackend.subscribe(SocketEvents.MessageEvent.class, event -> {
+        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
             received.set(event);
             latch.countDown();
         });
 
-        requesterBackend.send(new SocketEvents.MessageEvent("tester", "bridge", "alpha"));
+        requesterBackend.send(new TransportEvents.MessageEvent("tester", "bridge", "alpha"));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
@@ -259,17 +260,17 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.KickBannedPlayer> received = new AtomicReference<>();
+        AtomicReference<TransportEvents.KickBannedPlayer> received = new AtomicReference<>();
 
-        Subscription<SocketEvents.KickBannedPlayer> subscription = requesterBackend.subscribe(
-                SocketEvents.KickBannedPlayer.class,
+        Subscription<TransportEvents.KickBannedPlayer> subscription = requesterBackend.subscribe(
+                TransportEvents.KickBannedPlayer.class,
                 event -> {
                     received.set(event);
                     latch.countDown();
                 }
         );
 
-        requesterBackend.send(new SocketEvents.KickBannedPlayer("uuid-a", "1.2.3.4"));
+        requesterBackend.send(new TransportEvents.KickBannedPlayer("uuid-a", "1.2.3.4"));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
@@ -290,8 +291,8 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
         requesterBackend.connect();
 
-        Subscription<SocketEvents.MapsListRequest> serverSubscription =
-                serverBackend.subscribe(SocketEvents.MapsListRequest.class,
+        Subscription<TransportEvents.MapsListRequest> serverSubscription =
+                serverBackend.subscribe(TransportEvents.MapsListRequest.class,
                         request -> serverBackend.respond(
                                 request,
                                 mapsListResponse(
@@ -302,13 +303,14 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.MapsListResponse> responseRef = new AtomicReference<>();
+        AtomicReference<TransportEvents.MapsListResponse> responseRef = new AtomicReference<>();
 
-        requesterBackend.request(mapsListRequest("target"), response -> {
+        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(mapsListRequest("target"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
 
+        assertThat(requestHandle).isNotNull();
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
@@ -335,8 +337,8 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch listLatch = new CountDownLatch(1);
-        Subscription<SocketEvents.MapsListRequest> listSubscription =
-                serverBackend.subscribe(SocketEvents.MapsListRequest.class, request -> {
+        Subscription<TransportEvents.MapsListRequest> listSubscription =
+                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> {
                     listLatch.countDown();
                     serverBackend.respond(
                             request,
@@ -347,19 +349,20 @@ class RedisNetworkBackendIntegrationTest {
                     );
                 });
 
-        Subscription<SocketEvents.MapRemoveRequest> removeSubscription =
-                serverBackend.subscribe(SocketEvents.MapRemoveRequest.class,
+        Subscription<TransportEvents.MapRemoveRequest> removeSubscription =
+                serverBackend.subscribe(TransportEvents.MapRemoveRequest.class,
                         request -> serverBackend.respond(request, mapRemoveResponse("Removed")));
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<SocketEvents.MapRemoveResponse> responseRef = new AtomicReference<>();
+        AtomicReference<TransportEvents.MapRemoveResponse> responseRef = new AtomicReference<>();
 
-        requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
+        RequestSubscription<TransportEvents.MapRemoveResponse> requestHandle = requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
 
+        assertThat(requestHandle).isNotNull();
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
@@ -379,8 +382,8 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
 
         CountDownLatch handlerLatch = new CountDownLatch(1);
-        Subscription<SocketEvents.MapsListRequest> subscription =
-                serverBackend.subscribe(SocketEvents.MapsListRequest.class, request -> handlerLatch.countDown());
+        Subscription<TransportEvents.MapsListRequest> subscription =
+                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> handlerLatch.countDown());
 
         try (RedisClient client = RedisClient.create(serverConfig.redisUrl);
              StatefulRedisConnection<String, String> connection = client.connect()) {
@@ -418,8 +421,8 @@ class RedisNetworkBackendIntegrationTest {
 
         AtomicInteger executions = new AtomicInteger(0);
         CountDownLatch latch = new CountDownLatch(1);
-        Subscription<SocketEvents.LoadMapsV2> subscription = requesterBackend.subscribe(
-                SocketEvents.LoadMapsV2.class,
+        Subscription<TransportEvents.LoadMapsV2> subscription = requesterBackend.subscribe(
+                TransportEvents.LoadMapsV2.class,
                 event -> {
                     executions.incrementAndGet();
                     latch.countDown();
@@ -464,12 +467,12 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch failureSeen = new CountDownLatch(1);
-        Subscription<SocketEvents.MessageEvent> subscription = requesterBackend.subscribe(SocketEvents.MessageEvent.class, event -> {
+        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
             failureSeen.countDown();
             throw new IllegalStateException("intentional failure");
         });
 
-        requesterBackend.send(new SocketEvents.MessageEvent("tester", "poison", "alpha"));
+        requesterBackend.send(new TransportEvents.MessageEvent("tester", "poison", "alpha"));
         assertThat(failureSeen.await(10, TimeUnit.SECONDS)).isTrue();
 
         try (RedisClient client = RedisClient.create(config.redisUrl);
@@ -503,6 +506,68 @@ class RedisNetworkBackendIntegrationTest {
         subscription.unsubscribe();
     }
 
+    @Test
+    @DisplayName("unsubscribe stops subscriber lifecycle threads")
+    void unsubscribeStopsSubscriberLifecycleThreads() {
+        Config config = baseConfig("alpha");
+        config.redisReclaimEnabled = true;
+
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        });
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("active_subscriber_threads", 0L)).isEqualTo(2L);
+        assertThat(subscription.unsubscribe()).isTrue();
+
+        waitForMetricValue("active_subscriber_threads", 0L, requesterBackend, 5);
+        assertThat(subscription.unsubscribe()).isFalse();
+    }
+
+    @Test
+    @DisplayName("request cancel stops rpc await lifecycle")
+    void requestCancelStopsRpcAwaitLifecycle() {
+        Config requesterConfig = baseConfig("discord");
+
+        requesterBackend = new RedisNetworkBackend(requesterConfig);
+        requesterBackend.connect();
+
+        AtomicInteger responses = new AtomicInteger();
+        AtomicInteger timeouts = new AtomicInteger();
+
+        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(
+                mapsListRequest("target"),
+                response -> responses.incrementAndGet(),
+                timeouts::incrementAndGet
+        );
+
+        assertThat(requestHandle).isNotNull();
+        requestHandle.cancel();
+
+        waitForMetricValue("active_request_handles", 0L, requesterBackend, 5);
+        assertThat(responses.get()).isZero();
+        assertThat(timeouts.get()).isZero();
+    }
+
+    private static void waitForMetricValue(String key, long expectedValue, RedisNetworkBackend backend, int timeoutSeconds) {
+        long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
+        while (System.currentTimeMillis() < deadline) {
+            if (backend.metricsSnapshot().getOrDefault(key, -1L) == expectedValue) {
+                return;
+            }
+
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        assertThat(backend.metricsSnapshot().getOrDefault(key, -1L)).isEqualTo(expectedValue);
+    }
+
     private Config baseConfig(String server) {
         Config config = new Config();
         config.server = server;
@@ -520,32 +585,32 @@ class RedisNetworkBackendIntegrationTest {
         return value;
     }
 
-    private static SocketEvents.MapsListRequest mapsListRequest(String server) {
-        SocketEvents.MapsListRequest request = new SocketEvents.MapsListRequest();
+    private static TransportEvents.MapsListRequest mapsListRequest(String server) {
+        TransportEvents.MapsListRequest request = new TransportEvents.MapsListRequest();
         request.server = server;
         return request;
     }
 
-    private static SocketEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
-        SocketEvents.MapRemoveRequest request = new SocketEvents.MapRemoveRequest();
+    private static TransportEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
+        TransportEvents.MapRemoveRequest request = new TransportEvents.MapRemoveRequest();
         request.server = server;
         request.fileName = fileName;
         return request;
     }
 
-    private static SocketEvents.MapsListResponse mapsListResponse(SocketEvents.MapEntry... entries) {
-        SocketEvents.MapsListResponse response = new SocketEvents.MapsListResponse();
+    private static TransportEvents.MapsListResponse mapsListResponse(TransportEvents.MapEntry... entries) {
+        TransportEvents.MapsListResponse response = new TransportEvents.MapsListResponse();
         response.maps = entries;
         return response;
     }
 
-    private static SocketEvents.MapRemoveResponse mapRemoveResponse(String result) {
-        SocketEvents.MapRemoveResponse response = new SocketEvents.MapRemoveResponse();
+    private static TransportEvents.MapRemoveResponse mapRemoveResponse(String result) {
+        TransportEvents.MapRemoveResponse response = new TransportEvents.MapRemoveResponse();
         response.result = result;
         return response;
     }
 
-    private static SocketEvents.MapEntry mapEntry(
+    private static TransportEvents.MapEntry mapEntry(
             String name,
             String fileName,
             String author,
@@ -556,7 +621,7 @@ class RedisNetworkBackendIntegrationTest {
         return mapEntry(name, fileName, author, width, height, fileSizeBytes, null, null, null, null, null, null);
     }
 
-    private static SocketEvents.MapEntry mapEntry(
+    private static TransportEvents.MapEntry mapEntry(
             String name,
             String fileName,
             String author,
@@ -570,7 +635,7 @@ class RedisNetworkBackendIntegrationTest {
             Double interest,
             String gameMode
     ) {
-        SocketEvents.MapEntry entry = new SocketEvents.MapEntry();
+        TransportEvents.MapEntry entry = new TransportEvents.MapEntry();
         entry.name = name;
         entry.fileName = fileName;
         entry.author = author;

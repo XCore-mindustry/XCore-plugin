@@ -5,7 +5,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
@@ -121,7 +121,7 @@ public class ModerationService {
         postAuditEvent(audit);
 
         if (kickOnline) {
-            network.post(new SocketEvents.KickBannedPlayer(target.uuid, ip));
+            network.post(new TransportEvents.KickBannedPlayer(target.uuid, ip));
         }
 
         return ModerationResult.success("Player '" + target.nickname + "' banned successfully", ban);
@@ -279,7 +279,7 @@ public class ModerationService {
 
         network.post(ban);
         postAuditEvent(audit);
-        network.post(new SocketEvents.KickBannedPlayer(uuid, ip));
+        network.post(new TransportEvents.KickBannedPlayer(uuid, ip));
 
         return ModerationResult.success("Player '" + ban.name + "' banned until " + expire, ban);
     }
@@ -426,8 +426,8 @@ public class ModerationService {
                 .build();
     }
 
-    private static SocketEvents.ModerationAuditAppendedEvent toAuditEvent(AuditRecord record) {
-        return new SocketEvents.ModerationAuditAppendedEvent(
+    private static TransportEvents.ModerationAuditAppendedEvent toAuditEvent(AuditRecord record) {
+        return new TransportEvents.ModerationAuditAppendedEvent(
                 record.auditId,
                 record.action.name(),
                 record.target == null ? null : record.target.getUuid(),

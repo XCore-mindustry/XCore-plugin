@@ -15,7 +15,12 @@ public class RedisFactory {
     }
 
     @Bean
+    public RedisRouteRegistry redisRouteRegistry() {
+        return new RedisRouteRegistry();
+    }
+
+    @Bean
     public RedisStreamRouter redisStreamRouter() {
-        return new RedisStreamRouter();
+        return new RedisStreamRouter(redisRouteRegistry());
     }
 }

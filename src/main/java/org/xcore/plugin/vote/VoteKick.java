@@ -11,7 +11,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.plugin.common.VersionComparator;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
@@ -107,16 +107,16 @@ public class VoteKick extends VoteSession {
         }
 
         if (network != null) {
-            network.post(new SocketEvents.ServerActionEvent(stripColors(message), config.server));
+            network.post(new TransportEvents.ServerActionEvent(stripColors(message), config.server));
         }
     }
 
-    private SocketEvents.VoteKickEvent buildVoteKickEvent(String status) {
+    private TransportEvents.VoteKickEvent buildVoteKickEvent(String status) {
         var targetData = sessionService.getOrLoadFromDb(target.uuid());
         var starterData = sessionService.getOrLoadFromDb(starter.uuid());
 
-        var votesFor = new ArrayList<SocketEvents.VoteKickParticipant>();
-        var votesAgainst = new ArrayList<SocketEvents.VoteKickParticipant>();
+        var votesFor = new ArrayList<TransportEvents.VoteKickParticipant>();
+        var votesAgainst = new ArrayList<TransportEvents.VoteKickParticipant>();
 
         sessionService.forEachOnline(session -> {
             var onlinePlayer = session.player;
@@ -133,7 +133,7 @@ public class VoteKick extends VoteSession {
             }
         });
 
-        return new SocketEvents.VoteKickEvent(
+        return new TransportEvents.VoteKickEvent(
                 safePlayerName(targetData, target),
                 safePid(targetData),
                 target.uuid(),
@@ -149,8 +149,8 @@ public class VoteKick extends VoteSession {
         );
     }
 
-    private SocketEvents.VoteKickParticipant toParticipant(PlayerData data) {
-        return new SocketEvents.VoteKickParticipant(
+    private TransportEvents.VoteKickParticipant toParticipant(PlayerData data) {
+        return new TransportEvents.VoteKickParticipant(
                 safeNickname(data),
                 safePid(data),
                 safeDiscordId(data)
@@ -207,7 +207,7 @@ public class VoteKick extends VoteSession {
 
         if (network != null) {
             network.post(buildVoteKickEvent("success"));
-            network.post(new SocketEvents.ServerActionEvent(
+            network.post(new TransportEvents.ServerActionEvent(
                     systemLocal.format("votekick-success", bundleArgs), config.server));
         }
         onKick.get(target);

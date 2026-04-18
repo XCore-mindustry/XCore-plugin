@@ -1,10 +1,10 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordLinkService;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class DiscordLinkSocketHandlerTest {
+class DiscordLinkTransportHandlerTest {
 
     @Test
     @DisplayName("discord link confirm event confirms link and notifies online player")
@@ -33,7 +33,7 @@ class DiscordLinkSocketHandlerTest {
         Config config = new Config();
         config.server = "mini-pvp";
 
-        DiscordLinkSocketHandler handler = new DiscordLinkSocketHandler(network, discordLinkService, sessionService, config);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, config);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -51,8 +51,8 @@ class DiscordLinkSocketHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.DiscordLinkConfirmEvent.class)
-                .get(new SocketEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-pvp", 1L));
+        listener(listeners, TransportEvents.DiscordLinkConfirmEvent.class)
+                .get(new TransportEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-pvp", 1L));
 
         verify(localization).send(any(), any());
     }
@@ -66,7 +66,7 @@ class DiscordLinkSocketHandlerTest {
         Config config = new Config();
         config.server = "mini-pvp";
 
-        DiscordLinkSocketHandler handler = new DiscordLinkSocketHandler(network, discordLinkService, sessionService, config);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, config);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -78,8 +78,8 @@ class DiscordLinkSocketHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, SocketEvents.DiscordUnlinkEvent.class)
-                .get(new SocketEvents.DiscordUnlinkEvent("uuid-7", 7, "123", "discord", "mini-other", 1L));
+        listener(listeners, TransportEvents.DiscordUnlinkEvent.class)
+                .get(new TransportEvents.DiscordUnlinkEvent("uuid-7", 7, "123", "discord", "mini-other", 1L));
 
         verify(discordLinkService).unlink("uuid-7");
     }

@@ -1,11 +1,11 @@
-package org.xcore.plugin.event.socket;
+package org.xcore.plugin.event.transport;
 
 import arc.util.Log;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.SocketEvents;
+import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -15,7 +15,7 @@ import org.xcore.plugin.session.SessionService;
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
-public class ChatSocketHandler {
+public class ChatTransportHandler {
 
     private final NetworkService network;
     private final SessionService sessionService;
@@ -23,10 +23,10 @@ public class ChatSocketHandler {
     private final Config config;
 
     @Inject
-    public ChatSocketHandler(NetworkService network,
-                             SessionService sessionService,
-                             PrivateMessageService privateMessageService,
-                             Config config) {
+    public ChatTransportHandler(NetworkService network,
+                                SessionService sessionService,
+                                PrivateMessageService privateMessageService,
+                                Config config) {
         this.network = network;
         this.sessionService = sessionService;
         this.privateMessageService = privateMessageService;
@@ -34,7 +34,7 @@ public class ChatSocketHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(SocketEvents.GlobalChatEvent.class, e -> {
+        network.subscribe(TransportEvents.GlobalChatEvent.class, e -> {
             sessionService.broadcastFiltered("global-chat-format", args(
                     "server", e.server(),
                     "author", e.authorName(),
@@ -43,7 +43,7 @@ public class ChatSocketHandler {
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
-        network.subscribe(SocketEvents.DiscordMessageEvent.class, e -> {
+        network.subscribe(TransportEvents.DiscordMessageEvent.class, e -> {
             if (!config.server.equals(e.server())) {
                 return;
             }
@@ -55,7 +55,7 @@ public class ChatSocketHandler {
             Log.infoTag("DISCORD-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
-        network.subscribe(SocketEvents.PrivateMessageEvent.class, e -> {
+        network.subscribe(TransportEvents.PrivateMessageEvent.class, e -> {
             if (config.server.equals(e.server())) {
                 return;
             }
@@ -65,15 +65,14 @@ public class ChatSocketHandler {
                 return;
             }
 
-            PrivateMessage message = PrivateMessage.builder()
-                    .fromUuid(e.fromUuid())
-                    .fromPid(e.fromPid())
-                    .fromName(e.fromName())
-                    .toUuid(e.toUuid())
-                    .toPid(e.toPid())
-                    .message(e.message())
-                    .deliveredAt(System.currentTimeMillis())
-                    .build();
+            PrivateMessage message = new PrivateMessage();
+            message.fromUuid = e.fromUuid();
+            message.fromPid = e.fromPid();
+            message.fromName = e.fromName();
+            message.toUuid = e.toUuid();
+            message.toPid = e.toPid();
+            message.message = e.message();
+            message.deliveredAt = System.currentTimeMillis();
 
             privateMessageService.deliverIncoming(message, recipientSession);
             recipientSession.lastPrivateTargetPid = e.fromPid();

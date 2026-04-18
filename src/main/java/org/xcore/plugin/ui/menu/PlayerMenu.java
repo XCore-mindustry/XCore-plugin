@@ -573,7 +573,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.customNickname = customNickname,
                 data -> playerDataRepository.updateCustomNickname(data.uuid, customNickname),
-                data -> new org.xcore.plugin.event.SocketEvents.PlayerCustomNicknameChanged(data.uuid, data.customNickname),
+                data -> new org.xcore.plugin.event.TransportEvents.PlayerCustomNicknameChanged(data.uuid, data.customNickname),
                 refreshDisplay,
                 sync);
     }
@@ -660,7 +660,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.activeBadge = badgeId,
                 data -> playerDataRepository.setActiveBadge(data.uuid, badgeId),
-                data -> new org.xcore.plugin.event.SocketEvents.PlayerActiveBadgeChanged(data.uuid, data.activeBadge),
+                data -> new org.xcore.plugin.event.TransportEvents.PlayerActiveBadgeChanged(data.uuid, data.activeBadge),
                 refreshDisplay,
                 sync);
     }
@@ -669,7 +669,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.badgeSymbolColorMode = mode,
                 data -> playerDataRepository.updateBadgeSymbolColorMode(data.uuid, mode),
-                data -> new org.xcore.plugin.event.SocketEvents.PlayerBadgeSymbolColorModeChanged(data.uuid, data.badgeSymbolColorMode),
+                data -> new org.xcore.plugin.event.TransportEvents.PlayerBadgeSymbolColorModeChanged(data.uuid, data.badgeSymbolColorMode),
                 refreshDisplay,
                 sync);
     }
