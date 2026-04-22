@@ -647,6 +647,7 @@ event-menu-edit-content =
     { "" }[white]Is Major?:[green] { $isMajor }[orange] | [white]Is Temporary?:[green] { $isTemporary }[orange]
     { "" }[green]{ $description }[white]
 event-menu-edit-name = Name
+event-menu-edit-name-reset = [scarlet]Reset name
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Edit Event
 event-menu-edit-name-message = Edit name:
 event-menu-edit-description = Description

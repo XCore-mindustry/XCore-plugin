@@ -143,6 +143,10 @@ public class EventMenu extends Menu {
                         session.setTextHandler(t -> { draft.name = t; edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-name-title"), "", 24, draft.name, false);
                     })
+                    .addLocal(session.locale().t("event-menu-edit-name-reset"), () -> {
+                        draft.name = new EventData().name;
+                        edit(uuid);
+                    })
                     .addLocal(session.locale().t("event-menu-edit-description"), () -> {
                         session.setTextHandler(t -> { draft.description = t; edit(uuid); });
                         Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-description-title"), "", 1000, draft.description, false);

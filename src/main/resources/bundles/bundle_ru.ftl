@@ -593,6 +593,7 @@ event-menu-edit-content =
     { "" }[white]Крупное?:[green] { $isMajor }[orange] | [white]Временное?:[green] { $isTemporary }[orange]
     { "" }[green]{ $description }[white]
 event-menu-edit-name = Название
+event-menu-edit-name-reset = [scarlet]Сбросить название
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редактирование события
 event-menu-edit-name-message = Измените название:
 event-menu-edit-description = Описание

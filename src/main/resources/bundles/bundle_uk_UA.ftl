@@ -485,6 +485,7 @@ event-menu-edit-content =
     { "" }[white]Чи масштабна?:[green] { $isMajor }[orange] | [white]Чи тимчасова?:[green] { $isTemporary }[orange]
     { "" }[green]{ $description }[white]
 event-menu-edit-name = Назва
+event-menu-edit-name-reset = [scarlet]Скинути назву
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редагування події
 event-menu-edit-name-message = Редагування назви:
 event-menu-edit-description = Опис
