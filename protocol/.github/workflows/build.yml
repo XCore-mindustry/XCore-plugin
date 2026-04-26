@@ -1,0 +1,83 @@
+name: Build And Snapshot Publish
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      XCORE_USERNAME: ${{ secrets.XCORE_USERNAME }}
+      XCORE_PASSWORD: ${{ secrets.XCORE_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Resolve snapshot version
+        if: github.event_name != 'pull_request'
+        run: |
+          VERSION=$(./gradlew getProjectVersion -q | tail -n 1)
+          echo "XCORE_PUBLISH_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Validate protocol surface and build Java artifact
+        if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
+        run: |
+          uv run python scripts/validate-generation.py
+          uv run python scripts/validate-generated-models.py
+          uv run pytest
+          ./gradlew build
+
+      - name: Validate protocol surface and publish snapshot
+        if: github.event_name != 'pull_request' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
+        run: |
+          uv run python scripts/validate-generation.py
+          uv run python scripts/validate-generated-models.py
+          uv run pytest
+          ./gradlew build publishMavenJavaPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Upload Java artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-libs
+          path: build/libs/
+
+      - name: Upload Python test cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-cache
+          path: .pytest_cache/

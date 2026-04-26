@@ -1,0 +1,67 @@
+name: Publish Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Resolve release version
+        run: |
+          VERSION=$(./gradlew getBaseVersion -q | tail -n 1)
+          echo "XCORE_PUBLISH_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Validate protocol surface and publish release
+        run: |
+          uv run python scripts/validate-generation.py
+          uv run python scripts/validate-generated-models.py
+          uv run pytest
+          ./gradlew build publishMavenJavaPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-libs
+          path: build/libs/
+
+      - name: Upload Python test cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-pytest-cache
+          path: .pytest_cache/
