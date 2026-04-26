@@ -1,0 +1,57 @@
+version: 1
+family: moderation
+messages:
+  - messageType: moderation.ban.created
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:moderation:ban
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: moderation
+  - messageType: moderation.mute.created
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:moderation:mute
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: moderation
+  - messageType: moderation.vote-kick.created
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:moderation:votekick
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: moderation
+  - messageType: moderation.kick-banned.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:kick-banned:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: moderation
+  - messageType: moderation.pardon.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:pardon-player:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: moderation
+  - messageType: moderation.audit.appended
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:moderation:audit
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: moderation

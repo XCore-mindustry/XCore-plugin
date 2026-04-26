@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:moderation:moderation.pardon.command:v1",
+  "title": "ModerationPardonCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "target", "server"],
+  "properties": {
+    "messageType": {
+      "const": "moderation.pardon.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "target": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

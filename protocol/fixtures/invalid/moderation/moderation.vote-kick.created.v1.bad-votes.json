@@ -1,0 +1,14 @@
+{
+  "messageType": "moderation.vote-kick.created",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-target",
+    "playerName": "Target"
+  },
+  "starter": {
+    "actorName": "Starter"
+  },
+  "reason": "afk trolling",
+  "votesFor": "not-a-list",
+  "server": "mini-pvp"
+}

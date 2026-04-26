@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:moderation:moderation.audit.appended:v1",
+  "title": "ModerationAuditAppendedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "entryType", "target", "actor", "reason"],
+  "properties": {
+    "messageType": {
+      "const": "moderation.audit.appended"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "entryType": {
+      "type": "string",
+      "enum": ["ban", "mute", "voteKick", "pardon", "other"]
+    },
+    "target": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  }
+}

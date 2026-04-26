@@ -1,0 +1,12 @@
+{
+  "messageType": "discord.unlink.command",
+  "messageVersion": 1,
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "requestedBy": "plugin/unlink",
+  "server": "mini-pvp",
+  "requestedAt": "2026-04-23T18:05:00Z"
+}

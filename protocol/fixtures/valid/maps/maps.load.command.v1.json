@@ -1,0 +1,15 @@
+{
+  "messageType": "maps.load.command",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "files": [
+    {
+      "url": "https://cdn.example.test/maps/ancient-caldera.msav",
+      "filename": "ancient-caldera.msav"
+    },
+    {
+      "url": "https://cdn.example.test/maps/bridge-fight.MSAV",
+      "filename": "bridge-fight.MSAV"
+    }
+  ]
+}

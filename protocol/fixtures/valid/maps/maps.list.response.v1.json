@@ -1,0 +1,26 @@
+{
+  "messageType": "maps.list.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "maps": [
+    {
+      "name": "Ancient Caldera",
+      "fileName": "ancient-caldera.msav",
+      "author": "Alice",
+      "width": 120,
+      "height": 80,
+      "fileSizeBytes": 2048,
+      "like": 5,
+      "dislike": 2,
+      "reputation": 3,
+      "popularity": 7.5,
+      "interest": 1.5,
+      "gameMode": "pvp"
+    },
+    {
+      "name": "Bridge Fight",
+      "fileName": "bridge-fight.MSAV",
+      "author": "Bob"
+    }
+  ]
+}

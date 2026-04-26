@@ -1,0 +1,7 @@
+{
+  "messageType": "chat.discord-ingress.command",
+  "messageVersion": 1,
+  "authorName": "osp54",
+  "message": "Discord says hi",
+  "server": "mini-pvp"
+}

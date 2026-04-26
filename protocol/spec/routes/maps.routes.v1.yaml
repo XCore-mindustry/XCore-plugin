@@ -1,0 +1,38 @@
+version: 1
+family: maps
+messages:
+  - messageType: maps.list.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: false
+    owner: maps
+    response:
+      messageType: maps.list.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+  - messageType: maps.remove.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: maps
+    response:
+      messageType: maps.remove.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+  - messageType: maps.load.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:maps-load:{server}
+    targetScope: server
+    ttlMs: 300000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: maps

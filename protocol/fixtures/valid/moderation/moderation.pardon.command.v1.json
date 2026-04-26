@@ -1,0 +1,10 @@
+{
+  "messageType": "moderation.pardon.command",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-7",
+    "playerName": "Target"
+  },
+  "server": "mini-pvp",
+  "requestedAt": "2026-04-23T13:20:00Z"
+}

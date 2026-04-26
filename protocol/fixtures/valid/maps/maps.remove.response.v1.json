@@ -1,0 +1,6 @@
+{
+  "messageType": "maps.remove.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "result": "Successfully removed map Ancient Caldera (ancient-caldera.msav)"
+}

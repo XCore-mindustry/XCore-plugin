@@ -1,0 +1,39 @@
+version: 1
+family: discord
+messages:
+  - messageType: discord.link.confirm.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:discord-link-confirm:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: discord-linking
+  - messageType: discord.unlink.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:discord-unlink:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: discord-linking
+  - messageType: discord.link.status-changed
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:discord:link-status
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: discord-linking
+  - messageType: discord.admin-access.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:discord-admin-access:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: discord-admin-access

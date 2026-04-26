@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xcore-protocol"
+version = "0.1.0"
+description = "Canonical cross-service protocol for the XCore ecosystem"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "jsonschema>=4.23.0",
+  "rfc3339-validator>=0.1.4",
+  "referencing>=0.35.0",
+  "PyYAML>=6.0.2"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
+pythonpath = ["python", "."]
+addopts = "-q"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]

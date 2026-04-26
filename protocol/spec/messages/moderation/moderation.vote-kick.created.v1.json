@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:moderation:moderation.vote-kick.created:v1",
+  "title": "ModerationVoteKickCreatedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "target", "starter", "reason"],
+  "properties": {
+    "messageType": {
+      "const": "moderation.vote-kick.created"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "target": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "starter": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "votesFor": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:vote-kick-participant:v1"
+      }
+    },
+    "votesAgainst": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:vote-kick-participant:v1"
+      }
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

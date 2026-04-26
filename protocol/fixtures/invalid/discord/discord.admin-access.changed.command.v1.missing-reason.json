@@ -1,0 +1,18 @@
+{
+  "messageType": "discord.admin-access.changed.command",
+  "messageVersion": 1,
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890",
+    "discordUsername": "tester"
+  },
+  "admin": true,
+  "adminSource": "DISCORD_ROLE",
+  "requestedBy": "discord-role-sync",
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T18:10:00Z"
+}

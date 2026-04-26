@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-entry:v1",
+  "title": "MapEntryV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "fileName", "author"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fileName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fileSizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "like": {
+      "type": "integer"
+    },
+    "dislike": {
+      "type": "integer"
+    },
+    "reputation": {
+      "type": "integer"
+    },
+    "popularity": {
+      "type": "number"
+    },
+    "interest": {
+      "type": "number"
+    },
+    "gameMode": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:player-ref:v1",
+  "title": "PlayerRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["playerUuid", "playerName"],
+  "properties": {
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playerPid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "playerName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ip": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

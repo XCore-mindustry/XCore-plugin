@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:maps:maps.list.response:v1",
+  "title": "MapsListResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "server", "maps"],
+  "properties": {
+    "messageType": {
+      "const": "maps.list.response"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maps": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:map-entry:v1"
+      }
+    }
+  }
+}

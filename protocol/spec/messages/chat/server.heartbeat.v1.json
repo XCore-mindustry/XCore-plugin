@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:server.heartbeat:v1",
+  "title": "ServerHeartbeatV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "serverName",
+    "discordChannelId",
+    "players",
+    "maxPlayers",
+    "version"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "server.heartbeat"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "serverName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discordChannelId": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "players": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "maxPlayers": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host": {
+      "type": "string",
+      "minLength": 1
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

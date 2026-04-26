@@ -1,0 +1,57 @@
+version: 1
+family: chat
+messages:
+  - messageType: chat.message
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:message
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat
+  - messageType: chat.global
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:global
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat
+  - messageType: chat.discord-ingress.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:discord-message:{server}
+    targetScope: server
+    ttlMs: 60000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: chat
+  - messageType: server.action
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:server:action
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: server-runtime
+  - messageType: player.join-leave
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:player:joinleave
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: player-session
+  - messageType: server.heartbeat
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:server:heartbeat
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: server-runtime

@@ -1,0 +1,7 @@
+{
+  "messageType": "chat.message",
+  "messageVersion": 1,
+  "authorName": "PlayerOne",
+  "message": "Hello there",
+  "server": "mini-pvp"
+}

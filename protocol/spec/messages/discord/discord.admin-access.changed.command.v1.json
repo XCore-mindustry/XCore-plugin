@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:discord:discord.admin-access.changed.command:v1",
+  "title": "DiscordAdminAccessChangedCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "player",
+    "discord",
+    "admin",
+    "adminSource",
+    "requestedBy",
+    "reason",
+    "server",
+    "occurredAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "discord.admin-access.changed.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "discord": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "admin": {
+      "type": "boolean"
+    },
+    "adminSource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

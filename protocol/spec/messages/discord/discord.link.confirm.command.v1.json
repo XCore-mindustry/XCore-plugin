@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:discord:discord.link.confirm.command:v1",
+  "title": "DiscordLinkConfirmCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "code", "player", "discord", "server", "confirmedAt"],
+  "properties": {
+    "messageType": {
+      "const": "discord.link.confirm.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "discord": {
+      "$ref": "urn:xcore:protocol:shared:types:discord-identity-ref:v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confirmedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

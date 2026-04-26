@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:map-file-source:v1",
+  "title": "MapFileSourceV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "filename"],
+  "properties": {
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "filename": {
+      "type": "string",
+      "pattern": "^[^/\\\\]+\\.[mM][sS][aA][vV]$"
+    }
+  }
+}

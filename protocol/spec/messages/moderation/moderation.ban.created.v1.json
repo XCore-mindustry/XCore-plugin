@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:moderation:moderation.ban.created:v1",
+  "title": "ModerationBanCreatedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "target", "actor", "reason"],
+  "properties": {
+    "messageType": {
+      "const": "moderation.ban.created"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "target": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expiration": {
+      "$ref": "urn:xcore:protocol:shared:types:expiration-info:v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

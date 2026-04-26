@@ -1,0 +1,16 @@
+{
+  "messageType": "discord.link.status-changed",
+  "messageVersion": 1,
+  "player": {
+    "playerUuid": "uuid-1",
+    "playerPid": 10,
+    "playerName": "LinkedPlayer"
+  },
+  "discord": {
+    "discordId": "1234567890",
+    "discordUsername": "tester"
+  },
+  "action": "linked",
+  "server": "mini-pvp",
+  "occurredAt": "2026-04-23T18:00:00Z"
+}

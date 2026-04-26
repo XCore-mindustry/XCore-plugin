@@ -1,0 +1,20 @@
+{
+  "messageType": "moderation.mute.created",
+  "messageVersion": 1,
+  "target": {
+    "playerUuid": "uuid-8",
+    "playerPid": 8,
+    "playerName": "MutedPlayer"
+  },
+  "actor": {
+    "actorName": "mod",
+    "actorType": "player"
+  },
+  "reason": "spam",
+  "expiration": {
+    "expiresAt": 1713870000000,
+    "permanent": false
+  },
+  "server": "survival",
+  "occurredAt": "2026-04-23T12:30:00Z"
+}

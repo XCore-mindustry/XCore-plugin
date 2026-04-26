@@ -1,0 +1,12 @@
+{
+  "messageType": "maps.list.response",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "maps": [
+    {
+      "name": "Ancient Caldera",
+      "file_name": "ancient-caldera.msav",
+      "author": "Alice"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:server-ref:v1",
+  "title": "ServerRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["server"],
+  "properties": {
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
