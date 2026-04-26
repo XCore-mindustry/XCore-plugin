@@ -28,6 +28,12 @@ java {
     }
 }
 
+sourceSets {
+    main {
+        java.srcDir("../xcore-protocol/java/core/src/main/java")
+    }
+}
+
 toxopid {
     compileVersion.set("v$mindustryVersion")
     runtimeVersion.set("v$mindustryVersion")

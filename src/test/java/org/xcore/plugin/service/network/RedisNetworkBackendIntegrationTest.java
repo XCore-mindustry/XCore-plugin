@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import com.google.gson.Gson;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import io.lettuce.core.RedisClient;
@@ -180,8 +181,34 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.ban");
-            assertThat(last.get("payload_json")).contains("expireDate");
+            assertThat(payload)
+                    .containsEntry("messageType", "moderation.ban.created")
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("reason", "rule")
+                    .containsEntry("server", "alpha")
+                    .containsKey("occurredAt")
+                    .containsKeys("target", "actor", "expiration")
+                    .doesNotContainKeys("uuid", "name", "adminName", "expireDate");
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> target = (Map<String, Object>) payload.get("target");
+            assertThat(target)
+                    .containsEntry("playerUuid", "u-1")
+                    .containsEntry("playerName", "player")
+                    .containsEntry("ip", "1.2.3.4");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> actor = (Map<String, Object>) payload.get("actor");
+            assertThat(actor)
+                    .containsEntry("actorName", "admin")
+                    .containsEntry("actorType", "unknown");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> expiration = (Map<String, Object>) payload.get("expiration");
+            assertThat(expiration)
+                    .containsEntry("permanent", false)
+                    .containsKey("expiresAt");
         }
     }
 

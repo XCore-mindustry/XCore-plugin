@@ -18,6 +18,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.event.TransportEvents.Request;
 import org.xcore.plugin.event.TransportEvents.Response;
+import org.xcore.plugin.model.BanData;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -147,7 +148,7 @@ public final class RedisNetworkBackend {
         try {
             var route = router.route(event, config.server);
             long now = System.currentTimeMillis();
-            String payloadJson = gson.toJson(event);
+            String payloadJson = payloadJson(event, now);
             RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
             publishedEvents.incrementAndGet();
@@ -302,6 +303,17 @@ public final class RedisNetworkBackend {
 
     public boolean supportsRespond(Request<?> request) {
         return rpcTracker.contains(request);
+    }
+
+    private String payloadJson(Object event, long now) {
+        if (event instanceof BanData banData) {
+            return gson.toJson(ModerationProtocolMapper.toBanCreated(
+                    banData,
+                    config.server,
+                    Instant.ofEpochMilli(now)
+            ));
+        }
+        return gson.toJson(event);
     }
 
     private boolean ensureConnected() {
