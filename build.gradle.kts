@@ -28,12 +28,6 @@ java {
     }
 }
 
-sourceSets {
-    main {
-        java.srcDir("../xcore-protocol/java/core/src/main/java")
-    }
-}
-
 toxopid {
     compileVersion.set("v$mindustryVersion")
     runtimeVersion.set("v$mindustryVersion")
@@ -68,6 +62,7 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.arcCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
+    implementation(libs.xcore.protocol.java)
     implementation(libs.flubundle)
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)

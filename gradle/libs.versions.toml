@@ -1,5 +1,6 @@
 [versions]
 mindustry = "157"
+xcore-protocol = "0.1.0-SNAPSHOT"
 
 # Plugins
 toxopid = "4.1.2"
@@ -27,6 +28,7 @@ shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 
 [libraries]
 cloud-mindustry = { module = "org.xcore:cloud-mindustry", version.ref = "cloud-mindustry" }
+xcore-protocol-java = { module = "org.xcore:xcore-protocol-java", version.ref = "xcore-protocol" }
 mongodb-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
