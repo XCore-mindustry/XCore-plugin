@@ -1,5 +1,7 @@
 # Java Modules
 
-This area contains generated Java protocol DTO/model artifacts plus thin handwritten validation, serialization, and testkit support around the generated surface.
+This area contains generated Java protocol DTO/model artifacts for the canonical protocol surface.
 
-Application repositories should depend on these generated artifacts instead of maintaining separate hand-written wire DTOs.
+Current scope includes generated records, metadata constants, route descriptors, and envelope models under `java/core/src/main/java/org/xcore/protocol/generated/`.
+
+Serializer-specific runtime wiring is intentionally out of scope here. Application repositories should depend on these generated artifacts and keep consumer-specific JSON integration, adapters, and runtime helpers on their own side.

@@ -13,7 +13,7 @@ It defines:
 - canonical fixtures
 - generation inputs and tooling
 - generated Java and Python protocol DTO/model artifacts
-- thin handwritten validation/runtime support around generated artifacts
+- thin handwritten validation and repository-tooling support around generated artifacts
 - cross-language compatibility tests
 
 ## Scope
@@ -39,10 +39,10 @@ This repository contains only **cross-process / cross-service wire protocol arti
 - `spec/` — protocol specs, shared types, envelopes, routes, generation inputs
 - `fixtures/` — valid, invalid, and legacy examples
 - `generators/` — language generation config/templates/scripts
-- `java/` — generated Java protocol support modules and thin helpers
+- `java/` — generated Java protocol artifacts for the canonical model surface
 - `python/` — generated Python protocol package and thin helpers
 - `compat/` — cross-language compatibility checks
-- `scripts/` — validation/generation/release helper placeholders
+- `scripts/` — validation and generation helper scripts
 
 ## Planned First Slice
 The first migration slice is the **moderation** family:
@@ -54,7 +54,7 @@ The first migration slice is the **moderation** family:
 - moderation audit appended
 
 ## Current Status
-Canonical message families are defined, and generated Java/Python protocol artifacts now cover the current maps, chat/heartbeat, discord, and moderation surface. Current hardening work is focused on keeping those generated canonical artifacts and compatibility checks aligned without implying full family or consumer-integration coverage, while envelope generation remains the next major protocol-only gap.
+Canonical message families are defined, and generated Java/Python protocol artifacts now cover the current maps, chat/heartbeat, discord, moderation, and canonical envelope surface. Current hardening work is focused on keeping those generated canonical artifacts and compatibility checks aligned without implying full family or consumer-integration coverage. Java consumer runtime wiring remains intentionally out of scope for this repository and should live in application repositories.
 
 ## See Also
 - `docs/adr/ADR-001-protocol-first.md`
