@@ -56,6 +56,20 @@ INVALID_CASES = [
         / "moderation"
         / "moderation.vote-kick.created.v1.bad-votes.json",
     ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.kick-banned.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "moderation"
+        / "moderation.kick-banned.command.v1.missing-target-uuid.json",
+    ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "moderation"
+        / "moderation.pardon.command.v1.missing-target-uuid.json",
+    ),
 ]
 
 

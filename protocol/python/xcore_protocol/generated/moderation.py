@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 from .shared import (
     ActorRefV1,
     ExpirationInfoV1,
+    PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
 )
@@ -228,14 +229,14 @@ class ModerationBanCreatedV1:
 
 @dataclass(frozen=True, slots=True)
 class ModerationKickBannedCommandV1:
-    target: PlayerRefV1
+    target: PlayerCommandTargetV1
     server: str
     requestedAt: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'moderation.kick-banned.command'
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
-        _expect_instance(self.target, 'target', PlayerRefV1)
+        _expect_instance(self.target, 'target', PlayerCommandTargetV1)
         _expect_str(self.server, 'server')
         if self.requestedAt is not None:
             _expect_str(self.requestedAt, 'requestedAt')
@@ -254,7 +255,7 @@ class ModerationKickBannedCommandV1:
         if mapping['messageVersion'] != cls.MESSAGE_VERSION:
             raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
         return cls(
-            target=PlayerRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
+            target=PlayerCommandTargetV1.from_payload(_expect_mapping(mapping['target'], 'target')),
             server=_expect_str(mapping['server'], 'server'),
             requestedAt=(_expect_str(mapping['requestedAt'], 'requestedAt') if 'requestedAt' in mapping else None),
         )
@@ -332,14 +333,14 @@ class ModerationMuteCreatedV1:
 
 @dataclass(frozen=True, slots=True)
 class ModerationPardonCommandV1:
-    target: PlayerRefV1
+    target: PlayerCommandTargetV1
     server: str
     requestedAt: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'moderation.pardon.command'
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
-        _expect_instance(self.target, 'target', PlayerRefV1)
+        _expect_instance(self.target, 'target', PlayerCommandTargetV1)
         _expect_str(self.server, 'server')
         if self.requestedAt is not None:
             _expect_str(self.requestedAt, 'requestedAt')
@@ -358,7 +359,7 @@ class ModerationPardonCommandV1:
         if mapping['messageVersion'] != cls.MESSAGE_VERSION:
             raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
         return cls(
-            target=PlayerRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
+            target=PlayerCommandTargetV1.from_payload(_expect_mapping(mapping['target'], 'target')),
             server=_expect_str(mapping['server'], 'server'),
             requestedAt=(_expect_str(mapping['requestedAt'], 'requestedAt') if 'requestedAt' in mapping else None),
         )

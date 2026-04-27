@@ -313,6 +313,49 @@ class MapFileSourceV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class PlayerCommandTargetV1:
+    playerUuid: str
+    playerPid: int | None = None
+    playerName: str | None = None
+    ip: str | None = None
+
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        if self.playerPid is not None:
+            _expect_int(self.playerPid, 'playerPid')
+        if self.playerName is not None:
+            _expect_str(self.playerName, 'playerName')
+        if self.ip is not None:
+            _expect_str(self.ip, 'ip')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerCommandTargetV1":
+        mapping = _expect_mapping(payload, "PlayerCommandTargetV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('playerUuid',)),
+            allowed=frozenset(('playerUuid', 'playerPid', 'playerName', 'ip')),
+            model_name="PlayerCommandTargetV1",
+        )
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            playerPid=(_expect_int(mapping['playerPid'], 'playerPid') if 'playerPid' in mapping else None),
+            playerName=(_expect_str(mapping['playerName'], 'playerName') if 'playerName' in mapping else None),
+            ip=(_expect_str(mapping['ip'], 'ip') if 'ip' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['playerUuid'] = self.playerUuid
+        if self.playerPid is not None:
+            payload['playerPid'] = self.playerPid
+        if self.playerName is not None:
+            payload['playerName'] = self.playerName
+        if self.ip is not None:
+            payload['ip'] = self.ip
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class PlayerRefV1:
     playerUuid: str
     playerName: str
@@ -396,6 +439,7 @@ __all__ = [
     "ExpirationInfoV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
 ]

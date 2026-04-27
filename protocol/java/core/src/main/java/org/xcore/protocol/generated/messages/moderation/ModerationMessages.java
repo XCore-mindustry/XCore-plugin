@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.ExpirationInfoV1;
+import org.xcore.protocol.generated.shared.PlayerCommandTargetV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 
@@ -92,7 +93,7 @@ public final class ModerationMessages {
     }
 
     public record ModerationKickBannedCommandV1(
-            PlayerRefV1 target,
+            PlayerCommandTargetV1 target,
             String server,
             String requestedAt
     ) {
@@ -145,7 +146,7 @@ public final class ModerationMessages {
     }
 
     public record ModerationPardonCommandV1(
-            PlayerRefV1 target,
+            PlayerCommandTargetV1 target,
             String server,
             String requestedAt
     ) {

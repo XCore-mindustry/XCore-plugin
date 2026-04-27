@@ -3,7 +3,6 @@
   "messageVersion": 1,
   "target": {
     "playerUuid": "uuid-7",
-    "playerName": "Target",
     "ip": "1.2.3.4"
   },
   "server": "mini-pvp",

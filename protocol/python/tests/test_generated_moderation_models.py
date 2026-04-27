@@ -70,6 +70,8 @@ def test_generated_moderation_kick_banned_roundtrip_matches_fixture() -> None:
         spec_root() / "messages" / "moderation" / "moderation.kick-banned.command.v1.json",
         model.to_payload(),
     )
+    assert model.target.playerUuid == payload["target"]["playerUuid"]
+    assert model.target.playerName is None
 
 
 def test_generated_moderation_pardon_roundtrip_matches_fixture() -> None:
@@ -82,6 +84,8 @@ def test_generated_moderation_pardon_roundtrip_matches_fixture() -> None:
         spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
         model.to_payload(),
     )
+    assert model.target.playerUuid == payload["target"]["playerUuid"]
+    assert model.target.playerName is None
 
 
 def test_generated_moderation_audit_roundtrip_matches_fixture() -> None:

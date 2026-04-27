@@ -93,8 +93,8 @@ Current plugin publish path effectively emits a `BanData`-shaped payload with fi
 | `reason` | `reason` | required |
 | `expireDate` / `expire_date` | `expiration.expiresAt` | convert to ISO-8601 UTC if needed |
 | permanence implied by null expire | `expiration.permanent` | mapper derives true/false |
-| current publish context server | `server` | optional but recommended |
-| publish time / audit time | `occurredAt` | required when available |
+| current publish context server | `server` | optional in schema, expected in producer policy |
+| publish time / audit time | `occurredAt` | optional in schema, expected in producer policy |
 
 ### Mapper notes
 - If current payload has no explicit `occurredAt`, derive it at publication time or from the surrounding audit record when available.
@@ -133,8 +133,8 @@ Current plugin emits `MuteData`-shaped payloads similar to ban, without IP.
 | `reason` | `reason` | required |
 | `expireDate` / `expire_date` | `expiration.expiresAt` | optional |
 | null expiry | `expiration.permanent` | derived |
-| current publish context server | `server` | optional but recommended |
-| publish time / audit time | `occurredAt` | recommended |
+| current publish context server | `server` | optional in schema, expected in producer policy |
+| publish time / audit time | `occurredAt` | optional in schema, expected in producer policy |
 
 ---
 
@@ -168,7 +168,7 @@ Bot accepts a wider alias surface:
 
 | Current field | Canonical field | Notes |
 |---|---|---|
-| `targetUuid` | `target.playerUuid` | optional in current, preferred in canonical |
+| `targetUuid` | `target.playerUuid` | required in canonical; enrich before publish |
 | `targetPid` | `target.playerPid` | optional |
 | `targetName` | `target.playerName` | required |
 | `starterName` | `starter.actorName` | required |
@@ -179,13 +179,13 @@ Bot accepts a wider alias surface:
 | `votesFor[].pid` | `votesFor[].pid` | optional |
 | `votesFor[].discordId` | `votesFor[].discordId` | optional |
 | `votesAgainst[]...` | `votesAgainst[]...` | same structure |
-| `server` | `server` | optional but recommended |
-| `occurredAt` epoch millis | `occurredAt` ISO-8601 UTC | convert in mapper |
+| `server` | `server` | optional in schema, expected in producer policy |
+| `occurredAt` epoch millis | `occurredAt` ISO-8601 UTC | convert in mapper; expected in producer policy |
 | `status` | dropped from v1 | omit unless a later dedicated contract needs it |
 
 ### Mapper notes
 - Current `status` is intentionally not part of the v1 canonical vote-kick event to keep the first version focused on the core moderation fact.
-- If `targetUuid` is unavailable, the mapper may omit `target.playerUuid` temporarily, but producers should prefer filling it where possible.
+- Canonical v1 publishers should enrich vote-kick payloads so `target.playerUuid` is always present before publication.
 
 ---
 
@@ -217,8 +217,8 @@ Current bot publishes:
 | publication time | `requestedAt` | canonical payload business timestamp |
 
 ### Mapper notes
-- `target.playerName` is required by current shared `PlayerRefV1`; when unavailable, this should be revisited in schema evolution or supplied from lookup context.
-- If that requirement proves too strict for command-only messages, split command target types in a later refinement.
+- `moderation.kick-banned.command.v1` uses `PlayerCommandTargetV1`, which requires `playerUuid` and keeps `playerName`, `playerPid`, and `ip` optional for command-only flows.
+- Publishers should include `playerName` when it is already available, but canonical command validity no longer depends on a lookup-only name.
 
 ---
 
@@ -245,7 +245,7 @@ Current bot publishes:
 | publication time | `requestedAt` | recommended |
 
 ### Mapper notes
-- Same note as `kick-banned`: the current shared `PlayerRefV1` requires `playerName`, which may be too strict for command payloads based only on UUID. This is the main schema tension visible in the first slice.
+- `moderation.pardon.command.v1` uses `PlayerCommandTargetV1`, which keeps UUID-first identity strict while allowing command producers to omit `playerName` when they only have UUID context.
 
 ---
 
@@ -283,8 +283,8 @@ Current bot publishes:
 | `actorId` | `actor.actorDiscordId` or future actor id field | for v1, map Discord-capable ids into `actorDiscordId` where meaningful |
 | `actorType` | `actor.actorType` | direct semantic mapping |
 | `reason` | `reason` | required |
-| `server` | `server` | recommended |
-| `occurredAt` | `occurredAt` | convert `Instant` to ISO-8601 UTC |
+| `server` | `server` | optional in schema, expected in producer policy |
+| `occurredAt` | `occurredAt` | convert `Instant` to ISO-8601 UTC; expected in producer policy |
 | `durationMs` | `details.durationMs` | keep inside `details` |
 | `expiresAt` | `details.expiresAt` | keep inside `details` in v1 |
 | `relatedAuditId` | `details.relatedAuditId` | keep inside `details` |

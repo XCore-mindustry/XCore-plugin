@@ -13,7 +13,7 @@
       "const": 1
     },
     "target": {
-      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+      "$ref": "urn:xcore:protocol:shared:types:player-command-target:v1"
     },
     "server": {
       "type": "string",

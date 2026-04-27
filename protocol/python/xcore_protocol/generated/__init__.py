@@ -70,6 +70,7 @@ from .shared import (
     ExpirationInfoV1,
     MapEntryV1,
     MapFileSourceV1,
+    PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
 )
@@ -80,6 +81,7 @@ __all__ = [
     "ExpirationInfoV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
     "EnvelopeBaseV1",

@@ -149,6 +149,7 @@ def test_generation_plan_supports_moderation_family_with_shared_refs() -> None:
     assert [schema.title for schema in plan.shared_schemas] == [
         "ActorRefV1",
         "ExpirationInfoV1",
+        "PlayerCommandTargetV1",
         "PlayerRefV1",
         "VoteKickParticipantV1",
     ]
