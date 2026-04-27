@@ -19,6 +19,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.ModerationProtocolMapper;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 
 import java.util.ArrayList;
@@ -114,7 +115,7 @@ public class VoteKick extends VoteSession {
         }
     }
 
-    private TransportEvents.ModerationVoteKickCreatedEvent buildVoteKickEvent() {
+    private ModerationVoteKickCreatedV1 buildVoteKickEvent() {
         var targetData = sessionService.getOrLoadFromDb(target.uuid());
         var starterData = sessionService.getOrLoadFromDb(starter.uuid());
 
@@ -136,7 +137,7 @@ public class VoteKick extends VoteSession {
             }
         });
 
-        return ModerationProtocolMapper.toVoteKickCreatedEvent(
+        return ModerationProtocolMapper.toVoteKickCreated(
                 target.uuid(),
                 safePid(targetData),
                 safePlayerName(targetData, target),

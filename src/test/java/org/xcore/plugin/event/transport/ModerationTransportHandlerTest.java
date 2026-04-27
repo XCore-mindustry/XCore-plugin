@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.DiscordAdminAccessService;
-import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
@@ -48,14 +47,13 @@ class ModerationTransportHandlerTest {
     void discordAdminAccessEvent_appliesPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
-        FindService find = mock(FindService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, find, config, playerDisplayService, discordAdminAccessService);
+        ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -78,14 +76,13 @@ class ModerationTransportHandlerTest {
     void discordAdminRevokeEvent_clearsPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
-        FindService find = mock(FindService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
 
-        ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, find, config, playerDisplayService, discordAdminAccessService);
+        ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);

@@ -6,7 +6,6 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
@@ -24,6 +23,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.ModerationProtocolMapper;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -126,7 +126,7 @@ public class ModerationService {
         postAuditEvent(audit);
 
         if (kickOnline) {
-            network.post(ModerationProtocolMapper.toKickBannedCommandEvent(
+            network.post(ModerationProtocolMapper.toKickBannedCommand(
                     target.uuid,
                     target.pid,
                     target.nickname,
@@ -166,7 +166,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommandEvent(target.uuid, target.pid, target.nickname, audit));
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -211,7 +211,7 @@ public class ModerationService {
                 null
         );
 
-        network.post(ModerationProtocolMapper.toMuteCreatedEvent(mute, config.server, eventOccurredAt(audit)));
+        network.post(ModerationProtocolMapper.toMuteCreated(mute, config.server, eventOccurredAt(audit)));
         postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
@@ -244,7 +244,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommandEvent(target.uuid, target.pid, target.nickname, audit));
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
@@ -293,7 +293,7 @@ public class ModerationService {
 
         postBanEvents(ban, audit);
         postAuditEvent(audit);
-        network.post(ModerationProtocolMapper.toKickBannedCommandEvent(
+        network.post(ModerationProtocolMapper.toKickBannedCommand(
                 uuid,
                 null,
                 ban.name,
@@ -332,7 +332,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommandEvent(uuid, null, UNKNOWN_PLAYER_NAME, audit));
+        network.post(toPardonCommand(uuid, null, UNKNOWN_PLAYER_NAME, audit));
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
@@ -395,16 +395,16 @@ public class ModerationService {
 
     private void postAuditEvent(AuditRecord audit) {
         if (audit != null) {
-            network.post(ModerationProtocolMapper.toAuditAppendedEvent(audit, config.server));
+            network.post(ModerationProtocolMapper.toAuditAppended(audit, config.server));
         }
     }
 
     private void postBanEvents(BanData ban, AuditRecord audit) {
-        network.post(ModerationProtocolMapper.toBanCreatedEvent(ban, config.server, eventOccurredAt(audit)));
+        network.post(ModerationProtocolMapper.toBanCreated(ban, config.server, eventOccurredAt(audit)));
     }
 
-    private TransportEvents.ModerationPardonCommandEvent toPardonCommandEvent(String uuid, Integer pid, String playerName, AuditRecord audit) {
-        return ModerationProtocolMapper.toPardonCommandEvent(
+    private ModerationPardonCommandV1 toPardonCommand(String uuid, Integer pid, String playerName, AuditRecord audit) {
+        return ModerationProtocolMapper.toPardonCommand(
                 uuid,
                 pid,
                 playerName,

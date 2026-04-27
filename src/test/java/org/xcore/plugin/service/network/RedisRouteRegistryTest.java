@@ -2,6 +2,12 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.plugin.event.TransportEvents;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,12 +59,12 @@ class RedisRouteRegistryTest {
     @DisplayName("read-only and mutating classification comes from registry descriptors")
     void classificationComesFromRegistry() {
         assertThat(registry.isReadOnlyType(TransportEvents.GlobalChatEvent.class)).isTrue();
-        assertThat(registry.isReadOnlyType(TransportEvents.ModerationBanCreatedEvent.class)).isTrue();
-        assertThat(registry.isReadOnlyType(TransportEvents.ModerationMuteCreatedEvent.class)).isTrue();
-        assertThat(registry.isReadOnlyType(TransportEvents.ModerationVoteKickCreatedEvent.class)).isTrue();
-        assertThat(registry.isReadOnlyType(TransportEvents.ModerationAuditAppendedProtocolEvent.class)).isTrue();
-        assertThat(registry.isMutatingType(TransportEvents.ModerationKickBannedCommandEvent.class)).isTrue();
-        assertThat(registry.isMutatingType(TransportEvents.ModerationPardonCommandEvent.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ModerationAuditAppendedV1.class)).isTrue();
+        assertThat(registry.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
+        assertThat(registry.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(TransportEvents.ExecuteCommand.class)).isTrue();
         assertThat(registry.isMutatingType(TransportEvents.GlobalChatEvent.class)).isFalse();
     }

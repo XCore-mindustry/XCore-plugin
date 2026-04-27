@@ -12,10 +12,11 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordAdminAccessService;
-import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
 import java.util.HashSet;
 import java.util.function.Consumer;
@@ -28,7 +29,6 @@ public class ModerationTransportHandler {
 
     private final NetworkService network;
     private final SessionService sessionService;
-    private final FindService find;
     private final Config config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
@@ -36,22 +36,20 @@ public class ModerationTransportHandler {
     @Inject
     public ModerationTransportHandler(NetworkService network,
                                       SessionService sessionService,
-                                      FindService find,
                                       Config config,
                                       PlayerDisplayService playerDisplayService,
                                       DiscordAdminAccessService discordAdminAccessService) {
         this.network = network;
         this.sessionService = sessionService;
-        this.find = find;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
     }
 
     public void registerListeners() {
-        network.subscribe(TransportEvents.ModerationKickBannedCommandEvent.class, e -> Groups.player.each(
+        network.subscribe(ModerationKickBannedCommandV1.class, e -> Groups.player.each(
                 p -> {
-                    var target = e.payload().target();
+                    var target = e.target();
                     return p.uuid().equals(target.playerUuid())
                             || (target.ip() != null && target.ip().equals(p.ip()));
                 },
@@ -71,8 +69,8 @@ public class ModerationTransportHandler {
             }
         });
 
-        network.subscribe(TransportEvents.ModerationPardonCommandEvent.class, e -> {
-            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.payload().target().playerUuid());
+        network.subscribe(ModerationPardonCommandV1.class, e -> {
+            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.target().playerUuid());
 
             if (info != null) {
                 info.lastKicked = 0;

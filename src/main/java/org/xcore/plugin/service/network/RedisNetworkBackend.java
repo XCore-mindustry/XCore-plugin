@@ -147,7 +147,7 @@ public final class RedisNetworkBackend {
         try {
             var route = router.route(event, config.server);
             long now = System.currentTimeMillis();
-            String payloadJson = payloadJson(event, now);
+            String payloadJson = payloadJson(event);
             RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
             publishedEvents.incrementAndGet();
@@ -301,25 +301,7 @@ public final class RedisNetworkBackend {
         return rpcTracker.contains(request);
     }
 
-    private String payloadJson(Object event, long now) {
-        if (event instanceof TransportEvents.ModerationBanCreatedEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
-        if (event instanceof TransportEvents.ModerationMuteCreatedEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
-        if (event instanceof TransportEvents.ModerationVoteKickCreatedEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
-        if (event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
-        if (event instanceof TransportEvents.ModerationKickBannedCommandEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
-        if (event instanceof TransportEvents.ModerationPardonCommandEvent canonicalEvent) {
-            return gson.toJson(canonicalEvent.payload());
-        }
+    private String payloadJson(Object event) {
         return gson.toJson(event);
     }
 
@@ -526,30 +508,6 @@ public final class RedisNetworkBackend {
 
     @SuppressWarnings("unchecked")
     private <T> T decodeEvent(String payloadJson, Class<T> type) {
-        if (type == TransportEvents.ModerationBanCreatedEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1.class);
-            return (T) new TransportEvents.ModerationBanCreatedEvent(payload);
-        }
-        if (type == TransportEvents.ModerationMuteCreatedEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1.class);
-            return (T) new TransportEvents.ModerationMuteCreatedEvent(payload);
-        }
-        if (type == TransportEvents.ModerationVoteKickCreatedEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1.class);
-            return (T) new TransportEvents.ModerationVoteKickCreatedEvent(payload);
-        }
-        if (type == TransportEvents.ModerationAuditAppendedProtocolEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1.class);
-            return (T) new TransportEvents.ModerationAuditAppendedProtocolEvent(payload);
-        }
-        if (type == TransportEvents.ModerationKickBannedCommandEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1.class);
-            return (T) new TransportEvents.ModerationKickBannedCommandEvent(payload);
-        }
-        if (type == TransportEvents.ModerationPardonCommandEvent.class) {
-            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1.class);
-            return (T) new TransportEvents.ModerationPardonCommandEvent(payload);
-        }
         return gson.fromJson(payloadJson, type);
     }
 

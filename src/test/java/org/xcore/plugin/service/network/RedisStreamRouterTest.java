@@ -2,6 +2,12 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
@@ -28,7 +34,7 @@ class RedisStreamRouterTest {
         var messageRoute = router.route(new TransportEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
         var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
         var banRoute = router.route(
-                org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreatedEvent(
+                org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
                         banData,
                         "mini-pvp",
                         Instant.parse("2026-04-26T00:00:00Z")
@@ -36,7 +42,7 @@ class RedisStreamRouterTest {
                 "mini-pvp"
         );
         var muteRoute = router.route(
-                org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreatedEvent(
+                org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreated(
                         muteData,
                         "mini-pvp",
                         Instant.parse("2026-04-26T00:00:01Z")
@@ -44,7 +50,7 @@ class RedisStreamRouterTest {
                 "mini-pvp"
         );
         var voteKickRoute = router.route(
-                org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreatedEvent(
+                org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreated(
                         "uuid-target",
                         42,
                         "target",
@@ -60,16 +66,14 @@ class RedisStreamRouterTest {
                 "mini-pvp"
         );
         var auditRoute = router.route(
-                new TransportEvents.ModerationAuditAppendedProtocolEvent(
-                        new ModerationMessages.ModerationAuditAppendedV1(
-                                "ban",
-                                new PlayerRefV1("uuid-target", 42, "target", null),
-                                new ActorRefV1("Admin", "admin-1", "discord"),
-                                "reason",
-                                "mini-pvp",
-                                Instant.parse("2026-04-26T00:00:03Z").toString(),
-                                java.util.Map.of("durationMs", 60000L)
-                        )
+                new ModerationAuditAppendedV1(
+                        "ban",
+                        new PlayerRefV1("uuid-target", 42, "target", null),
+                        new ActorRefV1("Admin", "admin-1", "discord"),
+                        "reason",
+                        "mini-pvp",
+                        Instant.parse("2026-04-26T00:00:03Z").toString(),
+                        java.util.Map.of("durationMs", 60000L)
                 ),
                 "mini-pvp"
         );
@@ -151,22 +155,22 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(TransportEvents.DiscordAdminAccessChanged.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-admin-access:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationBanCreatedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationBanCreatedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:ban");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationMuteCreatedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationMuteCreatedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:mute");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationVoteKickCreatedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationVoteKickCreatedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:votekick");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationAuditAppendedProtocolEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationAuditAppendedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:audit");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationKickBannedCommandEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationKickBannedCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:kick-banned:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.ModerationPardonCommandEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ModerationPardonCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:pardon-player:mini-pvp");
     }
 
@@ -174,13 +178,13 @@ class RedisStreamRouterTest {
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
         assertThat(router.isReadOnlyType(TransportEvents.DiscordLinkStatusChangedEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(TransportEvents.ModerationBanCreatedEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(TransportEvents.ModerationMuteCreatedEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(TransportEvents.ModerationVoteKickCreatedEvent.class)).isTrue();
-        assertThat(router.isReadOnlyType(TransportEvents.ModerationAuditAppendedProtocolEvent.class)).isTrue();
+        assertThat(router.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ModerationAuditAppendedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(TransportEvents.DiscordAdminAccessChanged.class)).isFalse();
-        assertThat(router.isMutatingType(TransportEvents.ModerationKickBannedCommandEvent.class)).isTrue();
-        assertThat(router.isMutatingType(TransportEvents.ModerationPardonCommandEvent.class)).isTrue();
+        assertThat(router.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
 
         assertThat(router.isMutatingType(TransportEvents.PlayerPasswordReset.class)).isTrue();
         assertThat(router.isMutatingType(TransportEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();

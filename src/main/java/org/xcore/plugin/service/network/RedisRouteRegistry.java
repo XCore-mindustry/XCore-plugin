@@ -1,8 +1,12 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
-import org.xcore.plugin.model.BanData;
-import org.xcore.plugin.model.MuteData;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,7 +15,16 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class RedisRouteRegistry {
+    private static final RedisServerResolver MODERATION_SERVER_RESOLVER = (payload, defaultServer) -> {
+        String server = moderationServer(payload);
+        return server == null || server.isBlank() ? defaultServer : server;
+    };
+
     private static final RedisServerResolver PAYLOAD_SERVER_RESOLVER = (payload, defaultServer) -> {
+        String moderationServer = moderationServer(payload);
+        if (moderationServer != null && !moderationServer.isBlank()) {
+            return moderationServer;
+        }
         if (payload instanceof TransportEvents.ServerScopedEvent serverScopedEvent) {
             String server = serverScopedEvent.server();
             if (server != null && !server.isBlank()) {
@@ -110,11 +123,11 @@ public final class RedisRouteRegistry {
         register(readOnly(TransportEvents.GlobalChatEvent.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, PAYLOAD_SERVER_RESOLVER));
         register(readOnly(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ModerationBanCreatedEvent.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ModerationMuteCreatedEvent.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ModerationVoteKickCreatedEvent.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ModerationAuditAppendedProtocolEvent.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.ModerationKickBannedCommandEvent.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, RedisServerResolver.defaultServer()));
+        register(readOnly(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ModerationAuditAppendedV1.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, RedisServerResolver.broadcast()));
+        register(mutating(ModerationKickBannedCommandV1.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, MODERATION_SERVER_RESOLVER));
         register(mutating(TransportEvents.PlayerCustomNicknameChanged.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom_nickname", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerActiveBadgeChanged.class, "xcore:cmd:player-active-badge:{server}", "player.active_badge", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, RedisServerResolver.defaultServer()));
@@ -128,9 +141,31 @@ public final class RedisRouteRegistry {
         register(mutating(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.ModerationPardonCommandEvent.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, RedisServerResolver.defaultServer()));
+        register(mutating(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, MODERATION_SERVER_RESOLVER));
         register(rpc(TransportEvents.MapsListRequest.class, "xcore:rpc:req:{server}", "maps.list", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapsListResponse.class));
         register(rpc(TransportEvents.MapRemoveRequest.class, "xcore:rpc:req:{server}", "maps.remove", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapRemoveResponse.class));
+    }
+
+    private static String moderationServer(Object payload) {
+        if (payload instanceof ModerationBanCreatedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof ModerationMuteCreatedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof ModerationVoteKickCreatedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof ModerationAuditAppendedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof ModerationKickBannedCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof ModerationPardonCommandV1 command) {
+            return command.server();
+        }
+        return null;
     }
 
     private void register(RedisRouteDescriptor descriptor) {

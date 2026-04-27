@@ -2,6 +2,9 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
 import org.xcore.plugin.event.TransportEvents;
 
 import java.util.List;
@@ -137,12 +140,12 @@ class RedisTransportContractsTest {
     void topologyLocksDownRepresentativeEventCommandAndRpcRouteMetadata() {
         // Arrange
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(TransportEvents.GlobalChatEvent.class);
-        RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationBanCreatedEvent.class);
-        RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationMuteCreatedEvent.class);
+        RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
+        RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(TransportEvents.MapsListRequest.class);
-        RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationKickBannedCommandEvent.class);
+        RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(ModerationKickBannedCommandV1.class);
 
         // Act
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;

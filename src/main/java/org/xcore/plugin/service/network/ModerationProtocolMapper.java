@@ -1,6 +1,5 @@
 package org.xcore.plugin.service.network;
 
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditRecord;
@@ -40,10 +39,6 @@ public final class ModerationProtocolMapper {
         );
     }
 
-    public static TransportEvents.ModerationBanCreatedEvent toBanCreatedEvent(BanData ban, String server, Instant occurredAt) {
-        return new TransportEvents.ModerationBanCreatedEvent(toBanCreated(ban, server, occurredAt));
-    }
-
     public static ModerationMuteCreatedV1 toMuteCreated(MuteData mute, String server, Instant occurredAt) {
         return new ModerationMuteCreatedV1(
                 toPlayerRef(mute),
@@ -53,10 +48,6 @@ public final class ModerationProtocolMapper {
                 normalizeOptional(server),
                 toOccurredAt(occurredAt)
         );
-    }
-
-    public static TransportEvents.ModerationMuteCreatedEvent toMuteCreatedEvent(MuteData mute, String server, Instant occurredAt) {
-        return new TransportEvents.ModerationMuteCreatedEvent(toMuteCreated(mute, server, occurredAt));
     }
 
     public static ModerationVoteKickCreatedV1 toVoteKickCreated(
@@ -80,36 +71,6 @@ public final class ModerationProtocolMapper {
                 votesAgainst == null ? List.of() : List.copyOf(votesAgainst),
                 normalizeOptional(server),
                 toOccurredAt(occurredAt)
-        );
-    }
-
-    public static TransportEvents.ModerationVoteKickCreatedEvent toVoteKickCreatedEvent(
-            String targetUuid,
-            Integer targetPid,
-            String targetName,
-            String starterName,
-            Integer starterPid,
-            String starterDiscordId,
-            String reason,
-            List<VoteKickParticipantV1> votesFor,
-            List<VoteKickParticipantV1> votesAgainst,
-            String server,
-            Instant occurredAt
-    ) {
-        return new TransportEvents.ModerationVoteKickCreatedEvent(
-                toVoteKickCreated(
-                        targetUuid,
-                        targetPid,
-                        targetName,
-                        starterName,
-                        starterPid,
-                        starterDiscordId,
-                        reason,
-                        votesFor,
-                        votesAgainst,
-                        server,
-                        occurredAt
-                )
         );
     }
 
@@ -137,19 +98,6 @@ public final class ModerationProtocolMapper {
         );
     }
 
-    public static TransportEvents.ModerationKickBannedCommandEvent toKickBannedCommandEvent(
-            String playerUuid,
-            Integer playerPid,
-            String playerName,
-            String ip,
-            String server,
-            Instant requestedAt
-    ) {
-        return new TransportEvents.ModerationKickBannedCommandEvent(
-                toKickBannedCommand(playerUuid, playerPid, playerName, ip, server, requestedAt)
-        );
-    }
-
     public static ModerationPardonCommandV1 toPardonCommand(
             String playerUuid,
             Integer playerPid,
@@ -161,18 +109,6 @@ public final class ModerationProtocolMapper {
                 new PlayerCommandTargetV1(requireNonBlank(playerUuid, "playerUuid"), normalizeOptionalPid(playerPid), normalizeOptional(playerName), null),
                 requireNonBlank(server, "server"),
                 toOccurredAt(requestedAt)
-        );
-    }
-
-    public static TransportEvents.ModerationPardonCommandEvent toPardonCommandEvent(
-            String playerUuid,
-            Integer playerPid,
-            String playerName,
-            String server,
-            Instant requestedAt
-    ) {
-        return new TransportEvents.ModerationPardonCommandEvent(
-                toPardonCommand(playerUuid, playerPid, playerName, server, requestedAt)
         );
     }
 
@@ -197,10 +133,6 @@ public final class ModerationProtocolMapper {
                 toOccurredAt(record.occurredAt),
                 toAuditDetails(record)
         );
-    }
-
-    public static TransportEvents.ModerationAuditAppendedProtocolEvent toAuditAppendedEvent(AuditRecord record, String server) {
-        return new TransportEvents.ModerationAuditAppendedProtocolEvent(toAuditAppended(record, server));
     }
 
     private static PlayerRefV1 toPlayerRef(Punishment punishment) {

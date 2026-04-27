@@ -11,11 +11,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
@@ -135,37 +139,34 @@ class ModerationServiceAvajeTest {
         order.verify(banDataRepository).save(any(BanData.class));
         order.verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationBanCreatedEvent canonical
-                        && canonical.payload() != null
-                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE.equals(canonical.payload().MESSAGE_TYPE)
-                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == canonical.payload().MESSAGE_VERSION
-                        && canonical.payload().target() != null
-                        && "uuid-1".equals(canonical.payload().target().playerUuid())
-                        && "Unknown".equals(canonical.payload().target().playerName())
-                        && "1.2.3.4".equals(canonical.payload().target().ip())
-                        && canonical.payload().actor() != null
-                        && "admin".equals(canonical.payload().actor().actorName())
-                        && "12345".equals(canonical.payload().actor().actorDiscordId())
-                        && "discord".equals(canonical.payload().actor().actorType())
-                        && "Not Specified".equals(canonical.payload().reason())
-                        && canonical.payload().expiration() != null
-                        && !canonical.payload().expiration().permanent()
-                        && "test-server".equals(canonical.payload().server())
-                        && canonical.payload().occurredAt() != null));
+                event instanceof ModerationBanCreatedV1 canonical
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE.equals(ModerationBanCreatedV1.MESSAGE_TYPE)
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == ModerationBanCreatedV1.MESSAGE_VERSION
+                        && canonical.target() != null
+                        && "uuid-1".equals(canonical.target().playerUuid())
+                        && "Unknown".equals(canonical.target().playerName())
+                        && "1.2.3.4".equals(canonical.target().ip())
+                        && canonical.actor() != null
+                        && "admin".equals(canonical.actor().actorName())
+                        && "12345".equals(canonical.actor().actorDiscordId())
+                        && "discord".equals(canonical.actor().actorType())
+                        && "Not Specified".equals(canonical.reason())
+                        && canonical.expiration() != null
+                        && !canonical.expiration().permanent()
+                        && "test-server".equals(canonical.server())
+                        && canonical.occurredAt() != null));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent auditEvent
-                        && auditEvent.payload() != null
-                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(auditEvent.payload().MESSAGE_TYPE)
-                        && "test-server".equals(auditEvent.payload().server())));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)
+                        && "test-server".equals(auditEvent.server())));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationKickBannedCommandEvent kick
-                        && kick.payload() != null
-                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(kick.payload().MESSAGE_TYPE)
-                        && "uuid-1".equals(kick.payload().target().playerUuid())
-                        && "Unknown".equals(kick.payload().target().playerName())
-                        && "1.2.3.4".equals(kick.payload().target().ip())
-                        && "test-server".equals(kick.payload().server())
-                        && kick.payload().requestedAt() != null));
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(ModerationKickBannedCommandV1.MESSAGE_TYPE)
+                        && "uuid-1".equals(kick.target().playerUuid())
+                        && "Unknown".equals(kick.target().playerName())
+                        && "1.2.3.4".equals(kick.target().ip())
+                        && "test-server".equals(kick.server())
+                        && kick.requestedAt() != null));
 
         verify(banDataRepository).save(argThat(ban ->
                 "uuid-1".equals(ban.getUuid())
@@ -195,9 +196,9 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempBanByUuidOrIp("uuid-1", "1.2.3.4", "name", Duration.ofMinutes(10), "reason", "admin", null);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationBanCreatedEvent));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationKickBannedCommandEvent));
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationKickBannedCommandV1));
     }
 
     @Test
@@ -219,16 +220,14 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent auditEvent
-                        && auditEvent.payload() != null
-                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(auditEvent.payload().MESSAGE_TYPE)));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
         verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationPardonCommandEvent pardon
-                        && pardon.payload() != null
-                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(pardon.payload().MESSAGE_TYPE)
-                        && "uuid-2".equals(pardon.payload().target().playerUuid())
-                        && "Unknown".equals(pardon.payload().target().playerName())
-                        && "test-server".equals(pardon.payload().server())));
+                event instanceof ModerationPardonCommandV1 pardon
+                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(ModerationPardonCommandV1.MESSAGE_TYPE)
+                        && "uuid-2".equals(pardon.target().playerUuid())
+                        && "Unknown".equals(pardon.target().playerName())
+                        && "test-server".equals(pardon.server())));
         verify(banDataRepository).delete("uuid-2", null);
     }
 
@@ -241,8 +240,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationPardonCommandEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test
@@ -323,22 +322,20 @@ class ModerationServiceAvajeTest {
         order.verify(muteDataRepository).save(any(MuteData.class));
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationMuteCreatedEvent mute
-                        && mute.payload() != null
-                        && ModerationMessages.ModerationMuteCreatedV1.MESSAGE_TYPE.equals(mute.payload().MESSAGE_TYPE)
-                        && "uuid-3".equals(mute.payload().target().playerUuid())
-                        && "Target".equals(mute.payload().target().playerName())
-                        && "admin".equals(mute.payload().actor().actorName())
-                        && "777".equals(mute.payload().actor().actorDiscordId())
-                        && "Not Specified".equals(mute.payload().reason())
-                        && mute.payload().expiration() != null
-                        && !mute.payload().expiration().permanent()
-                        && "test-server".equals(mute.payload().server())
-                        && mute.payload().occurredAt() != null));
+                event instanceof ModerationMuteCreatedV1 mute
+                        && ModerationMessages.ModerationMuteCreatedV1.MESSAGE_TYPE.equals(ModerationMuteCreatedV1.MESSAGE_TYPE)
+                        && "uuid-3".equals(mute.target().playerUuid())
+                        && "Target".equals(mute.target().playerName())
+                        && "admin".equals(mute.actor().actorName())
+                        && "777".equals(mute.actor().actorDiscordId())
+                        && "Not Specified".equals(mute.reason())
+                        && mute.expiration() != null
+                        && !mute.expiration().permanent()
+                        && "test-server".equals(mute.server())
+                        && mute.occurredAt() != null));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent auditEvent
-                        && auditEvent.payload() != null
-                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(auditEvent.payload().MESSAGE_TYPE)));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
     }
 
     @Test
@@ -369,8 +366,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.muteById(7, "admin", null, null, Duration.ofMinutes(15));
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationMuteCreatedEvent));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
+        verify(network).post(argThat(event -> event instanceof ModerationMuteCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
     }
 
     @Test
@@ -387,15 +384,13 @@ class ModerationServiceAvajeTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent auditEvent
-                        && auditEvent.payload() != null
-                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(auditEvent.payload().MESSAGE_TYPE)));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
         verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationPardonCommandEvent pardon
-                        && pardon.payload() != null
-                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(pardon.payload().MESSAGE_TYPE)
-                        && "uuid-4".equals(pardon.payload().target().playerUuid())
-                        && "Target2".equals(pardon.payload().target().playerName())));
+                event instanceof ModerationPardonCommandV1 pardon
+                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(ModerationPardonCommandV1.MESSAGE_TYPE)
+                        && "uuid-4".equals(pardon.target().playerUuid())
+                        && "Target2".equals(pardon.target().playerName())));
         verify(muteDataRepository).delete("uuid-4");
     }
 
@@ -410,8 +405,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationPardonCommandEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test
@@ -448,26 +443,23 @@ class ModerationServiceAvajeTest {
         order.verify(banDataRepository).save(any(BanData.class));
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationBanCreatedEvent canonical
-                        && canonical.payload() != null
-                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == canonical.payload().MESSAGE_VERSION
-                        && canonical.payload().target() != null
-                        && "uuid-9".equals(canonical.payload().target().playerUuid())
-                        && "Target9".equals(canonical.payload().target().playerName())
-                        && canonical.payload().actor() != null
-                        && "999".equals(canonical.payload().actor().actorDiscordId())
-                        && "test-server".equals(canonical.payload().server())));
+                event instanceof ModerationBanCreatedV1 canonical
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == ModerationBanCreatedV1.MESSAGE_VERSION
+                        && canonical.target() != null
+                        && "uuid-9".equals(canonical.target().playerUuid())
+                        && "Target9".equals(canonical.target().playerName())
+                        && canonical.actor() != null
+                        && "999".equals(canonical.actor().actorDiscordId())
+                        && "test-server".equals(canonical.server())));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent auditEvent
-                        && auditEvent.payload() != null
-                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(auditEvent.payload().MESSAGE_TYPE)));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.ModerationKickBannedCommandEvent kick
-                        && kick.payload() != null
-                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(kick.payload().MESSAGE_TYPE)
-                        && "uuid-9".equals(kick.payload().target().playerUuid())
-                        && "Target9".equals(kick.payload().target().playerName())
-                        && "test-server".equals(kick.payload().server())));
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(ModerationKickBannedCommandV1.MESSAGE_TYPE)
+                        && "uuid-9".equals(kick.target().playerUuid())
+                        && "Target9".equals(kick.target().playerName())
+                        && "test-server".equals(kick.server())));
     }
 
     @Test
@@ -499,9 +491,9 @@ class ModerationServiceAvajeTest {
         var result = moderationService.banById(9, "admin", null, null, Duration.ofMinutes(10), true);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationBanCreatedEvent));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationKickBannedCommandEvent));
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationKickBannedCommandV1));
     }
 
     @Test
@@ -532,8 +524,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unbanById(10, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationPardonCommandEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test

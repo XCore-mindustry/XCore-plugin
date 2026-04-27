@@ -13,6 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
@@ -171,7 +175,7 @@ class RedisNetworkBackendIntegrationTest {
 
         BanData banData = punishment(new BanData(), "u-1", "player");
         banData.ip = "1.2.3.4";
-        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreatedEvent(
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
                 banData,
                 "alpha",
                 Instant.parse("2026-04-26T00:00:00Z")
@@ -209,7 +213,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         MuteData muteData = punishment(new MuteData(), "u-1", "player");
-        var canonicalEvent = org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreatedEvent(
+        var canonicalEvent = org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreated(
                 muteData,
                 "alpha",
                 Instant.parse("2026-04-26T00:00:00Z")
@@ -248,19 +252,19 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.ModerationBanCreatedEvent> received = new AtomicReference<>();
+        AtomicReference<ModerationBanCreatedV1> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.ModerationBanCreatedEvent> subscription = requesterBackend.subscribe(
-                TransportEvents.ModerationBanCreatedEvent.class,
+        Subscription<ModerationBanCreatedV1> subscription = requesterBackend.subscribe(
+                ModerationBanCreatedV1.class,
                 event -> {
                     received.set(event);
                     latch.countDown();
                 }
         );
-
+        
         BanData banData = punishment(new BanData(), "u-1", "player");
         banData.ip = "1.2.3.4";
-        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreatedEvent(
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
                 banData,
                 "alpha",
                 Instant.parse("2026-04-26T00:00:00Z")
@@ -268,11 +272,10 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
-        assertThat(received.get().payload()).isNotNull();
-        assertThat(received.get().payload().MESSAGE_TYPE).isEqualTo(ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE);
+        assertThat(ModerationBanCreatedV1.MESSAGE_TYPE).isEqualTo(ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE);
         assertThat(ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION).isEqualTo(1);
-        assertThat(received.get().payload().target().playerUuid()).isEqualTo("u-1");
-        assertThat(received.get().payload().server()).isEqualTo("alpha");
+        assertThat(received.get().target().playerUuid()).isEqualTo("u-1");
+        assertThat(received.get().server()).isEqualTo("alpha");
 
         subscription.unsubscribe();
     }
@@ -284,7 +287,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreatedEvent(
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreated(
                 "uuid-target",
                 42,
                 "Target",
@@ -356,17 +359,17 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.ModerationKickBannedCommandEvent> received = new AtomicReference<>();
+        AtomicReference<ModerationKickBannedCommandV1> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.ModerationKickBannedCommandEvent> subscription = requesterBackend.subscribe(
-                TransportEvents.ModerationKickBannedCommandEvent.class,
+        Subscription<ModerationKickBannedCommandV1> subscription = requesterBackend.subscribe(
+                ModerationKickBannedCommandV1.class,
                 event -> {
                     received.set(event);
                     latch.countDown();
                 }
         );
 
-        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toKickBannedCommandEvent(
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toKickBannedCommand(
                 "uuid-a",
                 null,
                 "Unknown",
@@ -377,9 +380,9 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
-        assertThat(received.get().payload().target().playerUuid()).isEqualTo("uuid-a");
-        assertThat(received.get().payload().target().ip()).isEqualTo("1.2.3.4");
-        assertThat(received.get().payload().server()).isEqualTo("alpha");
+        assertThat(received.get().target().playerUuid()).isEqualTo("uuid-a");
+        assertThat(received.get().target().ip()).isEqualTo("1.2.3.4");
+        assertThat(received.get().server()).isEqualTo("alpha");
 
         subscription.unsubscribe();
     }

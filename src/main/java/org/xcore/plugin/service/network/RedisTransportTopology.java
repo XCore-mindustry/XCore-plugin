@@ -1,8 +1,12 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
-import org.xcore.plugin.model.BanData;
-import org.xcore.plugin.model.MuteData;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 
 import java.util.List;
 import java.util.Map;
@@ -46,11 +50,11 @@ public final class RedisTransportTopology {
             route(TransportEvents.GlobalChatEvent.class, "xcore:evt:chat:global", "chat.global", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, true),
             route(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.ModerationBanCreatedEvent.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.ModerationMuteCreatedEvent.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.ModerationVoteKickCreatedEvent.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.ModerationAuditAppendedProtocolEvent.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.ModerationKickBannedCommandEvent.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
+            route(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ModerationAuditAppendedV1.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ModerationKickBannedCommandV1.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.PlayerCustomNicknameChanged.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom_nickname", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.PlayerActiveBadgeChanged.class, "xcore:cmd:player-active-badge:{server}", "player.active_badge", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
@@ -64,7 +68,7 @@ public final class RedisTransportTopology {
             route(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, DeliveryMode.COMMAND, ServerScope.BROADCAST, false),
-            route(TransportEvents.ModerationPardonCommandEvent.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
+            route(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             rpcRoute(TransportEvents.MapsListRequest.class, "xcore:rpc:req:{server}", "maps.list", 10_000L, ServerScope.PAYLOAD_SERVER, TransportEvents.MapsListResponse.class),
             rpcRoute(TransportEvents.MapRemoveRequest.class, "xcore:rpc:req:{server}", "maps.remove", 10_000L, ServerScope.PAYLOAD_SERVER, TransportEvents.MapRemoveResponse.class)
     );
