@@ -3,7 +3,6 @@ package org.xcore.plugin.service.network;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.event.TransportEvents;
-import org.xcore.plugin.model.BanData;
 
 import java.util.List;
 
@@ -138,17 +137,21 @@ class RedisTransportContractsTest {
     void topologyLocksDownRepresentativeEventCommandAndRpcRouteMetadata() {
         // Arrange
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(TransportEvents.GlobalChatEvent.class);
-        RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(BanData.class);
+        RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationBanCreatedEvent.class);
+        RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationMuteCreatedEvent.class);
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(TransportEvents.MapsListRequest.class);
+        RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(TransportEvents.ModerationKickBannedCommandEvent.class);
 
         // Act
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
+        RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
         RedisTransportTopology.RouteSpec stableCommandRoute = commandRoute;
         RedisTransportTopology.RouteSpec stableBroadcastCommandRoute = broadcastCommandRoute;
         RedisTransportTopology.RouteSpec stableRpcRoute = rpcRoute;
+        RedisTransportTopology.RouteSpec stableKickBannedRoute = kickBannedRoute;
 
         // Assert
         assertThat(stableEventRoute).isNotNull();
@@ -161,9 +164,15 @@ class RedisTransportContractsTest {
 
         assertThat(stableModerationRoute).isNotNull();
         assertThat(stableModerationRoute.streamPattern()).isEqualTo("xcore:evt:moderation:ban");
-        assertThat(stableModerationRoute.eventType()).isEqualTo("moderation.ban");
+        assertThat(stableModerationRoute.eventType()).isEqualTo("moderation.ban.created");
         assertThat(stableModerationRoute.readOnly()).isTrue();
         assertThat(stableModerationRoute.rpcRequest()).isFalse();
+
+        assertThat(stableMuteRoute).isNotNull();
+        assertThat(stableMuteRoute.streamPattern()).isEqualTo("xcore:evt:moderation:mute");
+        assertThat(stableMuteRoute.eventType()).isEqualTo("moderation.mute.created");
+        assertThat(stableMuteRoute.readOnly()).isTrue();
+        assertThat(stableMuteRoute.rpcRequest()).isFalse();
 
         assertThat(stableCommandRoute).isNotNull();
         assertThat(stableCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-password-reset:{server}");
@@ -177,6 +186,12 @@ class RedisTransportContractsTest {
         assertThat(stableBroadcastCommandRoute.streamPattern()).isEqualTo("xcore:cmd:execute-command:broadcast");
         assertThat(stableBroadcastCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
         assertThat(stableBroadcastCommandRoute.readOnly()).isFalse();
+
+        assertThat(stableKickBannedRoute).isNotNull();
+        assertThat(stableKickBannedRoute.streamPattern()).isEqualTo("xcore:cmd:kick-banned:{server}");
+        assertThat(stableKickBannedRoute.eventType()).isEqualTo("moderation.kick-banned.command");
+        assertThat(stableKickBannedRoute.readOnly()).isFalse();
+        assertThat(stableKickBannedRoute.rpcRequest()).isFalse();
 
         assertThat(stableRpcRoute).isNotNull();
         assertThat(stableRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");

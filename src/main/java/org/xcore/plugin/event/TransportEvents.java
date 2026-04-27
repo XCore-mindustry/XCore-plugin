@@ -2,6 +2,12 @@ package org.xcore.plugin.event;
 
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 
 import java.time.Instant;
 import java.util.List;
@@ -149,6 +155,48 @@ public class TransportEvents {
             String server,
             Instant occurredAt
     ) implements Event, ServerScopedEvent {}
+
+    public record ModerationBanCreatedEvent(ModerationBanCreatedV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
+
+    public record ModerationMuteCreatedEvent(ModerationMuteCreatedV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
+
+    public record ModerationVoteKickCreatedEvent(ModerationVoteKickCreatedV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
+
+    public record ModerationAuditAppendedProtocolEvent(ModerationAuditAppendedV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
+
+    public record ModerationKickBannedCommandEvent(ModerationKickBannedCommandV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
+
+    public record ModerationPardonCommandEvent(ModerationPardonCommandV1 payload) implements Event, ServerScopedEvent {
+        @Override
+        public String server() {
+            return payload == null ? null : payload.server();
+        }
+    }
 
     public static class ReloadPlayerDataCache {}
 

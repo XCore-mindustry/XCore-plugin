@@ -49,8 +49,14 @@ public class ModerationTransportHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(TransportEvents.KickBannedPlayer.class, e -> Groups.player
-                .each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
+        network.subscribe(TransportEvents.ModerationKickBannedCommandEvent.class, e -> Groups.player.each(
+                p -> {
+                    var target = e.payload().target();
+                    return p.uuid().equals(target.playerUuid())
+                            || (target.ip() != null && target.ip().equals(p.ip()));
+                },
+                p -> p.kick(Packets.KickReason.banned)
+        ));
 
         network.subscribe(TransportEvents.DiscordAdminAccessChanged.class, e -> {
             if (e.admin()) {
@@ -65,8 +71,8 @@ public class ModerationTransportHandler {
             }
         });
 
-        network.subscribe(TransportEvents.PardonPlayer.class, e -> {
-            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.uuid());
+        network.subscribe(TransportEvents.ModerationPardonCommandEvent.class, e -> {
+            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.payload().target().playerUuid());
 
             if (info != null) {
                 info.lastKicked = 0;

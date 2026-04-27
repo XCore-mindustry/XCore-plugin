@@ -110,11 +110,11 @@ public final class RedisRouteRegistry {
         register(readOnly(TransportEvents.GlobalChatEvent.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, PAYLOAD_SERVER_RESOLVER));
         register(readOnly(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(BanData.class, "xcore:evt:moderation:ban", "moderation.ban", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(MuteData.class, "xcore:evt:moderation:mute", "moderation.mute", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.VoteKickEvent.class, "xcore:evt:moderation:votekick", "moderation.votekick", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ModerationAuditAppendedEvent.class, "xcore:evt:moderation:audit", "moderation.audit", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.KickBannedPlayer.class, "xcore:cmd:kick-banned:{server}", "moderation.kick_banned", 120_000L, RedisServerResolver.defaultServer()));
+        register(readOnly(TransportEvents.ModerationBanCreatedEvent.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(TransportEvents.ModerationMuteCreatedEvent.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(TransportEvents.ModerationVoteKickCreatedEvent.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));
+        register(readOnly(TransportEvents.ModerationAuditAppendedProtocolEvent.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, RedisServerResolver.broadcast()));
+        register(mutating(TransportEvents.ModerationKickBannedCommandEvent.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerCustomNicknameChanged.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom_nickname", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerActiveBadgeChanged.class, "xcore:cmd:player-active-badge:{server}", "player.active_badge", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, RedisServerResolver.defaultServer()));
@@ -128,7 +128,7 @@ public final class RedisRouteRegistry {
         register(mutating(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.PardonPlayer.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon", 120_000L, RedisServerResolver.defaultServer()));
+        register(mutating(TransportEvents.ModerationPardonCommandEvent.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, RedisServerResolver.defaultServer()));
         register(rpc(TransportEvents.MapsListRequest.class, "xcore:rpc:req:{server}", "maps.list", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapsListResponse.class));
         register(rpc(TransportEvents.MapRemoveRequest.class, "xcore:rpc:req:{server}", "maps.remove", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapRemoveResponse.class));
     }

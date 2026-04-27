@@ -18,8 +18,8 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.event.TransportEvents.Request;
 import org.xcore.plugin.event.TransportEvents.Response;
-import org.xcore.plugin.model.BanData;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +30,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.time.Instant;
 
 
 @Singleton
@@ -275,9 +274,6 @@ public final class RedisNetworkBackend {
         if (router.isReadOnlyType(type)) {
             return true;
         }
-        if (type == TransportEvents.KickBannedPlayer.class) {
-            return true;
-        }
         if (router.isRpcRequestType(type)) {
             return true;
         }
@@ -306,12 +302,23 @@ public final class RedisNetworkBackend {
     }
 
     private String payloadJson(Object event, long now) {
-        if (event instanceof BanData banData) {
-            return gson.toJson(ModerationProtocolMapper.toBanCreated(
-                    banData,
-                    config.server,
-                    Instant.ofEpochMilli(now)
-            ));
+        if (event instanceof TransportEvents.ModerationBanCreatedEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
+        }
+        if (event instanceof TransportEvents.ModerationMuteCreatedEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
+        }
+        if (event instanceof TransportEvents.ModerationVoteKickCreatedEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
+        }
+        if (event instanceof TransportEvents.ModerationAuditAppendedProtocolEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
+        }
+        if (event instanceof TransportEvents.ModerationKickBannedCommandEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
+        }
+        if (event instanceof TransportEvents.ModerationPardonCommandEvent canonicalEvent) {
+            return gson.toJson(canonicalEvent.payload());
         }
         return gson.toJson(event);
     }
@@ -497,7 +504,7 @@ public final class RedisNetworkBackend {
         }
 
         try {
-            T event = gson.fromJson(payloadJson, type);
+            T event = decodeEvent(payloadJson, type);
             if (event instanceof Request<?> request && router.isRpcRequestType(type)) {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
                 String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server);
@@ -515,6 +522,35 @@ public final class RedisNetworkBackend {
             Log.warn("Redis consume decode/dispatch failed for stream message @: @", message.getId(), e.getMessage());
             return false;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T decodeEvent(String payloadJson, Class<T> type) {
+        if (type == TransportEvents.ModerationBanCreatedEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1.class);
+            return (T) new TransportEvents.ModerationBanCreatedEvent(payload);
+        }
+        if (type == TransportEvents.ModerationMuteCreatedEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1.class);
+            return (T) new TransportEvents.ModerationMuteCreatedEvent(payload);
+        }
+        if (type == TransportEvents.ModerationVoteKickCreatedEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1.class);
+            return (T) new TransportEvents.ModerationVoteKickCreatedEvent(payload);
+        }
+        if (type == TransportEvents.ModerationAuditAppendedProtocolEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1.class);
+            return (T) new TransportEvents.ModerationAuditAppendedProtocolEvent(payload);
+        }
+        if (type == TransportEvents.ModerationKickBannedCommandEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1.class);
+            return (T) new TransportEvents.ModerationKickBannedCommandEvent(payload);
+        }
+        if (type == TransportEvents.ModerationPardonCommandEvent.class) {
+            var payload = gson.fromJson(payloadJson, org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1.class);
+            return (T) new TransportEvents.ModerationPardonCommandEvent(payload);
+        }
+        return gson.fromJson(payloadJson, type);
     }
 
     private <T extends Response> void awaitRpcResponse(String replyTo,

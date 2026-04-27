@@ -3,7 +3,6 @@ package org.xcore.plugin.service.network;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.event.TransportEvents;
-import org.xcore.plugin.model.BanData;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,7 +53,12 @@ class RedisRouteRegistryTest {
     @DisplayName("read-only and mutating classification comes from registry descriptors")
     void classificationComesFromRegistry() {
         assertThat(registry.isReadOnlyType(TransportEvents.GlobalChatEvent.class)).isTrue();
-        assertThat(registry.isReadOnlyType(BanData.class)).isTrue();
+        assertThat(registry.isReadOnlyType(TransportEvents.ModerationBanCreatedEvent.class)).isTrue();
+        assertThat(registry.isReadOnlyType(TransportEvents.ModerationMuteCreatedEvent.class)).isTrue();
+        assertThat(registry.isReadOnlyType(TransportEvents.ModerationVoteKickCreatedEvent.class)).isTrue();
+        assertThat(registry.isReadOnlyType(TransportEvents.ModerationAuditAppendedProtocolEvent.class)).isTrue();
+        assertThat(registry.isMutatingType(TransportEvents.ModerationKickBannedCommandEvent.class)).isTrue();
+        assertThat(registry.isMutatingType(TransportEvents.ModerationPardonCommandEvent.class)).isTrue();
         assertThat(registry.isMutatingType(TransportEvents.ExecuteCommand.class)).isTrue();
         assertThat(registry.isMutatingType(TransportEvents.GlobalChatEvent.class)).isFalse();
     }

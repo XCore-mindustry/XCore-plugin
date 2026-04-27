@@ -18,8 +18,11 @@ import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.network.ModerationProtocolMapper;
+import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 
 import static arc.util.Strings.stripColors;
@@ -111,12 +114,12 @@ public class VoteKick extends VoteSession {
         }
     }
 
-    private TransportEvents.VoteKickEvent buildVoteKickEvent(String status) {
+    private TransportEvents.ModerationVoteKickCreatedEvent buildVoteKickEvent() {
         var targetData = sessionService.getOrLoadFromDb(target.uuid());
         var starterData = sessionService.getOrLoadFromDb(starter.uuid());
 
-        var votesFor = new ArrayList<TransportEvents.VoteKickParticipant>();
-        var votesAgainst = new ArrayList<TransportEvents.VoteKickParticipant>();
+        var votesFor = new ArrayList<VoteKickParticipantV1>();
+        var votesAgainst = new ArrayList<VoteKickParticipantV1>();
 
         sessionService.forEachOnline(session -> {
             var onlinePlayer = session.player;
@@ -133,24 +136,23 @@ public class VoteKick extends VoteSession {
             }
         });
 
-        return new TransportEvents.VoteKickEvent(
-                safePlayerName(targetData, target),
-                safePid(targetData),
+        return ModerationProtocolMapper.toVoteKickCreatedEvent(
                 target.uuid(),
+                safePid(targetData),
+                safePlayerName(targetData, target),
                 safePlayerName(starterData, starter),
                 safePid(starterData),
                 safeDiscordId(starterData),
                 reason,
                 List.copyOf(votesFor),
                 List.copyOf(votesAgainst),
-                status,
                 config.server,
-                System.currentTimeMillis()
+                Instant.now()
         );
     }
 
-    private TransportEvents.VoteKickParticipant toParticipant(PlayerData data) {
-        return new TransportEvents.VoteKickParticipant(
+    private VoteKickParticipantV1 toParticipant(PlayerData data) {
+        return ModerationProtocolMapper.toVoteKickParticipant(
                 safeNickname(data),
                 safePid(data),
                 safeDiscordId(data)
@@ -206,7 +208,7 @@ public class VoteKick extends VoteSession {
         target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
 
         if (network != null) {
-            network.post(buildVoteKickEvent("success"));
+            network.post(buildVoteKickEvent());
             network.post(new TransportEvents.ServerActionEvent(
                     systemLocal.format("votekick-success", bundleArgs), config.server));
         }

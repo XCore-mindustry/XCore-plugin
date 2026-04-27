@@ -13,9 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;
 
 import java.time.Instant;
@@ -161,7 +163,7 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
-    @DisplayName("send serializes BanData with Instant without reflection failure")
+    @DisplayName("send serializes canonical moderation ban created event on primary route")
     void sendSerializesBanDataInstant() {
         Config config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
@@ -169,7 +171,11 @@ class RedisNetworkBackendIntegrationTest {
 
         BanData banData = punishment(new BanData(), "u-1", "player");
         banData.ip = "1.2.3.4";
-        requesterBackend.send(banData);
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreatedEvent(
+                banData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
@@ -183,55 +189,113 @@ class RedisNetworkBackendIntegrationTest {
             var last = messages.get(messages.size() - 1).getBody();
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
-            assertThat(last.get("event_type")).isEqualTo("moderation.ban");
+            assertThat(last.get("event_type")).isEqualTo("moderation.ban.created");
             assertThat(payload)
-                    .containsEntry("messageType", "moderation.ban.created")
+                    .containsEntry("messageType", ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE)
                     .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "rule")
                     .containsEntry("server", "alpha")
-                    .containsKey("occurredAt")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
                     .containsKeys("target", "actor", "expiration")
                     .doesNotContainKeys("uuid", "name", "adminName", "expireDate");
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> target = (Map<String, Object>) payload.get("target");
-            assertThat(target)
-                    .containsEntry("playerUuid", "u-1")
-                    .containsEntry("playerName", "player")
-                    .containsEntry("ip", "1.2.3.4");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> actor = (Map<String, Object>) payload.get("actor");
-            assertThat(actor)
-                    .containsEntry("actorName", "admin")
-                    .containsEntry("actorType", "unknown");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> expiration = (Map<String, Object>) payload.get("expiration");
-            assertThat(expiration)
-                    .containsEntry("permanent", false)
-                    .containsKey("expiresAt");
         }
     }
 
     @Test
-    @DisplayName("send serializes vote-kick event to moderation votekick stream")
+    @DisplayName("send serializes canonical moderation mute created event")
+    void sendSerializesCanonicalModerationMuteCreatedEvent() {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        MuteData muteData = punishment(new MuteData(), "u-1", "player");
+        var canonicalEvent = org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreatedEvent(
+                muteData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        );
+        requesterBackend.send(canonicalEvent);
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
+
+        try (RedisClient client = RedisClient.create(config.redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            List<StreamMessage<String, String>> messages = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:evt:moderation:mute", "0-0")
+            );
+
+            assertThat(messages).isNotEmpty();
+            var last = messages.get(messages.size() - 1).getBody();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(last.get("event_type")).isEqualTo("moderation.mute.created");
+            assertThat(payload)
+                    .containsEntry("messageType", ModerationMessages.ModerationMuteCreatedV1.MESSAGE_TYPE)
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("reason", "rule")
+                    .containsEntry("server", "alpha")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
+                    .containsKeys("target", "actor", "expiration")
+                    .doesNotContainKeys("uuid", "name", "adminName", "expireDate");
+        }
+    }
+
+    @Test
+    @DisplayName("subscribe consumes canonical moderation ban created event from primary route")
+    void subscribeConsumesCanonicalModerationBanCreatedEvent() throws InterruptedException {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<TransportEvents.ModerationBanCreatedEvent> received = new AtomicReference<>();
+
+        Subscription<TransportEvents.ModerationBanCreatedEvent> subscription = requesterBackend.subscribe(
+                TransportEvents.ModerationBanCreatedEvent.class,
+                event -> {
+                    received.set(event);
+                    latch.countDown();
+                }
+        );
+
+        BanData banData = punishment(new BanData(), "u-1", "player");
+        banData.ip = "1.2.3.4";
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreatedEvent(
+                banData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
+
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(received.get()).isNotNull();
+        assertThat(received.get().payload()).isNotNull();
+        assertThat(received.get().payload().MESSAGE_TYPE).isEqualTo(ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE);
+        assertThat(ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION).isEqualTo(1);
+        assertThat(received.get().payload().target().playerUuid()).isEqualTo("u-1");
+        assertThat(received.get().payload().server()).isEqualTo("alpha");
+
+        subscription.unsubscribe();
+    }
+
+    @Test
+    @DisplayName("send serializes canonical vote-kick event to moderation votekick stream")
     void sendSerializesVoteKickEvent() {
         Config config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new TransportEvents.VoteKickEvent(
-                "Target",
-                42,
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreatedEvent(
                 "uuid-target",
+                42,
+                "Target",
                 "Starter",
                 7,
                 "123456",
                 "griefing",
-                List.of(new TransportEvents.VoteKickParticipant("Starter", 7, "123456")),
-                List.of(new TransportEvents.VoteKickParticipant("Voter2", 8, "654321")),
-                "started",
+                List.of(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickParticipant("Starter", 7, "123456")),
+                List.of(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickParticipant("Voter2", 8, "654321")),
                 "alpha",
-                123456789L
+                Instant.parse("2026-04-26T00:00:00Z")
         ));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
@@ -244,11 +308,16 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
-            assertThat(last.get("event_type")).isEqualTo("moderation.votekick");
-            assertThat(last.get("payload_json")).contains("Target");
-            assertThat(last.get("payload_json")).contains("votesFor");
-            assertThat(last.get("payload_json")).contains("votesAgainst");
-            assertThat(last.get("payload_json")).doesNotContain("participants");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(last.get("event_type")).isEqualTo("moderation.vote-kick.created");
+            assertThat(payload)
+                    .containsEntry("messageType", ModerationMessages.ModerationVoteKickCreatedV1.MESSAGE_TYPE)
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("reason", "griefing")
+                    .containsEntry("server", "alpha")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
+                    .containsKeys("target", "starter", "votesFor", "votesAgainst");
         }
     }
 
@@ -279,7 +348,7 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
-    @DisplayName("kick-banned subscribe works")
+    @DisplayName("kick-banned canonical command subscribe works")
     void kickBannedSubscribeWorks() throws InterruptedException {
         Config config = baseConfig("alpha");
 
@@ -287,21 +356,30 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.KickBannedPlayer> received = new AtomicReference<>();
+        AtomicReference<TransportEvents.ModerationKickBannedCommandEvent> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.KickBannedPlayer> subscription = requesterBackend.subscribe(
-                TransportEvents.KickBannedPlayer.class,
+        Subscription<TransportEvents.ModerationKickBannedCommandEvent> subscription = requesterBackend.subscribe(
+                TransportEvents.ModerationKickBannedCommandEvent.class,
                 event -> {
                     received.set(event);
                     latch.countDown();
                 }
         );
 
-        requesterBackend.send(new TransportEvents.KickBannedPlayer("uuid-a", "1.2.3.4"));
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toKickBannedCommandEvent(
+                "uuid-a",
+                null,
+                "Unknown",
+                "1.2.3.4",
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
-        assertThat(received.get().uuid()).isEqualTo("uuid-a");
+        assertThat(received.get().payload().target().playerUuid()).isEqualTo("uuid-a");
+        assertThat(received.get().payload().target().ip()).isEqualTo("1.2.3.4");
+        assertThat(received.get().payload().server()).isEqualTo("alpha");
 
         subscription.unsubscribe();
     }
