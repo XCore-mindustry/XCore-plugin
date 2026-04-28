@@ -13,9 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
@@ -399,8 +402,8 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
         requesterBackend.connect();
 
-        Subscription<TransportEvents.MapsListRequest> serverSubscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class,
+        Subscription<MapsListRequestV1> serverSubscription =
+                serverBackend.subscribe(MapsListRequestV1.class,
                         request -> serverBackend.respond(
                                 request,
                                 mapsListResponse(
@@ -411,9 +414,9 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MapsListResponse> responseRef = new AtomicReference<>();
+        AtomicReference<MapsListResponseV1> responseRef = new AtomicReference<>();
 
-        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(mapsListRequest("target"), response -> {
+        RequestSubscription<MapsListResponseV1> requestHandle = requesterBackend.request(mapsListRequest("target"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -422,10 +425,10 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
-        assertThat(responseRef.get().maps).extracting(entry -> entry.name).containsExactly("A", "B");
-        assertThat(responseRef.get().maps).extracting(entry -> entry.like).containsExactly(3, null);
-        assertThat(responseRef.get().maps).extracting(entry -> entry.reputation).containsExactly(2, null);
-        assertThat(responseRef.get().maps).extracting(entry -> entry.gameMode).containsExactly("pvp", null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::name).containsExactly("A", "B");
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::like).containsExactly(3, null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::reputation).containsExactly(2, null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::gameMode).containsExactly("pvp", null);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("rpc_requests", 0L)).isGreaterThanOrEqualTo(1L);
         assertThat(serverBackend.metricsSnapshot().getOrDefault("rpc_responses", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -445,8 +448,8 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch listLatch = new CountDownLatch(1);
-        Subscription<TransportEvents.MapsListRequest> listSubscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> {
+        Subscription<MapsListRequestV1> listSubscription =
+                serverBackend.subscribe(MapsListRequestV1.class, request -> {
                     listLatch.countDown();
                     serverBackend.respond(
                             request,
@@ -490,15 +493,15 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
 
         CountDownLatch handlerLatch = new CountDownLatch(1);
-        Subscription<TransportEvents.MapsListRequest> subscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> handlerLatch.countDown());
+        Subscription<MapsListRequestV1> subscription =
+                serverBackend.subscribe(MapsListRequestV1.class, request -> handlerLatch.countDown());
 
         try (RedisClient client = RedisClient.create(serverConfig.redisUrl);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             long now = System.currentTimeMillis();
             connection.sync().xadd("xcore:rpc:req:target", java.util.Map.ofEntries(
                     java.util.Map.entry("schema_version", "1"),
-                    java.util.Map.entry("rpc_type", "maps.list"),
+                    java.util.Map.entry("rpc_type", "maps.list.request"),
                     java.util.Map.entry("correlation_id", "c-expired"),
                     java.util.Map.entry("request_id", "r-expired"),
                     java.util.Map.entry("reply_to", "xcore:rpc:resp:discord"),
@@ -644,7 +647,7 @@ class RedisNetworkBackendIntegrationTest {
         AtomicInteger responses = new AtomicInteger();
         AtomicInteger timeouts = new AtomicInteger();
 
-        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(
+        RequestSubscription<MapsListResponseV1> requestHandle = requesterBackend.request(
                 mapsListRequest("target"),
                 response -> responses.incrementAndGet(),
                 timeouts::incrementAndGet
@@ -693,10 +696,8 @@ class RedisNetworkBackendIntegrationTest {
         return value;
     }
 
-    private static TransportEvents.MapsListRequest mapsListRequest(String server) {
-        TransportEvents.MapsListRequest request = new TransportEvents.MapsListRequest();
-        request.server = server;
-        return request;
+    private static MapsListRequestV1 mapsListRequest(String server) {
+        return new MapsListRequestV1(server);
     }
 
     private static TransportEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
@@ -706,10 +707,8 @@ class RedisNetworkBackendIntegrationTest {
         return request;
     }
 
-    private static TransportEvents.MapsListResponse mapsListResponse(TransportEvents.MapEntry... entries) {
-        TransportEvents.MapsListResponse response = new TransportEvents.MapsListResponse();
-        response.maps = entries;
-        return response;
+    private static MapsListResponseV1 mapsListResponse(MapEntryV1... entries) {
+        return new MapsListResponseV1("target", List.of(entries));
     }
 
     private static TransportEvents.MapRemoveResponse mapRemoveResponse(String result) {
@@ -718,7 +717,7 @@ class RedisNetworkBackendIntegrationTest {
         return response;
     }
 
-    private static TransportEvents.MapEntry mapEntry(
+    private static MapEntryV1 mapEntry(
             String name,
             String fileName,
             String author,
@@ -729,7 +728,7 @@ class RedisNetworkBackendIntegrationTest {
         return mapEntry(name, fileName, author, width, height, fileSizeBytes, null, null, null, null, null, null);
     }
 
-    private static TransportEvents.MapEntry mapEntry(
+    private static MapEntryV1 mapEntry(
             String name,
             String fileName,
             String author,
@@ -743,19 +742,7 @@ class RedisNetworkBackendIntegrationTest {
             Double interest,
             String gameMode
     ) {
-        TransportEvents.MapEntry entry = new TransportEvents.MapEntry();
-        entry.name = name;
-        entry.fileName = fileName;
-        entry.author = author;
-        entry.width = width;
-        entry.height = height;
-        entry.fileSizeBytes = fileSizeBytes;
-        entry.like = like;
-        entry.dislike = dislike;
-        entry.reputation = reputation;
-        entry.popularity = popularity;
-        entry.interest = interest;
-        entry.gameMode = gameMode;
-        return entry;
+        Integer fileSize = fileSizeBytes == null ? null : Math.toIntExact(fileSizeBytes);
+        return new MapEntryV1(name, fileName, author, width, height, fileSize, like, dislike, reputation, popularity, interest, gameMode);
     }
 }

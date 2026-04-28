@@ -7,6 +7,8 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -207,7 +209,7 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(TransportEvents.GlobalChatEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.MapsListRequest.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(TransportEvents.MapRemoveRequest.class, "mini-pvp"))
@@ -273,16 +275,16 @@ class RedisStreamRouterTest {
         assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(TransportEvents.MessageEvent.class)).isFalse();
 
-        assertThat(router.isRpcRequestType(TransportEvents.MapsListRequest.class)).isTrue();
+        assertThat(router.isRpcRequestType(MapsListRequestV1.class)).isTrue();
         assertThat(router.isRpcRequestType(TransportEvents.MessageEvent.class)).isFalse();
 
-        assertThat(router.responseTypeForRequest(TransportEvents.MapsListRequest.class))
-                .isEqualTo(TransportEvents.MapsListResponse.class);
+        assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
+                .isEqualTo(MapsListResponseV1.class);
         assertThat(router.responseTypeForRequest(TransportEvents.MapRemoveRequest.class))
                 .isEqualTo(TransportEvents.MapRemoveResponse.class);
 
-        assertThat(router.rpcTypeForRequestClass(TransportEvents.MapsListRequest.class))
-                .isEqualTo("maps.list");
+        assertThat(router.rpcTypeForRequestClass(MapsListRequestV1.class))
+                .isEqualTo("maps.list.request");
         assertThat(router.rpcTypeForRequestClass(TransportEvents.MapRemoveRequest.class))
                 .isEqualTo("maps.remove");
     }

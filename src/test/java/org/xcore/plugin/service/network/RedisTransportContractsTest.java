@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
@@ -150,7 +152,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
-        RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(TransportEvents.MapsListRequest.class);
+        RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(MapsListRequestV1.class);
         RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(ModerationKickBannedCommandV1.class);
 
         // Act
@@ -231,12 +233,12 @@ class RedisTransportContractsTest {
 
         assertThat(stableRpcRoute).isNotNull();
         assertThat(stableRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
-        assertThat(stableRpcRoute.eventType()).isEqualTo("maps.list");
+        assertThat(stableRpcRoute.eventType()).isEqualTo("maps.list.request");
         assertThat(stableRpcRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.RPC_REQUEST);
         assertThat(stableRpcRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
         assertThat(stableRpcRoute.readOnly()).isFalse();
         assertThat(stableRpcRoute.rpcRequest()).isTrue();
-        assertThat(stableRpcRoute.responseType()).isEqualTo(TransportEvents.MapsListResponse.class);
+        assertThat(stableRpcRoute.responseType()).isEqualTo(MapsListResponseV1.class);
     }
 
     @Test
@@ -244,13 +246,13 @@ class RedisTransportContractsTest {
     void registryAndRouterRemainAlignedWithExplicitTransportTopology() {
         // Arrange
         RedisTransportTopology.RouteSpec commandSpec = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
-        RedisTransportTopology.RouteSpec rpcSpec = RedisTransportTopology.routeFor(TransportEvents.MapsListRequest.class);
+        RedisTransportTopology.RouteSpec rpcSpec = RedisTransportTopology.routeFor(MapsListRequestV1.class);
         RedisRouteDescriptor commandDescriptor = registry.routeDescriptorFor(TransportEvents.PlayerPasswordReset.class);
-        RedisRouteDescriptor rpcDescriptor = registry.routeDescriptorFor(TransportEvents.MapsListRequest.class);
+        RedisRouteDescriptor rpcDescriptor = registry.routeDescriptorFor(MapsListRequestV1.class);
 
         // Act
         var commandRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
-        List<String> rpcSubscriptions = router.subscribeStreamsFor(TransportEvents.MapsListRequest.class, "mini-pvp");
+        List<String> rpcSubscriptions = router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp");
 
         // Assert
         assertThat(commandDescriptor).isNotNull();
@@ -267,10 +269,10 @@ class RedisTransportContractsTest {
         assertThat(rpcDescriptor.eventType()).isEqualTo(rpcSpec.eventType());
         assertThat(rpcDescriptor.isRpcRequest()).isTrue();
         assertThat(rpcDescriptor.responseType()).isEqualTo(rpcSpec.responseType());
-        assertThat(router.rpcTypeForRequestClass(TransportEvents.MapsListRequest.class)).isEqualTo("maps.list");
+        assertThat(router.rpcTypeForRequestClass(MapsListRequestV1.class)).isEqualTo("maps.list.request");
         assertThat(rpcSubscriptions).containsExactly("xcore:rpc:req:mini-pvp");
-        assertThat(router.responseTypeForRequest(TransportEvents.MapsListRequest.class))
-                .isEqualTo(TransportEvents.MapsListResponse.class);
+        assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
+                .isEqualTo(MapsListResponseV1.class);
         assertThat(router.responseTypeForRequest(TransportEvents.MessageEvent.class)).isNull();
     }
 }

@@ -9,9 +9,6 @@ import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.event.TransportEvents.Request;
-import org.xcore.plugin.event.TransportEvents.Response;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -25,26 +22,26 @@ final class RedisRpcTracker {
     private static final long DEFAULT_CONTEXT_TTL_MILLIS = 120_000L;
 
     private final Gson gson;
-    private final Map<Request<?>, RpcInboundContext> inboundRpcContexts = Collections.synchronizedMap(new IdentityHashMap<>());
+    private final Map<Object, RpcInboundContext> inboundRpcContexts = Collections.synchronizedMap(new IdentityHashMap<>());
 
     RedisRpcTracker(Gson gson) {
         this.gson = gson;
     }
 
-    void registerInbound(Request<?> request, String correlationId, String replyTo, String rpcType, long createdAtMillis) {
+    void registerInbound(Object request, String correlationId, String replyTo, String rpcType, long createdAtMillis) {
         synchronized (inboundRpcContexts) {
             cleanupExpired(createdAtMillis, DEFAULT_CONTEXT_TTL_MILLIS);
             inboundRpcContexts.put(request, new RpcInboundContext(correlationId, replyTo, rpcType, createdAtMillis));
         }
     }
 
-    RpcInboundContext take(Request<?> request) {
+    RpcInboundContext take(Object request) {
         synchronized (inboundRpcContexts) {
             return inboundRpcContexts.remove(request);
         }
     }
 
-    boolean contains(Request<?> request) {
+    boolean contains(Object request) {
         synchronized (inboundRpcContexts) {
             return inboundRpcContexts.containsKey(request);
         }
@@ -57,21 +54,21 @@ final class RedisRpcTracker {
     }
 
     void cleanupExpired(long nowMillis, long ttlMillis) {
-        List<Request<?>> toRemove = new ArrayList<>();
-        for (Map.Entry<Request<?>, RpcInboundContext> entry : inboundRpcContexts.entrySet()) {
+        List<Object> toRemove = new ArrayList<>();
+        for (Map.Entry<Object, RpcInboundContext> entry : inboundRpcContexts.entrySet()) {
             if (nowMillis - entry.getValue().createdAtMillis() > ttlMillis) {
                 toRemove.add(entry.getKey());
             }
         }
-        for (Request<?> request : toRemove) {
+        for (Object request : toRemove) {
             inboundRpcContexts.remove(request);
         }
     }
 
-    <T extends Response> void awaitResponse(RedisClient client,
+    <T> void awaitResponse(RedisClient client,
                                             String replyTo,
                                             String correlationId,
-                                            Class<? extends Response> responseType,
+                                            Class<?> responseType,
                                             Cons<T> listener,
                                             Runnable timeout,
                                             long timeoutMs,
@@ -126,7 +123,7 @@ final class RedisRpcTracker {
                         return;
                     }
 
-                    Response response = gson.fromJson(payloadJson, responseType);
+                    Object response = gson.fromJson(payloadJson, responseType);
                     if (!requestHandle.isCancelled() && responseType.isInstance(response)) {
                         listener.get((T) responseType.cast(response));
                     }

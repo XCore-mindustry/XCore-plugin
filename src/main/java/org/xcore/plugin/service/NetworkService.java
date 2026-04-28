@@ -2,8 +2,6 @@ package org.xcore.plugin.service;
 
 import arc.func.Cons;
 import arc.util.Log;
-import org.xcore.plugin.event.TransportEvents.Request;
-import org.xcore.plugin.event.TransportEvents.Response;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import io.avaje.inject.PostConstruct;
@@ -68,11 +66,11 @@ public class NetworkService {
         return backend.subscribe(type, listener);
     }
 
-    public <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
+    public <REQ, RES> RequestSubscription<RES> request(REQ request, Cons<RES> listener, Runnable timeout) {
         return backend.request(request, listener, timeout);
     }
 
-    public <T extends Response> void respond(Request<T> request, T response) {
+    public void respond(Object request, Object response) {
         backend.respond(request, response);
     }
 

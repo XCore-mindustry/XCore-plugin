@@ -6,6 +6,8 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -33,6 +35,10 @@ public final class RedisRouteRegistry {
         String discordServer = discordServer(payload);
         if (discordServer != null && !discordServer.isBlank()) {
             return discordServer;
+        }
+        String mapsServer = mapsServer(payload);
+        if (mapsServer != null && !mapsServer.isBlank()) {
+            return mapsServer;
         }
         if (payload instanceof TransportEvents.ServerScopedEvent serverScopedEvent) {
             String server = serverScopedEvent.server();
@@ -95,7 +101,7 @@ public final class RedisRouteRegistry {
         return descriptor != null && descriptor.isRpcRequest();
     }
 
-    public Class<? extends TransportEvents.Response> responseTypeForRequest(Class<?> type) {
+    public Class<?> responseTypeForRequest(Class<?> type) {
         RedisRouteDescriptor descriptor = routeDescriptorFor(type);
         return descriptor == null ? null : descriptor.responseType();
     }
@@ -151,7 +157,7 @@ public final class RedisRouteRegistry {
         register(mutating(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, MODERATION_SERVER_RESOLVER));
-        register(rpc(TransportEvents.MapsListRequest.class, "xcore:rpc:req:{server}", "maps.list", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapsListResponse.class));
+        register(rpc(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsListResponseV1.class));
         register(rpc(TransportEvents.MapRemoveRequest.class, "xcore:rpc:req:{server}", "maps.remove", 10_000L, PAYLOAD_SERVER_RESOLVER, TransportEvents.MapRemoveResponse.class));
     }
 
@@ -196,6 +202,13 @@ public final class RedisRouteRegistry {
         return null;
     }
 
+    private static String mapsServer(Object payload) {
+        if (payload instanceof MapsListRequestV1 request) {
+            return request.server();
+        }
+        return null;
+    }
+
     private void register(RedisRouteDescriptor descriptor) {
         descriptorsByType.put(descriptor.payloadType(), descriptor);
     }
@@ -221,7 +234,7 @@ public final class RedisRouteRegistry {
                                             String eventType,
                                             long ttlMillis,
                                             RedisServerResolver serverResolver,
-                                            Class<? extends TransportEvents.Response> responseType) {
+                                            Class<?> responseType) {
         return new RedisRouteDescriptor(payloadType, streamPattern, eventType, ttlMillis, RedisRouteKind.RPC_REQUEST, serverResolver, responseType);
     }
 }

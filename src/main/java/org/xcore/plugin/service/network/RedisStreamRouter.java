@@ -1,7 +1,5 @@
 package org.xcore.plugin.service.network;
 
-import org.xcore.plugin.event.TransportEvents;
-
 import java.util.List;
 import java.util.Locale;
 
@@ -49,7 +47,7 @@ public final class RedisStreamRouter {
         return registry.isRpcRequestType(type);
     }
 
-    public Class<? extends TransportEvents.Response> responseTypeForRequest(Class<?> type) {
+    public Class<?> responseTypeForRequest(Class<?> type) {
         return registry.responseTypeForRequest(type);
     }
 

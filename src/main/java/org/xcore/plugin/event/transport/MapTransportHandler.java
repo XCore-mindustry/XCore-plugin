@@ -5,13 +5,17 @@ import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.maps.Map;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.network.MapsProtocolMapper;
 
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.customMapDirectory;
@@ -39,38 +43,20 @@ public class MapTransportHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(TransportEvents.MapsListRequest.class, request -> {
-            if (!request.server.equals(config.server)) return;
+        network.subscribe(MapsListRequestV1.class, request -> {
+            if (!request.server().equals(config.server)) return;
 
             var customMaps = maps.customMaps();
             String currentGameMode = state.rules.mode().name();
-            var mapsList = new TransportEvents.MapEntry[customMaps.size];
+            var mapsList = new ArrayList<MapEntryV1>(customMaps.size);
             for (int i = 0; i < customMaps.size; i++) {
                 Map map = customMaps.get(i);
-                String fileName = map.file == null ? "" : map.file.name();
-                String rawAuthor = map.author();
-                String author = rawAuthor == null ? "Unknown" : rawAuthor;
-                MapData persistedMap = mapDataRepository.find(map.plainName(), rawAuthor, currentGameMode)
+                MapData persistedMap = mapDataRepository.find(map.plainName(), map.author(), currentGameMode)
                         .orElse(null);
-                TransportEvents.MapEntry entry = new TransportEvents.MapEntry();
-                entry.name = map.plainName();
-                entry.fileName = fileName;
-                entry.author = author;
-                entry.width = map.width;
-                entry.height = map.height;
-                entry.fileSizeBytes = map.file == null ? null : map.file.length();
-                entry.like = persistedMap == null ? null : persistedMap.like;
-                entry.dislike = persistedMap == null ? null : persistedMap.dislike;
-                entry.reputation = persistedMap == null ? null : persistedMap.reputation;
-                entry.popularity = persistedMap == null ? null : persistedMap.popularity;
-                entry.interest = persistedMap == null ? null : persistedMap.interest;
-                entry.gameMode = persistedMap == null ? currentGameMode : persistedMap.gameMode;
-                mapsList[i] = entry;
+                mapsList.add(MapsProtocolMapper.toMapEntry(map, currentGameMode, persistedMap));
             }
 
-            TransportEvents.MapsListResponse response = new TransportEvents.MapsListResponse();
-            response.maps = mapsList;
-            network.respond(request, response);
+            network.respond(request, MapsProtocolMapper.toMapsListResponse(request.server(), mapsList));
         });
 
         network.subscribe(TransportEvents.MapRemoveRequest.class, request -> {
