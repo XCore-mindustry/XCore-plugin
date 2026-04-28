@@ -58,59 +58,6 @@ public class TransportEvents {
 
     public record PlayerPasswordReset(String uuid) {}
 
-    public record DiscordLinkCodeCreatedEvent(
-            String code,
-            String playerUuid,
-            int playerPid,
-            String playerNickname,
-            String server,
-            long createdAt,
-            long expiresAt
-    ) implements ServerScopedEvent {}
-
-    public record DiscordLinkConfirmEvent(
-            String code,
-            String playerUuid,
-            int playerPid,
-            String discordId,
-            String discordUsername,
-            String server,
-            long confirmedAt
-    ) implements ServerScopedEvent {}
-
-    public record DiscordUnlinkEvent(
-            String playerUuid,
-            int playerPid,
-            String discordId,
-            String requestedBy,
-            String server,
-            long requestedAt
-    ) implements ServerScopedEvent {}
-
-    public record DiscordLinkStatusChangedEvent(
-            String playerUuid,
-            int playerPid,
-            String playerNickname,
-            String discordId,
-            String discordUsername,
-            String action,
-            String server,
-            long occurredAt
-    ) implements ServerScopedEvent {}
-
-    public record DiscordAdminAccessChanged(
-            String playerUuid,
-            int playerPid,
-            String discordId,
-            String discordUsername,
-            boolean admin,
-            String adminSource,
-            String requestedBy,
-            String reason,
-            String server,
-            long occurredAt
-    ) implements ServerScopedEvent {}
-
     public record VoteKickParticipant(
             String name,
             Integer pid,

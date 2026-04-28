@@ -15,6 +15,7 @@ import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
@@ -56,16 +57,20 @@ public class ModerationTransportHandler {
                 p -> p.kick(Packets.KickReason.banned)
         ));
 
-        network.subscribe(TransportEvents.DiscordAdminAccessChanged.class, e -> {
+        network.subscribe(DiscordAdminAccessChangedCommandV1.class, e -> {
             if (e.admin()) {
-                if (discordAdminAccessService.applyDiscordAdminAccess(e.playerUuid(), e.discordId(), e.discordUsername())) {
-                    info("Granted discord admin access: @", e.playerUuid());
+                if (discordAdminAccessService.applyDiscordAdminAccess(
+                        e.player().playerUuid(),
+                        e.discord().discordId(),
+                        e.discord().discordUsername()
+                )) {
+                    info("Granted discord admin access: @", e.player().playerUuid());
                 }
                 return;
             }
 
-            if (discordAdminAccessService.revokeDiscordAdminAccess(e.playerUuid())) {
-                info("Revoked discord admin access: @", e.playerUuid());
+            if (discordAdminAccessService.revokeDiscordAdminAccess(e.player().playerUuid())) {
+                info("Revoked discord admin access: @", e.player().playerUuid());
             }
         });
 

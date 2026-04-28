@@ -11,6 +11,10 @@ import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.PlayerRefV1;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,8 +29,8 @@ import static org.mockito.Mockito.when;
 class DiscordLinkTransportHandlerTest {
 
     @Test
-    @DisplayName("discord link confirm event confirms link and notifies online player")
-    void discordLinkConfirmEvent_confirmsLinkAndNotifiesOnlinePlayer() {
+    @DisplayName("discord link confirm command confirms link and notifies online player")
+    void discordLinkConfirmCommand_confirmsLinkAndNotifiesOnlinePlayer() {
         NetworkService network = mock(NetworkService.class);
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
@@ -51,15 +55,21 @@ class DiscordLinkTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.DiscordLinkConfirmEvent.class)
-                .get(new TransportEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-pvp", 1L));
+        listener(listeners, DiscordLinkConfirmCommandV1.class)
+                .get(new DiscordLinkConfirmCommandV1(
+                        "ABC123",
+                        new PlayerRefV1("uuid-7", 7, "Target", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        "mini-pvp",
+                        "2026-04-28T00:00:01Z"
+                ));
 
         verify(localization).send(any(), any());
     }
 
     @Test
-    @DisplayName("discord unlink event updates offline player data without online session")
-    void discordUnlinkEvent_updatesOfflinePlayerDataWithoutOnlineSession() {
+    @DisplayName("discord unlink command updates offline player data without online session")
+    void discordUnlinkCommand_updatesOfflinePlayerDataWithoutOnlineSession() {
         NetworkService network = mock(NetworkService.class);
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
@@ -78,8 +88,14 @@ class DiscordLinkTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.DiscordUnlinkEvent.class)
-                .get(new TransportEvents.DiscordUnlinkEvent("uuid-7", 7, "123", "discord", "mini-other", 1L));
+        listener(listeners, DiscordUnlinkCommandV1.class)
+                .get(new DiscordUnlinkCommandV1(
+                        new PlayerRefV1("uuid-7", 7, "Target", null),
+                        new DiscordIdentityRefV1("123", "discord"),
+                        "discord",
+                        "mini-other",
+                        "2026-04-28T00:00:01Z"
+                ));
 
         verify(discordLinkService).unlink("uuid-7");
     }

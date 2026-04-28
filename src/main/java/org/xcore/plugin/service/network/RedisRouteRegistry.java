@@ -1,6 +1,11 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -24,6 +29,10 @@ public final class RedisRouteRegistry {
         String moderationServer = moderationServer(payload);
         if (moderationServer != null && !moderationServer.isBlank()) {
             return moderationServer;
+        }
+        String discordServer = discordServer(payload);
+        if (discordServer != null && !discordServer.isBlank()) {
+            return discordServer;
         }
         if (payload instanceof TransportEvents.ServerScopedEvent serverScopedEvent) {
             String server = serverScopedEvent.server();
@@ -133,11 +142,11 @@ public final class RedisRouteRegistry {
         register(mutating(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerBadgeInventoryChanged.class, "xcore:cmd:player-badge-inventory:{server}", "player.badge_inventory", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerPasswordReset.class, "xcore:cmd:player-password-reset:{server}", "player.password_reset", 120_000L, RedisServerResolver.defaultServer()));
-        register(readOnly(TransportEvents.DiscordLinkCodeCreatedEvent.class, "xcore:evt:discord:link-code", "discord.link_code_created", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.DiscordLinkConfirmEvent.class, "xcore:cmd:discord-link-confirm:{server}", "discord.link_confirm", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(TransportEvents.DiscordUnlinkEvent.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(readOnly(TransportEvents.DiscordLinkStatusChangedEvent.class, "xcore:evt:discord:link-status", "discord.link_status_changed", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(TransportEvents.DiscordAdminAccessChanged.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin_access_changed", 120_000L, PAYLOAD_SERVER_RESOLVER));
+        register(readOnly(DiscordLinkCodeCreatedV1.class, "xcore:evt:discord:link-code", "discord.link-code-created", 120_000L, RedisServerResolver.broadcast()));
+        register(mutating(DiscordLinkConfirmCommandV1.class, "xcore:cmd:discord-link-confirm:{server}", "discord.link.confirm.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
+        register(mutating(DiscordUnlinkCommandV1.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
+        register(readOnly(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, RedisServerResolver.broadcast()));
+        register(mutating(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
@@ -163,6 +172,25 @@ public final class RedisRouteRegistry {
             return command.server();
         }
         if (payload instanceof ModerationPardonCommandV1 command) {
+            return command.server();
+        }
+        return null;
+    }
+
+    private static String discordServer(Object payload) {
+        if (payload instanceof DiscordLinkCodeCreatedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof DiscordLinkConfirmCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof DiscordLinkStatusChangedV1 event) {
+            return event.server();
+        }
+        if (payload instanceof DiscordUnlinkCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof DiscordAdminAccessChangedCommandV1 command) {
             return command.server();
         }
         return null;

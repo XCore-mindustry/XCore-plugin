@@ -2,6 +2,9 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
@@ -142,7 +145,10 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(TransportEvents.GlobalChatEvent.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
+        RedisTransportTopology.RouteSpec discordLinkCodeRoute = RedisTransportTopology.routeFor(DiscordLinkCodeCreatedV1.class);
+        RedisTransportTopology.RouteSpec discordStatusRoute = RedisTransportTopology.routeFor(DiscordLinkStatusChangedV1.class);
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
+        RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(TransportEvents.MapsListRequest.class);
         RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(ModerationKickBannedCommandV1.class);
@@ -151,7 +157,10 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
+        RedisTransportTopology.RouteSpec stableDiscordLinkCodeRoute = discordLinkCodeRoute;
+        RedisTransportTopology.RouteSpec stableDiscordStatusRoute = discordStatusRoute;
         RedisTransportTopology.RouteSpec stableCommandRoute = commandRoute;
+        RedisTransportTopology.RouteSpec stableDiscordAdminCommandRoute = discordAdminCommandRoute;
         RedisTransportTopology.RouteSpec stableBroadcastCommandRoute = broadcastCommandRoute;
         RedisTransportTopology.RouteSpec stableRpcRoute = rpcRoute;
         RedisTransportTopology.RouteSpec stableKickBannedRoute = kickBannedRoute;
@@ -177,6 +186,22 @@ class RedisTransportContractsTest {
         assertThat(stableMuteRoute.readOnly()).isTrue();
         assertThat(stableMuteRoute.rpcRequest()).isFalse();
 
+        assertThat(stableDiscordLinkCodeRoute).isNotNull();
+        assertThat(stableDiscordLinkCodeRoute.streamPattern()).isEqualTo("xcore:evt:discord:link-code");
+        assertThat(stableDiscordLinkCodeRoute.eventType()).isEqualTo("discord.link-code-created");
+        assertThat(stableDiscordLinkCodeRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableDiscordLinkCodeRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableDiscordLinkCodeRoute.readOnly()).isTrue();
+        assertThat(stableDiscordLinkCodeRoute.rpcRequest()).isFalse();
+
+        assertThat(stableDiscordStatusRoute).isNotNull();
+        assertThat(stableDiscordStatusRoute.streamPattern()).isEqualTo("xcore:evt:discord:link-status");
+        assertThat(stableDiscordStatusRoute.eventType()).isEqualTo("discord.link.status-changed");
+        assertThat(stableDiscordStatusRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableDiscordStatusRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableDiscordStatusRoute.readOnly()).isTrue();
+        assertThat(stableDiscordStatusRoute.rpcRequest()).isFalse();
+
         assertThat(stableCommandRoute).isNotNull();
         assertThat(stableCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-password-reset:{server}");
         assertThat(stableCommandRoute.eventType()).isEqualTo("player.password_reset");
@@ -184,6 +209,14 @@ class RedisTransportContractsTest {
         assertThat(stableCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.DEFAULT_SERVER);
         assertThat(stableCommandRoute.readOnly()).isFalse();
         assertThat(stableCommandRoute.rpcRequest()).isFalse();
+
+        assertThat(stableDiscordAdminCommandRoute).isNotNull();
+        assertThat(stableDiscordAdminCommandRoute.streamPattern()).isEqualTo("xcore:cmd:discord-admin-access:{server}");
+        assertThat(stableDiscordAdminCommandRoute.eventType()).isEqualTo("discord.admin-access.changed.command");
+        assertThat(stableDiscordAdminCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableDiscordAdminCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableDiscordAdminCommandRoute.readOnly()).isFalse();
+        assertThat(stableDiscordAdminCommandRoute.rpcRequest()).isFalse();
 
         assertThat(stableBroadcastCommandRoute).isNotNull();
         assertThat(stableBroadcastCommandRoute.streamPattern()).isEqualTo("xcore:cmd:execute-command:broadcast");

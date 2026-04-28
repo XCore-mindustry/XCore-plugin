@@ -1,6 +1,11 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -60,11 +65,11 @@ public final class RedisTransportTopology {
             route(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.PlayerBadgeInventoryChanged.class, "xcore:cmd:player-badge-inventory:{server}", "player.badge_inventory", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.PlayerPasswordReset.class, "xcore:cmd:player-password-reset:{server}", "player.password_reset", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
-            route(TransportEvents.DiscordLinkCodeCreatedEvent.class, "xcore:evt:discord:link-code", "discord.link_code_created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.DiscordLinkConfirmEvent.class, "xcore:cmd:discord-link-confirm:{server}", "discord.link_confirm", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
-            route(TransportEvents.DiscordUnlinkEvent.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
-            route(TransportEvents.DiscordLinkStatusChangedEvent.class, "xcore:evt:discord:link-status", "discord.link_status_changed", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.DiscordAdminAccessChanged.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin_access_changed", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(DiscordLinkCodeCreatedV1.class, "xcore:evt:discord:link-code", "discord.link-code-created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(DiscordLinkConfirmCommandV1.class, "xcore:cmd:discord-link-confirm:{server}", "discord.link.confirm.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(DiscordUnlinkCommandV1.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, DeliveryMode.COMMAND, ServerScope.BROADCAST, false),

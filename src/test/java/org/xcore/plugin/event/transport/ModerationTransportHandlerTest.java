@@ -15,6 +15,9 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.PlayerRefV1;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,8 +46,8 @@ class ModerationTransportHandlerTest {
     }
 
     @Test
-    @DisplayName("discord admin access event applies persisted admin flags")
-    void discordAdminAccessEvent_appliesPersistedAdminFlags() {
+    @DisplayName("discord admin access command applies persisted admin flags")
+    void discordAdminAccessCommand_appliesPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
@@ -62,18 +65,24 @@ class ModerationTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.DiscordAdminAccessChanged.class)
-                .get(new TransportEvents.DiscordAdminAccessChanged(
-                        "uuid-1", 7, "123", "discord-user", true,
-                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE, "tester", "sync", "mini-pvp", 10L
+        listener(listeners, DiscordAdminAccessChangedCommandV1.class)
+                .get(new DiscordAdminAccessChangedCommandV1(
+                        new PlayerRefV1("uuid-1", 7, "Player", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        true,
+                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE,
+                        "tester",
+                        "sync",
+                        "mini-pvp",
+                        "2026-04-28T00:00:10Z"
                 ));
 
         verify(discordAdminAccessService).applyDiscordAdminAccess("uuid-1", "123", "discord-user");
     }
 
     @Test
-    @DisplayName("discord admin revoke event clears persisted admin flags")
-    void discordAdminRevokeEvent_clearsPersistedAdminFlags() {
+    @DisplayName("discord admin revoke command clears persisted admin flags")
+    void discordAdminRevokeCommand_clearsPersistedAdminFlags() {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
@@ -91,10 +100,16 @@ class ModerationTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.DiscordAdminAccessChanged.class)
-                .get(new TransportEvents.DiscordAdminAccessChanged(
-                        "uuid-1", 7, "123", "discord-user", false,
-                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE, "tester", "sync", "mini-pvp", 11L
+        listener(listeners, DiscordAdminAccessChangedCommandV1.class)
+                .get(new DiscordAdminAccessChangedCommandV1(
+                        new PlayerRefV1("uuid-1", 7, "Player", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        false,
+                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE,
+                        "tester",
+                        "sync",
+                        "mini-pvp",
+                        "2026-04-28T00:00:11Z"
                 ));
 
         verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-1");

@@ -2,6 +2,11 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -10,6 +15,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.BanData;
@@ -77,6 +83,16 @@ class RedisStreamRouterTest {
                 ),
                 "mini-pvp"
         );
+        var discordLinkCodeRoute = router.route(
+                new DiscordLinkCodeCreatedV1(
+                        "ABC123",
+                        new PlayerRefV1("uuid-7", 7, "Target", null),
+                        "mini-pvp",
+                        Instant.parse("2026-04-26T00:00:04Z").toString(),
+                        Instant.parse("2026-04-26T00:10:04Z").toString()
+                ),
+                "mini-pvp"
+        );
 
         assertThat(messageRoute.streamKey()).isEqualTo("xcore:evt:chat:message");
         assertThat(messageRoute.eventType()).isEqualTo("chat.message");
@@ -95,6 +111,9 @@ class RedisStreamRouterTest {
 
         assertThat(auditRoute.streamKey()).isEqualTo("xcore:evt:moderation:audit");
         assertThat(auditRoute.eventType()).isEqualTo("moderation.audit.appended");
+
+        assertThat(discordLinkCodeRoute.streamKey()).isEqualTo("xcore:evt:discord:link-code");
+        assertThat(discordLinkCodeRoute.eventType()).isEqualTo("discord.link-code-created");
     }
 
     @Test
@@ -105,9 +124,49 @@ class RedisStreamRouterTest {
         var badgeRoute = router.route(new TransportEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
         var badgeColorModeRoute = router.route(new TransportEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
         var passwordRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
-        var discordLinkConfirmRoute = router.route(new TransportEvents.DiscordLinkConfirmEvent("ABC123", "uuid-7", 7, "123", "discord-user", "mini-hexed", 10L), "mini-pvp");
-        var discordLinkStatusRoute = router.route(new TransportEvents.DiscordLinkStatusChangedEvent("uuid-7", 7, "Nick", "123", "discord-user", "linked", "mini-pvp", 10L), "mini-pvp");
-        var discordAdminAccessRoute = router.route(new TransportEvents.DiscordAdminAccessChanged("uuid-7", 7, "123", "discord-user", true, "DISCORD_ROLE", "tester", "sync", "mini-pvp", 11L), "mini-pvp");
+        var discordLinkConfirmRoute = router.route(
+                new DiscordLinkConfirmCommandV1(
+                        "ABC123",
+                        new PlayerRefV1("uuid-7", 7, "Nick", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        "mini-hexed",
+                        Instant.parse("2026-04-26T00:00:10Z").toString()
+                ),
+                "mini-pvp"
+        );
+        var discordLinkStatusRoute = router.route(
+                new DiscordLinkStatusChangedV1(
+                        new PlayerRefV1("uuid-7", 7, "Nick", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        "linked",
+                        "mini-pvp",
+                        Instant.parse("2026-04-26T00:00:10Z").toString()
+                ),
+                "mini-pvp"
+        );
+        var discordAdminAccessRoute = router.route(
+                new DiscordAdminAccessChangedCommandV1(
+                        new PlayerRefV1("uuid-7", 7, "Nick", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        true,
+                        "DISCORD_ROLE",
+                        "tester",
+                        "sync",
+                        "mini-pvp",
+                        Instant.parse("2026-04-26T00:00:11Z").toString()
+                ),
+                "mini-pvp"
+        );
+        var discordUnlinkRoute = router.route(
+                new DiscordUnlinkCommandV1(
+                        new PlayerRefV1("uuid-7", 7, "Nick", null),
+                        new DiscordIdentityRefV1("123", "discord-user"),
+                        "tester",
+                        "mini-hexed",
+                        Instant.parse("2026-04-26T00:00:13Z").toString()
+                ),
+                "mini-pvp"
+        );
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
@@ -118,13 +177,27 @@ class RedisStreamRouterTest {
         assertThat(passwordRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
         assertThat(passwordRoute.eventType()).isEqualTo("player.password_reset");
         assertThat(discordLinkConfirmRoute.streamKey()).isEqualTo("xcore:cmd:discord-link-confirm:mini-hexed");
-        assertThat(discordLinkConfirmRoute.eventType()).isEqualTo("discord.link_confirm");
+        assertThat(discordLinkConfirmRoute.eventType()).isEqualTo("discord.link.confirm.command");
         assertThat(discordLinkStatusRoute.streamKey()).isEqualTo("xcore:evt:discord:link-status");
-        assertThat(discordLinkStatusRoute.eventType()).isEqualTo("discord.link_status_changed");
+        assertThat(discordLinkStatusRoute.eventType()).isEqualTo("discord.link.status-changed");
         assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:mini-pvp");
-        assertThat(discordAdminAccessRoute.eventType()).isEqualTo("discord.admin_access_changed");
+        assertThat(discordAdminAccessRoute.eventType()).isEqualTo("discord.admin-access.changed.command");
+        assertThat(discordUnlinkRoute.streamKey()).isEqualTo("xcore:cmd:discord-unlink:mini-hexed");
+        assertThat(discordUnlinkRoute.eventType()).isEqualTo("discord.unlink.command");
 
-        var discordAdminAccessOtherServerRoute = router.route(new TransportEvents.DiscordAdminAccessChanged("uuid-8", 8, "456", "other-user", false, "NONE", "tester", "sync", "survival", 12L), "mini-pvp");
+        var discordAdminAccessOtherServerRoute = router.route(
+                new DiscordAdminAccessChangedCommandV1(
+                        new PlayerRefV1("uuid-8", 8, "Other", null),
+                        new DiscordIdentityRefV1("456", "other-user"),
+                        false,
+                        "NONE",
+                        "tester",
+                        "sync",
+                        "survival",
+                        Instant.parse("2026-04-26T00:00:12Z").toString()
+                ),
+                "mini-pvp"
+        );
         assertThat(discordAdminAccessOtherServerRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:survival");
     }
 
@@ -146,14 +219,20 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordLinkConfirmEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(DiscordLinkConfirmCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-link-confirm:mini-pvp");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordLinkStatusChangedEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(DiscordLinkCodeCreatedV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:discord:link-code");
+
+        assertThat(router.subscribeStreamsFor(DiscordLinkStatusChangedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:discord:link-status");
 
-        assertThat(router.subscribeStreamsFor(TransportEvents.DiscordAdminAccessChanged.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(DiscordAdminAccessChangedCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-admin-access:mini-pvp");
+
+        assertThat(router.subscribeStreamsFor(DiscordUnlinkCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:discord-unlink:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(ModerationBanCreatedV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:moderation:ban");
@@ -177,19 +256,21 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
-        assertThat(router.isReadOnlyType(TransportEvents.DiscordLinkStatusChangedEvent.class)).isTrue();
+        assertThat(router.isReadOnlyType(DiscordLinkCodeCreatedV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationAuditAppendedV1.class)).isTrue();
-        assertThat(router.isReadOnlyType(TransportEvents.DiscordAdminAccessChanged.class)).isFalse();
+        assertThat(router.isReadOnlyType(DiscordAdminAccessChangedCommandV1.class)).isFalse();
         assertThat(router.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
 
         assertThat(router.isMutatingType(TransportEvents.PlayerPasswordReset.class)).isTrue();
         assertThat(router.isMutatingType(TransportEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();
-        assertThat(router.isMutatingType(TransportEvents.DiscordLinkConfirmEvent.class)).isTrue();
-        assertThat(router.isMutatingType(TransportEvents.DiscordAdminAccessChanged.class)).isTrue();
+        assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(TransportEvents.MessageEvent.class)).isFalse();
 
         assertThat(router.isRpcRequestType(TransportEvents.MapsListRequest.class)).isTrue();
