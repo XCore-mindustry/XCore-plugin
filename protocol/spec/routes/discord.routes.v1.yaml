@@ -1,6 +1,15 @@
 version: 1
 family: discord
 messages:
+  - messageType: discord.link-code-created
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:discord:link-code
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: discord-linking
   - messageType: discord.link.confirm.command
     messageVersion: 1
     kind: command

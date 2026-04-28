@@ -35,6 +35,22 @@ public final class DiscordRoutes {
             RouteResponseDescriptor response
     ) {}
 
+    public static final RouteDescriptor DISCORD_LINK_CODE_CREATED_V1 = new RouteDescriptor(
+            "discord",
+            "discordLinkCodeCreatedV1Route",
+            "discord.link-code-created",
+            1,
+            DiscordMessages.DiscordLinkCodeCreatedV1.class,
+            "event",
+            "xcore:evt:discord:link-code",
+            "broadcast",
+            120000,
+            true,
+            true,
+            "discord-linking",
+            null
+    );
+
     public static final RouteDescriptor DISCORD_LINK_CONFIRM_COMMAND_V1 = new RouteDescriptor(
             "discord",
             "discordLinkConfirmCommandV1Route",
@@ -100,6 +116,7 @@ public final class DiscordRoutes {
     );
 
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
+            entry(key("discord.link-code-created", 1), DISCORD_LINK_CODE_CREATED_V1),
             entry(key("discord.link.confirm.command", 1), DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry(key("discord.unlink.command", 1), DISCORD_UNLINK_COMMAND_V1),
             entry(key("discord.link.status-changed", 1), DISCORD_LINK_STATUS_CHANGED_V1),

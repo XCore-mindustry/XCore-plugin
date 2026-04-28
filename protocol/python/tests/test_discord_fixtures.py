@@ -6,6 +6,10 @@ from xcore_protocol.schema_validation import assert_invalid, assert_valid
 
 VALID_CASES = [
     (
+        spec_root() / "messages" / "discord" / "discord.link-code-created.v1.json",
+        fixtures_root() / "valid" / "discord" / "discord.link-code-created.v1.json",
+    ),
+    (
         spec_root() / "messages" / "discord" / "discord.link.confirm.command.v1.json",
         fixtures_root() / "valid" / "discord" / "discord.link.confirm.command.v1.json",
     ),
@@ -31,6 +35,10 @@ VALID_CASES = [
 
 
 INVALID_CASES = [
+    (
+        spec_root() / "messages" / "discord" / "discord.link-code-created.v1.json",
+        fixtures_root() / "invalid" / "discord" / "discord.link-code-created.v1.bad-time.json",
+    ),
     (
         spec_root() / "messages" / "discord" / "discord.link.confirm.command.v1.json",
         fixtures_root()

@@ -45,6 +45,31 @@ public final class DiscordMessages {
         }
     }
 
+    public record DiscordLinkCodeCreatedV1(
+            String code,
+            PlayerRefV1 player,
+            String server,
+            String createdAt,
+            String expiresAt
+    ) {
+        public static final String MESSAGE_TYPE = "discord.link-code-created";
+        public static final int MESSAGE_VERSION = 1;
+
+        public DiscordLinkCodeCreatedV1 {
+            Objects.requireNonNull(code, "code must not be null");
+            if (code.length() < 1) {
+                throw new IllegalArgumentException("code must be at least 1 characters");
+            }
+            Objects.requireNonNull(player, "player must not be null");
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+            Objects.requireNonNull(createdAt, "createdAt must not be null");
+            Objects.requireNonNull(expiresAt, "expiresAt must not be null");
+        }
+    }
+
     public record DiscordLinkConfirmCommandV1(
             String code,
             PlayerRefV1 player,

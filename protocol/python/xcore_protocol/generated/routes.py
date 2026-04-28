@@ -23,6 +23,7 @@ from .chat import (
 )
 
 from .discord import (
+    DiscordLinkCodeCreatedV1,
     DiscordLinkConfirmCommandV1,
     DiscordUnlinkCommandV1,
     DiscordLinkStatusChangedV1,
@@ -216,6 +217,22 @@ SERVER_HEARTBEAT_V1 = RouteDescriptor(
     response=None,
 )
 
+DISCORD_LINK_CODE_CREATED_V1 = RouteDescriptor(
+    family='discord',
+    methodName='discordLinkCodeCreatedV1Route',
+    messageType='discord.link-code-created',
+    messageVersion=1,
+    payloadType=DiscordLinkCodeCreatedV1,
+    kind='event',
+    stream='xcore:evt:discord:link-code',
+    targetScope='broadcast',
+    ttlMs=120000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='discord-linking',
+    response=None,
+)
+
 DISCORD_LINK_CONFIRM_COMMAND_V1 = RouteDescriptor(
     family='discord',
     methodName='discordLinkConfirmCommandV1Route',
@@ -386,6 +403,7 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('server.action', 1): SERVER_ACTION_V1,
     ('player.join-leave', 1): PLAYER_JOIN_LEAVE_V1,
     ('server.heartbeat', 1): SERVER_HEARTBEAT_V1,
+    ('discord.link-code-created', 1): DISCORD_LINK_CODE_CREATED_V1,
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
     ('discord.unlink.command', 1): DISCORD_UNLINK_COMMAND_V1,
     ('discord.link.status-changed', 1): DISCORD_LINK_STATUS_CHANGED_V1,
@@ -412,6 +430,7 @@ __all__ = [
     "SERVER_ACTION_V1",
     "PLAYER_JOIN_LEAVE_V1",
     "SERVER_HEARTBEAT_V1",
+    "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",
     "DISCORD_LINK_STATUS_CHANGED_V1",

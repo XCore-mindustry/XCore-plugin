@@ -163,6 +163,56 @@ class DiscordAdminAccessChangedCommandV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class DiscordLinkCodeCreatedV1:
+    code: str
+    player: PlayerRefV1
+    server: str
+    createdAt: str
+    expiresAt: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'discord.link-code-created'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.code, 'code')
+        _expect_instance(self.player, 'player', PlayerRefV1)
+        _expect_str(self.server, 'server')
+        _expect_str(self.createdAt, 'createdAt')
+        _expect_str(self.expiresAt, 'expiresAt')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "DiscordLinkCodeCreatedV1":
+        mapping = _expect_mapping(payload, "DiscordLinkCodeCreatedV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'code', 'player', 'server', 'createdAt', 'expiresAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'code', 'player', 'server', 'createdAt', 'expiresAt')),
+            model_name="DiscordLinkCodeCreatedV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            code=_expect_str(mapping['code'], 'code'),
+            player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
+            server=_expect_str(mapping['server'], 'server'),
+            createdAt=_expect_str(mapping['createdAt'], 'createdAt'),
+            expiresAt=_expect_str(mapping['expiresAt'], 'expiresAt'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['code'] = self.code
+        payload['player'] = self.player.to_payload()
+        payload['server'] = self.server
+        payload['createdAt'] = self.createdAt
+        payload['expiresAt'] = self.expiresAt
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class DiscordLinkConfirmCommandV1:
     code: str
     player: PlayerRefV1
@@ -314,6 +364,7 @@ class DiscordUnlinkCommandV1:
 
 __all__ = [
     "DiscordAdminAccessChangedCommandV1",
+    "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",
     "DiscordUnlinkCommandV1",

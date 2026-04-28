@@ -17,6 +17,7 @@ from .chat import (
 )
 from .discord import (
     DiscordAdminAccessChangedCommandV1,
+    DiscordLinkCodeCreatedV1,
     DiscordLinkConfirmCommandV1,
     DiscordLinkStatusChangedV1,
     DiscordUnlinkCommandV1,
@@ -47,6 +48,7 @@ from .routes import (
     SERVER_ACTION_V1,
     PLAYER_JOIN_LEAVE_V1,
     SERVER_HEARTBEAT_V1,
+    DISCORD_LINK_CODE_CREATED_V1,
     DISCORD_LINK_CONFIRM_COMMAND_V1,
     DISCORD_UNLINK_COMMAND_V1,
     DISCORD_LINK_STATUS_CHANGED_V1,
@@ -102,6 +104,7 @@ __all__ = [
     "ServerActionV1",
     "ServerHeartbeatV1",
     "DiscordAdminAccessChangedCommandV1",
+    "DiscordLinkCodeCreatedV1",
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",
     "DiscordUnlinkCommandV1",
@@ -120,6 +123,7 @@ __all__ = [
     "SERVER_ACTION_V1",
     "PLAYER_JOIN_LEAVE_V1",
     "SERVER_HEARTBEAT_V1",
+    "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",
     "DISCORD_LINK_STATUS_CHANGED_V1",

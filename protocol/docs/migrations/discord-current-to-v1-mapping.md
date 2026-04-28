@@ -4,6 +4,7 @@
 Map the current Discord linking/admin payloads used by `XCore-plugin` and `XCore-discord-bot` into canonical v1 protocol contracts and their generated canonical Java/Python model surface.
 
 ## Scope
+- `discord.link-code-created`
 - `discord.link.confirm.command`
 - `discord.unlink.command`
 - `discord.link.status-changed`
@@ -39,6 +40,30 @@ Current plugin/bot fields:
 | `discordUsername` | `discord.discordUsername` | grouped under discord identity |
 | `server` | `server` | unchanged semantic |
 | `confirmedAt` epoch millis | `confirmedAt` ISO-8601 UTC | mapper converts |
+
+## Discord Link Code Created
+
+### Current payload
+Current plugin fields:
+- `code`
+- `playerUuid`
+- `playerPid`
+- `playerNickname`
+- `server`
+- `createdAt` (epoch millis)
+- `expiresAt` (epoch millis)
+
+### Canonical v1 mapping
+
+| Current field | Canonical field | Notes |
+|---|---|---|
+| `code` | `code` | unchanged semantic |
+| `playerUuid` | `player.playerUuid` | grouped under player |
+| `playerPid` | `player.playerPid` | grouped under player |
+| `playerNickname` | `player.playerName` | normalized naming |
+| `server` | `server` | unchanged semantic |
+| `createdAt` epoch millis | `createdAt` ISO-8601 UTC | mapper converts |
+| `expiresAt` epoch millis | `expiresAt` ISO-8601 UTC | mapper converts |
 
 ## Discord Unlink
 
@@ -121,12 +146,14 @@ Current plugin/bot fields:
 
 | Current eventType | Canonical messageType |
 |---|---|
+| `discord.link_code_created` | `discord.link-code-created` |
 | `discord.link_confirm` | `discord.link.confirm.command` |
 | `discord.unlink` | `discord.unlink.command` |
 | `discord.link_status_changed` | `discord.link.status-changed` |
 | `discord.admin_access_changed` | `discord.admin-access.changed.command` |
 
 ## Main Migration Notes
+- Current plugin route semantics treat link-code-created and link-status-changed as broadcast events; canonical naming keeps those messages event-shaped without a `.command` suffix.
 - Current plugin route semantics treat confirm, unlink, and admin-access as commands; canonical naming keeps that distinction explicit with `.command`.
 - Current command payloads may not always naturally carry `playerName`; consumer-side migration code may need lookup or session context to populate the canonical `player.playerName` requirement before constructing canonical payloads.
 

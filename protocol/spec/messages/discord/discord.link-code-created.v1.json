@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:discord:discord.link-code-created:v1",
+  "title": "DiscordLinkCodeCreatedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "code",
+    "player",
+    "server",
+    "createdAt",
+    "expiresAt"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "discord.link-code-created"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "player": {
+      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
