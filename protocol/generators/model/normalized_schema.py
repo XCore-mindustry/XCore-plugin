@@ -56,6 +56,7 @@ class NormalizedSchema:
     message_type: str | None
     message_version: int | None
     fields: tuple[NormalizedField, ...]
+    require_any_of_groups: tuple[tuple[str, ...], ...] = ()
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -271,6 +272,7 @@ def _normalize_schema_from_raw(
     title = raw.get("title")
     properties = raw.get("properties")
     required_fields = set(raw.get("required", []))
+    require_any_of_groups = _normalize_require_any_of_groups(raw, properties, path=path)
 
     if not isinstance(schema_id, str) or not schema_id:
         raise ValueError(f"Schema must define non-empty $id: {path}")
@@ -312,7 +314,47 @@ def _normalize_schema_from_raw(
         message_type=message_type,
         message_version=message_version,
         fields=normalized_fields,
+        require_any_of_groups=require_any_of_groups,
     )
+
+
+def _normalize_require_any_of_groups(
+    raw: dict[str, Any],
+    properties: Any,
+    *,
+    path: Path,
+) -> tuple[tuple[str, ...], ...]:
+    if not isinstance(properties, dict):
+        raise ValueError(f"Schema must define properties object: {path}")
+
+    raw_groups = raw.get("x-requireAnyOf")
+    if raw_groups is None:
+        return ()
+    if not isinstance(raw_groups, list):
+        raise ValueError(f"x-requireAnyOf must be a list of field groups: {path}")
+
+    normalized_groups: list[tuple[str, ...]] = []
+    property_names = set(properties.keys())
+
+    for group in raw_groups:
+        if not isinstance(group, list) or len(group) < 2:
+            raise ValueError(f"x-requireAnyOf groups must be lists with at least two fields: {path}")
+
+        normalized_group: list[str] = []
+        seen_names: set[str] = set()
+        for field_name in group:
+            if not isinstance(field_name, str) or not field_name:
+                raise ValueError(f"x-requireAnyOf field names must be non-empty strings: {path}")
+            if field_name not in property_names:
+                raise ValueError(f"x-requireAnyOf references unknown field {field_name!r}: {path}")
+            if field_name in seen_names:
+                raise ValueError(f"x-requireAnyOf field groups must not repeat field names: {path}")
+            seen_names.add(field_name)
+            normalized_group.append(field_name)
+
+        normalized_groups.append(tuple(normalized_group))
+
+    return tuple(normalized_groups)
 
 
 def load_message_schema(path: Path) -> NormalizedSchema:

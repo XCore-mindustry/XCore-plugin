@@ -112,6 +112,10 @@ def test_family_scoped_java_generation_preserves_nullable_map_values() -> None:
     output_by_name = {Path(output.path).name: output.content for output in outputs}
 
     moderation_messages = output_by_name["ModerationMessages.java"]
+    player_command_target = output_by_name["PlayerCommandTargetV1.java"]
+    moderation_target_ref = output_by_name["ModerationTargetRefV1.java"]
 
     assert "details = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(details));" in moderation_messages
     assert "details = Map.copyOf(details);" not in moderation_messages
+    assert "At least one of playerUuid, ip must be provided" in player_command_target
+    assert "At least one of playerUuid, ip must be provided" in moderation_target_ref

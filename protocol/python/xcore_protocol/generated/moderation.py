@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 from .shared import (
     ActorRefV1,
     ExpirationInfoV1,
+    ModerationTargetRefV1,
     PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
@@ -106,7 +107,7 @@ def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> N
 @dataclass(frozen=True, slots=True)
 class ModerationAuditAppendedV1:
     entryType: str
-    target: PlayerRefV1
+    target: ModerationTargetRefV1
     actor: ActorRefV1
     reason: str
     server: str | None = None
@@ -117,7 +118,7 @@ class ModerationAuditAppendedV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_str(self.entryType, 'entryType')
-        _expect_instance(self.target, 'target', PlayerRefV1)
+        _expect_instance(self.target, 'target', ModerationTargetRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
         if self.server is not None:
@@ -142,7 +143,7 @@ class ModerationAuditAppendedV1:
             raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
         return cls(
             entryType=_expect_str(mapping['entryType'], 'entryType'),
-            target=PlayerRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
+            target=ModerationTargetRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
             actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             reason=_expect_str(mapping['reason'], 'reason'),
             server=(_expect_str(mapping['server'], 'server') if 'server' in mapping else None),

@@ -1,0 +1,9 @@
+{
+  "messageType": "moderation.pardon.command",
+  "messageVersion": 1,
+  "target": {
+    "ip": "1.2.3.4"
+  },
+  "server": "mini-pvp",
+  "requestedAt": "2026-04-23T13:20:00Z"
+}

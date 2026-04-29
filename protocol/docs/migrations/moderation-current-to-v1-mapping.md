@@ -211,13 +211,13 @@ Current bot publishes:
 
 | Current field | Canonical field | Notes |
 |---|---|---|
-| `uuid` | `target.playerUuid` | preferred identifier |
-| `ip` | `target.ip` | optional secondary identifier |
+| `uuid` | `target.playerUuid` | optional when only IP is available |
+| `ip` | `target.ip` | optional when UUID is available; valid alternative identifier when UUID is unavailable |
 | current route server | `server` | required in canonical command payload |
 | publication time | `requestedAt` | canonical payload business timestamp |
 
 ### Mapper notes
-- `moderation.kick-banned.command.v1` uses `PlayerCommandTargetV1`, which requires `playerUuid` and keeps `playerName`, `playerPid`, and `ip` optional for command-only flows.
+- `moderation.kick-banned.command.v1` uses `PlayerCommandTargetV1`, which requires at least one of `target.playerUuid` or `target.ip`.
 - Publishers should include `playerName` when it is already available, but canonical command validity no longer depends on a lookup-only name.
 
 ---
@@ -240,12 +240,13 @@ Current bot publishes:
 
 | Current field | Canonical field | Notes |
 |---|---|---|
-| `uuid` | `target.playerUuid` | required |
+| `uuid` | `target.playerUuid` | optional when only IP is available |
+| `ip` | `target.ip` | optional when UUID is available; valid alternative identifier when UUID is unavailable |
 | current route server | `server` | required |
 | publication time | `requestedAt` | recommended |
 
 ### Mapper notes
-- `moderation.pardon.command.v1` uses `PlayerCommandTargetV1`, which keeps UUID-first identity strict while allowing command producers to omit `playerName` when they only have UUID context.
+- `moderation.pardon.command.v1` uses `PlayerCommandTargetV1`, which requires at least one of `target.playerUuid` or `target.ip` while still allowing command producers to omit `playerName`.
 
 ---
 
@@ -258,6 +259,7 @@ Current bot publishes:
 - `targetUuid`
 - `targetPid`
 - `targetName`
+- `ipSnapshot`
 - `actorType`
 - `actorId`
 - `actorName`
@@ -278,7 +280,8 @@ Current bot publishes:
 | `action` | `entryType` | map values into canonical enum (`ban`, `mute`, `voteKick`, `pardon`, `other`) |
 | `targetUuid` | `target.playerUuid` | optional if unavailable |
 | `targetPid` | `target.playerPid` | optional |
-| `targetName` | `target.playerName` | required |
+| `targetName` | `target.playerName` | optional when only IP identity is known |
+| `ipSnapshot` | `target.ip` | optional alternate target identity |
 | `actorName` | `actor.actorName` | required |
 | `actorId` | `actor.actorDiscordId` or future actor id field | for v1, map Discord-capable ids into `actorDiscordId` where meaningful |
 | `actorType` | `actor.actorType` | direct semantic mapping |
@@ -292,6 +295,7 @@ Current bot publishes:
 
 ### Mapper notes
 - Audit v1 intentionally keeps extended audit metadata inside `details` to avoid overloading the top-level contract in the first version.
+- `moderation.audit.appended.v1` uses `ModerationTargetRefV1`, which requires at least one of `target.playerUuid` or `target.ip` while keeping `playerName` optional for IP-only audit records.
 
 ---
 
@@ -383,8 +387,8 @@ Canonical envelope `target` is not always the same as current payload `server`. 
 
 ## Open Follow-Up Questions
 
-### 1. Is `PlayerRefV1` too strict for command payloads?
-Current command flows often only know UUID and maybe IP. If this causes friction, define a separate `player-target-ref.v1` or relax the command contract in v2.
+### 1. Should non-moderation payloads gain UUID-or-IP target refs too?
+Moderation commands and audit records now use moderation-specific target shapes for UUID-or-IP identity, while `PlayerRefV1` remains intentionally strict for event families like ban, mute, and vote-kick.
 
 ### 2. Should `occurredAt` become required for all moderation events?
 Recommended yes for canonical event payloads, but some current producers may need mapper-generated timestamps during migration.

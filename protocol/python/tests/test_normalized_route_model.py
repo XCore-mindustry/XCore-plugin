@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from generators.discovery import load_generation_plan
@@ -26,6 +27,31 @@ def test_load_message_schema_normalizes_identity_constants() -> None:
     assert schema.kind == "message"
     assert schema.message_type == "maps.list.request"
     assert schema.message_version == 1
+
+
+def test_load_shared_schema_normalizes_require_any_of_groups(tmp_path: Path) -> None:
+    schema_path = tmp_path / "player-command-target.v1.json"
+    schema_path.write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$id": "urn:xcore:test:player-command-target:v1",
+                "title": "PlayerCommandTargetV1",
+                "type": "object",
+                "additionalProperties": False,
+                "x-requireAnyOf": [["playerUuid", "ip"]],
+                "properties": {
+                    "playerUuid": {"type": "string", "minLength": 1},
+                    "ip": {"type": "string", "minLength": 1},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    schema = load_shared_schema(schema_path)
+
+    assert schema.require_any_of_groups == (("playerUuid", "ip"),)
 
 
 def test_load_routes_normalizes_maps_manifest() -> None:
@@ -152,6 +178,7 @@ def test_generation_plan_supports_moderation_family_with_shared_refs() -> None:
     assert [schema.title for schema in plan.shared_schemas] == [
         "ActorRefV1",
         "ExpirationInfoV1",
+        "ModerationTargetRefV1",
         "PlayerCommandTargetV1",
         "PlayerRefV1",
         "VoteKickParticipantV1",

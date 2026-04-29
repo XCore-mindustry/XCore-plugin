@@ -17,7 +17,7 @@
       "enum": ["ban", "mute", "voteKick", "pardon", "other"]
     },
     "target": {
-      "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
+      "$ref": "urn:xcore:protocol:shared:types:moderation-target-ref:v1"
     },
     "actor": {
       "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"

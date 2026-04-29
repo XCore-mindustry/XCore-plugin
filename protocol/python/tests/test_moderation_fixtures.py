@@ -24,12 +24,24 @@ VALID_CASES = [
         fixtures_root() / "valid" / "moderation" / "moderation.kick-banned.command.v1.json",
     ),
     (
+        spec_root() / "messages" / "moderation" / "moderation.kick-banned.command.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.kick-banned.command.v1.ip-only-target.json",
+    ),
+    (
         spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
         fixtures_root() / "valid" / "moderation" / "moderation.pardon.command.v1.json",
     ),
     (
+        spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.pardon.command.v1.ip-only-target.json",
+    ),
+    (
         spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
         fixtures_root() / "valid" / "moderation" / "moderation.audit.appended.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
+        fixtures_root() / "valid" / "moderation" / "moderation.audit.appended.v1.ip-only-target.json",
     ),
 ]
 
@@ -61,14 +73,21 @@ INVALID_CASES = [
         fixtures_root()
         / "invalid"
         / "moderation"
-        / "moderation.kick-banned.command.v1.missing-target-uuid.json",
+        / "moderation.kick-banned.command.v1.missing-target-identity.json",
     ),
     (
         spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
         fixtures_root()
         / "invalid"
         / "moderation"
-        / "moderation.pardon.command.v1.missing-target-uuid.json",
+        / "moderation.pardon.command.v1.missing-target-identity.json",
+    ),
+    (
+        spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "moderation"
+        / "moderation.audit.appended.v1.missing-target-identity.json",
     ),
 ]
 

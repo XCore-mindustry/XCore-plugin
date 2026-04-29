@@ -487,7 +487,7 @@ def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> N
 
 def _render_shared_class(schema: NormalizedSchema) -> str:
     field_lines = _render_dataclass_fields(schema.fields)
-    post_init = _render_post_init(schema.fields)
+    post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=False)
     return (
@@ -504,7 +504,7 @@ def _render_message_class(schema: NormalizedSchema) -> str:
     instance_fields = tuple(field for field in schema.fields if field.const is None)
     field_lines = _render_dataclass_fields(instance_fields)
     constants = _render_const_classvars(schema.fields)
-    post_init = _render_post_init(instance_fields)
+    post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=True)
     return (
@@ -540,7 +540,7 @@ def _render_envelope_class(schema: NormalizedSchema) -> str:
     instance_fields = tuple(field for field in schema.fields if field.const is None)
     field_lines = _render_dataclass_fields(instance_fields)
     constants = _render_const_classvars(schema.fields)
-    post_init = _render_post_init(instance_fields)
+    post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=True)
     return (
@@ -609,16 +609,33 @@ def _item_annotation(field: NormalizedField) -> str:
     raise ValueError(f"Unsupported array item type: {field}")
 
 
-def _render_post_init(fields: tuple[NormalizedField, ...]) -> str:
+def _render_post_init(schema: NormalizedSchema) -> str:
+    fields = tuple(field for field in schema.fields if field.const is None)
     lines = ["    def __post_init__(self) -> None:"]
     checks: list[str] = []
     for field in fields:
         checks.extend(_post_init_checks(field))
+    checks.extend(_group_post_init_checks(schema))
     if not checks:
         lines.append("        return None")
         return "\n".join(lines)
     lines.extend(checks)
     return "\n".join(lines)
+
+
+def _group_post_init_checks(schema: NormalizedSchema) -> list[str]:
+    if not schema.require_any_of_groups:
+        return []
+
+    checks: list[str] = []
+    for group in schema.require_any_of_groups:
+        presence_checks = " or ".join(f"self.{name} is not None" for name in group)
+        joined_names = ", ".join(group)
+        checks.append(f"        if not ({presence_checks}):")
+        checks.append(
+            f"            raise ValueError(\"At least one of {joined_names} must be provided\")"
+        )
+    return checks
 
 
 def _post_init_checks(field: NormalizedField) -> list[str]:

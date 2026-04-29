@@ -74,6 +74,22 @@ def test_generated_moderation_kick_banned_roundtrip_matches_fixture() -> None:
     assert model.target.playerName is None
 
 
+def test_generated_moderation_kick_banned_accepts_ip_only_target() -> None:
+    payload = load_json(
+        fixtures_root() / "valid" / "moderation" / "moderation.kick-banned.command.v1.ip-only-target.json"
+    )
+
+    model = ModerationKickBannedCommandV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "moderation" / "moderation.kick-banned.command.v1.json",
+        model.to_payload(),
+    )
+    assert model.target.playerUuid is None
+    assert model.target.ip == payload["target"]["ip"]
+
+
 def test_generated_moderation_pardon_roundtrip_matches_fixture() -> None:
     payload = load_json(fixtures_root() / "valid" / "moderation" / "moderation.pardon.command.v1.json")
 
@@ -86,6 +102,22 @@ def test_generated_moderation_pardon_roundtrip_matches_fixture() -> None:
     )
     assert model.target.playerUuid == payload["target"]["playerUuid"]
     assert model.target.playerName is None
+
+
+def test_generated_moderation_pardon_accepts_ip_only_target() -> None:
+    payload = load_json(
+        fixtures_root() / "valid" / "moderation" / "moderation.pardon.command.v1.ip-only-target.json"
+    )
+
+    model = ModerationPardonCommandV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "moderation" / "moderation.pardon.command.v1.json",
+        model.to_payload(),
+    )
+    assert model.target.playerUuid is None
+    assert model.target.ip == payload["target"]["ip"]
 
 
 def test_generated_moderation_audit_roundtrip_matches_fixture() -> None:
@@ -102,6 +134,22 @@ def test_generated_moderation_audit_roundtrip_matches_fixture() -> None:
         spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
         model.to_payload(),
     )
+
+
+def test_generated_moderation_audit_accepts_ip_only_target() -> None:
+    payload = load_json(
+        fixtures_root() / "valid" / "moderation" / "moderation.audit.appended.v1.ip-only-target.json"
+    )
+
+    model = ModerationAuditAppendedV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "moderation" / "moderation.audit.appended.v1.json",
+        model.to_payload(),
+    )
+    assert model.target.playerUuid is None
+    assert model.target.ip == payload["target"]["ip"]
 
 
 def test_generated_moderation_audit_roundtrip_preserves_nullable_details_values() -> None:
@@ -144,6 +192,19 @@ def test_generated_moderation_models_remain_strict() -> None:
         assert "votesFor must be a list" in str(error)
     else:
         raise AssertionError("Expected strict moderation parsing to reject invalid vote payloads")
+
+
+def test_generated_moderation_command_models_reject_missing_uuid_and_ip() -> None:
+    invalid_kick_payload = load_json(
+        fixtures_root() / "invalid" / "moderation" / "moderation.kick-banned.command.v1.missing-target-identity.json"
+    )
+
+    try:
+        ModerationKickBannedCommandV1.from_payload(invalid_kick_payload)
+    except ValueError as error:
+        assert "At least one of playerUuid, ip must be provided" in str(error)
+    else:
+        raise AssertionError("Expected strict moderation command parsing to reject missing target identity")
 
 
 def test_generated_moderation_route_registry_matches_expected_messages() -> None:

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.ExpirationInfoV1;
+import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
 import org.xcore.protocol.generated.shared.PlayerCommandTargetV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
@@ -16,7 +17,7 @@ public final class ModerationMessages {
 
     public record ModerationAuditAppendedV1(
             String entryType,
-            PlayerRefV1 target,
+            ModerationTargetRefV1 target,
             ActorRefV1 actor,
             String reason,
             String server,

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:moderation-target-ref:v1",
+  "title": "ModerationTargetRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "anyOf": [
+    {"required": ["playerUuid"]},
+    {"required": ["ip"]}
+  ],
+  "x-requireAnyOf": [["playerUuid", "ip"]],
+  "properties": {
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playerPid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "playerName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ip": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -4,7 +4,11 @@
   "title": "PlayerCommandTargetV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["playerUuid"],
+  "anyOf": [
+    {"required": ["playerUuid"]},
+    {"required": ["ip"]}
+  ],
+  "x-requireAnyOf": [["playerUuid", "ip"]],
   "properties": {
     "playerUuid": {
       "type": "string",

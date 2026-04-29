@@ -81,6 +81,7 @@ The first generator version should support the subset already used in current ca
 - primitive types: string, integer, number, boolean
 - validation metadata such as `format`, `minimum`, `minLength`, and `pattern`
 - `additionalProperties: false`
+- narrow custom object constraint `x-requireAnyOf` for "at least one of these fields must be present"
 
 If unsupported schema shapes appear later, the generator should fail loudly rather than guess.
 

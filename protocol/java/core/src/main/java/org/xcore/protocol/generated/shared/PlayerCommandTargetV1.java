@@ -9,9 +9,11 @@ public record PlayerCommandTargetV1(
         String ip
 ) {
     public PlayerCommandTargetV1 {
-        Objects.requireNonNull(playerUuid, "playerUuid must not be null");
-        if (playerUuid.length() < 1) {
-            throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+        if (playerUuid != null) {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+            }
         }
         if (playerPid != null) {
             if (playerPid < 0) {
@@ -29,6 +31,9 @@ public record PlayerCommandTargetV1(
             if (ip.length() < 1) {
                 throw new IllegalArgumentException("ip must be at least 1 characters");
             }
+        }
+        if (!(playerUuid != null || ip != null)) {
+            throw new IllegalArgumentException("At least one of playerUuid, ip must be provided");
         }
     }
 }

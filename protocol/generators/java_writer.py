@@ -359,7 +359,31 @@ def _render_field_validations(schema: NormalizedSchema, *, indent: str) -> list[
         if field.const is not None:
             continue
         validations.extend(_field_validation_lines(field, indent=indent))
+    validations.extend(_group_validation_lines(schema, indent=indent))
     return validations
+
+
+def _group_validation_lines(schema: NormalizedSchema, *, indent: str) -> list[str]:
+    if not schema.require_any_of_groups:
+        return []
+
+    field_index = {field.name: field for field in schema.fields if field.const is None}
+    validations: list[str] = []
+    for group in schema.require_any_of_groups:
+        presence_checks = " || ".join(_java_presence_expression(field_index[name]) for name in group)
+        joined_names = ", ".join(group)
+        validations.append(f"{indent}if (!({presence_checks})) {{")
+        validations.append(
+            f'{indent}    throw new IllegalArgumentException("At least one of {joined_names} must be provided");'
+        )
+        validations.append(f"{indent}}}")
+    return validations
+
+
+def _java_presence_expression(field: NormalizedField) -> str:
+    if field.field_type in {FieldType.INTEGER, FieldType.NUMBER, FieldType.BOOLEAN} and field.required:
+        return "true"
+    return f"{field.name} != null"
 
 
 def _field_validation_lines(field: NormalizedField, *, indent: str) -> list[str]:
