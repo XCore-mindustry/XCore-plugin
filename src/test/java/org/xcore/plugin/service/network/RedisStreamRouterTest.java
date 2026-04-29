@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -44,6 +45,7 @@ class RedisStreamRouterTest {
 
         var messageRoute = router.route(new TransportEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
         var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
+        var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
         var banRoute = router.route(
                 org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
                         banData,
@@ -104,6 +106,9 @@ class RedisStreamRouterTest {
 
         assertThat(joinRoute.streamKey()).isEqualTo("xcore:evt:player:joinleave");
         assertThat(joinRoute.eventType()).isEqualTo("player.join_leave");
+
+        assertThat(heartbeatRoute.streamKey()).isEqualTo("xcore:evt:server:heartbeat");
+        assertThat(heartbeatRoute.eventType()).isEqualTo("server.heartbeat");
 
         assertThat(banRoute.streamKey()).isEqualTo("xcore:evt:moderation:ban");
         assertThat(banRoute.eventType()).isEqualTo("moderation.ban.created");
@@ -212,6 +217,9 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(TransportEvents.GlobalChatEvent.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
 
+        assertThat(router.subscribeStreamsFor(ServerHeartbeatV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:server:heartbeat");
+
         assertThat(router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
 
@@ -261,6 +269,7 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
+        assertThat(router.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkCodeCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();

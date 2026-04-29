@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
@@ -147,6 +148,7 @@ class RedisTransportContractsTest {
     void topologyLocksDownRepresentativeEventCommandAndRpcRouteMetadata() {
         // Arrange
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(TransportEvents.GlobalChatEvent.class);
+        RedisTransportTopology.RouteSpec heartbeatRoute = RedisTransportTopology.routeFor(ServerHeartbeatV1.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
         RedisTransportTopology.RouteSpec discordLinkCodeRoute = RedisTransportTopology.routeFor(DiscordLinkCodeCreatedV1.class);
@@ -160,6 +162,7 @@ class RedisTransportContractsTest {
 
         // Act
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
+        RedisTransportTopology.RouteSpec stableHeartbeatRoute = heartbeatRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
         RedisTransportTopology.RouteSpec stableDiscordLinkCodeRoute = discordLinkCodeRoute;
@@ -179,6 +182,14 @@ class RedisTransportContractsTest {
         assertThat(stableEventRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
         assertThat(stableEventRoute.readOnly()).isTrue();
         assertThat(stableEventRoute.rpcRequest()).isFalse();
+
+        assertThat(stableHeartbeatRoute).isNotNull();
+        assertThat(stableHeartbeatRoute.streamPattern()).isEqualTo("xcore:evt:server:heartbeat");
+        assertThat(stableHeartbeatRoute.eventType()).isEqualTo("server.heartbeat");
+        assertThat(stableHeartbeatRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableHeartbeatRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableHeartbeatRoute.readOnly()).isTrue();
+        assertThat(stableHeartbeatRoute.rpcRequest()).isFalse();
 
         assertThat(stableModerationRoute).isNotNull();
         assertThat(stableModerationRoute.streamPattern()).isEqualTo("xcore:evt:moderation:ban");

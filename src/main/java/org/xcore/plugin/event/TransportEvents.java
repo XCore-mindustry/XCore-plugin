@@ -36,16 +36,6 @@ public class TransportEvents {
             String server
     ) implements ServerScopedEvent {}
 
-    public record ServerHeartbeatEvent(
-            String serverName,
-            long discordChannelId,
-            int players,
-            int maxPlayers,
-            String version,
-            String host,
-            Integer port
-    ) implements Event {}
-
     public record KickBannedPlayer(String uuid, String ip) {}
 
     public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}

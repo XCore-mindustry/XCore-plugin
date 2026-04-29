@@ -10,6 +10,7 @@ import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
@@ -58,9 +59,9 @@ public class TransportService {
 
             Timer.schedule(() -> {
                 try {
-                    network.post(new TransportEvents.ServerHeartbeatEvent(
+                    network.post(new ServerHeartbeatV1(
                             config.server,
-                            config.discordChannelId,
+                            Math.toIntExact(config.discordChannelId),
                             Groups.player.size(),
                             config.getNoAdminPlayerLimit(),
                             Version.buildString(),
