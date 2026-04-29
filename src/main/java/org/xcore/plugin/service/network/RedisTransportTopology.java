@@ -1,6 +1,8 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -54,10 +56,10 @@ public final class RedisTransportTopology {
     }
 
     public static final List<RouteSpec> ROUTES = List.of(
-            route(TransportEvents.MessageEvent.class, "xcore:evt:chat:message", "chat.message", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ChatMessageV1.class, "xcore:evt:chat:message", "chat.message", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(TransportEvents.ServerActionEvent.class, "xcore:evt:server:action", "server.action", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(TransportEvents.PlayerJoinLeaveEvent.class, "xcore:evt:player:joinleave", "player.join_leave", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.GlobalChatEvent.class, "xcore:evt:chat:global", "chat.global", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
+            route(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, true),
             route(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),

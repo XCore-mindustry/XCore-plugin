@@ -2,6 +2,8 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -147,7 +149,8 @@ class RedisTransportContractsTest {
     @DisplayName("topology locks down representative event command and rpc route metadata")
     void topologyLocksDownRepresentativeEventCommandAndRpcRouteMetadata() {
         // Arrange
-        RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(TransportEvents.GlobalChatEvent.class);
+        RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(ChatGlobalV1.class);
+        RedisTransportTopology.RouteSpec messageRoute = RedisTransportTopology.routeFor(ChatMessageV1.class);
         RedisTransportTopology.RouteSpec heartbeatRoute = RedisTransportTopology.routeFor(ServerHeartbeatV1.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
@@ -162,6 +165,7 @@ class RedisTransportContractsTest {
 
         // Act
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
+        RedisTransportTopology.RouteSpec stableMessageRoute = messageRoute;
         RedisTransportTopology.RouteSpec stableHeartbeatRoute = heartbeatRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
@@ -182,6 +186,14 @@ class RedisTransportContractsTest {
         assertThat(stableEventRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
         assertThat(stableEventRoute.readOnly()).isTrue();
         assertThat(stableEventRoute.rpcRequest()).isFalse();
+
+        assertThat(stableMessageRoute).isNotNull();
+        assertThat(stableMessageRoute.streamPattern()).isEqualTo("xcore:evt:chat:message");
+        assertThat(stableMessageRoute.eventType()).isEqualTo("chat.message");
+        assertThat(stableMessageRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableMessageRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableMessageRoute.readOnly()).isTrue();
+        assertThat(stableMessageRoute.rpcRequest()).isFalse();
 
         assertThat(stableHeartbeatRoute).isNotNull();
         assertThat(stableHeartbeatRoute.streamPattern()).isEqualTo("xcore:evt:server:heartbeat");
@@ -297,6 +309,6 @@ class RedisTransportContractsTest {
         assertThat(rpcSubscriptions).containsExactly("xcore:rpc:req:mini-pvp");
         assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
                 .isEqualTo(MapsListResponseV1.class);
-        assertThat(router.responseTypeForRequest(TransportEvents.MessageEvent.class)).isNull();
+        assertThat(router.responseTypeForRequest(ChatMessageV1.class)).isNull();
     }
 }

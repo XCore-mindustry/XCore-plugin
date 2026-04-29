@@ -1,6 +1,8 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -135,10 +137,10 @@ public final class RedisRouteRegistry {
     }
 
     private void registerDefaults() {
-        register(readOnly(TransportEvents.MessageEvent.class, "xcore:evt:chat:message", "chat.message", 60_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ChatMessageV1.class, "xcore:evt:chat:message", "chat.message", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(TransportEvents.ServerActionEvent.class, "xcore:evt:server:action", "server.action", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(TransportEvents.PlayerJoinLeaveEvent.class, "xcore:evt:player:joinleave", "player.join_leave", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.GlobalChatEvent.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, PAYLOAD_SERVER_RESOLVER));
         register(readOnly(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));

@@ -16,13 +16,9 @@ public class TransportEvents {
     public static abstract class Response {}
     public static abstract class Request<T> {}
 
-    public record MessageEvent(String authorName, String message, String server) implements ServerScopedEvent {}
-
     public record ServerActionEvent(String message, String server) implements ServerScopedEvent {}
 
     public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements ServerScopedEvent {}
-
-    public record GlobalChatEvent(String authorName, String message, String server) implements ServerScopedEvent {}
 
     public record DiscordMessageEvent(String authorName, String message, String server) implements ServerScopedEvent {}
 

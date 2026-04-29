@@ -6,6 +6,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
@@ -123,7 +124,7 @@ class NetEventServiceTest {
         verify(chatFormatService).formatChat(author, "he`llo");
         verify(author).sendMessage("formatted", author, "he`llo");
         verify(translatorService).translate(author, "he`llo");
-        verify(network).post(new TransportEvents.MessageEvent("Tester", "he*llo", "main"));
+        verify(network).post(new ChatMessageV1("Tester", "he*llo", "main"));
     }
 
     @Test

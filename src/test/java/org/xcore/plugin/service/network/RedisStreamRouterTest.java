@@ -2,6 +2,8 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -43,7 +45,7 @@ class RedisStreamRouterTest {
         BanData banData = punishment(new BanData(), "u", "n");
         MuteData muteData = punishment(new MuteData(), "u", "n");
 
-        var messageRoute = router.route(new TransportEvents.MessageEvent("a", "b", "mini-pvp"), "mini-pvp");
+        var messageRoute = router.route(new ChatMessageV1("a", "b", "mini-pvp"), "mini-pvp");
         var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
         var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
         var banRoute = router.route(
@@ -214,7 +216,10 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("subscribe streams include read-only and rpc request streams")
     void subscribeStreamsForTypes() {
-        assertThat(router.subscribeStreamsFor(TransportEvents.GlobalChatEvent.class, "mini-pvp"))
+        assertThat(router.subscribeStreamsFor(ChatMessageV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:chat:message");
+
+        assertThat(router.subscribeStreamsFor(ChatGlobalV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
 
         assertThat(router.subscribeStreamsFor(ServerHeartbeatV1.class, "mini-pvp"))
@@ -285,10 +290,11 @@ class RedisStreamRouterTest {
         assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
-        assertThat(router.isMutatingType(TransportEvents.MessageEvent.class)).isFalse();
+        assertThat(router.isReadOnlyType(ChatGlobalV1.class)).isTrue();
+        assertThat(router.isMutatingType(ChatMessageV1.class)).isFalse();
 
         assertThat(router.isRpcRequestType(MapsListRequestV1.class)).isTrue();
-        assertThat(router.isRpcRequestType(TransportEvents.MessageEvent.class)).isFalse();
+        assertThat(router.isRpcRequestType(ChatMessageV1.class)).isFalse();
 
         assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
                 .isEqualTo(MapsListResponseV1.class);

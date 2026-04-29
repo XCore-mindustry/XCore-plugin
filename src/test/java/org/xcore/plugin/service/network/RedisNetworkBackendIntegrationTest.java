@@ -10,6 +10,8 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -66,7 +68,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "hello", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "hello", "alpha"));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -96,25 +98,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.GlobalChatEvent> alphaReceived = new AtomicReference<>();
-        AtomicReference<TransportEvents.GlobalChatEvent> betaReceived = new AtomicReference<>();
+        AtomicReference<ChatGlobalV1> alphaReceived = new AtomicReference<>();
+        AtomicReference<ChatGlobalV1> betaReceived = new AtomicReference<>();
 
-        Subscription<TransportEvents.GlobalChatEvent> alphaSubscription = serverBackend.subscribe(
-                TransportEvents.GlobalChatEvent.class,
+        Subscription<ChatGlobalV1> alphaSubscription = serverBackend.subscribe(
+                ChatGlobalV1.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<TransportEvents.GlobalChatEvent> betaSubscription = requesterBackend.subscribe(
-                TransportEvents.GlobalChatEvent.class,
+        Subscription<ChatGlobalV1> betaSubscription = requesterBackend.subscribe(
+                ChatGlobalV1.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new TransportEvents.GlobalChatEvent("player", "hello world", "alpha"));
+        serverBackend.send(new ChatGlobalV1("player", "hello world", "alpha"));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -338,14 +340,14 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MessageEvent> received = new AtomicReference<>();
+        AtomicReference<ChatMessageV1> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
             received.set(event);
             latch.countDown();
         });
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "bridge", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "bridge", "alpha"));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
@@ -580,12 +582,12 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch failureSeen = new CountDownLatch(1);
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
             failureSeen.countDown();
             throw new IllegalStateException("intentional failure");
         });
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "poison", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "poison", "alpha"));
         assertThat(failureSeen.await(10, TimeUnit.SECONDS)).isTrue();
 
         try (RedisClient client = RedisClient.create(config.redisUrl);
@@ -628,7 +630,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
         });
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("active_subscriber_threads", 0L)).isEqualTo(2L);

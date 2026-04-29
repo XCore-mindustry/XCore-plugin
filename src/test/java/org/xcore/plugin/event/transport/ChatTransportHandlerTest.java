@@ -3,6 +3,7 @@ package org.xcore.plugin.event.transport;
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.NetworkService;
@@ -37,8 +38,8 @@ class ChatTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.GlobalChatEvent.class)
-                .get(new TransportEvents.GlobalChatEvent("player", "hello", "alpha"));
+        listener(listeners, ChatGlobalV1.class)
+                .get(new ChatGlobalV1("player", "hello", "alpha"));
 
         verify(sessionService).broadcastFiltered(
                 org.mockito.Mockito.eq("global-chat-format"),

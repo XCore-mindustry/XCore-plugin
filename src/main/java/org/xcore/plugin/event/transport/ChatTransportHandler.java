@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PrivateMessage;
@@ -34,7 +35,7 @@ public class ChatTransportHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(TransportEvents.GlobalChatEvent.class, e -> {
+        network.subscribe(ChatGlobalV1.class, e -> {
             sessionService.broadcastFiltered("global-chat-format", args(
                     "server", e.server(),
                     "author", e.authorName(),

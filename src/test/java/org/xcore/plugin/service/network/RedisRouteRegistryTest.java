@@ -2,6 +2,8 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -101,7 +103,8 @@ class RedisRouteRegistryTest {
     @Test
     @DisplayName("read-only and mutating classification comes from registry descriptors")
     void classificationComesFromRegistry() {
-        assertThat(registry.isReadOnlyType(TransportEvents.GlobalChatEvent.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ChatMessageV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ChatGlobalV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
@@ -113,6 +116,6 @@ class RedisRouteRegistryTest {
         assertThat(registry.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(TransportEvents.ExecuteCommand.class)).isTrue();
-        assertThat(registry.isMutatingType(TransportEvents.GlobalChatEvent.class)).isFalse();
+        assertThat(registry.isMutatingType(ChatGlobalV1.class)).isFalse();
     }
 }
