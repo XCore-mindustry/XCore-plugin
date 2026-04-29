@@ -9,6 +9,7 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 - `TransportEvents.MessageEvent`
 - `TransportEvents.GlobalChatEvent`
 - `TransportEvents.DiscordMessageEvent`
+- `TransportEvents.PrivateMessageEvent`
 - `TransportEvents.ServerActionEvent`
 - `TransportEvents.PlayerJoinLeaveEvent`
 - `TransportEvents.ServerHeartbeatEvent`
@@ -22,6 +23,7 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | Event | `chat.message` | `chat.message` | `xcore:evt:chat:message` | `60000` |
 | Event | `chat.global` | `chat.global` | `xcore:evt:chat:global` | `60000` |
 | Command | `chat.discord_ingress` | `chat.discord-ingress.command` | `xcore:cmd:discord-message:{server}` | `60000` |
+| Event | current private-message relay | `chat.private` | `xcore:evt:chat:private` | `60000` |
 | Event | `server.action` | `server.action` | `xcore:evt:server:action` | `60000` |
 | Event | `player.join_leave` | `player.join-leave` | `xcore:evt:player:joinleave` | `60000` |
 | Event | current server heartbeat | `server.heartbeat` | `xcore:evt:server:heartbeat` | `60000` |
@@ -49,6 +51,18 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | `message` | `message` | Required. |
 | `server` | `server` | Required target server. |
 | current type `chat.discord_ingress` | `messageType = chat.discord-ingress.command` | Canonical name moves to hyphenated payload identity while stream stays stable. |
+
+### `chat.private`
+| Current field | Canonical field | Notes |
+| --- | --- | --- |
+| `fromUuid` | `fromUuid` | Required sender UUID. |
+| `fromPid` | `fromPid` | Required sender PID. |
+| `fromName` | `fromName` | Required sender display name. |
+| `toUuid` | `toUuid` | Required recipient UUID. |
+| `toPid` | `toPid` | Required recipient PID. |
+| `message` | `message` | Required private-message body. |
+| `server` | `server` | Required source server for cross-server relay filtering. |
+| current `TransportEvents.PrivateMessageEvent` | `messageType = chat.private` | Canonical relay event keeps the existing stable stream and payload shape. |
 
 ### `server.action`
 | Current field | Canonical field | Notes |

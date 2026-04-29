@@ -227,6 +227,64 @@ class ChatMessageV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class ChatPrivateV1:
+    fromUuid: str
+    fromPid: int
+    fromName: str
+    toUuid: str
+    toPid: int
+    message: str
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'chat.private'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.fromUuid, 'fromUuid')
+        _expect_int(self.fromPid, 'fromPid')
+        _expect_str(self.fromName, 'fromName')
+        _expect_str(self.toUuid, 'toUuid')
+        _expect_int(self.toPid, 'toPid')
+        _expect_str(self.message, 'message')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "ChatPrivateV1":
+        mapping = _expect_mapping(payload, "ChatPrivateV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'fromUuid', 'fromPid', 'fromName', 'toUuid', 'toPid', 'message', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'fromUuid', 'fromPid', 'fromName', 'toUuid', 'toPid', 'message', 'server')),
+            model_name="ChatPrivateV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            fromUuid=_expect_str(mapping['fromUuid'], 'fromUuid'),
+            fromPid=_expect_int(mapping['fromPid'], 'fromPid'),
+            fromName=_expect_str(mapping['fromName'], 'fromName'),
+            toUuid=_expect_str(mapping['toUuid'], 'toUuid'),
+            toPid=_expect_int(mapping['toPid'], 'toPid'),
+            message=_expect_str(mapping['message'], 'message'),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['fromUuid'] = self.fromUuid
+        payload['fromPid'] = self.fromPid
+        payload['fromName'] = self.fromName
+        payload['toUuid'] = self.toUuid
+        payload['toPid'] = self.toPid
+        payload['message'] = self.message
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class PlayerJoinLeaveV1:
     playerName: str
     server: str
@@ -372,6 +430,7 @@ __all__ = [
     "ChatDiscordIngressCommandV1",
     "ChatGlobalV1",
     "ChatMessageV1",
+    "ChatPrivateV1",
     "PlayerJoinLeaveV1",
     "ServerActionV1",
     "ServerHeartbeatV1",

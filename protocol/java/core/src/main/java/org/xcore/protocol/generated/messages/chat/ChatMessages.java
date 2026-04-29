@@ -79,6 +79,48 @@ public final class ChatMessages {
         }
     }
 
+    public record ChatPrivateV1(
+            String fromUuid,
+            int fromPid,
+            String fromName,
+            String toUuid,
+            int toPid,
+            String message,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "chat.private";
+        public static final int MESSAGE_VERSION = 1;
+
+        public ChatPrivateV1 {
+            Objects.requireNonNull(fromUuid, "fromUuid must not be null");
+            if (fromUuid.length() < 1) {
+                throw new IllegalArgumentException("fromUuid must be at least 1 characters");
+            }
+            if (fromPid < 0) {
+                throw new IllegalArgumentException("fromPid must be >= 0");
+            }
+            Objects.requireNonNull(fromName, "fromName must not be null");
+            if (fromName.length() < 1) {
+                throw new IllegalArgumentException("fromName must be at least 1 characters");
+            }
+            Objects.requireNonNull(toUuid, "toUuid must not be null");
+            if (toUuid.length() < 1) {
+                throw new IllegalArgumentException("toUuid must be at least 1 characters");
+            }
+            if (toPid < 0) {
+                throw new IllegalArgumentException("toPid must be >= 0");
+            }
+            Objects.requireNonNull(message, "message must not be null");
+            if (message.length() < 1) {
+                throw new IllegalArgumentException("message must be at least 1 characters");
+            }
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
     public record PlayerJoinLeaveV1(
             String playerName,
             String server,

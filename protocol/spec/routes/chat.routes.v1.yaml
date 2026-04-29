@@ -28,6 +28,15 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: chat
+  - messageType: chat.private
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:chat:private
+    targetScope: broadcast
+    ttlMs: 60000
+    replayable: true
+    idempotentConsumerRecommended: false
+    owner: chat
   - messageType: server.action
     messageVersion: 1
     kind: event

@@ -83,6 +83,22 @@ public final class ChatRoutes {
             null
     );
 
+    public static final RouteDescriptor CHAT_PRIVATE_V1 = new RouteDescriptor(
+            "chat",
+            "chatPrivateV1Route",
+            "chat.private",
+            1,
+            ChatMessages.ChatPrivateV1.class,
+            "event",
+            "xcore:evt:chat:private",
+            "broadcast",
+            60000,
+            true,
+            false,
+            "chat",
+            null
+    );
+
     public static final RouteDescriptor SERVER_ACTION_V1 = new RouteDescriptor(
             "chat",
             "serverActionV1Route",
@@ -135,6 +151,7 @@ public final class ChatRoutes {
             entry(key("chat.message", 1), CHAT_MESSAGE_V1),
             entry(key("chat.global", 1), CHAT_GLOBAL_V1),
             entry(key("chat.discord-ingress.command", 1), CHAT_DISCORD_INGRESS_COMMAND_V1),
+            entry(key("chat.private", 1), CHAT_PRIVATE_V1),
             entry(key("server.action", 1), SERVER_ACTION_V1),
             entry(key("player.join-leave", 1), PLAYER_JOIN_LEAVE_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1)

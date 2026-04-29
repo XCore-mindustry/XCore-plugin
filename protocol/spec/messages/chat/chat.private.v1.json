@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:chat.private:v1",
+  "title": "ChatPrivateV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageType",
+    "messageVersion",
+    "fromUuid",
+    "fromPid",
+    "fromName",
+    "toUuid",
+    "toPid",
+    "message",
+    "server"
+  ],
+  "properties": {
+    "messageType": {
+      "const": "chat.private"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "fromUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fromPid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fromName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toPid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -4,12 +4,14 @@ from xcore_protocol.generated import (
     CHAT_DISCORD_INGRESS_COMMAND_V1,
     CHAT_GLOBAL_V1,
     CHAT_MESSAGE_V1,
+    CHAT_PRIVATE_V1,
     PLAYER_JOIN_LEAVE_V1,
     SERVER_ACTION_V1,
     SERVER_HEARTBEAT_V1,
     ChatDiscordIngressCommandV1,
     ChatGlobalV1,
     ChatMessageV1,
+    ChatPrivateV1,
     MAPS_ROUTES_BY_MESSAGE,
     PlayerJoinLeaveV1,
     ROUTES_BY_MESSAGE,
@@ -47,6 +49,18 @@ def test_generated_chat_discord_ingress_roundtrip_matches_fixture() -> None:
     assert model.to_payload() == payload
     validate_instance(
         spec_root() / "messages" / "chat" / "chat.discord-ingress.command.v1.json",
+        model.to_payload(),
+    )
+
+
+def test_generated_chat_private_roundtrip_matches_fixture() -> None:
+    payload = load_json(fixtures_root() / "valid" / "chat" / "chat.private.v1.json")
+
+    model = ChatPrivateV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "chat" / "chat.private.v1.json",
         model.to_payload(),
     )
 
@@ -97,6 +111,15 @@ def test_generated_chat_models_remain_strict() -> None:
     else:
         raise AssertionError("Expected strict generated model parsing to reject non-canonical keys")
 
+    invalid_private_payload = load_json(fixtures_root() / "invalid" / "chat" / "chat.private.v1.snake-from.json")
+
+    try:
+        ChatPrivateV1.from_payload(invalid_private_payload)
+    except ValueError as error:
+        assert "missing required fields" in str(error) or "unexpected fields" in str(error)
+    else:
+        raise AssertionError("Expected strict generated private-message parsing to reject non-canonical keys")
+
 
 def test_generated_server_heartbeat_rejects_alias_fields() -> None:
     invalid_payload = load_json(
@@ -115,9 +138,11 @@ def test_generated_route_registry_includes_chat_and_heartbeat_messages() -> None
     assert CHAT_MESSAGE_V1.payloadType is ChatMessageV1
     assert CHAT_GLOBAL_V1.payloadType is ChatGlobalV1
     assert CHAT_DISCORD_INGRESS_COMMAND_V1.payloadType is ChatDiscordIngressCommandV1
+    assert CHAT_PRIVATE_V1.payloadType is ChatPrivateV1
     assert SERVER_ACTION_V1.payloadType is ServerActionV1
     assert PLAYER_JOIN_LEAVE_V1.payloadType is PlayerJoinLeaveV1
     assert SERVER_HEARTBEAT_V1.payloadType is ServerHeartbeatV1
     assert ROUTES_BY_MESSAGE[("chat.message", 1)].stream == "xcore:evt:chat:message"
+    assert ROUTES_BY_MESSAGE[("chat.private", 1)].stream == "xcore:evt:chat:private"
     assert ROUTES_BY_MESSAGE[("server.heartbeat", 1)].stream == "xcore:evt:server:heartbeat"
     assert MAPS_ROUTES_BY_MESSAGE[("maps.list.request", 1)].stream == "xcore:rpc:req:{server}"

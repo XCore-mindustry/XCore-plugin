@@ -18,6 +18,10 @@ VALID_CASES = [
         fixtures_root() / "valid" / "chat" / "chat.discord-ingress.command.v1.json",
     ),
     (
+        spec_root() / "messages" / "chat" / "chat.private.v1.json",
+        fixtures_root() / "valid" / "chat" / "chat.private.v1.json",
+    ),
+    (
         spec_root() / "messages" / "chat" / "server.action.v1.json",
         fixtures_root() / "valid" / "chat" / "server.action.v1.json",
     ),
@@ -36,6 +40,10 @@ INVALID_CASES = [
     (
         spec_root() / "messages" / "chat" / "chat.message.v1.json",
         fixtures_root() / "invalid" / "chat" / "chat.message.v1.snake-author.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "chat.private.v1.json",
+        fixtures_root() / "invalid" / "chat" / "chat.private.v1.snake-from.json",
     ),
     (
         spec_root() / "messages" / "chat" / "player.join-leave.v1.json",
