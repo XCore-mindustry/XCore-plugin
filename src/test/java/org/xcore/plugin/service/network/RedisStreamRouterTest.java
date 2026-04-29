@@ -18,6 +18,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.BanData;
@@ -76,7 +77,7 @@ class RedisStreamRouterTest {
         var auditRoute = router.route(
                 new ModerationAuditAppendedV1(
                         "ban",
-                        new PlayerRefV1("uuid-target", 42, "target", null),
+                        new ModerationTargetRefV1("uuid-target", 42, "target", null),
                         new ActorRefV1("Admin", "admin-1", "discord"),
                         "reason",
                         "mini-pvp",

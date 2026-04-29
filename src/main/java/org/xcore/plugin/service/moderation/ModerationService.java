@@ -166,7 +166,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, audit));
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, null, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -244,7 +244,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, audit));
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, null, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
@@ -291,7 +291,9 @@ public class ModerationService {
                 null
         );
 
-        postBanEvents(ban, audit);
+        if (hasUuid(uuid)) {
+            postBanEvents(ban, audit);
+        }
         postAuditEvent(audit);
         network.post(ModerationProtocolMapper.toKickBannedCommand(
                 uuid,
@@ -332,7 +334,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
-        network.post(toPardonCommand(uuid, null, UNKNOWN_PLAYER_NAME, audit));
+        network.post(toPardonCommand(uuid, null, UNKNOWN_PLAYER_NAME, ip, audit));
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
@@ -403,11 +405,12 @@ public class ModerationService {
         network.post(ModerationProtocolMapper.toBanCreated(ban, config.server, eventOccurredAt(audit)));
     }
 
-    private ModerationPardonCommandV1 toPardonCommand(String uuid, Integer pid, String playerName, AuditRecord audit) {
+    private ModerationPardonCommandV1 toPardonCommand(String uuid, Integer pid, String playerName, String ip, AuditRecord audit) {
         return ModerationProtocolMapper.toPardonCommand(
                 uuid,
                 pid,
                 playerName,
+                ip,
                 config.server,
                 commandOccurredAt(audit)
         );
@@ -472,6 +475,10 @@ public class ModerationService {
 
     private static boolean hasNoIdentifier(String uuid, String ip) {
         return uuid == null && ip == null;
+    }
+
+    private static boolean hasUuid(String uuid) {
+        return uuid != null && !uuid.isBlank();
     }
 
     private static Instant toExpireDate(Duration duration) {

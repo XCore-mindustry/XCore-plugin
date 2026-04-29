@@ -175,6 +175,30 @@ class ModerationServiceAvajeTest {
     }
 
     @Test
+    @DisplayName("tempBanByUuidOrIp supports IP-only kick and audit targets")
+    void tempBanIpOnlyTargetSuccess() {
+        when(banDataRepository.save(any())).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
+                validAuditRecord(null, "Unknown", "1.2.3.4")
+        ));
+
+        var result = moderationService.tempBanByUuidOrIp(null, "1.2.3.4", null, Duration.ofMinutes(30), null, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network, never()).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 audit
+                        && audit.target() != null
+                        && audit.target().playerUuid() == null
+                        && "1.2.3.4".equals(audit.target().ip())));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && kick.target() != null
+                        && kick.target().playerUuid() == null
+                        && "1.2.3.4".equals(kick.target().ip())));
+    }
+
+    @Test
     @DisplayName("tempBanByUuidOrIp fails when ban persistence fails")
     void tempBanFailsWhenSaveFails() {
         when(banDataRepository.save(any())).thenReturn(false);
@@ -229,6 +253,31 @@ class ModerationServiceAvajeTest {
                         && "Unknown".equals(pardon.target().playerName())
                         && "test-server".equals(pardon.server())));
         verify(banDataRepository).delete("uuid-2", null);
+    }
+
+    @Test
+    @DisplayName("tempUnban supports IP-only pardon and audit targets")
+    void tempUnbanIpOnlySuccess() {
+        when(banDataRepository.delete(null, "1.2.3.4")).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
+                validAuditRecord(null, "Unknown", "1.2.3.4")
+        ));
+
+        var result = moderationService.tempUnban(null, "1.2.3.4", "console", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 audit
+                        && audit.target() != null
+                        && audit.target().playerUuid() == null
+                        && "1.2.3.4".equals(audit.target().ip())));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationPardonCommandV1 pardon
+                        && pardon.target() != null
+                        && pardon.target().playerUuid() == null
+                        && "1.2.3.4".equals(pardon.target().ip())
+                        && "test-server".equals(pardon.server())));
+        verify(banDataRepository).delete(null, "1.2.3.4");
     }
 
     @Test
@@ -574,12 +623,17 @@ class ModerationServiceAvajeTest {
     }
 
     private static AuditRecord validAuditRecord() {
+        return validAuditRecord("audit-target-uuid", "Audit Target", null);
+    }
+
+    private static AuditRecord validAuditRecord(String uuid, String nameSnapshot, String ipSnapshot) {
         return AuditRecord.builder()
                 .auditId("audit-1")
                 .action(AuditAction.NOTE)
                 .target(AuditTarget.builder()
-                        .uuid("audit-target-uuid")
-                        .nameSnapshot("Audit Target")
+                        .uuid(uuid)
+                        .nameSnapshot(nameSnapshot)
+                        .ipSnapshot(ipSnapshot)
                         .build())
                 .actor(AuditActor.builder()
                         .type(AuditActorType.SYSTEM)

@@ -14,6 +14,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.ExpirationInfoV1;
+import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
 import org.xcore.protocol.generated.shared.PlayerCommandTargetV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
@@ -88,7 +89,7 @@ public final class ModerationProtocolMapper {
     ) {
         return new ModerationKickBannedCommandV1(
                 new PlayerCommandTargetV1(
-                        requireNonBlank(playerUuid, "playerUuid"),
+                        normalizeOptional(playerUuid),
                         normalizeOptionalPid(playerPid),
                         normalizeOptional(playerName),
                         normalizeOptional(ip)
@@ -102,11 +103,17 @@ public final class ModerationProtocolMapper {
             String playerUuid,
             Integer playerPid,
             String playerName,
+            String ip,
             String server,
             Instant requestedAt
     ) {
         return new ModerationPardonCommandV1(
-                new PlayerCommandTargetV1(requireNonBlank(playerUuid, "playerUuid"), normalizeOptionalPid(playerPid), normalizeOptional(playerName), null),
+                new PlayerCommandTargetV1(
+                        normalizeOptional(playerUuid),
+                        normalizeOptionalPid(playerPid),
+                        normalizeOptional(playerName),
+                        normalizeOptional(ip)
+                ),
                 requireNonBlank(server, "server"),
                 toOccurredAt(requestedAt)
         );
@@ -117,11 +124,11 @@ public final class ModerationProtocolMapper {
 
         return new ModerationAuditAppendedV1(
                 toAuditEntryType(record.action),
-                new PlayerRefV1(
-                        requireNonBlank(record.target == null ? null : record.target.uuid, "audit target uuid"),
+                new ModerationTargetRefV1(
+                        normalizeOptional(record.target == null ? null : record.target.uuid),
                         record.target == null ? null : normalizeOptionalPid(record.target.pid),
-                        requirePlayerName(record.target == null ? null : record.target.nameSnapshot),
-                        null
+                        normalizeOptional(record.target == null ? null : record.target.nameSnapshot),
+                        normalizeOptional(record.target == null ? null : record.target.ipSnapshot)
                 ),
                 new ActorRefV1(
                         resolveActorName(record.actor == null ? null : record.actor.nameSnapshot),
