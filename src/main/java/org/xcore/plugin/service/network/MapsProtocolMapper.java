@@ -1,6 +1,7 @@
 package org.xcore.plugin.service.network;
 
 import mindustry.maps.Map;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.plugin.model.MapData;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
@@ -13,6 +14,10 @@ public final class MapsProtocolMapper {
 
     public static MapsListResponseV1 toMapsListResponse(String server, List<MapEntryV1> maps) {
         return new MapsListResponseV1(server, maps);
+    }
+
+    public static MapsRemoveResponseV1 toMapsRemoveResponse(String server, String result) {
+        return new MapsRemoveResponseV1(server, result);
     }
 
     public static MapEntryV1 toMapEntry(Map map, String currentGameMode, MapData persistedMap) {

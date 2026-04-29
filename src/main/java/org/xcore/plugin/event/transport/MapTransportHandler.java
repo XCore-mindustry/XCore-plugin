@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.maps.Map;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -59,20 +60,19 @@ public class MapTransportHandler {
             network.respond(request, MapsProtocolMapper.toMapsListResponse(request.server(), mapsList));
         });
 
-        network.subscribe(TransportEvents.MapRemoveRequest.class, request -> {
-            if (!request.server.equals(config.server)) return;
+        network.subscribe(MapsRemoveRequestV1.class, request -> {
+            if (!request.server().equals(config.server)) return;
 
-            var map = mapService.findMapByFileName(request.fileName);
+            var map = mapService.findMapByFileName(request.fileName());
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();
             }
 
-            TransportEvents.MapRemoveResponse response = new TransportEvents.MapRemoveResponse();
-            response.result = map == null
+            String result = map == null
                     ? "Map file not found"
                     : "Successfully removed map " + map.plainName() + " (" + map.file.name() + ")";
-            network.respond(request, response);
+            network.respond(request, MapsProtocolMapper.toMapsRemoveResponse(request.server(), result));
 
             if (map != null) info("Removed map @", map.plainName());
         });

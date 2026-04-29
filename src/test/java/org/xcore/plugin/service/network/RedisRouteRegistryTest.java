@@ -8,6 +8,8 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -82,11 +84,17 @@ class RedisRouteRegistryTest {
     @DisplayName("rpc route descriptor carries response type metadata")
     void rpcRouteDescriptorCarriesResponseType() {
         RedisRouteDescriptor descriptor = registry.routeDescriptorFor(MapsListRequestV1.class);
+        RedisRouteDescriptor removeDescriptor = registry.routeDescriptorFor(MapsRemoveRequestV1.class);
 
         assertThat(descriptor).isNotNull();
         assertThat(descriptor.isRpcRequest()).isTrue();
         assertThat(descriptor.responseType()).isEqualTo(MapsListResponseV1.class);
         assertThat(registry.rpcTypeForRequestClass(MapsListRequestV1.class)).isEqualTo("maps.list.request");
+
+        assertThat(removeDescriptor).isNotNull();
+        assertThat(removeDescriptor.isRpcRequest()).isTrue();
+        assertThat(removeDescriptor.responseType()).isEqualTo(MapsRemoveResponseV1.class);
+        assertThat(registry.rpcTypeForRequestClass(MapsRemoveRequestV1.class)).isEqualTo("maps.remove.request");
     }
 
     @Test

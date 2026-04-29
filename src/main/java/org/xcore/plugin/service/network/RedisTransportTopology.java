@@ -8,6 +8,8 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -77,7 +79,7 @@ public final class RedisTransportTopology {
             route(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, DeliveryMode.COMMAND, ServerScope.BROADCAST, false),
             route(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             rpcRoute(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, ServerScope.PAYLOAD_SERVER, MapsListResponseV1.class),
-            rpcRoute(TransportEvents.MapRemoveRequest.class, "xcore:rpc:req:{server}", "maps.remove", 10_000L, ServerScope.PAYLOAD_SERVER, TransportEvents.MapRemoveResponse.class)
+            rpcRoute(MapsRemoveRequestV1.class, "xcore:rpc:req:{server}", "maps.remove.request", 10_000L, ServerScope.PAYLOAD_SERVER, MapsRemoveResponseV1.class)
     );
 
     public static final Map<Class<?>, RouteSpec> ROUTES_BY_TYPE = ROUTES.stream()

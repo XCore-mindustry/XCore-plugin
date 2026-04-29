@@ -15,6 +15,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
@@ -460,15 +462,15 @@ class RedisNetworkBackendIntegrationTest {
                     );
                 });
 
-        Subscription<TransportEvents.MapRemoveRequest> removeSubscription =
-                serverBackend.subscribe(TransportEvents.MapRemoveRequest.class,
-                        request -> serverBackend.respond(request, mapRemoveResponse("Removed")));
+        Subscription<MapsRemoveRequestV1> removeSubscription =
+                serverBackend.subscribe(MapsRemoveRequestV1.class,
+                        request -> serverBackend.respond(request, mapRemoveResponse(request.server(), "Removed")));
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MapRemoveResponse> responseRef = new AtomicReference<>();
+        AtomicReference<MapsRemoveResponseV1> responseRef = new AtomicReference<>();
 
-        RequestSubscription<TransportEvents.MapRemoveResponse> requestHandle = requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
+        RequestSubscription<MapsRemoveResponseV1> requestHandle = requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -477,7 +479,7 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
-        assertThat(responseRef.get().result).isEqualTo("Removed");
+        assertThat(responseRef.get().result()).isEqualTo("Removed");
         assertThat(listLatch.getCount()).isEqualTo(1);
 
         listSubscription.unsubscribe();
@@ -700,21 +702,16 @@ class RedisNetworkBackendIntegrationTest {
         return new MapsListRequestV1(server);
     }
 
-    private static TransportEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
-        TransportEvents.MapRemoveRequest request = new TransportEvents.MapRemoveRequest();
-        request.server = server;
-        request.fileName = fileName;
-        return request;
+    private static MapsRemoveRequestV1 mapRemoveRequest(String server, String fileName) {
+        return new MapsRemoveRequestV1(server, fileName);
     }
 
     private static MapsListResponseV1 mapsListResponse(MapEntryV1... entries) {
         return new MapsListResponseV1("target", List.of(entries));
     }
 
-    private static TransportEvents.MapRemoveResponse mapRemoveResponse(String result) {
-        TransportEvents.MapRemoveResponse response = new TransportEvents.MapRemoveResponse();
-        response.result = result;
-        return response;
+    private static MapsRemoveResponseV1 mapRemoveResponse(String server, String result) {
+        return new MapsRemoveResponseV1(server, result);
     }
 
     private static MapEntryV1 mapEntry(

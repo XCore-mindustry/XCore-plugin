@@ -7,6 +7,8 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
@@ -153,6 +155,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(MapsListRequestV1.class);
+        RedisTransportTopology.RouteSpec removeRpcRoute = RedisTransportTopology.routeFor(MapsRemoveRequestV1.class);
         RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(ModerationKickBannedCommandV1.class);
 
         // Act
@@ -165,6 +168,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableDiscordAdminCommandRoute = discordAdminCommandRoute;
         RedisTransportTopology.RouteSpec stableBroadcastCommandRoute = broadcastCommandRoute;
         RedisTransportTopology.RouteSpec stableRpcRoute = rpcRoute;
+        RedisTransportTopology.RouteSpec stableRemoveRpcRoute = removeRpcRoute;
         RedisTransportTopology.RouteSpec stableKickBannedRoute = kickBannedRoute;
 
         // Assert
@@ -239,6 +243,15 @@ class RedisTransportContractsTest {
         assertThat(stableRpcRoute.readOnly()).isFalse();
         assertThat(stableRpcRoute.rpcRequest()).isTrue();
         assertThat(stableRpcRoute.responseType()).isEqualTo(MapsListResponseV1.class);
+
+        assertThat(stableRemoveRpcRoute).isNotNull();
+        assertThat(stableRemoveRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
+        assertThat(stableRemoveRpcRoute.eventType()).isEqualTo("maps.remove.request");
+        assertThat(stableRemoveRpcRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.RPC_REQUEST);
+        assertThat(stableRemoveRpcRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableRemoveRpcRoute.readOnly()).isFalse();
+        assertThat(stableRemoveRpcRoute.rpcRequest()).isTrue();
+        assertThat(stableRemoveRpcRoute.responseType()).isEqualTo(MapsRemoveResponseV1.class);
     }
 
     @Test
