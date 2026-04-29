@@ -1,6 +1,7 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -61,7 +62,7 @@ public final class RedisTransportTopology {
             route(TransportEvents.PlayerJoinLeaveEvent.class, "xcore:evt:player:joinleave", "player.join_leave", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
-            route(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, true),
+            route(ChatDiscordIngressCommandV1.class, "xcore:cmd:discord-message:{server}", "chat.discord-ingress.command", 60_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, true),
             route(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),

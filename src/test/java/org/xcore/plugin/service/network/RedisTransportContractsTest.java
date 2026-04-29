@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -151,6 +152,7 @@ class RedisTransportContractsTest {
         // Arrange
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(ChatGlobalV1.class);
         RedisTransportTopology.RouteSpec messageRoute = RedisTransportTopology.routeFor(ChatMessageV1.class);
+        RedisTransportTopology.RouteSpec discordIngressRoute = RedisTransportTopology.routeFor(ChatDiscordIngressCommandV1.class);
         RedisTransportTopology.RouteSpec heartbeatRoute = RedisTransportTopology.routeFor(ServerHeartbeatV1.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
@@ -166,6 +168,7 @@ class RedisTransportContractsTest {
         // Act
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
         RedisTransportTopology.RouteSpec stableMessageRoute = messageRoute;
+        RedisTransportTopology.RouteSpec stableDiscordIngressRoute = discordIngressRoute;
         RedisTransportTopology.RouteSpec stableHeartbeatRoute = heartbeatRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
@@ -194,6 +197,14 @@ class RedisTransportContractsTest {
         assertThat(stableMessageRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
         assertThat(stableMessageRoute.readOnly()).isTrue();
         assertThat(stableMessageRoute.rpcRequest()).isFalse();
+
+        assertThat(stableDiscordIngressRoute).isNotNull();
+        assertThat(stableDiscordIngressRoute.streamPattern()).isEqualTo("xcore:cmd:discord-message:{server}");
+        assertThat(stableDiscordIngressRoute.eventType()).isEqualTo("chat.discord-ingress.command");
+        assertThat(stableDiscordIngressRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableDiscordIngressRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableDiscordIngressRoute.readOnly()).isTrue();
+        assertThat(stableDiscordIngressRoute.rpcRequest()).isFalse();
 
         assertThat(stableHeartbeatRoute).isNotNull();
         assertThat(stableHeartbeatRoute.streamPattern()).isEqualTo("xcore:evt:server:heartbeat");

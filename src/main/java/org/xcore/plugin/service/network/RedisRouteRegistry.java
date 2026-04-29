@@ -1,6 +1,7 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -142,7 +143,7 @@ public final class RedisRouteRegistry {
         register(readOnly(TransportEvents.PlayerJoinLeaveEvent.class, "xcore:evt:player:joinleave", "player.join_leave", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.DiscordMessageEvent.class, "xcore:cmd:discord-message:{server}", "chat.discord_ingress", 60_000L, PAYLOAD_SERVER_RESOLVER));
+        register(readOnly(ChatDiscordIngressCommandV1.class, "xcore:cmd:discord-message:{server}", "chat.discord-ingress.command", 60_000L, PAYLOAD_SERVER_RESOLVER));
         register(readOnly(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
@@ -203,6 +204,9 @@ public final class RedisRouteRegistry {
             return command.server();
         }
         if (payload instanceof DiscordAdminAccessChangedCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof ChatDiscordIngressCommandV1 command) {
             return command.server();
         }
         return null;

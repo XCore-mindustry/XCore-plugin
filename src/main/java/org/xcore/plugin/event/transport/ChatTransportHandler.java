@@ -4,6 +4,7 @@ import arc.util.Log;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
@@ -44,7 +45,7 @@ public class ChatTransportHandler {
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
-        network.subscribe(TransportEvents.DiscordMessageEvent.class, e -> {
+        network.subscribe(ChatDiscordIngressCommandV1.class, e -> {
             if (!config.server.equals(e.server())) {
                 return;
             }

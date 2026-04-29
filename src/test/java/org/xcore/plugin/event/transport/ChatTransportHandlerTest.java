@@ -3,9 +3,9 @@ package org.xcore.plugin.event.transport;
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
@@ -68,8 +68,8 @@ class ChatTransportHandlerTest {
 
         handler.registerListeners();
 
-        listener(listeners, TransportEvents.DiscordMessageEvent.class)
-                .get(new TransportEvents.DiscordMessageEvent("bot", "hello", "other-server"));
+        listener(listeners, ChatDiscordIngressCommandV1.class)
+                .get(new ChatDiscordIngressCommandV1("bot", "hello", "other-server"));
 
         verifyNoInteractions(sessionService);
     }

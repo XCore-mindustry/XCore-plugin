@@ -20,8 +20,6 @@ public class TransportEvents {
 
     public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements ServerScopedEvent {}
 
-    public record DiscordMessageEvent(String authorName, String message, String server) implements ServerScopedEvent {}
-
     public record PrivateMessageEvent(
             String fromUuid,
             int fromPid,

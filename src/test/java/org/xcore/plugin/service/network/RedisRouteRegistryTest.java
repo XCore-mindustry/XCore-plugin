@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -47,6 +48,20 @@ class RedisRouteRegistryTest {
         );
 
         assertThat(stream).isEqualTo("xcore:cmd:discord-link-confirm:survival");
+    }
+
+    @Test
+    @DisplayName("discord ingress command uses typed payload server contract")
+    void discordIngressCommandUsesTypedPayloadServerContract() {
+        RedisRouteDescriptor descriptor = registry.routeDescriptorFor(ChatDiscordIngressCommandV1.class);
+
+        String stream = registry.resolveStreamKey(
+                descriptor,
+                new ChatDiscordIngressCommandV1("bot", "hello", "survival"),
+                "mini-pvp"
+        );
+
+        assertThat(stream).isEqualTo("xcore:cmd:discord-message:survival");
     }
 
     @Test
@@ -105,6 +120,7 @@ class RedisRouteRegistryTest {
     void classificationComesFromRegistry() {
         assertThat(registry.isReadOnlyType(ChatMessageV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ChatGlobalV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();

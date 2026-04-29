@@ -2,6 +2,7 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -131,7 +132,7 @@ class RedisStreamRouterTest {
     @Test
     @DisplayName("route maps server-targeted events using event payload server")
     void routeServerTargetedEvents() {
-        var discordRoute = router.route(new TransportEvents.DiscordMessageEvent("bot", "hello", "mini-hexed"), "mini-pvp");
+        var discordRoute = router.route(new ChatDiscordIngressCommandV1("bot", "hello", "mini-hexed"), "mini-pvp");
         var mapsRoute = router.route(new TransportEvents.LoadMapsV2(new TransportEvents.FileURL[0], "event"), "mini-pvp");
         var badgeRoute = router.route(new TransportEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
         var badgeColorModeRoute = router.route(new TransportEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
@@ -181,6 +182,7 @@ class RedisStreamRouterTest {
         );
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
+        assertThat(discordRoute.eventType()).isEqualTo("chat.discord-ingress.command");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
         assertThat(badgeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-inventory:mini-pvp");
         assertThat(badgeRoute.eventType()).isEqualTo("player.badge_inventory");
@@ -221,6 +223,9 @@ class RedisStreamRouterTest {
 
         assertThat(router.subscribeStreamsFor(ChatGlobalV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
+
+        assertThat(router.subscribeStreamsFor(ChatDiscordIngressCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:discord-message:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(ServerHeartbeatV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:server:heartbeat");
@@ -275,6 +280,7 @@ class RedisStreamRouterTest {
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
         assertThat(router.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkCodeCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
