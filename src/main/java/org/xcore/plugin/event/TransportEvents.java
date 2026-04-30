@@ -68,10 +68,6 @@ public class TransportEvents {
 
     public static class ReloadPlayerDataCache {}
 
-    public record LoadMapsV2(FileURL[] urls, String server) implements ServerScopedEvent {}
-
-    public record FileURL(String url, String filename) {}
-
     public record ExecuteCommand(String command, String[] expectServers, boolean isExclusion) {
         public ExecuteCommand(String command, String[] expectServers) {
             this(command, expectServers, false);

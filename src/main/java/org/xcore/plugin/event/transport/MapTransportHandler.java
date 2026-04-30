@@ -6,11 +6,12 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.maps.Map;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
@@ -77,19 +78,19 @@ public class MapTransportHandler {
             if (map != null) info("Removed map @", map.plainName());
         });
 
-        network.subscribe(TransportEvents.LoadMapsV2.class, e -> {
+        network.subscribe(MapsLoadCommandV1.class, e -> {
             if (!config.server.equals(e.server())) return;
 
             AtomicInteger counter = new AtomicInteger();
-            for (TransportEvents.FileURL file : e.urls()) {
+            for (MapFileSourceV1 file : e.files()) {
                 Http.get(file.url())
                         .error(Log::err)
                         .submit(result -> {
                             customMapDirectory.child(file.filename()).writeBytes(result.getResult());
 
-                            if (counter.incrementAndGet() == e.urls().length) {
+                            if (counter.incrementAndGet() == e.files().size()) {
                                 maps.reload();
-                                info("Loaded @ maps.", e.urls().length);
+                                info("Loaded @ maps.", e.files().size());
                             }
                         });
             }

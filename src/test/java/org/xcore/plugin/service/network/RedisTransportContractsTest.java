@@ -14,6 +14,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
@@ -165,6 +166,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec discordLinkCodeRoute = RedisTransportTopology.routeFor(DiscordLinkCodeCreatedV1.class);
         RedisTransportTopology.RouteSpec discordStatusRoute = RedisTransportTopology.routeFor(DiscordLinkStatusChangedV1.class);
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
+        RedisTransportTopology.RouteSpec mapsLoadCommandRoute = RedisTransportTopology.routeFor(MapsLoadCommandV1.class);
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(MapsListRequestV1.class);
@@ -184,6 +186,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableDiscordLinkCodeRoute = discordLinkCodeRoute;
         RedisTransportTopology.RouteSpec stableDiscordStatusRoute = discordStatusRoute;
         RedisTransportTopology.RouteSpec stableCommandRoute = commandRoute;
+        RedisTransportTopology.RouteSpec stableMapsLoadCommandRoute = mapsLoadCommandRoute;
         RedisTransportTopology.RouteSpec stableDiscordAdminCommandRoute = discordAdminCommandRoute;
         RedisTransportTopology.RouteSpec stableBroadcastCommandRoute = broadcastCommandRoute;
         RedisTransportTopology.RouteSpec stableRpcRoute = rpcRoute;
@@ -282,6 +285,14 @@ class RedisTransportContractsTest {
         assertThat(stableCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.DEFAULT_SERVER);
         assertThat(stableCommandRoute.readOnly()).isFalse();
         assertThat(stableCommandRoute.rpcRequest()).isFalse();
+
+        assertThat(stableMapsLoadCommandRoute).isNotNull();
+        assertThat(stableMapsLoadCommandRoute.streamPattern()).isEqualTo("xcore:cmd:maps-load:{server}");
+        assertThat(stableMapsLoadCommandRoute.eventType()).isEqualTo("maps.load.command");
+        assertThat(stableMapsLoadCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableMapsLoadCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableMapsLoadCommandRoute.readOnly()).isFalse();
+        assertThat(stableMapsLoadCommandRoute.rpcRequest()).isFalse();
 
         assertThat(stableDiscordAdminCommandRoute).isNotNull();
         assertThat(stableDiscordAdminCommandRoute.streamPattern()).isEqualTo("xcore:cmd:discord-admin-access:{server}");

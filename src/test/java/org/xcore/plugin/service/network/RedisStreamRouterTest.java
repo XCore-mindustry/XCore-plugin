@@ -16,6 +16,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
@@ -27,6 +28,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.plugin.event.TransportEvents;
@@ -153,7 +155,7 @@ class RedisStreamRouterTest {
     @DisplayName("route maps server-targeted events using event payload server")
     void routeServerTargetedEvents() {
         var discordRoute = router.route(new ChatDiscordIngressCommandV1("bot", "hello", "mini-hexed"), "mini-pvp");
-        var mapsRoute = router.route(new TransportEvents.LoadMapsV2(new TransportEvents.FileURL[0], "event"), "mini-pvp");
+        var mapsRoute = router.route(new MapsLoadCommandV1("event", List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))), "mini-pvp");
         var badgeRoute = router.route(new TransportEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
         var badgeColorModeRoute = router.route(new TransportEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
         var passwordRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
@@ -204,6 +206,7 @@ class RedisStreamRouterTest {
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
         assertThat(discordRoute.eventType()).isEqualTo("chat.discord-ingress.command");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
+        assertThat(mapsRoute.eventType()).isEqualTo("maps.load.command");
         assertThat(badgeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-inventory:mini-pvp");
         assertThat(badgeRoute.eventType()).isEqualTo("player.badge_inventory");
         assertThat(badgeColorModeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
@@ -265,6 +268,9 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(MapsRemoveRequestV1.class, "mini-pvp"))
                 .containsExactly("xcore:rpc:req:mini-pvp");
 
+        assertThat(router.subscribeStreamsFor(MapsLoadCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:maps-load:mini-pvp");
+
         assertThat(router.subscribeStreamsFor(TransportEvents.PlayerPasswordReset.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-password-reset:mini-pvp");
 
@@ -323,6 +329,7 @@ class RedisStreamRouterTest {
 
         assertThat(router.isMutatingType(TransportEvents.PlayerPasswordReset.class)).isTrue();
         assertThat(router.isMutatingType(TransportEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();
+        assertThat(router.isMutatingType(MapsLoadCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();

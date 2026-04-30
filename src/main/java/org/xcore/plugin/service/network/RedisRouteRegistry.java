@@ -15,6 +15,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
@@ -149,7 +150,7 @@ public final class RedisRouteRegistry {
         register(readOnly(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, RedisServerResolver.defaultServer()));
-        register(mutating(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, PAYLOAD_SERVER_RESOLVER));
+        register(mutating(MapsLoadCommandV1.class, "xcore:cmd:maps-load:{server}", "maps.load.command", 300_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, MODERATION_SERVER_RESOLVER));
         register(rpc(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsListResponseV1.class));
@@ -203,6 +204,9 @@ public final class RedisRouteRegistry {
     private static String mapsServer(Object payload) {
         if (payload instanceof MapsListRequestV1 request) {
             return request.server();
+        }
+        if (payload instanceof MapsLoadCommandV1 command) {
+            return command.server();
         }
         if (payload instanceof MapsRemoveRequestV1 request) {
             return request.server();

@@ -15,6 +15,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
@@ -83,7 +84,7 @@ public final class RedisTransportTopology {
             route(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
-            route(TransportEvents.LoadMapsV2.class, "xcore:cmd:maps-load:{server}", "maps.load", 300_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(MapsLoadCommandV1.class, "xcore:cmd:maps-load:{server}", "maps.load.command", 300_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, DeliveryMode.COMMAND, ServerScope.BROADCAST, false),
             route(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             rpcRoute(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, ServerScope.PAYLOAD_SERVER, MapsListResponseV1.class),

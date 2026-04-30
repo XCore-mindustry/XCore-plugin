@@ -17,12 +17,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
+import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
@@ -558,8 +560,8 @@ class RedisNetworkBackendIntegrationTest {
 
         AtomicInteger executions = new AtomicInteger(0);
         CountDownLatch latch = new CountDownLatch(1);
-        Subscription<TransportEvents.LoadMapsV2> subscription = requesterBackend.subscribe(
-                TransportEvents.LoadMapsV2.class,
+        Subscription<MapsLoadCommandV1> subscription = requesterBackend.subscribe(
+                MapsLoadCommandV1.class,
                 event -> {
                     executions.incrementAndGet();
                     latch.countDown();
@@ -572,14 +574,17 @@ class RedisNetworkBackendIntegrationTest {
             long expires = now + 120_000;
             Map<String, String> fields = Map.ofEntries(
                     Map.entry("schema_version", "1"),
-                    Map.entry("event_type", "maps.load"),
+                    Map.entry("event_type", "maps.load.command"),
                     Map.entry("event_id", "evt-1"),
-                    Map.entry("idempotency_key", "maps.load:test-key"),
+                    Map.entry("idempotency_key", "maps.load.command:test-key"),
                     Map.entry("producer", "discord-bot"),
                     Map.entry("created_at", String.valueOf(now)),
                     Map.entry("expires_at", String.valueOf(expires)),
                     Map.entry("server", "alpha"),
-                    Map.entry("payload_json", "{\"urls\":[],\"server\":\"alpha\"}")
+                    Map.entry("payload_json", new Gson().toJson(new MapsLoadCommandV1(
+                            "alpha",
+                            List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))
+                    )))
             );
 
             connection.sync().xadd("xcore:cmd:maps-load:alpha", fields);

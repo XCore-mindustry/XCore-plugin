@@ -15,6 +15,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
@@ -24,6 +25,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.plugin.event.TransportEvents;
 
@@ -126,6 +128,20 @@ class RedisRouteRegistryTest {
     }
 
     @Test
+    @DisplayName("maps load command uses typed payload server contract")
+    void mapsLoadCommandUsesTypedPayloadServerContract() {
+        RedisRouteDescriptor descriptor = registry.routeDescriptorFor(MapsLoadCommandV1.class);
+
+        String stream = registry.resolveStreamKey(
+                descriptor,
+                new MapsLoadCommandV1("survival", java.util.List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))),
+                "mini-pvp"
+        );
+
+        assertThat(stream).isEqualTo("xcore:cmd:maps-load:survival");
+    }
+
+    @Test
     @DisplayName("read-only and mutating classification comes from registry descriptors")
     void classificationComesFromRegistry() {
         assertThat(registry.isReadOnlyType(ChatMessageV1.class)).isTrue();
@@ -138,6 +154,7 @@ class RedisRouteRegistryTest {
         assertThat(registry.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
+        assertThat(registry.isMutatingType(MapsLoadCommandV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
