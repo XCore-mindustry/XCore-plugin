@@ -4,10 +4,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import arc.util.Strings;
 import org.bson.types.ObjectId;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.session.Session;
@@ -332,7 +332,7 @@ public class PrivateMessageService {
             return;
         }
 
-        networkService.post(new TransportEvents.PrivateMessageEvent(
+        networkService.post(new ChatPrivateV1(
                 privateMessage.fromUuid,
                 privateMessage.fromPid,
                 privateMessage.fromName,

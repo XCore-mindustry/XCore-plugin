@@ -20,16 +20,6 @@ public class TransportEvents {
 
     public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements ServerScopedEvent {}
 
-    public record PrivateMessageEvent(
-            String fromUuid,
-            int fromPid,
-            String fromName,
-            String toUuid,
-            int toPid,
-            String message,
-            String server
-    ) implements ServerScopedEvent {}
-
     public record KickBannedPlayer(String uuid, String ip) {}
 
     public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}

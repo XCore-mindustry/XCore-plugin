@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -121,6 +122,7 @@ class RedisRouteRegistryTest {
         assertThat(registry.isReadOnlyType(ChatMessageV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ChatGlobalV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ChatPrivateV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();

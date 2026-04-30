@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -153,6 +154,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec eventRoute = RedisTransportTopology.routeFor(ChatGlobalV1.class);
         RedisTransportTopology.RouteSpec messageRoute = RedisTransportTopology.routeFor(ChatMessageV1.class);
         RedisTransportTopology.RouteSpec discordIngressRoute = RedisTransportTopology.routeFor(ChatDiscordIngressCommandV1.class);
+        RedisTransportTopology.RouteSpec privateRoute = RedisTransportTopology.routeFor(ChatPrivateV1.class);
         RedisTransportTopology.RouteSpec heartbeatRoute = RedisTransportTopology.routeFor(ServerHeartbeatV1.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
@@ -169,6 +171,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableEventRoute = eventRoute;
         RedisTransportTopology.RouteSpec stableMessageRoute = messageRoute;
         RedisTransportTopology.RouteSpec stableDiscordIngressRoute = discordIngressRoute;
+        RedisTransportTopology.RouteSpec stablePrivateRoute = privateRoute;
         RedisTransportTopology.RouteSpec stableHeartbeatRoute = heartbeatRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
@@ -205,6 +208,14 @@ class RedisTransportContractsTest {
         assertThat(stableDiscordIngressRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
         assertThat(stableDiscordIngressRoute.readOnly()).isTrue();
         assertThat(stableDiscordIngressRoute.rpcRequest()).isFalse();
+
+        assertThat(stablePrivateRoute).isNotNull();
+        assertThat(stablePrivateRoute.streamPattern()).isEqualTo("xcore:evt:chat:private");
+        assertThat(stablePrivateRoute.eventType()).isEqualTo("chat.private");
+        assertThat(stablePrivateRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stablePrivateRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stablePrivateRoute.readOnly()).isTrue();
+        assertThat(stablePrivateRoute.rpcRequest()).isFalse();
 
         assertThat(stableHeartbeatRoute).isNotNull();
         assertThat(stableHeartbeatRoute.streamPattern()).isEqualTo("xcore:evt:server:heartbeat");

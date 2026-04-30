@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -47,6 +48,7 @@ class RedisStreamRouterTest {
         MuteData muteData = punishment(new MuteData(), "u", "n");
 
         var messageRoute = router.route(new ChatMessageV1("a", "b", "mini-pvp"), "mini-pvp");
+        var privateRoute = router.route(new ChatPrivateV1("uuid-from", 7, "Sender", "uuid-to", 42, "hello", "survival"), "mini-pvp");
         var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
         var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
         var banRoute = router.route(
@@ -106,6 +108,9 @@ class RedisStreamRouterTest {
 
         assertThat(messageRoute.streamKey()).isEqualTo("xcore:evt:chat:message");
         assertThat(messageRoute.eventType()).isEqualTo("chat.message");
+
+        assertThat(privateRoute.streamKey()).isEqualTo("xcore:evt:chat:private");
+        assertThat(privateRoute.eventType()).isEqualTo("chat.private");
 
         assertThat(joinRoute.streamKey()).isEqualTo("xcore:evt:player:joinleave");
         assertThat(joinRoute.eventType()).isEqualTo("player.join_leave");
@@ -221,6 +226,9 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(ChatMessageV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:message");
 
+        assertThat(router.subscribeStreamsFor(ChatPrivateV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:chat:private");
+
         assertThat(router.subscribeStreamsFor(ChatGlobalV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:chat:global");
 
@@ -281,6 +289,7 @@ class RedisStreamRouterTest {
     void classificationAndResponseMapping() {
         assertThat(router.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ChatPrivateV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkCodeCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();

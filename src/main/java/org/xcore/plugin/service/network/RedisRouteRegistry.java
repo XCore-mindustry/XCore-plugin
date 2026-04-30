@@ -4,6 +4,7 @@ import org.xcore.plugin.event.TransportEvents;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -144,7 +145,7 @@ public final class RedisRouteRegistry {
         register(readOnly(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ChatDiscordIngressCommandV1.class, "xcore:cmd:discord-message:{server}", "chat.discord-ingress.command", 60_000L, PAYLOAD_SERVER_RESOLVER));
-        register(readOnly(TransportEvents.PrivateMessageEvent.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ChatPrivateV1.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));

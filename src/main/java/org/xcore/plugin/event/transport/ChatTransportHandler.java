@@ -6,8 +6,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -57,7 +57,7 @@ public class ChatTransportHandler {
             Log.infoTag("DISCORD-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
         });
 
-        network.subscribe(TransportEvents.PrivateMessageEvent.class, e -> {
+        network.subscribe(ChatPrivateV1.class, e -> {
             if (config.server.equals(e.server())) {
                 return;
             }
