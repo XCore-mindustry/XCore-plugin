@@ -62,6 +62,28 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
+    @DisplayName("send rejects unsupported payloads without publishing any fallback stream")
+    void sendRejectsUnsupportedPayloadsWithoutPublishingAnyFallbackStream() {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        requesterBackend.send(new Object());
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(1L);
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isZero();
+
+        try (RedisClient client = RedisClient.create(config.redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            List<StreamMessage<String, String>> messages = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:evt:raw", "0-0")
+            );
+
+            assertThat(messages).isEmpty();
+        }
+    }
+
+    @Test
     @DisplayName("send publishes envelope to mapped stream")
     void sendPublishesEnvelopeToMappedStream() {
         Config config = baseConfig("alpha");

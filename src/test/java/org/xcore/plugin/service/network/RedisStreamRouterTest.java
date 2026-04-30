@@ -6,6 +6,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -36,10 +38,19 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RedisStreamRouterTest {
 
     private final RedisStreamRouter router = new RedisStreamRouter();
+
+    @Test
+    @DisplayName("route rejects unsupported payload types without synthesizing transport metadata")
+    void routeRejectsUnsupportedPayloadTypes() {
+        assertThatThrownBy(() -> router.route(new Object(), "mini-pvp"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining(Object.class.getName());
+    }
 
     @Test
     @DisplayName("route maps read-only events to expected stream and event type")
@@ -49,7 +60,8 @@ class RedisStreamRouterTest {
 
         var messageRoute = router.route(new ChatMessageV1("a", "b", "mini-pvp"), "mini-pvp");
         var privateRoute = router.route(new ChatPrivateV1("uuid-from", 7, "Sender", "uuid-to", 42, "hello", "survival"), "mini-pvp");
-        var joinRoute = router.route(new TransportEvents.PlayerJoinLeaveEvent("p", "mini-pvp", true), "mini-pvp");
+        var serverActionRoute = router.route(new ServerActionV1("Server loaded", "mini-pvp"), "mini-pvp");
+        var joinRoute = router.route(new PlayerJoinLeaveV1("p", "mini-pvp", true), "mini-pvp");
         var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
         var banRoute = router.route(
                 org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
@@ -112,8 +124,11 @@ class RedisStreamRouterTest {
         assertThat(privateRoute.streamKey()).isEqualTo("xcore:evt:chat:private");
         assertThat(privateRoute.eventType()).isEqualTo("chat.private");
 
+        assertThat(serverActionRoute.streamKey()).isEqualTo("xcore:evt:server:action");
+        assertThat(serverActionRoute.eventType()).isEqualTo("server.action");
+
         assertThat(joinRoute.streamKey()).isEqualTo("xcore:evt:player:joinleave");
-        assertThat(joinRoute.eventType()).isEqualTo("player.join_leave");
+        assertThat(joinRoute.eventType()).isEqualTo("player.join-leave");
 
         assertThat(heartbeatRoute.streamKey()).isEqualTo("xcore:evt:server:heartbeat");
         assertThat(heartbeatRoute.eventType()).isEqualTo("server.heartbeat");
@@ -234,6 +249,12 @@ class RedisStreamRouterTest {
 
         assertThat(router.subscribeStreamsFor(ChatDiscordIngressCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-message:mini-pvp");
+
+        assertThat(router.subscribeStreamsFor(PlayerJoinLeaveV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:player:joinleave");
+
+        assertThat(router.subscribeStreamsFor(ServerActionV1.class, "mini-pvp"))
+                .containsExactly("xcore:evt:server:action");
 
         assertThat(router.subscribeStreamsFor(ServerHeartbeatV1.class, "mini-pvp"))
                 .containsExactly("xcore:evt:server:heartbeat");

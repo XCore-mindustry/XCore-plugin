@@ -10,6 +10,7 @@ import mindustry.core.Version;
 import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
@@ -55,7 +56,7 @@ public class TransportService {
         registerListeners();
 
         Events.on(EventType.ServerLoadEvent.class, event -> {
-            network.post(new TransportEvents.ServerActionEvent("Server loaded", config.server));
+            network.post(new ServerActionV1("Server loaded", config.server));
 
             Timer.schedule(() -> {
                 try {

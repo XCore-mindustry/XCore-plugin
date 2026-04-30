@@ -8,6 +8,7 @@ import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
@@ -21,7 +22,6 @@ import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
-import org.xcore.plugin.event.TransportEvents;
 
 import java.util.Objects;
 
@@ -120,7 +120,7 @@ public class ConnectionHandler {
         sessionService.broadcast("player-joined", args(
                 "nickname", player.coloredName(),
                 "pid", data.pid));
-        network.post(new TransportEvents.PlayerJoinLeaveEvent(
+        network.post(new PlayerJoinLeaveV1(
                 player.plainName() + " #" + data.pid,
                 config.server,
                 true)
@@ -142,7 +142,7 @@ public class ConnectionHandler {
                     "pid", data.pid)
             );
 
-            network.post(new TransportEvents.PlayerJoinLeaveEvent(
+            network.post(new PlayerJoinLeaveV1(
                     player.plainName() + " #" + data.pid,
                     config.server,
                     false)

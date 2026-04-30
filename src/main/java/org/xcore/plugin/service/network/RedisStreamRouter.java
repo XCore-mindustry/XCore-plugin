@@ -1,7 +1,6 @@
 package org.xcore.plugin.service.network;
 
 import java.util.List;
-import java.util.Locale;
 
 public final class RedisStreamRouter {
     private final RedisRouteRegistry registry;
@@ -19,16 +18,15 @@ public final class RedisStreamRouter {
 
     public Route route(Object event, String defaultServer) {
         RedisRouteDescriptor descriptor = registry.routeDescriptorFor(event);
-        if (descriptor != null) {
-            return new Route(
-                    registry.resolveStreamKey(descriptor, event, defaultServer),
-                    descriptor.eventType(),
-                    descriptor.ttlMillis()
-            );
+        if (descriptor == null) {
+            throw new UnsupportedOperationException("Redis route does not support payload type: " + event.getClass().getName());
         }
 
-        var eventType = "event." + event.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-        return new Route("xcore:evt:raw", eventType, 60000L);
+        return new Route(
+                registry.resolveStreamKey(descriptor, event, defaultServer),
+                descriptor.eventType(),
+                descriptor.ttlMillis()
+        );
     }
 
     public List<String> subscribeStreamsFor(Class<?> type, String defaultServer) {

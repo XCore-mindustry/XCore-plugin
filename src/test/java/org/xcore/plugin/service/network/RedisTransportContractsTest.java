@@ -6,6 +6,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -155,6 +157,8 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec messageRoute = RedisTransportTopology.routeFor(ChatMessageV1.class);
         RedisTransportTopology.RouteSpec discordIngressRoute = RedisTransportTopology.routeFor(ChatDiscordIngressCommandV1.class);
         RedisTransportTopology.RouteSpec privateRoute = RedisTransportTopology.routeFor(ChatPrivateV1.class);
+        RedisTransportTopology.RouteSpec joinLeaveRoute = RedisTransportTopology.routeFor(PlayerJoinLeaveV1.class);
+        RedisTransportTopology.RouteSpec serverActionRoute = RedisTransportTopology.routeFor(ServerActionV1.class);
         RedisTransportTopology.RouteSpec heartbeatRoute = RedisTransportTopology.routeFor(ServerHeartbeatV1.class);
         RedisTransportTopology.RouteSpec moderationRoute = RedisTransportTopology.routeFor(ModerationBanCreatedV1.class);
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
@@ -172,6 +176,8 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableMessageRoute = messageRoute;
         RedisTransportTopology.RouteSpec stableDiscordIngressRoute = discordIngressRoute;
         RedisTransportTopology.RouteSpec stablePrivateRoute = privateRoute;
+        RedisTransportTopology.RouteSpec stableJoinLeaveRoute = joinLeaveRoute;
+        RedisTransportTopology.RouteSpec stableServerActionRoute = serverActionRoute;
         RedisTransportTopology.RouteSpec stableHeartbeatRoute = heartbeatRoute;
         RedisTransportTopology.RouteSpec stableModerationRoute = moderationRoute;
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
@@ -216,6 +222,22 @@ class RedisTransportContractsTest {
         assertThat(stablePrivateRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
         assertThat(stablePrivateRoute.readOnly()).isTrue();
         assertThat(stablePrivateRoute.rpcRequest()).isFalse();
+
+        assertThat(stableJoinLeaveRoute).isNotNull();
+        assertThat(stableJoinLeaveRoute.streamPattern()).isEqualTo("xcore:evt:player:joinleave");
+        assertThat(stableJoinLeaveRoute.eventType()).isEqualTo("player.join-leave");
+        assertThat(stableJoinLeaveRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableJoinLeaveRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableJoinLeaveRoute.readOnly()).isTrue();
+        assertThat(stableJoinLeaveRoute.rpcRequest()).isFalse();
+
+        assertThat(stableServerActionRoute).isNotNull();
+        assertThat(stableServerActionRoute.streamPattern()).isEqualTo("xcore:evt:server:action");
+        assertThat(stableServerActionRoute.eventType()).isEqualTo("server.action");
+        assertThat(stableServerActionRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.EVENT);
+        assertThat(stableServerActionRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.BROADCAST);
+        assertThat(stableServerActionRoute.readOnly()).isTrue();
+        assertThat(stableServerActionRoute.rpcRequest()).isFalse();
 
         assertThat(stableHeartbeatRoute).isNotNull();
         assertThat(stableHeartbeatRoute.streamPattern()).isEqualTo("xcore:evt:server:heartbeat");

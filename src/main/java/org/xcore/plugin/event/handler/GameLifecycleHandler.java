@@ -14,6 +14,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.io.JsonIO;
 import mindustry.net.Packets;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -22,7 +23,6 @@ import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.NetworkService;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -95,7 +95,7 @@ public class GameLifecycleHandler {
                     Strings.capitalize(Strings.stripColors(state.map.name())));
         }
 
-        network.post(new TransportEvents.ServerActionEvent(message, config.server));
+        network.post(new ServerActionV1(message, config.server));
 
         if (state.map != null && !state.isMenu()) {
             try {

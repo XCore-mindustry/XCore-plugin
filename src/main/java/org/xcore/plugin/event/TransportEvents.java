@@ -16,10 +16,6 @@ public class TransportEvents {
     public static abstract class Response {}
     public static abstract class Request<T> {}
 
-    public record ServerActionEvent(String message, String server) implements ServerScopedEvent {}
-
-    public record PlayerJoinLeaveEvent(String playerName, String server, Boolean join) implements ServerScopedEvent {}
-
     public record KickBannedPlayer(String uuid, String ip) {}
 
     public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}

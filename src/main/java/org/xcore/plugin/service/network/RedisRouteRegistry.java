@@ -5,6 +5,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -25,7 +27,6 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public final class RedisRouteRegistry {
@@ -64,21 +65,7 @@ public final class RedisRouteRegistry {
     }
 
     public RedisRouteDescriptor routeDescriptorFor(Object payload) {
-        RedisRouteDescriptor descriptor = descriptorsByType.get(payload.getClass());
-        if (descriptor != null) {
-            return descriptor;
-        }
-
-        String eventType = "event." + payload.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-        return new RedisRouteDescriptor(
-                payload.getClass(),
-                "xcore:evt:raw",
-                eventType,
-                60_000L,
-                RedisRouteKind.READ_ONLY,
-                RedisServerResolver.broadcast(),
-                null
-        );
+        return descriptorsByType.get(payload.getClass());
     }
 
     public RedisRouteDescriptor routeDescriptorFor(Class<?> type) {
@@ -140,8 +127,8 @@ public final class RedisRouteRegistry {
 
     private void registerDefaults() {
         register(readOnly(ChatMessageV1.class, "xcore:evt:chat:message", "chat.message", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.ServerActionEvent.class, "xcore:evt:server:action", "server.action", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(TransportEvents.PlayerJoinLeaveEvent.class, "xcore:evt:player:joinleave", "player.join_leave", 60_000L, RedisServerResolver.broadcast()));
+        register(readOnly(ServerActionV1.class, "xcore:evt:server:action", "server.action", 60_000L, RedisServerResolver.broadcast()));
+        register(readOnly(PlayerJoinLeaveV1.class, "xcore:evt:player:joinleave", "player.join-leave", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, RedisServerResolver.broadcast()));
         register(readOnly(ChatDiscordIngressCommandV1.class, "xcore:cmd:discord-message:{server}", "chat.discord-ingress.command", 60_000L, PAYLOAD_SERVER_RESOLVER));

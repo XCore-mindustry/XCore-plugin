@@ -6,6 +6,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -30,6 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RedisRouteRegistryTest {
 
     private final RedisRouteRegistry registry = new RedisRouteRegistry();
+
+    @Test
+    @DisplayName("unknown payload types have no registry descriptor")
+    void unknownPayloadTypesHaveNoRegistryDescriptor() {
+        assertThat(registry.routeDescriptorFor(new Object())).isNull();
+        assertThat(registry.routeDescriptorFor(Object.class)).isNull();
+    }
 
     @Test
     @DisplayName("payload server resolver uses typed server contract")
@@ -123,6 +132,8 @@ class RedisRouteRegistryTest {
         assertThat(registry.isReadOnlyType(ChatGlobalV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ChatPrivateV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(PlayerJoinLeaveV1.class)).isTrue();
+        assertThat(registry.isReadOnlyType(ServerActionV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();

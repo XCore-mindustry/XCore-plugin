@@ -10,6 +10,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
 import mindustry.net.NetConnection;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,6 @@ import org.mockito.MockedStatic;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
@@ -124,7 +124,7 @@ class ConnectionHandlerTest {
         verify(sessionService).updateConnectionData(session, "2.2.2.2", "[#00000000][red]Renamed[]");
         verify(localization).send(eq("error-ip-changed"), anyMap());
         verify(playerDisplayService).refresh(session);
-        verify(networkService).post(any(TransportEvents.PlayerJoinLeaveEvent.class));
+        verify(networkService).post(any(PlayerJoinLeaveV1.class));
         verify(sessionService, never()).persistPlayer(session);
     }
 

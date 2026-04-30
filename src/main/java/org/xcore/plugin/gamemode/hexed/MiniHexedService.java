@@ -22,7 +22,7 @@ import mindustry.maps.MapException;
 import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.SessionService;
@@ -272,7 +272,7 @@ public class MiniHexedService {
         });
 
         String rawMessage = generateMessage.get(new Localization(bundle));
-        network.post(new TransportEvents.ServerActionEvent(Strings.stripColors(rawMessage), config.server));
+        network.post(new ServerActionV1(Strings.stripColors(rawMessage), config.server));
 
         Events.fire("hexed_world-reload");
         Timer.schedule(this::reloadMap, 10);

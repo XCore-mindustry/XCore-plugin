@@ -10,6 +10,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.config.Config;
@@ -111,7 +112,7 @@ public class VoteKick extends VoteSession {
         }
 
         if (network != null) {
-            network.post(new TransportEvents.ServerActionEvent(stripColors(message), config.server));
+            network.post(new ServerActionV1(stripColors(message), config.server));
         }
     }
 
@@ -210,7 +211,7 @@ public class VoteKick extends VoteSession {
 
         if (network != null) {
             network.post(buildVoteKickEvent());
-            network.post(new TransportEvents.ServerActionEvent(
+            network.post(new ServerActionV1(
                     systemLocal.format("votekick-success", bundleArgs), config.server));
         }
         onKick.get(target);
