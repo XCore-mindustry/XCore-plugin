@@ -1,7 +1,5 @@
 package org.xcore.plugin.event;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -12,9 +10,6 @@ public class TransportEvents {
     public interface ServerScopedEvent {
         String server();
     }
-
-    public static abstract class Response {}
-    public static abstract class Request<T> {}
 
     public record KickBannedPlayer(String uuid, String ip) {}
 
@@ -76,54 +71,4 @@ public class TransportEvents {
 
     public record PardonPlayer(String uuid) {}
 
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MapsListRequest extends Request<MapsListResponse> implements ServerScopedEvent {
-        public String server;
-
-        @Override
-        public String server() {
-            return server;
-        }
-    }
-
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MapsListResponse extends Response {
-        public MapEntry[] maps;
-    }
-
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MapEntry {
-        public String name;
-        public String fileName;
-        public String author;
-        public Integer width;
-        public Integer height;
-        public Long fileSizeBytes;
-        public Integer like;
-        public Integer dislike;
-        public Integer reputation;
-        public Double popularity;
-        public Double interest;
-        public String gameMode;
-    }
-
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MapRemoveRequest extends Request<MapRemoveResponse> implements ServerScopedEvent {
-        public String server, fileName;
-
-        @Override
-        public String server() {
-            return server;
-        }
-    }
-
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MapRemoveResponse extends Response {
-        public String result;
-    }
 }
