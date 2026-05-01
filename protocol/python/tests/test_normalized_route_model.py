@@ -99,6 +99,9 @@ def test_generation_plan_supports_chat_family_without_shared_refs() -> None:
         "ChatGlobalV1",
         "ChatMessageV1",
         "ChatPrivateV1",
+        "PlayerActiveBadgeChangedCommandV1",
+        "PlayerBadgeSymbolColorModeChangedCommandV1",
+        "PlayerCustomNicknameChangedCommandV1",
         "PlayerJoinLeaveV1",
         "ServerActionV1",
         "ServerHeartbeatV1",
@@ -110,6 +113,9 @@ def test_generation_plan_supports_chat_family_without_shared_refs() -> None:
         "chat.private",
         "server.action",
         "player.join-leave",
+        "player.custom-nickname.changed.command",
+        "player.active-badge.changed.command",
+        "player.badge-symbol-color-mode.changed.command",
         "server.heartbeat",
     ]
     assert [schema.title for schema in plan.map_schemas] == [
@@ -126,6 +132,9 @@ def test_generation_plan_supports_chat_family_without_shared_refs() -> None:
         "CHAT_PRIVATE_V1",
         "SERVER_ACTION_V1",
         "PLAYER_JOIN_LEAVE_V1",
+        "PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1",
+        "PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1",
+        "PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1",
         "SERVER_HEARTBEAT_V1",
     ]
     assert [route.constant_name for route in plan.map_routes] == [

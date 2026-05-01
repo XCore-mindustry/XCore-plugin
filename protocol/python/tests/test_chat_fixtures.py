@@ -30,6 +30,18 @@ VALID_CASES = [
         fixtures_root() / "valid" / "chat" / "player.join-leave.v1.json",
     ),
     (
+        spec_root() / "messages" / "chat" / "player.custom-nickname.changed.command.v1.json",
+        fixtures_root() / "valid" / "chat" / "player.custom-nickname.changed.command.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "player.active-badge.changed.command.v1.json",
+        fixtures_root() / "valid" / "chat" / "player.active-badge.changed.command.v1.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "player.badge-symbol-color-mode.changed.command.v1.json",
+        fixtures_root() / "valid" / "chat" / "player.badge-symbol-color-mode.changed.command.v1.json",
+    ),
+    (
         spec_root() / "messages" / "chat" / "server.heartbeat.v1.json",
         fixtures_root() / "valid" / "chat" / "server.heartbeat.v1.json",
     ),
@@ -51,6 +63,27 @@ INVALID_CASES = [
         / "invalid"
         / "chat"
         / "player.join-leave.v1.legacy-join.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "player.custom-nickname.changed.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "chat"
+        / "player.custom-nickname.changed.command.v1.legacy-uuid.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "player.active-badge.changed.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "chat"
+        / "player.active-badge.changed.command.v1.legacy-uuid.json",
+    ),
+    (
+        spec_root() / "messages" / "chat" / "player.badge-symbol-color-mode.changed.command.v1.json",
+        fixtures_root()
+        / "invalid"
+        / "chat"
+        / "player.badge-symbol-color-mode.changed.command.v1.legacy-uuid.json",
     ),
     (
         spec_root() / "messages" / "chat" / "server.heartbeat.v1.json",

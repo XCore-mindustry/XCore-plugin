@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:player.active-badge.changed.command:v1",
+  "title": "PlayerActiveBadgeChangedCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "playerUuid", "activeBadge", "server"],
+  "properties": {
+    "messageType": {
+      "const": "player.active-badge.changed.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "activeBadge": {
+      "type": "string"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

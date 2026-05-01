@@ -121,6 +121,69 @@ public final class ChatMessages {
         }
     }
 
+    public record PlayerActiveBadgeChangedCommandV1(
+            String playerUuid,
+            String activeBadge,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player.active-badge.changed.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerActiveBadgeChangedCommandV1 {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+            }
+            Objects.requireNonNull(activeBadge, "activeBadge must not be null");
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
+    public record PlayerBadgeSymbolColorModeChangedCommandV1(
+            String playerUuid,
+            String badgeSymbolColorMode,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player.badge-symbol-color-mode.changed.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerBadgeSymbolColorModeChangedCommandV1 {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+            }
+            Objects.requireNonNull(badgeSymbolColorMode, "badgeSymbolColorMode must not be null");
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
+    public record PlayerCustomNicknameChangedCommandV1(
+            String playerUuid,
+            String customNickname,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player.custom-nickname.changed.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerCustomNicknameChangedCommandV1 {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+            }
+            Objects.requireNonNull(customNickname, "customNickname must not be null");
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
     public record PlayerJoinLeaveV1(
             String playerName,
             String server,

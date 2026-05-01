@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:player.custom-nickname.changed.command:v1",
+  "title": "PlayerCustomNicknameChangedCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "playerUuid", "customNickname", "server"],
+  "properties": {
+    "messageType": {
+      "const": "player.custom-nickname.changed.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "playerUuid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "customNickname": {
+      "type": "string"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

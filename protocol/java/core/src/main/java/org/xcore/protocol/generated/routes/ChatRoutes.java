@@ -131,6 +131,54 @@ public final class ChatRoutes {
             null
     );
 
+    public static final RouteDescriptor PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerCustomNicknameChangedCommandV1Route",
+            "player.custom-nickname.changed.command",
+            1,
+            ChatMessages.PlayerCustomNicknameChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-custom-nickname:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerActiveBadgeChangedCommandV1Route",
+            "player.active-badge.changed.command",
+            1,
+            ChatMessages.PlayerActiveBadgeChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-active-badge:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerBadgeSymbolColorModeChangedCommandV1Route",
+            "player.badge-symbol-color-mode.changed.command",
+            1,
+            ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-badge-symbol-color-mode:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
     public static final RouteDescriptor SERVER_HEARTBEAT_V1 = new RouteDescriptor(
             "chat",
             "serverHeartbeatV1Route",
@@ -154,6 +202,9 @@ public final class ChatRoutes {
             entry(key("chat.private", 1), CHAT_PRIVATE_V1),
             entry(key("server.action", 1), SERVER_ACTION_V1),
             entry(key("player.join-leave", 1), PLAYER_JOIN_LEAVE_V1),
+            entry(key("player.custom-nickname.changed.command", 1), PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
+            entry(key("player.active-badge.changed.command", 1), PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
+            entry(key("player.badge-symbol-color-mode.changed.command", 1), PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1)
     );
 

@@ -285,6 +285,132 @@ class ChatPrivateV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class PlayerActiveBadgeChangedCommandV1:
+    playerUuid: str
+    activeBadge: str
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player.active-badge.changed.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.activeBadge, 'activeBadge')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerActiveBadgeChangedCommandV1":
+        mapping = _expect_mapping(payload, "PlayerActiveBadgeChangedCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'activeBadge', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'activeBadge', 'server')),
+            model_name="PlayerActiveBadgeChangedCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            activeBadge=_expect_str(mapping['activeBadge'], 'activeBadge'),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['activeBadge'] = self.activeBadge
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class PlayerBadgeSymbolColorModeChangedCommandV1:
+    playerUuid: str
+    badgeSymbolColorMode: str
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player.badge-symbol-color-mode.changed.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.badgeSymbolColorMode, 'badgeSymbolColorMode')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerBadgeSymbolColorModeChangedCommandV1":
+        mapping = _expect_mapping(payload, "PlayerBadgeSymbolColorModeChangedCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'badgeSymbolColorMode', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'badgeSymbolColorMode', 'server')),
+            model_name="PlayerBadgeSymbolColorModeChangedCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            badgeSymbolColorMode=_expect_str(mapping['badgeSymbolColorMode'], 'badgeSymbolColorMode'),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['badgeSymbolColorMode'] = self.badgeSymbolColorMode
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class PlayerCustomNicknameChangedCommandV1:
+    playerUuid: str
+    customNickname: str
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player.custom-nickname.changed.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.customNickname, 'customNickname')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerCustomNicknameChangedCommandV1":
+        mapping = _expect_mapping(payload, "PlayerCustomNicknameChangedCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'customNickname', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'customNickname', 'server')),
+            model_name="PlayerCustomNicknameChangedCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            customNickname=_expect_str(mapping['customNickname'], 'customNickname'),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['customNickname'] = self.customNickname
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class PlayerJoinLeaveV1:
     playerName: str
     server: str
@@ -431,6 +557,9 @@ __all__ = [
     "ChatGlobalV1",
     "ChatMessageV1",
     "ChatPrivateV1",
+    "PlayerActiveBadgeChangedCommandV1",
+    "PlayerBadgeSymbolColorModeChangedCommandV1",
+    "PlayerCustomNicknameChangedCommandV1",
     "PlayerJoinLeaveV1",
     "ServerActionV1",
     "ServerHeartbeatV1",

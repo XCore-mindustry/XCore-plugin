@@ -55,6 +55,33 @@ messages:
     replayable: true
     idempotentConsumerRecommended: false
     owner: player-session
+  - messageType: player.custom-nickname.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-custom-nickname:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.active-badge.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-active-badge:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.badge-symbol-color-mode.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-badge-symbol-color-mode:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
   - messageType: server.heartbeat
     messageVersion: 1
     kind: event

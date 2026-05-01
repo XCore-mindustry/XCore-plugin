@@ -1,0 +1,7 @@
+{
+  "messageType": "player.badge-symbol-color-mode.changed.command",
+  "messageVersion": 1,
+  "playerUuid": "player-uuid-123",
+  "badgeSymbolColorMode": "team-color",
+  "server": "mini-pvp"
+}
