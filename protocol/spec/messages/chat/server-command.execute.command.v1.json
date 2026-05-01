@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:chat:server-command.execute.command:v1",
+  "title": "ServerCommandExecuteCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "command", "targetServers", "exclusion"],
+  "properties": {
+    "messageType": {
+      "const": "server-command.execute.command"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetServers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "exclusion": {
+      "type": "boolean"
+    }
+  }
+}

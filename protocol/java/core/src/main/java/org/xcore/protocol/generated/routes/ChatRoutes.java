@@ -211,6 +211,38 @@ public final class ChatRoutes {
             null
     );
 
+    public static final RouteDescriptor PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerDataCacheReloadCommandV1Route",
+            "player-data-cache.reload.command",
+            1,
+            ChatMessages.PlayerDataCacheReloadCommandV1.class,
+            "command",
+            "xcore:cmd:reload-cache:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor SERVER_COMMAND_EXECUTE_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "serverCommandExecuteCommandV1Route",
+            "server-command.execute.command",
+            1,
+            ChatMessages.ServerCommandExecuteCommandV1.class,
+            "command",
+            "xcore:cmd:execute-command:broadcast",
+            "broadcast",
+            120000,
+            false,
+            false,
+            "server-runtime",
+            null
+    );
+
     public static final RouteDescriptor SERVER_HEARTBEAT_V1 = new RouteDescriptor(
             "chat",
             "serverHeartbeatV1Route",
@@ -239,6 +271,8 @@ public final class ChatRoutes {
             entry(key("player.badge-inventory.changed.command", 1), PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
             entry(key("player.badge-symbol-color-mode.changed.command", 1), PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
             entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
+            entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
+            entry(key("server-command.execute.command", 1), SERVER_COMMAND_EXECUTE_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1)
     );
 

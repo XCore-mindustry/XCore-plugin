@@ -122,6 +122,20 @@ public final class ChatMessages {
         }
     }
 
+    public record PlayerDataCacheReloadCommandV1(
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player-data-cache.reload.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerDataCacheReloadCommandV1 {
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
     public record PlayerActiveBadgeChangedCommandV1(
             String playerUuid,
             String activeBadge,
@@ -247,6 +261,27 @@ public final class ChatMessages {
             Objects.requireNonNull(server, "server must not be null");
             if (server.length() < 1) {
                 throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
+    public record ServerCommandExecuteCommandV1(
+            String command,
+            List<String> targetServers,
+            boolean exclusion
+    ) {
+        public static final String MESSAGE_TYPE = "server-command.execute.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public ServerCommandExecuteCommandV1 {
+            Objects.requireNonNull(command, "command must not be null");
+            if (command.length() < 1) {
+                throw new IllegalArgumentException("command must be at least 1 characters");
+            }
+            targetServers = Objects.requireNonNull(targetServers, "targetServers must not be null");
+            targetServers = List.copyOf(targetServers);
+            for (String item : targetServers) {
+                Objects.requireNonNull(item, "targetServers[] must not be null");
             }
         }
     }

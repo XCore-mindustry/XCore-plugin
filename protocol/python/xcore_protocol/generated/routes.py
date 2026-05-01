@@ -25,6 +25,8 @@ from .chat import (
     PlayerBadgeInventoryChangedCommandV1,
     PlayerBadgeSymbolColorModeChangedCommandV1,
     PlayerPasswordResetCommandV1,
+    PlayerDataCacheReloadCommandV1,
+    ServerCommandExecuteCommandV1,
     ServerHeartbeatV1,
 )
 
@@ -303,6 +305,38 @@ PLAYER_PASSWORD_RESET_COMMAND_V1 = RouteDescriptor(
     response=None,
 )
 
+PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = RouteDescriptor(
+    family='chat',
+    methodName='playerDataCacheReloadCommandV1Route',
+    messageType='player-data-cache.reload.command',
+    messageVersion=1,
+    payloadType=PlayerDataCacheReloadCommandV1,
+    kind='command',
+    stream='xcore:cmd:reload-cache:{server}',
+    targetScope='server',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='player-session',
+    response=None,
+)
+
+SERVER_COMMAND_EXECUTE_COMMAND_V1 = RouteDescriptor(
+    family='chat',
+    methodName='serverCommandExecuteCommandV1Route',
+    messageType='server-command.execute.command',
+    messageVersion=1,
+    payloadType=ServerCommandExecuteCommandV1,
+    kind='command',
+    stream='xcore:cmd:execute-command:broadcast',
+    targetScope='broadcast',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=False,
+    owner='server-runtime',
+    response=None,
+)
+
 SERVER_HEARTBEAT_V1 = RouteDescriptor(
     family='chat',
     methodName='serverHeartbeatV1Route',
@@ -510,6 +544,8 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('player.badge-inventory.changed.command', 1): PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1,
     ('player.badge-symbol-color-mode.changed.command', 1): PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1,
     ('player.password-reset.command', 1): PLAYER_PASSWORD_RESET_COMMAND_V1,
+    ('player-data-cache.reload.command', 1): PLAYER_DATA_CACHE_RELOAD_COMMAND_V1,
+    ('server-command.execute.command', 1): SERVER_COMMAND_EXECUTE_COMMAND_V1,
     ('server.heartbeat', 1): SERVER_HEARTBEAT_V1,
     ('discord.link-code-created', 1): DISCORD_LINK_CODE_CREATED_V1,
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
@@ -543,6 +579,8 @@ __all__ = [
     "PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1",
     "PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1",
     "PLAYER_PASSWORD_RESET_COMMAND_V1",
+    "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
+    "SERVER_COMMAND_EXECUTE_COMMAND_V1",
     "SERVER_HEARTBEAT_V1",
     "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",

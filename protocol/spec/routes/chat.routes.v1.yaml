@@ -100,6 +100,24 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: player-session
+  - messageType: player-data-cache.reload.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:reload-cache:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: server-command.execute.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:execute-command:broadcast
+    targetScope: broadcast
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: false
+    owner: server-runtime
   - messageType: server.heartbeat
     messageVersion: 1
     kind: event

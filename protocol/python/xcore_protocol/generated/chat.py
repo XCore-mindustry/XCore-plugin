@@ -285,6 +285,40 @@ class ChatPrivateV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class PlayerDataCacheReloadCommandV1:
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player-data-cache.reload.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerDataCacheReloadCommandV1":
+        mapping = _expect_mapping(payload, "PlayerDataCacheReloadCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server')),
+            model_name="PlayerDataCacheReloadCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class PlayerActiveBadgeChangedCommandV1:
     playerUuid: str
     activeBadge: str
@@ -540,6 +574,51 @@ class PlayerPasswordResetCommandV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class ServerCommandExecuteCommandV1:
+    command: str
+    targetServers: tuple[str, ...]
+    exclusion: bool
+
+    MESSAGE_TYPE: ClassVar[str] = 'server-command.execute.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.command, 'command')
+        if not isinstance(self.targetServers, tuple):
+            raise TypeError("targetServers must be a tuple")
+        for item in self.targetServers:
+            _expect_str(item, 'targetServers[]')
+        _expect_bool(self.exclusion, 'exclusion')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "ServerCommandExecuteCommandV1":
+        mapping = _expect_mapping(payload, "ServerCommandExecuteCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'command', 'targetServers', 'exclusion')),
+            allowed=frozenset(('messageType', 'messageVersion', 'command', 'targetServers', 'exclusion')),
+            model_name="ServerCommandExecuteCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            command=_expect_str(mapping['command'], 'command'),
+            targetServers=tuple(_expect_str(item, 'targetServers[]') for item in _expect_list(mapping['targetServers'], 'targetServers')),
+            exclusion=_expect_bool(mapping['exclusion'], 'exclusion'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['command'] = self.command
+        payload['targetServers'] = [item for item in self.targetServers]
+        payload['exclusion'] = self.exclusion
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class ServerActionV1:
     message: str
     server: str
@@ -644,12 +723,14 @@ __all__ = [
     "ChatGlobalV1",
     "ChatMessageV1",
     "ChatPrivateV1",
+    "PlayerDataCacheReloadCommandV1",
     "PlayerActiveBadgeChangedCommandV1",
     "PlayerBadgeInventoryChangedCommandV1",
     "PlayerBadgeSymbolColorModeChangedCommandV1",
     "PlayerCustomNicknameChangedCommandV1",
     "PlayerJoinLeaveV1",
     "PlayerPasswordResetCommandV1",
+    "ServerCommandExecuteCommandV1",
     "ServerActionV1",
     "ServerHeartbeatV1",
 ]
