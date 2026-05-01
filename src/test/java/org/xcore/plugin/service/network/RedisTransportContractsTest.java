@@ -6,6 +6,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -165,6 +168,9 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec muteRoute = RedisTransportTopology.routeFor(ModerationMuteCreatedV1.class);
         RedisTransportTopology.RouteSpec discordLinkCodeRoute = RedisTransportTopology.routeFor(DiscordLinkCodeCreatedV1.class);
         RedisTransportTopology.RouteSpec discordStatusRoute = RedisTransportTopology.routeFor(DiscordLinkStatusChangedV1.class);
+        RedisTransportTopology.RouteSpec customNicknameCommandRoute = RedisTransportTopology.routeFor(PlayerCustomNicknameChangedCommandV1.class);
+        RedisTransportTopology.RouteSpec activeBadgeCommandRoute = RedisTransportTopology.routeFor(PlayerActiveBadgeChangedCommandV1.class);
+        RedisTransportTopology.RouteSpec badgeSymbolColorModeCommandRoute = RedisTransportTopology.routeFor(PlayerBadgeSymbolColorModeChangedCommandV1.class);
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
         RedisTransportTopology.RouteSpec mapsLoadCommandRoute = RedisTransportTopology.routeFor(MapsLoadCommandV1.class);
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
@@ -185,6 +191,9 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec stableMuteRoute = muteRoute;
         RedisTransportTopology.RouteSpec stableDiscordLinkCodeRoute = discordLinkCodeRoute;
         RedisTransportTopology.RouteSpec stableDiscordStatusRoute = discordStatusRoute;
+        RedisTransportTopology.RouteSpec stableCustomNicknameCommandRoute = customNicknameCommandRoute;
+        RedisTransportTopology.RouteSpec stableActiveBadgeCommandRoute = activeBadgeCommandRoute;
+        RedisTransportTopology.RouteSpec stableBadgeSymbolColorModeCommandRoute = badgeSymbolColorModeCommandRoute;
         RedisTransportTopology.RouteSpec stableCommandRoute = commandRoute;
         RedisTransportTopology.RouteSpec stableMapsLoadCommandRoute = mapsLoadCommandRoute;
         RedisTransportTopology.RouteSpec stableDiscordAdminCommandRoute = discordAdminCommandRoute;
@@ -278,6 +287,30 @@ class RedisTransportContractsTest {
         assertThat(stableDiscordStatusRoute.readOnly()).isTrue();
         assertThat(stableDiscordStatusRoute.rpcRequest()).isFalse();
 
+        assertThat(stableCustomNicknameCommandRoute).isNotNull();
+        assertThat(stableCustomNicknameCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-custom-nickname:{server}");
+        assertThat(stableCustomNicknameCommandRoute.eventType()).isEqualTo("player.custom-nickname.changed.command");
+        assertThat(stableCustomNicknameCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableCustomNicknameCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableCustomNicknameCommandRoute.readOnly()).isFalse();
+        assertThat(stableCustomNicknameCommandRoute.rpcRequest()).isFalse();
+
+        assertThat(stableActiveBadgeCommandRoute).isNotNull();
+        assertThat(stableActiveBadgeCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-active-badge:{server}");
+        assertThat(stableActiveBadgeCommandRoute.eventType()).isEqualTo("player.active-badge.changed.command");
+        assertThat(stableActiveBadgeCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableActiveBadgeCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableActiveBadgeCommandRoute.readOnly()).isFalse();
+        assertThat(stableActiveBadgeCommandRoute.rpcRequest()).isFalse();
+
+        assertThat(stableBadgeSymbolColorModeCommandRoute).isNotNull();
+        assertThat(stableBadgeSymbolColorModeCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:{server}");
+        assertThat(stableBadgeSymbolColorModeCommandRoute.eventType()).isEqualTo("player.badge-symbol-color-mode.changed.command");
+        assertThat(stableBadgeSymbolColorModeCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
+        assertThat(stableBadgeSymbolColorModeCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
+        assertThat(stableBadgeSymbolColorModeCommandRoute.readOnly()).isFalse();
+        assertThat(stableBadgeSymbolColorModeCommandRoute.rpcRequest()).isFalse();
+
         assertThat(stableCommandRoute).isNotNull();
         assertThat(stableCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-password-reset:{server}");
         assertThat(stableCommandRoute.eventType()).isEqualTo("player.password_reset");
@@ -336,16 +369,28 @@ class RedisTransportContractsTest {
     @DisplayName("registry and router remain aligned with explicit transport topology")
     void registryAndRouterRemainAlignedWithExplicitTransportTopology() {
         // Arrange
+        RedisTransportTopology.RouteSpec playerSessionSpec = RedisTransportTopology.routeFor(PlayerCustomNicknameChangedCommandV1.class);
         RedisTransportTopology.RouteSpec commandSpec = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
         RedisTransportTopology.RouteSpec rpcSpec = RedisTransportTopology.routeFor(MapsListRequestV1.class);
+        RedisRouteDescriptor playerSessionDescriptor = registry.routeDescriptorFor(PlayerCustomNicknameChangedCommandV1.class);
         RedisRouteDescriptor commandDescriptor = registry.routeDescriptorFor(TransportEvents.PlayerPasswordReset.class);
         RedisRouteDescriptor rpcDescriptor = registry.routeDescriptorFor(MapsListRequestV1.class);
 
         // Act
+        var playerSessionRoute = router.route(new PlayerCustomNicknameChangedCommandV1("uuid-7", "Commander", "survival"), "mini-pvp");
         var commandRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
         List<String> rpcSubscriptions = router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp");
 
         // Assert
+        assertThat(playerSessionDescriptor).isNotNull();
+        assertThat(playerSessionDescriptor.streamPattern()).isEqualTo(playerSessionSpec.streamPattern());
+        assertThat(playerSessionDescriptor.eventType()).isEqualTo(playerSessionSpec.eventType());
+        assertThat(playerSessionDescriptor.isMutating()).isTrue();
+        assertThat(playerSessionDescriptor.isReadOnly()).isFalse();
+        assertThat(playerSessionRoute.streamKey()).isEqualTo("xcore:cmd:player-custom-nickname:survival");
+        assertThat(playerSessionRoute.eventType()).isEqualTo("player.custom-nickname.changed.command");
+        assertThat(playerSessionRoute.streamKey()).doesNotStartWith("xcore:evt:");
+
         assertThat(commandDescriptor).isNotNull();
         assertThat(commandDescriptor.streamPattern()).isEqualTo(commandSpec.streamPattern());
         assertThat(commandDescriptor.eventType()).isEqualTo(commandSpec.eventType());

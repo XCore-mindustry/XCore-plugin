@@ -5,6 +5,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -44,6 +47,10 @@ public final class RedisRouteRegistry {
         String discordServer = discordServer(payload);
         if (discordServer != null && !discordServer.isBlank()) {
             return discordServer;
+        }
+        String playerSessionServer = playerSessionServer(payload);
+        if (playerSessionServer != null && !playerSessionServer.isBlank()) {
+            return playerSessionServer;
         }
         String mapsServer = mapsServer(payload);
         if (mapsServer != null && !mapsServer.isBlank()) {
@@ -139,9 +146,9 @@ public final class RedisRouteRegistry {
         register(readOnly(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));
         register(readOnly(ModerationAuditAppendedV1.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(ModerationKickBannedCommandV1.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, MODERATION_SERVER_RESOLVER));
-        register(mutating(TransportEvents.PlayerCustomNicknameChanged.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom_nickname", 120_000L, RedisServerResolver.defaultServer()));
-        register(mutating(TransportEvents.PlayerActiveBadgeChanged.class, "xcore:cmd:player-active-badge:{server}", "player.active_badge", 120_000L, RedisServerResolver.defaultServer()));
-        register(mutating(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, RedisServerResolver.defaultServer()));
+        register(mutating(PlayerCustomNicknameChangedCommandV1.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom-nickname.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
+        register(mutating(PlayerActiveBadgeChangedCommandV1.class, "xcore:cmd:player-active-badge:{server}", "player.active-badge.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
+        register(mutating(PlayerBadgeSymbolColorModeChangedCommandV1.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge-symbol-color-mode.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(TransportEvents.PlayerBadgeInventoryChanged.class, "xcore:cmd:player-badge-inventory:{server}", "player.badge_inventory", 120_000L, RedisServerResolver.defaultServer()));
         register(mutating(TransportEvents.PlayerPasswordReset.class, "xcore:cmd:player-password-reset:{server}", "player.password_reset", 120_000L, RedisServerResolver.defaultServer()));
         register(readOnly(DiscordLinkCodeCreatedV1.class, "xcore:evt:discord:link-code", "discord.link-code-created", 120_000L, RedisServerResolver.broadcast()));
@@ -210,6 +217,19 @@ public final class RedisRouteRegistry {
         }
         if (payload instanceof MapsRemoveRequestV1 request) {
             return request.server();
+        }
+        return null;
+    }
+
+    private static String playerSessionServer(Object payload) {
+        if (payload instanceof PlayerCustomNicknameChangedCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof PlayerActiveBadgeChangedCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof PlayerBadgeSymbolColorModeChangedCommandV1 command) {
+            return command.server();
         }
         return null;
     }

@@ -5,6 +5,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -73,9 +76,9 @@ public final class RedisTransportTopology {
             route(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ModerationAuditAppendedV1.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),
             route(ModerationKickBannedCommandV1.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
-            route(TransportEvents.PlayerCustomNicknameChanged.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom_nickname", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
-            route(TransportEvents.PlayerActiveBadgeChanged.class, "xcore:cmd:player-active-badge:{server}", "player.active_badge", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
-            route(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge_symbol_color_mode", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
+            route(PlayerCustomNicknameChangedCommandV1.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom-nickname.changed.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(PlayerActiveBadgeChangedCommandV1.class, "xcore:cmd:player-active-badge:{server}", "player.active-badge.changed.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
+            route(PlayerBadgeSymbolColorModeChangedCommandV1.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge-symbol-color-mode.changed.command", 120_000L, DeliveryMode.COMMAND, ServerScope.PAYLOAD_SERVER, false),
             route(TransportEvents.PlayerBadgeInventoryChanged.class, "xcore:cmd:player-badge-inventory:{server}", "player.badge_inventory", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(TransportEvents.PlayerPasswordReset.class, "xcore:cmd:player-password-reset:{server}", "player.password_reset", 120_000L, DeliveryMode.COMMAND, ServerScope.DEFAULT_SERVER, false),
             route(DiscordLinkCodeCreatedV1.class, "xcore:evt:discord:link-code", "discord.link-code-created", 120_000L, DeliveryMode.EVENT, ServerScope.BROADCAST, true),

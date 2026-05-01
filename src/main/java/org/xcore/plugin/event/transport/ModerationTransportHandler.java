@@ -15,6 +15,9 @@ import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
@@ -84,22 +87,22 @@ public class ModerationTransportHandler {
             }
         });
 
-        network.subscribe(TransportEvents.PlayerCustomNicknameChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerCustomNicknameChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.customNickname = e.customNickname(),
                 false,
                 "custom nickname"
         ));
 
-        network.subscribe(TransportEvents.PlayerActiveBadgeChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerActiveBadgeChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.activeBadge = e.activeBadge(),
                 true,
                 "active badge"
         ));
 
-        network.subscribe(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerBadgeSymbolColorModeChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.badgeSymbolColorMode = e.badgeSymbolColorMode(),
                 true,
                 "badge symbol color mode"

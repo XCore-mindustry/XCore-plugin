@@ -1,20 +1,30 @@
 package org.xcore.plugin.event.transport;
 
 import arc.func.Cons;
+import com.ospx.flubundle.Bundle;
 import mindustry.Vars;
 import mindustry.core.NetServer;
+import mindustry.gen.Player;
 import mindustry.net.Administration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.event.TransportEvents;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.MenuService;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
@@ -22,9 +32,11 @@ import org.xcore.protocol.generated.shared.PlayerRefV1;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -113,6 +125,52 @@ class ModerationTransportHandlerTest {
                 ));
 
         verify(discordAdminAccessService).revokeDiscordAdminAccess("uuid-1");
+    }
+
+    @Test
+    @DisplayName("player session commands update session state and refresh display when needed")
+    void playerSessionCommands_updateSessionStateAndRefreshDisplay() {
+        NetworkService network = mock(NetworkService.class);
+        SessionService sessionService = mock(SessionService.class);
+        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
+
+        Config config = new Config();
+        config.server = "mini-pvp";
+
+        ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
+
+        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+        captureListeners(network, listeners);
+
+        PlayerData playerData = new PlayerData();
+        playerData.uuid = "uuid-1";
+        playerData.customNickname = "Old";
+        playerData.activeBadge = "";
+        playerData.badgeSymbolColorMode = "default";
+        Session session = new Session(
+                mock(GlobalConfig.class),
+                mock(Bundle.class),
+                mock(MenuService.class),
+                mock(PlayerDataRepository.class),
+                mock(Player.class),
+                playerData
+        );
+        when(sessionService.get("uuid-1")).thenReturn(session);
+
+        handler.registerListeners();
+
+        listener(listeners, PlayerCustomNicknameChangedCommandV1.class)
+                .get(new PlayerCustomNicknameChangedCommandV1("uuid-1", "Commander", "survival"));
+        listener(listeners, PlayerActiveBadgeChangedCommandV1.class)
+                .get(new PlayerActiveBadgeChangedCommandV1("uuid-1", "translator", "survival"));
+        listener(listeners, PlayerBadgeSymbolColorModeChangedCommandV1.class)
+                .get(new PlayerBadgeSymbolColorModeChangedCommandV1("uuid-1", "player-color", "survival"));
+
+        assertThat(session.data.customNickname).isEqualTo("Commander");
+        assertThat(session.data.activeBadge).isEqualTo("translator");
+        assertThat(session.data.badgeSymbolColorMode).isEqualTo("player-color");
+        verify(playerDisplayService, times(2)).refresh(session);
     }
 
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {

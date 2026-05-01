@@ -13,12 +13,6 @@ public class TransportEvents {
 
     public record KickBannedPlayer(String uuid, String ip) {}
 
-    public record PlayerCustomNicknameChanged(String uuid, String customNickname) {}
-
-    public record PlayerActiveBadgeChanged(String uuid, String activeBadge) {}
-
-    public record PlayerBadgeSymbolColorModeChanged(String uuid, String badgeSymbolColorMode) {}
-
     public record PlayerBadgeInventoryChanged(String uuid, String activeBadge, Set<String> unlockedBadges) {}
 
     public record PlayerPasswordReset(String uuid) {}

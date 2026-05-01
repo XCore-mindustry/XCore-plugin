@@ -20,6 +20,9 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
@@ -573,7 +576,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.customNickname = customNickname,
                 data -> playerDataRepository.updateCustomNickname(data.uuid, customNickname),
-                data -> new org.xcore.plugin.event.TransportEvents.PlayerCustomNicknameChanged(data.uuid, data.customNickname),
+                data -> new PlayerCustomNicknameChangedCommandV1(data.uuid, data.customNickname, config.server),
                 refreshDisplay,
                 sync);
     }
@@ -660,7 +663,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.activeBadge = badgeId,
                 data -> playerDataRepository.setActiveBadge(data.uuid, badgeId),
-                data -> new org.xcore.plugin.event.TransportEvents.PlayerActiveBadgeChanged(data.uuid, data.activeBadge),
+                data -> new PlayerActiveBadgeChangedCommandV1(data.uuid, data.activeBadge, config.server),
                 refreshDisplay,
                 sync);
     }
@@ -669,7 +672,7 @@ public class PlayerMenu extends Menu {
         updatePlayerData(targetData,
                 data -> data.badgeSymbolColorMode = mode,
                 data -> playerDataRepository.updateBadgeSymbolColorMode(data.uuid, mode),
-                data -> new org.xcore.plugin.event.TransportEvents.PlayerBadgeSymbolColorModeChanged(data.uuid, data.badgeSymbolColorMode),
+                data -> new PlayerBadgeSymbolColorModeChangedCommandV1(data.uuid, data.badgeSymbolColorMode, config.server),
                 refreshDisplay,
                 sync);
     }

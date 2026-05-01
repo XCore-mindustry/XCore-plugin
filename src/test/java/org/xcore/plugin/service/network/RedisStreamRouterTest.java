@@ -6,6 +6,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -156,8 +159,10 @@ class RedisStreamRouterTest {
     void routeServerTargetedEvents() {
         var discordRoute = router.route(new ChatDiscordIngressCommandV1("bot", "hello", "mini-hexed"), "mini-pvp");
         var mapsRoute = router.route(new MapsLoadCommandV1("event", List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))), "mini-pvp");
+        var customNicknameRoute = router.route(new PlayerCustomNicknameChangedCommandV1("uuid-7", "Commander", "survival"), "mini-pvp");
+        var activeBadgeRoute = router.route(new PlayerActiveBadgeChangedCommandV1("uuid-7", "translator", "mini-hexed"), "mini-pvp");
         var badgeRoute = router.route(new TransportEvents.PlayerBadgeInventoryChanged("uuid-7", "translator", java.util.Set.of("translator")), "mini-pvp");
-        var badgeColorModeRoute = router.route(new TransportEvents.PlayerBadgeSymbolColorModeChanged("uuid-7", "player-color"), "mini-pvp");
+        var badgeColorModeRoute = router.route(new PlayerBadgeSymbolColorModeChangedCommandV1("uuid-7", "player-color", "hexed"), "mini-pvp");
         var passwordRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
         var discordLinkConfirmRoute = router.route(
                 new DiscordLinkConfirmCommandV1(
@@ -207,10 +212,14 @@ class RedisStreamRouterTest {
         assertThat(discordRoute.eventType()).isEqualTo("chat.discord-ingress.command");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
         assertThat(mapsRoute.eventType()).isEqualTo("maps.load.command");
+        assertThat(customNicknameRoute.streamKey()).isEqualTo("xcore:cmd:player-custom-nickname:survival");
+        assertThat(customNicknameRoute.eventType()).isEqualTo("player.custom-nickname.changed.command");
+        assertThat(activeBadgeRoute.streamKey()).isEqualTo("xcore:cmd:player-active-badge:mini-hexed");
+        assertThat(activeBadgeRoute.eventType()).isEqualTo("player.active-badge.changed.command");
         assertThat(badgeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-inventory:mini-pvp");
         assertThat(badgeRoute.eventType()).isEqualTo("player.badge_inventory");
-        assertThat(badgeColorModeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
-        assertThat(badgeColorModeRoute.eventType()).isEqualTo("player.badge_symbol_color_mode");
+        assertThat(badgeColorModeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:hexed");
+        assertThat(badgeColorModeRoute.eventType()).isEqualTo("player.badge-symbol-color-mode.changed.command");
         assertThat(passwordRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
         assertThat(passwordRoute.eventType()).isEqualTo("player.password_reset");
         assertThat(discordLinkConfirmRoute.streamKey()).isEqualTo("xcore:cmd:discord-link-confirm:mini-hexed");
@@ -271,11 +280,17 @@ class RedisStreamRouterTest {
         assertThat(router.subscribeStreamsFor(MapsLoadCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:maps-load:mini-pvp");
 
+        assertThat(router.subscribeStreamsFor(PlayerCustomNicknameChangedCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:player-custom-nickname:mini-pvp");
+
+        assertThat(router.subscribeStreamsFor(PlayerActiveBadgeChangedCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:player-active-badge:mini-pvp");
+
+        assertThat(router.subscribeStreamsFor(PlayerBadgeSymbolColorModeChangedCommandV1.class, "mini-pvp"))
+                .containsExactly("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
+
         assertThat(router.subscribeStreamsFor(TransportEvents.PlayerPasswordReset.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:player-password-reset:mini-pvp");
-
-        assertThat(router.subscribeStreamsFor(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, "mini-pvp"))
-                .containsExactly("xcore:cmd:player-badge-symbol-color-mode:mini-pvp");
 
         assertThat(router.subscribeStreamsFor(DiscordLinkConfirmCommandV1.class, "mini-pvp"))
                 .containsExactly("xcore:cmd:discord-link-confirm:mini-pvp");
@@ -328,7 +343,9 @@ class RedisStreamRouterTest {
         assertThat(router.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
 
         assertThat(router.isMutatingType(TransportEvents.PlayerPasswordReset.class)).isTrue();
-        assertThat(router.isMutatingType(TransportEvents.PlayerBadgeSymbolColorModeChanged.class)).isTrue();
+        assertThat(router.isMutatingType(PlayerCustomNicknameChangedCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(PlayerActiveBadgeChangedCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(PlayerBadgeSymbolColorModeChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(MapsLoadCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();

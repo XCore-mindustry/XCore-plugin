@@ -6,6 +6,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -142,6 +145,30 @@ class RedisRouteRegistryTest {
     }
 
     @Test
+    @DisplayName("player session commands use typed payload server contract")
+    void playerSessionCommandsUseTypedPayloadServerContract() {
+        String customNicknameStream = registry.resolveStreamKey(
+                registry.routeDescriptorFor(PlayerCustomNicknameChangedCommandV1.class),
+                new PlayerCustomNicknameChangedCommandV1("uuid", "Commander", "survival"),
+                "mini-pvp"
+        );
+        String activeBadgeStream = registry.resolveStreamKey(
+                registry.routeDescriptorFor(PlayerActiveBadgeChangedCommandV1.class),
+                new PlayerActiveBadgeChangedCommandV1("uuid", "translator", "hexed"),
+                "mini-pvp"
+        );
+        String badgeColorModeStream = registry.resolveStreamKey(
+                registry.routeDescriptorFor(PlayerBadgeSymbolColorModeChangedCommandV1.class),
+                new PlayerBadgeSymbolColorModeChangedCommandV1("uuid", "player-color", "mini-hexed"),
+                "mini-pvp"
+        );
+
+        assertThat(customNicknameStream).isEqualTo("xcore:cmd:player-custom-nickname:survival");
+        assertThat(activeBadgeStream).isEqualTo("xcore:cmd:player-active-badge:hexed");
+        assertThat(badgeColorModeStream).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:mini-hexed");
+    }
+
+    @Test
     @DisplayName("read-only and mutating classification comes from registry descriptors")
     void classificationComesFromRegistry() {
         assertThat(registry.isReadOnlyType(ChatMessageV1.class)).isTrue();
@@ -155,6 +182,9 @@ class RedisRouteRegistryTest {
         assertThat(registry.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(MapsLoadCommandV1.class)).isTrue();
+        assertThat(registry.isMutatingType(PlayerCustomNicknameChangedCommandV1.class)).isTrue();
+        assertThat(registry.isMutatingType(PlayerActiveBadgeChangedCommandV1.class)).isTrue();
+        assertThat(registry.isMutatingType(PlayerBadgeSymbolColorModeChangedCommandV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationBanCreatedV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationMuteCreatedV1.class)).isTrue();
         assertThat(registry.isReadOnlyType(ModerationVoteKickCreatedV1.class)).isTrue();
