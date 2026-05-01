@@ -2,7 +2,6 @@ package org.xcore.plugin.event;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
 public class TransportEvents {
     public interface Event {}
@@ -12,10 +11,6 @@ public class TransportEvents {
     }
 
     public record KickBannedPlayer(String uuid, String ip) {}
-
-    public record PlayerBadgeInventoryChanged(String uuid, String activeBadge, Set<String> unlockedBadges) {}
-
-    public record PlayerPasswordReset(String uuid) {}
 
     public record VoteKickParticipant(
             String name,

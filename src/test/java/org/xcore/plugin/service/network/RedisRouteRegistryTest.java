@@ -7,8 +7,10 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -100,17 +102,17 @@ class RedisRouteRegistryTest {
     }
 
     @Test
-    @DisplayName("default server resolver keeps server-local mutating events on current server")
-    void defaultServerResolverUsesDefaultServer() {
-        RedisRouteDescriptor descriptor = registry.routeDescriptorFor(TransportEvents.PlayerPasswordReset.class);
+    @DisplayName("player password reset command uses typed payload server contract")
+    void playerPasswordResetCommandUsesTypedPayloadServerContract() {
+        RedisRouteDescriptor descriptor = registry.routeDescriptorFor(PlayerPasswordResetCommandV1.class);
 
         String stream = registry.resolveStreamKey(
                 descriptor,
-                new TransportEvents.PlayerPasswordReset("uuid-1"),
+                new PlayerPasswordResetCommandV1("uuid-1", "survival"),
                 "mini-pvp"
         );
 
-        assertThat(stream).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
+        assertThat(stream).isEqualTo("xcore:cmd:player-password-reset:survival");
     }
 
     @Test

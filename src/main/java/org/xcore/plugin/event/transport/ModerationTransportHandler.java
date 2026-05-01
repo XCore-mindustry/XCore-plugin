@@ -16,8 +16,10 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
@@ -108,18 +110,18 @@ public class ModerationTransportHandler {
                 "badge symbol color mode"
         ));
 
-        network.subscribe(TransportEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerBadgeInventoryChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> {
                     data.activeBadge = e.activeBadge();
-                    data.unlockedBadges = e.unlockedBadges() == null ? new HashSet<>() : new HashSet<>(e.unlockedBadges());
+                    data.unlockedBadges = new HashSet<>(e.unlockedBadges());
                 },
                 true,
                 "badge inventory"
         ));
 
-        network.subscribe(TransportEvents.PlayerPasswordReset.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerPasswordResetCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.password = "",
                 false,
                 "password reset"

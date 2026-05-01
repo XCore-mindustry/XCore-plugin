@@ -7,8 +7,10 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -171,7 +173,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec customNicknameCommandRoute = RedisTransportTopology.routeFor(PlayerCustomNicknameChangedCommandV1.class);
         RedisTransportTopology.RouteSpec activeBadgeCommandRoute = RedisTransportTopology.routeFor(PlayerActiveBadgeChangedCommandV1.class);
         RedisTransportTopology.RouteSpec badgeSymbolColorModeCommandRoute = RedisTransportTopology.routeFor(PlayerBadgeSymbolColorModeChangedCommandV1.class);
-        RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
+        RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(PlayerPasswordResetCommandV1.class);
         RedisTransportTopology.RouteSpec mapsLoadCommandRoute = RedisTransportTopology.routeFor(MapsLoadCommandV1.class);
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
         RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
@@ -313,9 +315,9 @@ class RedisTransportContractsTest {
 
         assertThat(stableCommandRoute).isNotNull();
         assertThat(stableCommandRoute.streamPattern()).isEqualTo("xcore:cmd:player-password-reset:{server}");
-        assertThat(stableCommandRoute.eventType()).isEqualTo("player.password_reset");
+        assertThat(stableCommandRoute.eventType()).isEqualTo("player.password-reset.command");
         assertThat(stableCommandRoute.deliveryMode()).isEqualTo(RedisTransportTopology.DeliveryMode.COMMAND);
-        assertThat(stableCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.DEFAULT_SERVER);
+        assertThat(stableCommandRoute.serverScope()).isEqualTo(RedisTransportTopology.ServerScope.PAYLOAD_SERVER);
         assertThat(stableCommandRoute.readOnly()).isFalse();
         assertThat(stableCommandRoute.rpcRequest()).isFalse();
 
@@ -370,15 +372,15 @@ class RedisTransportContractsTest {
     void registryAndRouterRemainAlignedWithExplicitTransportTopology() {
         // Arrange
         RedisTransportTopology.RouteSpec playerSessionSpec = RedisTransportTopology.routeFor(PlayerCustomNicknameChangedCommandV1.class);
-        RedisTransportTopology.RouteSpec commandSpec = RedisTransportTopology.routeFor(TransportEvents.PlayerPasswordReset.class);
+        RedisTransportTopology.RouteSpec commandSpec = RedisTransportTopology.routeFor(PlayerPasswordResetCommandV1.class);
         RedisTransportTopology.RouteSpec rpcSpec = RedisTransportTopology.routeFor(MapsListRequestV1.class);
         RedisRouteDescriptor playerSessionDescriptor = registry.routeDescriptorFor(PlayerCustomNicknameChangedCommandV1.class);
-        RedisRouteDescriptor commandDescriptor = registry.routeDescriptorFor(TransportEvents.PlayerPasswordReset.class);
+        RedisRouteDescriptor commandDescriptor = registry.routeDescriptorFor(PlayerPasswordResetCommandV1.class);
         RedisRouteDescriptor rpcDescriptor = registry.routeDescriptorFor(MapsListRequestV1.class);
 
         // Act
         var playerSessionRoute = router.route(new PlayerCustomNicknameChangedCommandV1("uuid-7", "Commander", "survival"), "mini-pvp");
-        var commandRoute = router.route(new TransportEvents.PlayerPasswordReset("uuid-7"), "mini-pvp");
+        var commandRoute = router.route(new PlayerPasswordResetCommandV1("uuid-7", "survival"), "mini-pvp");
         List<String> rpcSubscriptions = router.subscribeStreamsFor(MapsListRequestV1.class, "mini-pvp");
 
         // Assert
@@ -396,8 +398,8 @@ class RedisTransportContractsTest {
         assertThat(commandDescriptor.eventType()).isEqualTo(commandSpec.eventType());
         assertThat(commandDescriptor.isMutating()).isTrue();
         assertThat(commandDescriptor.isReadOnly()).isFalse();
-        assertThat(commandRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
-        assertThat(commandRoute.eventType()).isEqualTo("player.password_reset");
+        assertThat(commandRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:survival");
+        assertThat(commandRoute.eventType()).isEqualTo("player.password-reset.command");
         assertThat(commandRoute.streamKey()).doesNotStartWith("xcore:evt:");
 
         assertThat(rpcDescriptor).isNotNull();
