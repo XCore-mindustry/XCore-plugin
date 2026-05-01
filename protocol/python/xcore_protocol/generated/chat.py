@@ -327,6 +327,55 @@ class PlayerActiveBadgeChangedCommandV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class PlayerBadgeInventoryChangedCommandV1:
+    playerUuid: str
+    activeBadge: str
+    unlockedBadges: tuple[str, ...]
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player.badge-inventory.changed.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.activeBadge, 'activeBadge')
+        if not isinstance(self.unlockedBadges, tuple):
+            raise TypeError("unlockedBadges must be a tuple")
+        for item in self.unlockedBadges:
+            _expect_str(item, 'unlockedBadges[]')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerBadgeInventoryChangedCommandV1":
+        mapping = _expect_mapping(payload, "PlayerBadgeInventoryChangedCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'activeBadge', 'unlockedBadges', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'activeBadge', 'unlockedBadges', 'server')),
+            model_name="PlayerBadgeInventoryChangedCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            activeBadge=_expect_str(mapping['activeBadge'], 'activeBadge'),
+            unlockedBadges=tuple(_expect_str(item, 'unlockedBadges[]') for item in _expect_list(mapping['unlockedBadges'], 'unlockedBadges')),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['activeBadge'] = self.activeBadge
+        payload['unlockedBadges'] = [item for item in self.unlockedBadges]
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class PlayerBadgeSymbolColorModeChangedCommandV1:
     playerUuid: str
     badgeSymbolColorMode: str
@@ -453,6 +502,44 @@ class PlayerJoinLeaveV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class PlayerPasswordResetCommandV1:
+    playerUuid: str
+    server: str
+
+    MESSAGE_TYPE: ClassVar[str] = 'player.password-reset.command'
+    MESSAGE_VERSION: ClassVar[int] = 1
+    def __post_init__(self) -> None:
+        _expect_str(self.playerUuid, 'playerUuid')
+        _expect_str(self.server, 'server')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "PlayerPasswordResetCommandV1":
+        mapping = _expect_mapping(payload, "PlayerPasswordResetCommandV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('messageType', 'messageVersion', 'playerUuid', 'server')),
+            allowed=frozenset(('messageType', 'messageVersion', 'playerUuid', 'server')),
+            model_name="PlayerPasswordResetCommandV1",
+        )
+        if mapping['messageType'] != cls.MESSAGE_TYPE:
+            raise ValueError('messageType' + " must equal " + repr(cls.MESSAGE_TYPE))
+        if mapping['messageVersion'] != cls.MESSAGE_VERSION:
+            raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
+        return cls(
+            playerUuid=_expect_str(mapping['playerUuid'], 'playerUuid'),
+            server=_expect_str(mapping['server'], 'server'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messageType': self.MESSAGE_TYPE,
+            'messageVersion': self.MESSAGE_VERSION,
+        }
+        payload['playerUuid'] = self.playerUuid
+        payload['server'] = self.server
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class ServerActionV1:
     message: str
     server: str
@@ -558,9 +645,11 @@ __all__ = [
     "ChatMessageV1",
     "ChatPrivateV1",
     "PlayerActiveBadgeChangedCommandV1",
+    "PlayerBadgeInventoryChangedCommandV1",
     "PlayerBadgeSymbolColorModeChangedCommandV1",
     "PlayerCustomNicknameChangedCommandV1",
     "PlayerJoinLeaveV1",
+    "PlayerPasswordResetCommandV1",
     "ServerActionV1",
     "ServerHeartbeatV1",
 ]

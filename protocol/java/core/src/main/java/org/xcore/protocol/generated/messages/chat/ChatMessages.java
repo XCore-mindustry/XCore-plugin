@@ -1,5 +1,6 @@
 package org.xcore.protocol.generated.messages.chat;
 
+import java.util.List;
 import java.util.Objects;
 
 public final class ChatMessages {
@@ -142,6 +143,33 @@ public final class ChatMessages {
         }
     }
 
+    public record PlayerBadgeInventoryChangedCommandV1(
+            String playerUuid,
+            String activeBadge,
+            List<String> unlockedBadges,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player.badge-inventory.changed.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerBadgeInventoryChangedCommandV1 {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
+            }
+            Objects.requireNonNull(activeBadge, "activeBadge must not be null");
+            unlockedBadges = Objects.requireNonNull(unlockedBadges, "unlockedBadges must not be null");
+            unlockedBadges = List.copyOf(unlockedBadges);
+            for (String item : unlockedBadges) {
+                Objects.requireNonNull(item, "unlockedBadges[] must not be null");
+            }
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
     public record PlayerBadgeSymbolColorModeChangedCommandV1(
             String playerUuid,
             String badgeSymbolColorMode,
@@ -196,6 +224,25 @@ public final class ChatMessages {
             Objects.requireNonNull(playerName, "playerName must not be null");
             if (playerName.length() < 1) {
                 throw new IllegalArgumentException("playerName must be at least 1 characters");
+            }
+            Objects.requireNonNull(server, "server must not be null");
+            if (server.length() < 1) {
+                throw new IllegalArgumentException("server must be at least 1 characters");
+            }
+        }
+    }
+
+    public record PlayerPasswordResetCommandV1(
+            String playerUuid,
+            String server
+    ) {
+        public static final String MESSAGE_TYPE = "player.password-reset.command";
+        public static final int MESSAGE_VERSION = 1;
+
+        public PlayerPasswordResetCommandV1 {
+            Objects.requireNonNull(playerUuid, "playerUuid must not be null");
+            if (playerUuid.length() < 1) {
+                throw new IllegalArgumentException("playerUuid must be at least 1 characters");
             }
             Objects.requireNonNull(server, "server must not be null");
             if (server.length() < 1) {

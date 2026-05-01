@@ -22,7 +22,9 @@ from .chat import (
     PlayerJoinLeaveV1,
     PlayerCustomNicknameChangedCommandV1,
     PlayerActiveBadgeChangedCommandV1,
+    PlayerBadgeInventoryChangedCommandV1,
     PlayerBadgeSymbolColorModeChangedCommandV1,
+    PlayerPasswordResetCommandV1,
     ServerHeartbeatV1,
 )
 
@@ -253,6 +255,22 @@ PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = RouteDescriptor(
     response=None,
 )
 
+PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = RouteDescriptor(
+    family='chat',
+    methodName='playerBadgeInventoryChangedCommandV1Route',
+    messageType='player.badge-inventory.changed.command',
+    messageVersion=1,
+    payloadType=PlayerBadgeInventoryChangedCommandV1,
+    kind='command',
+    stream='xcore:cmd:player-badge-inventory:{server}',
+    targetScope='server',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='player-session',
+    response=None,
+)
+
 PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = RouteDescriptor(
     family='chat',
     methodName='playerBadgeSymbolColorModeChangedCommandV1Route',
@@ -261,6 +279,22 @@ PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = RouteDescriptor(
     payloadType=PlayerBadgeSymbolColorModeChangedCommandV1,
     kind='command',
     stream='xcore:cmd:player-badge-symbol-color-mode:{server}',
+    targetScope='server',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='player-session',
+    response=None,
+)
+
+PLAYER_PASSWORD_RESET_COMMAND_V1 = RouteDescriptor(
+    family='chat',
+    methodName='playerPasswordResetCommandV1Route',
+    messageType='player.password-reset.command',
+    messageVersion=1,
+    payloadType=PlayerPasswordResetCommandV1,
+    kind='command',
+    stream='xcore:cmd:player-password-reset:{server}',
     targetScope='server',
     ttlMs=120000,
     replayable=False,
@@ -473,7 +507,9 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('player.join-leave', 1): PLAYER_JOIN_LEAVE_V1,
     ('player.custom-nickname.changed.command', 1): PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1,
     ('player.active-badge.changed.command', 1): PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1,
+    ('player.badge-inventory.changed.command', 1): PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1,
     ('player.badge-symbol-color-mode.changed.command', 1): PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1,
+    ('player.password-reset.command', 1): PLAYER_PASSWORD_RESET_COMMAND_V1,
     ('server.heartbeat', 1): SERVER_HEARTBEAT_V1,
     ('discord.link-code-created', 1): DISCORD_LINK_CODE_CREATED_V1,
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
@@ -504,7 +540,9 @@ __all__ = [
     "PLAYER_JOIN_LEAVE_V1",
     "PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1",
     "PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1",
+    "PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1",
     "PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1",
+    "PLAYER_PASSWORD_RESET_COMMAND_V1",
     "SERVER_HEARTBEAT_V1",
     "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",

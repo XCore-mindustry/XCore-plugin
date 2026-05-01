@@ -73,10 +73,28 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: player-session
+  - messageType: player.badge-inventory.changed.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-badge-inventory:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
   - messageType: player.badge-symbol-color-mode.changed.command
     messageVersion: 1
     kind: command
     stream: xcore:cmd:player-badge-symbol-color-mode:{server}
+    targetScope: server
+    ttlMs: 120000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: player-session
+  - messageType: player.password-reset.command
+    messageVersion: 1
+    kind: command
+    stream: xcore:cmd:player-password-reset:{server}
     targetScope: server
     ttlMs: 120000
     replayable: false

@@ -163,6 +163,22 @@ public final class ChatRoutes {
             null
     );
 
+    public static final RouteDescriptor PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerBadgeInventoryChangedCommandV1Route",
+            "player.badge-inventory.changed.command",
+            1,
+            ChatMessages.PlayerBadgeInventoryChangedCommandV1.class,
+            "command",
+            "xcore:cmd:player-badge-inventory:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
     public static final RouteDescriptor PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = new RouteDescriptor(
             "chat",
             "playerBadgeSymbolColorModeChangedCommandV1Route",
@@ -171,6 +187,22 @@ public final class ChatRoutes {
             ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class,
             "command",
             "xcore:cmd:player-badge-symbol-color-mode:{server}",
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_PASSWORD_RESET_COMMAND_V1 = new RouteDescriptor(
+            "chat",
+            "playerPasswordResetCommandV1Route",
+            "player.password-reset.command",
+            1,
+            ChatMessages.PlayerPasswordResetCommandV1.class,
+            "command",
+            "xcore:cmd:player-password-reset:{server}",
             "server",
             120000,
             false,
@@ -204,7 +236,9 @@ public final class ChatRoutes {
             entry(key("player.join-leave", 1), PLAYER_JOIN_LEAVE_V1),
             entry(key("player.custom-nickname.changed.command", 1), PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
             entry(key("player.active-badge.changed.command", 1), PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
+            entry(key("player.badge-inventory.changed.command", 1), PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
             entry(key("player.badge-symbol-color-mode.changed.command", 1), PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
+            entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1)
     );
 

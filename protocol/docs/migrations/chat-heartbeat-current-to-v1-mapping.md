@@ -12,6 +12,8 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 - `TransportEvents.PrivateMessageEvent`
 - `TransportEvents.ServerActionEvent`
 - `TransportEvents.PlayerJoinLeaveEvent`
+- `TransportEvents.PlayerBadgeInventoryChanged`
+- `TransportEvents.PlayerPasswordReset`
 - `TransportEvents.ServerHeartbeatEvent`
 - `RedisTransportTopology`
 - Discord bot `contracts.py`
@@ -26,6 +28,8 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | Event | current private-message relay | `chat.private` | `xcore:evt:chat:private` | `60000` |
 | Event | `server.action` | `server.action` | `xcore:evt:server:action` | `60000` |
 | Event | `player.join_leave` | `player.join-leave` | `xcore:evt:player:joinleave` | `60000` |
+| Command | `player.badge_inventory` | `player.badge-inventory.changed.command` | `xcore:cmd:player-badge-inventory:{server}` | `120000` |
+| Command | `player.password_reset` | `player.password-reset.command` | `xcore:cmd:player-password-reset:{server}` | `120000` |
 | Event | current server heartbeat | `server.heartbeat` | `xcore:evt:server:heartbeat` | `60000` |
 
 ## Payload Mapping
@@ -76,6 +80,20 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | `playerName` | `playerName` | Required. |
 | `server` | `server` | Required. |
 | `join` | `joined` | Canonical renaming for clearer boolean semantics. |
+
+### `player.badge-inventory.changed.command`
+| Current field | Canonical field | Notes |
+| --- | --- | --- |
+| `uuid` | `playerUuid` | Canonical player identity field. |
+| `activeBadge` | `activeBadge` | Required current active badge, may be empty. |
+| `unlockedBadges` | `unlockedBadges` | Canonical badge inventory array. |
+| current type `player.badge_inventory` | `messageType = player.badge-inventory.changed.command` | Canonical name moves to hyphenated command identity while stream stays stable. |
+
+### `player.password-reset.command`
+| Current field | Canonical field | Notes |
+| --- | --- | --- |
+| `uuid` | `playerUuid` | Canonical player identity field. |
+| current type `player.password_reset` | `messageType = player.password-reset.command` | Canonical name moves to hyphenated command identity while stream stays stable. |
 
 ### `server.heartbeat`
 | Current field | Canonical field | Notes |

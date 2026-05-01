@@ -6,9 +6,11 @@ from xcore_protocol.generated import (
     CHAT_MESSAGE_V1,
     CHAT_PRIVATE_V1,
     PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1,
+    PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1,
     PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1,
     PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1,
     PLAYER_JOIN_LEAVE_V1,
+    PLAYER_PASSWORD_RESET_COMMAND_V1,
     SERVER_ACTION_V1,
     SERVER_HEARTBEAT_V1,
     ChatDiscordIngressCommandV1,
@@ -17,9 +19,11 @@ from xcore_protocol.generated import (
     ChatPrivateV1,
     MAPS_ROUTES_BY_MESSAGE,
     PlayerActiveBadgeChangedCommandV1,
+    PlayerBadgeInventoryChangedCommandV1,
     PlayerBadgeSymbolColorModeChangedCommandV1,
     PlayerCustomNicknameChangedCommandV1,
     PlayerJoinLeaveV1,
+    PlayerPasswordResetCommandV1,
     ROUTES_BY_MESSAGE,
     ServerActionV1,
     ServerHeartbeatV1,
@@ -113,6 +117,18 @@ def test_generated_player_active_badge_changed_command_roundtrip_matches_fixture
     )
 
 
+def test_generated_player_badge_inventory_changed_command_roundtrip_matches_fixture() -> None:
+    payload = load_json(fixtures_root() / "valid" / "chat" / "player.badge-inventory.changed.command.v1.json")
+
+    model = PlayerBadgeInventoryChangedCommandV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "chat" / "player.badge-inventory.changed.command.v1.json",
+        model.to_payload(),
+    )
+
+
 def test_generated_player_badge_symbol_color_mode_changed_command_roundtrip_matches_fixture() -> None:
     payload = load_json(fixtures_root() / "valid" / "chat" / "player.badge-symbol-color-mode.changed.command.v1.json")
 
@@ -121,6 +137,18 @@ def test_generated_player_badge_symbol_color_mode_changed_command_roundtrip_matc
     assert model.to_payload() == payload
     validate_instance(
         spec_root() / "messages" / "chat" / "player.badge-symbol-color-mode.changed.command.v1.json",
+        model.to_payload(),
+    )
+
+
+def test_generated_player_password_reset_command_roundtrip_matches_fixture() -> None:
+    payload = load_json(fixtures_root() / "valid" / "chat" / "player.password-reset.command.v1.json")
+
+    model = PlayerPasswordResetCommandV1.from_payload(payload)
+
+    assert model.to_payload() == payload
+    validate_instance(
+        spec_root() / "messages" / "chat" / "player.password-reset.command.v1.json",
         model.to_payload(),
     )
 
@@ -173,6 +201,17 @@ def test_generated_chat_models_remain_strict() -> None:
     else:
         raise AssertionError("Expected strict generated player-session command parsing to reject legacy uuid field")
 
+    invalid_password_reset_payload = load_json(
+        fixtures_root() / "invalid" / "chat" / "player.password-reset.command.v1.legacy-uuid.json"
+    )
+
+    try:
+        PlayerPasswordResetCommandV1.from_payload(invalid_password_reset_payload)
+    except ValueError as error:
+        assert "missing required fields" in str(error) or "unexpected fields" in str(error)
+    else:
+        raise AssertionError("Expected strict generated password-reset parsing to reject legacy uuid field")
+
 
 def test_generated_server_heartbeat_rejects_alias_fields() -> None:
     invalid_payload = load_json(
@@ -196,12 +235,16 @@ def test_generated_route_registry_includes_chat_and_heartbeat_messages() -> None
     assert PLAYER_JOIN_LEAVE_V1.payloadType is PlayerJoinLeaveV1
     assert PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1.payloadType is PlayerCustomNicknameChangedCommandV1
     assert PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1.payloadType is PlayerActiveBadgeChangedCommandV1
+    assert PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1.payloadType is PlayerBadgeInventoryChangedCommandV1
     assert PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1.payloadType is PlayerBadgeSymbolColorModeChangedCommandV1
+    assert PLAYER_PASSWORD_RESET_COMMAND_V1.payloadType is PlayerPasswordResetCommandV1
     assert SERVER_HEARTBEAT_V1.payloadType is ServerHeartbeatV1
     assert ROUTES_BY_MESSAGE[("chat.message", 1)].stream == "xcore:evt:chat:message"
     assert ROUTES_BY_MESSAGE[("chat.private", 1)].stream == "xcore:evt:chat:private"
     assert ROUTES_BY_MESSAGE[("player.custom-nickname.changed.command", 1)].stream == "xcore:cmd:player-custom-nickname:{server}"
     assert ROUTES_BY_MESSAGE[("player.active-badge.changed.command", 1)].stream == "xcore:cmd:player-active-badge:{server}"
+    assert ROUTES_BY_MESSAGE[("player.badge-inventory.changed.command", 1)].stream == "xcore:cmd:player-badge-inventory:{server}"
     assert ROUTES_BY_MESSAGE[("player.badge-symbol-color-mode.changed.command", 1)].stream == "xcore:cmd:player-badge-symbol-color-mode:{server}"
+    assert ROUTES_BY_MESSAGE[("player.password-reset.command", 1)].stream == "xcore:cmd:player-password-reset:{server}"
     assert ROUTES_BY_MESSAGE[("server.heartbeat", 1)].stream == "xcore:evt:server:heartbeat"
     assert MAPS_ROUTES_BY_MESSAGE[("maps.list.request", 1)].stream == "xcore:rpc:req:{server}"
