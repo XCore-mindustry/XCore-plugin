@@ -1,6 +1,7 @@
 package org.xcore.protocol.generated.messages.discord;
 
 import java.util.Objects;
+import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 
@@ -13,8 +14,8 @@ public final class DiscordMessages {
             PlayerRefV1 player,
             DiscordIdentityRefV1 discord,
             boolean admin,
-            String adminSource,
-            String requestedBy,
+            ActorRefV1 source,
+            ActorRefV1 actor,
             String reason,
             String server,
             String occurredAt
@@ -25,14 +26,8 @@ public final class DiscordMessages {
         public DiscordAdminAccessChangedCommandV1 {
             Objects.requireNonNull(player, "player must not be null");
             Objects.requireNonNull(discord, "discord must not be null");
-            Objects.requireNonNull(adminSource, "adminSource must not be null");
-            if (adminSource.length() < 1) {
-                throw new IllegalArgumentException("adminSource must be at least 1 characters");
-            }
-            Objects.requireNonNull(requestedBy, "requestedBy must not be null");
-            if (requestedBy.length() < 1) {
-                throw new IllegalArgumentException("requestedBy must be at least 1 characters");
-            }
+            Objects.requireNonNull(source, "source must not be null");
+            Objects.requireNonNull(actor, "actor must not be null");
             Objects.requireNonNull(reason, "reason must not be null");
             if (reason.length() < 1) {
                 throw new IllegalArgumentException("reason must be at least 1 characters");
@@ -98,7 +93,7 @@ public final class DiscordMessages {
     public record DiscordLinkStatusChangedV1(
             PlayerRefV1 player,
             DiscordIdentityRefV1 discord,
-            String action,
+            DiscordLinkStatusChangedV1Action action,
             String server,
             String occurredAt
     ) {
@@ -120,7 +115,7 @@ public final class DiscordMessages {
     public record DiscordUnlinkCommandV1(
             PlayerRefV1 player,
             DiscordIdentityRefV1 discord,
-            String requestedBy,
+            ActorRefV1 actor,
             String server,
             String requestedAt
     ) {
@@ -130,10 +125,7 @@ public final class DiscordMessages {
         public DiscordUnlinkCommandV1 {
             Objects.requireNonNull(player, "player must not be null");
             Objects.requireNonNull(discord, "discord must not be null");
-            Objects.requireNonNull(requestedBy, "requestedBy must not be null");
-            if (requestedBy.length() < 1) {
-                throw new IllegalArgumentException("requestedBy must be at least 1 characters");
-            }
+            Objects.requireNonNull(actor, "actor must not be null");
             Objects.requireNonNull(server, "server must not be null");
             if (server.length() < 1) {
                 throw new IllegalArgumentException("server must be at least 1 characters");

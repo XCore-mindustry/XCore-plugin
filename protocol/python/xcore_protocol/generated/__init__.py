@@ -29,6 +29,7 @@ from .discord import (
     DiscordLinkConfirmCommandV1,
     DiscordLinkStatusChangedV1,
     DiscordUnlinkCommandV1,
+    DiscordLinkStatusChangedV1Action,
 )
 from .moderation import (
     ModerationAuditAppendedV1,
@@ -37,6 +38,7 @@ from .moderation import (
     ModerationMuteCreatedV1,
     ModerationPardonCommandV1,
     ModerationVoteKickCreatedV1,
+    ModerationAuditAppendedV1EntryType,
 )
 from .envelopes import (
     EnvelopeBaseV1,
@@ -45,6 +47,8 @@ from .envelopes import (
     RpcRequestEnvelopeV1,
     RpcResponseEnvelopeV1,
     DlqEnvelopeV1,
+    EnvelopeBaseV1Message_kind,
+    RpcResponseEnvelopeV1Status,
 )
 from .routes import (
     MAPS_LIST_REQUEST_V1,
@@ -92,6 +96,7 @@ from .shared import (
     PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
+    ActorRefV1ActorType,
 )
 
 __all__ = [
@@ -104,12 +109,15 @@ __all__ = [
     "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
+    "ActorRefV1ActorType",
     "EnvelopeBaseV1",
     "EventEnvelopeV1",
     "CommandEnvelopeV1",
     "RpcRequestEnvelopeV1",
     "RpcResponseEnvelopeV1",
     "DlqEnvelopeV1",
+    "EnvelopeBaseV1Message_kind",
+    "RpcResponseEnvelopeV1Status",
     "MapsListRequestV1",
     "MapsListResponseV1",
     "MapsLoadCommandV1",
@@ -140,6 +148,8 @@ __all__ = [
     "ModerationMuteCreatedV1",
     "ModerationPardonCommandV1",
     "ModerationVoteKickCreatedV1",
+    "DiscordLinkStatusChangedV1Action",
+    "ModerationAuditAppendedV1EntryType",
     "MAPS_LIST_REQUEST_V1",
     "MAPS_REMOVE_REQUEST_V1",
     "MAPS_LOAD_COMMAND_V1",

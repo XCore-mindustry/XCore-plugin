@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from xcore_protocol.generated import (
+    ActorRefV1ActorType,
     DISCORD_ADMIN_ACCESS_CHANGED_COMMAND_V1,
     DISCORD_LINK_CODE_CREATED_V1,
     DISCORD_LINK_CONFIRM_COMMAND_V1,
@@ -9,6 +10,7 @@ from xcore_protocol.generated import (
     DiscordAdminAccessChangedCommandV1,
     DiscordLinkCodeCreatedV1,
     DiscordLinkConfirmCommandV1,
+    DiscordLinkStatusChangedV1Action,
     DiscordLinkStatusChangedV1,
     DiscordUnlinkCommandV1,
     ROUTES_BY_MESSAGE,
@@ -56,6 +58,8 @@ def test_generated_discord_unlink_roundtrip_matches_fixture() -> None:
 
     model = DiscordUnlinkCommandV1.from_payload(payload)
 
+    assert model.actor.to_payload() == payload["actor"]
+    assert model.actor.actorType is ActorRefV1ActorType.SYSTEM
     assert model.to_payload() == payload
     validate_instance(
         spec_root() / "messages" / "discord" / "discord.unlink.command.v1.json",
@@ -68,6 +72,7 @@ def test_generated_discord_link_status_changed_roundtrip_matches_fixture() -> No
 
     model = DiscordLinkStatusChangedV1.from_payload(payload)
 
+    assert model.action is DiscordLinkStatusChangedV1Action.LINKED
     assert model.to_payload() == payload
     validate_instance(
         spec_root() / "messages" / "discord" / "discord.link.status-changed.v1.json",
@@ -82,6 +87,10 @@ def test_generated_discord_admin_access_changed_roundtrip_matches_fixture() -> N
 
     model = DiscordAdminAccessChangedCommandV1.from_payload(payload)
 
+    assert model.source.to_payload() == payload["source"]
+    assert model.source.actorType is ActorRefV1ActorType.SYSTEM
+    assert model.actor.to_payload() == payload["actor"]
+    assert model.actor.actorType is ActorRefV1ActorType.DISCORD
     assert model.to_payload() == payload
     validate_instance(
         spec_root() / "messages" / "discord" / "discord.admin-access.changed.command.v1.json",

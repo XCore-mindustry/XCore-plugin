@@ -63,11 +63,11 @@ def test_generated_maps_load_command_roundtrip_matches_fixture() -> None:
         files=(
             MapFileSourceV1(
                 url="https://cdn.example.test/maps/ancient-caldera.msav",
-                filename="ancient-caldera.msav",
+                fileName="ancient-caldera.msav",
             ),
             MapFileSourceV1(
                 url="https://cdn.example.test/maps/bridge-fight.MSAV",
-                filename="bridge-fight.MSAV",
+                fileName="bridge-fight.MSAV",
             ),
         ),
     )

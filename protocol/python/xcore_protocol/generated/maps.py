@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, ClassVar
 
 from .shared import (
@@ -94,6 +95,16 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     if not isinstance(value, bool):
         raise TypeError(f"{field_name} must be a boolean")
     return value
+
+
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
 
 
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:

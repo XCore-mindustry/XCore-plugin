@@ -171,12 +171,12 @@ Bot accepts a wider alias surface:
 | `targetUuid` | `target.playerUuid` | required in canonical; enrich before publish |
 | `targetPid` | `target.playerPid` | optional |
 | `targetName` | `target.playerName` | required |
-| `starterName` | `starter.actorName` | required |
-| `starterDiscordId` | `starter.actorDiscordId` | optional |
-| starter origin inferred | `starter.actorType` | mapper-provided |
+| `starterName` | `actor.actorName` | required |
+| `starterDiscordId` | `actor.actorDiscordId` | optional |
+| starter origin inferred | `actor.actorType` | mapper-provided |
 | `reason` | `reason` | required |
-| `votesFor[].name` | `votesFor[].name` | canonical keeps simple participant structure |
-| `votesFor[].pid` | `votesFor[].pid` | optional |
+| `votesFor[].name` | `votesFor[].playerName` | canonical uses explicit player vocabulary |
+| `votesFor[].pid` | `votesFor[].playerPid` | optional |
 | `votesFor[].discordId` | `votesFor[].discordId` | optional |
 | `votesAgainst[]...` | `votesAgainst[]...` | same structure |
 | `server` | `server` | optional in schema, expected in producer policy |

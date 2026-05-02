@@ -16,7 +16,7 @@ public final class ModerationMessages {
     }
 
     public record ModerationAuditAppendedV1(
-            String entryType,
+            ModerationAuditAppendedV1EntryType entryType,
             ModerationTargetRefV1 target,
             ActorRefV1 actor,
             String reason,
@@ -168,7 +168,7 @@ public final class ModerationMessages {
 
     public record ModerationVoteKickCreatedV1(
             PlayerRefV1 target,
-            ActorRefV1 starter,
+            ActorRefV1 actor,
             String reason,
             List<VoteKickParticipantV1> votesFor,
             List<VoteKickParticipantV1> votesAgainst,
@@ -180,7 +180,7 @@ public final class ModerationMessages {
 
         public ModerationVoteKickCreatedV1 {
             Objects.requireNonNull(target, "target must not be null");
-            Objects.requireNonNull(starter, "starter must not be null");
+            Objects.requireNonNull(actor, "actor must not be null");
             Objects.requireNonNull(reason, "reason must not be null");
             if (reason.length() < 1) {
                 throw new IllegalArgumentException("reason must be at least 1 characters");

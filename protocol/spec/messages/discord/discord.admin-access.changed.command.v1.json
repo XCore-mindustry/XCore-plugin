@@ -10,8 +10,8 @@
     "player",
     "discord",
     "admin",
-    "adminSource",
-    "requestedBy",
+    "source",
+    "actor",
     "reason",
     "server",
     "occurredAt"
@@ -32,13 +32,11 @@
     "admin": {
       "type": "boolean"
     },
-    "adminSource": {
-      "type": "string",
-      "minLength": 1
+    "source": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
     },
-    "requestedBy": {
-      "type": "string",
-      "minLength": 1
+    "actor": {
+      "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
     },
     "reason": {
       "type": "string",

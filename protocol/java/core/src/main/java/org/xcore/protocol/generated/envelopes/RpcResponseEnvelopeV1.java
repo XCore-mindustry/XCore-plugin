@@ -14,7 +14,7 @@ public record RpcResponseEnvelopeV1(
         String expires_at,
         String schema_ref,
         String payload_json,
-        String status,
+        RpcResponseEnvelopeV1Status status,
         String error_code,
         String error_message,
         String responded_at

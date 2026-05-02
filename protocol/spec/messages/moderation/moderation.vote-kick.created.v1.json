@@ -4,7 +4,7 @@
   "title": "ModerationVoteKickCreatedV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["messageType", "messageVersion", "target", "starter", "reason"],
+  "required": ["messageType", "messageVersion", "target", "actor", "reason"],
   "properties": {
     "messageType": {
       "const": "moderation.vote-kick.created"
@@ -15,7 +15,7 @@
     "target": {
       "$ref": "urn:xcore:protocol:shared:types:player-ref:v1"
     },
-    "starter": {
+    "actor": {
       "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
     },
     "reason": {

@@ -6,7 +6,7 @@
     "playerPid": 42,
     "playerName": "Target"
   },
-  "starter": {
+  "actor": {
     "actorName": "Starter",
     "actorDiscordId": "999999",
     "actorType": "player"
@@ -14,15 +14,15 @@
   "reason": "afk trolling",
   "votesFor": [
     {
-      "name": "Starter",
-      "pid": 7,
+      "playerName": "Starter",
+      "playerPid": 7,
       "discordId": "999999"
     }
   ],
   "votesAgainst": [
     {
-      "name": "Defender",
-      "pid": 9
+      "playerName": "Defender",
+      "playerPid": 9
     }
   ],
   "server": "mini-pvp",

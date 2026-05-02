@@ -5,11 +5,11 @@
   "files": [
     {
       "url": "https://cdn.example.test/maps/ancient-caldera.msav",
-      "filename": "ancient-caldera.msav"
+      "fileName": "ancient-caldera.msav"
     },
     {
       "url": "https://cdn.example.test/maps/bridge-fight.MSAV",
-      "filename": "bridge-fight.MSAV"
+      "fileName": "bridge-fight.MSAV"
     }
   ]
 }

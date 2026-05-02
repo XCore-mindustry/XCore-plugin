@@ -4,13 +4,13 @@
   "title": "MapFileSourceV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["url", "filename"],
+  "required": ["url", "fileName"],
   "properties": {
     "url": {
       "type": "string",
       "format": "uri"
     },
-    "filename": {
+    "fileName": {
       "type": "string",
       "pattern": "^[^/\\\\]+\\.[mM][sS][aA][vV]$"
     }

@@ -4,13 +4,13 @@
   "title": "VoteKickParticipantV1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name"],
+  "required": ["playerName"],
   "properties": {
-    "name": {
+    "playerName": {
       "type": "string",
       "minLength": 1
     },
-    "pid": {
+    "playerPid": {
       "type": "integer",
       "minimum": 0
     },

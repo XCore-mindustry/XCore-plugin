@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, ClassVar
 
 from .shared import (
@@ -13,6 +14,7 @@ from .shared import (
     PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
+    ActorRefV1ActorType,
 )
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -100,13 +102,30 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     return value
 
 
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
+
+
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
 
+class ModerationAuditAppendedV1EntryType(StrEnum):
+    BAN = 'ban'
+    MUTE = 'mute'
+    VOTE_KICK = 'voteKick'
+    PARDON = 'pardon'
+    OTHER = 'other'
+
 @dataclass(frozen=True, slots=True)
 class ModerationAuditAppendedV1:
-    entryType: str
+    entryType: ModerationAuditAppendedV1EntryType
     target: ModerationTargetRefV1
     actor: ActorRefV1
     reason: str
@@ -117,7 +136,7 @@ class ModerationAuditAppendedV1:
     MESSAGE_TYPE: ClassVar[str] = 'moderation.audit.appended'
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
-        _expect_str(self.entryType, 'entryType')
+        _expect_instance(self.entryType, 'entryType', ModerationAuditAppendedV1EntryType)
         _expect_instance(self.target, 'target', ModerationTargetRefV1)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
@@ -142,7 +161,7 @@ class ModerationAuditAppendedV1:
         if mapping['messageVersion'] != cls.MESSAGE_VERSION:
             raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
         return cls(
-            entryType=_expect_str(mapping['entryType'], 'entryType'),
+            entryType=_expect_enum(mapping['entryType'], 'entryType', ModerationAuditAppendedV1EntryType),
             target=ModerationTargetRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
             actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             reason=_expect_str(mapping['reason'], 'reason'),
@@ -156,7 +175,7 @@ class ModerationAuditAppendedV1:
             'messageType': self.MESSAGE_TYPE,
             'messageVersion': self.MESSAGE_VERSION,
         }
-        payload['entryType'] = self.entryType
+        payload['entryType'] = str(self.entryType)
         payload['target'] = self.target.to_payload()
         payload['actor'] = self.actor.to_payload()
         payload['reason'] = self.reason
@@ -379,7 +398,7 @@ class ModerationPardonCommandV1:
 @dataclass(frozen=True, slots=True)
 class ModerationVoteKickCreatedV1:
     target: PlayerRefV1
-    starter: ActorRefV1
+    actor: ActorRefV1
     reason: str
     votesFor: tuple[VoteKickParticipantV1, ...] | None = None
     votesAgainst: tuple[VoteKickParticipantV1, ...] | None = None
@@ -390,7 +409,7 @@ class ModerationVoteKickCreatedV1:
     MESSAGE_VERSION: ClassVar[int] = 1
     def __post_init__(self) -> None:
         _expect_instance(self.target, 'target', PlayerRefV1)
-        _expect_instance(self.starter, 'starter', ActorRefV1)
+        _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
         if self.votesFor is not None:
             if not isinstance(self.votesFor, tuple):
@@ -412,8 +431,8 @@ class ModerationVoteKickCreatedV1:
         mapping = _expect_mapping(payload, "ModerationVoteKickCreatedV1")
         _expect_exact_keys(
             mapping,
-            required=frozenset(('messageType', 'messageVersion', 'target', 'starter', 'reason')),
-            allowed=frozenset(('messageType', 'messageVersion', 'target', 'starter', 'reason', 'votesFor', 'votesAgainst', 'server', 'occurredAt')),
+            required=frozenset(('messageType', 'messageVersion', 'target', 'actor', 'reason')),
+            allowed=frozenset(('messageType', 'messageVersion', 'target', 'actor', 'reason', 'votesFor', 'votesAgainst', 'server', 'occurredAt')),
             model_name="ModerationVoteKickCreatedV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -422,7 +441,7 @@ class ModerationVoteKickCreatedV1:
             raise ValueError('messageVersion' + " must equal " + repr(cls.MESSAGE_VERSION))
         return cls(
             target=PlayerRefV1.from_payload(_expect_mapping(mapping['target'], 'target')),
-            starter=ActorRefV1.from_payload(_expect_mapping(mapping['starter'], 'starter')),
+            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             reason=_expect_str(mapping['reason'], 'reason'),
             votesFor=(tuple(VoteKickParticipantV1.from_payload(_expect_mapping(item, 'votesFor[]')) for item in _expect_list(mapping['votesFor'], 'votesFor')) if 'votesFor' in mapping else None),
             votesAgainst=(tuple(VoteKickParticipantV1.from_payload(_expect_mapping(item, 'votesAgainst[]')) for item in _expect_list(mapping['votesAgainst'], 'votesAgainst')) if 'votesAgainst' in mapping else None),
@@ -436,7 +455,7 @@ class ModerationVoteKickCreatedV1:
             'messageVersion': self.MESSAGE_VERSION,
         }
         payload['target'] = self.target.to_payload()
-        payload['starter'] = self.starter.to_payload()
+        payload['actor'] = self.actor.to_payload()
         payload['reason'] = self.reason
         if self.votesFor is not None:
             payload['votesFor'] = [item.to_payload() for item in self.votesFor]
@@ -455,4 +474,5 @@ __all__ = [
     "ModerationMuteCreatedV1",
     "ModerationPardonCommandV1",
     "ModerationVoteKickCreatedV1",
+    "ModerationAuditAppendedV1EntryType",
 ]

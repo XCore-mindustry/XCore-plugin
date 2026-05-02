@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -91,22 +92,39 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     return value
 
 
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
+
+
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
+
+class ActorRefV1ActorType(StrEnum):
+    PLAYER = 'player'
+    DISCORD = 'discord'
+    SERVER = 'server'
+    SYSTEM = 'system'
+    UNKNOWN = 'unknown'
 
 @dataclass(frozen=True, slots=True)
 class ActorRefV1:
     actorName: str
     actorDiscordId: str | None = None
-    actorType: str | None = None
+    actorType: ActorRefV1ActorType | None = None
 
     def __post_init__(self) -> None:
         _expect_str(self.actorName, 'actorName')
         if self.actorDiscordId is not None:
             _expect_str(self.actorDiscordId, 'actorDiscordId')
         if self.actorType is not None:
-            _expect_str(self.actorType, 'actorType')
+            _expect_instance(self.actorType, 'actorType', ActorRefV1ActorType)
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ActorRefV1":
@@ -120,7 +138,7 @@ class ActorRefV1:
         return cls(
             actorName=_expect_str(mapping['actorName'], 'actorName'),
             actorDiscordId=(_expect_str(mapping['actorDiscordId'], 'actorDiscordId') if 'actorDiscordId' in mapping else None),
-            actorType=(_expect_str(mapping['actorType'], 'actorType') if 'actorType' in mapping else None),
+            actorType=(_expect_enum(mapping['actorType'], 'actorType', ActorRefV1ActorType) if 'actorType' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -129,7 +147,7 @@ class ActorRefV1:
         if self.actorDiscordId is not None:
             payload['actorDiscordId'] = self.actorDiscordId
         if self.actorType is not None:
-            payload['actorType'] = self.actorType
+            payload['actorType'] = str(self.actorType)
         return payload
 
 @dataclass(frozen=True, slots=True)
@@ -286,30 +304,30 @@ class MapEntryV1:
 @dataclass(frozen=True, slots=True)
 class MapFileSourceV1:
     url: str
-    filename: str
+    fileName: str
 
     def __post_init__(self) -> None:
         _expect_str(self.url, 'url')
-        _expect_str(self.filename, 'filename')
+        _expect_str(self.fileName, 'fileName')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "MapFileSourceV1":
         mapping = _expect_mapping(payload, "MapFileSourceV1")
         _expect_exact_keys(
             mapping,
-            required=frozenset(('url', 'filename')),
-            allowed=frozenset(('url', 'filename')),
+            required=frozenset(('url', 'fileName')),
+            allowed=frozenset(('url', 'fileName')),
             model_name="MapFileSourceV1",
         )
         return cls(
             url=_expect_str(mapping['url'], 'url'),
-            filename=_expect_str(mapping['filename'], 'filename'),
+            fileName=_expect_str(mapping['fileName'], 'fileName'),
         )
 
     def to_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
         payload['url'] = self.url
-        payload['filename'] = self.filename
+        payload['fileName'] = self.fileName
         return payload
 
 @dataclass(frozen=True, slots=True)
@@ -449,14 +467,14 @@ class PlayerRefV1:
 
 @dataclass(frozen=True, slots=True)
 class VoteKickParticipantV1:
-    name: str
-    pid: int | None = None
+    playerName: str
+    playerPid: int | None = None
     discordId: str | None = None
 
     def __post_init__(self) -> None:
-        _expect_str(self.name, 'name')
-        if self.pid is not None:
-            _expect_int(self.pid, 'pid')
+        _expect_str(self.playerName, 'playerName')
+        if self.playerPid is not None:
+            _expect_int(self.playerPid, 'playerPid')
         if self.discordId is not None:
             _expect_str(self.discordId, 'discordId')
 
@@ -465,21 +483,21 @@ class VoteKickParticipantV1:
         mapping = _expect_mapping(payload, "VoteKickParticipantV1")
         _expect_exact_keys(
             mapping,
-            required=frozenset(('name',)),
-            allowed=frozenset(('name', 'pid', 'discordId')),
+            required=frozenset(('playerName',)),
+            allowed=frozenset(('playerName', 'playerPid', 'discordId')),
             model_name="VoteKickParticipantV1",
         )
         return cls(
-            name=_expect_str(mapping['name'], 'name'),
-            pid=(_expect_int(mapping['pid'], 'pid') if 'pid' in mapping else None),
+            playerName=_expect_str(mapping['playerName'], 'playerName'),
+            playerPid=(_expect_int(mapping['playerPid'], 'playerPid') if 'playerPid' in mapping else None),
             discordId=(_expect_str(mapping['discordId'], 'discordId') if 'discordId' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
-        payload['name'] = self.name
-        if self.pid is not None:
-            payload['pid'] = self.pid
+        payload['playerName'] = self.playerName
+        if self.playerPid is not None:
+            payload['playerPid'] = self.playerPid
         if self.discordId is not None:
             payload['discordId'] = self.discordId
         return payload
@@ -494,4 +512,5 @@ __all__ = [
     "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
+    "ActorRefV1ActorType",
 ]

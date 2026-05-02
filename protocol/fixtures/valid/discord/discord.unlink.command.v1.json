@@ -9,7 +9,10 @@
   "discord": {
     "discordId": "1234567890"
   },
-  "requestedBy": "plugin/unlink",
+  "actor": {
+    "actorName": "plugin/unlink",
+    "actorType": "system"
+  },
   "server": "mini-pvp",
   "requestedAt": "2026-04-23T18:05:00Z"
 }

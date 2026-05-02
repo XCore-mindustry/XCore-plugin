@@ -5,7 +5,7 @@
   "files": [
     {
       "url": "https://cdn.example.test/maps/readme.txt",
-      "filename": "readme.txt"
+      "fileName": "readme.txt"
     }
   ]
 }

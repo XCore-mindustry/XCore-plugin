@@ -170,6 +170,7 @@ def test_generation_plan_supports_discord_family_with_nested_shared_refs() -> No
     plan = load_generation_plan(family="discord")
 
     assert [schema.title for schema in plan.shared_schemas] == [
+        "ActorRefV1",
         "DiscordIdentityRefV1",
         "PlayerRefV1",
     ]

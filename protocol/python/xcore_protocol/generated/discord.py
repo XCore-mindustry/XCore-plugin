@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, ClassVar
 
 from .shared import (
+    ActorRefV1,
     DiscordIdentityRefV1,
     PlayerRefV1,
+    ActorRefV1ActorType,
 )
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -96,6 +99,16 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     return value
 
 
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
+
+
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
@@ -105,8 +118,8 @@ class DiscordAdminAccessChangedCommandV1:
     player: PlayerRefV1
     discord: DiscordIdentityRefV1
     admin: bool
-    adminSource: str
-    requestedBy: str
+    source: ActorRefV1
+    actor: ActorRefV1
     reason: str
     server: str
     occurredAt: str
@@ -117,8 +130,8 @@ class DiscordAdminAccessChangedCommandV1:
         _expect_instance(self.player, 'player', PlayerRefV1)
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
         _expect_bool(self.admin, 'admin')
-        _expect_str(self.adminSource, 'adminSource')
-        _expect_str(self.requestedBy, 'requestedBy')
+        _expect_instance(self.source, 'source', ActorRefV1)
+        _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.reason, 'reason')
         _expect_str(self.server, 'server')
         _expect_str(self.occurredAt, 'occurredAt')
@@ -128,8 +141,8 @@ class DiscordAdminAccessChangedCommandV1:
         mapping = _expect_mapping(payload, "DiscordAdminAccessChangedCommandV1")
         _expect_exact_keys(
             mapping,
-            required=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'adminSource', 'requestedBy', 'reason', 'server', 'occurredAt')),
-            allowed=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'adminSource', 'requestedBy', 'reason', 'server', 'occurredAt')),
+            required=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'source', 'actor', 'reason', 'server', 'occurredAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'admin', 'source', 'actor', 'reason', 'server', 'occurredAt')),
             model_name="DiscordAdminAccessChangedCommandV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -140,8 +153,8 @@ class DiscordAdminAccessChangedCommandV1:
             player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
             discord=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')),
             admin=_expect_bool(mapping['admin'], 'admin'),
-            adminSource=_expect_str(mapping['adminSource'], 'adminSource'),
-            requestedBy=_expect_str(mapping['requestedBy'], 'requestedBy'),
+            source=ActorRefV1.from_payload(_expect_mapping(mapping['source'], 'source')),
+            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             reason=_expect_str(mapping['reason'], 'reason'),
             server=_expect_str(mapping['server'], 'server'),
             occurredAt=_expect_str(mapping['occurredAt'], 'occurredAt'),
@@ -155,8 +168,8 @@ class DiscordAdminAccessChangedCommandV1:
         payload['player'] = self.player.to_payload()
         payload['discord'] = self.discord.to_payload()
         payload['admin'] = self.admin
-        payload['adminSource'] = self.adminSource
-        payload['requestedBy'] = self.requestedBy
+        payload['source'] = self.source.to_payload()
+        payload['actor'] = self.actor.to_payload()
         payload['reason'] = self.reason
         payload['server'] = self.server
         payload['occurredAt'] = self.occurredAt
@@ -262,11 +275,15 @@ class DiscordLinkConfirmCommandV1:
         payload['confirmedAt'] = self.confirmedAt
         return payload
 
+class DiscordLinkStatusChangedV1Action(StrEnum):
+    LINKED = 'linked'
+    UNLINKED = 'unlinked'
+
 @dataclass(frozen=True, slots=True)
 class DiscordLinkStatusChangedV1:
     player: PlayerRefV1
     discord: DiscordIdentityRefV1
-    action: str
+    action: DiscordLinkStatusChangedV1Action
     server: str
     occurredAt: str
 
@@ -275,7 +292,7 @@ class DiscordLinkStatusChangedV1:
     def __post_init__(self) -> None:
         _expect_instance(self.player, 'player', PlayerRefV1)
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
-        _expect_str(self.action, 'action')
+        _expect_instance(self.action, 'action', DiscordLinkStatusChangedV1Action)
         _expect_str(self.server, 'server')
         _expect_str(self.occurredAt, 'occurredAt')
 
@@ -295,7 +312,7 @@ class DiscordLinkStatusChangedV1:
         return cls(
             player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
             discord=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')),
-            action=_expect_str(mapping['action'], 'action'),
+            action=_expect_enum(mapping['action'], 'action', DiscordLinkStatusChangedV1Action),
             server=_expect_str(mapping['server'], 'server'),
             occurredAt=_expect_str(mapping['occurredAt'], 'occurredAt'),
         )
@@ -307,7 +324,7 @@ class DiscordLinkStatusChangedV1:
         }
         payload['player'] = self.player.to_payload()
         payload['discord'] = self.discord.to_payload()
-        payload['action'] = self.action
+        payload['action'] = str(self.action)
         payload['server'] = self.server
         payload['occurredAt'] = self.occurredAt
         return payload
@@ -316,7 +333,7 @@ class DiscordLinkStatusChangedV1:
 class DiscordUnlinkCommandV1:
     player: PlayerRefV1
     discord: DiscordIdentityRefV1
-    requestedBy: str
+    actor: ActorRefV1
     server: str
     requestedAt: str
 
@@ -325,7 +342,7 @@ class DiscordUnlinkCommandV1:
     def __post_init__(self) -> None:
         _expect_instance(self.player, 'player', PlayerRefV1)
         _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
-        _expect_str(self.requestedBy, 'requestedBy')
+        _expect_instance(self.actor, 'actor', ActorRefV1)
         _expect_str(self.server, 'server')
         _expect_str(self.requestedAt, 'requestedAt')
 
@@ -334,8 +351,8 @@ class DiscordUnlinkCommandV1:
         mapping = _expect_mapping(payload, "DiscordUnlinkCommandV1")
         _expect_exact_keys(
             mapping,
-            required=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'requestedBy', 'server', 'requestedAt')),
-            allowed=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'requestedBy', 'server', 'requestedAt')),
+            required=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'actor', 'server', 'requestedAt')),
+            allowed=frozenset(('messageType', 'messageVersion', 'player', 'discord', 'actor', 'server', 'requestedAt')),
             model_name="DiscordUnlinkCommandV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -345,7 +362,7 @@ class DiscordUnlinkCommandV1:
         return cls(
             player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
             discord=DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')),
-            requestedBy=_expect_str(mapping['requestedBy'], 'requestedBy'),
+            actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             server=_expect_str(mapping['server'], 'server'),
             requestedAt=_expect_str(mapping['requestedAt'], 'requestedAt'),
         )
@@ -357,7 +374,7 @@ class DiscordUnlinkCommandV1:
         }
         payload['player'] = self.player.to_payload()
         payload['discord'] = self.discord.to_payload()
-        payload['requestedBy'] = self.requestedBy
+        payload['actor'] = self.actor.to_payload()
         payload['server'] = self.server
         payload['requestedAt'] = self.requestedAt
         return payload
@@ -368,4 +385,5 @@ __all__ = [
     "DiscordLinkConfirmCommandV1",
     "DiscordLinkStatusChangedV1",
     "DiscordUnlinkCommandV1",
+    "DiscordLinkStatusChangedV1Action",
 ]

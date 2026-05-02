@@ -3,18 +3,18 @@ package org.xcore.protocol.generated.shared;
 import java.util.Objects;
 
 public record VoteKickParticipantV1(
-        String name,
-        Integer pid,
+        String playerName,
+        Integer playerPid,
         String discordId
 ) {
     public VoteKickParticipantV1 {
-        Objects.requireNonNull(name, "name must not be null");
-        if (name.length() < 1) {
-            throw new IllegalArgumentException("name must be at least 1 characters");
+        Objects.requireNonNull(playerName, "playerName must not be null");
+        if (playerName.length() < 1) {
+            throw new IllegalArgumentException("playerName must be at least 1 characters");
         }
-        if (pid != null) {
-            if (pid < 0) {
-                throw new IllegalArgumentException("pid must be >= 0");
+        if (playerPid != null) {
+            if (playerPid < 0) {
+                throw new IllegalArgumentException("playerPid must be >= 0");
             }
         }
         if (discordId != null) {

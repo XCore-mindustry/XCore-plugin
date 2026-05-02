@@ -83,7 +83,7 @@ Current plugin fields:
 | `playerPid` | `player.playerPid` | optional |
 | player nickname from lookup | `player.playerName` | canonical player ref currently requires name |
 | `discordId` | `discord.discordId` | grouped under discord identity |
-| `requestedBy` | `requestedBy` | unchanged semantic |
+| `requestedBy` | `actor.actorName` | map requester/source string into canonical actor identity |
 | `server` | `server` | unchanged semantic |
 | `requestedAt` epoch millis | `requestedAt` ISO-8601 UTC | mapper converts |
 
@@ -136,8 +136,10 @@ Current plugin fields:
 | `discordId` | `discord.discordId` | grouped under discord identity |
 | `discordUsername` | `discord.discordUsername` | grouped under discord identity |
 | `admin` | `admin` | unchanged semantic |
-| `adminSource` | `adminSource` | unchanged semantic |
-| `requestedBy` | `requestedBy` | unchanged semantic |
+| `adminSource` | `source.actorName` | map triggering authority/source into canonical actor identity |
+| source kind derived from current context | `source.actorType` | mapper sets explicit actor kind when known |
+| `requestedBy` | `actor.actorName` | map direct requester into canonical actor identity |
+| requester kind derived from current context | `actor.actorType` | mapper sets explicit actor kind when known |
 | `reason` | `reason` | unchanged semantic |
 | `server` | `server` | unchanged semantic |
 | `occurredAt` epoch millis | `occurredAt` ISO-8601 UTC | mapper converts |
@@ -156,6 +158,7 @@ Current plugin fields:
 - Current plugin route semantics treat link-code-created and link-status-changed as broadcast events; canonical naming keeps those messages event-shaped without a `.command` suffix.
 - Current plugin route semantics treat confirm, unlink, and admin-access as commands; canonical naming keeps that distinction explicit with `.command`.
 - Current command payloads may not always naturally carry `playerName`; consumer-side migration code may need lookup or session context to populate the canonical `player.playerName` requirement before constructing canonical payloads.
+- Current flat requester/source strings should be wrapped into canonical `ActorRefV1` payloads by consumer-side migration code before publication.
 
 ## Recommended Next Step
 Keep consumer/plugin mappers aligned with the canonical generated Discord payloads and preserve the existing validation coverage as those mappers are introduced.

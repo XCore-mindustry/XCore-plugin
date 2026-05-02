@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -37,6 +37,8 @@ class NormalizedField:
     shape: FieldShape
     field_type: FieldType
     const: str | int | float | bool | None = None
+    enum_values: tuple[str, ...] = ()
+    enum_type_name: str | None = None
     ref_target: RefTarget | None = None
     format: str | None = None
     pattern: str | None = None
@@ -138,12 +140,33 @@ def _normalize_scalar_field(
     if pattern is not None and not isinstance(pattern, str):
         raise ValueError(f"Unsupported pattern for field {name}: {pattern!r}")
 
+    raw_enum_values = definition.get("enum")
+    enum_values: tuple[str, ...] = ()
+    if raw_enum_values is not None:
+        if field_type != FieldType.STRING:
+            raise ValueError(f"Only string enum fields are supported for field {name}")
+        if not isinstance(raw_enum_values, list) or not raw_enum_values:
+            raise ValueError(f"Enum for field {name} must be a non-empty list")
+
+        normalized_enum_values: list[str] = []
+        seen_enum_values: set[str] = set()
+        for value in raw_enum_values:
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"Enum values for field {name} must be non-empty strings")
+            if value in seen_enum_values:
+                raise ValueError(f"Enum values for field {name} must be unique")
+            seen_enum_values.add(value)
+            normalized_enum_values.append(value)
+
+        enum_values = tuple(normalized_enum_values)
+
     return NormalizedField(
         name=name,
         required=required,
         shape=FieldShape.SCALAR,
         field_type=field_type,
         const=const,
+        enum_values=enum_values,
         format=field_format,
         pattern=pattern,
         minimum=minimum,
@@ -289,6 +312,12 @@ def _normalize_schema_from_raw(
         )
         for field_name, field_definition in properties.items()
         if isinstance(field_definition, dict)
+    )
+    normalized_fields = tuple(
+        replace(field, enum_type_name=f"{title}{field.name[:1].upper()}{field.name[1:]}")
+        if field.enum_values
+        else field
+        for field in normalized_fields
     )
 
     message_type = None

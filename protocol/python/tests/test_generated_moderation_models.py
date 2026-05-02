@@ -3,6 +3,7 @@ from __future__ import annotations
 from jsonschema import ValidationError
 
 from xcore_protocol.generated import (
+    ActorRefV1ActorType,
     MODERATION_AUDIT_APPENDED_V1,
     MODERATION_BAN_CREATED_V1,
     MODERATION_KICK_BANNED_COMMAND_V1,
@@ -10,6 +11,7 @@ from xcore_protocol.generated import (
     MODERATION_PARDON_COMMAND_V1,
     MODERATION_VOTE_KICK_CREATED_V1,
     ModerationAuditAppendedV1,
+    ModerationAuditAppendedV1EntryType,
     ModerationBanCreatedV1,
     ModerationKickBannedCommandV1,
     ModerationMuteCreatedV1,
@@ -50,7 +52,8 @@ def test_generated_moderation_vote_kick_roundtrip_matches_fixture() -> None:
     model = ModerationVoteKickCreatedV1.from_payload(payload)
 
     assert model.target.to_payload() == payload["target"]
-    assert model.starter.to_payload() == payload["starter"]
+    assert model.actor.to_payload() == payload["actor"]
+    assert model.actor.actorType is ActorRefV1ActorType.PLAYER
     assert [item.to_payload() for item in model.votesFor or ()] == payload["votesFor"]
     assert [item.to_payload() for item in model.votesAgainst or ()] == payload["votesAgainst"]
     assert model.to_payload() == payload
@@ -125,9 +128,10 @@ def test_generated_moderation_audit_roundtrip_matches_fixture() -> None:
 
     model = ModerationAuditAppendedV1.from_payload(payload)
 
-    assert model.entryType == payload["entryType"]
+    assert model.entryType is ModerationAuditAppendedV1EntryType.BAN
     assert model.target.to_payload() == payload["target"]
     assert model.actor.to_payload() == payload["actor"]
+    assert model.actor.actorType is ActorRefV1ActorType.DISCORD
     assert model.details == payload["details"]
     assert model.to_payload() == payload
     validate_instance(

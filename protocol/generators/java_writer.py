@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,6 +48,13 @@ def render_java_outputs(plan: GenerationPlan) -> tuple[GeneratedFile, ...]:
     outputs: list[GeneratedFile] = []
 
     for schema in plan.shared_schemas:
+        for field in _schema_enum_fields(schema):
+            outputs.append(
+                GeneratedFile(
+                    path=shared_root / f"{field.enum_type_name}.java",
+                    content=_render_java_enum(package_name=SHARED_PACKAGE, field=field),
+                )
+            )
         outputs.append(
             GeneratedFile(
                 path=shared_root / f"{schema.title}.java",
@@ -55,6 +63,13 @@ def render_java_outputs(plan: GenerationPlan) -> tuple[GeneratedFile, ...]:
         )
 
     for schema in plan.envelope_schemas:
+        for field in _schema_enum_fields(schema):
+            outputs.append(
+                GeneratedFile(
+                    path=envelopes_root / f"{field.enum_type_name}.java",
+                    content=_render_java_enum(package_name=ENVELOPES_PACKAGE, field=field),
+                )
+            )
         outputs.append(
             GeneratedFile(
                 path=envelopes_root / f"{schema.title}.java",
@@ -66,6 +81,17 @@ def render_java_outputs(plan: GenerationPlan) -> tuple[GeneratedFile, ...]:
         if not family_input.message_schemas:
             continue
         messages_root = _java_messages_root(output_root, family_input.config)
+        for schema in family_input.message_schemas:
+            for field in _schema_enum_fields(schema):
+                outputs.append(
+                    GeneratedFile(
+                        path=messages_root / f"{field.enum_type_name}.java",
+                        content=_render_java_enum(
+                            package_name=family_input.config.java_package,
+                            field=field,
+                        ),
+                    )
+                )
         outputs.append(
             GeneratedFile(
                 path=messages_root / f"{family_input.config.java_messages_class}.java",
@@ -112,6 +138,8 @@ def _java_messages_root(output_root: Path, config: FamilyConfig) -> Path:
 def _render_shared_record(schema: NormalizedSchema) -> str:
     components = ",\n".join(f"        {_component_declaration(field)}" for field in schema.fields if field.const is None)
     imports = {"import java.util.Objects;"}
+    if any(field.shape == FieldShape.ARRAY for field in schema.fields if field.const is None):
+        imports.add("import java.util.List;")
     if any(field.shape == FieldShape.MAP for field in schema.fields if field.const is None):
         imports.add("import java.util.Map;")
     return (
@@ -199,6 +227,73 @@ def _render_nested_message_record(schema: NormalizedSchema) -> str:
         f"{_render_compact_constructor(schema, indent='        ')}\n"
         "    }"
     )
+
+
+def _schema_enum_fields(schema: NormalizedSchema) -> tuple[NormalizedField, ...]:
+    return tuple(field for field in schema.fields if field.enum_values)
+
+
+def _render_java_enum(*, package_name: str, field: NormalizedField) -> str:
+    enum_name = _java_enum_name(field)
+    members = _render_java_enum_members(field)
+    return (
+        f"package {package_name};\n\n"
+        + f"public enum {enum_name} {{\n"
+        + members
+        + "\n\n"
+        + "    private final String value;\n\n"
+        + f"    {enum_name}(String value) {{\n"
+        + "        this.value = value;\n"
+        + "    }\n\n"
+        + "    public String value() {\n"
+        + "        return value;\n"
+        + "    }\n\n"
+        + f"    public static {enum_name} fromValue(String value) {{\n"
+        + "        if (value == null) {\n"
+        + '            throw new NullPointerException("value must not be null");\n'
+        + "        }\n"
+        + f"        for ({enum_name} candidate : values()) {{\n"
+        + "            if (candidate.value.equals(value)) {\n"
+        + "                return candidate;\n"
+        + "            }\n"
+        + "        }\n"
+        + '        throw new IllegalArgumentException("Unknown enum value: " + value);\n'
+        + "    }\n\n"
+        + "    @Override\n"
+        + "    public String toString() {\n"
+        + "        return value;\n"
+        + "    }\n"
+        + "}\n"
+    )
+
+
+def _render_java_enum_members(field: NormalizedField) -> str:
+    member_lines: list[str] = []
+    seen_member_names: set[str] = set()
+    for value in field.enum_values:
+        member_name = _java_enum_member_name(value)
+        if member_name in seen_member_names:
+            raise ValueError(f"Enum values normalize to duplicate Java members for {field.name}: {value}")
+        seen_member_names.add(member_name)
+        member_lines.append(f'    {member_name}("{value}")')
+    return ",\n".join(member_lines) + ";"
+
+
+def _java_enum_name(field: NormalizedField) -> str:
+    if field.enum_type_name is None:
+        raise ValueError(f"Enum field is missing enum_type_name: {field}")
+    return field.enum_type_name
+
+
+def _java_enum_member_name(value: str) -> str:
+    member = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
+    member = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", member)
+    member = member.upper()
+    if not member:
+        member = "VALUE"
+    if member[0].isdigit():
+        member = f"VALUE_{member}"
+    return member
 
 
 def _render_family_routes(
@@ -466,6 +561,10 @@ def _value_validation_lines(
         lines.append(f'{indent}Objects.requireNonNull({value_expression}, "{field_name} must not be null");')
         return lines
 
+    if field.enum_values:
+        lines.append(f'{indent}Objects.requireNonNull({value_expression}, "{field_name} must not be null");')
+        return lines
+
     if field.field_type == FieldType.STRING:
         lines.append(f'{indent}Objects.requireNonNull({value_expression}, "{field_name} must not be null");')
         if field.min_length is not None:
@@ -519,6 +618,8 @@ def _array_item_type(field: NormalizedField) -> str:
 
 
 def _base_type(field: NormalizedField) -> str:
+    if field.enum_values:
+        return _java_enum_name(field)
     if field.field_type == FieldType.STRING:
         return "String"
     if field.field_type == FieldType.INTEGER:

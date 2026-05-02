@@ -71,7 +71,7 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | `server` | `server` | Required target server name. |
 | `urls[]` | `files[]` | Rename to describe the file sources rather than only their URL. |
 | `urls[].url` | `files[].url` | Required download URI. |
-| `urls[].filename` | `files[].filename` | Required `.msav` basename. |
+| `urls[].filename` | `files[].fileName` | Required `.msav` basename. |
 
 ## Open Consumer Migration Notes
 - `XCore-discord-bot` currently normalizes both `fileName` and `file_name` in map entries and publishes both keys for remove requests. Canonical producers should emit only `fileName`.

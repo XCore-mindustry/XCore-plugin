@@ -5,7 +5,7 @@ import java.util.Objects;
 public record ActorRefV1(
         String actorName,
         String actorDiscordId,
-        String actorType
+        ActorRefV1ActorType actorType
 ) {
     public ActorRefV1 {
         Objects.requireNonNull(actorName, "actorName must not be null");

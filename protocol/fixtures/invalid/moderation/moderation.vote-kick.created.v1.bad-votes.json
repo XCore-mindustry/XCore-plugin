@@ -5,7 +5,7 @@
     "playerUuid": "uuid-target",
     "playerName": "Target"
   },
-  "starter": {
+  "actor": {
     "actorName": "Starter"
   },
   "reason": "afk trolling",

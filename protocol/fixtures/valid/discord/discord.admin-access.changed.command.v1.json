@@ -11,8 +11,14 @@
     "discordUsername": "tester"
   },
   "admin": true,
-  "adminSource": "DISCORD_ROLE",
-  "requestedBy": "discord-role-sync",
+  "source": {
+    "actorName": "DISCORD_ROLE",
+    "actorType": "system"
+  },
+  "actor": {
+    "actorName": "discord-role-sync",
+    "actorType": "discord"
+  },
   "reason": "role matched",
   "server": "mini-pvp",
   "occurredAt": "2026-04-23T18:10:00Z"

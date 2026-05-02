@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, ClassVar
 
 def _expect_mapping(value: Any, field_name: str) -> Mapping[str, Any]:
@@ -91,13 +92,30 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     return value
 
 
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
+
+
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
 
+class EnvelopeBaseV1Message_kind(StrEnum):
+    EVENT = 'event'
+    COMMAND = 'command'
+    RPC_REQUEST = 'rpc_request'
+    RPC_RESPONSE = 'rpc_response'
+    DLQ = 'dlq'
+
 @dataclass(frozen=True, slots=True)
 class EnvelopeBaseV1:
-    message_kind: str
+    message_kind: EnvelopeBaseV1Message_kind
     message_type: str
     message_version: int
     message_id: str
@@ -113,7 +131,7 @@ class EnvelopeBaseV1:
     SCHEMA_VERSION: ClassVar[str] = '1'
     CONTENT_TYPE: ClassVar[str] = 'application/json'
     def __post_init__(self) -> None:
-        _expect_str(self.message_kind, 'message_kind')
+        _expect_instance(self.message_kind, 'message_kind', EnvelopeBaseV1Message_kind)
         _expect_str(self.message_type, 'message_type')
         _expect_int(self.message_version, 'message_version')
         _expect_str(self.message_id, 'message_id')
@@ -145,7 +163,7 @@ class EnvelopeBaseV1:
         if mapping['content_type'] != cls.CONTENT_TYPE:
             raise ValueError('content_type' + " must equal " + repr(cls.CONTENT_TYPE))
         return cls(
-            message_kind=_expect_str(mapping['message_kind'], 'message_kind'),
+            message_kind=_expect_enum(mapping['message_kind'], 'message_kind', EnvelopeBaseV1Message_kind),
             message_type=_expect_str(mapping['message_type'], 'message_type'),
             message_version=_expect_int(mapping['message_version'], 'message_version'),
             message_id=_expect_str(mapping['message_id'], 'message_id'),
@@ -164,7 +182,7 @@ class EnvelopeBaseV1:
             'schema_version': self.SCHEMA_VERSION,
             'content_type': self.CONTENT_TYPE,
         }
-        payload['message_kind'] = self.message_kind
+        payload['message_kind'] = str(self.message_kind)
         payload['message_type'] = self.message_type
         payload['message_version'] = self.message_version
         payload['message_id'] = self.message_id
@@ -443,6 +461,10 @@ class RpcRequestEnvelopeV1:
         payload['timeout_ms'] = self.timeout_ms
         return payload
 
+class RpcResponseEnvelopeV1Status(StrEnum):
+    OK = 'ok'
+    ERROR = 'error'
+
 @dataclass(frozen=True, slots=True)
 class RpcResponseEnvelopeV1:
     message_type: str
@@ -452,7 +474,7 @@ class RpcResponseEnvelopeV1:
     producer: str
     created_at: str
     payload_json: str
-    status: str
+    status: RpcResponseEnvelopeV1Status
     responded_at: str
     causation_id: str | None = None
     target: str | None = None
@@ -480,7 +502,7 @@ class RpcResponseEnvelopeV1:
         if self.schema_ref is not None:
             _expect_str(self.schema_ref, 'schema_ref')
         _expect_str(self.payload_json, 'payload_json')
-        _expect_str(self.status, 'status')
+        _expect_instance(self.status, 'status', RpcResponseEnvelopeV1Status)
         if self.error_code is not None:
             _expect_str(self.error_code, 'error_code')
         if self.error_message is not None:
@@ -514,7 +536,7 @@ class RpcResponseEnvelopeV1:
             expires_at=(_expect_str(mapping['expires_at'], 'expires_at') if 'expires_at' in mapping else None),
             schema_ref=(_expect_str(mapping['schema_ref'], 'schema_ref') if 'schema_ref' in mapping else None),
             payload_json=_expect_str(mapping['payload_json'], 'payload_json'),
-            status=_expect_str(mapping['status'], 'status'),
+            status=_expect_enum(mapping['status'], 'status', RpcResponseEnvelopeV1Status),
             error_code=(_expect_str(mapping['error_code'], 'error_code') if 'error_code' in mapping else None),
             error_message=(_expect_str(mapping['error_message'], 'error_message') if 'error_message' in mapping else None),
             responded_at=_expect_str(mapping['responded_at'], 'responded_at'),
@@ -541,7 +563,7 @@ class RpcResponseEnvelopeV1:
         if self.schema_ref is not None:
             payload['schema_ref'] = self.schema_ref
         payload['payload_json'] = self.payload_json
-        payload['status'] = self.status
+        payload['status'] = str(self.status)
         if self.error_code is not None:
             payload['error_code'] = self.error_code
         if self.error_message is not None:
@@ -668,4 +690,6 @@ __all__ = [
     "RpcRequestEnvelopeV1",
     "RpcResponseEnvelopeV1",
     "DlqEnvelopeV1",
+    "EnvelopeBaseV1Message_kind",
+    "RpcResponseEnvelopeV1Status",
 ]

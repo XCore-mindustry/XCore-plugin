@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -79,10 +80,20 @@ def _render_package_init(plan: GenerationPlan) -> str:
         for family_input in plan.family_inputs
         for schema in family_input.message_schemas
     ]
+    shared_enum_exports = [enum_name for schema in plan.shared_schemas for enum_name in _schema_enum_names(schema)]
+    envelope_enum_exports = [enum_name for schema in plan.envelope_schemas for enum_name in _schema_enum_names(schema)]
+    family_enum_exports = [
+        enum_name
+        for schema in family_schemas
+        for enum_name in _schema_enum_names(schema)
+    ]
     exports = (
         [schema.title for schema in plan.shared_schemas]
+        + shared_enum_exports
         + [schema.title for schema in plan.envelope_schemas]
+        + envelope_enum_exports
         + [schema.title for schema in family_schemas]
+        + family_enum_exports
     )
     route_exports = [route.constant_name for route in plan.route_descriptors]
     export_block = "\n".join(f"    \"{name}\"," for name in exports)
@@ -94,14 +105,20 @@ def _render_package_init(plan: GenerationPlan) -> str:
     )
     envelope_import_block = (
         "from .envelopes import (\n"
-        + "\n".join(f"    {schema.title}," for schema in plan.envelope_schemas)
+        + "\n".join(
+            [f"    {schema.title}," for schema in plan.envelope_schemas]
+            + [f"    {enum_name}," for schema in plan.envelope_schemas for enum_name in _schema_enum_names(schema)]
+        )
         + "\n)\n"
         if plan.envelope_schemas
         else ""
     )
     shared_import_block = (
         "from .shared import (\n"
-        + "\n".join(f"    {schema.title}," for schema in plan.shared_schemas)
+        + "\n".join(
+            [f"    {schema.title}," for schema in plan.shared_schemas]
+            + [f"    {enum_name}," for schema in plan.shared_schemas for enum_name in _schema_enum_names(schema)]
+        )
         + "\n)\n\n"
         if plan.shared_schemas
         else ""
@@ -167,7 +184,10 @@ def _has_maps_compat_aliases(plan: GenerationPlan) -> bool:
 def _render_family_import_block(config: FamilyConfig, schemas: tuple[NormalizedSchema, ...]) -> str:
     return (
         f"from .{config.python_module} import (\n"
-        + "\n".join(f"    {schema.title}," for schema in schemas)
+        + "\n".join(
+            [f"    {schema.title}," for schema in schemas]
+            + [f"    {enum_name}," for schema in schemas for enum_name in _schema_enum_names(schema)]
+        )
         + "\n)\n"
     )
 
@@ -347,13 +367,17 @@ def _render_route_constant(route: RouteDescriptor) -> str:
 
 
 def _render_shared_module(shared_schemas: tuple[NormalizedSchema, ...]) -> str:
-    exports = "\n".join(f"    \"{schema.title}\"," for schema in shared_schemas)
+    exports = "\n".join(
+        [f"    \"{schema.title}\"," for schema in shared_schemas]
+        + [f"    \"{enum_name}\"," for schema in shared_schemas for enum_name in _schema_enum_names(schema)]
+    )
     classes = "\n\n".join(_render_shared_class(schema) for schema in shared_schemas)
     return (
         '"""Generated canonical shared protocol models."""\n\n'
         "from __future__ import annotations\n\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
+        "from enum import StrEnum\n"
         "from typing import Any\n\n"
         + _render_runtime_helpers()
         + "\n\n"
@@ -369,14 +393,21 @@ def _render_family_module(
     message_schemas: tuple[NormalizedSchema, ...],
     shared_schemas: tuple[NormalizedSchema, ...],
 ) -> str:
-    shared_imports = "\n".join(f"    {schema.title}," for schema in shared_schemas)
-    exports = "\n".join(f"    \"{schema.title}\"," for schema in message_schemas)
+    shared_imports = "\n".join(
+        [f"    {schema.title}," for schema in shared_schemas]
+        + [f"    {enum_name}," for schema in shared_schemas for enum_name in _schema_enum_names(schema)]
+    )
+    exports = "\n".join(
+        [f"    \"{schema.title}\"," for schema in message_schemas]
+        + [f"    \"{enum_name}\"," for schema in message_schemas for enum_name in _schema_enum_names(schema)]
+    )
     classes = "\n\n".join(_render_message_class(schema) for schema in message_schemas)
     return (
         f'"""Generated canonical {config.name} protocol models."""\n\n'
         "from __future__ import annotations\n\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
+        "from enum import StrEnum\n"
         "from typing import Any, ClassVar\n\n"
         + (
             "from .shared import (\n" + shared_imports + "\n)\n\n"
@@ -479,6 +510,16 @@ def _expect_bool(value: Any, field_name: str) -> bool:
     return value
 
 
+def _expect_enum(value: Any, field_name: str, enum_type: type[StrEnum]) -> StrEnum:
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise ValueError(f"{field_name} must be one of: {allowed}") from error
+
+
 def _expect_instance(value: Any, field_name: str, expected_type: type[Any]) -> None:
     if not isinstance(value, expected_type):
         raise TypeError(f"{field_name} must be a {expected_type.__name__}")
@@ -490,7 +531,8 @@ def _render_shared_class(schema: NormalizedSchema) -> str:
     post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=False)
-    return (
+    enum_block = _render_python_schema_enums(schema)
+    class_block = (
         "@dataclass(frozen=True, slots=True)\n"
         f"class {schema.title}:\n"
         f"{field_lines}\n\n"
@@ -498,6 +540,7 @@ def _render_shared_class(schema: NormalizedSchema) -> str:
         f"{from_payload}\n\n"
         f"{to_payload}"
     )
+    return enum_block + ("\n\n" if enum_block else "") + class_block
 
 
 def _render_message_class(schema: NormalizedSchema) -> str:
@@ -507,7 +550,8 @@ def _render_message_class(schema: NormalizedSchema) -> str:
     post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=True)
-    return (
+    enum_block = _render_python_schema_enums(schema)
+    class_block = (
         "@dataclass(frozen=True, slots=True)\n"
         f"class {schema.title}:\n"
         f"{field_lines}\n\n"
@@ -516,16 +560,21 @@ def _render_message_class(schema: NormalizedSchema) -> str:
         f"{from_payload}\n\n"
         f"{to_payload}"
     )
+    return enum_block + ("\n\n" if enum_block else "") + class_block
 
 
 def _render_envelope_module(envelope_schemas: tuple[NormalizedSchema, ...]) -> str:
-    exports = "\n".join(f"    \"{schema.title}\"," for schema in envelope_schemas)
+    exports = "\n".join(
+        [f"    \"{schema.title}\"," for schema in envelope_schemas]
+        + [f"    \"{enum_name}\"," for schema in envelope_schemas for enum_name in _schema_enum_names(schema)]
+    )
     classes = "\n\n".join(_render_envelope_class(schema) for schema in envelope_schemas)
     return (
         '"""Generated canonical envelope models for the supported subset."""\n\n'
         "from __future__ import annotations\n\n"
         "from collections.abc import Mapping\n"
         "from dataclasses import dataclass\n"
+        "from enum import StrEnum\n"
         "from typing import Any, ClassVar\n\n"
         + _render_runtime_helpers()
         + "\n\n"
@@ -543,7 +592,8 @@ def _render_envelope_class(schema: NormalizedSchema) -> str:
     post_init = _render_post_init(schema)
     from_payload = _render_from_payload(schema)
     to_payload = _render_to_payload(schema, inject_consts=True)
-    return (
+    enum_block = _render_python_schema_enums(schema)
+    class_block = (
         "@dataclass(frozen=True, slots=True)\n"
         f"class {schema.title}:\n"
         f"{field_lines}\n\n"
@@ -552,6 +602,22 @@ def _render_envelope_class(schema: NormalizedSchema) -> str:
         f"{from_payload}\n\n"
         f"{to_payload}"
     )
+    return enum_block + ("\n\n" if enum_block else "") + class_block
+
+
+def _schema_enum_names(schema: NormalizedSchema) -> tuple[str, ...]:
+    return tuple(_python_enum_name(schema.title, field) for field in schema.fields if field.enum_values)
+
+
+def _render_python_schema_enums(schema: NormalizedSchema) -> str:
+    return "\n\n".join(_render_python_enum(schema, field) for field in schema.fields if field.enum_values)
+
+
+def _render_python_enum(schema: NormalizedSchema, field: NormalizedField) -> str:
+    lines = [f"class {_python_enum_name(schema.title, field)}(StrEnum):"]
+    for value in field.enum_values:
+        lines.append(f"    {_python_enum_member_name(value)} = {value!r}")
+    return "\n".join(lines)
 
 
 def _render_dataclass_fields(fields: tuple[NormalizedField, ...]) -> str:
@@ -582,6 +648,8 @@ def _base_annotation(field: NormalizedField) -> str:
         return f"tuple[{_item_annotation(field)}, ...]"
     if field.shape == FieldShape.MAP:
         return "dict[str, Any]"
+    if field.enum_values:
+        return _python_enum_name_for_field(field)
     if field.field_type == FieldType.STRING:
         return "str"
     if field.field_type == FieldType.INTEGER:
@@ -596,6 +664,8 @@ def _base_annotation(field: NormalizedField) -> str:
 
 
 def _item_annotation(field: NormalizedField) -> str:
+    if field.enum_values:
+        return _python_enum_name_for_field(field)
     if field.field_type == FieldType.STRING:
         return "str"
     if field.field_type == FieldType.INTEGER:
@@ -762,12 +832,16 @@ def _decode_expression(field: NormalizedField, *, accessor: str, field_name: str
         return _map_decode_expression(field, accessor=accessor, field_name=field_name)
     if field.field_type == FieldType.OBJECT_REF and field.ref_target is not None:
         return f"{field.ref_target.title}.from_payload(_expect_mapping({accessor}, {field_name!r}))"
+    if field.enum_values:
+        return _enum_decoder(field, accessor=accessor, field_name=field_name)
     return _primitive_decoder(field.field_type, accessor=accessor, field_name=field_name)
 
 
 def _array_item_decode_expression(field: NormalizedField, *, accessor: str, field_name: str) -> str:
     if field.field_type == FieldType.OBJECT_REF and field.ref_target is not None:
         return f"{field.ref_target.title}.from_payload(_expect_mapping({accessor}, {field_name!r}))"
+    if field.enum_values:
+        return _enum_decoder(field, accessor=accessor, field_name=field_name)
     return _primitive_decoder(field.field_type, accessor=accessor, field_name=field_name)
 
 
@@ -781,6 +855,11 @@ def _primitive_decoder(field_type: FieldType, *, accessor: str, field_name: str)
     if field_type == FieldType.BOOLEAN:
         return f"_expect_bool({accessor}, {field_name!r})"
     raise ValueError(f"Unsupported primitive field type: {field_type}")
+
+
+def _enum_decoder(field: NormalizedField, *, accessor: str, field_name: str) -> str:
+    enum_name = _python_enum_name_for_field(field)
+    return f"_expect_enum({accessor}, {field_name!r}, {enum_name})"
 
 
 def _map_decode_expression(field: NormalizedField, *, accessor: str, field_name: str) -> str:
@@ -827,6 +906,8 @@ def _encode_expression(field: NormalizedField, *, value: str) -> str:
         return f"dict({value})"
     if field.field_type == FieldType.OBJECT_REF:
         return f"{value}.to_payload()"
+    if field.enum_values:
+        return f"str({value})"
     if field.field_type == FieldType.NUMBER:
         return f"float({value})"
     return value
@@ -835,6 +916,8 @@ def _encode_expression(field: NormalizedField, *, value: str) -> str:
 def _array_item_encode_expression(field: NormalizedField, *, value: str) -> str:
     if field.field_type == FieldType.OBJECT_REF:
         return f"{value}.to_payload()"
+    if field.enum_values:
+        return f"str({value})"
     if field.field_type == FieldType.NUMBER:
         return f"float({value})"
     return value
@@ -849,6 +932,8 @@ def _value_validator_expression(
 ) -> str:
     if field.field_type == FieldType.OBJECT_REF and field.ref_target is not None:
         return f"_expect_instance({value_ref}, {field_name!r}, {field.ref_target.title})"
+    if field.enum_values:
+        return f"_expect_instance({value_ref}, {field_name!r}, {_python_enum_name_for_field(field)})"
     target_type = field.field_type if not for_array_item else field.field_type
     return _primitive_decoder(target_type, accessor=value_ref, field_name=field_name)
 
@@ -871,3 +956,28 @@ def _python_json_type_name(field_type: FieldType) -> str:
     if field_type == FieldType.BOOLEAN:
         return "boolean"
     raise ValueError(f"Unsupported JSON map value type: {field_type}")
+
+
+def _python_enum_name(schema_title: str, field: NormalizedField) -> str:
+    if field.enum_type_name is None:
+        raise ValueError(f"Enum field is missing enum_type_name: {field}")
+    return field.enum_type_name
+
+
+def _python_enum_name_for_field(field: NormalizedField) -> str:
+    if not field.enum_values:
+        raise ValueError(f"Field does not define enum values: {field}")
+    if field.enum_type_name is None:
+        raise ValueError(f"Enum field is missing enum_type_name: {field}")
+    return field.enum_type_name
+
+
+def _python_enum_member_name(value: str) -> str:
+    member = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
+    member = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", member)
+    member = member.upper()
+    if not member:
+        member = "VALUE"
+    if member[0].isdigit():
+        member = f"VALUE_{member}"
+    return member

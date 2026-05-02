@@ -3,7 +3,7 @@ package org.xcore.protocol.generated.envelopes;
 import java.util.Objects;
 
 public record EnvelopeBaseV1(
-        String message_kind,
+        EnvelopeBaseV1Message_kind message_kind,
         String message_type,
         int message_version,
         String message_id,
