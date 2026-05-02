@@ -71,7 +71,7 @@ class RedisStreamRouterTest {
         var privateRoute = router.route(new ChatPrivateV1("uuid-from", 7, "Sender", "uuid-to", 42, "hello", "survival"), "mini-pvp");
         var serverActionRoute = router.route(new ServerActionV1("Server loaded", "mini-pvp"), "mini-pvp");
         var joinRoute = router.route(new PlayerJoinLeaveV1("p", "mini-pvp", true), "mini-pvp");
-        var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
+        var heartbeatRoute = router.route(new ServerHeartbeatV1("mini-pvp", 1L, 5, 30, "1.0.0", "127.0.0.1", 6567), "mini-pvp");
         var banRoute = router.route(
                 org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
                         banData,

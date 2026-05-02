@@ -62,7 +62,7 @@ public class TransportService {
                 try {
                     network.post(new ServerHeartbeatV1(
                             config.server,
-                            Math.toIntExact(config.discordChannelId),
+                            config.discordChannelId,
                             Groups.player.size(),
                             config.getNoAdminPlayerLimit(),
                             Version.buildString(),
