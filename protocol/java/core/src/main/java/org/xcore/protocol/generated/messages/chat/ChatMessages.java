@@ -307,7 +307,7 @@ public final class ChatMessages {
 
     public record ServerHeartbeatV1(
             String serverName,
-            int discordChannelId,
+            long discordChannelId,
             int players,
             int maxPlayers,
             String version,

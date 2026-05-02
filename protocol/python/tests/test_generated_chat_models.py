@@ -160,7 +160,7 @@ def test_generated_server_heartbeat_roundtrip_matches_fixture() -> None:
 
     assert model == ServerHeartbeatV1(
         serverName="mini-pvp",
-        discordChannelId=321,
+        discordChannelId=1234567890123456789,
         players=4,
         maxPlayers=12,
         version="146.1",

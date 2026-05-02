@@ -23,5 +23,5 @@ Chat, global chat, and heartbeat-related contracts belong here.
 - Canonical join/leave uses `joined` instead of current legacy `join` boolean naming.
 - Canonical player-session sync commands use `playerUuid`, explicit `server`, and camelCase value fields.
 - Canonical badge inventory sync commands use `activeBadge` and `unlockedBadges` as the canonical badge-state fields.
-- Canonical heartbeat uses `serverName`, `discordChannelId`, `players`, `maxPlayers`, `version`, optional `host`, and optional `port`.
+- Canonical heartbeat uses `serverName`, `discordChannelId` (64-bit Discord snowflake), `players`, `maxPlayers`, `version`, optional `host`, and optional `port`.
 - Legacy aliases such as `author_name`, `player_name`, `uuid`, `server_name`, `serverHost`, and `serverPort` are consumer migration concerns, not canonical protocol fields.

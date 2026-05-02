@@ -2,7 +2,7 @@
   "messageType": "server.heartbeat",
   "messageVersion": 1,
   "serverName": "mini-pvp",
-  "discordChannelId": 321,
+  "discordChannelId": 1234567890123456789,
   "players": 4,
   "maxPlayers": 12,
   "version": "146.1",

@@ -623,7 +623,7 @@ def _base_type(field: NormalizedField) -> str:
     if field.field_type == FieldType.STRING:
         return "String"
     if field.field_type == FieldType.INTEGER:
-        return "Integer" if not field.required else "int"
+        return _java_integer_type(field)
     if field.field_type == FieldType.NUMBER:
         return "Double" if not field.required else "double"
     if field.field_type == FieldType.BOOLEAN:
@@ -631,6 +631,14 @@ def _base_type(field: NormalizedField) -> str:
     if field.field_type == FieldType.OBJECT_REF and field.ref_target is not None:
         return field.ref_target.title
     raise ValueError(f"Unsupported field type for Java generation: {field}")
+
+
+def _java_integer_type(field: NormalizedField) -> str:
+    if field.field_type != FieldType.INTEGER:
+        raise ValueError(f"Field is not an integer: {field}")
+    if field.format == "int64":
+        return "Long" if not field.required else "long"
+    return "Integer" if not field.required else "int"
 
 
 def _render_java_const_fields(fields: tuple[NormalizedField, ...]) -> str:

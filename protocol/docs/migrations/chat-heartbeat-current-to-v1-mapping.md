@@ -99,7 +99,7 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | Current field | Canonical field | Notes |
 | --- | --- | --- |
 | `serverName` | `serverName` | Required. |
-| `discordChannelId` | `discordChannelId` | Required integer. |
+| `discordChannelId` | `discordChannelId` | Required 64-bit integer Discord snowflake. |
 | `players` | `players` | Required integer. |
 | `maxPlayers` | `maxPlayers` | Required integer. |
 | `version` | `version` | Required string. |
