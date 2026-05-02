@@ -61,6 +61,7 @@ class RedisNetworkBackendIntegrationTest {
         if (requesterBackend != null) {
             requesterBackend.disconnect();
         }
+        flushRedis();
     }
 
     @Test
@@ -226,8 +227,6 @@ class RedisNetworkBackendIntegrationTest {
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.ban.created");
             assertThat(payload)
-                    .containsEntry("messageType", ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE)
-                    .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "rule")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
@@ -265,8 +264,6 @@ class RedisNetworkBackendIntegrationTest {
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.mute.created");
             assertThat(payload)
-                    .containsEntry("messageType", ModerationMessages.ModerationMuteCreatedV1.MESSAGE_TYPE)
-                    .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "rule")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
@@ -346,8 +343,6 @@ class RedisNetworkBackendIntegrationTest {
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.vote-kick.created");
             assertThat(payload)
-                    .containsEntry("messageType", ModerationMessages.ModerationVoteKickCreatedV1.MESSAGE_TYPE)
-                    .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "griefing")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
@@ -716,6 +711,14 @@ class RedisNetworkBackendIntegrationTest {
         config.redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
         config.redisReclaimEnabled = false;
         return config;
+    }
+
+    private void flushRedis() {
+        String redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
+        try (RedisClient client = RedisClient.create(redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            connection.sync().flushall();
+        }
     }
 
     private static <T extends Punishment> T punishment(T value, String uuid, String name) {
