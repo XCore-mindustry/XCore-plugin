@@ -43,11 +43,11 @@ jobs:
 
       - name: Build and test
         if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
-        run: ./gradlew test shadowJar
+        run: ./gradlew --refresh-dependencies test shadowJar
 
       - name: Build, test and publish snapshot
         if: github.event_name != 'pull_request' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
-        run: ./gradlew test publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        run: ./gradlew --refresh-dependencies test publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
         env:
           ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: ${{ secrets.XCORE_USERNAME }}
           ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: ${{ secrets.XCORE_PASSWORD }}
