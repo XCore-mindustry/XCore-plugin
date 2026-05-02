@@ -30,6 +30,8 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
+import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
@@ -91,7 +93,7 @@ class RedisRouteRegistryTest {
                 new DiscordUnlinkCommandV1(
                         new PlayerRefV1("uuid", 1, "Player", null),
                         new DiscordIdentityRefV1("discord", "user"),
-                        "moderator",
+                        new ActorRefV1("moderator", null, ActorRefV1ActorType.SYSTEM),
                         "survival",
                         "2026-04-28T00:00:00Z"
                 ),

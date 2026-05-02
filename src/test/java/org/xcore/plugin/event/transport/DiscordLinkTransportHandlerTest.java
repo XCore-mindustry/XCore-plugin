@@ -13,6 +13,8 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 
@@ -92,7 +94,7 @@ class DiscordLinkTransportHandlerTest {
                 .get(new DiscordUnlinkCommandV1(
                         new PlayerRefV1("uuid-7", 7, "Target", null),
                         new DiscordIdentityRefV1("123", "discord"),
-                        "discord",
+                        new ActorRefV1("discord", null, ActorRefV1ActorType.SYSTEM),
                         "mini-other",
                         "2026-04-28T00:00:01Z"
                 ));

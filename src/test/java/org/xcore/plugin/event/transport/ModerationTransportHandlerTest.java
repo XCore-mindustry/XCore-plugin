@@ -27,6 +27,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbol
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 
@@ -84,8 +86,8 @@ class ModerationTransportHandlerTest {
                         new PlayerRefV1("uuid-1", 7, "Player", null),
                         new DiscordIdentityRefV1("123", "discord-user"),
                         true,
-                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE,
-                        "tester",
+                        new ActorRefV1(DiscordAdminAccessService.SOURCE_DISCORD_ROLE, null, ActorRefV1ActorType.SYSTEM),
+                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
                         "sync",
                         "mini-pvp",
                         "2026-04-28T00:00:10Z"
@@ -119,8 +121,8 @@ class ModerationTransportHandlerTest {
                         new PlayerRefV1("uuid-1", 7, "Player", null),
                         new DiscordIdentityRefV1("123", "discord-user"),
                         false,
-                        DiscordAdminAccessService.SOURCE_DISCORD_ROLE,
-                        "tester",
+                        new ActorRefV1(DiscordAdminAccessService.SOURCE_DISCORD_ROLE, null, ActorRefV1ActorType.SYSTEM),
+                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
                         "sync",
                         "mini-pvp",
                         "2026-04-28T00:00:11Z"

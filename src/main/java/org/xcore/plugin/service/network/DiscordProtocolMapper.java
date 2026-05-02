@@ -1,9 +1,12 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
+import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 
@@ -45,7 +48,7 @@ public final class DiscordProtocolMapper {
         return new DiscordLinkStatusChangedV1(
                 toPlayerRef(playerData.uuid, playerData.pid, playerData.nickname),
                 toDiscordIdentity(discordId, discordUsername),
-                requireNonBlank(action, "action"),
+                toLinkStatusAction(action),
                 requireNonBlank(server, "server"),
                 toOccurredAt(occurredAt)
         );
@@ -68,11 +71,30 @@ public final class DiscordProtocolMapper {
                 toPlayerRef(playerUuid, playerPid, playerName),
                 toDiscordIdentity(discordId, discordUsername),
                 admin,
-                requireNonBlank(adminSource, "adminSource"),
-                requireNonBlank(requestedBy, "requestedBy"),
+                toSourceActor(adminSource),
+                toRequesterActor(requestedBy),
                 requireNonBlank(reason, "reason"),
                 requireNonBlank(server, "server"),
                 toOccurredAt(occurredAt)
+        );
+    }
+
+    public static org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1 toUnlinkCommand(
+            String playerUuid,
+            int playerPid,
+            String playerName,
+            String discordId,
+            String discordUsername,
+            String requestedBy,
+            String server,
+            long requestedAt
+    ) {
+        return new org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1(
+                toPlayerRef(playerUuid, playerPid, playerName),
+                toDiscordIdentity(discordId, discordUsername),
+                toRequesterActor(requestedBy),
+                requireNonBlank(server, "server"),
+                toOccurredAt(requestedAt)
         );
     }
 
@@ -90,6 +112,31 @@ public final class DiscordProtocolMapper {
                 requireNonBlank(discordId, "discordId"),
                 normalizeOptional(discordUsername)
         );
+    }
+
+    private static ActorRefV1 toSourceActor(String adminSource) {
+        String sourceName = requireNonBlank(adminSource, "adminSource");
+        return new ActorRefV1(sourceName, null, resolveSourceActorType(sourceName));
+    }
+
+    private static ActorRefV1 toRequesterActor(String requestedBy) {
+        return new ActorRefV1(requireNonBlank(requestedBy, "requestedBy"), null, ActorRefV1ActorType.SYSTEM);
+    }
+
+    private static ActorRefV1ActorType resolveSourceActorType(String adminSource) {
+        return switch (adminSource) {
+            case "DISCORD_ROLE" -> ActorRefV1ActorType.SYSTEM;
+            case "NONE" -> ActorRefV1ActorType.SYSTEM;
+            default -> ActorRefV1ActorType.SYSTEM;
+        };
+    }
+
+    private static DiscordLinkStatusChangedV1Action toLinkStatusAction(String action) {
+        return switch (requireNonBlank(action, "action").toLowerCase()) {
+            case "linked" -> DiscordLinkStatusChangedV1Action.LINKED;
+            case "unlinked" -> DiscordLinkStatusChangedV1Action.UNLINKED;
+            default -> throw new IllegalArgumentException("Unsupported discord link status action: " + action);
+        };
     }
 
     private static String requirePlayerName(String playerName) {

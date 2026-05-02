@@ -6,6 +6,7 @@ import org.xcore.plugin.model.AuditRecord;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;
+import org.xcore.protocol.generated.messages.moderation.ModerationAuditAppendedV1EntryType;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -13,6 +14,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.ExpirationInfoV1;
 import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
 import org.xcore.protocol.generated.shared.PlayerCommandTargetV1;
@@ -191,27 +193,27 @@ public final class ModerationProtocolMapper {
         return auditServer != null ? auditServer : server;
     }
 
-    private static String toAuditEntryType(AuditAction action) {
+    private static ModerationAuditAppendedV1EntryType toAuditEntryType(AuditAction action) {
         if (action == null) {
-            return "other";
+            return ModerationAuditAppendedV1EntryType.OTHER;
         }
         return switch (action) {
-            case BAN -> "ban";
-            case MUTE -> "mute";
-            case UNBAN, UNMUTE -> "pardon";
-            default -> "other";
+            case BAN -> ModerationAuditAppendedV1EntryType.BAN;
+            case MUTE -> ModerationAuditAppendedV1EntryType.MUTE;
+            case UNBAN, UNMUTE -> ModerationAuditAppendedV1EntryType.PARDON;
+            default -> ModerationAuditAppendedV1EntryType.OTHER;
         };
     }
 
-    private static String toProtocolActorType(AuditActorType actorType) {
+    private static ActorRefV1ActorType toProtocolActorType(AuditActorType actorType) {
         if (actorType == null) {
-            return "system";
+            return ActorRefV1ActorType.SYSTEM;
         }
         return switch (actorType) {
-            case DISCORD_USER -> "discord";
-            case PLAYER_ADMIN -> "player_admin";
-            case SERVER_CONSOLE -> "server_console";
-            case SYSTEM -> "system";
+            case DISCORD_USER -> ActorRefV1ActorType.DISCORD;
+            case PLAYER_ADMIN -> ActorRefV1ActorType.PLAYER;
+            case SERVER_CONSOLE -> ActorRefV1ActorType.SERVER;
+            case SYSTEM -> ActorRefV1ActorType.SYSTEM;
         };
     }
 
@@ -220,8 +222,8 @@ public final class ModerationProtocolMapper {
         return normalized == null ? "Unknown" : normalized;
     }
 
-    private static String resolveActorType(String actorDiscordId) {
-        return normalizeOptional(actorDiscordId) == null ? "unknown" : "discord";
+    private static ActorRefV1ActorType resolveActorType(String actorDiscordId) {
+        return normalizeOptional(actorDiscordId) == null ? ActorRefV1ActorType.UNKNOWN : ActorRefV1ActorType.DISCORD;
     }
 
     private static String resolveReason(String reason) {

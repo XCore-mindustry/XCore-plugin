@@ -6,6 +6,7 @@ import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.plugin.service.network.DiscordProtocolMapper;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
@@ -277,6 +278,19 @@ public class DiscordLinkService {
                 config.server,
                 System.currentTimeMillis()
         ));
+    }
+
+    public DiscordUnlinkCommandV1 toUnlinkCommand(PlayerData data, String requestedBy) {
+        return DiscordProtocolMapper.toUnlinkCommand(
+                data.uuid,
+                data.pid,
+                data.nickname,
+                data.discordId,
+                data.discordUsername,
+                requestedBy,
+                config.server,
+                System.currentTimeMillis()
+        );
     }
 
     private String nextCode() {

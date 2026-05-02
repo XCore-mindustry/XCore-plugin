@@ -86,7 +86,7 @@ public class MapTransportHandler {
                 Http.get(file.url())
                         .error(Log::err)
                         .submit(result -> {
-                            customMapDirectory.child(file.filename()).writeBytes(result.getResult());
+                            customMapDirectory.child(file.fileName()).writeBytes(result.getResult());
 
                             if (counter.incrementAndGet() == e.files().size()) {
                                 maps.reload();

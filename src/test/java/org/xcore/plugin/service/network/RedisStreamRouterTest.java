@@ -19,12 +19,14 @@ import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLink
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationAuditAppendedV1EntryType;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
@@ -32,6 +34,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.protocol.generated.shared.ActorRefV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
@@ -103,9 +106,9 @@ class RedisStreamRouterTest {
         );
         var auditRoute = router.route(
                 new ModerationAuditAppendedV1(
-                        "ban",
+                        ModerationAuditAppendedV1EntryType.BAN,
                         new ModerationTargetRefV1("uuid-target", 42, "target", null),
-                        new ActorRefV1("Admin", "admin-1", "discord"),
+                        new ActorRefV1("Admin", "admin-1", ActorRefV1ActorType.DISCORD),
                         "reason",
                         "mini-pvp",
                         Instant.parse("2026-04-26T00:00:03Z").toString(),
@@ -179,7 +182,7 @@ class RedisStreamRouterTest {
                 new DiscordLinkStatusChangedV1(
                         new PlayerRefV1("uuid-7", 7, "Nick", null),
                         new DiscordIdentityRefV1("123", "discord-user"),
-                        "linked",
+                        DiscordLinkStatusChangedV1Action.LINKED,
                         "mini-pvp",
                         Instant.parse("2026-04-26T00:00:10Z").toString()
                 ),
@@ -190,8 +193,8 @@ class RedisStreamRouterTest {
                         new PlayerRefV1("uuid-7", 7, "Nick", null),
                         new DiscordIdentityRefV1("123", "discord-user"),
                         true,
-                        "DISCORD_ROLE",
-                        "tester",
+                        new ActorRefV1("DISCORD_ROLE", null, ActorRefV1ActorType.SYSTEM),
+                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
                         "sync",
                         "mini-pvp",
                         Instant.parse("2026-04-26T00:00:11Z").toString()
@@ -202,7 +205,7 @@ class RedisStreamRouterTest {
                 new DiscordUnlinkCommandV1(
                         new PlayerRefV1("uuid-7", 7, "Nick", null),
                         new DiscordIdentityRefV1("123", "discord-user"),
-                        "tester",
+                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
                         "mini-hexed",
                         Instant.parse("2026-04-26T00:00:13Z").toString()
                 ),
@@ -237,8 +240,8 @@ class RedisStreamRouterTest {
                         new PlayerRefV1("uuid-8", 8, "Other", null),
                         new DiscordIdentityRefV1("456", "other-user"),
                         false,
-                        "NONE",
-                        "tester",
+                        new ActorRefV1("NONE", null, ActorRefV1ActorType.SYSTEM),
+                        new ActorRefV1("tester", null, ActorRefV1ActorType.SYSTEM),
                         "sync",
                         "survival",
                         Instant.parse("2026-04-26T00:00:12Z").toString()

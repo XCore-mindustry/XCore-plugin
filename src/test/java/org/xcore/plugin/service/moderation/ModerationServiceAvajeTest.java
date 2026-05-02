@@ -16,6 +16,7 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -149,7 +150,7 @@ class ModerationServiceAvajeTest {
                         && canonical.actor() != null
                         && "admin".equals(canonical.actor().actorName())
                         && "12345".equals(canonical.actor().actorDiscordId())
-                        && "discord".equals(canonical.actor().actorType())
+                        && ActorRefV1ActorType.DISCORD == canonical.actor().actorType()
                         && "Not Specified".equals(canonical.reason())
                         && canonical.expiration() != null
                         && !canonical.expiration().permanent()

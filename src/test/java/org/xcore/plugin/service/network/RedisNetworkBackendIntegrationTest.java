@@ -351,7 +351,7 @@ class RedisNetworkBackendIntegrationTest {
                     .containsEntry("reason", "griefing")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
-                    .containsKeys("target", "starter", "votesFor", "votesAgainst");
+                    .containsKeys("target", "actor", "votesFor", "votesAgainst");
         }
     }
 
