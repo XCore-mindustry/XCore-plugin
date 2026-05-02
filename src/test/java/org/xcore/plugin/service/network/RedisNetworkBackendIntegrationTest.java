@@ -28,7 +28,7 @@ import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;
@@ -166,25 +166,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.ExecuteCommand> alphaReceived = new AtomicReference<>();
-        AtomicReference<TransportEvents.ExecuteCommand> betaReceived = new AtomicReference<>();
+        AtomicReference<ServerCommandExecuteCommandV1> alphaReceived = new AtomicReference<>();
+        AtomicReference<ServerCommandExecuteCommandV1> betaReceived = new AtomicReference<>();
 
-        Subscription<TransportEvents.ExecuteCommand> alphaSubscription = serverBackend.subscribe(
-                TransportEvents.ExecuteCommand.class,
+        Subscription<ServerCommandExecuteCommandV1> alphaSubscription = serverBackend.subscribe(
+                ServerCommandExecuteCommandV1.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<TransportEvents.ExecuteCommand> betaSubscription = requesterBackend.subscribe(
-                TransportEvents.ExecuteCommand.class,
+        Subscription<ServerCommandExecuteCommandV1> betaSubscription = requesterBackend.subscribe(
+                ServerCommandExecuteCommandV1.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new TransportEvents.ExecuteCommand("status", new String[0], false));
+        serverBackend.send(new ServerCommandExecuteCommandV1("status", List.of(), false));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();

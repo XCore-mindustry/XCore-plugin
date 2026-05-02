@@ -25,7 +25,7 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRespons
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 
 import java.util.List;
 
@@ -176,7 +176,7 @@ class RedisTransportContractsTest {
         RedisTransportTopology.RouteSpec commandRoute = RedisTransportTopology.routeFor(PlayerPasswordResetCommandV1.class);
         RedisTransportTopology.RouteSpec mapsLoadCommandRoute = RedisTransportTopology.routeFor(MapsLoadCommandV1.class);
         RedisTransportTopology.RouteSpec discordAdminCommandRoute = RedisTransportTopology.routeFor(DiscordAdminAccessChangedCommandV1.class);
-        RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(TransportEvents.ExecuteCommand.class);
+        RedisTransportTopology.RouteSpec broadcastCommandRoute = RedisTransportTopology.routeFor(ServerCommandExecuteCommandV1.class);
         RedisTransportTopology.RouteSpec rpcRoute = RedisTransportTopology.routeFor(MapsListRequestV1.class);
         RedisTransportTopology.RouteSpec removeRpcRoute = RedisTransportTopology.routeFor(MapsRemoveRequestV1.class);
         RedisTransportTopology.RouteSpec kickBannedRoute = RedisTransportTopology.routeFor(ModerationKickBannedCommandV1.class);

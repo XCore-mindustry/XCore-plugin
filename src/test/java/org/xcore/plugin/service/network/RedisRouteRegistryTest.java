@@ -13,6 +13,7 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNickn
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
@@ -32,7 +33,6 @@ import org.xcore.protocol.generated.messages.moderation.ModerationMessages.Moder
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
-import org.xcore.plugin.event.TransportEvents;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -193,7 +193,7 @@ class RedisRouteRegistryTest {
         assertThat(registry.isReadOnlyType(ModerationAuditAppendedV1.class)).isTrue();
         assertThat(registry.isMutatingType(ModerationKickBannedCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(ModerationPardonCommandV1.class)).isTrue();
-        assertThat(registry.isMutatingType(TransportEvents.ExecuteCommand.class)).isTrue();
+        assertThat(registry.isMutatingType(ServerCommandExecuteCommandV1.class)).isTrue();
         assertThat(registry.isMutatingType(ChatGlobalV1.class)).isFalse();
     }
 }

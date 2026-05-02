@@ -1,7 +1,6 @@
 package org.xcore.plugin.event.transport;
 
 import arc.util.Log;
-import arc.util.Structs;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
@@ -9,7 +8,6 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
@@ -19,7 +17,9 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadge
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
@@ -127,16 +127,16 @@ public class ModerationTransportHandler {
                 "password reset"
         ));
 
-        network.subscribe(TransportEvents.ReloadPlayerDataCache.class, _ -> {
+        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> {
             sessionService.reloadCache();
             info("Reloaded player data cache.");
         });
 
-        network.subscribe(TransportEvents.ExecuteCommand.class, e -> {
-            if (e.expectServers() != null) {
-                if (e.isExclusion()) {
-                    if (Structs.contains(e.expectServers(), config.server)) return;
-                } else if (e.expectServers().length > 0 && !Structs.contains(e.expectServers(), config.server)) {
+        network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
+            if (!e.targetServers().isEmpty()) {
+                if (e.exclusion()) {
+                    if (e.targetServers().contains(config.server)) return;
+                } else if (!e.targetServers().contains(config.server)) {
                     return;
                 }
             }

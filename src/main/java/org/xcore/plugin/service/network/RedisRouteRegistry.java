@@ -9,9 +9,11 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadge
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
@@ -158,9 +160,9 @@ public final class RedisRouteRegistry {
         register(mutating(DiscordUnlinkCommandV1.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
         register(readOnly(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(TransportEvents.ReloadPlayerDataCache.class, "xcore:cmd:reload-cache:{server}", "cache.reload_player_data", 120_000L, RedisServerResolver.defaultServer()));
+        register(mutating(PlayerDataCacheReloadCommandV1.class, "xcore:cmd:reload-cache:{server}", "player-data-cache.reload.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
         register(mutating(MapsLoadCommandV1.class, "xcore:cmd:maps-load:{server}", "maps.load.command", 300_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(TransportEvents.ExecuteCommand.class, "xcore:cmd:execute-command:broadcast", "server.execute_command", 120_000L, RedisServerResolver.broadcast()));
+        register(mutating(ServerCommandExecuteCommandV1.class, "xcore:cmd:execute-command:broadcast", "server-command.execute.command", 120_000L, RedisServerResolver.broadcast()));
         register(mutating(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, MODERATION_SERVER_RESOLVER));
         register(rpc(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsListResponseV1.class));
         register(rpc(MapsRemoveRequestV1.class, "xcore:rpc:req:{server}", "maps.remove.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsRemoveResponseV1.class));
@@ -237,6 +239,9 @@ public final class RedisRouteRegistry {
             return command.server();
         }
         if (payload instanceof PlayerPasswordResetCommandV1 command) {
+            return command.server();
+        }
+        if (payload instanceof PlayerDataCacheReloadCommandV1 command) {
             return command.server();
         }
         return null;
