@@ -106,7 +106,14 @@ class RedisNetworkBackendIntegrationTest {
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
             assertThat(last.get("event_type")).isEqualTo("chat.message");
-            assertThat(last.get("payload_json")).contains("hello");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> chatPayload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(chatPayload)
+                    .containsEntry("messageType", "chat.message")
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("authorName", "tester")
+                    .containsEntry("message", "hello")
+                    .containsEntry("server", "alpha");
         }
     }
 
@@ -227,6 +234,8 @@ class RedisNetworkBackendIntegrationTest {
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.ban.created");
             assertThat(payload)
+                    .containsEntry("messageType", "moderation.ban.created")
+                    .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "rule")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
@@ -264,6 +273,8 @@ class RedisNetworkBackendIntegrationTest {
             Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
             assertThat(last.get("event_type")).isEqualTo("moderation.mute.created");
             assertThat(payload)
+                    .containsEntry("messageType", "moderation.mute.created")
+                    .containsEntry("messageVersion", 1.0)
                     .containsEntry("reason", "rule")
                     .containsEntry("server", "alpha")
                     .containsEntry("occurredAt", "2026-04-26T00:00:00Z")

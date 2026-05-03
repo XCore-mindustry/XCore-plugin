@@ -3,7 +3,6 @@ package org.xcore.plugin.event.transport;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;

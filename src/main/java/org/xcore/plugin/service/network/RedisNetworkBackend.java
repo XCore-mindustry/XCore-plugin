@@ -15,6 +15,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -232,7 +233,7 @@ public final class RedisNetworkBackend {
             return requestHandle;
         }
 
-        String requestJson = gson.toJson(request);
+        String requestJson = payloadJson(request);
         RedisCommands<String, String> commands = connectionManager.commands();
         try {
             streamSupport.xaddWithTrim(commands, route.streamKey(),
@@ -260,7 +261,7 @@ public final class RedisNetworkBackend {
         try {
             RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, context.replyTo(),
-                    envelopeFactory.rpcResponseFields(context, gson.toJson(response), System.currentTimeMillis()));
+                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()));
         } catch (RuntimeException e) {
             rpcResponses.decrementAndGet();
             throw e;
@@ -299,6 +300,9 @@ public final class RedisNetworkBackend {
     }
 
     private String payloadJson(Object event) {
+        if (event instanceof ProtocolPayload protocolPayload) {
+            return gson.toJson(protocolPayload.toPayload());
+        }
         return gson.toJson(event);
     }
 

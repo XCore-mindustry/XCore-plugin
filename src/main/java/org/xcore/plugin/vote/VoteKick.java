@@ -12,7 +12,6 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
