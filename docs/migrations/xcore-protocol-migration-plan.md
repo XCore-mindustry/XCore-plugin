@@ -1,45 +1,39 @@
-# XCore Protocol Migration Plan
+# XCore Protocol Migration Record
 
-## Goal
-Provide a phased migration strategy from the current Redis contract model to the future `xcore-protocol` model.
+## Status: Implemented
 
-## Migration Principles
-- Prefer additive migration over big-bang replacement.
-- Keep current consumers operational during transition.
-- Move compatibility concerns into explicit adapters.
-- Migrate by message family, not by random file batches.
-- Start with the highest-value cross-repo family first.
+The migration from ad-hoc Redis contract model to canonical `xcore-protocol` model is complete across all planned message families. This document records what was done, not what remains to be done.
 
-## Phase 0 — Documentation And Design Freeze
-Create and approve the design packet in `XCore-plugin`.
+## Relationship to PRs
 
-Deliverables:
-- ADR
-- target architecture
-- message model
-- repo blueprint
-- migration plan
-- agent playbook
+- `XCore-plugin#5` — plugin-side protocol adoption
+- `XCore-discord-bot#1` — bot-side protocol adoption
+- `xcore-protocol` main branch — canonical schemas, fixtures, generated Java/Python artifacts
 
-Exit criteria:
-- target-state decisions no longer need to be rediscovered during implementation
+## Completed Phases
 
-## Phase 1 — Bootstrap `xcore-protocol`
-Create the new repository with:
+### Phase 0 — Documentation And Design Freeze
+Created the design packet in `XCore-plugin`:
+- ADR (`docs/adr/ADR-redis-to-protocol-first.md`)
+- target architecture (`docs/architecture/xcore-protocol-target-architecture.md`)
+- message model (`docs/architecture/xcore-protocol-message-model.md`)
+- repo blueprint (`docs/architecture/xcore-protocol-repository-blueprint.md`)
+- migration plan (this document)
+- agent playbook (`docs/implementation/xcore-protocol-agent-playbook.md`)
 
+### Phase 1 — Bootstrap `xcore-protocol`
+Created the `xcore-protocol` repository with:
 - README and mission statement
 - versioning and compatibility policies
-- initial spec directories
-- initial fixture directories
-- generator scaffolding/configuration
-- Java and Python package skeletons for generated artifacts and thin support
+- spec directories for all message families
+- fixture directories
+- generator and codegen pipeline
+- Java module with generated protocol DTOs + runtime support (`ProtocolPayload`)
+- Python package with generated models + validation helpers
+- cross-language compatibility tests
 
-Exit criteria:
-- the protocol repository exists with agreed structure and contribution rules
-
-## Phase 2 — Moderation Family First
-
-### Included message families
+### Phase 2 — Moderation Family
+Implemented:
 - `moderation.ban.created`
 - `moderation.mute.created`
 - `moderation.vote-kick.created`
@@ -47,113 +41,56 @@ Exit criteria:
 - `moderation.pardon.command`
 - `moderation.audit.appended`
 
-### Work items
-- define canonical schemas
-- define route metadata
-- define shared subtypes used by moderation
-- create canonical fixtures
-- create legacy compatibility fixtures for existing payload forms
-- generate Java and Python models for moderation contracts
-- add thin handwritten validation/runtime support around generated artifacts
+Plugin and bot both publish/consume canonical moderation DTOs via generated `org.xcore.protocol.generated.messages.moderation.*`.
 
-### Application changes
-`XCore-plugin`:
-- introduce mapping to generated protocol DTOs
-- stop treating internal punishment/domain objects as the wire contract
-
-`XCore-discord-bot`:
-- adopt canonical outbound payloads
-- move alias-heavy parsing into compatibility adapters where still needed
-
-Exit criteria:
-- moderation contracts are defined and consumed through the protocol model
-
-## Phase 3 — Discord Linking/Admin Contracts
-
-### Included messages
+### Phase 3 — Discord Linking/Admin Contracts
+Implemented:
 - `discord.link.confirm.command`
 - `discord.unlink.command`
 - `discord.link.status-changed`
 - `discord.admin-access.changed.command`
+- `discord.link-code-created`
 
-Focus:
-- canonical field naming
-- timestamp consistency
-- command vs event separation
-
-## Phase 4 — Maps RPC Contracts
-
-### Included messages
+### Phase 4 — Maps RPC Contracts
+Implemented:
 - `maps.list.request`
 - `maps.list.response`
 - `maps.remove.request`
 - `maps.remove.response`
 
-Focus:
-- explicit request/response pairing
-- canonical request shape
-- remove duplicate outbound field naming like `fileName` + `file_name`
+### Phase 5 — Chat / Heartbeat / Misc
+Implemented:
+- chat messages (`ChatMessageV1`)
+- global chat (`ChatGlobalV1`)
+- server heartbeat (`ServerHeartbeatV1`)
+- player join/leave (`PlayerJoinLeaveV1`)
+- server actions (`ServerActionV1`)
+- player state change commands (nickname, badge, cache reload, password reset, etc.)
+- server command execution (`ServerCommandExecuteCommandV1`)
 
-## Phase 5 — Chat / Heartbeat / Misc
-Migrate:
-- chat messages
-- global chat
-- heartbeat
-- server action and join/leave generated message cutovers
-- raw fallback removal and remaining legacy event-name cleanup
+Legacy fallback paths (raw transport, snake_case aliases, `TransportEvents.ServerScopedEvent`) have been removed.
 
-Focus:
-- normalize event type naming
-- isolate historical forms into compatibility adapters
+## Transport Model (Current State)
 
-## Compatibility Strategy During Migration
+- Plugin publishes and consumes only canonical generated protocol DTOs.
+- `RedisRouteRegistry` registers generated protocol classes only.
+- `RedisNetworkBackend` serializes protocol payloads via `ProtocolPayload.toPayload()`.
+- `RedisStreamRouter` routes strictly by generated type.
+- Bot uses strict `from_payload()` parsing with no legacy alias normalization.
 
-### Producers
-All new or upgraded producers send the canonical protocol form.
+## Validation Surface
 
-### Consumers
-Consumers may temporarily support legacy payload forms, but only via explicit compatibility readers.
+- protocol schema validation
+- canonical fixture validation (Java + Python)
+- cross-language roundtrip compatibility tests
+- plugin integration tests (`./gradlew test`)
+- bot integration tests (`uv run pytest tests/`)
 
-### Legacy handling
-- legacy names and field aliases remain documented
-- compat coverage must include fixtures and tests
-- every compat rule gets an owner and sunset condition
+## Design Decisions Preserved
 
-## Suggested Current-To-Target Mapping Themes
-
-### Current state patterns to remove
-- duplicate canonical field spellings
-- outbound duplication of multiple naming styles
-- reliance on internal Java class shape for public contracts
-- legacy event names handled as first-class canonical types
-
-### Current state patterns to keep conceptually
-- broadcast event vs targeted command distinction
-- request/response correlation concept
-- stream naming discipline as a route metadata concern
-- explicit DLQ and idempotency semantics
-
-## Validation Expectations Per Phase
-- protocol specs validate
-- fixtures validate
-- generated Java SDK validates fixtures
-- generated Python SDK validates fixtures
-- cross-language compatibility checks pass
-- application repos pass their targeted migration tests before broader validation
-
-## Risks
-- under-specifying compatibility windows
-- moving too many families at once
-- accidentally turning `xcore-protocol` into a generic utility repository
-- keeping legacy aliases in canonical schemas for too long
-
-## Risk Controls
-- migrate family by family
-- keep canonical schema strict
-- document legacy support separately
-- require schema + fixture + test updates together
-
-## Completion Criteria
-- `XCore-plugin` and `XCore-discord-bot` both consume generated protocol artifacts for the migrated families
-- canonical outbound payloads are used consistently
-- historical compatibility is localized rather than spread through business logic
+- `xcore-protocol` owns the canonical wire contract surface.
+- Application repos consume generated artifacts, not self-defined DTOs.
+- Canonical payloads use one field naming style (camelCase).
+- `actor` = concrete initiator, `source` = provenance/authority.
+- Migration was additive by family, not big-bang.
+- No backward-compatibility legacy paths retained — first deployment uses canonical-only schema.

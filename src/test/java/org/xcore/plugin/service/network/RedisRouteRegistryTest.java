@@ -2,7 +2,6 @@ package org.xcore.plugin.service.network;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
@@ -88,17 +87,6 @@ class RedisRouteRegistryTest {
     }
 
     @Test
-    @DisplayName("legacy server scoped event fallback resolves server")
-    void testLegacyServerScopedEventFallsBackToServer() {
-        var descriptor = registry.routeDescriptorFor(MapsLoadCommandV1.class);
-        var payload = new TestServerScopedEvent("legacy-survival");
-
-        assertThat(descriptor).isNotNull();
-        assertThat(registry.resolveStreamKey(descriptor, payload, "mini-pvp"))
-                .isEqualTo("xcore:cmd:maps-load:legacy-survival");
-    }
-
-    @Test
     @DisplayName("unsupported payloads throw when routing")
     void testUnregisteredPayloadThrows() {
         assertThat(registry.routeDescriptorFor(new Object())).isNull();
@@ -115,8 +103,5 @@ class RedisRouteRegistryTest {
         assertThat(descriptor).isNotNull();
         assertThat(registry.resolveStreamKey(descriptor, new ChatDiscordIngressCommandV1("bot", "hello", "survival"), "mini-pvp"))
                 .isEqualTo("xcore:cmd:discord-message:survival");
-    }
-
-    private record TestServerScopedEvent(String server) implements TransportEvents.ServerScopedEvent {
     }
 }

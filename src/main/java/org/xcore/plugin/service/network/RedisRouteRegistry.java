@@ -1,6 +1,5 @@
 package org.xcore.plugin.service.network;
 
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
@@ -59,17 +58,6 @@ public final class RedisRouteRegistry {
         String mapsServer = mapsServer(payload);
         if (mapsServer != null && !mapsServer.isBlank()) {
             return mapsServer;
-        }
-        // Legacy migration fallback — TransportEvents.ServerScopedEvent is retained
-        // for backward compatibility during protocol migration rollout.
-        // This branch will be removed once all payloads use generated protocol DTOs
-        // and TransportEvents.ServerScopedEvent is no longer needed.
-        // See: xcore-protocol migration plan for removal timeline.
-        if (payload instanceof TransportEvents.ServerScopedEvent serverScopedEvent) {
-            String server = serverScopedEvent.server();
-            if (server != null && !server.isBlank()) {
-                return server;
-            }
         }
         return defaultServer;
     };
