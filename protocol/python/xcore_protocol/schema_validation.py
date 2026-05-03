@@ -17,7 +17,10 @@ def load_json(path: Path) -> Any:
 
 def _build_registry() -> Registry:
     registry = Registry()
+    fixtures_dir = spec_root() / "fixtures"
     for schema_path in spec_root().rglob("*.json"):
+        if schema_path.is_relative_to(fixtures_dir):
+            continue
         schema = load_json(schema_path)
         resource = Resource.from_contents(schema)
 
