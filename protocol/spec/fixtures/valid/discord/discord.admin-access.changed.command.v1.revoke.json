@@ -1,0 +1,27 @@
+{
+  "messageType": "discord.admin-access.changed.command",
+  "messageVersion": 1,
+  "player": {
+    "playerUuid": "6d0c8b8a-5f5f-4ff2-bd31-5bb0ce0f5e31",
+    "playerName": "AlphaPlayer",
+    "playerPid": 1024,
+    "ip": "203.0.113.10"
+  },
+  "discord": {
+    "discordId": "284729104857600001",
+    "discordUsername": "AdminBot"
+  },
+  "admin": false,
+  "source": {
+    "actorName": "DiscordAdminAccessSync",
+    "actorType": "system"
+  },
+  "actor": {
+    "actorName": "AdminBot",
+    "actorDiscordId": "284729104857600001",
+    "actorType": "discord"
+  },
+  "reason": "Revoked after Discord role removal",
+  "server": "survival-eu-1",
+  "occurredAt": "2026-05-03T12:15:00Z"
+}

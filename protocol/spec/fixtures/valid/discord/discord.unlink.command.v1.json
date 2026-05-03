@@ -1,0 +1,21 @@
+{
+  "messageType": "discord.unlink.command",
+  "messageVersion": 1,
+  "player": {
+    "playerUuid": "9e7d6a80-9bb5-41f2-83df-8bfb10eb7f9b",
+    "playerName": "BetaPlayer",
+    "playerPid": 2048,
+    "ip": "203.0.113.22"
+  },
+  "discord": {
+    "discordId": "284729104857600002",
+    "discordUsername": "BetaDisplay"
+  },
+  "actor": {
+    "actorName": "Beta Display",
+    "actorDiscordId": "284729104857600002",
+    "actorType": "discord"
+  },
+  "server": "survival-eu-1",
+  "requestedAt": "2026-05-03T12:30:00Z"
+}
