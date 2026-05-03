@@ -2,10 +2,10 @@ package org.xcore.plugin.service.moderation;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
@@ -20,8 +20,10 @@ import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
+import org.xcore.plugin.service.network.ModerationProtocolMapper;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.TimeService;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +55,7 @@ public class ModerationService {
     private final FindService find;
     private final TimeService time;
     private final AuditService auditService;
+    private final Config config;
 
     @Inject
     public ModerationService(PlayerDataRepository playerDataRepository,
@@ -62,7 +65,8 @@ public class ModerationService {
                              NetworkService network,
                              FindService find,
                              TimeService timeService,
-                             AuditService auditService) {
+                             AuditService auditService,
+                             Config config) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.muteDataRepository = muteDataRepository;
@@ -71,6 +75,7 @@ public class ModerationService {
         this.find = find;
         this.time = timeService;
         this.auditService = auditService;
+        this.config = config;
     }
 
     /**
@@ -117,11 +122,18 @@ public class ModerationService {
                 null
         );
 
-        network.post(ban);
+        postBanEvents(ban, audit);
         postAuditEvent(audit);
 
         if (kickOnline) {
-            network.post(new TransportEvents.KickBannedPlayer(target.uuid, ip));
+            network.post(ModerationProtocolMapper.toKickBannedCommand(
+                    target.uuid,
+                    target.pid,
+                    target.nickname,
+                    ip,
+                    config.server,
+                    commandOccurredAt(audit)
+            ));
         }
 
         return ModerationResult.success("Player '" + target.nickname + "' banned successfully", ban);
@@ -154,6 +166,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, null, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unbanned successfully", target);
     }
@@ -198,7 +211,7 @@ public class ModerationService {
                 null
         );
 
-        network.post(mute);
+        network.post(ModerationProtocolMapper.toMuteCreated(mute, config.server, eventOccurredAt(audit)));
         postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
@@ -231,6 +244,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
+        network.post(toPardonCommand(target.uuid, target.pid, target.nickname, null, audit));
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }
@@ -277,9 +291,18 @@ public class ModerationService {
                 null
         );
 
-        network.post(ban);
+        if (hasUuid(uuid)) {
+            postBanEvents(ban, audit);
+        }
         postAuditEvent(audit);
-        network.post(new TransportEvents.KickBannedPlayer(uuid, ip));
+        network.post(ModerationProtocolMapper.toKickBannedCommand(
+                uuid,
+                null,
+                ban.name,
+                ip,
+                config.server,
+                commandOccurredAt(audit)
+        ));
 
         return ModerationResult.success("Player '" + ban.name + "' banned until " + expire, ban);
     }
@@ -311,6 +334,7 @@ public class ModerationService {
         );
 
         postAuditEvent(audit);
+        network.post(toPardonCommand(uuid, null, UNKNOWN_PLAYER_NAME, ip, audit));
 
         return ModerationResult.success("Unbanned: UUID=" + uuid + " / IP=" + ip, null);
     }
@@ -373,8 +397,31 @@ public class ModerationService {
 
     private void postAuditEvent(AuditRecord audit) {
         if (audit != null) {
-            network.post(toAuditEvent(audit));
+            network.post(ModerationProtocolMapper.toAuditAppended(audit, config.server));
         }
+    }
+
+    private void postBanEvents(BanData ban, AuditRecord audit) {
+        network.post(ModerationProtocolMapper.toBanCreated(ban, config.server, eventOccurredAt(audit)));
+    }
+
+    private ModerationPardonCommandV1 toPardonCommand(String uuid, Integer pid, String playerName, String ip, AuditRecord audit) {
+        return ModerationProtocolMapper.toPardonCommand(
+                uuid,
+                pid,
+                playerName,
+                ip,
+                config.server,
+                commandOccurredAt(audit)
+        );
+    }
+
+    private static Instant eventOccurredAt(AuditRecord audit) {
+        return audit != null && audit.occurredAt != null ? audit.occurredAt : Instant.now();
+    }
+
+    private static Instant commandOccurredAt(AuditRecord audit) {
+        return eventOccurredAt(audit);
     }
 
     private static AuditTarget auditTarget(String uuid, Integer pid, String nameSnapshot, String ipSnapshot) {
@@ -426,27 +473,12 @@ public class ModerationService {
                 .build();
     }
 
-    private static TransportEvents.ModerationAuditAppendedEvent toAuditEvent(AuditRecord record) {
-        return new TransportEvents.ModerationAuditAppendedEvent(
-                record.auditId,
-                record.action.name(),
-                record.target == null ? null : record.target.getUuid(),
-                record.target == null ? null : record.target.getPid(),
-                record.target == null ? null : record.target.getNameSnapshot(),
-                record.actor == null || record.actor.getType() == null ? null : record.actor.getType().name(),
-                record.actor == null ? null : record.actor.getId(),
-                record.actor == null ? null : record.actor.getNameSnapshot(),
-                record.reason,
-                record.details == null ? null : record.details.getDurationMs(),
-                record.details == null ? null : record.details.getExpiresAt(),
-                record.relatedAuditId,
-                record.origin == null ? null : record.origin.getServerId(),
-                record.occurredAt
-        );
-    }
-
     private static boolean hasNoIdentifier(String uuid, String ip) {
         return uuid == null && ip == null;
+    }
+
+    private static boolean hasUuid(String uuid) {
+        return uuid != null && !uuid.isBlank();
     }
 
     private static Instant toExpireDate(Duration duration) {

@@ -8,7 +8,8 @@ import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -50,13 +51,13 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", false);
 
-        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
         assertThat(event.command()).isEqualTo("say hello world");
-        assertThat(event.expectServers()).containsExactly("mini-pvp", "mini-hexed");
-        assertThat(event.isExclusion()).isFalse();
+        assertThat(event.targetServers()).containsExactly("mini-pvp", "mini-hexed");
+        assertThat(event.exclusion()).isFalse();
     }
 
     @Test
@@ -85,13 +86,13 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", null, false);
 
-        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
         assertThat(event.command()).isEqualTo("say hello world");
-        assertThat(event.expectServers()).isEmpty();
-        assertThat(event.isExclusion()).isFalse();
+        assertThat(event.targetServers()).isEmpty();
+        assertThat(event.exclusion()).isFalse();
     }
 
     @Test
@@ -120,13 +121,13 @@ class MaintainControllerTest {
 
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", true);
 
-        var captor = ArgumentCaptor.forClass(TransportEvents.ExecuteCommand.class);
+        var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
         verify(network).post(captor.capture());
 
         var event = captor.getValue();
         assertThat(event.command()).isEqualTo("say hello world");
-        assertThat(event.expectServers()).containsExactly("mini-pvp", "mini-hexed");
-        assertThat(event.isExclusion()).isTrue();
+        assertThat(event.targetServers()).containsExactly("mini-pvp", "mini-hexed");
+        assertThat(event.exclusion()).isTrue();
     }
 
     @Test
@@ -252,6 +253,6 @@ class MaintainControllerTest {
 
         verify(repository).deleteBots();
         verify(topMenuCacheService).invalidateAll();
-        verify(network).post(org.mockito.ArgumentMatchers.any(TransportEvents.ReloadPlayerDataCache.class));
+        verify(network).post(org.mockito.ArgumentMatchers.any(PlayerDataCacheReloadCommandV1.class));
     }
 }

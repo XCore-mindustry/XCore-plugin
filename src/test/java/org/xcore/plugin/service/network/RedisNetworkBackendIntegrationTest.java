@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import com.google.gson.Gson;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import io.lettuce.core.RedisClient;
@@ -9,12 +10,27 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
+import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.shared.MapEntryV1;
+import org.xcore.protocol.generated.shared.MapFileSourceV1;
+import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.model.BanData;
+import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;
 
 import java.time.Instant;
@@ -45,6 +61,29 @@ class RedisNetworkBackendIntegrationTest {
         if (requesterBackend != null) {
             requesterBackend.disconnect();
         }
+        flushRedis();
+    }
+
+    @Test
+    @DisplayName("send rejects unsupported payloads without publishing any fallback stream")
+    void sendRejectsUnsupportedPayloadsWithoutPublishingAnyFallbackStream() {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        requesterBackend.send(new Object());
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(1L);
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isZero();
+
+        try (RedisClient client = RedisClient.create(config.redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            List<StreamMessage<String, String>> messages = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:evt:raw", "0-0")
+            );
+
+            assertThat(messages).isEmpty();
+        }
     }
 
     @Test
@@ -54,7 +93,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "hello", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "hello", "alpha"));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -67,7 +106,14 @@ class RedisNetworkBackendIntegrationTest {
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
             assertThat(last.get("event_type")).isEqualTo("chat.message");
-            assertThat(last.get("payload_json")).contains("hello");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> chatPayload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(chatPayload)
+                    .containsEntry("messageType", "chat.message")
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("authorName", "tester")
+                    .containsEntry("message", "hello")
+                    .containsEntry("server", "alpha");
         }
     }
 
@@ -84,25 +130,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.GlobalChatEvent> alphaReceived = new AtomicReference<>();
-        AtomicReference<TransportEvents.GlobalChatEvent> betaReceived = new AtomicReference<>();
+        AtomicReference<ChatGlobalV1> alphaReceived = new AtomicReference<>();
+        AtomicReference<ChatGlobalV1> betaReceived = new AtomicReference<>();
 
-        Subscription<TransportEvents.GlobalChatEvent> alphaSubscription = serverBackend.subscribe(
-                TransportEvents.GlobalChatEvent.class,
+        Subscription<ChatGlobalV1> alphaSubscription = serverBackend.subscribe(
+                ChatGlobalV1.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<TransportEvents.GlobalChatEvent> betaSubscription = requesterBackend.subscribe(
-                TransportEvents.GlobalChatEvent.class,
+        Subscription<ChatGlobalV1> betaSubscription = requesterBackend.subscribe(
+                ChatGlobalV1.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new TransportEvents.GlobalChatEvent("player", "hello world", "alpha"));
+        serverBackend.send(new ChatGlobalV1("player", "hello world", "alpha"));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -128,25 +174,25 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch alphaLatch = new CountDownLatch(1);
         CountDownLatch betaLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.ExecuteCommand> alphaReceived = new AtomicReference<>();
-        AtomicReference<TransportEvents.ExecuteCommand> betaReceived = new AtomicReference<>();
+        AtomicReference<ServerCommandExecuteCommandV1> alphaReceived = new AtomicReference<>();
+        AtomicReference<ServerCommandExecuteCommandV1> betaReceived = new AtomicReference<>();
 
-        Subscription<TransportEvents.ExecuteCommand> alphaSubscription = serverBackend.subscribe(
-                TransportEvents.ExecuteCommand.class,
+        Subscription<ServerCommandExecuteCommandV1> alphaSubscription = serverBackend.subscribe(
+                ServerCommandExecuteCommandV1.class,
                 event -> {
                     alphaReceived.set(event);
                     alphaLatch.countDown();
                 }
         );
-        Subscription<TransportEvents.ExecuteCommand> betaSubscription = requesterBackend.subscribe(
-                TransportEvents.ExecuteCommand.class,
+        Subscription<ServerCommandExecuteCommandV1> betaSubscription = requesterBackend.subscribe(
+                ServerCommandExecuteCommandV1.class,
                 event -> {
                     betaReceived.set(event);
                     betaLatch.countDown();
                 }
         );
 
-        serverBackend.send(new TransportEvents.ExecuteCommand("status", new String[0], false));
+        serverBackend.send(new ServerCommandExecuteCommandV1("status", List.of(), false));
 
         assertThat(alphaLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(betaLatch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -160,7 +206,7 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
-    @DisplayName("send serializes BanData with Instant without reflection failure")
+    @DisplayName("send serializes canonical moderation ban created event on primary route")
     void sendSerializesBanDataInstant() {
         Config config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
@@ -168,7 +214,11 @@ class RedisNetworkBackendIntegrationTest {
 
         BanData banData = punishment(new BanData(), "u-1", "player");
         banData.ip = "1.2.3.4";
-        requesterBackend.send(banData);
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
+                banData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
@@ -180,31 +230,114 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
-            assertThat(last.get("event_type")).isEqualTo("moderation.ban");
-            assertThat(last.get("payload_json")).contains("expireDate");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(last.get("event_type")).isEqualTo("moderation.ban.created");
+            assertThat(payload)
+                    .containsEntry("messageType", "moderation.ban.created")
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("reason", "rule")
+                    .containsEntry("server", "alpha")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
+                    .containsKeys("target", "actor", "expiration")
+                    .doesNotContainKeys("uuid", "name", "adminName", "expireDate");
         }
     }
 
     @Test
-    @DisplayName("send serializes vote-kick event to moderation votekick stream")
+    @DisplayName("send serializes canonical moderation mute created event")
+    void sendSerializesCanonicalModerationMuteCreatedEvent() {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        MuteData muteData = punishment(new MuteData(), "u-1", "player");
+        var canonicalEvent = org.xcore.plugin.service.network.ModerationProtocolMapper.toMuteCreated(
+                muteData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        );
+        requesterBackend.send(canonicalEvent);
+
+        assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
+
+        try (RedisClient client = RedisClient.create(config.redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            List<StreamMessage<String, String>> messages = connection.sync().xread(
+                    XReadArgs.StreamOffset.from("xcore:evt:moderation:mute", "0-0")
+            );
+
+            assertThat(messages).isNotEmpty();
+            var last = messages.get(messages.size() - 1).getBody();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(last.get("event_type")).isEqualTo("moderation.mute.created");
+            assertThat(payload)
+                    .containsEntry("messageType", "moderation.mute.created")
+                    .containsEntry("messageVersion", 1.0)
+                    .containsEntry("reason", "rule")
+                    .containsEntry("server", "alpha")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
+                    .containsKeys("target", "actor", "expiration")
+                    .doesNotContainKeys("uuid", "name", "adminName", "expireDate");
+        }
+    }
+
+    @Test
+    @DisplayName("subscribe consumes canonical moderation ban created event from primary route")
+    void subscribeConsumesCanonicalModerationBanCreatedEvent() throws InterruptedException {
+        Config config = baseConfig("alpha");
+        requesterBackend = new RedisNetworkBackend(config);
+        requesterBackend.connect();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<ModerationBanCreatedV1> received = new AtomicReference<>();
+
+        Subscription<ModerationBanCreatedV1> subscription = requesterBackend.subscribe(
+                ModerationBanCreatedV1.class,
+                event -> {
+                    received.set(event);
+                    latch.countDown();
+                }
+        );
+        
+        BanData banData = punishment(new BanData(), "u-1", "player");
+        banData.ip = "1.2.3.4";
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toBanCreated(
+                banData,
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
+
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(received.get()).isNotNull();
+        assertThat(ModerationBanCreatedV1.MESSAGE_TYPE).isEqualTo(ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE);
+        assertThat(ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION).isEqualTo(1);
+        assertThat(received.get().target().playerUuid()).isEqualTo("u-1");
+        assertThat(received.get().server()).isEqualTo("alpha");
+
+        subscription.unsubscribe();
+    }
+
+    @Test
+    @DisplayName("send serializes canonical vote-kick event to moderation votekick stream")
     void sendSerializesVoteKickEvent() {
         Config config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        requesterBackend.send(new TransportEvents.VoteKickEvent(
-                "Target",
-                42,
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickCreated(
                 "uuid-target",
+                42,
+                "Target",
                 "Starter",
                 7,
                 "123456",
                 "griefing",
-                List.of(new TransportEvents.VoteKickParticipant("Starter", 7, "123456")),
-                List.of(new TransportEvents.VoteKickParticipant("Voter2", 8, "654321")),
-                "started",
+                List.of(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickParticipant("Starter", 7, "123456")),
+                List.of(org.xcore.plugin.service.network.ModerationProtocolMapper.toVoteKickParticipant("Voter2", 8, "654321")),
                 "alpha",
-                123456789L
+                Instant.parse("2026-04-26T00:00:00Z")
         ));
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
@@ -217,11 +350,14 @@ class RedisNetworkBackendIntegrationTest {
 
             assertThat(messages).isNotEmpty();
             var last = messages.get(messages.size() - 1).getBody();
-            assertThat(last.get("event_type")).isEqualTo("moderation.votekick");
-            assertThat(last.get("payload_json")).contains("Target");
-            assertThat(last.get("payload_json")).contains("votesFor");
-            assertThat(last.get("payload_json")).contains("votesAgainst");
-            assertThat(last.get("payload_json")).doesNotContain("participants");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payload = new Gson().fromJson(last.get("payload_json"), Map.class);
+            assertThat(last.get("event_type")).isEqualTo("moderation.vote-kick.created");
+            assertThat(payload)
+                    .containsEntry("reason", "griefing")
+                    .containsEntry("server", "alpha")
+                    .containsEntry("occurredAt", "2026-04-26T00:00:00Z")
+                    .containsKeys("target", "actor", "votesFor", "votesAgainst");
         }
     }
 
@@ -234,14 +370,14 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MessageEvent> received = new AtomicReference<>();
+        AtomicReference<ChatMessageV1> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
             received.set(event);
             latch.countDown();
         });
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "bridge", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "bridge", "alpha"));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
@@ -252,7 +388,7 @@ class RedisNetworkBackendIntegrationTest {
     }
 
     @Test
-    @DisplayName("kick-banned subscribe works")
+    @DisplayName("kick-banned canonical command subscribe works")
     void kickBannedSubscribeWorks() throws InterruptedException {
         Config config = baseConfig("alpha");
 
@@ -260,21 +396,30 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.KickBannedPlayer> received = new AtomicReference<>();
+        AtomicReference<ModerationKickBannedCommandV1> received = new AtomicReference<>();
 
-        Subscription<TransportEvents.KickBannedPlayer> subscription = requesterBackend.subscribe(
-                TransportEvents.KickBannedPlayer.class,
+        Subscription<ModerationKickBannedCommandV1> subscription = requesterBackend.subscribe(
+                ModerationKickBannedCommandV1.class,
                 event -> {
                     received.set(event);
                     latch.countDown();
                 }
         );
 
-        requesterBackend.send(new TransportEvents.KickBannedPlayer("uuid-a", "1.2.3.4"));
+        requesterBackend.send(org.xcore.plugin.service.network.ModerationProtocolMapper.toKickBannedCommand(
+                "uuid-a",
+                null,
+                "Unknown",
+                "1.2.3.4",
+                "alpha",
+                Instant.parse("2026-04-26T00:00:00Z")
+        ));
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
-        assertThat(received.get().uuid()).isEqualTo("uuid-a");
+        assertThat(received.get().target().playerUuid()).isEqualTo("uuid-a");
+        assertThat(received.get().target().ip()).isEqualTo("1.2.3.4");
+        assertThat(received.get().server()).isEqualTo("alpha");
 
         subscription.unsubscribe();
     }
@@ -291,8 +436,8 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
         requesterBackend.connect();
 
-        Subscription<TransportEvents.MapsListRequest> serverSubscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class,
+        Subscription<MapsListRequestV1> serverSubscription =
+                serverBackend.subscribe(MapsListRequestV1.class,
                         request -> serverBackend.respond(
                                 request,
                                 mapsListResponse(
@@ -303,9 +448,9 @@ class RedisNetworkBackendIntegrationTest {
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MapsListResponse> responseRef = new AtomicReference<>();
+        AtomicReference<MapsListResponseV1> responseRef = new AtomicReference<>();
 
-        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(mapsListRequest("target"), response -> {
+        RequestSubscription<MapsListResponseV1> requestHandle = requesterBackend.request(mapsListRequest("target"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -314,10 +459,10 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
-        assertThat(responseRef.get().maps).extracting(entry -> entry.name).containsExactly("A", "B");
-        assertThat(responseRef.get().maps).extracting(entry -> entry.like).containsExactly(3, null);
-        assertThat(responseRef.get().maps).extracting(entry -> entry.reputation).containsExactly(2, null);
-        assertThat(responseRef.get().maps).extracting(entry -> entry.gameMode).containsExactly("pvp", null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::name).containsExactly("A", "B");
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::like).containsExactly(3, null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::reputation).containsExactly(2, null);
+        assertThat(responseRef.get().maps()).extracting(MapEntryV1::gameMode).containsExactly("pvp", null);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("rpc_requests", 0L)).isGreaterThanOrEqualTo(1L);
         assertThat(serverBackend.metricsSnapshot().getOrDefault("rpc_responses", 0L)).isGreaterThanOrEqualTo(1L);
 
@@ -337,8 +482,8 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch listLatch = new CountDownLatch(1);
-        Subscription<TransportEvents.MapsListRequest> listSubscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> {
+        Subscription<MapsListRequestV1> listSubscription =
+                serverBackend.subscribe(MapsListRequestV1.class, request -> {
                     listLatch.countDown();
                     serverBackend.respond(
                             request,
@@ -349,15 +494,15 @@ class RedisNetworkBackendIntegrationTest {
                     );
                 });
 
-        Subscription<TransportEvents.MapRemoveRequest> removeSubscription =
-                serverBackend.subscribe(TransportEvents.MapRemoveRequest.class,
-                        request -> serverBackend.respond(request, mapRemoveResponse("Removed")));
+        Subscription<MapsRemoveRequestV1> removeSubscription =
+                serverBackend.subscribe(MapsRemoveRequestV1.class,
+                        request -> serverBackend.respond(request, mapRemoveResponse(request.server(), "Removed")));
 
         CountDownLatch responseLatch = new CountDownLatch(1);
         CountDownLatch timeoutLatch = new CountDownLatch(1);
-        AtomicReference<TransportEvents.MapRemoveResponse> responseRef = new AtomicReference<>();
+        AtomicReference<MapsRemoveResponseV1> responseRef = new AtomicReference<>();
 
-        RequestSubscription<TransportEvents.MapRemoveResponse> requestHandle = requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
+        RequestSubscription<MapsRemoveResponseV1> requestHandle = requesterBackend.request(mapRemoveRequest("target", "MapX"), response -> {
             responseRef.set(response);
             responseLatch.countDown();
         }, timeoutLatch::countDown);
@@ -366,7 +511,7 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(responseLatch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(timeoutLatch.getCount()).isEqualTo(1);
         assertThat(responseRef.get()).isNotNull();
-        assertThat(responseRef.get().result).isEqualTo("Removed");
+        assertThat(responseRef.get().result()).isEqualTo("Removed");
         assertThat(listLatch.getCount()).isEqualTo(1);
 
         listSubscription.unsubscribe();
@@ -382,15 +527,15 @@ class RedisNetworkBackendIntegrationTest {
         serverBackend.connect();
 
         CountDownLatch handlerLatch = new CountDownLatch(1);
-        Subscription<TransportEvents.MapsListRequest> subscription =
-                serverBackend.subscribe(TransportEvents.MapsListRequest.class, request -> handlerLatch.countDown());
+        Subscription<MapsListRequestV1> subscription =
+                serverBackend.subscribe(MapsListRequestV1.class, request -> handlerLatch.countDown());
 
         try (RedisClient client = RedisClient.create(serverConfig.redisUrl);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             long now = System.currentTimeMillis();
             connection.sync().xadd("xcore:rpc:req:target", java.util.Map.ofEntries(
                     java.util.Map.entry("schema_version", "1"),
-                    java.util.Map.entry("rpc_type", "maps.list"),
+                    java.util.Map.entry("rpc_type", "maps.list.request"),
                     java.util.Map.entry("correlation_id", "c-expired"),
                     java.util.Map.entry("request_id", "r-expired"),
                     java.util.Map.entry("reply_to", "xcore:rpc:resp:discord"),
@@ -421,8 +566,8 @@ class RedisNetworkBackendIntegrationTest {
 
         AtomicInteger executions = new AtomicInteger(0);
         CountDownLatch latch = new CountDownLatch(1);
-        Subscription<TransportEvents.LoadMapsV2> subscription = requesterBackend.subscribe(
-                TransportEvents.LoadMapsV2.class,
+        Subscription<MapsLoadCommandV1> subscription = requesterBackend.subscribe(
+                MapsLoadCommandV1.class,
                 event -> {
                     executions.incrementAndGet();
                     latch.countDown();
@@ -435,14 +580,17 @@ class RedisNetworkBackendIntegrationTest {
             long expires = now + 120_000;
             Map<String, String> fields = Map.ofEntries(
                     Map.entry("schema_version", "1"),
-                    Map.entry("event_type", "maps.load"),
+                    Map.entry("event_type", "maps.load.command"),
                     Map.entry("event_id", "evt-1"),
-                    Map.entry("idempotency_key", "maps.load:test-key"),
+                    Map.entry("idempotency_key", "maps.load.command:test-key"),
                     Map.entry("producer", "discord-bot"),
                     Map.entry("created_at", String.valueOf(now)),
                     Map.entry("expires_at", String.valueOf(expires)),
                     Map.entry("server", "alpha"),
-                    Map.entry("payload_json", "{\"urls\":[],\"server\":\"alpha\"}")
+                    Map.entry("payload_json", new Gson().toJson(new MapsLoadCommandV1(
+                            "alpha",
+                            List.of(new MapFileSourceV1("https://example/maps/a.msav", "a.msav"))
+                    )))
             );
 
             connection.sync().xadd("xcore:cmd:maps-load:alpha", fields);
@@ -467,12 +615,12 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.connect();
 
         CountDownLatch failureSeen = new CountDownLatch(1);
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
             failureSeen.countDown();
             throw new IllegalStateException("intentional failure");
         });
 
-        requesterBackend.send(new TransportEvents.MessageEvent("tester", "poison", "alpha"));
+        requesterBackend.send(new ChatMessageV1("tester", "poison", "alpha"));
         assertThat(failureSeen.await(10, TimeUnit.SECONDS)).isTrue();
 
         try (RedisClient client = RedisClient.create(config.redisUrl);
@@ -515,7 +663,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
-        Subscription<TransportEvents.MessageEvent> subscription = requesterBackend.subscribe(TransportEvents.MessageEvent.class, event -> {
+        Subscription<ChatMessageV1> subscription = requesterBackend.subscribe(ChatMessageV1.class, event -> {
         });
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("active_subscriber_threads", 0L)).isEqualTo(2L);
@@ -536,7 +684,7 @@ class RedisNetworkBackendIntegrationTest {
         AtomicInteger responses = new AtomicInteger();
         AtomicInteger timeouts = new AtomicInteger();
 
-        RequestSubscription<TransportEvents.MapsListResponse> requestHandle = requesterBackend.request(
+        RequestSubscription<MapsListResponseV1> requestHandle = requesterBackend.request(
                 mapsListRequest("target"),
                 response -> responses.incrementAndGet(),
                 timeouts::incrementAndGet
@@ -576,6 +724,14 @@ class RedisNetworkBackendIntegrationTest {
         return config;
     }
 
+    private void flushRedis() {
+        String redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
+        try (RedisClient client = RedisClient.create(redisUrl);
+             StatefulRedisConnection<String, String> connection = client.connect()) {
+            connection.sync().flushall();
+        }
+    }
+
     private static <T extends Punishment> T punishment(T value, String uuid, String name) {
         value.uuid = uuid;
         value.name = name;
@@ -585,32 +741,23 @@ class RedisNetworkBackendIntegrationTest {
         return value;
     }
 
-    private static TransportEvents.MapsListRequest mapsListRequest(String server) {
-        TransportEvents.MapsListRequest request = new TransportEvents.MapsListRequest();
-        request.server = server;
-        return request;
+    private static MapsListRequestV1 mapsListRequest(String server) {
+        return new MapsListRequestV1(server);
     }
 
-    private static TransportEvents.MapRemoveRequest mapRemoveRequest(String server, String fileName) {
-        TransportEvents.MapRemoveRequest request = new TransportEvents.MapRemoveRequest();
-        request.server = server;
-        request.fileName = fileName;
-        return request;
+    private static MapsRemoveRequestV1 mapRemoveRequest(String server, String fileName) {
+        return new MapsRemoveRequestV1(server, fileName);
     }
 
-    private static TransportEvents.MapsListResponse mapsListResponse(TransportEvents.MapEntry... entries) {
-        TransportEvents.MapsListResponse response = new TransportEvents.MapsListResponse();
-        response.maps = entries;
-        return response;
+    private static MapsListResponseV1 mapsListResponse(MapEntryV1... entries) {
+        return new MapsListResponseV1("target", List.of(entries));
     }
 
-    private static TransportEvents.MapRemoveResponse mapRemoveResponse(String result) {
-        TransportEvents.MapRemoveResponse response = new TransportEvents.MapRemoveResponse();
-        response.result = result;
-        return response;
+    private static MapsRemoveResponseV1 mapRemoveResponse(String server, String result) {
+        return new MapsRemoveResponseV1(server, result);
     }
 
-    private static TransportEvents.MapEntry mapEntry(
+    private static MapEntryV1 mapEntry(
             String name,
             String fileName,
             String author,
@@ -621,7 +768,7 @@ class RedisNetworkBackendIntegrationTest {
         return mapEntry(name, fileName, author, width, height, fileSizeBytes, null, null, null, null, null, null);
     }
 
-    private static TransportEvents.MapEntry mapEntry(
+    private static MapEntryV1 mapEntry(
             String name,
             String fileName,
             String author,
@@ -635,19 +782,7 @@ class RedisNetworkBackendIntegrationTest {
             Double interest,
             String gameMode
     ) {
-        TransportEvents.MapEntry entry = new TransportEvents.MapEntry();
-        entry.name = name;
-        entry.fileName = fileName;
-        entry.author = author;
-        entry.width = width;
-        entry.height = height;
-        entry.fileSizeBytes = fileSizeBytes;
-        entry.like = like;
-        entry.dislike = dislike;
-        entry.reputation = reputation;
-        entry.popularity = popularity;
-        entry.interest = interest;
-        entry.gameMode = gameMode;
-        return entry;
+        Integer fileSize = fileSizeBytes == null ? null : Math.toIntExact(fileSizeBytes);
+        return new MapEntryV1(name, fileName, author, width, height, fileSize, like, dislike, reputation, popularity, interest, gameMode);
     }
 }

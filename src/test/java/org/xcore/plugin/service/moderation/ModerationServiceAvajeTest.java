@@ -10,11 +10,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
+import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
+import org.xcore.plugin.config.Config;
+import org.xcore.plugin.model.AuditAction;
+import org.xcore.plugin.model.AuditActor;
+import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.model.AuditOrigin;
 import org.xcore.plugin.model.AuditRecord;
+import org.xcore.plugin.model.AuditTarget;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.PlayerData;
@@ -50,6 +62,7 @@ class ModerationServiceAvajeTest {
     private FindService find;
     private TimeService time;
     private AuditService auditService;
+    private Config config;
     private Administration admins;
 
     @BeforeEach
@@ -85,9 +98,10 @@ class ModerationServiceAvajeTest {
         find = scope.get(FindService.class);
         time = scope.get(TimeService.class);
         auditService = scope.get(AuditService.class);
+        config = scope.get(Config.class);
 
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
-                AuditRecord.builder().auditId("audit-1").build()
+                validAuditRecord()
         ));
     }
 
@@ -126,25 +140,63 @@ class ModerationServiceAvajeTest {
         order.verify(banDataRepository).save(any(BanData.class));
         order.verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof BanData ban
-                        && "uuid-1".equals(ban.getUuid())
-                        && "1.2.3.4".equals(ban.getIp())
-                        && "admin".equals(ban.getAdminName())
-                        && "12345".equals(ban.getAdminDiscordId())
-                        && "Unknown".equals(ban.getName())
-                        && "Not Specified".equals(ban.getReason())
-                        && !ban.getExpireDate().isBefore(before.plus(duration))
-                        && !ban.getExpireDate().isAfter(after.plus(duration))));
-        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+                event instanceof ModerationBanCreatedV1 canonical
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_TYPE.equals(ModerationBanCreatedV1.MESSAGE_TYPE)
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == ModerationBanCreatedV1.MESSAGE_VERSION
+                        && canonical.target() != null
+                        && "uuid-1".equals(canonical.target().playerUuid())
+                        && "Unknown".equals(canonical.target().playerName())
+                        && "1.2.3.4".equals(canonical.target().ip())
+                        && canonical.actor() != null
+                        && "admin".equals(canonical.actor().actorName())
+                        && "12345".equals(canonical.actor().actorDiscordId())
+                        && ActorRefV1ActorType.DISCORD == canonical.actor().actorType()
+                        && "Not Specified".equals(canonical.reason())
+                        && canonical.expiration() != null
+                        && !canonical.expiration().permanent()
+                        && "test-server".equals(canonical.server())
+                        && canonical.occurredAt() != null));
         order.verify(network).post(argThat(event ->
-                event instanceof TransportEvents.KickBannedPlayer kick
-                        && "uuid-1".equals(kick.uuid())
-                        && "1.2.3.4".equals(kick.ip())));
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)
+                        && "test-server".equals(auditEvent.server())));
+        order.verify(network).post(argThat(event ->
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(ModerationKickBannedCommandV1.MESSAGE_TYPE)
+                        && "uuid-1".equals(kick.target().playerUuid())
+                        && "Unknown".equals(kick.target().playerName())
+                        && "1.2.3.4".equals(kick.target().ip())
+                        && "test-server".equals(kick.server())
+                        && kick.requestedAt() != null));
 
         verify(banDataRepository).save(argThat(ban ->
                 "uuid-1".equals(ban.getUuid())
                         && "1.2.3.4".equals(ban.getIp())
                         && "Unknown".equals(ban.getName())));
+    }
+
+    @Test
+    @DisplayName("tempBanByUuidOrIp supports IP-only kick and audit targets")
+    void tempBanIpOnlyTargetSuccess() {
+        when(banDataRepository.save(any())).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
+                validAuditRecord(null, "Unknown", "1.2.3.4")
+        ));
+
+        var result = moderationService.tempBanByUuidOrIp(null, "1.2.3.4", null, Duration.ofMinutes(30), null, "admin", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network, never()).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 audit
+                        && audit.target() != null
+                        && audit.target().playerUuid() == null
+                        && "1.2.3.4".equals(audit.target().ip())));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && kick.target() != null
+                        && kick.target().playerUuid() == null
+                        && "1.2.3.4".equals(kick.target().ip())));
     }
 
     @Test
@@ -169,9 +221,9 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempBanByUuidOrIp("uuid-1", "1.2.3.4", "name", Duration.ofMinutes(10), "reason", "admin", null);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof BanData));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationKickBannedCommandV1));
     }
 
     @Test
@@ -192,7 +244,41 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationPardonCommandV1 pardon
+                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(ModerationPardonCommandV1.MESSAGE_TYPE)
+                        && "uuid-2".equals(pardon.target().playerUuid())
+                        && "Unknown".equals(pardon.target().playerName())
+                        && "test-server".equals(pardon.server())));
         verify(banDataRepository).delete("uuid-2", null);
+    }
+
+    @Test
+    @DisplayName("tempUnban supports IP-only pardon and audit targets")
+    void tempUnbanIpOnlySuccess() {
+        when(banDataRepository.delete(null, "1.2.3.4")).thenReturn(true);
+        when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
+                validAuditRecord(null, "Unknown", "1.2.3.4")
+        ));
+
+        var result = moderationService.tempUnban(null, "1.2.3.4", "console", null);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 audit
+                        && audit.target() != null
+                        && audit.target().playerUuid() == null
+                        && "1.2.3.4".equals(audit.target().ip())));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationPardonCommandV1 pardon
+                        && pardon.target() != null
+                        && pardon.target().playerUuid() == null
+                        && "1.2.3.4".equals(pardon.target().ip())
+                        && "test-server".equals(pardon.server())));
+        verify(banDataRepository).delete(null, "1.2.3.4");
     }
 
     @Test
@@ -204,7 +290,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.tempUnban("uuid-2", null, "console", null);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test
@@ -285,8 +372,20 @@ class ModerationServiceAvajeTest {
         order.verify(muteDataRepository).save(any(MuteData.class));
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof MuteData mute && "uuid-3".equals(mute.getUuid())));
-        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+                event instanceof ModerationMuteCreatedV1 mute
+                        && ModerationMessages.ModerationMuteCreatedV1.MESSAGE_TYPE.equals(ModerationMuteCreatedV1.MESSAGE_TYPE)
+                        && "uuid-3".equals(mute.target().playerUuid())
+                        && "Target".equals(mute.target().playerName())
+                        && "admin".equals(mute.actor().actorName())
+                        && "777".equals(mute.actor().actorDiscordId())
+                        && "Not Specified".equals(mute.reason())
+                        && mute.expiration() != null
+                        && !mute.expiration().permanent()
+                        && "test-server".equals(mute.server())
+                        && mute.occurredAt() != null));
+        order.verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
     }
 
     @Test
@@ -317,8 +416,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.muteById(7, "admin", null, null, Duration.ofMinutes(15));
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof MuteData));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network).post(argThat(event -> event instanceof ModerationMuteCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
     }
 
     @Test
@@ -334,6 +433,14 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
+        verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
+        verify(network).post(argThat(event ->
+                event instanceof ModerationPardonCommandV1 pardon
+                        && ModerationMessages.ModerationPardonCommandV1.MESSAGE_TYPE.equals(ModerationPardonCommandV1.MESSAGE_TYPE)
+                        && "uuid-4".equals(pardon.target().playerUuid())
+                        && "Target2".equals(pardon.target().playerName())));
         verify(muteDataRepository).delete("uuid-4");
     }
 
@@ -348,7 +455,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unmuteById(8, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test
@@ -385,9 +493,23 @@ class ModerationServiceAvajeTest {
         order.verify(banDataRepository).save(any(BanData.class));
         verify(auditService).append(any());
         order.verify(network).post(argThat(event ->
-                event instanceof BanData ban && "999".equals(ban.getAdminDiscordId())));
-        order.verify(network).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
-        order.verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
+                event instanceof ModerationBanCreatedV1 canonical
+                        && ModerationMessages.ModerationBanCreatedV1.MESSAGE_VERSION == ModerationBanCreatedV1.MESSAGE_VERSION
+                        && canonical.target() != null
+                        && "uuid-9".equals(canonical.target().playerUuid())
+                        && "Target9".equals(canonical.target().playerName())
+                        && canonical.actor() != null
+                        && "999".equals(canonical.actor().actorDiscordId())
+                        && "test-server".equals(canonical.server())));
+        order.verify(network).post(argThat(event ->
+                event instanceof ModerationAuditAppendedV1 auditEvent
+                        && ModerationMessages.ModerationAuditAppendedV1.MESSAGE_TYPE.equals(ModerationAuditAppendedV1.MESSAGE_TYPE)));
+        order.verify(network).post(argThat(event ->
+                event instanceof ModerationKickBannedCommandV1 kick
+                        && ModerationMessages.ModerationKickBannedCommandV1.MESSAGE_TYPE.equals(ModerationKickBannedCommandV1.MESSAGE_TYPE)
+                        && "uuid-9".equals(kick.target().playerUuid())
+                        && "Target9".equals(kick.target().playerName())
+                        && "test-server".equals(kick.server())));
     }
 
     @Test
@@ -419,9 +541,9 @@ class ModerationServiceAvajeTest {
         var result = moderationService.banById(9, "admin", null, null, Duration.ofMinutes(10), true);
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network).post(argThat(event -> event instanceof BanData));
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
-        verify(network).post(argThat(event -> event instanceof TransportEvents.KickBannedPlayer));
+        verify(network).post(argThat(event -> event instanceof ModerationBanCreatedV1));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationKickBannedCommandV1));
     }
 
     @Test
@@ -452,7 +574,8 @@ class ModerationServiceAvajeTest {
         var result = moderationService.unbanById(10, "admin", "123");
 
         assertThat(result.isSuccess()).isTrue();
-        verify(network, never()).post(argThat(event -> event instanceof TransportEvents.ModerationAuditAppendedEvent));
+        verify(network, never()).post(argThat(event -> event instanceof ModerationAuditAppendedV1));
+        verify(network).post(argThat(event -> event instanceof ModerationPardonCommandV1));
     }
 
     @Test
@@ -500,6 +623,30 @@ class ModerationServiceAvajeTest {
         verify(find).playerData("unknown");
     }
 
+    private static AuditRecord validAuditRecord() {
+        return validAuditRecord("audit-target-uuid", "Audit Target", null);
+    }
+
+    private static AuditRecord validAuditRecord(String uuid, String nameSnapshot, String ipSnapshot) {
+        return AuditRecord.builder()
+                .auditId("audit-1")
+                .action(AuditAction.NOTE)
+                .target(AuditTarget.builder()
+                        .uuid(uuid)
+                        .nameSnapshot(nameSnapshot)
+                        .ipSnapshot(ipSnapshot)
+                        .build())
+                .actor(AuditActor.builder()
+                        .type(AuditActorType.SYSTEM)
+                        .nameSnapshot("system")
+                        .build())
+                .origin(AuditOrigin.builder()
+                        .serverId("test-server")
+                        .build())
+                .occurredAt(Instant.parse("2026-04-27T16:00:00Z"))
+                .build();
+    }
+
     private static final class ModerationServiceModule implements AvajeModule {
         @Override
         public Class<?>[] classes() {
@@ -508,6 +655,11 @@ class ModerationServiceAvajeTest {
 
         @Override
         public void build(Builder builder) {
+            if (builder.isBeanAbsent(Config.class)) {
+                Config config = new Config();
+                config.server = "test-server";
+                builder.register(config);
+            }
             if (builder.isBeanAbsent(ModerationService.class)) {
                 builder.register(new ModerationService(
                         builder.get(PlayerDataRepository.class),
@@ -517,7 +669,8 @@ class ModerationServiceAvajeTest {
                         builder.get(NetworkService.class),
                         builder.get(FindService.class),
                         builder.get(TimeService.class),
-                        builder.get(AuditService.class)
+                        builder.get(AuditService.class),
+                        builder.get(Config.class)
                 ));
             }
         }

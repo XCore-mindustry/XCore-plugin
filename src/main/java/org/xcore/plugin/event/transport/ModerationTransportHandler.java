@@ -1,7 +1,6 @@
 package org.xcore.plugin.event.transport;
 
 import arc.util.Log;
-import arc.util.Structs;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
@@ -9,13 +8,21 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordAdminAccessService;
-import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
 import java.util.HashSet;
 import java.util.function.Consumer;
@@ -28,7 +35,6 @@ public class ModerationTransportHandler {
 
     private final NetworkService network;
     private final SessionService sessionService;
-    private final FindService find;
     private final Config config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
@@ -36,37 +42,45 @@ public class ModerationTransportHandler {
     @Inject
     public ModerationTransportHandler(NetworkService network,
                                       SessionService sessionService,
-                                      FindService find,
                                       Config config,
                                       PlayerDisplayService playerDisplayService,
                                       DiscordAdminAccessService discordAdminAccessService) {
         this.network = network;
         this.sessionService = sessionService;
-        this.find = find;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
     }
 
     public void registerListeners() {
-        network.subscribe(TransportEvents.KickBannedPlayer.class, e -> Groups.player
-                .each(p -> p.uuid().equals(e.uuid()) || p.ip().equals(e.ip()), p -> p.kick(Packets.KickReason.banned)));
+        network.subscribe(ModerationKickBannedCommandV1.class, e -> Groups.player.each(
+                p -> {
+                    var target = e.target();
+                    return p.uuid().equals(target.playerUuid())
+                            || (target.ip() != null && target.ip().equals(p.ip()));
+                },
+                p -> p.kick(Packets.KickReason.banned)
+        ));
 
-        network.subscribe(TransportEvents.DiscordAdminAccessChanged.class, e -> {
+        network.subscribe(DiscordAdminAccessChangedCommandV1.class, e -> {
             if (e.admin()) {
-                if (discordAdminAccessService.applyDiscordAdminAccess(e.playerUuid(), e.discordId(), e.discordUsername())) {
-                    info("Granted discord admin access: @", e.playerUuid());
+                if (discordAdminAccessService.applyDiscordAdminAccess(
+                        e.player().playerUuid(),
+                        e.discord().discordId(),
+                        e.discord().discordUsername()
+                )) {
+                    info("Granted discord admin access: @", e.player().playerUuid());
                 }
                 return;
             }
 
-            if (discordAdminAccessService.revokeDiscordAdminAccess(e.playerUuid())) {
-                info("Revoked discord admin access: @", e.playerUuid());
+            if (discordAdminAccessService.revokeDiscordAdminAccess(e.player().playerUuid())) {
+                info("Revoked discord admin access: @", e.player().playerUuid());
             }
         });
 
-        network.subscribe(TransportEvents.PardonPlayer.class, e -> {
-            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.uuid());
+        network.subscribe(ModerationPardonCommandV1.class, e -> {
+            Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.target().playerUuid());
 
             if (info != null) {
                 info.lastKicked = 0;
@@ -75,54 +89,54 @@ public class ModerationTransportHandler {
             }
         });
 
-        network.subscribe(TransportEvents.PlayerCustomNicknameChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerCustomNicknameChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.customNickname = e.customNickname(),
                 false,
                 "custom nickname"
         ));
 
-        network.subscribe(TransportEvents.PlayerActiveBadgeChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerActiveBadgeChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.activeBadge = e.activeBadge(),
                 true,
                 "active badge"
         ));
 
-        network.subscribe(TransportEvents.PlayerBadgeSymbolColorModeChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerBadgeSymbolColorModeChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.badgeSymbolColorMode = e.badgeSymbolColorMode(),
                 true,
                 "badge symbol color mode"
         ));
 
-        network.subscribe(TransportEvents.PlayerBadgeInventoryChanged.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerBadgeInventoryChangedCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> {
                     data.activeBadge = e.activeBadge();
-                    data.unlockedBadges = e.unlockedBadges() == null ? new HashSet<>() : new HashSet<>(e.unlockedBadges());
+                    data.unlockedBadges = new HashSet<>(e.unlockedBadges());
                 },
                 true,
                 "badge inventory"
         ));
 
-        network.subscribe(TransportEvents.PlayerPasswordReset.class, e -> updatePlayerSession(
-                e.uuid(),
+        network.subscribe(PlayerPasswordResetCommandV1.class, e -> updatePlayerSession(
+                e.playerUuid(),
                 data -> data.password = "",
                 false,
                 "password reset"
         ));
 
-        network.subscribe(TransportEvents.ReloadPlayerDataCache.class, _ -> {
+        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> {
             sessionService.reloadCache();
             info("Reloaded player data cache.");
         });
 
-        network.subscribe(TransportEvents.ExecuteCommand.class, e -> {
-            if (e.expectServers() != null) {
-                if (e.isExclusion()) {
-                    if (Structs.contains(e.expectServers(), config.server)) return;
-                } else if (e.expectServers().length > 0 && !Structs.contains(e.expectServers(), config.server)) {
+        network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
+            if (!e.targetServers().isEmpty()) {
+                if (e.exclusion()) {
+                    if (e.targetServers().contains(config.server)) return;
+                } else if (!e.targetServers().contains(config.server)) {
                     return;
                 }
             }

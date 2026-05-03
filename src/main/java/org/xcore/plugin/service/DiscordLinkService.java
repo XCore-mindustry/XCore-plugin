@@ -4,8 +4,9 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.plugin.service.network.DiscordProtocolMapper;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -73,7 +74,7 @@ public class DiscordLinkService {
             return LinkCodeResult.error("save-failed");
         }
 
-        networkService.post(new TransportEvents.DiscordLinkCodeCreatedEvent(
+        networkService.post(DiscordProtocolMapper.toLinkCodeCreated(
                 code,
                 data.uuid,
                 data.pid,
@@ -135,7 +136,7 @@ public class DiscordLinkService {
         if (!revoked) {
             return false;
         }
-        publishAdminAccessChanged(data.uuid, data.pid, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
+        publishAdminAccessChanged(data.uuid, data.pid, data.nickname, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
         publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
     }
@@ -166,7 +167,7 @@ public class DiscordLinkService {
         if (!revoked) {
             return false;
         }
-        publishAdminAccessChanged(playerUuid, data.pid, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
+        publishAdminAccessChanged(playerUuid, data.pid, data.nickname, discordId, discordUsername, false, DiscordAdminAccessService.SOURCE_NONE, "plugin/unlink", "discord unlink");
 
         publishStatusChanged(data, discordId, "", "unlinked", System.currentTimeMillis());
         return true;
@@ -244,10 +245,8 @@ public class DiscordLinkService {
                                       String discordUsername,
                                       String status,
                                       long timestamp) {
-        networkService.post(new TransportEvents.DiscordLinkStatusChangedEvent(
-                data.uuid,
-                data.pid,
-                data.nickname,
+        networkService.post(DiscordProtocolMapper.toLinkStatusChanged(
+                data,
                 discordId,
                 discordUsername,
                 status,
@@ -258,24 +257,44 @@ public class DiscordLinkService {
 
     private void publishAdminAccessChanged(String playerUuid,
                                            int playerPid,
+                                           String playerName,
                                            String discordId,
                                            String discordUsername,
                                            boolean admin,
                                            String adminSource,
                                            String requestedBy,
                                            String reason) {
-        networkService.post(new TransportEvents.DiscordAdminAccessChanged(
+        var source = DiscordProtocolMapper.toSourceActor(adminSource);
+        // DiscordLinkService only has requester name strings here, so actor metadata falls back to SYSTEM.
+        var actor = DiscordProtocolMapper.toRequesterActor(requestedBy);
+        networkService.post(DiscordProtocolMapper.toAdminAccessChangedCommand(
                 playerUuid,
                 playerPid,
+                playerName,
                 discordId,
                 discordUsername,
                 admin,
-                adminSource,
-                requestedBy,
+                source,
+                actor,
                 reason,
                 config.server,
                 System.currentTimeMillis()
         ));
+    }
+
+    public DiscordUnlinkCommandV1 toUnlinkCommand(PlayerData data, String requestedBy) {
+        // DiscordLinkService only has requester name strings here, so actor metadata falls back to SYSTEM.
+        var actor = DiscordProtocolMapper.toRequesterActor(requestedBy);
+        return DiscordProtocolMapper.toUnlinkCommand(
+                data.uuid,
+                data.pid,
+                data.nickname,
+                data.discordId,
+                data.discordUsername,
+                actor,
+                config.server,
+                System.currentTimeMillis()
+        );
     }
 
     private String nextCode() {

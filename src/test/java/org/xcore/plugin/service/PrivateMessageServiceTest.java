@@ -8,10 +8,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
@@ -78,7 +78,7 @@ class PrivateMessageServiceTest {
         assertThat(sender.lastPrivateMessageAt).isGreaterThan(0L);
         verify(privateMessageRepository).save(any(PrivateMessage.class));
         verify(sender.locale()).send(eq("private-message-sent"), anyMap());
-        verify(networkService).post(any(TransportEvents.PrivateMessageEvent.class));
+        verify(networkService).post(any(ChatPrivateV1.class));
     }
 
     @Test

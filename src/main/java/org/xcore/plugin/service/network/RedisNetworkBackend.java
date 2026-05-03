@@ -15,10 +15,9 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.event.TransportEvents;
-import org.xcore.plugin.event.TransportEvents.Request;
-import org.xcore.plugin.event.TransportEvents.Response;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.time.Instant;
 
 
 @Singleton
@@ -147,7 +145,7 @@ public final class RedisNetworkBackend {
         try {
             var route = router.route(event, config.server);
             long now = System.currentTimeMillis();
-            String payloadJson = gson.toJson(event);
+            String payloadJson = payloadJson(event);
             RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
             publishedEvents.incrementAndGet();
@@ -193,7 +191,7 @@ public final class RedisNetworkBackend {
         return subscription;
     }
 
-    public <T extends Response> RequestSubscription<T> request(Request<T> request, Cons<T> listener, Runnable timeout) {
+    public <REQ, RES> RequestSubscription<RES> request(REQ request, Cons<RES> listener, Runnable timeout) {
         if (!supportsRequestType(request.getClass())) {
             throw new UnsupportedOperationException("Redis request does not support type: " + request.getClass().getName());
         }
@@ -201,8 +199,8 @@ public final class RedisNetworkBackend {
             throw new IllegalStateException("Redis backend is unavailable for request");
         }
 
-        Class<? extends Response> responseType = router.responseTypeForRequest(request.getClass());
-        RedisRequestHandle<T> requestHandle = new RedisRequestHandle<>(null);
+        Class<?> responseType = router.responseTypeForRequest(request.getClass());
+        RedisRequestHandle<RES> requestHandle = new RedisRequestHandle<>(null);
         requestHandles.add(requestHandle);
         requestHandle.onFinish(() -> requestHandles.remove(requestHandle));
         if (responseType == null) {
@@ -235,7 +233,7 @@ public final class RedisNetworkBackend {
             return requestHandle;
         }
 
-        String requestJson = gson.toJson(request);
+        String requestJson = payloadJson(request);
         RedisCommands<String, String> commands = connectionManager.commands();
         try {
             streamSupport.xaddWithTrim(commands, route.streamKey(),
@@ -249,7 +247,7 @@ public final class RedisNetworkBackend {
         return requestHandle;
     }
 
-    public <T extends Response> void respond(Request<T> request, T response) {
+    public void respond(Object request, Object response) {
         RedisRpcTracker.RpcInboundContext context = rpcTracker.take(request);
         if (context == null) {
             Log.warn("Redis respond context is missing for request: @", request.getClass().getName());
@@ -263,7 +261,7 @@ public final class RedisNetworkBackend {
         try {
             RedisCommands<String, String> commands = connectionManager.commands();
             streamSupport.xaddWithTrim(commands, context.replyTo(),
-                    envelopeFactory.rpcResponseFields(context, gson.toJson(response), System.currentTimeMillis()));
+                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()));
         } catch (RuntimeException e) {
             rpcResponses.decrementAndGet();
             throw e;
@@ -272,9 +270,6 @@ public final class RedisNetworkBackend {
 
     public boolean supportsSubscribeType(Class<?> type) {
         if (router.isReadOnlyType(type)) {
-            return true;
-        }
-        if (type == TransportEvents.KickBannedPlayer.class) {
             return true;
         }
         if (router.isRpcRequestType(type)) {
@@ -300,8 +295,15 @@ public final class RedisNetworkBackend {
         }
     }
 
-    public boolean supportsRespond(Request<?> request) {
+    public boolean supportsRespond(Object request) {
         return rpcTracker.contains(request);
+    }
+
+    private String payloadJson(Object event) {
+        if (event instanceof ProtocolPayload protocolPayload) {
+            return gson.toJson(protocolPayload.toPayload());
+        }
+        return gson.toJson(event);
     }
 
     private boolean ensureConnected() {
@@ -485,12 +487,12 @@ public final class RedisNetworkBackend {
         }
 
         try {
-            T event = gson.fromJson(payloadJson, type);
-            if (event instanceof Request<?> request && router.isRpcRequestType(type)) {
+            T event = decodeEvent(payloadJson, type);
+            if (router.isRpcRequestType(type)) {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
                 String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server);
                 String rpcType = message.getBody().getOrDefault("rpc_type", "rpc.unknown");
-                rpcTracker.registerInbound(request, correlationId, replyTo, rpcType, System.currentTimeMillis());
+                rpcTracker.registerInbound(event, correlationId, replyTo, rpcType, System.currentTimeMillis());
             }
             consumedEvents.incrementAndGet();
             listener.get(event);
@@ -505,14 +507,19 @@ public final class RedisNetworkBackend {
         }
     }
 
-    private <T extends Response> void awaitRpcResponse(String replyTo,
-                                                       String correlationId,
-                                                       Class<? extends Response> responseType,
-                                                       Cons<T> listener,
-                                                       Runnable timeout,
-                                                       long timeoutMs,
-                                                       CountDownLatch listenerReady,
-                                                       RedisRequestHandle<T> requestHandle) {
+    @SuppressWarnings("unchecked")
+    private <T> T decodeEvent(String payloadJson, Class<T> type) {
+        return gson.fromJson(payloadJson, type);
+    }
+
+    private <T> void awaitRpcResponse(String replyTo,
+                                      String correlationId,
+                                      Class<?> responseType,
+                                      Cons<T> listener,
+                                      Runnable timeout,
+                                      long timeoutMs,
+                                      CountDownLatch listenerReady,
+                                      RedisRequestHandle<T> requestHandle) {
         rpcTracker.awaitResponse(connectionManager.client(), replyTo, correlationId, responseType, listener, timeout, timeoutMs, listenerReady, rpcTimeouts, requestHandle);
     }
 

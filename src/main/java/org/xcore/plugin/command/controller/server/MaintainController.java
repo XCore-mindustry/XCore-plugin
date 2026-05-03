@@ -20,8 +20,9 @@ import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.enums.Feature;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.service.MapIdentityAuditService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -29,6 +30,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -46,6 +48,7 @@ public class MaintainController implements CloudServerController {
     private final PlayerDataRepository playerDataRepository;
     private final PluginState pluginState;
     private final SessionService sessionService;
+    private final Config config;
     private final RuntimeToggleConfigService toggleConfigService;
     private final MapIdentityAuditService mapIdentityAuditService;
     private final TopMenuCacheService topMenuCacheService;
@@ -64,6 +67,7 @@ public class MaintainController implements CloudServerController {
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
         this.sessionService = sessionService;
+        this.config = config;
         this.mapIdentityAuditService = mapIdentityAuditService;
         this.topMenuCacheService = topMenuCacheService;
         this.toggleConfigService = new RuntimeToggleConfigService(config, configFile, prettyGson);
@@ -160,7 +164,7 @@ public class MaintainController implements CloudServerController {
         if (deleted > 0 && topMenuCacheService != null) {
             topMenuCacheService.invalidateAll();
         }
-        network.post(new TransportEvents.ReloadPlayerDataCache());
+        network.post(new PlayerDataCacheReloadCommandV1(config.server));
         Log.info("Deleted @ bots from database.", deleted);
     }
 
@@ -220,7 +224,7 @@ public class MaintainController implements CloudServerController {
 
         if (targets.length == 0) {
             Log.info("Dispatching '@' to [ALL]", normalizedCommand);
-            network.post(new TransportEvents.ExecuteCommand(normalizedCommand, new String[0], false));
+            network.post(new ServerCommandExecuteCommandV1(normalizedCommand, List.of(), false));
             return;
         }
 
@@ -230,7 +234,7 @@ public class MaintainController implements CloudServerController {
             Log.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
         }
 
-        network.post(new TransportEvents.ExecuteCommand(normalizedCommand, targets, except));
+        network.post(new ServerCommandExecuteCommandV1(normalizedCommand, Arrays.asList(targets), except));
     }
 
     private String[] parseTargetList(String targetsCsv) {

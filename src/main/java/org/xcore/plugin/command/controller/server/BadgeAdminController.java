@@ -7,16 +7,18 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
+import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.protocol.generated.messages.chat.ChatMessages;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
@@ -30,16 +32,19 @@ public class BadgeAdminController implements CloudServerController {
     private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
     private final PlayerDataRepository playerDataRepository;
+    private final Config config;
 
     @Inject
     public BadgeAdminController(SessionService sessionService,
                                 NetworkService network,
                                 PlayerDisplayService playerDisplayService,
-                                PlayerDataRepository playerDataRepository) {
+                                PlayerDataRepository playerDataRepository,
+                                Config config) {
         this.sessionService = sessionService;
         this.network = network;
         this.playerDisplayService = playerDisplayService;
         this.playerDataRepository = playerDataRepository;
+        this.config = config;
     }
 
     @Command("badge grant <player> <id>")
@@ -115,10 +120,11 @@ public class BadgeAdminController implements CloudServerController {
             persistBadgeState(target);
         }
 
-        network.post(new TransportEvents.PlayerBadgeInventoryChanged(
+        network.post(new ChatMessages.PlayerBadgeInventoryChangedCommandV1(
                 target.uuid,
                 updatedActiveBadge,
-                copyBadges(updatedBadges)
+                List.copyOf(updatedBadges),
+                config.server
         ));
         if (grant) {
             Log.info("Granted badge '@' to @ (#@).", badge.id(), target.nickname, target.pid);

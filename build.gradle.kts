@@ -50,6 +50,8 @@ val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl
     .orElse("https://maven.x-core.org/releases")
 
 repositories {
+    maven { url = uri("https://maven.x-core.org/snapshots") }
+    maven { url = uri("https://maven.x-core.org/releases") }
     mavenCentral()
     anukeXpdustry()
     maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
@@ -62,6 +64,7 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryCore)
     compileOnly(toxopid.dependencies.arcCore)
     compileOnly(toxopid.dependencies.mindustryHeadless)
+    implementation(libs.xcore.protocol.java)
     implementation(libs.flubundle)
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)

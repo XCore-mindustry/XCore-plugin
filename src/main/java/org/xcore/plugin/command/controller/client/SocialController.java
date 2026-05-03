@@ -7,12 +7,13 @@ import mindustry.gen.Player;
 import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
+import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
@@ -75,13 +76,13 @@ public class SocialController implements CloudClientController {
         Session session = sessionService.get(sender.player().uuid());
         if (session == null || session.data == null) return;
 
-        network.post(new TransportEvents.GlobalChatEvent(
+        network.post(new ChatGlobalV1(
                 session.player.coloredName(),
                 message,
                 config.server
         ));
 
-        network.post(new TransportEvents.MessageEvent(
+        network.post(new ChatMessageV1(
                 session.player.plainName(),
                 "[" + config.server + "] " + message.replace("`", "*"),
                 "global"

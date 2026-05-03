@@ -1,7 +1,5 @@
 package org.xcore.plugin.service.network;
 
-import org.xcore.plugin.event.TransportEvents;
-
 public record RedisRouteDescriptor(
         Class<?> payloadType,
         String streamPattern,
@@ -9,7 +7,7 @@ public record RedisRouteDescriptor(
         long ttlMillis,
         RedisRouteKind kind,
         RedisServerResolver serverResolver,
-        Class<? extends TransportEvents.Response> responseType
+        Class<?> responseType
 ) {
     public boolean isReadOnly() {
         return kind == RedisRouteKind.READ_ONLY;
