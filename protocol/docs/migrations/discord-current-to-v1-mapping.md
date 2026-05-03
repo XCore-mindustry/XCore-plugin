@@ -154,11 +154,6 @@ Current plugin fields:
 | `discord.link_status_changed` | `discord.link.status-changed` |
 | `discord.admin_access_changed` | `discord.admin-access.changed.command` |
 
-## Main Migration Notes
-- Current plugin route semantics treat link-code-created and link-status-changed as broadcast events; canonical naming keeps those messages event-shaped without a `.command` suffix.
-- Current plugin route semantics treat confirm, unlink, and admin-access as commands; canonical naming keeps that distinction explicit with `.command`.
-- Current command payloads may not always naturally carry `playerName`; consumer-side migration code may need lookup or session context to populate the canonical `player.playerName` requirement before constructing canonical payloads.
-- Current flat requester/source strings should be wrapped into canonical `ActorRefV1` payloads by consumer-side migration code before publication.
+## Implementation Status
 
-## Recommended Next Step
-Keep consumer/plugin mappers aligned with the canonical generated Discord payloads and preserve the existing validation coverage as those mappers are introduced.
+All Discord linking/admin families are fully migrated to canonical v1 contracts. Plugin and bot mappers produce canonical `ActorRefV1` payloads with explicit actor/source semantics (see `docs/policies/actor-semantics.md`). No legacy flat strings or duplicate naming styles remain in the transport surface.

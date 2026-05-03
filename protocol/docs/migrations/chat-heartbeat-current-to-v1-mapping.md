@@ -105,11 +105,9 @@ The protocol repository remains canonical-only. Legacy aliases and temporary ada
 | `version` | `version` | Required string. |
 | `host` | `host` | Optional. |
 | `port` | `port` | Optional. |
-| `serverHost` | none | Legacy consumer alias; do not publish canonically. |
-| `serverPort` | none | Legacy consumer alias; do not publish canonically. |
+| `serverHost` | none | Removed — canonical producers never emit this field. |
+| `serverPort` | none | Removed — canonical producers never emit this field. |
 
-## Open Consumer Migration Notes
-- Discord bot consumer models currently tolerate snake_case and legacy alias variants such as `author_name`, `player_name`, `server_name`, `serverHost`, and `serverPort`. Canonical producers should emit only the canonical camelCase fields.
-- `PlayerJoinLeaveEvent` currently uses `join`; adapters should translate it to canonical `joined` before crossing into the protocol surface.
-- Heartbeat currently appears in consumer behavior and producer code but should now be treated as an explicit canonical event family with stable route metadata.
-- Raw heartbeat fallback handling should remain a consumer transport concern unless a future protocol ADR explicitly promotes a canonical raw event contract.
+## Implementation Status
+
+All chat and heartbeat families are fully migrated to canonical v1 contracts. Both `XCore-plugin` and `XCore-discord-bot` produce and consume canonical payloads only. No legacy alias tolerance remains in consumer transport paths.

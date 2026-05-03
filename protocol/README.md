@@ -44,17 +44,18 @@ This repository contains only **cross-process / cross-service wire protocol arti
 - `compat/` — cross-language compatibility checks
 - `scripts/` — validation and generation helper scripts
 
-## Planned First Slice
-The first migration slice is the **moderation** family:
-- ban created
-- mute created
-- vote-kick created
-- kick-banned command
-- pardon command
-- moderation audit appended
+## Migrated Families
+
+All planned message families are fully migrated and operational:
+
+- **Moderation** — ban, mute, vote-kick, kick-banned, pardon, audit
+- **Discord** — link-confirm, unlink, link-status, admin-access, link-code
+- **Maps** — list request/response, remove request/response
+- **Chat/Heartbeat** — chat messages, global chat, heartbeat, join/leave, server actions, player state commands
 
 ## Current Status
-Canonical message families are defined, and generated Java/Python protocol artifacts now cover the current maps, chat/heartbeat, discord, moderation, and canonical envelope surface. Current hardening work is focused on keeping those generated canonical artifacts and compatibility checks aligned without implying full family or consumer-integration coverage. Java consumer runtime wiring remains intentionally out of scope for this repository and should live in application repositories.
+
+All canonical message families are defined with JSON Schema specs and canonical fixtures. Generated Java records (`org.xcore.protocol.generated.*`) and Python frozen dataclasses (`xcore_protocol.generated.*`) cover the full protocol surface. `XCore-plugin` and `XCore-discord-bot` both consume generated artifacts as their sole transport model. Cross-language compatibility checks and full CI validation chain are in place.
 
 ## See Also
 - `docs/adr/ADR-001-protocol-first.md`

@@ -268,30 +268,25 @@ uv run python -m xcore_protocol_codegen generate --family maps
 uv run python -m xcore_protocol_codegen check
 ```
 
-## Rollout Plan
+## Generation Status
 
-### Phase 1
-- build the generator in Python
-- generate shared types and maps message family
-- generate maps route bindings
-- add Python generated-model tests
+All four rollout phases are complete. The generator produces Java records and Python frozen dataclasses for all message families (maps, chat/heartbeat, discord, moderation) plus shared types and route descriptors.
 
-### Why maps first
-Maps is a good proof slice because it is:
-- small and bounded
-- already canonicalized
-- structurally varied enough to test requests, responses, arrays, and shared refs
-- less domain-heavy than moderation
+### Phase 1 — Complete
+- Generator in Python
+- Shared types and maps message family
+- Maps route bindings
+- Python generated-model tests
 
-### Phase 2
-- extend generation to chat/heartbeat and discord families
+### Phase 2 — Complete
+- Chat/heartbeat and discord families
 
-### Phase 3
-- extend generation to moderation family
-- add richer cross-language compatibility checks
+### Phase 3 — Complete
+- Moderation family
+- Cross-language compatibility checks
 
-### Phase 4
-- add envelope DTO generation if still useful after message/shared generation is stable
+### Phase 4 — Complete
+- Envelope DTO generation is stable alongside message/shared generation
 
 ## Decision Summary
 - Use **Python** for generator implementation.

@@ -1,15 +1,18 @@
-# Bootstrap Plan
+# Bootstrap Status
 
-## Current Stage
-Bootstrap the repository structure and foundational docs.
+## Status: Complete
 
-## Next Stage
-Define canonical schemas/fixtures and bootstrap generator-aware Java/Python protocol model support.
+The repository is fully bootstrapped and operational. The bootstrap phase covered repository structure, foundational docs, canonical specs, fixtures, generator configuration, Java/Python package setup, and validation infrastructure.
 
-## Immediate Deliverables
-- foundational docs
-- spec tree
-- fixture tree
-- generation scaffolding/configuration
-- Java/Python package skeletons for generated artifacts and thin support code
-- compatibility test directories
+## Completed
+
+- Repository structure and contribution rules
+- Foundational docs (policies, architecture, migration notes)
+- Spec tree for all message families (moderation, discord, maps, chat)
+- Shared type definitions (ActorRefV1, PlayerRefV1, DiscordIdentityRefV1, etc.)
+- Fixture trees (valid and invalid)
+- Generator: Python-based codegen producing Java records and Python frozen dataclasses
+- Java module: `org.xcore.protocol.generated.*` with `ProtocolPayload` runtime support
+- Python package: `xcore_protocol.generated.*` with schema validation helpers
+- Cross-language compatibility test infrastructure
+- CI validation chain: `./gradlew test` + `uv run pytest` + generation validation
