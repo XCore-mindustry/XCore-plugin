@@ -25,6 +25,8 @@ from .moderation_views import (
 )
 from .mongo_store import MongoStore
 from .presentation import build_servers_embed
+from xcore_protocol.generated.shared import ActorRefV1ActorType
+
 from .registry import server_registry
 from .redis_bus import RedisBus
 from . import runtime_consumers
@@ -217,7 +219,6 @@ class XCoreDiscordBot(commands.Bot):
         self._store = store
         self._chat_consumer_task: asyncio.Task[None] | None = None
         self._global_chat_consumer_task: asyncio.Task[None] | None = None
-        self._raw_consumer_task: asyncio.Task[None] | None = None
         self._join_leave_consumer_task: asyncio.Task[None] | None = None
         self._server_action_consumer_task: asyncio.Task[None] | None = None
         self._ban_consumer_task: asyncio.Task[None] | None = None
@@ -409,21 +410,29 @@ class XCoreDiscordBot(commands.Bot):
         *,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
         discord_username: str | None,
         admin: bool,
-        admin_source: str,
-        requested_by: str,
+        source_name: str,
+        source_type: ActorRefV1ActorType,
+        actor_name: str,
+        actor_discord_id: str | None,
+        actor_type: ActorRefV1ActorType,
         reason: str,
     ) -> None:
         await self._bus.publish_discord_admin_access_changed(
             player_uuid=player_uuid,
             player_pid=player_pid,
+            player_name=player_name,
             discord_id=discord_id,
             discord_username=discord_username,
             admin=admin,
-            admin_source=admin_source,
-            requested_by=requested_by,
+            source_name=source_name,
+            source_type=source_type,
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            actor_type=actor_type,
             reason=reason,
         )
 
@@ -672,11 +681,15 @@ class XCoreDiscordBot(commands.Bot):
             await self.publish_discord_admin_access_changed(
                 player_uuid=uuid_value,
                 player_pid=player.pid,
+                player_name=player.nickname,
                 discord_id=discord_id,
                 discord_username=player.discord_username,
                 admin=False,
-                admin_source="NONE",
-                requested_by="system/reconcile",
+                source_name="NONE",
+                source_type=ActorRefV1ActorType.SYSTEM,
+                actor_name="system/reconcile",
+                actor_discord_id=None,
+                actor_type=ActorRefV1ActorType.SYSTEM,
                 reason="discord role missing during reconcile",
             )
             if changed:
@@ -730,11 +743,15 @@ class XCoreDiscordBot(commands.Bot):
                 await self.publish_discord_admin_access_changed(
                     player_uuid=uuid_value,
                     player_pid=player.pid,
+                    player_name=player.nickname,
                     discord_id=discord_id,
                     discord_username=player.discord_username,
                     admin=True,
-                    admin_source="DISCORD_ROLE",
-                    requested_by="system/reconcile",
+                    source_name="DISCORD_ROLE",
+                    source_type=ActorRefV1ActorType.DISCORD,
+                    actor_name="system/reconcile",
+                    actor_discord_id=None,
+                    actor_type=ActorRefV1ActorType.SYSTEM,
                     reason="discord role present during reconcile",
                 )
                 if changed:
@@ -796,6 +813,7 @@ class XCoreDiscordBot(commands.Bot):
         code: str,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
         discord_username: str,
     ) -> None:
@@ -803,6 +821,7 @@ class XCoreDiscordBot(commands.Bot):
             code=code,
             player_uuid=player_uuid,
             player_pid=player_pid,
+            player_name=player_name,
             discord_id=discord_id,
             discord_username=discord_username,
         )
@@ -812,14 +831,20 @@ class XCoreDiscordBot(commands.Bot):
         *,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
-        requested_by: str,
+        discord_username: str,
+        actor_name: str,
+        actor_discord_id: str,
     ) -> None:
         await self._bus.publish_discord_unlink(
             player_uuid=player_uuid,
             player_pid=player_pid,
+            player_name=player_name,
             discord_id=discord_id,
-            requested_by=requested_by,
+            discord_username=discord_username,
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
         )
 
     async def reconnect_bus(self) -> None:
@@ -834,11 +859,6 @@ class XCoreDiscordBot(commands.Bot):
         self, callback: Callable[..., Awaitable[None]]
     ) -> None:
         await self._bus.consume_global_chat(callback)
-
-    async def consume_raw_events_stream(
-        self, callback: Callable[..., Awaitable[None]]
-    ) -> None:
-        await self._bus.consume_raw_events(callback)
 
     async def consume_server_heartbeats_stream(
         self, callback: Callable[..., Awaitable[None]]
@@ -896,9 +916,6 @@ class XCoreDiscordBot(commands.Bot):
         self._global_chat_consumer_task = asyncio.create_task(
             runtime_consumers.consume_global_chat(self),
             name="redis-global-chat-consumer",
-        )
-        self._raw_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_raw_events(self), name="redis-raw-consumer"
         )
         self._join_leave_consumer_task = asyncio.create_task(
             runtime_consumers.consume_join_leave(self),
@@ -1001,6 +1018,7 @@ class XCoreDiscordBot(commands.Bot):
                         code=code,
                         player_uuid=player.uuid,
                         player_pid=player.pid,
+                        player_name=player.nickname,
                         discord_id=str(message.author.id),
                         discord_username=message.author.display_name,
                     )
@@ -1024,7 +1042,6 @@ class XCoreDiscordBot(commands.Bot):
         for task in (
             self._chat_consumer_task,
             self._global_chat_consumer_task,
-            self._raw_consumer_task,
             self._join_leave_consumer_task,
             self._server_action_consumer_task,
             self._ban_consumer_task,
@@ -1043,7 +1060,6 @@ class XCoreDiscordBot(commands.Bot):
 
         self._chat_consumer_task = None
         self._global_chat_consumer_task = None
-        self._raw_consumer_task = None
         self._join_leave_consumer_task = None
         self._server_action_consumer_task = None
         self._ban_consumer_task = None

@@ -53,15 +53,20 @@ Optional:
 For a fresh clone, install dev dependencies and enable the git hook once:
 
 ```bash
+git submodule update --init --recursive
 uv sync --all-groups
 uv run pre-commit install --install-hooks
 ```
 
 After that, `pre-commit` runs automatically on every `git commit`.
 
+If you already cloned the repo before `xcore-protocol` was added as a submodule, run
+`git submodule update --init --recursive` once before syncing dependencies.
+
 ## Local run
 
 ```bash
+git submodule update --init --recursive
 uv sync
 uv run xcore-discord-bot
 ```

@@ -1,199 +1,133 @@
 from __future__ import annotations
 
 from xcore_discord_bot.contracts import (
-    BanEvent,
-    DiscordLinkStatusChangedEvent,
-    EventType,
-    GameChatMessage,
-    GlobalChatEvent,
-    MuteEvent,
-    PlayerJoinLeaveEvent,
-    RawEvent,
-    ServerHeartbeatEvent,
-    ServerActionEvent,
-    VoteKickEvent,
+    ChatGlobalV1,
+    ChatMessageV1,
+    DiscordLinkStatusChangedV1,
+    parse_chat_message_payload,
+    parse_ban_payload,
+    parse_discord_link_status_payload,
+    parse_global_chat_payload,
+    parse_player_join_leave_payload,
+    parse_server_action_payload,
+    PlayerJoinLeaveV1,
+    ServerHeartbeatV1,
+    ServerActionV1,
+    parse_server_heartbeat_payload,
 )
 
 
 def test_game_chat_message_from_payload() -> None:
-    payload = {"authorName": "pizduk", "message": "yyyy", "server": "mini-pvp"}
-    event = GameChatMessage.from_payload(payload)
-    assert event.author_name == "pizduk"
+    payload = {
+        "messageType": "chat.message",
+        "messageVersion": 1,
+        "authorName": "pizduk",
+        "message": "yyyy",
+        "server": "mini-pvp",
+    }
+    event = parse_chat_message_payload(payload)
+    assert isinstance(event, ChatMessageV1)
+    assert event.authorName == "pizduk"
     assert event.message == "yyyy"
     assert event.server == "mini-pvp"
 
 
 def test_player_join_leave_from_payload() -> None:
-    payload = {"playerName": "pizduk", "server": "mini-pvp", "join": True}
-    event = PlayerJoinLeaveEvent.from_payload(payload)
-    assert event.player_name == "pizduk"
+    payload = {
+        "messageType": "player.join-leave",
+        "messageVersion": 1,
+        "playerName": "pizduk",
+        "server": "mini-pvp",
+        "joined": True,
+    }
+    event = parse_player_join_leave_payload(payload)
+    assert isinstance(event, PlayerJoinLeaveV1)
+    assert event.playerName == "pizduk"
     assert event.server == "mini-pvp"
     assert event.joined is True
 
 
 def test_server_action_from_payload() -> None:
-    payload = {"message": "Server started", "server": "mini-pvp"}
-    event = ServerActionEvent.from_payload(payload)
+    payload = {
+        "messageType": "server.action",
+        "messageVersion": 1,
+        "message": "Server started",
+        "server": "mini-pvp",
+    }
+    event = parse_server_action_payload(payload)
+    assert isinstance(event, ServerActionV1)
     assert event.message == "Server started"
     assert event.server == "mini-pvp"
 
 
-def test_ban_event_from_payload_snake_case() -> None:
+def test_ban_payload_from_canonical_generated_shape() -> None:
     payload = {
-        "pid": "7",
-        "uuid": "u-1",
-        "ip": "1.2.3.4",
-        "name": "pizduk",
-        "admin_name": "admin",
-        "admin_discord_id": "123",
-        "reason": "rule",
-        "expire_date": "2026-03-01T10:00:00+00:00",
-    }
-    event = BanEvent.from_payload(payload)
-    assert event.pid == 7
-    assert event.uuid == "u-1"
-    assert event.ip == "1.2.3.4"
-    assert event.name == "pizduk"
-    assert event.admin_name == "admin"
-    assert event.admin_discord_id == "123"
-    assert event.reason == "rule"
-    assert event.expire_date == "2026-03-01T10:00:00+00:00"
-
-
-def test_ban_event_from_payload_camel_case_admin_and_expire() -> None:
-    payload = {
-        "playerPid": 12,
-        "uuid": "u-2",
-        "name": "player",
-        "adminName": "mod",
-        "adminDiscordId": "555",
+        "messageType": "moderation.ban.created",
+        "messageVersion": 1,
+        "target": {"playerUuid": "u-2", "playerPid": 12, "playerName": "player"},
+        "actor": {"actorName": "mod", "actorDiscordId": "555"},
         "reason": "abuse",
-        "expireDate": "2026-03-01T11:00:00+00:00",
+        "expiration": {"expiresAt": "2026-03-01T11:00:00+00:00", "permanent": False},
     }
-    event = BanEvent.from_payload(payload)
-    assert event.pid == 12
-    assert event.admin_name == "mod"
-    assert event.admin_discord_id == "555"
-    assert event.expire_date == "2026-03-01T11:00:00+00:00"
-
-
-def test_mute_event_from_payload_camel_case_admin_and_expire() -> None:
-    payload = {
-        "playerPid": 12,
-        "uuid": "u-2",
-        "name": "player",
-        "adminName": "mod",
-        "adminDiscordId": "777",
-        "reason": "spam",
-        "expireDate": "2026-03-01T11:00:00+00:00",
-    }
-    event = MuteEvent.from_payload(payload)
-    assert event.pid == 12
-    assert event.uuid == "u-2"
-    assert event.admin_name == "mod"
-    assert event.admin_discord_id == "777"
-    assert event.reason == "spam"
-    assert event.expire_date == "2026-03-01T11:00:00+00:00"
+    event = parse_ban_payload(payload)
+    assert event.target.playerPid == 12
+    assert event.actor.actorName == "mod"
+    assert event.actor.actorDiscordId == "555"
+    assert event.expiration is not None
+    assert event.expiration.expiresAt == "2026-03-01T11:00:00+00:00"
 
 
 def test_global_chat_event_from_payload() -> None:
-    payload = {"authorName": "pizduk", "message": "hello all", "server": "mini-pvp"}
-    event = GlobalChatEvent.from_payload(payload)
-    assert event.author_name == "pizduk"
+    payload = {
+        "messageType": "chat.global",
+        "messageVersion": 1,
+        "authorName": "pizduk",
+        "message": "hello all",
+        "server": "mini-pvp",
+    }
+    event = parse_global_chat_payload(payload)
+    assert isinstance(event, ChatGlobalV1)
+    assert event.authorName == "pizduk"
     assert event.message == "hello all"
     assert event.server == "mini-pvp"
 
 
-def test_vote_kick_event_from_payload_with_votes() -> None:
-    payload = {
-        "targetName": "Target",
-        "targetPid": "42",
-        "targetUuid": "uuid-target",
-        "starterName": "Starter",
-        "starterPid": "7",
-        "starterDiscordId": "123456",
-        "reason": "griefing",
-        "votesFor": [
-            {"playerName": "Starter", "playerPid": "7", "discordId": "123456"}
-        ],
-        "votesAgainst": [
-            {"playerName": "Voter2", "playerPid": 8, "discordId": "654321"}
-        ],
-    }
-    event = VoteKickEvent.from_payload(payload)
-    assert event.target_name == "Target"
-    assert event.target_pid == 42
-    assert event.target_uuid == "uuid-target"
-    assert event.starter_name == "Starter"
-    assert event.starter_pid == 7
-    assert event.starter_discord_id == "123456"
-    assert event.reason == "griefing"
-    assert event.votes_for[0].discord_id == "123456"
-    assert event.votes_against[0].name == "Voter2"
-
-
-def test_raw_event_from_fields() -> None:
-    fields = {
-        "event_type": "event.someunknown",
-        "payload_json": '{"a":1,"b":"x"}',
-    }
-    event = RawEvent.from_fields(fields)
-    assert event.event_type == "event.someunknown"
-    assert event.payload == {"a": 1, "b": "x"}
-
-
 def test_server_heartbeat_from_payload() -> None:
     payload = {
+        "messageType": "server.heartbeat",
+        "messageVersion": 1,
         "serverName": "mini-pvp",
-        "discordChannelId": "1234",
+        "discordChannelId": 1234,
         "players": 4,
         "maxPlayers": 10,
         "version": "1.2.3",
     }
-    event = ServerHeartbeatEvent.from_payload(payload)
-    assert event.server_name == "mini-pvp"
-    assert event.discord_channel_id == 1234
+    event = parse_server_heartbeat_payload(payload)
+    assert isinstance(event, ServerHeartbeatV1)
+    assert event.serverName == "mini-pvp"
+    assert event.discordChannelId == 1234
     assert event.players == 4
-    assert event.max_players == 10
+    assert event.maxPlayers == 10
     assert event.version == "1.2.3"
-
-
-def test_server_heartbeat_from_payload_with_address_aliases() -> None:
-    payload = {
-        "serverName": "mini-pvp",
-        "discordChannelId": "1234",
-        "players": 4,
-        "maxPlayers": 10,
-        "version": "1.2.3",
-        "serverHost": "play.example.com",
-        "serverPort": "6567",
-    }
-    event = ServerHeartbeatEvent.from_payload(payload)
-    assert event.host == "play.example.com"
-    assert event.port == 6567
-
-
-def test_heartbeat_event_type_literal() -> None:
-    assert EventType.HEARTBEAT == "ServerHeartbeatEvent"
 
 
 def test_discord_link_status_changed_from_payload() -> None:
     payload = {
-        "playerUuid": "uuid-7",
-        "playerPid": "7",
-        "playerNickname": "Target",
-        "discordId": "123456",
-        "discordUsername": "osp54",
+        "messageType": "discord.link.status-changed",
+        "messageVersion": 1,
+        "player": {"playerUuid": "uuid-7", "playerPid": 7, "playerName": "Target"},
+        "discord": {"discordId": "123456", "discordUsername": "osp54"},
         "action": "linked",
         "server": "mini-pvp",
-        "occurredAt": "123456789",
+        "occurredAt": "2026-05-02T10:20:30.123+00:00",
     }
-    event = DiscordLinkStatusChangedEvent.from_payload(payload)
-    assert event.player_uuid == "uuid-7"
-    assert event.player_pid == 7
-    assert event.player_nickname == "Target"
-    assert event.discord_id == "123456"
-    assert event.discord_username == "osp54"
-    assert event.action == "linked"
+    event = parse_discord_link_status_payload(payload)
+    assert isinstance(event, DiscordLinkStatusChangedV1)
+    assert event.player.playerUuid == "uuid-7"
+    assert event.player.playerPid == 7
+    assert event.player.playerName == "Target"
+    assert event.discord.discordId == "123456"
+    assert event.discord.discordUsername == "osp54"
+    assert str(event.action) == "linked"
     assert event.server == "mini-pvp"
-    assert event.occurred_at == 123456789
+    assert event.occurredAt == "2026-05-02T10:20:30.123+00:00"

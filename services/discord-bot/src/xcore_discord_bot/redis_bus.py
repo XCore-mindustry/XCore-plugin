@@ -11,18 +11,48 @@ from typing import Any, Awaitable, Callable, Mapping, cast
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
+from xcore_protocol.generated.maps import (
+    MapsListRequestV1,
+    MapsListResponseV1,
+    MapsRemoveRequestV1,
+    MapsRemoveResponseV1,
+)
+from xcore_protocol.generated.shared import ActorRefV1ActorType, MapEntryV1
+
+from .protocol_outbound import (
+    build_chat_discord_ingress_command,
+    build_discord_admin_access_changed_command,
+    build_discord_link_confirm_command,
+    build_discord_unlink_command,
+    build_maps_list_request,
+    build_maps_load_command,
+    build_maps_remove_request,
+    build_moderation_kick_banned_command,
+    build_moderation_pardon_command,
+    build_player_active_badge_changed_command,
+    build_player_badge_inventory_changed_command,
+    build_player_password_reset_command,
+)
+
 from .contracts import (
-    BanEvent,
-    DiscordLinkStatusChangedEvent,
-    EventType,
-    GameChatMessage,
-    GlobalChatEvent,
-    MuteEvent,
-    PlayerJoinLeaveEvent,
-    RawEvent,
-    ServerHeartbeatEvent,
-    ServerActionEvent,
-    VoteKickEvent,
+    ChatGlobalV1,
+    ChatMessageV1,
+    DiscordLinkStatusChangedV1,
+    ModerationBanCreatedV1,
+    ModerationMuteCreatedV1,
+    ModerationVoteKickCreatedV1,
+    parse_ban_payload,
+    parse_chat_message_payload,
+    parse_discord_link_status_payload,
+    parse_global_chat_payload,
+    parse_mute_payload,
+    parse_player_join_leave_payload,
+    parse_server_action_payload,
+    parse_vote_kick_payload,
+    PlayerJoinLeaveV1,
+    ServerActionV1,
+    ServerHeartbeatV1,
+    parse_server_heartbeat_payload,
 )
 from .registry import server_registry
 from .settings import Settings
@@ -96,15 +126,15 @@ class RedisBus:
         for target_server in target_servers:
             event_id = str(uuid.uuid4())
             stream = f"xcore:cmd:discord-message:{target_server}"
-            payload = {
-                "authorName": author_name,
-                "message": message,
-                "server": target_server,
-            }
+            payload = build_chat_discord_ingress_command(
+                author_name=author_name,
+                message=message,
+                server=target_server,
+            ).to_payload()
 
             fields = {
                 "schema_version": "1",
-                "event_type": "chat.discord_ingress",
+                "event_type": "chat.discord-ingress.command",
                 "event_id": event_id,
                 "idempotency_key": self._build_idempotency_key(
                     prefix="discord.message",
@@ -143,116 +173,97 @@ class RedisBus:
         return cast(dict[str, object], payload)
 
     async def consume_game_chat(
-        self, callback: Callable[[GameChatMessage], Awaitable[None]]
+        self, callback: Callable[[ChatMessageV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:chat:message",
             group_suffix="discord-chat",
-            parse_payload=GameChatMessage.from_payload,
+            parse_payload=parse_chat_message_payload,
             callback=callback,
             skip_discord_producer=True,
         )
 
     async def consume_global_chat(
-        self, callback: Callable[[GlobalChatEvent], Awaitable[None]]
+        self, callback: Callable[[ChatGlobalV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:chat:global",
             group_suffix="discord-global-chat",
-            parse_payload=GlobalChatEvent.from_payload,
+            parse_payload=parse_global_chat_payload,
             callback=callback,
         )
 
-    async def consume_raw_events(
-        self, callback: Callable[[RawEvent], Awaitable[None]]
-    ) -> None:
-        async def wrapped(event: RawEvent) -> None:
-            if event.event_type in {
-                EventType.HEARTBEAT,
-                "org.xcore.plugin.event.SocketEvents$ServerHeartbeatEvent",
-            }:
-                heartbeat = ServerHeartbeatEvent.from_payload(event.payload)
-                self._update_registry_from_heartbeat(heartbeat)
-            await callback(event)
-
-        await self._consume_events(
-            stream="xcore:evt:raw",
-            group_suffix="discord-raw",
-            parse_fields=RawEvent.from_fields,
-            callback=wrapped,
-        )
-
     async def consume_server_heartbeats(
-        self, callback: Callable[[ServerHeartbeatEvent], Awaitable[None]]
+        self, callback: Callable[[ServerHeartbeatV1], Awaitable[None]]
     ) -> None:
-        async def wrapped(event: ServerHeartbeatEvent) -> None:
+        async def wrapped(event: ServerHeartbeatV1) -> None:
             self._update_registry_from_heartbeat(event)
             await callback(event)
 
         await self._consume_events(
             stream="xcore:evt:server:heartbeat",
             group_suffix="discord-server-heartbeat",
-            parse_payload=ServerHeartbeatEvent.from_payload,
+            parse_payload=parse_server_heartbeat_payload,
             callback=wrapped,
         )
 
     async def consume_player_join_leave(
-        self, callback: Callable[[PlayerJoinLeaveEvent], Awaitable[None]]
+        self, callback: Callable[[PlayerJoinLeaveV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:player:joinleave",
             group_suffix="discord-join-leave",
-            parse_payload=PlayerJoinLeaveEvent.from_payload,
+            parse_payload=parse_player_join_leave_payload,
             callback=callback,
         )
 
     async def consume_server_actions(
-        self, callback: Callable[[ServerActionEvent], Awaitable[None]]
+        self, callback: Callable[[ServerActionV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:server:action",
             group_suffix="discord-server-action",
-            parse_payload=ServerActionEvent.from_payload,
+            parse_payload=parse_server_action_payload,
             callback=callback,
         )
 
     async def consume_bans(
-        self, callback: Callable[[BanEvent], Awaitable[None]]
+        self, callback: Callable[[ModerationBanCreatedV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:moderation:ban",
             group_suffix="discord-ban",
-            parse_payload=BanEvent.from_payload,
+            parse_payload=parse_ban_payload,
             callback=callback,
         )
 
     async def consume_mutes(
-        self, callback: Callable[[MuteEvent], Awaitable[None]]
+        self, callback: Callable[[ModerationMuteCreatedV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:moderation:mute",
             group_suffix="discord-mute",
-            parse_payload=MuteEvent.from_payload,
+            parse_payload=parse_mute_payload,
             callback=callback,
         )
 
     async def consume_vote_kicks(
-        self, callback: Callable[[VoteKickEvent], Awaitable[None]]
+        self, callback: Callable[[ModerationVoteKickCreatedV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:moderation:votekick",
             group_suffix="discord-votekick",
-            parse_payload=VoteKickEvent.from_payload,
+            parse_payload=parse_vote_kick_payload,
             callback=callback,
         )
 
     async def consume_discord_link_status_changed(
-        self, callback: Callable[[DiscordLinkStatusChangedEvent], Awaitable[None]]
+        self, callback: Callable[[DiscordLinkStatusChangedV1], Awaitable[None]]
     ) -> None:
         await self._consume_events(
             stream="xcore:evt:discord:link-status",
             group_suffix="discord-link-status",
-            parse_payload=DiscordLinkStatusChangedEvent.from_payload,
+            parse_payload=parse_discord_link_status_payload,
             callback=callback,
         )
 
@@ -453,12 +464,12 @@ class RedisBus:
         )
 
     @staticmethod
-    def _update_registry_from_heartbeat(event: ServerHeartbeatEvent) -> None:
+    def _update_registry_from_heartbeat(event: ServerHeartbeatV1) -> None:
         server_registry.update_server(
-            event.server_name,
-            event.discord_channel_id,
+            event.serverName,
+            event.discordChannelId,
             event.players,
-            event.max_players,
+            event.maxPlayers,
             event.version,
             event.host,
             event.port,
@@ -584,62 +595,74 @@ class RedisBus:
         *,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
         discord_username: str | None,
         admin: bool,
-        admin_source: str,
-        requested_by: str,
+        source_name: str,
+        source_type: ActorRefV1ActorType,
+        actor_name: str,
+        actor_discord_id: str | None,
+        actor_type: ActorRefV1ActorType,
         reason: str,
     ) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:discord-admin-access",
-            event_type="discord.admin_access_changed",
+            event_type="discord.admin-access.changed.command",
             ttl_ms=120_000,
             idempotency_prefix="discord.admin_access_changed",
-            payload_builder=lambda server: {
-                "playerUuid": player_uuid,
-                "playerPid": player_pid,
-                "discordId": discord_id,
-                "discordUsername": discord_username or "",
-                "admin": admin,
-                "adminSource": admin_source,
-                "requestedBy": requested_by,
-                "reason": reason,
-                "server": server,
-                "occurredAt": int(time.time() * 1000),
-            },
+            payload_builder=lambda server: build_discord_admin_access_changed_command(
+                player_uuid=player_uuid,
+                player_pid=player_pid,
+                player_name=player_name,
+                discord_id=discord_id,
+                discord_username=discord_username,
+                admin=admin,
+                source_name=source_name,
+                source_type=source_type,
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                actor_type=actor_type,
+                reason=reason,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_kick_banned(self, uuid_value: str, ip: str | None) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:kick-banned",
-            event_type="moderation.kick_banned",
+            event_type="moderation.kick-banned.command",
             ttl_ms=120_000,
             idempotency_prefix="moderation.kick_banned",
-            payload_builder=lambda server: {
-                "uuid": uuid_value,
-                "ip": ip,
-                "server": server,
-            },
+            payload_builder=lambda server: build_moderation_kick_banned_command(
+                uuid_value=uuid_value,
+                ip=ip,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:pardon-player",
-            event_type="moderation.pardon",
+            event_type="moderation.pardon.command",
             ttl_ms=120_000,
             idempotency_prefix="moderation.pardon",
-            payload_builder=lambda server: {"uuid": uuid_value, "server": server},
+            payload_builder=lambda server: build_moderation_pardon_command(
+                uuid_value=uuid_value,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_maps_load(self, server: str, files: list[dict[str, str]]) -> None:
         await self._publish_event(
             stream=f"xcore:cmd:maps-load:{server}",
-            event_type="maps.load",
+            event_type="maps.load.command",
             ttl_ms=300_000,
             server=server,
-            payload={"urls": files, "server": server},
-            idempotency_prefix="maps.load",
+            payload=build_maps_load_command(
+                server=server,
+                files=files,
+            ).to_payload(),
         )
 
     async def publish_player_active_badge_changed(
@@ -648,14 +671,14 @@ class RedisBus:
         normalized_badge = (active_badge or "").strip()
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:player-active-badge",
-            event_type="player.active_badge",
+            event_type="player.active-badge.changed.command",
             ttl_ms=120_000,
             idempotency_prefix="player.active_badge",
-            payload_builder=lambda server: {
-                "uuid": uuid_value,
-                "activeBadge": normalized_badge,
-                "server": server,
-            },
+            payload_builder=lambda server: build_player_active_badge_changed_command(
+                uuid_value=uuid_value,
+                active_badge=normalized_badge,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_player_badge_inventory_changed(
@@ -669,27 +692,27 @@ class RedisBus:
         badges = [str(badge).strip() for badge in unlocked_badges if str(badge).strip()]
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:player-badge-inventory",
-            event_type="player.badge_inventory",
+            event_type="player.badge-inventory.changed.command",
             ttl_ms=120_000,
             idempotency_prefix="player.badge_inventory",
-            payload_builder=lambda server: {
-                "uuid": uuid_value,
-                "activeBadge": normalized_badge,
-                "unlockedBadges": badges,
-                "server": server,
-            },
+            payload_builder=lambda server: build_player_badge_inventory_changed_command(
+                uuid_value=uuid_value,
+                active_badge=normalized_badge,
+                unlocked_badges=badges,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_player_password_reset(self, *, uuid_value: str) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:player-password-reset",
-            event_type="player.password_reset",
+            event_type="player.password-reset.command",
             ttl_ms=120_000,
             idempotency_prefix="player.password_reset",
-            payload_builder=lambda server: {
-                "uuid": uuid_value,
-                "server": server,
-            },
+            payload_builder=lambda server: build_player_password_reset_command(
+                uuid_value=uuid_value,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_discord_link_confirm(
@@ -698,23 +721,24 @@ class RedisBus:
         code: str,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
         discord_username: str,
     ) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:discord-link-confirm",
-            event_type="discord.link_confirm",
+            event_type="discord.link.confirm.command",
             ttl_ms=120_000,
             idempotency_prefix="discord.link_confirm",
-            payload_builder=lambda server: {
-                "code": code,
-                "playerUuid": player_uuid,
-                "playerPid": player_pid,
-                "discordId": discord_id,
-                "discordUsername": discord_username,
-                "server": server,
-                "confirmedAt": int(time.time() * 1000),
-            },
+            payload_builder=lambda server: build_discord_link_confirm_command(
+                code=code,
+                player_uuid=player_uuid,
+                player_pid=player_pid,
+                player_name=player_name,
+                discord_id=discord_id,
+                discord_username=discord_username,
+                server=server,
+            ).to_payload(),
         )
 
     async def publish_discord_unlink(
@@ -722,22 +746,27 @@ class RedisBus:
         *,
         player_uuid: str,
         player_pid: int,
+        player_name: str,
         discord_id: str,
-        requested_by: str,
+        discord_username: str,
+        actor_name: str,
+        actor_discord_id: str,
     ) -> None:
         await self._publish_for_all_servers(
             stream_prefix="xcore:cmd:discord-unlink",
-            event_type="discord.unlink",
+            event_type="discord.unlink.command",
             ttl_ms=120_000,
             idempotency_prefix="discord.unlink",
-            payload_builder=lambda server: {
-                "playerUuid": player_uuid,
-                "playerPid": player_pid,
-                "discordId": discord_id,
-                "requestedBy": requested_by,
-                "server": server,
-                "requestedAt": int(time.time() * 1000),
-            },
+            payload_builder=lambda server: build_discord_unlink_command(
+                player_uuid=player_uuid,
+                player_pid=player_pid,
+                player_name=player_name,
+                discord_id=discord_id,
+                discord_username=discord_username,
+                actor_name=actor_name,
+                actor_discord_id=actor_discord_id,
+                server=server,
+            ).to_payload(),
         )
 
     async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
@@ -753,17 +782,15 @@ class RedisBus:
     async def rpc_maps_list(self, server: str, timeout_ms: int) -> list[dict[str, str]]:
         body = await self._rpc_request(
             server=server,
-            rpc_type="maps.list",
-            payload={"server": server},
+            rpc_type=MapsListRequestV1.MESSAGE_TYPE,
+            payload=build_maps_list_request(server=server).to_payload(),
             timeout_ms=timeout_ms,
         )
 
         payload_json = body.get("payload_json", "{}")
         payload = json.loads(payload_json)
-        maps = payload.get("maps")
-        if isinstance(maps, list):
-            return [self._normalize_map_entry(value) for value in maps]
-        return []
+        response = MapsListResponseV1.from_payload(payload)
+        return [self._normalize_map_entry_v1(entry) for entry in response.maps]
 
     async def _publish_for_all_servers(
         self,
@@ -789,52 +816,38 @@ class RedisBus:
         return [srv.name for srv in server_registry.get_all_servers()]
 
     @staticmethod
-    def _normalize_map_entry(value: Any) -> dict[str, str]:
-        if isinstance(value, dict):
-            return {
-                "name": str(value.get("name", "Unknown")),
-                "file_name": str(value.get("fileName", value.get("file_name", ""))),
-                "author": str(value.get("author", "Unknown")),
-                "width": str(value.get("width", "")),
-                "height": str(value.get("height", "")),
-                "file_size_bytes": str(
-                    value.get("fileSizeBytes", value.get("file_size_bytes", ""))
-                ),
-                "like": str(value.get("like", "")),
-                "dislike": str(value.get("dislike", "")),
-                "reputation": str(value.get("reputation", "")),
-                "popularity": str(value.get("popularity", "")),
-                "interest": str(value.get("interest", "")),
-                "game_mode": str(value.get("gameMode", value.get("game_mode", ""))),
-            }
-
+    def _normalize_map_entry_v1(entry: MapEntryV1) -> dict[str, str]:
         return {
-            "name": str(value),
-            "file_name": "",
-            "author": "Unknown",
-            "width": "",
-            "height": "",
-            "file_size_bytes": "",
-            "like": "",
-            "dislike": "",
-            "reputation": "",
-            "popularity": "",
-            "interest": "",
-            "game_mode": "",
+            "name": entry.name,
+            "file_name": entry.fileName,
+            "author": entry.author,
+            "width": str(entry.width) if entry.width is not None else "",
+            "height": str(entry.height) if entry.height is not None else "",
+            "file_size_bytes": str(entry.fileSizeBytes)
+            if entry.fileSizeBytes is not None
+            else "",
+            "like": str(entry.like) if entry.like is not None else "",
+            "dislike": str(entry.dislike) if entry.dislike is not None else "",
+            "reputation": str(entry.reputation) if entry.reputation is not None else "",
+            "popularity": str(entry.popularity) if entry.popularity is not None else "",
+            "interest": str(entry.interest) if entry.interest is not None else "",
+            "game_mode": entry.gameMode if entry.gameMode is not None else "",
         }
 
     async def rpc_remove_map(self, server: str, file_name: str, timeout_ms: int) -> str:
         body = await self._rpc_request(
             server=server,
-            rpc_type="maps.remove",
-            payload={"server": server, "fileName": file_name, "file_name": file_name},
+            rpc_type=MapsRemoveRequestV1.MESSAGE_TYPE,
+            payload=build_maps_remove_request(
+                server=server, file_name=file_name
+            ).to_payload(),
             timeout_ms=timeout_ms,
         )
 
         payload_json = body.get("payload_json", "{}")
         payload = json.loads(payload_json)
-        result = payload.get("result")
-        return str(result) if result is not None else "No result"
+        response = MapsRemoveResponseV1.from_payload(payload)
+        return response.result
 
     async def _rpc_request(
         self, server: str, rpc_type: str, payload: dict[str, Any], timeout_ms: int

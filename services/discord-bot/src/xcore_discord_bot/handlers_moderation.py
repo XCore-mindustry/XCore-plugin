@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, cast
 
 import discord
 from discord import Interaction
+from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickParticipantV1
 
-from .contracts import VoteKickParticipant
 from .dto import PlayerRecord
 from .moderation_views import BanConfirmView, MuteUndoView
 from .presentation import format_ban_expire_date
@@ -61,14 +61,17 @@ def _format_vote_kick_party_value(*, name: str, pid: int | None) -> str:
     return f"{safe_name} (pid={pid})" if pid is not None and pid > 0 else safe_name
 
 
-def _format_vote_kick_participant(item: VoteKickParticipant) -> str:
+def _format_vote_kick_participant(item: VoteKickParticipantV1) -> str:
     from .bot import strip_mindustry_colors
 
-    name = strip_mindustry_colors(str(item.name).replace("`", "")).strip() or "Unknown"
+    name = (
+        strip_mindustry_colors(str(item.playerName).replace("`", "")).strip()
+        or "Unknown"
+    )
     segments = [f"`{name}`"]
-    if item.pid is not None and item.pid > 0:
-        segments.append(f"pid={item.pid}")
-    discord_id = str(item.discord_id or "").strip()
+    if item.playerPid is not None and item.playerPid > 0:
+        segments.append(f"pid={item.playerPid}")
+    discord_id = str(item.discordId or "").strip()
     if discord_id:
         segments.append(f"<@{discord_id}> ({discord_id})")
     return (
@@ -514,11 +517,15 @@ async def cmd_remove_admin(
         await bot.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
+            player_name=target_player.nickname,
             discord_id=target_player.discord_id or "",
             discord_username=target_player.discord_username,
             admin=False,
-            admin_source="NONE",
-            requested_by=interaction.user.display_name,
+            source_name="NONE",
+            source_type=ActorRefV1ActorType.SYSTEM,
+            actor_name=interaction.user.display_name,
+            actor_discord_id=str(interaction.user.id),
+            actor_type=ActorRefV1ActorType.DISCORD,
             reason="/admin remove",
         )
         any_changed = any_changed or changed
@@ -586,11 +593,15 @@ async def cmd_add_admin(
         await bot.publish_discord_admin_access_changed(
             player_uuid=target_uuid,
             player_pid=target_player.pid,
+            player_name=target_player.nickname,
             discord_id=target_player.discord_id or "",
             discord_username=target_player.discord_username,
             admin=True,
-            admin_source="DISCORD_ROLE",
-            requested_by=interaction.user.display_name,
+            source_name="DISCORD_ROLE",
+            source_type=ActorRefV1ActorType.SYSTEM,
+            actor_name=interaction.user.display_name,
+            actor_discord_id=str(interaction.user.id),
+            actor_type=ActorRefV1ActorType.DISCORD,
             reason="/admin add",
         )
         any_changed = any_changed or changed
@@ -851,8 +862,8 @@ async def post_vote_kick_log(
     starter_pid: int | None,
     starter_discord_id: str | None,
     reason: str,
-    votes_for: list[VoteKickParticipant],
-    votes_against: list[VoteKickParticipant],
+    votes_for: list[VoteKickParticipantV1],
+    votes_against: list[VoteKickParticipantV1],
 ) -> None:
     from .bot import strip_mindustry_colors
 

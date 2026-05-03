@@ -7,6 +7,7 @@ import pytest
 import discord
 
 from xcore_discord_bot.dto import PlayerRecord
+from xcore_protocol.generated.shared import ActorRefV1ActorType
 from xcore_discord_bot.handlers_moderation import (
     cmd_add_admin,
     cmd_list_admins,
@@ -17,6 +18,7 @@ from xcore_discord_bot.handlers_moderation import (
 
 @dataclass
 class _User:
+    id: int = 1
     display_name: str = "boss"
 
 
@@ -163,8 +165,12 @@ async def test_cmd_add_admin_sets_admin_access_and_publishes_event() -> None:
     assert bot.claims == [("add-admin", "7")]
     assert bot.role_calls == [("123", True, "/admin add by boss")]
     assert bot.set_admin_calls == [("uuid-7", True, "DISCORD_ROLE")]
-    assert bot.published[0]["player_uuid"] == "uuid-7"
-    assert bot.published[0]["admin"] is True
+    call = bot.published[0]
+    assert call["player_uuid"] == "uuid-7"
+    assert call["admin"] is True
+    assert call["source_type"] == ActorRefV1ActorType.SYSTEM
+    assert call["source_name"] == "DISCORD_ROLE"
+    assert call["actor_type"] == ActorRefV1ActorType.DISCORD
     assert interaction.response.sent == [
         {
             "text": "Granted admin for `Target`",
@@ -186,7 +192,11 @@ async def test_cmd_remove_admin_clears_admin_access_and_publishes_event() -> Non
     assert bot.claims == [("remove-admin", "7")]
     assert bot.role_calls == [("123", False, "/admin remove by boss")]
     assert bot.set_admin_calls == [("uuid-7", False, "NONE")]
-    assert bot.published[0]["admin"] is False
+    call = bot.published[0]
+    assert call["admin"] is False
+    assert call["source_type"] == ActorRefV1ActorType.SYSTEM
+    assert call["source_name"] == "NONE"
+    assert call["actor_type"] == ActorRefV1ActorType.DISCORD
     assert interaction.response.sent == [
         {
             "text": "Removed admin for `Target`",

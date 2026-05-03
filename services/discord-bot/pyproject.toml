@@ -15,6 +15,7 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
+    "xcore-protocol",
 ]
 
 [project.scripts]
@@ -36,3 +37,6 @@ testpaths = ["tests"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+xcore-protocol = { path = "xcore-protocol", editable = true }

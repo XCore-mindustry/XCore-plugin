@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pytest
+from xcore_protocol.generated.shared import VoteKickParticipantV1
 
-from xcore_discord_bot.contracts import VoteKickParticipant
 from xcore_discord_bot.handlers_moderation import (
     post_ban_log,
     post_mute_log,
@@ -98,10 +98,24 @@ async def test_post_vote_kick_log_shows_initiator_reason_and_vote_lists() -> Non
         starter_discord_id="123456",
         reason="griefing",
         votes_for=[
-            VoteKickParticipant(name="[green]Starter[]", pid=7, discord_id="123456"),
-            VoteKickParticipant(name="[#2CABFEFF]mix", pid=45410, discord_id=None),
+            VoteKickParticipantV1(
+                playerName="[green]Starter[]",
+                playerPid=7,
+                discordId="123456",
+            ),
+            VoteKickParticipantV1(
+                playerName="[#2CABFEFF]mix",
+                playerPid=45410,
+                discordId=None,
+            ),
         ],
-        votes_against=[VoteKickParticipant(name="Voter2", pid=8, discord_id="654321")],
+        votes_against=[
+            VoteKickParticipantV1(
+                playerName="Voter2",
+                playerPid=8,
+                discordId="654321",
+            )
+        ],
     )
 
     embed = bot.channel.sent[0]["embed"]
@@ -128,7 +142,13 @@ async def test_post_vote_kick_log_shows_none_when_against_list_is_empty() -> Non
         starter_pid=7,
         starter_discord_id=None,
         reason="griefing",
-        votes_for=[VoteKickParticipant(name="Starter", pid=7, discord_id=None)],
+        votes_for=[
+            VoteKickParticipantV1(
+                playerName="Starter",
+                playerPid=7,
+                discordId=None,
+            )
+        ],
         votes_against=[],
     )
 

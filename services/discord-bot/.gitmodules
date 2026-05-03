@@ -1,0 +1,3 @@
+[submodule "xcore-protocol"]
+	path = xcore-protocol
+	url = https://github.com/XCore-mindustry/xcore-protocol.git
