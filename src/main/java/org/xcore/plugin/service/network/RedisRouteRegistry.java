@@ -60,6 +60,11 @@ public final class RedisRouteRegistry {
         if (mapsServer != null && !mapsServer.isBlank()) {
             return mapsServer;
         }
+        // Legacy migration fallback — TransportEvents.ServerScopedEvent is retained
+        // for backward compatibility during protocol migration rollout.
+        // This branch will be removed once all payloads use generated protocol DTOs
+        // and TransportEvents.ServerScopedEvent is no longer needed.
+        // See: xcore-protocol migration plan for removal timeline.
         if (payload instanceof TransportEvents.ServerScopedEvent serverScopedEvent) {
             String server = serverScopedEvent.server();
             if (server != null && !server.isBlank()) {

@@ -264,6 +264,9 @@ public class DiscordLinkService {
                                            String adminSource,
                                            String requestedBy,
                                            String reason) {
+        var source = DiscordProtocolMapper.toSourceActor(adminSource);
+        // DiscordLinkService only has requester name strings here, so actor metadata falls back to SYSTEM.
+        var actor = DiscordProtocolMapper.toRequesterActor(requestedBy);
         networkService.post(DiscordProtocolMapper.toAdminAccessChangedCommand(
                 playerUuid,
                 playerPid,
@@ -271,8 +274,8 @@ public class DiscordLinkService {
                 discordId,
                 discordUsername,
                 admin,
-                adminSource,
-                requestedBy,
+                source,
+                actor,
                 reason,
                 config.server,
                 System.currentTimeMillis()
@@ -280,13 +283,15 @@ public class DiscordLinkService {
     }
 
     public DiscordUnlinkCommandV1 toUnlinkCommand(PlayerData data, String requestedBy) {
+        // DiscordLinkService only has requester name strings here, so actor metadata falls back to SYSTEM.
+        var actor = DiscordProtocolMapper.toRequesterActor(requestedBy);
         return DiscordProtocolMapper.toUnlinkCommand(
                 data.uuid,
                 data.pid,
                 data.nickname,
                 data.discordId,
                 data.discordUsername,
-                requestedBy,
+                actor,
                 config.server,
                 System.currentTimeMillis()
         );

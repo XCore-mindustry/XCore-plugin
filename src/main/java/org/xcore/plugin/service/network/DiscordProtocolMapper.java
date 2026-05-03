@@ -79,6 +79,39 @@ public final class DiscordProtocolMapper {
         );
     }
 
+    /**
+     * Overload accepting canonical {@link ActorRefV1} objects for source and actor.
+     * Use this when the caller already has structured actor metadata (Discord ID, display name, actor type).
+     * <p>
+     * When actor metadata is not available, prefer the simpler overloads that use
+     * {@link #toRequesterActor(String)} and {@link #toSourceActor(String)} with their
+     * built-in system-actor fallback.
+     */
+    public static DiscordAdminAccessChangedCommandV1 toAdminAccessChangedCommand(
+            String playerUuid,
+            int playerPid,
+            String playerName,
+            String discordId,
+            String discordUsername,
+            boolean admin,
+            ActorRefV1 source,
+            ActorRefV1 actor,
+            String reason,
+            String server,
+            long occurredAt
+    ) {
+        return new DiscordAdminAccessChangedCommandV1(
+                toPlayerRef(playerUuid, playerPid, playerName),
+                toDiscordIdentity(discordId, discordUsername),
+                admin,
+                source,
+                actor,
+                requireNonBlank(reason, "reason"),
+                requireNonBlank(server, "server"),
+                toOccurredAt(occurredAt)
+        );
+    }
+
     public static org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1 toUnlinkCommand(
             String playerUuid,
             int playerPid,
@@ -93,6 +126,31 @@ public final class DiscordProtocolMapper {
                 toPlayerRef(playerUuid, playerPid, playerName),
                 toDiscordIdentity(discordId, discordUsername),
                 toRequesterActor(requestedBy),
+                requireNonBlank(server, "server"),
+                toOccurredAt(requestedAt)
+        );
+    }
+
+    /**
+     * Overload accepting a canonical {@link ActorRefV1} for the actor.
+     * Use this when the caller can supply the Discord display name, Discord ID,
+     * and verified actor type. Falls back to {@link #toRequesterActor(String)}
+     * when only a name string is available.
+     */
+    public static org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1 toUnlinkCommand(
+            String playerUuid,
+            int playerPid,
+            String playerName,
+            String discordId,
+            String discordUsername,
+            ActorRefV1 actor,
+            String server,
+            long requestedAt
+    ) {
+        return new org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1(
+                toPlayerRef(playerUuid, playerPid, playerName),
+                toDiscordIdentity(discordId, discordUsername),
+                actor,
                 requireNonBlank(server, "server"),
                 toOccurredAt(requestedAt)
         );
@@ -114,13 +172,39 @@ public final class DiscordProtocolMapper {
         );
     }
 
-    private static ActorRefV1 toSourceActor(String adminSource) {
+    public static ActorRefV1 toSourceActor(String adminSource) {
         String sourceName = requireNonBlank(adminSource, "adminSource");
         return new ActorRefV1(sourceName, null, resolveSourceActorType(sourceName));
     }
 
-    private static ActorRefV1 toRequesterActor(String requestedBy) {
+    /**
+     * Creates a system-level source actor for provenance tracking.
+     * Source actors represent system mechanisms (DISCORD_ROLE, NONE, COMMAND)
+     * and always use {@link ActorRefV1ActorType#SYSTEM}.
+     */
+    private static ActorRefV1 toSourceActor(String sourceName, ActorRefV1ActorType sourceType) {
+        return new ActorRefV1(
+                requireNonBlank(sourceName, "sourceName"),
+                null,
+                Objects.requireNonNull(sourceType, "sourceType")
+        );
+    }
+
+    public static ActorRefV1 toRequesterActor(String requestedBy) {
         return new ActorRefV1(requireNonBlank(requestedBy, "requestedBy"), null, ActorRefV1ActorType.SYSTEM);
+    }
+
+    /**
+     * Creates an actor ref with the actor's Discord identity.
+     * When the caller knows the Discord user's display name and ID,
+     * this preserves that metadata for audit/history purposes.
+     */
+    private static ActorRefV1 toRequesterActor(String name, String discordId) {
+        String actorName = normalizeOptional(name) == null ? "Unknown" : normalizeOptional(name);
+        ActorRefV1ActorType actorType = normalizeOptional(discordId) != null
+                ? ActorRefV1ActorType.DISCORD
+                : ActorRefV1ActorType.SYSTEM;
+        return new ActorRefV1(actorName, normalizeOptional(discordId), actorType);
     }
 
     private static ActorRefV1ActorType resolveSourceActorType(String adminSource) {
