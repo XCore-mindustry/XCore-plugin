@@ -1,13 +1,16 @@
 package org.xcore.protocol.generated.shared;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 public record PlayerCommandTargetV1(
         String playerUuid,
         Integer playerPid,
         String playerName,
         String ip
-) {
+) implements ProtocolPayload {
     public PlayerCommandTargetV1 {
         if (playerUuid != null) {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -35,5 +38,23 @@ public record PlayerCommandTargetV1(
         if (!(playerUuid != null || ip != null)) {
             throw new IllegalArgumentException("At least one of playerUuid, ip must be provided");
         }
+    }
+
+    @Override
+    public Map<String, Object> toPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (playerUuid != null) {
+            payload.put("playerUuid", playerUuid);
+        }
+        if (playerPid != null) {
+            payload.put("playerPid", playerPid);
+        }
+        if (playerName != null) {
+            payload.put("playerName", playerName);
+        }
+        if (ip != null) {
+            payload.put("ip", ip);
+        }
+        return payload;
     }
 }

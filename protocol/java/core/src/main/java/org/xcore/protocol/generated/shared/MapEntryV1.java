@@ -1,6 +1,9 @@
 package org.xcore.protocol.generated.shared;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 public record MapEntryV1(
         String name,
@@ -15,7 +18,7 @@ public record MapEntryV1(
         Double popularity,
         Double interest,
         String gameMode
-) {
+) implements ProtocolPayload {
     public MapEntryV1 {
         Objects.requireNonNull(name, "name must not be null");
         if (name.length() < 1) {
@@ -50,5 +53,41 @@ public record MapEntryV1(
                 throw new IllegalArgumentException("gameMode must be at least 1 characters");
             }
         }
+    }
+
+    @Override
+    public Map<String, Object> toPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("name", name);
+        payload.put("fileName", fileName);
+        payload.put("author", author);
+        if (width != null) {
+            payload.put("width", width);
+        }
+        if (height != null) {
+            payload.put("height", height);
+        }
+        if (fileSizeBytes != null) {
+            payload.put("fileSizeBytes", fileSizeBytes);
+        }
+        if (like != null) {
+            payload.put("like", like);
+        }
+        if (dislike != null) {
+            payload.put("dislike", dislike);
+        }
+        if (reputation != null) {
+            payload.put("reputation", reputation);
+        }
+        if (popularity != null) {
+            payload.put("popularity", popularity);
+        }
+        if (interest != null) {
+            payload.put("interest", interest);
+        }
+        if (gameMode != null) {
+            payload.put("gameMode", gameMode);
+        }
+        return payload;
     }
 }

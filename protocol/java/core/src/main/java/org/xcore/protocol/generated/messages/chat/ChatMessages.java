@@ -1,7 +1,10 @@
 package org.xcore.protocol.generated.messages.chat;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 public final class ChatMessages {
     private ChatMessages() {
@@ -12,7 +15,7 @@ public final class ChatMessages {
             String authorName,
             String message,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "chat.discord-ingress.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -30,13 +33,24 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("authorName", authorName);
+            payload.put("message", message);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record ChatGlobalV1(
             String authorName,
             String message,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "chat.global";
         public static final int MESSAGE_VERSION = 1;
 
@@ -54,13 +68,24 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("authorName", authorName);
+            payload.put("message", message);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record ChatMessageV1(
             String authorName,
             String message,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "chat.message";
         public static final int MESSAGE_VERSION = 1;
 
@@ -78,6 +103,17 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("authorName", authorName);
+            payload.put("message", message);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record ChatPrivateV1(
@@ -88,7 +124,7 @@ public final class ChatMessages {
             int toPid,
             String message,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "chat.private";
         public static final int MESSAGE_VERSION = 1;
 
@@ -120,11 +156,26 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("fromUuid", fromUuid);
+            payload.put("fromPid", fromPid);
+            payload.put("fromName", fromName);
+            payload.put("toUuid", toUuid);
+            payload.put("toPid", toPid);
+            payload.put("message", message);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerDataCacheReloadCommandV1(
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player-data-cache.reload.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -134,13 +185,22 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerActiveBadgeChangedCommandV1(
             String playerUuid,
             String activeBadge,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.active-badge.changed.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -155,6 +215,17 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerUuid", playerUuid);
+            payload.put("activeBadge", activeBadge);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerBadgeInventoryChangedCommandV1(
@@ -162,7 +233,7 @@ public final class ChatMessages {
             String activeBadge,
             List<String> unlockedBadges,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.badge-inventory.changed.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -182,13 +253,25 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerUuid", playerUuid);
+            payload.put("activeBadge", activeBadge);
+            payload.put("unlockedBadges", List.copyOf(unlockedBadges));
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerBadgeSymbolColorModeChangedCommandV1(
             String playerUuid,
             String badgeSymbolColorMode,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.badge-symbol-color-mode.changed.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -203,13 +286,24 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerUuid", playerUuid);
+            payload.put("badgeSymbolColorMode", badgeSymbolColorMode);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerCustomNicknameChangedCommandV1(
             String playerUuid,
             String customNickname,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.custom-nickname.changed.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -224,13 +318,24 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerUuid", playerUuid);
+            payload.put("customNickname", customNickname);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record PlayerJoinLeaveV1(
             String playerName,
             String server,
             boolean joined
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.join-leave";
         public static final int MESSAGE_VERSION = 1;
 
@@ -244,12 +349,23 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerName", playerName);
+            payload.put("server", server);
+            payload.put("joined", joined);
+            return payload;
+        }
     }
 
     public record PlayerPasswordResetCommandV1(
             String playerUuid,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "player.password-reset.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -263,13 +379,23 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("playerUuid", playerUuid);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record ServerCommandExecuteCommandV1(
             String command,
             List<String> targetServers,
             boolean exclusion
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "server-command.execute.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -284,12 +410,23 @@ public final class ChatMessages {
                 Objects.requireNonNull(item, "targetServers[] must not be null");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("command", command);
+            payload.put("targetServers", List.copyOf(targetServers));
+            payload.put("exclusion", exclusion);
+            return payload;
+        }
     }
 
     public record ServerActionV1(
             String message,
             String server
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "server.action";
         public static final int MESSAGE_VERSION = 1;
 
@@ -303,6 +440,16 @@ public final class ChatMessages {
                 throw new IllegalArgumentException("server must be at least 1 characters");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("message", message);
+            payload.put("server", server);
+            return payload;
+        }
     }
 
     public record ServerHeartbeatV1(
@@ -313,7 +460,7 @@ public final class ChatMessages {
             String version,
             String host,
             Integer port
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "server.heartbeat";
         public static final int MESSAGE_VERSION = 1;
 
@@ -346,6 +493,25 @@ public final class ChatMessages {
                     throw new IllegalArgumentException("port must be >= 0");
                 }
             }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("serverName", serverName);
+            payload.put("discordChannelId", discordChannelId);
+            payload.put("players", players);
+            payload.put("maxPlayers", maxPlayers);
+            payload.put("version", version);
+            if (host != null) {
+                payload.put("host", host);
+            }
+            if (port != null) {
+                payload.put("port", port);
+            }
+            return payload;
         }
     }
 }

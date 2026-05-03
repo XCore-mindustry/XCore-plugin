@@ -35,9 +35,26 @@ java {
     withSourcesJar()
 }
 
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:5.14.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
 sourceSets {
     main {
         java.srcDir("java/core/src/main/java")
+    }
+    test {
+        java.srcDir("java/core/src/test/java")
     }
 }
 

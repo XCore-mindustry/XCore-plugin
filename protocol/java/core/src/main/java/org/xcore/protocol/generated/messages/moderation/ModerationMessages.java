@@ -1,8 +1,10 @@
 package org.xcore.protocol.generated.messages.moderation;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.ExpirationInfoV1;
 import org.xcore.protocol.generated.shared.ModerationTargetRefV1;
@@ -23,7 +25,7 @@ public final class ModerationMessages {
             String server,
             String occurredAt,
             Map<String, Object> details
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.audit.appended";
         public static final int MESSAGE_VERSION = 1;
 
@@ -58,6 +60,29 @@ public final class ModerationMessages {
                 details = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(details));
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            if (entryType != null) {
+                payload.put("entryType", entryType.toString());
+            }
+            payload.put("target", target.toPayload());
+            payload.put("actor", actor.toPayload());
+            payload.put("reason", reason);
+            if (server != null) {
+                payload.put("server", server);
+            }
+            if (occurredAt != null) {
+                payload.put("occurredAt", occurredAt);
+            }
+            if (details != null) {
+                payload.put("details", java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(details)));
+            }
+            return payload;
+        }
     }
 
     public record ModerationBanCreatedV1(
@@ -67,7 +92,7 @@ public final class ModerationMessages {
             ExpirationInfoV1 expiration,
             String server,
             String occurredAt
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.ban.created";
         public static final int MESSAGE_VERSION = 1;
 
@@ -91,13 +116,33 @@ public final class ModerationMessages {
                 Objects.requireNonNull(occurredAt, "occurredAt must not be null");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("target", target.toPayload());
+            payload.put("actor", actor.toPayload());
+            payload.put("reason", reason);
+            if (expiration != null) {
+                payload.put("expiration", expiration.toPayload());
+            }
+            if (server != null) {
+                payload.put("server", server);
+            }
+            if (occurredAt != null) {
+                payload.put("occurredAt", occurredAt);
+            }
+            return payload;
+        }
     }
 
     public record ModerationKickBannedCommandV1(
             PlayerCommandTargetV1 target,
             String server,
             String requestedAt
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.kick-banned.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -111,6 +156,19 @@ public final class ModerationMessages {
                 Objects.requireNonNull(requestedAt, "requestedAt must not be null");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("target", target.toPayload());
+            payload.put("server", server);
+            if (requestedAt != null) {
+                payload.put("requestedAt", requestedAt);
+            }
+            return payload;
+        }
     }
 
     public record ModerationMuteCreatedV1(
@@ -120,7 +178,7 @@ public final class ModerationMessages {
             ExpirationInfoV1 expiration,
             String server,
             String occurredAt
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.mute.created";
         public static final int MESSAGE_VERSION = 1;
 
@@ -144,13 +202,33 @@ public final class ModerationMessages {
                 Objects.requireNonNull(occurredAt, "occurredAt must not be null");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("target", target.toPayload());
+            payload.put("actor", actor.toPayload());
+            payload.put("reason", reason);
+            if (expiration != null) {
+                payload.put("expiration", expiration.toPayload());
+            }
+            if (server != null) {
+                payload.put("server", server);
+            }
+            if (occurredAt != null) {
+                payload.put("occurredAt", occurredAt);
+            }
+            return payload;
+        }
     }
 
     public record ModerationPardonCommandV1(
             PlayerCommandTargetV1 target,
             String server,
             String requestedAt
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.pardon.command";
         public static final int MESSAGE_VERSION = 1;
 
@@ -164,6 +242,19 @@ public final class ModerationMessages {
                 Objects.requireNonNull(requestedAt, "requestedAt must not be null");
             }
         }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("target", target.toPayload());
+            payload.put("server", server);
+            if (requestedAt != null) {
+                payload.put("requestedAt", requestedAt);
+            }
+            return payload;
+        }
     }
 
     public record ModerationVoteKickCreatedV1(
@@ -174,7 +265,7 @@ public final class ModerationMessages {
             List<VoteKickParticipantV1> votesAgainst,
             String server,
             String occurredAt
-    ) {
+    ) implements ProtocolPayload {
         public static final String MESSAGE_TYPE = "moderation.vote-kick.created";
         public static final int MESSAGE_VERSION = 1;
 
@@ -208,6 +299,39 @@ public final class ModerationMessages {
             if (occurredAt != null) {
                 Objects.requireNonNull(occurredAt, "occurredAt must not be null");
             }
+        }
+
+        @Override
+        public Map<String, Object> toPayload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("messageType", MESSAGE_TYPE);
+            payload.put("messageVersion", MESSAGE_VERSION);
+            payload.put("target", target.toPayload());
+            payload.put("actor", actor.toPayload());
+            payload.put("reason", reason);
+            if (votesFor != null) {
+                payload.put(
+        "votesFor",
+        votesFor.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
+            if (votesAgainst != null) {
+                payload.put(
+        "votesAgainst",
+        votesAgainst.stream()
+            .map(item -> item.toPayload())
+            .toList()
+    );
+            }
+            if (server != null) {
+                payload.put("server", server);
+            }
+            if (occurredAt != null) {
+                payload.put("occurredAt", occurredAt);
+            }
+            return payload;
         }
     }
 }

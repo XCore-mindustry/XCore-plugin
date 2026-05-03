@@ -14,6 +14,7 @@ from .route_descriptors import RouteDescriptor
 SHARED_PACKAGE = "org.xcore.protocol.generated.shared"
 ROUTES_PACKAGE = "org.xcore.protocol.generated.routes"
 ENVELOPES_PACKAGE = "org.xcore.protocol.generated.envelopes"
+RUNTIME_PACKAGE = "org.xcore.protocol.generated.runtime"
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,19 +138,22 @@ def _java_messages_root(output_root: Path, config: FamilyConfig) -> Path:
 
 def _render_shared_record(schema: NormalizedSchema) -> str:
     components = ",\n".join(f"        {_component_declaration(field)}" for field in schema.fields if field.const is None)
-    imports = {"import java.util.Objects;"}
+    imports = {"import java.util.Objects;", "import java.util.LinkedHashMap;", "import java.util.Map;"}
+    imports.add(f"import {RUNTIME_PACKAGE}.ProtocolPayload;")
     if any(field.shape == FieldShape.ARRAY for field in schema.fields if field.const is None):
         imports.add("import java.util.List;")
     if any(field.shape == FieldShape.MAP for field in schema.fields if field.const is None):
         imports.add("import java.util.Map;")
+    to_payload = _render_to_payload_method(schema, indent="    ", inject_consts=False)
     return (
         f"package {SHARED_PACKAGE};\n\n"
         + "\n".join(sorted(imports))
         + "\n\n"
         f"public record {schema.title}(\n"
         f"{components}\n"
-        ") {\n"
-        f"{_render_compact_constructor(schema, indent='    ')}\n"
+        ") implements ProtocolPayload {\n"
+        f"{_render_compact_constructor(schema, indent='    ')}\n\n"
+        f"{to_payload}\n"
         "}\n"
     )
 
@@ -197,7 +201,8 @@ def _render_family_container(
 
 
 def _render_family_imports(schemas: tuple[NormalizedSchema, ...]) -> str:
-    imports = {"import java.util.Objects;"}
+    imports = {"import java.util.Objects;", "import java.util.LinkedHashMap;", "import java.util.Map;"}
+    imports.add(f"import {RUNTIME_PACKAGE}.ProtocolPayload;")
     if any(field.shape == FieldShape.ARRAY for schema in schemas for field in schema.fields if field.const is None):
         imports.add("import java.util.List;")
     if any(field.shape == FieldShape.MAP for schema in schemas for field in schema.fields if field.const is None):
@@ -218,13 +223,15 @@ def _render_nested_message_record(schema: NormalizedSchema) -> str:
     message_version = schema.message_version
     if message_type is None or message_version is None:
         raise ValueError(f"Message schema missing identity: {schema.title}")
+    to_payload = _render_to_payload_method(schema, indent="        ", inject_consts=True)
     return (
         f"    public record {schema.title}(\n"
         f"{declaration}\n"
-        "    ) {\n"
+        "    ) implements ProtocolPayload {\n"
         f"        public static final String MESSAGE_TYPE = \"{message_type}\";\n"
         f"        public static final int MESSAGE_VERSION = {message_version};\n\n"
-        f"{_render_compact_constructor(schema, indent='        ')}\n"
+        f"{_render_compact_constructor(schema, indent='        ')}\n\n"
+        f"{to_payload}\n"
         "    }"
     )
 
@@ -736,3 +743,118 @@ def _java_map_value_label(value_type: FieldType) -> str:
     if value_type == FieldType.BOOLEAN:
         return "boolean"
     raise ValueError(f"Unsupported Java map value label: {value_type}")
+
+
+def _render_to_payload_method(
+    schema: NormalizedSchema,
+    *,
+    indent: str,
+    inject_consts: bool,
+) -> str:
+    lines: list[str] = []
+    lines.append(f"{indent}@Override")
+    lines.append(f"{indent}public Map<String, Object> toPayload() {{")
+    body_indent = indent + "    "
+    lines.append(f"{body_indent}Map<String, Object> payload = new LinkedHashMap<>();")
+
+    if inject_consts:
+        for field in schema.fields:
+            if field.const is None:
+                continue
+            const_name = _java_const_field_name(field.name)
+            lines.append(
+                f'{body_indent}payload.put("{field.name}", {const_name});'
+            )
+
+    for field in schema.fields:
+        if field.const is not None:
+            continue
+        lines.extend(_to_payload_field_lines(field, indent=body_indent))
+
+    lines.append(f"{body_indent}return payload;")
+    lines.append(f"{indent}}}")
+    return "\n".join(lines)
+
+
+def _to_payload_field_lines(field: NormalizedField, indent: str) -> list[str]:
+    name = field.name
+    if field.enum_values:
+        return _to_payload_enum_lines(name, indent)
+    if field.ref_target is not None:
+        return _to_payload_ref_lines(name, field, indent)
+    if field.shape == FieldShape.ARRAY:
+        return _to_payload_array_lines(name, field, indent)
+    if field.shape == FieldShape.MAP:
+        return _to_payload_map_lines(name, field, indent)
+    return _to_payload_scalar_lines(name, field, indent)
+
+
+def _to_payload_scalar_lines(
+    name: str, field: NormalizedField, indent: str
+) -> list[str]:
+    if field.required:
+        return [f'{indent}payload.put("{name}", {name});']
+    return [
+        f"{indent}if ({name} != null) {{",
+        f'{indent}    payload.put("{name}", {name});',
+        f"{indent}}}",
+    ]
+
+
+def _to_payload_enum_lines(name: str, indent: str) -> list[str]:
+    return [
+        f"{indent}if ({name} != null) {{",
+        f'{indent}    payload.put("{name}", {name}.toString());',
+        f"{indent}}}",
+    ]
+
+
+def _to_payload_ref_lines(
+    name: str, field: NormalizedField, indent: str
+) -> list[str]:
+    if field.shape == FieldShape.ARRAY:
+        return _to_payload_ref_array_lines(name, indent)
+    if field.required:
+        return [f'{indent}payload.put("{name}", {name}.toPayload());']
+    return [
+        f"{indent}if ({name} != null) {{",
+        f'{indent}    payload.put("{name}", {name}.toPayload());',
+        f"{indent}}}",
+    ]
+
+
+def _to_payload_array_lines(
+    name: str, field: NormalizedField, indent: str
+) -> list[str]:
+    if field.required:
+        return [f'{indent}payload.put("{name}", List.copyOf({name}));']
+    return [
+        f"{indent}if ({name} != null) {{",
+        f'{indent}    payload.put("{name}", List.copyOf({name}));',
+        f"{indent}}}",
+    ]
+
+
+def _to_payload_ref_array_lines(name: str, indent: str) -> list[str]:
+    return [
+        f"{indent}if ({name} != null) {{",
+        f"{indent}    payload.put(",
+        f'        "{name}",',
+        f"        {name}.stream()",
+        f"            .map(item -> item.toPayload())",
+        f"            .toList()",
+        f"    );",
+        f"{indent}}}",
+    ]
+
+
+def _to_payload_map_lines(
+    name: str, field: NormalizedField, indent: str
+) -> list[str]:
+    if field.required:
+        return [f'{indent}payload.put("{name}", java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>({name})));']
+    return [
+        f"{indent}if ({name} != null) {{",
+        f'{indent}    payload.put("{name}", java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>({name})));',
+        f"{indent}}}",
+    ]
