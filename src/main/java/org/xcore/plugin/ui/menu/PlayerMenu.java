@@ -340,16 +340,20 @@ public class PlayerMenu extends Menu {
                         };
 
                         Call.textInput(session.player.con, session.menuService.getTextId(),
-                            local.t("event-menu-edit-name-title"),
+                            local.t("player-menu-settings-customNickname-title"),
                             local.t("player-menu-settings-customNickname-message"),
                             256, targetData.customNickname, false);
+                    })
+                    .addLocal("player-menu-settings-customNickname-reset", () -> {
+                        updateCustomNickname(targetData, "", true, true);
+                        settings(uuid, targetData);
                     })
                     .addLocal("player-menu-settings-description", () -> {
                         session.textHandler = t -> {
                             updateDescription(targetData, t);
                             settings(uuid, targetData);
                         };
-                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("event-menu-edit-description-title"), "", 1000, targetData.description, false);
+                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("player-menu-settings-description-title"), "", 1000, targetData.description, false);
                     })
                 .end()
                 .addLocalRow("player-menu-settings-chat", () -> {
