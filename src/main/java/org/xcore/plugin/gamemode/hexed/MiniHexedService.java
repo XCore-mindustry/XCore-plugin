@@ -50,7 +50,8 @@ public class MiniHexedService {
     public Schematic startBase;
     private int greenCores = 0;
 
-    private static int winScore = 2400;
+    private static final int INITIAL_WIN_SCORE = 2400;
+    private static int winScore = INITIAL_WIN_SCORE;
 
     private final Config config;
     private final SessionService sessionService;
@@ -110,6 +111,8 @@ public class MiniHexedService {
 
         startBase = Schematics.readBase64("bXNjaAF4nDWQ3W6DMAxGv/wQUpDWV+gLcLPXmXaRQap2YhgFurYvv82ONSLlJLGPbYEWvYNf0lfGy0glny75cdr2VHb0U97Gcl33Ky0Awpw+8rzBvr336Eda11yGe5pndCvd+bzQlBFHWr7zkwqOZypjHtZCn3nc+cFNN0K/0ZzKsKYlsygdh+2SyoR4W2ZKUy7o07UM5yTOE8d72rl2fuylvsBPxDvwivpZ2QyvejZCFy387w+/NUbCXrMaRVCvVSUqDopOICfrOJcXV1TdqG5E94wWrmGwLjio1/0PZAMcC6blG2d6RhTBaqbVTCeZkctFA23rNOAlcKh9uIQXs8a9huVmPcPBWYaXORteFUEmaDQzaJfAcoVVVC+oF9QL6gX5Lx0jdppa5w1S7Q8n5z8n");
         Events.on(EventType.PlayEvent.class, event -> {
+            winScore = INITIAL_WIN_SCORE;
+            gameover = false;
             applyRules();
             Timer.schedule(() -> {
                 greenCores = Team.green.cores().size;
@@ -122,7 +125,7 @@ public class MiniHexedService {
                 member.leave();
             }
         });
-        Events.on(EventType.GameOverEvent.class, e -> winScore = 2400);
+        Events.on(EventType.GameOverEvent.class, e -> winScore = INITIAL_WIN_SCORE);
         Events.on(EventType.BlockDestroyEvent.class, event -> {
             var team = event.tile.team();
             var block = event.tile.block();
@@ -209,7 +212,7 @@ public class MiniHexedService {
     }
 
     private void endGame() {
-        winScore = 2400;
+        winScore = INITIAL_WIN_SCORE;
         gameover = true;
         var rankedTeams = Vars.state.teams.getActive().copy().select(t -> !t.players.isEmpty()).sort(t -> t.cores.size).reverse();
         Map<String, Integer> placements = buildPlacements(rankedTeams);
