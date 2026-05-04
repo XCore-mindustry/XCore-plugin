@@ -1,7 +1,7 @@
 # XCore Protocol Message Model
 
 ## Goal
-Define the canonical message model for the future `xcore-protocol` repository, including envelope rules, payload conventions, naming, versioning, and compatibility handling.
+Define the canonical message model for the `xcore-protocol` repository, including envelope rules, payload conventions, naming, versioning, and compatibility handling.
 
 ## Core Principle
 The public wire contract must not be an accidental serialization of internal application models. Protocol messages are explicit transport DTOs with stable meaning, and Java/Python protocol DTO/model layers should be generated from the canonical protocol definitions rather than hand-maintained independently in consumer repos.
@@ -42,8 +42,8 @@ The protocol should converge on a unified envelope model with explicit metadata:
 - `content_type`
 - `payload_json`
 
-### Transition note
-The current Redis field layout in `XCore-plugin` and `XCore-discord-bot` can be preserved through a migration window, but the target model must be documented explicitly now.
+### Current state
+The Redis field layout in `XCore-plugin` and `XCore-discord-bot` follows the canonical envelope and payload rules described here. Legacy aliases and historical event-name compatibility have been removed.
 
 ## Naming Rules
 
@@ -158,11 +158,12 @@ Each message definition should include or link to route metadata describing:
 
 The route manifest becomes the single source of truth for subscription/publish semantics and should feed generated route/metadata bindings exposed by the protocol repository.
 
-## Immediate Families To Model First
+## Modeled Families
+All message families are defined and migrated:
 - moderation
 - Discord linking/admin changes
 - maps RPC
-- chat/heartbeat after the initial migration wave
+- chat/heartbeat/misc
 
 ## Success Criteria
 - A future agent can implement or generate transport DTO/model layers without deciding naming, timing, or versioning policy on the fly.

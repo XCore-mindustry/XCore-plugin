@@ -1,7 +1,7 @@
 # XCore Protocol Repository Blueprint
 
 ## Goal
-Describe the structure, module boundaries, testing model, and release approach for the future `xcore-protocol` repository.
+Describe the structure, module boundaries, testing model, and release approach for the `xcore-protocol` repository.
 
 ## Repository Mission
 `xcore-protocol` is the canonical source of truth for XCore cross-service communication artifacts.
