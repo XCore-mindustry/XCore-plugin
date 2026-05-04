@@ -49,7 +49,8 @@ public class PlayerActivityService {
                 if (data.totalPlayTime == globalConfig.minPlayTimeForVotekick) {
                     local.send("notification-votekick-playtime",
                             args("votekickPlayTime", globalConfig.minPlayTimeForVotekick));
-                } else if (data.totalPlayTime == globalConfig.minPlayTimeForGlobalChat) {
+                }
+                if (data.totalPlayTime == globalConfig.minPlayTimeForGlobalChat) {
                     local.send("notification-global-chat-playtime",
                             args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
                 }

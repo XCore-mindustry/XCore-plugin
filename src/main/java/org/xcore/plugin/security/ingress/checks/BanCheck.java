@@ -55,9 +55,9 @@ public class BanCheck implements IngressCheck {
             Duration duration = Duration.between(Instant.now(), ban.expireDate);
 
             String reason = local.format("tempban-content", args(
-                    "nickname", stripColors(ban.name),
-                    "adminName", stripColors(ban.adminName),
-                    "reason", ban.reason,
+                    "nickname", stripColors(ban.name == null ? "" : ban.name),
+                    "adminName", stripColors(ban.adminName == null ? "" : ban.adminName),
+                    "reason", ban.reason == null ? "" : ban.reason,
                     "days", duration.toDays(),
                     "hours", duration.toHoursPart(),
                     "minutes", duration.toMinutesPart(),

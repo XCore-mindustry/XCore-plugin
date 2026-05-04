@@ -99,11 +99,12 @@ public class IngressService {
                 }
             }
         } catch (InterruptedException e) {
-            cancelRemaining(futures);
             Thread.currentThread().interrupt();
             return new AccessResult.Denied("Interrupted", true);
         } catch (ExecutionException e) {
             Log.err("[Ingress] Check execution failed", e);
+        } finally {
+            cancelRemaining(futures);
         }
 
         if (deniedResult != null) {

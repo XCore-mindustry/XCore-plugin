@@ -90,7 +90,6 @@ final class RedisRpcTracker {
             boundConnection = rpcConnection;
             requestHandle.bindConnection(rpcConnection);
             RedisCommands<String, String> rpcCommands = rpcConnection.sync();
-            listenerReady.countDown();
             String lastId = "$";
 
             while (!Thread.currentThread().isInterrupted() && !requestHandle.isCancelled() && System.currentTimeMillis() < deadline) {
@@ -144,8 +143,10 @@ final class RedisRpcTracker {
             return;
         }
 
-        rpcTimeouts.incrementAndGet();
-        timeout.run();
+        if (System.currentTimeMillis() >= deadline) {
+            rpcTimeouts.incrementAndGet();
+            timeout.run();
+        }
     }
 
     record RpcInboundContext(String correlationId, String replyTo, String rpcType, long createdAtMillis) {

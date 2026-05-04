@@ -41,10 +41,16 @@ public class FindService {
     }
 
     public Player playerByUuid(String uuid) {
-        return Groups.player.find(player -> player.uuid().equals(uuid));
+        if (uuid == null) {
+            return null;
+        }
+        return Groups.player.find(player -> uuid.equals(player.uuid()));
     }
 
     public PlayerData playerData(String uuidOrPid) {
+        if (uuidOrPid == null || uuidOrPid.isBlank()) {
+            return null;
+        }
         return uuidOrPid.startsWith("#")
                 ? sessionService.getOrLoadFromDb(Strings.parseInt(uuidOrPid.substring(1)))
                 : sessionService.getOrLoadFromDb(uuidOrPid);

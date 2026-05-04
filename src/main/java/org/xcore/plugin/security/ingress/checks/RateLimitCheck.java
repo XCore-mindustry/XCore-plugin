@@ -22,7 +22,7 @@ public class RateLimitCheck implements IngressCheck {
     @Override
     public AccessResult check(NetConnection con, ConnectPacket packet) {
         var connections = Seq.with(net.getConnections())
-                .select(connection -> connection.address.equals(con.address));
+                .select(connection -> java.util.Objects.equals(connection.address, con.address));
 
         if (connections.size >= MAX_CONNECTIONS_PER_IP) {
             netServer.admins.blacklistDos(con.address);

@@ -43,6 +43,13 @@ public class NameValidationCheck implements IngressCheck {
             return new AccessResult.Denied(reason, false, 0);
         }
 
+        if (name == null || name.trim().isEmpty()) {
+            return new AccessResult.Denied(
+                    mindustry.net.Packets.KickReason.nameEmpty.name(),
+                    false, 0
+            );
+        }
+
         String fixedName = netServer.fixName(name);
         if (fixedName == null || fixedName.trim().isEmpty()) {
             return new AccessResult.Denied(

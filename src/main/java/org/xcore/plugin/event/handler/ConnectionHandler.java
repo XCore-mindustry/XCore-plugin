@@ -90,7 +90,7 @@ public class ConnectionHandler {
 
         Call.clientPacketReliable(player.con, "adm_mod_begin", "");
 
-        if (data.exists && !data.ip.equals(player.ip())) {
+        if (data.exists && !java.util.Objects.equals(data.ip, player.ip())) {
             if (player.admin) {
                 discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
                 locale.send("error-ip-changed", args());

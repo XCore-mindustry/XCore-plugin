@@ -7,7 +7,7 @@ import mindustry.gen.Player;
 @Singleton
 public class VoteService {
     @Getter
-    private VoteSession currentSession;
+    private volatile VoteSession currentSession;
 
     public boolean startVote(VoteSession session) {
         if (currentSession != null) return false;
