@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 import mindustry.gen.Player;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.bson.codecs.pojo.annotations.BsonProperty;
+import arc.util.Log;
 import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 
@@ -97,8 +98,15 @@ public class PlayerData extends ModelData {
         this.pid = -1;
     }
 
+    private static final HexedRanks.HexedRank DEFAULT_HEXED_RANK = HexedRanks.HexedRank.values()[0];
+
     public HexedRanks.HexedRank hexedRank() {
-        return HexedRanks.HexedRank.values()[hexedRank];
+        var ranks = HexedRanks.HexedRank.values();
+        if (hexedRank < 0 || hexedRank >= ranks.length) {
+            Log.warn("PlayerData.hexedRank: out-of-bounds hexedRank=@ for uuid=@, returning default", hexedRank, uuid);
+            return DEFAULT_HEXED_RANK;
+        }
+        return ranks[hexedRank];
     }
 
     public void hexedRank(HexedRanks.HexedRank rank) {
