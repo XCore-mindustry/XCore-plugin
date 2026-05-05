@@ -70,7 +70,7 @@ class NetEventServiceTest {
         Player author = mock(Player.class);
 
         when(voteService.isVoting()).thenReturn(false);
-        when(securityService.isMuted(author)).thenReturn(true);
+        when(securityService.checkAndNotifyMuted(author)).thenReturn(true);
 
         service.chat(author, "hello");
 
@@ -117,7 +117,7 @@ class NetEventServiceTest {
         when(author.plainName()).thenReturn("Tester");
         when(chatFormatService.formatChat(author, "he`llo")).thenReturn("formatted");
         when(voteService.isVoting()).thenReturn(false);
-        when(securityService.isMuted(author)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(author)).thenReturn(false);
 
         service.chat(author, "he`llo");
 

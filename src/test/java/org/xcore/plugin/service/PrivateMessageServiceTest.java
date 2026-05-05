@@ -65,7 +65,7 @@ class PrivateMessageServiceTest {
         Session sender = mockSession("sender-uuid", 10, "Sender");
         PlayerData target = PlayerData.builder().uuid("target-uuid").pid(42).nickname("Target").blockedPrivateUuids(new HashSet<>()).build();
 
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(42)).thenReturn(target);
         when(privateMessageRepository.countUnread("target-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);
@@ -87,7 +87,7 @@ class PrivateMessageServiceTest {
         Session sender = mockSession("same-uuid", 5, "Sender");
         PlayerData target = PlayerData.builder().uuid("same-uuid").pid(5).nickname("Sender").blockedPrivateUuids(new HashSet<>()).build();
 
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(5)).thenReturn(target);
 
         boolean result = privateMessageService.send(sender, 5, "hello");
@@ -105,7 +105,7 @@ class PrivateMessageServiceTest {
         blocked.add("sender-uuid");
         PlayerData target = PlayerData.builder().uuid("target-uuid").pid(6).nickname("Target").blockedPrivateUuids(blocked).build();
 
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(6)).thenReturn(target);
 
         boolean result = privateMessageService.send(sender, 6, "hello");
@@ -121,7 +121,7 @@ class PrivateMessageServiceTest {
         Session sender = mockSession("sender-uuid", 10, "Sender");
         PlayerData target = PlayerData.builder().uuid("target-uuid").pid(42).nickname("Target").blockedPrivateUuids(new HashSet<>()).build();
 
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(42)).thenReturn(target);
         when(privateMessageRepository.countUnread("target-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(false);
@@ -141,7 +141,7 @@ class PrivateMessageServiceTest {
         Session recipient = mockSession("target-uuid", 42, "Target");
         PlayerData target = PlayerData.builder().uuid("target-uuid").pid(42).nickname("Target").blockedPrivateUuids(new HashSet<>()).build();
 
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(42)).thenReturn(target);
         when(privateMessageRepository.countUnread("target-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);
@@ -170,7 +170,7 @@ class PrivateMessageServiceTest {
 
         when(privateMessageRepository.findLatestConversationMessage("sender-uuid")).thenReturn(latest);
         when(sessionService.getOrLoadFromDb("other-uuid")).thenReturn(target);
-        when(securityService.isMuted(sender.player)).thenReturn(false);
+        when(securityService.checkAndNotifyMuted(sender.player)).thenReturn(false);
         when(sessionService.getOrLoadFromDb(88)).thenReturn(target);
         when(privateMessageRepository.countUnread("other-uuid")).thenReturn(0L);
         when(privateMessageRepository.save(any(PrivateMessage.class))).thenReturn(true);

@@ -50,7 +50,7 @@ public class PrivateMessageService {
             return false;
         }
 
-        if (securityService.isMuted(senderSession.player)) {
+        if (securityService.checkAndNotifyMuted(senderSession.player)) {
             return false;
         }
 

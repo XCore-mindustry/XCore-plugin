@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import arc.util.Nullable;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -26,22 +27,33 @@ public class SecurityService {
         this.sessionService = sessionService;
     }
 
-    public boolean isMuted(Player player) {
+    public record MuteCheckResult(boolean muted, @Nullable MuteData muteData, Duration remaining) {}
+
+    public MuteCheckResult checkMute(Player player) {
         MuteData mute = muteDataRepository.findByUuid(player.uuid());
-
-        if (mute == null) return false;
-
-        if (!mute.expired()) {
-            Session session = sessionService.get().get(player);
-            if (session != null && session.data != null) {
-                Duration remain = Duration.between(Instant.now(), mute.expireDate);
-                session.locale().send("you-are-muted", muteMessageArgs(mute.adminName, mute.reason, remain));
-            }
-            return true;
+        if (mute == null) {
+            return new MuteCheckResult(false, null, Duration.ZERO);
         }
+        if (mute.expired()) {
+            muteDataRepository.delete(player.uuid());
+            return new MuteCheckResult(false, null, Duration.ZERO);
+        }
+        Duration remaining = Duration.between(Instant.now(), mute.expireDate);
+        return new MuteCheckResult(true, mute, remaining);
+    }
 
-        muteDataRepository.delete(player.uuid());
-        return false;
+    public boolean isMuted(Player player) {
+        return checkMute(player).muted();
+    }
+
+    public boolean checkAndNotifyMuted(Player player) {
+        var result = checkMute(player);
+        if (!result.muted()) return false;
+        Session session = sessionService.get().get(player);
+        if (session != null && session.data != null) {
+            session.locale().send("you-are-muted", muteMessageArgs(result.muteData().adminName, result.muteData().reason, result.remaining()));
+        }
+        return true;
     }
 
     public static Map<String, Object> durationParts(Duration duration) {

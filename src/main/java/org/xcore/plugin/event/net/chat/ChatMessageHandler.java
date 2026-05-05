@@ -43,7 +43,7 @@ public class ChatMessageHandler {
 
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
-        if (securityService.isMuted(author)) {
+        if (securityService.checkAndNotifyMuted(author)) {
             return null;
         }
 
