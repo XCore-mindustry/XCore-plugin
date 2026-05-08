@@ -90,6 +90,10 @@ public class EventService {
         });
     }
 
+    public void finishActiveEvent() {
+        eventDataRepository.finishActiveEvent();
+    }
+
     private void activateEventImmediately(Player player, EventData target) {
         eventDataRepository.activateEvent(target);
         sessionService.broadcast(

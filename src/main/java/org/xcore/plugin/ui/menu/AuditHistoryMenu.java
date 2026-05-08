@@ -17,13 +17,26 @@ import org.xcore.plugin.session.SessionService;
 
 import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+
+import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuFlow;
+import org.xcore.plugin.ui.flow.MenuRenderContext;
+import org.xcore.plugin.ui.flow.MenuScreen;
 
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class AuditHistoryMenu extends Menu {
+
+    private static final String ACTION_PREVIOUS = "previous";
+    private static final String ACTION_NEXT = "next";
+    private static final String ACTION_DETAILS_PREFIX = "details:";
+    private static final String ACTION_BACK = "back";
+    private static final String ACTION_CLOSE = "close";
+    private static final AuditCursor FIRST_PAGE_MARKER = new AuditCursor(Long.MIN_VALUE, "__first_page__");
 
     private final AuditService auditService;
 
@@ -64,36 +77,9 @@ public class AuditHistoryMenu extends Menu {
             state.currentCursor = null;
             state.nextCursor = null;
         }
-
-        var slice = switch (mode) {
-            case TARGET -> auditService.findSummaryByTargetUuid(targetData.uuid, cursor, globalConfig.eventsPerPage);
-            case ACTOR -> findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorLookupIds(targetData), cursor, globalConfig.eventsPerPage);
-        };
         state.currentCursor = cursor;
-        state.nextCursor = slice.nextCursor();
 
-        String content = buildSummaryContent(session, targetData, mode, slice.items().size(), cursor, slice.hasNext());
-
-        var builder = session.builder()
-                .title(mode == AuditViewMode.TARGET ? "audit-menu-history-title" : "audit-menu-actions-title")
-                .rawContent(content)
-                .start()
-                .ifAddLocal(!state.backStack.isEmpty(), "previous", () -> {
-                    AuditCursor previous = state.backStack.pollLast();
-                    history(viewerUuid, targetData, mode, previous, false);
-                })
-                .ifAddLocal(slice.hasNext() && state.nextCursor != null, "next", () -> {
-                    state.backStack.addLast(state.currentCursor);
-                    history(viewerUuid, targetData, mode, state.nextCursor, false);
-                })
-                .end();
-
-        builder.addForEach(slice.items(), (menu, item) -> menu.addRow(formatSummaryRow(session.locale(), item, mode), () -> {
-            session.pushHistory(() -> history(viewerUuid, targetData, mode, state.currentCursor, false));
-            details(viewerUuid, targetData, item.auditId());
-        }));
-
-        builder.addNavigationRow().show();
+        session.menuService.renderFlow(session, new HistoryFlow(viewerUuid, targetData));
     }
 
     public void details(String viewerUuid, PlayerData targetData, String auditId) {
@@ -113,11 +99,20 @@ public class AuditHistoryMenu extends Menu {
             return;
         }
 
-        session.builder()
+        var builder = session.builder()
                 .title("audit-menu-details-title")
-                .rawContent(formatDetailsContent(session, targetData, record))
-                .addNavigationRow()
-                .show();
+                .rawContent(formatDetailsContent(session, targetData, record));
+
+        if (session.hasHistory()) {
+            builder.addLocal("back", () -> {
+                session.menuService.hideFollowUp(session);
+                Runnable previousMenu = session.popHistory();
+                if (previousMenu != null) previousMenu.run();
+            });
+        }
+
+        builder.addLocal("close", () -> session.menuService.close(session));
+        builder.showFollowUp();
     }
 
     static String formatSummaryRow(Localization local, AuditRecordSummary item) {
@@ -219,6 +214,109 @@ public class AuditHistoryMenu extends Menu {
         return local.t("audit-menu-action-" + action.toLowerCase());
     }
 
+    private final class HistoryFlow implements MenuFlow<AuditHistoryState> {
+        private final String viewerUuid;
+        private final PlayerData targetData;
+
+        HistoryFlow(String viewerUuid, PlayerData targetData) {
+            this.viewerUuid = viewerUuid;
+            this.targetData = targetData;
+        }
+
+        @Override
+        public Class<AuditHistoryState> stateType() {
+            return AuditHistoryState.class;
+        }
+
+        @Override
+        public MenuScreen render(MenuRenderContext<AuditHistoryState> context) {
+            Session session = context.session();
+            AuditHistoryState state = context.state();
+            Localization local = context.locale();
+
+            var slice = switch (state.mode) {
+                case TARGET -> auditService.findSummaryByTargetUuid(targetData.uuid, state.currentCursor, globalConfig.eventsPerPage);
+                case ACTOR -> findSummaryByActor(AuditActorType.PLAYER_ADMIN, actorLookupIds(targetData), state.currentCursor, globalConfig.eventsPerPage);
+            };
+            state.nextCursor = slice.nextCursor();
+
+            String content = buildSummaryContent(session, targetData, state.mode, slice.items().size(), state.currentCursor, slice.hasNext());
+
+            List<List<MenuButton>> rows = new ArrayList<>();
+
+            List<MenuButton> paginationRow = new ArrayList<>();
+            if (!state.backStack.isEmpty()) {
+                paginationRow.add(MenuButton.of(local.t("previous"), ACTION_PREVIOUS));
+            }
+            if (slice.hasNext() && state.nextCursor != null) {
+                paginationRow.add(MenuButton.of(local.t("next"), ACTION_NEXT));
+            }
+            if (!paginationRow.isEmpty()) {
+                rows.add(paginationRow);
+            }
+
+            for (var item : slice.items()) {
+                rows.add(List.of(MenuButton.of(
+                        formatSummaryRow(local, item, state.mode),
+                        ACTION_DETAILS_PREFIX + item.auditId()
+                )));
+            }
+
+            List<MenuButton> navRow = new ArrayList<>();
+            if (session.hasHistory()) {
+                navRow.add(MenuButton.of(local.t("back"), ACTION_BACK));
+            }
+            navRow.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
+            rows.add(navRow);
+
+            return MenuScreen.normal(
+                    local.t(state.mode == AuditViewMode.TARGET ? "audit-menu-history-title" : "audit-menu-actions-title"),
+                    content,
+                    rows
+            );
+        }
+
+        @Override
+        public void onAction(MenuRenderContext<AuditHistoryState> context, String actionId) {
+            AuditHistoryState state = context.state();
+            Session session = context.session();
+
+            switch (actionId) {
+                case ACTION_PREVIOUS -> {
+                    AuditCursor previous = state.backStack.pollLast();
+                    state.currentCursor = restoreCursor(previous);
+                    context.render();
+                }
+                case ACTION_NEXT -> {
+                    state.backStack.addLast(state.currentCursor == null ? FIRST_PAGE_MARKER : state.currentCursor);
+                    state.currentCursor = state.nextCursor;
+                    context.render();
+                }
+                case ACTION_BACK -> {
+                    Runnable previousMenu = session.popHistory();
+                    if (previousMenu != null) previousMenu.run();
+                }
+                case ACTION_CLOSE -> context.close();
+                default -> {
+                    if (actionId.startsWith(ACTION_DETAILS_PREFIX)) {
+                        String auditId = actionId.substring(ACTION_DETAILS_PREFIX.length());
+                        session.pushHistory(() -> {
+                            session.clear();
+                            AuditHistoryState histState = session.getDraft(AuditHistoryState.class);
+                            histState.targetUuid = state.targetUuid;
+                            histState.mode = state.mode;
+                            histState.backStack = new ArrayDeque<>(state.backStack);
+                            histState.currentCursor = state.currentCursor;
+                            histState.nextCursor = state.nextCursor;
+                            session.menuService.renderFlow(session, new HistoryFlow(viewerUuid, targetData));
+                        });
+                        details(viewerUuid, targetData, auditId);
+                    }
+                }
+            }
+        }
+    }
+
     public static final class AuditHistoryState {
         public String targetUuid;
         public AuditViewMode mode = AuditViewMode.TARGET;
@@ -230,6 +328,10 @@ public class AuditHistoryMenu extends Menu {
     enum AuditViewMode {
         TARGET,
         ACTOR
+    }
+
+    private static AuditCursor restoreCursor(AuditCursor cursor) {
+        return FIRST_PAGE_MARKER.equals(cursor) ? null : cursor;
     }
 
     private Slice<AuditRecordSummary> findSummaryByActor(AuditActorType actorType,

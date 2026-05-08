@@ -5,66 +5,52 @@ import arc.util.Strings;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.player.Badge;
-import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
+import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.plugin.ui.flow.MenuPrompt;
 
-import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class PlayerMenu extends Menu {
 
-    /** Vanilla Mindustry name length limit in UTF-8 bytes (see Vars.maxNameLength). */
-    private static final int MAX_PLAIN_NAME_BYTES = 40;
-    private static final int BADGE_ICON_RANGE_START = 0xE800;
-    private static final int BADGE_ICON_RANGE_END = 0xF8FF;
-
-    private final PlayerDataRepository playerDataRepository;
     private final GameDataRepository gameDataRepository;
     private final Bundle bundle;
-    private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
+    private final PlayerProfileSettingsService profileSettings;
     private final AuditHistoryMenu auditHistoryMenu;
 
     @Inject
     public PlayerMenu(Config config,
                       GlobalConfig globalConfig,
                       SessionService sessionService,
-                      PlayerDataRepository playerDataRepository,
                       GameDataRepository gameDataRepository,
                       Bundle bundle,
-                      NetworkService network,
                       PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
                       AuditHistoryMenu auditHistoryMenu) {
         super(config, globalConfig, sessionService);
-        this.playerDataRepository = playerDataRepository;
         this.gameDataRepository = gameDataRepository;
         this.bundle = bundle;
-        this.network = network;
         this.playerDisplayService = playerDisplayService;
+        this.profileSettings = profileSettings;
         this.auditHistoryMenu = auditHistoryMenu;
     }
 
@@ -315,45 +301,43 @@ public class PlayerMenu extends Menu {
                 ))
                 .start()
                     .addLocal("player-menu-settings-customNickname", () -> {
-                        session.textHandler = t -> {
-                            boolean isReset = (t == null || t.trim().isEmpty());
-                            String newNick = isReset ? "" : t;
-
-                            if (!isReset) {
-                                String plain = Strings.stripColors(newNick);
-                                if (plain.getBytes(StandardCharsets.UTF_8).length > MAX_PLAIN_NAME_BYTES) {
-                                    local.send("error-nickname-too-long", args("max", MAX_PLAIN_NAME_BYTES));
+                        var prompt = new MenuPrompt(
+                                "custom-nickname",
+                                local.t("player-menu-settings-customNickname-title"),
+                                local.t("player-menu-settings-customNickname-message"),
+                                256, targetData.customNickname, false);
+                        session.menuService.openPrompt(session, prompt,
+                                text -> {
+                                    String newNick = text == null || text.trim().isEmpty() ? "" : text;
+                                    if (!newNick.isEmpty()) {
+                                        var result = profileSettings.validateCustomNickname(newNick);
+                                        if (!result.valid()) {
+                                            local.send(result.errorKey(), args("max", result.maxBytes()));
+                                            settings(uuid, targetData);
+                                            return;
+                                        }
+                                    }
+                                    profileSettings.updateCustomNickname(targetData, newNick, true, true);
                                     settings(uuid, targetData);
-                                    return;
-                                }
-
-                                if (containsBadgeLikeGlyphs(plain)) {
-                                    local.send("error-nickname-badge-glyph", args());
-                                    settings(uuid, targetData);
-                                    return;
-                                }
-                            }
-
-                            updateCustomNickname(targetData, newNick, true, true);
-
-                            settings(uuid, targetData);
-                        };
-
-                        Call.textInput(session.player.con, session.menuService.getTextId(),
-                            local.t("player-menu-settings-customNickname-title"),
-                            local.t("player-menu-settings-customNickname-message"),
-                            256, targetData.customNickname, false);
+                                },
+                                () -> settings(uuid, targetData));
                     })
                     .addLocal("player-menu-settings-customNickname-reset", () -> {
-                        updateCustomNickname(targetData, "", true, true);
+                        profileSettings.updateCustomNickname(targetData, "", true, true);
                         settings(uuid, targetData);
                     })
                     .addLocal("player-menu-settings-description", () -> {
-                        session.textHandler = t -> {
-                            updateDescription(targetData, t);
-                            settings(uuid, targetData);
-                        };
-                        Call.textInput(session.player.con, session.menuService.getTextId(), local.t("player-menu-settings-description-title"), "", 1000, targetData.description, false);
+                        var prompt = new MenuPrompt(
+                                "description",
+                                local.t("player-menu-settings-description-title"),
+                                "",
+                                1000, targetData.description, false);
+                        session.menuService.openPrompt(session, prompt,
+                                text -> {
+                                    profileSettings.updateDescription(targetData, text);
+                                    settings(uuid, targetData);
+                                },
+                                () -> settings(uuid, targetData));
                     })
                 .end()
                 .addLocalRow("player-menu-settings-chat", () -> {
@@ -365,7 +349,7 @@ public class PlayerMenu extends Menu {
                     badges(uuid, targetData);
                 })
                 .addLocalRow(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive", () -> {
-                    updateLeaderboard(targetData, !targetData.leaderboard);
+                    profileSettings.updateLeaderboard(targetData, !targetData.leaderboard);
                     settings(uuid, targetData);
                 })
                 .start()
@@ -402,11 +386,11 @@ public class PlayerMenu extends Menu {
                         "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
                 ))
                 .addLocalRow(targetData.globalChatVisible ? "player-menu-settings-global-chat-on" : "player-menu-settings-global-chat-off", () -> {
-                    updateGlobalChatVisible(targetData, !targetData.globalChatVisible);
+                    profileSettings.updateGlobalChatVisible(targetData, !targetData.globalChatVisible);
                     chatSettings(uuid, targetData);
                 })
                 .addLocalRow(targetData.discordRelayVisible ? "player-menu-settings-discord-relay-on" : "player-menu-settings-discord-relay-off", () -> {
-                    updateDiscordRelayVisible(targetData, !targetData.discordRelayVisible);
+                    profileSettings.updateDiscordRelayVisible(targetData, !targetData.discordRelayVisible);
                     chatSettings(uuid, targetData);
                 })
                 .addRow(local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))), () -> {
@@ -429,9 +413,9 @@ public class PlayerMenu extends Menu {
                 .start()
                     .addLocal(isTranslator ? "default" : "auto", () -> {
                         if (isTranslator) {
-                            updateTranslatorLanguage(targetData, "off");
+                            profileSettings.updateTranslatorLanguage(targetData, "off");
                         } else {
-                            updateLanguage(targetData, "auto");
+                            profileSettings.updateLanguage(targetData, "auto");
                         }
                         session.popHistory().run();
                     })
@@ -443,9 +427,9 @@ public class PlayerMenu extends Menu {
 
             b.addRow(langName, () -> {
                         if (isTranslator) {
-                            updateTranslatorLanguage(targetData, code);
+                            profileSettings.updateTranslatorLanguage(targetData, code);
                         } else {
-                            updateLanguage(targetData, code);
+                            profileSettings.updateLanguage(targetData, code);
                         }
                         session.popHistory().run();
                     });
@@ -485,7 +469,7 @@ public class PlayerMenu extends Menu {
                     "badge", badgeLabel(local, badge),
                     "description", local.t(badge.descriptionKey())
             )), () -> {
-                updateActiveBadge(targetData, badge.id(), true, true);
+                profileSettings.updateActiveBadge(targetData, badge.id(), true, true);
                 badges(uuid, targetData);
             }));
         }
@@ -502,7 +486,7 @@ public class PlayerMenu extends Menu {
                     allBadges(uuid, targetData);
                 })
                 .addLocal("badge-clear-button", () -> {
-                    updateActiveBadge(targetData, "", true, true);
+                    profileSettings.updateActiveBadge(targetData, "", true, true);
                     badges(uuid, targetData);
                 })
                 .end()
@@ -532,11 +516,11 @@ public class PlayerMenu extends Menu {
                         "mode", badgeSymbolColorModeLabel(local, targetData)
                 ))
                 .addLocalRow("badge-menu-symbol-color-default", () -> {
-                    updateBadgeSymbolColorMode(targetData, "default", true, true);
+                    profileSettings.updateBadgeSymbolColorMode(targetData, "default", true, true);
                     badgeSymbolColorMode(uuid, targetData);
                 })
                 .addLocalRow("badge-menu-symbol-color-player-color", () -> {
-                    updateBadgeSymbolColorMode(targetData, "player-color", true, true);
+                    profileSettings.updateBadgeSymbolColorMode(targetData, "player-color", true, true);
                     badgeSymbolColorMode(uuid, targetData);
                 })
                 .addNavigationRow()
@@ -568,142 +552,12 @@ public class PlayerMenu extends Menu {
                 "description", local.t(badge.descriptionKey())
         )), () -> {
             if (badge.selectable() && !badge.system() && ownsBadge(targetData, badge)) {
-                updateActiveBadge(targetData, badge.id(), true, true);
+                profileSettings.updateActiveBadge(targetData, badge.id(), true, true);
             }
             allBadges(uuid, targetData);
         }));
 
         builder.addNavigationRow().show();
-    }
-
-    private void updateCustomNickname(PlayerData targetData, String customNickname, boolean refreshDisplay, boolean sync) {
-        updatePlayerData(targetData,
-                data -> data.customNickname = customNickname,
-                data -> playerDataRepository.updateCustomNickname(data.uuid, customNickname),
-                data -> new PlayerCustomNicknameChangedCommandV1(data.uuid, data.customNickname, config.server),
-                refreshDisplay,
-                sync);
-    }
-
-    private void updateDescription(PlayerData targetData, String description) {
-        updatePlayerData(targetData,
-                data -> data.description = description,
-                data -> playerDataRepository.updateDescription(data.uuid, description),
-                null,
-                false,
-                false);
-    }
-
-    private void updateLeaderboard(PlayerData targetData, boolean leaderboard) {
-        updatePlayerData(targetData,
-                data -> data.leaderboard = leaderboard,
-                data -> playerDataRepository.updateLeaderboard(data.uuid, leaderboard),
-                null,
-                false,
-                false);
-    }
-
-    private void updateLanguage(PlayerData targetData, String language) {
-        Session targetSession = sessionService.get(targetData.uuid);
-        if (targetSession != null) {
-            targetSession.updateLanguage(language);
-            return;
-        }
-
-        updatePlayerData(targetData,
-                data -> data.language = language,
-                data -> playerDataRepository.updateLanguage(data.uuid, language),
-                null,
-                false,
-                false);
-    }
-
-    private void updateTranslatorLanguage(PlayerData targetData, String language) {
-        Session targetSession = sessionService.get(targetData.uuid);
-        if (targetSession != null) {
-            targetSession.updateTranslatorLanguage(language);
-            return;
-        }
-
-        updatePlayerData(targetData,
-                data -> data.translatorLanguage = language,
-                data -> playerDataRepository.updateTranslatorLanguage(data.uuid, language),
-                null,
-                false,
-                false);
-    }
-
-    private void updateGlobalChatVisible(PlayerData targetData, boolean visible) {
-        Session targetSession = sessionService.get(targetData.uuid);
-        if (targetSession != null) {
-            targetSession.updateGlobalChatVisible(visible);
-            return;
-        }
-
-        updatePlayerData(targetData,
-                data -> data.globalChatVisible = visible,
-                data -> playerDataRepository.updateGlobalChatVisible(data.uuid, visible),
-                null,
-                false,
-                false);
-    }
-
-    private void updateDiscordRelayVisible(PlayerData targetData, boolean visible) {
-        Session targetSession = sessionService.get(targetData.uuid);
-        if (targetSession != null) {
-            targetSession.updateDiscordRelayVisible(visible);
-            return;
-        }
-
-        updatePlayerData(targetData,
-                data -> data.discordRelayVisible = visible,
-                data -> playerDataRepository.updateDiscordRelayVisible(data.uuid, visible),
-                null,
-                false,
-                false);
-    }
-
-    private void updateActiveBadge(PlayerData targetData, String badgeId, boolean refreshDisplay, boolean sync) {
-        updatePlayerData(targetData,
-                data -> data.activeBadge = badgeId,
-                data -> playerDataRepository.setActiveBadge(data.uuid, badgeId),
-                data -> new PlayerActiveBadgeChangedCommandV1(data.uuid, data.activeBadge, config.server),
-                refreshDisplay,
-                sync);
-    }
-
-    private void updateBadgeSymbolColorMode(PlayerData targetData, String mode, boolean refreshDisplay, boolean sync) {
-        updatePlayerData(targetData,
-                data -> data.badgeSymbolColorMode = mode,
-                data -> playerDataRepository.updateBadgeSymbolColorMode(data.uuid, mode),
-                data -> new PlayerBadgeSymbolColorModeChangedCommandV1(data.uuid, data.badgeSymbolColorMode, config.server),
-                refreshDisplay,
-                sync);
-    }
-
-    private void updatePlayerData(PlayerData targetData,
-                                  Consumer<PlayerData> updater,
-                                  Consumer<PlayerData> partialUpdater,
-                                  java.util.function.Function<PlayerData, Object> syncEventFactory,
-                                  boolean refreshDisplay,
-                                  boolean sync) {
-        Session targetSession = sessionService.get(targetData.uuid);
-        if (targetSession != null) {
-            updater.accept(targetSession.data);
-            partialUpdater.accept(targetSession.data);
-            if (refreshDisplay) {
-                playerDisplayService.refresh(targetSession);
-            }
-            if (sync && syncEventFactory != null) {
-                network.post(syncEventFactory.apply(targetSession.data));
-            }
-        } else {
-            updater.accept(targetData);
-            partialUpdater.accept(targetData);
-            if (sync && syncEventFactory != null) {
-                network.post(syncEventFactory.apply(targetData));
-            }
-        }
     }
 
     private String activeBadgeName(Localization local, PlayerData targetData) {
@@ -760,7 +614,4 @@ public class PlayerMenu extends Menu {
                 && targetData.badgeSymbolColorMode.equalsIgnoreCase("player-color");
     }
 
-    private boolean containsBadgeLikeGlyphs(String input) {
-        return input.codePoints().anyMatch(cp -> cp >= BADGE_ICON_RANGE_START && cp <= BADGE_ICON_RANGE_END);
-    }
 }

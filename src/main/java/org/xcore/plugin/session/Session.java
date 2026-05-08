@@ -13,6 +13,8 @@ import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
+import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
+import org.xcore.plugin.ui.flow.ActiveMenuScreen;
 
 import java.util.ArrayList;
 import java.util.*;
@@ -38,6 +40,10 @@ public class Session {
     public Consumer<String> textHandler;
     public Integer lastPrivateTargetPid;
     public long lastPrivateMessageAt;
+
+    private long uiVersion = 0L;
+    private ActiveMenuScreen activeScreen;
+    private ActiveMenuPrompt activePrompt;
 
     public Session(GlobalConfig globalConfig,
                    Bundle bundle,
@@ -74,8 +80,43 @@ public class Session {
     }
 
     public Session clear() {
-        actions.clear();
+        clearUiState();
         return this;
+    }
+
+    public long nextUiVersion() {
+        return ++uiVersion;
+    }
+
+    public void setActiveScreen(ActiveMenuScreen screen) {
+        this.activeScreen = screen;
+    }
+
+    public ActiveMenuScreen activeScreen() {
+        return activeScreen;
+    }
+
+    public void clearActiveScreen() {
+        this.activeScreen = null;
+    }
+
+    public void setActivePrompt(ActiveMenuPrompt prompt) {
+        this.activePrompt = prompt;
+    }
+
+    public ActiveMenuPrompt activePrompt() {
+        return activePrompt;
+    }
+
+    public void clearActivePrompt() {
+        this.activePrompt = null;
+    }
+
+    public void clearUiState() {
+        clearActiveScreen();
+        clearActivePrompt();
+        actions.clear();
+        textHandler = null;
     }
 
     public String add(String buttonName, Runnable action) {

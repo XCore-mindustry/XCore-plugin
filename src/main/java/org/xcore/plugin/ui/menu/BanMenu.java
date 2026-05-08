@@ -2,7 +2,6 @@ package org.xcore.plugin.ui.menu;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
@@ -12,6 +11,7 @@ import org.xcore.plugin.service.TimeService;
 import org.xcore.plugin.service.moderation.ModerationService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.MenuPrompt;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +20,9 @@ import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class BanMenu extends Menu {
+
+    private static final String PROMPT_DURATION = "ban-duration";
+    private static final String PROMPT_REASON = "ban-reason";
 
     private final ModerationService moderationService;
     private final TimeService timeService;
@@ -56,7 +59,16 @@ public class BanMenu extends Menu {
             return;
         }
 
-        session.setTextHandler(text -> {
+        var prompt = new MenuPrompt(
+                PROMPT_DURATION,
+                session.locale().t("ban-menu-duration-title"),
+                session.locale().t("ban-menu-duration-message", args("nickname", draft.targetColoredName)),
+                64,
+                draft.durationInput,
+                false
+        );
+
+        session.menuService.openPrompt(session, prompt, text -> {
             String durationInput = text == null ? "" : text.trim();
             var parsed = timeService.parsePeriod(durationInput, TimeUnit.DAYS);
             if (parsed == null || parsed.toEpochMilli() <= 0) {
@@ -68,15 +80,7 @@ public class BanMenu extends Menu {
             draft.durationInput = durationInput;
             draft.duration = Duration.ofMillis(parsed.toEpochMilli());
             askReason(session);
-        });
-
-        Call.textInput(session.player.con,
-                session.menuService.getTextId(),
-                session.locale().t("ban-menu-duration-title"),
-                session.locale().t("ban-menu-duration-message", args("nickname", draft.targetColoredName)),
-                64,
-                draft.durationInput,
-                false);
+        }, () -> cancel(session));
     }
 
     private void askReason(Session session) {
@@ -86,18 +90,19 @@ public class BanMenu extends Menu {
             return;
         }
 
-        session.setTextHandler(text -> {
-            draft.reason = (text == null || text.trim().isEmpty()) ? null : text.trim();
-            confirm(session);
-        });
-
-        Call.textInput(session.player.con,
-                session.menuService.getTextId(),
+        var prompt = new MenuPrompt(
+                PROMPT_REASON,
                 session.locale().t("ban-menu-reason-title"),
                 session.locale().t("ban-menu-reason-message", args("nickname", draft.targetColoredName)),
                 256,
                 draft.reason == null ? "" : draft.reason,
-                false);
+                false
+        );
+
+        session.menuService.openPrompt(session, prompt, text -> {
+            draft.reason = (text == null || text.trim().isEmpty()) ? null : text.trim();
+            confirm(session);
+        }, () -> askDuration(session));
     }
 
     private void confirm(Session session) {
@@ -116,13 +121,14 @@ public class BanMenu extends Menu {
                         "reason", draft.reason == null ? session.locale().t("none") : draft.reason
                 ))
                 .addLocalRow("ban-menu-confirm-action", () -> applyBan(session), "cancel", () -> cancel(session))
-                .show();
+                .showFollowUp();
     }
 
     private void applyBan(Session session) {
         var draft = session.getDraft(BanDraft.class);
         if (draft == null || draft.duration == null) {
             session.locale().send("error-internal", args());
+            session.menuService.close(session);
             return;
         }
 
@@ -131,6 +137,7 @@ public class BanMenu extends Menu {
 
         if (!result.isSuccess() || result.getData().isEmpty()) {
             session.locale().send("error-player-not-found", args());
+            session.menuService.close(session);
             return;
         }
 
@@ -141,6 +148,7 @@ public class BanMenu extends Menu {
         ));
         arc.util.Log.info("@ banned @ (@) for @", session.player.plainName(), draft.targetPlainName, draft.targetUuid, draft.durationInput);
         session.locale().send("commands-ban-success", args("nickname", ban.name));
+        session.menuService.close(session);
     }
 
     private void cancel(Session session) {
@@ -148,6 +156,7 @@ public class BanMenu extends Menu {
         String nickname = draft == null ? session.locale().t("none") : draft.targetColoredName;
         session.clearDraft(BanDraft.class);
         session.locale().send("ban-cancelled", args("nickname", nickname));
+        session.menuService.close(session);
     }
 
     private static final class BanDraft {

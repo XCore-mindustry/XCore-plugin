@@ -11,10 +11,16 @@ import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.TopMenuService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuFlow;
+import org.xcore.plugin.ui.flow.MenuRenderContext;
+import org.xcore.plugin.ui.flow.MenuScreen;
 
 import java.text.NumberFormat;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -23,6 +29,13 @@ public class TopMenu extends Menu {
 
     private static final int PLAYERS_PER_PAGE = 10;
     private static final LeaderboardCursor FIRST_PAGE_MARKER = new LeaderboardCursor(0, 0, -2);
+
+    private static final String ACTION_PREVIOUS = "previous";
+    private static final String ACTION_NEXT = "next";
+    private static final String ACTION_CATEGORY = "category";
+    private static final String ACTION_CLOSE = "close";
+    private static final String ACTION_BACK = "back";
+    private static final String ACTION_PROFILE_PREFIX = "profile:";
 
     private final TopMenuService topMenuService;
     private final PlayerMenu playerMenu;
@@ -64,66 +77,16 @@ public class TopMenu extends Menu {
         TopCategory resolvedCategory = category == null ? topMenuService.resolveDefaultCategory() : category;
         if (resetState || state.category != resolvedCategory) {
             state.category = resolvedCategory;
-            state.currentPage = 1;
-            state.currentCursor = null;
+            state.currentPage = page;
+            state.currentCursor = cursor;
             state.nextCursor = null;
             state.backStack.clear();
-        }
-
-        var topPage = topMenuService.loadCursorPage(resolvedCategory, cursor, page, PLAYERS_PER_PAGE, session.data);
-        state.category = resolvedCategory;
-        state.currentPage = topPage.currentPage();
-        state.currentCursor = topPage.currentCursor();
-        state.nextCursor = topPage.nextCursor();
-
-        renderCursorPage(uuid, session, topPage, state);
-    }
-
-    private void renderCursorPage(String uuid,
-                                  Session session,
-                                  TopMenuService.TopCursorPage topPage,
-                                  TopMenuState state) {
-        TopCategory resolvedCategory = topPage.category();
-        Localization local = session.locale();
-        String categoryName = local.t(resolvedCategory.bundleKey());
-
-        var builder = session.builder()
-                .title("top-menu-title", args("category", categoryName));
-
-        if (topPage.totalEntries() <= 0) {
-            builder.content("top-menu-empty", args("category", categoryName));
         } else {
-            builder.content("top-menu-content", args(
-                    "page", topPage.currentPage(),
-                    "totalPages", topPage.totalPages(),
-                    "totalEntries", topPage.totalEntries(),
-                    "category", categoryName,
-                    "selfRankLine", selfRankLine(local, topPage.selfRank())
-            ));
-
-            addCursorPlayerRows(builder, session, topPage, resolvedCategory);
+            state.currentCursor = cursor;
+            state.currentPage = page;
         }
 
-        builder.start()
-                .ifAddLocal(!state.backStack.isEmpty(), "previous", () -> {
-                    LeaderboardCursor previous = state.backStack.pollLast();
-                    LeaderboardCursor previousCursor = previous == FIRST_PAGE_MARKER ? null : previous;
-                    top(uuid, resolvedCategory, previousCursor, Math.max(1, state.currentPage - 1), false);
-                })
-                .add(local.t("top-menu-category-button", args("category", categoryName)), () -> {
-                    TopCategory savedCategory = resolvedCategory;
-                    LeaderboardCursor savedCursor = state.currentCursor;
-                    int savedPage = state.currentPage;
-                    session.pushHistory(() -> top(uuid, savedCategory, savedCursor, savedPage, false));
-                    categories(uuid, resolvedCategory);
-                })
-                .ifAddLocal(topPage.hasNext() && state.nextCursor != null, "next", () -> {
-                    state.backStack.addLast(state.currentCursor == null ? FIRST_PAGE_MARKER : state.currentCursor);
-                    top(uuid, resolvedCategory, state.nextCursor, state.currentPage + 1, false);
-                })
-                .end()
-                .addNavigationRow()
-                .show();
+        session.menuService.renderFlow(session, new TopMenuFlow());
     }
 
     public void categories(String uuid, TopCategory currentCategory) {
@@ -149,27 +112,150 @@ public class TopMenu extends Menu {
                 .show();
     }
 
-    private void addCursorPlayerRows(org.xcore.plugin.ui.MenuBuilder builder,
-                                     Session session,
-                                     TopMenuService.TopCursorPage topPage,
-                                     TopCategory category) {
-        for (int i = 0; i < topPage.players().size(); i++) {
-            PlayerData player = topPage.players().get(i);
-            int indexOnPage = i;
+    private final class TopMenuFlow implements MenuFlow<TopMenuState> {
+        @Override
+        public Class<TopMenuState> stateType() {
+            return TopMenuState.class;
+        }
 
-            builder.addRow(
-                    cursorPlayerButton(session, topPage, category, player, indexOnPage),
-                    () -> openCursorPlayerProfile(session, topPage, category, player)
+        @Override
+        public MenuScreen render(MenuRenderContext<TopMenuState> context) {
+            Session session = context.session();
+            TopMenuState state = context.state();
+            Localization local = context.locale();
+
+            TopCategory resolvedCategory = state.category == null ? topMenuService.resolveDefaultCategory() : state.category;
+            var topPage = topMenuService.loadCursorPage(resolvedCategory, state.currentCursor, state.currentPage, PLAYERS_PER_PAGE, session.data);
+            state.category = resolvedCategory;
+            state.currentPage = topPage.currentPage();
+            state.currentCursor = topPage.currentCursor();
+            state.nextCursor = topPage.nextCursor();
+
+            String categoryName = local.t(resolvedCategory.bundleKey());
+            List<List<MenuButton>> rows = new ArrayList<>();
+
+            if (topPage.totalEntries() > 0) {
+                for (int i = 0; i < topPage.players().size(); i++) {
+                    PlayerData player = topPage.players().get(i);
+                    String buttonText = cursorPlayerButton(session, topPage, resolvedCategory, player, i);
+                    rows.add(List.of(MenuButton.of(buttonText, ACTION_PROFILE_PREFIX + player.uuid)));
+                }
+            }
+
+            List<MenuButton> navRow = new ArrayList<>();
+            if (!state.backStack.isEmpty()) {
+                navRow.add(MenuButton.of(local.t("previous"), ACTION_PREVIOUS));
+            }
+            navRow.add(MenuButton.of(local.t("top-menu-category-button", args("category", categoryName)), ACTION_CATEGORY));
+            if (topPage.hasNext() && state.nextCursor != null) {
+                navRow.add(MenuButton.of(local.t("next"), ACTION_NEXT));
+            }
+            if (!navRow.isEmpty()) {
+                rows.add(navRow);
+            }
+
+            List<MenuButton> bottomNav = new ArrayList<>();
+            if (session.hasHistory()) {
+                bottomNav.add(MenuButton.of(local.t("back"), ACTION_BACK));
+            }
+            bottomNav.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
+            rows.add(bottomNav);
+
+            return MenuScreen.followUp(
+                    local.t("top-menu-title", args("category", categoryName)),
+                    topPage.totalEntries() <= 0
+                            ? local.t("top-menu-empty", args("category", categoryName))
+                            : local.t("top-menu-content", args(
+                                    "page", topPage.currentPage(),
+                                    "totalPages", topPage.totalPages(),
+                                    "totalEntries", topPage.totalEntries(),
+                                    "category", categoryName,
+                                    "selfRankLine", selfRankLine(local, topPage.selfRank())
+                            )),
+                    rows
             );
+        }
+
+        @Override
+        public void onAction(MenuRenderContext<TopMenuState> context, String actionId) {
+            TopMenuState state = context.state();
+            Session session = context.session();
+
+            switch (actionId) {
+                case ACTION_PREVIOUS -> {
+                    LeaderboardCursor previous = state.backStack.pollLast();
+                    LeaderboardCursor previousCursor = previous == FIRST_PAGE_MARKER ? null : previous;
+                    state.currentCursor = previousCursor;
+                    state.currentPage = Math.max(1, state.currentPage - 1);
+                    context.render();
+                }
+                case ACTION_NEXT -> {
+                    state.backStack.addLast(state.currentCursor == null ? FIRST_PAGE_MARKER : state.currentCursor);
+                    state.currentCursor = state.nextCursor;
+                    state.currentPage = state.currentPage + 1;
+                    context.render();
+                }
+                case ACTION_CATEGORY -> {
+                    TopCategory savedCategory = state.category;
+                    LeaderboardCursor savedCursor = state.currentCursor;
+                    int savedPage = state.currentPage;
+                    Deque<LeaderboardCursor> savedBackStack = new ArrayDeque<>(state.backStack);
+                    LeaderboardCursor savedNextCursor = state.nextCursor;
+                    session.pushHistory(() -> {
+                        session.clear();
+                        TopMenuState histState = session.getDraft(TopMenuState.class);
+                        histState.category = savedCategory;
+                        histState.currentCursor = savedCursor;
+                        histState.currentPage = savedPage;
+                        histState.backStack = savedBackStack;
+                        histState.nextCursor = savedNextCursor;
+                        session.menuService.renderFlow(session, new TopMenuFlow());
+                    });
+                    session.menuService.hideFollowUp(session);
+                    categories(session.data.uuid, state.category);
+                }
+                case ACTION_BACK -> {
+                    Runnable previousMenu = session.popHistory();
+                    if (previousMenu != null) {
+                        session.menuService.hideFollowUp(session);
+                        previousMenu.run();
+                    }
+                }
+                case ACTION_CLOSE -> context.close();
+                default -> {
+                    if (actionId.startsWith(ACTION_PROFILE_PREFIX)) {
+                        String targetUuid = actionId.substring(ACTION_PROFILE_PREFIX.length());
+                        PlayerData target = session.playerDataRepository.findByUuid(targetUuid);
+                        if (target != null) {
+                            session.pushHistory(() -> {
+                                session.clear();
+                                TopMenuState histState = session.getDraft(TopMenuState.class);
+                                histState.category = state.category;
+                                histState.currentCursor = state.currentCursor;
+                                histState.currentPage = state.currentPage;
+                                histState.backStack = new ArrayDeque<>(state.backStack);
+                                histState.nextCursor = state.nextCursor;
+                                session.menuService.renderFlow(session, new TopMenuFlow());
+                            });
+                            session.menuService.hideFollowUp(session);
+                            playerMenu.player(session.data.uuid, target);
+                        }
+                    }
+                }
+            }
         }
     }
 
-    private void openCursorPlayerProfile(Session session,
-                                         TopMenuService.TopCursorPage topPage,
-                                         TopCategory category,
-                                         PlayerData playerData) {
-        session.pushHistory(() -> top(session.data.uuid, category, topPage.currentCursor(), topPage.currentPage(), false));
-        playerMenu.player(session.data.uuid, playerData);
+    private String categoryButton(Session session, TopCategory category, TopCategory currentCategory) {
+        String label = session.locale().t(category.bundleKey());
+        return category == currentCategory ? "[accent]●[] " + label : label;
+    }
+
+    private String selfRankLine(Localization local, Integer selfRank) {
+        if (selfRank == null) {
+            return local.t("top-menu-self-rank-unknown");
+        }
+        return local.t("top-menu-self-rank-known", args("rank", selfRank));
     }
 
     private String cursorPlayerButton(Session session,
@@ -200,19 +286,6 @@ public class TopMenu extends Menu {
                     "value", numberFormat.format(playerData.hexedPoints)
             ));
         };
-    }
-
-    private String categoryButton(Session session, TopCategory category, TopCategory currentCategory) {
-        String label = session.locale().t(category.bundleKey());
-        return category == currentCategory ? "[accent]●[] " + label : label;
-    }
-
-    private String selfRankLine(Localization local, Integer selfRank) {
-        if (selfRank == null) {
-            return local.t("top-menu-self-rank-unknown");
-        }
-
-        return local.t("top-menu-self-rank-known", args("rank", selfRank));
     }
 
     private String rankLabel(int displayRank) {
