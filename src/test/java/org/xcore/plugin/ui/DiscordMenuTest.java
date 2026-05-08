@@ -19,11 +19,13 @@ import org.xcore.plugin.ui.menu.DiscordMenu;
 
 import jakarta.inject.Provider;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,10 +110,30 @@ class DiscordMenuTest {
     void linking_statusActionReturnsToMain() {
         discordMenu.linking("viewer-1", false);
 
-        menuService.onMenuOption(session, 4); // status button
+        menuService.onMenuOption(session, 4); // status button without history
 
         verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
         verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+    }
+
+    @Test
+    @DisplayName("linking back action hides follow-up before restoring previous menu")
+    void linking_backActionHidesFollowUpBeforeRestoringPreviousMenu() {
+        AtomicBoolean previousMenuRan = new AtomicBoolean(false);
+        session.pushHistory(() -> {
+            previousMenuRan.set(true);
+            discordMenu.main("viewer-1");
+        });
+        discordMenu.linking("viewer-1", false);
+
+        menuService.onMenuOption(session, 5); // back button when history exists
+
+        assertThat(previousMenuRan).isTrue();
+        var inOrder = inOrder(gateway);
+        inOrder.verify(gateway).followUpMenu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
+        inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
+        inOrder.verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
     }
 

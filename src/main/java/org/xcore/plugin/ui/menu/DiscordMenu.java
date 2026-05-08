@@ -102,7 +102,16 @@ public class DiscordMenu extends Menu {
                     main(uuid);
                 })
                 .end()
-                .addNavigationRow()
+                .apply(builder -> {
+                    if (session.hasHistory()) {
+                        builder.addLocal("back", () -> {
+                            session.menuService.close(session);
+                            Runnable previousMenu = session.popHistory();
+                            if (previousMenu != null) previousMenu.run();
+                        });
+                    }
+                    builder.addLocal("close", () -> session.menuService.close(session));
+                })
                 .showFollowUp();
     }
 }
