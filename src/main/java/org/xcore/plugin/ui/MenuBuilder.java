@@ -1,13 +1,15 @@
 package org.xcore.plugin.ui;
 
-import mindustry.gen.Call;
 import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.ui.flow.MenuAction;
+import org.xcore.plugin.ui.flow.MenuMode;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -21,6 +23,7 @@ public class MenuBuilder {
     public String content = "";
     public final List<List<String>> rows = new ArrayList<>();
     public final List<String> row = new ArrayList<>();
+    public MenuMode mode = MenuMode.NORMAL;
 
     public MenuBuilder(MenuService service, Session session) {
         this.service = service;
@@ -133,7 +136,7 @@ public class MenuBuilder {
             }));
         }
 
-        row.add(session.add(localization.format("close", args()), session.actions::clear));
+        row.add(session.add(localization.format("close", args()), () -> service.close(session)));
 
         end();
         return this;
@@ -159,8 +162,27 @@ public class MenuBuilder {
         return this;
     }
 
+    public MenuBuilder followUp() {
+        this.mode = MenuMode.FOLLOW_UP;
+        return this;
+    }
+
+    public boolean showFollowUp() {
+        this.mode = MenuMode.FOLLOW_UP;
+        return show();
+    }
+
     public boolean show() {
-        return show(service.getMenuId());
+        if (!row.isEmpty()) {
+            end();
+        }
+
+        List<MenuAction> actions = session.actions.stream()
+                .map(a -> (MenuAction) new MenuAction.CallbackAction(a))
+                .collect(Collectors.toList());
+
+        service.show(session, title, content, rows, actions, mode);
+        return true;
     }
 
     public boolean show(int menuId) {
@@ -168,7 +190,11 @@ public class MenuBuilder {
             end();
         }
 
-        Call.menu(session.player.con, menuId, title, content, service.convertListToArray(rows));
+        if (menuId == service.getMenuId()) {
+            return show();
+        }
+
+        service.showRaw(session, menuId, title, content, rows);
         return true;
     }
 

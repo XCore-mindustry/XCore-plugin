@@ -1,8 +1,12 @@
-package org.xcore.plugin.ui.menu;
+package org.xcore.plugin.ui;
 
+import com.ospx.flubundle.Bundle;
+import mindustry.gen.Player;
+import mindustry.net.NetConnection;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
@@ -12,25 +16,30 @@ import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.TopMenuService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.ui.MenuBuilder;
+import org.xcore.plugin.ui.menu.PlayerMenu;
+import org.xcore.plugin.ui.menu.TopMenu;
+import org.xcore.plugin.ui.flow.ActiveMenuScreen;
+import org.xcore.plugin.ui.flow.MenuMode;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class TopMenuTest {
+
+    private MindustryMenuGateway gateway;
+    private MenuService menuService;
+
+    @BeforeEach
+    void setUp() {
+        gateway = mock(MindustryMenuGateway.class);
+        menuService = new MenuService(null, gateway);
+    }
 
     @Test
     @DisplayName("top hides previous on first cursor page and exposes next when available")
@@ -41,8 +50,6 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder builder = builder();
-        when(session.builder()).thenReturn(builder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         LeaderboardCursor nextCursor = new LeaderboardCursor(1400, 0, 10);
@@ -62,12 +69,19 @@ class TopMenuTest {
 
         menu.top("viewer-1", TopCategory.MINI_PVP, 1);
 
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        verify(gateway).followUpMenu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
+
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
         assertThat(state.currentPage).isEqualTo(1);
         assertThat(state.currentCursor).isNull();
         assertThat(state.nextCursor).isEqualTo(nextCursor);
-        verify(builder).ifAddLocal(eq(false), eq("previous"), any(Runnable.class));
-        verify(builder).ifAddLocal(eq(true), eq("next"), any(Runnable.class));
+
+        ActiveMenuScreen screen = session.activeScreen();
+        assertThat(screen).isNotNull();
+        assertThat(screen.hasFlow()).isTrue();
+        assertThat(optionIndexOf(screen, "previous")).isEqualTo(-1);
+        assertThat(optionIndexOf(screen, "next")).isGreaterThanOrEqualTo(0);
     }
 
     @Test
@@ -79,10 +93,6 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder firstBuilder = builder();
-        MenuBuilder secondBuilder = builder();
-        MenuBuilder thirdBuilder = builder();
-        when(session.builder()).thenReturn(firstBuilder, secondBuilder, thirdBuilder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         LeaderboardCursor secondPageCursor = new LeaderboardCursor(1400, 0, 10);
@@ -99,19 +109,22 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 1, 10, session.data)).thenReturn(firstPage, firstPage);
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, secondPageCursor, 2, 10, session.data)).thenReturn(secondPage);
 
-        AtomicReference<Runnable> firstNextAction = new AtomicReference<>();
-        AtomicReference<Runnable> secondPreviousAction = new AtomicReference<>();
-        captureIfAddLocal(firstBuilder, "next", firstNextAction, new AtomicReference<>());
-        captureIfAddLocal(secondBuilder, "next", new AtomicReference<>(), secondPreviousAction);
-
         menu.top("viewer-1", TopCategory.MINI_PVP, 1);
-        firstNextAction.get().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        ActiveMenuScreen firstScreen = session.activeScreen();
+        int nextIndex = optionIndexOf(firstScreen, "next");
+        menuService.onMenuOption(session, nextIndex);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
         assertThat(state.backStack).hasSize(1);
         assertThat(state.backStack.getLast().pid()).isEqualTo(-2);
 
-        secondPreviousAction.get().run();
+        ActiveMenuScreen secondScreen = session.activeScreen();
+        int previousIndex = optionIndexOf(secondScreen, "previous");
+        menuService.onMenuOption(session, previousIndex);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         assertThat(state.currentPage).isEqualTo(1);
         assertThat(state.currentCursor).isNull();
@@ -127,9 +140,6 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder firstBuilder = builder();
-        MenuBuilder secondBuilder = builder();
-        when(session.builder()).thenReturn(firstBuilder, secondBuilder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         LeaderboardCursor currentCursor = new LeaderboardCursor(1500, 0, 15);
@@ -146,11 +156,13 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 2, 10, session.data)).thenReturn(currentPage);
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, nextCursor, 3, 10, session.data)).thenReturn(nextPage);
 
-        AtomicReference<Runnable> nextAction = new AtomicReference<>();
-        captureIfAddLocal(firstBuilder, "next", nextAction, new AtomicReference<>());
-
         menu.top("viewer-1", TopCategory.MINI_PVP, 2);
-        nextAction.get().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        int nextIndex = optionIndexOf(screen, "next");
+        menuService.onMenuOption(session, nextIndex);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
         assertThat(state.backStack).containsExactly(currentCursor);
@@ -168,10 +180,6 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder firstBuilder = builder();
-        MenuBuilder secondBuilder = builder();
-        MenuBuilder thirdBuilder = builder();
-        when(session.builder()).thenReturn(firstBuilder, secondBuilder, thirdBuilder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         LeaderboardCursor currentCursor = new LeaderboardCursor(1500, 0, 15);
@@ -196,14 +204,18 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, nextCursor, 3, 10, session.data)).thenReturn(page3);
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, previousCursor, 2, 10, session.data)).thenReturn(backToPage2);
 
-        AtomicReference<Runnable> firstNextAction = new AtomicReference<>();
-        AtomicReference<Runnable> secondPreviousAction = new AtomicReference<>();
-        captureIfAddLocal(firstBuilder, "next", firstNextAction, new AtomicReference<>());
-        captureIfAddLocal(secondBuilder, "next", new AtomicReference<>(), secondPreviousAction);
-
         menu.top("viewer-1", TopCategory.MINI_PVP, 2);
-        firstNextAction.get().run();
-        secondPreviousAction.get().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        ActiveMenuScreen firstScreen = session.activeScreen();
+        int nextIndex = optionIndexOf(firstScreen, "next");
+        menuService.onMenuOption(session, nextIndex);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        ActiveMenuScreen secondScreen = session.activeScreen();
+        int previousIndex = optionIndexOf(secondScreen, "previous");
+        menuService.onMenuOption(session, previousIndex);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
         assertThat(state.currentCursor).isEqualTo(previousCursor);
@@ -228,8 +240,6 @@ class TopMenuTest {
         state.nextCursor = new LeaderboardCursor(1350, 0, 21);
         state.backStack.addLast(new LeaderboardCursor(1450, 0, 5));
 
-        MenuBuilder builder = builder();
-        when(session.builder()).thenReturn(builder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         TopMenuService.TopCursorPage topPage = new TopMenuService.TopCursorPage(
@@ -239,6 +249,7 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.PLAYTIME, null, 1, 10, session.data)).thenReturn(topPage);
 
         menu.top("viewer-1", TopCategory.PLAYTIME, 1);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         assertThat(state.category).isEqualTo(TopCategory.PLAYTIME);
         assertThat(state.currentPage).isEqualTo(1);
@@ -255,12 +266,10 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder firstBuilder = builder();
-        MenuBuilder secondBuilder = builder();
-        when(session.builder()).thenReturn(firstBuilder, secondBuilder);
+        PlayerData target = player("target-1", 14);
+        when(session.playerDataRepository.findByUuid("target-1")).thenReturn(target);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
-        PlayerData target = player("target-1", 14);
         LeaderboardCursor currentCursor = new LeaderboardCursor(1500, 0, 14);
         TopMenuService.TopCursorPage topPage = new TopMenuService.TopCursorPage(
                 TopCategory.MINI_PVP, 2, 5, 10, 50, 4,
@@ -269,20 +278,22 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 2, 10, session.data)).thenReturn(topPage);
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, currentCursor, 2, 10, session.data)).thenReturn(topPage);
 
-        AtomicReference<Runnable> rowAction = new AtomicReference<>();
-        doAnswer(invocation -> {
-            rowAction.set(invocation.getArgument(1));
-            return firstBuilder;
-        }).when(firstBuilder).addRow(anyString(), any(Runnable.class));
-
         menu.top("viewer-1", TopCategory.MINI_PVP, 2);
-        rowAction.get().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
-        ArgumentCaptor<Runnable> historyCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(session).pushHistory(historyCaptor.capture());
-        verify(playerMenu).player("viewer-1", target);
+        ActiveMenuScreen screen = session.activeScreen();
+        int profileIndex = optionIndexOf(screen, "profile:target-1");
+        menuService.onMenuOption(session, profileIndex);
 
-        historyCaptor.getValue().run();
+        assertThat(session.hasHistory()).isTrue();
+        Runnable historyCallback = session.popHistory();
+
+        InOrder inOrder = inOrder(gateway, playerMenu);
+        inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
+        inOrder.verify(playerMenu).player("viewer-1", target);
+
+        historyCallback.run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
         verify(topMenuService, times(1)).loadCursorPage(TopCategory.MINI_PVP, currentCursor, 2, 10, session.data);
     }
 
@@ -295,10 +306,6 @@ class TopMenuTest {
         TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
 
         Session session = session("viewer-1");
-        MenuBuilder firstBuilder = builder();
-        MenuBuilder secondBuilder = builder();
-        MenuBuilder thirdBuilder = builder();
-        when(session.builder()).thenReturn(firstBuilder, secondBuilder, thirdBuilder);
         when(sessionService.get("viewer-1")).thenReturn(session);
 
         LeaderboardCursor miniCursor = new LeaderboardCursor(1500, 0, 15);
@@ -316,67 +323,129 @@ class TopMenuTest {
         when(topMenuService.loadCursorPage(TopCategory.PLAYTIME, null, 1, 10, session.data)).thenReturn(playtimePage);
         when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, miniCursor, 2, 10, session.data)).thenReturn(miniPage);
 
-        AtomicReference<Runnable> categoryAction = new AtomicReference<>();
-        doAnswer(invocation -> {
-            String label = invocation.getArgument(0);
-            Runnable action = invocation.getArgument(1);
-            if ("top-menu-category-button".equals(label)) {
-                categoryAction.set(action);
-            }
-            return firstBuilder;
-        }).when(firstBuilder).add(anyString(), any(Runnable.class));
-
         menu.top("viewer-1", TopCategory.MINI_PVP, 2);
-        categoryAction.get().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
-        ArgumentCaptor<Runnable> historyCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(session).pushHistory(historyCaptor.capture());
+        ActiveMenuScreen screen = session.activeScreen();
+        int categoryIndex = optionIndexOf(screen, "category");
+        menuService.onMenuOption(session, categoryIndex);
+
+        InOrder inOrder = inOrder(gateway);
+        inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
+        inOrder.verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
+
+        assertThat(session.hasHistory()).isTrue();
+        Runnable historyCallback = session.popHistory();
 
         menu.top("viewer-1", TopCategory.PLAYTIME, 1);
-        historyCaptor.getValue().run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        historyCallback.run();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
 
         verify(topMenuService, times(1)).loadCursorPage(TopCategory.MINI_PVP, miniCursor, 2, 10, session.data);
         verify(topMenuService, times(1)).loadCursorPage(TopCategory.PLAYTIME, null, 1, 10, session.data);
     }
 
-    private static void captureIfAddLocal(MenuBuilder builder,
-                                          String labelToCaptureAsNext,
-                                          AtomicReference<Runnable> nextAction,
-                                          AtomicReference<Runnable> previousAction) {
-        doAnswer(invocation -> {
-            boolean visible = invocation.getArgument(0);
-            String label = invocation.getArgument(1);
-            Runnable action = invocation.getArgument(2);
-            if (visible && label.equals(labelToCaptureAsNext)) {
-                nextAction.set(action);
-            }
-            if (visible && label.equals("previous")) {
-                previousAction.set(action);
-            }
-            return builder;
-        }).when(builder).ifAddLocal(anyBoolean(), anyString(), any(Runnable.class));
+    @Test
+    @DisplayName("close action clears active screen")
+    void closeAction_clearsActiveScreen() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+
+        TopMenuService.TopCursorPage topPage = new TopMenuService.TopCursorPage(
+                TopCategory.MINI_PVP, 1, 1, 10, 0, null,
+                List.of(), null, null, false
+        );
+        when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 1, 10, session.data)).thenReturn(topPage);
+
+        menu.top("viewer-1", TopCategory.MINI_PVP, 1);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        assertThat(screen).isNotNull();
+
+        int closeIndex = optionIndexOf(screen, "close");
+        menuService.onMenuOption(session, closeIndex);
+
+        verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
+        assertThat(session.activeScreen()).isNull();
     }
 
-    private static Session session(String uuid) {
-        Session session = mock(Session.class);
-        session.data = player(uuid, 1);
-        session.data.uuid = uuid;
+    @Test
+    @DisplayName("back action hides follow-up before restoring previous normal menu")
+    void backAction_hidesFollowUpBeforeRestoringPreviousMenu() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+
+        Runnable previousMenu = mock(Runnable.class);
+        session.pushHistory(previousMenu);
+
+        TopMenuService.TopCursorPage topPage = new TopMenuService.TopCursorPage(
+                TopCategory.MINI_PVP, 1, 1, 10, 0, null,
+                List.of(), null, null, false
+        );
+        when(topMenuService.loadCursorPage(TopCategory.MINI_PVP, null, 1, 10, session.data)).thenReturn(topPage);
+
+        menu.top("viewer-1", TopCategory.MINI_PVP, 1);
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        int backIndex = optionIndexOf(screen, "back");
+        menuService.onMenuOption(session, backIndex);
+
+        InOrder inOrder = inOrder(gateway, previousMenu);
+        inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
+        inOrder.verify(previousMenu).run();
+    }
+
+    private static int optionIndexOf(ActiveMenuScreen screen, String actionId) {
+        if (screen == null) return -1;
+        for (int i = 0; i < screen.actionCount(); i++) {
+            if (actionId.equals(screen.actionIdAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private Session session(String uuid) {
+        return session(uuid, menuService);
+    }
+
+    private static Session session(String uuid, MenuService menuService) {
+        Player player = Player.create();
+        player.con = mock(NetConnection.class);
+        PlayerData data = player(uuid, 1);
+        data.uuid = uuid;
+
+        PlayerDataRepository repository = mock(PlayerDataRepository.class);
+
+        Session session = new Session(
+                new GlobalConfig(),
+                mock(Bundle.class),
+                menuService,
+                repository,
+                player,
+                data
+        );
 
         Localization localization = mock(Localization.class);
         when(localization.t(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.t(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.getLocale()).thenReturn(Locale.US);
-        when(session.locale()).thenReturn(localization);
+        session.localization = localization;
 
-        TopMenu.TopMenuState state = new TopMenu.TopMenuState();
-        when(session.getDraft(TopMenu.TopMenuState.class)).thenReturn(state);
         return session;
-    }
-
-    private static MenuBuilder builder() {
-        MenuBuilder builder = mock(MenuBuilder.class, org.mockito.Mockito.RETURNS_SELF);
-        when(builder.show()).thenReturn(true);
-        return builder;
     }
 
     private static PlayerData player(String uuid, int pid) {

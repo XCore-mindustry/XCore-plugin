@@ -1,9 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
-import arc.struct.Seq;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
@@ -13,6 +11,7 @@ import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.MenuPrompt;
 
 import java.util.List;
 
@@ -20,6 +19,10 @@ import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class MessageMenu extends Menu {
+
+    private static final String PROMPT_REPLY = "private-message-reply";
+    private static final String PROMPT_COMPOSE_TARGET = "private-message-compose-target";
+    private static final String PROMPT_COMPOSE_BODY = "private-message-compose-body";
 
     private final PrivateMessageService privateMessageService;
 
@@ -175,53 +178,61 @@ public class MessageMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
 
-        session.setTextHandler(text -> {
-            privateMessageService.send(session, message.fromPid, text);
-            details(uuid, message.id, returnPage);
-        });
-
-        Call.textInput(session.player.con,
-                session.menuService.getTextId(),
-                session.locale().t("private-message-reply-title"),
-                session.locale().t("private-message-reply-message", args("pid", message.fromPid)),
-                globalConfig.privateMessageMaxLength,
-                "",
-                false);
+        session.menuService.openPrompt(session,
+                new MenuPrompt(
+                        PROMPT_REPLY,
+                        session.locale().t("private-message-reply-title"),
+                        session.locale().t("private-message-reply-message", args("pid", message.fromPid)),
+                        globalConfig.privateMessageMaxLength,
+                        "",
+                        false),
+                text -> {
+                    privateMessageService.send(session, message.fromPid, text);
+                    details(uuid, message.id, returnPage);
+                },
+                () -> details(uuid, message.id, returnPage));
     }
 
     private void promptCompose(String uuid, Runnable onBack) {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
 
-        session.setTextHandler(pidText -> {
-            Integer targetPid = privateMessageService.parseMenuPid(pidText);
-            if (targetPid == null) {
-                session.locale().send("error-private-message-invalid-pid", args());
-                onBack.run();
-                return;
-            }
+        session.menuService.openPrompt(session,
+                new MenuPrompt(
+                        PROMPT_COMPOSE_TARGET,
+                        session.locale().t("private-message-compose-target-title"),
+                        session.locale().t("private-message-compose-target-message"),
+                        32,
+                        session.lastPrivateTargetPid == null ? "" : "#" + session.lastPrivateTargetPid,
+                        false),
+                pidText -> handleComposeTarget(uuid, onBack, pidText),
+                onBack);
+    }
 
-            session.setTextHandler(message -> {
-                privateMessageService.send(session, targetPid, message);
-                onBack.run();
-            });
+    private void handleComposeTarget(String uuid, Runnable onBack, String pidText) {
+        Session session = sessionService.get(uuid);
+        if (session == null || session.data == null) return;
 
-            Call.textInput(session.player.con,
-                    session.menuService.getTextId(),
-                    session.locale().t("private-message-compose-body-title"),
-                    session.locale().t("private-message-compose-body-message", args("pid", "#" + targetPid)),
-                    globalConfig.privateMessageMaxLength,
-                    "",
-                    false);
-        });
+        Integer targetPid = privateMessageService.parseMenuPid(pidText);
+        if (targetPid == null) {
+            session.locale().send("error-private-message-invalid-pid", args());
+            onBack.run();
+            return;
+        }
 
-        Call.textInput(session.player.con,
-                session.menuService.getTextId(),
-                session.locale().t("private-message-compose-target-title"),
-                session.locale().t("private-message-compose-target-message"),
-                32,
-                session.lastPrivateTargetPid == null ? "" : "#" + session.lastPrivateTargetPid,
-                false);
+        session.menuService.openPrompt(session,
+                new MenuPrompt(
+                        PROMPT_COMPOSE_BODY,
+                        session.locale().t("private-message-compose-body-title"),
+                        session.locale().t("private-message-compose-body-message", args("pid", "#" + targetPid)),
+                        globalConfig.privateMessageMaxLength,
+                        "",
+                        false),
+                message -> {
+                    privateMessageService.send(session, targetPid, message);
+                    onBack.run();
+                },
+                onBack);
     }
 
     private String preview(String message) {

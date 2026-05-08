@@ -3,17 +3,31 @@ package org.xcore.plugin.ui.menu;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import org.xcore.plugin.common.BuildInfo;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuFlow;
+import org.xcore.plugin.ui.flow.MenuRenderContext;
+import org.xcore.plugin.ui.flow.MenuScreen;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.ospx.flubundle.Bundle.args;
 
 @Singleton
 public class InformationMenu extends Menu {
+    private static final String ACTION_DISCORD = "discord";
+    private static final String ACTION_GITHUB = "github";
+    private static final String ACTION_DONATELLO = "donatello";
+    private static final String ACTION_WEBLATE = "weblate";
+    private static final String ACTION_DISCORD_RED_VS_BLUE = "discord-red-vs-blue";
+    private static final String ACTION_BACK = "back";
+    private static final String ACTION_CLOSE = "close";
+
     private final BuildInfo buildInfo;
 
     private final Provider<MapMenu> map;
@@ -59,16 +73,71 @@ public class InformationMenu extends Menu {
         if (session == null || session.data == null) return;
         session.clear();
 
-        session.builder().title("commands-info-title", args("server-name", config.server))
-                .content("commands-info-text", args("version", buildInfo.getVersion()))
-                .addLocal("discord", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
-                .addLocal("github", () -> Call.openURI(session.player.con, globalConfig.githubUrl))
-                .end()
-                .addLocal("donatello", () -> Call.openURI(session.player.con, globalConfig.donatelloUrl))
-                .addLocal("weblate", () -> Call.openURI(session.player.con, globalConfig.weblateUrl))
-                .end()
-                .addLocalRow("discord-red-vs-blue", () -> Call.openURI(session.player.con, globalConfig.discordRedVSBlueUrl))
-                .addNavigationRow()
-                .show();
+        session.menuService.renderFlow(session, new InformationFlow());
+    }
+
+    private final class InformationFlow implements MenuFlow<InformationState> {
+        @Override
+        public Class<InformationState> stateType() {
+            return InformationState.class;
+        }
+
+        @Override
+        public MenuScreen render(MenuRenderContext<InformationState> context) {
+            Session session = context.session();
+            var local = context.locale();
+            List<List<MenuButton>> rows = new ArrayList<>();
+            rows.add(List.of(
+                    MenuButton.of(local.t("discord"), ACTION_DISCORD),
+                    MenuButton.of(local.t("github"), ACTION_GITHUB)
+            ));
+            rows.add(List.of(
+                    MenuButton.of(local.t("donatello"), ACTION_DONATELLO),
+                    MenuButton.of(local.t("weblate"), ACTION_WEBLATE)
+            ));
+            rows.add(List.of(MenuButton.of(local.t("discord-red-vs-blue"), ACTION_DISCORD_RED_VS_BLUE)));
+
+            List<MenuButton> navigation = new ArrayList<>();
+            if (session.hasHistory()) {
+                navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
+            }
+            navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
+            rows.add(navigation);
+
+            return MenuScreen.followUp(
+                    local.t("commands-info-title", args("server-name", config.server)),
+                    local.t("commands-info-text", args("version", buildInfo.getVersion())),
+                    rows
+            );
+        }
+
+        @Override
+        public void onAction(MenuRenderContext<InformationState> context, String actionId) {
+            Session session = context.session();
+            switch (actionId) {
+                case ACTION_DISCORD -> openUrl(session, globalConfig.discordUrl);
+                case ACTION_GITHUB -> openUrl(session, globalConfig.githubUrl);
+                case ACTION_DONATELLO -> openUrl(session, globalConfig.donatelloUrl);
+                case ACTION_WEBLATE -> openUrl(session, globalConfig.weblateUrl);
+                case ACTION_DISCORD_RED_VS_BLUE -> openUrl(session, globalConfig.discordRedVSBlueUrl);
+                case ACTION_BACK -> {
+                    Runnable previousMenu = session.popHistory();
+                    if (previousMenu != null) {
+                        session.menuService.close(session);
+                        previousMenu.run();
+                    }
+                }
+                case ACTION_CLOSE -> context.close();
+                default -> {
+                }
+            }
+        }
+
+        private void openUrl(Session session, String url) {
+            session.menuService.openUri(session, url);
+        }
+    }
+
+    public static final class InformationState {
     }
 }

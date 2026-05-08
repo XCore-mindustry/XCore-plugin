@@ -2,7 +2,6 @@ package org.xcore.plugin.ui.menu;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Call;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.DiscordLinkService;
@@ -45,7 +44,7 @@ public class DiscordMenu extends Menu {
                         "status", statusText,
                         "discordUrl", globalConfig.discordUrl
                 ))
-                .addLocal("discord-menu-open", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
+                .addLocal("discord-menu-open", () -> session.menuService.openUri(session, globalConfig.discordUrl))
                 .addLocal("discord-menu-status", () -> main(uuid))
                 .end()
                 .ifAddLocal(!status.linked(), "discord-menu-link", () -> {
@@ -81,6 +80,7 @@ public class DiscordMenu extends Menu {
             } else {
                 local.send("commands-discord-link-error", args());
             }
+            session.menuService.close(session);
             main(uuid);
             return;
         }
@@ -92,14 +92,17 @@ public class DiscordMenu extends Menu {
                         "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
                         "discordUrl", globalConfig.discordUrl
                 ))
-                .addLocal("discord-menu-open", () -> Call.openURI(session.player.con, globalConfig.discordUrl))
-                .addLocal("discord-link-menu-copy", () -> Call.copyToClipboard(session.player.con, result.code()))
+                .addLocal("discord-menu-open", () -> session.menuService.openUri(session, globalConfig.discordUrl))
+                .addLocal("discord-link-menu-copy", () -> session.menuService.copyToClipboard(session, result.code()))
                 .addLocal("discord-link-menu-refresh", () -> linking(uuid, false))
                 .end()
                 .addLocal("discord-link-menu-regenerate", () -> linking(uuid, true))
-                .addLocal("discord-link-menu-status", () -> main(uuid))
+                .addLocal("discord-link-menu-status", () -> {
+                    session.menuService.close(session);
+                    main(uuid);
+                })
                 .end()
                 .addNavigationRow()
-                .show();
+                .showFollowUp();
     }
 }

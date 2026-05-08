@@ -2,7 +2,7 @@ package org.xcore.plugin.ui.menu;
 
 import arc.struct.Seq;
 import mindustry.Vars;
-import mindustry.gen.Call;
+import org.xcore.plugin.ui.flow.MenuPrompt;
 import mindustry.maps.Map;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
@@ -11,13 +11,12 @@ import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.database.repository.EventDataRepository;
-import org.xcore.plugin.database.repository.MapDataRepository;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.EventEditorService;
 import org.xcore.plugin.service.EventService;
+import org.xcore.plugin.service.EventViewService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -31,25 +30,28 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class EventMenu extends Menu {
 
-    private final EventDataRepository eventDataRepository;
-    private final MapDataRepository mapDataRepository;
-    private final PlayerDataRepository playerDataRepository;
     private final MapService mapService;
     private final EventService eventService;
+    private final EventEditorService eventEditorService;
+    private final EventViewService eventViewService;
     private final VoteService voteService;
     private final Provider<MapMenu> mapMenu;
 
+    private static final String PROMPT_CREATE_NAME = "event-create-name";
+    private static final String PROMPT_EDIT_NAME = "event-edit-name";
+    private static final String PROMPT_EDIT_DESCRIPTION = "event-edit-description";
+    private static final String PROMPT_EDIT_PLANNED_START = "event-edit-planned-start";
+    private static final String PROMPT_EDIT_PLANNED_END = "event-edit-planned-end";
+
     @Inject
     public EventMenu(Config config, GlobalConfig globalConfig, SessionService sessionService,
-                     EventDataRepository eventDataRepository, MapDataRepository mapDataRepository,
-                     PlayerDataRepository playerDataRepository, MapService mapService, EventService eventService,
-                     VoteService voteService, Provider<MapMenu> mapMenu) {
+                     MapService mapService, EventService eventService, EventEditorService eventEditorService,
+                     EventViewService eventViewService, VoteService voteService, Provider<MapMenu> mapMenu) {
         super(config, globalConfig, sessionService);
-        this.eventDataRepository = eventDataRepository;
-        this.mapDataRepository = mapDataRepository;
-        this.playerDataRepository = playerDataRepository;
         this.mapService = mapService;
         this.eventService = eventService;
+        this.eventEditorService = eventEditorService;
+        this.eventViewService = eventViewService;
         this.voteService = voteService;
         this.mapMenu = mapMenu;
     }
@@ -58,7 +60,7 @@ public class EventMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        EventData active = eventDataRepository.findActive().orElse(null);
+        EventData active = eventViewService.activeEvent();
 
         var builder = session.builder()
                 .title("event-menu-main-title")
@@ -87,7 +89,7 @@ public class EventMenu extends Menu {
                 builder.addLocal(session.locale().t("event-menu-vote-stop"), voteService::endVote);
             }
             if (active != null && active.isActive) {
-                builder.addLocal(session.locale().t("event-menu-stop"), eventDataRepository::finishActiveEvent);
+                builder.addLocal(session.locale().t("event-menu-stop"), eventService::finishActiveEvent);
             }
             builder.end();
         }
@@ -99,19 +101,23 @@ public class EventMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        EventData draft = session.getDraft(EventData.class);
-        draft.author = session.data.id;
-        if (map != null) draft.map = map.id;
+        EventData draft = eventEditorService.initializeDraft(session, map);
 
-        session.setTextHandler((text) -> {
-            draft.name = text;
-            edit(uuid);
-        });
-
-        Call.textInput(session.player.con, session.menuService.getTextId(),
-                session.locale().t("event-menu-create-start-title"),
-                session.locale().t("event-menu-create-start-message"),
-                20, session.locale().t("event-menu-create-start-default", args("playerName", session.player.name)), false);
+        session.menuService.openPrompt(session,
+                new MenuPrompt(PROMPT_CREATE_NAME,
+                        session.locale().t("event-menu-create-start-title"),
+                        session.locale().t("event-menu-create-start-message"),
+                        20,
+                        session.locale().t("event-menu-create-start-default", args("playerName", session.player.name)),
+                        false),
+                text -> {
+                    eventEditorService.updateName(draft, text);
+                    edit(uuid);
+                },
+                () -> {
+                    eventEditorService.cancelDraft(session);
+                    main(uuid);
+                });
     }
 
     public void edit(String uuid) {
@@ -121,8 +127,8 @@ public class EventMenu extends Menu {
         if (!session.hasDraft(EventData.class)) { main(uuid); return; }
 
         EventData draft = session.getDraft(EventData.class);
-        MapData mapData = mapDataRepository.findById(draft.map);
-        PlayerData authorData = playerDataRepository.findById(draft.author);
+        MapData mapData = eventEditorService.findMapForDraft(draft);
+        PlayerData authorData = eventEditorService.findAuthorForDraft(draft);
 
         String yes = session.locale().t("yes");
         String no = session.locale().t("no");
@@ -140,16 +146,30 @@ public class EventMenu extends Menu {
                 ))
                 .start()
                     .addLocal(session.locale().t("event-menu-edit-name"), () -> {
-                        session.setTextHandler(t -> { draft.name = t; edit(uuid); });
-                        Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-name-title"), "", 24, draft.name, false);
+                        session.menuService.openPrompt(session,
+                                new MenuPrompt(PROMPT_EDIT_NAME,
+                                        session.locale().t("event-menu-edit-name-title"),
+                                        "",
+                                        24,
+                                        draft.name,
+                                        false),
+                                t -> { eventEditorService.updateName(draft, t); edit(uuid); },
+                                () -> edit(uuid));
                     })
                     .addLocal(session.locale().t("event-menu-edit-name-reset"), () -> {
-                        draft.name = new EventData().name;
+                        eventEditorService.resetName(draft);
                         edit(uuid);
                     })
                     .addLocal(session.locale().t("event-menu-edit-description"), () -> {
-                        session.setTextHandler(t -> { draft.description = t; edit(uuid); });
-                        Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-description-title"), "", 1000, draft.description, false);
+                        session.menuService.openPrompt(session,
+                                new MenuPrompt(PROMPT_EDIT_DESCRIPTION,
+                                        session.locale().t("event-menu-edit-description-title"),
+                                        "",
+                                        1000,
+                                        draft.description,
+                                        false),
+                                t -> { eventEditorService.updateDescription(draft, t); edit(uuid); },
+                                () -> edit(uuid));
                     })
                 .end()
                 .start()
@@ -158,35 +178,48 @@ public class EventMenu extends Menu {
                         mapSelection(uuid, 1);
                     })
                     .addLocal(draft.isTemporary ? session.locale().t("event-menu-edit-temporary-active") : session.locale().t("event-menu-edit-temporary-inactive"), () -> {
-                        draft.isTemporary = !draft.isTemporary; edit(uuid);
+                        eventEditorService.toggleTemporary(draft); edit(uuid);
                     })
                 .end()
                 .start()
                     .addLocal(session.locale().t("event-menu-edit-planned-start"), () -> {
-                        session.setTextHandler(t -> { draft.plannedStartTime = parseTime(t); edit(uuid); });
-                        Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-planned-start-title"), "", 64, "", false);
+                        session.menuService.openPrompt(session,
+                                new MenuPrompt(PROMPT_EDIT_PLANNED_START,
+                                        session.locale().t("event-menu-edit-planned-start-title"),
+                                        "",
+                                        64,
+                                        "",
+                                        false),
+                                t -> { eventEditorService.updatePlannedStartTime(draft, t); edit(uuid); },
+                                () -> edit(uuid));
                     })
                     .addLocal(session.locale().t("event-menu-edit-planned-end"), () -> {
-                        session.setTextHandler(t -> { draft.plannedEndTime = parseTime(t); edit(uuid); });
-                        Call.textInput(session.player.con, session.menuService.getTextId(), session.locale().t("event-menu-edit-planned-end-title"), "", 10, "", false);
+                        session.menuService.openPrompt(session,
+                                new MenuPrompt(PROMPT_EDIT_PLANNED_END,
+                                        session.locale().t("event-menu-edit-planned-end-title"),
+                                        "",
+                                        10,
+                                        "",
+                                        false),
+                                t -> { eventEditorService.updatePlannedEndTime(draft, t); edit(uuid); },
+                                () -> edit(uuid));
                     })
                 .end()
                 .start()
                     .addLocal("[green]" + session.locale().t("save"), () -> {
-                        if (draft.map == null) { session.locale().send("error-no-map"); return; }
-                        eventDataRepository.save(draft);
-                        session.clearDraft(EventData.class);
-                        events(uuid, 1);
+                        if (eventEditorService.saveDraft(session)) {
+                            events(uuid, 1);
+                        }
                     })
                     .addLocal("[red]" + session.locale().t("cancel"), () -> {
-                        session.clearDraft(EventData.class);
+                        eventEditorService.cancelDraft(session);
                         main(uuid);
                     })
                 .end()
                 .apply(b -> {
                     if (session.player.admin) {
                         b.addRow(draft.isMajor ? session.locale().t("event-menu-edit-major-active") : session.locale().t("event-menu-edit-major-inactive"), () -> {
-                            draft.isMajor = !draft.isMajor; edit(uuid);
+                            eventEditorService.toggleMajor(draft); edit(uuid);
                         });
                     }
                 })
@@ -197,8 +230,9 @@ public class EventMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        MapData mapData = mapDataRepository.findById(event.map);
-        PlayerData authorData = playerDataRepository.findById(event.author);
+        EventViewService.EventDetails details = eventViewService.details(event);
+        MapData mapData = details.map();
+        PlayerData authorData = details.author();
 
         String yes = session.locale().t("yes");
         String no = session.locale().t("no");
@@ -256,21 +290,16 @@ public class EventMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        int total = (int) eventDataRepository.count(session.sortStatus);
         int perPage = globalConfig.eventsPerPage;
-        var pagination = CustomGatherers.calculatePagination(total, perPage);
-
-        int validPage = pagination.clampPage(page);
-        int skip = (validPage - 1) * perPage;
-        List<EventData> events = eventDataRepository.findPage(skip, perPage, session.sortStatus);
+        EventViewService.EventPage eventPage = eventViewService.page(page, perPage, session.sortStatus);
 
         String menuContent;
-        if (total == 0) {
+        if (eventPage.isEmpty()) {
             menuContent = session.locale().t("event-menu-events-empty");
         } else {
             menuContent = session.locale().t("event-menu-events-content", args(
-                "page", validPage,
-                "total", pagination.totalPages()
+                "page", eventPage.page(),
+                "total", eventPage.totalPages()
             ));
         }
 
@@ -283,11 +312,11 @@ public class EventMenu extends Menu {
                     .addStatusButton("active", () -> events(uuid, 1))
                 .end()
                 .start()
-                    .ifAddLocal(validPage > 1, "previous", () -> events(uuid, validPage - 1))
-                    .ifAddLocal(validPage < pagination.totalPages(), "next", () -> events(uuid, validPage + 1))
+                    .ifAddLocal(eventPage.hasPrevious(), "previous", () -> events(uuid, eventPage.page() - 1))
+                    .ifAddLocal(eventPage.hasNext(), "next", () -> events(uuid, eventPage.page() + 1))
                 .end()
-                .addForEach(events, (b, e) -> b.addRow(e.isActive ? session.locale().t("event-menu-events-selected", args("name", e.name)) : e.name, () -> {
-                    session.pushHistory(() -> events(uuid, validPage));
+                .addForEach(eventPage.events(), (b, e) -> b.addRow(e.isActive ? session.locale().t("event-menu-events-selected", args("name", e.name)) : e.name, () -> {
+                    session.pushHistory(() -> events(uuid, eventPage.page()));
                     event(uuid, e);
                 }))
                 .addLocalRow("event-menu-main", () -> { session.clearHistory(); main(uuid); })
@@ -311,30 +340,11 @@ public class EventMenu extends Menu {
                     .ifAddLocal(validPage < pagination.totalPages(), "next", () -> mapSelection(uuid, validPage + 1))
                 .end()
                 .addForEach(SeqStream.of(maps).gather(CustomGatherers.page(globalConfig.mapsPerPage, validPage)).flatMap(List::stream)::iterator, (b, m) -> b.addRow(m.name(), () -> {
-                    MapData data = mapDataRepository.findOrCreate(m.plainName(), m.file.name(), m.author(), Vars.state.rules.mode().name());
-                    session.getDraft(EventData.class).map = data.id;
+                    eventEditorService.selectMapForDraft(session, m.plainName(), m.file.name(), m.author(), Vars.state.rules.mode().name());
                     edit(uuid);
                 }))
                 .addNavigationRow()
                 .show();
     }
 
-    private long parseTime(String input) {
-        if (input == null || input.isEmpty()) return 0;
-        try {
-            if (input.startsWith("+")) {
-                long now = System.currentTimeMillis();
-                String valueStr = input.substring(1, input.length() - 1);
-                char unit = input.charAt(input.length() - 1);
-                long value = Long.parseLong(valueStr);
-                return now + switch (unit) {
-                    case 'm' -> value * 60_000L;
-                    case 'h' -> value * 3_600_000L;
-                    case 'd' -> value * 86_400_000L;
-                    default -> 0;
-                };
-            }
-            return Long.parseLong(input);
-        } catch (Exception e) { return 0; }
-    }
 }
