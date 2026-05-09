@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .discovery import GenerationPlan, generated_java_root
+from .discovery import GenerationPlan, generated_java_root, load_aggregate_generation_plan
 from .families import FamilyConfig, require_family_config
 from .model import FieldShape, FieldType, NormalizedField, NormalizedSchema
 from .route_descriptors import RouteDescriptor
@@ -119,6 +119,17 @@ def render_java_outputs(plan: GenerationPlan) -> tuple[GeneratedFile, ...]:
                 ),
             )
         )
+
+    aggregate_plan = load_aggregate_generation_plan()
+    outputs.append(
+        GeneratedFile(
+            path=routes_root / "ProtocolRoutes.java",
+            content=_render_protocol_routes(
+                plan=aggregate_plan,
+                schema_family_index=_schema_family_index(aggregate_plan),
+            ),
+        )
+    )
 
     return tuple(outputs)
 
@@ -361,6 +372,79 @@ def _render_family_routes(
         "        return new MessageKey(messageType, messageVersion);\n"
         "    }\n"
         "}\n"
+    )
+
+
+def _render_protocol_routes(
+    *,
+    plan: GenerationPlan,
+    schema_family_index: dict[str, str],
+) -> str:
+    routes = plan.route_descriptors
+    route_imports = _render_route_imports(routes, schema_family_index)
+    constants = "\n\n".join(
+        _render_route_constant(route, schema_family_index=schema_family_index) for route in routes
+    )
+    index_entries = ",\n".join(
+        f'            entry(key("{route.message.message_type}", {route.message.message_version}), {route.constant_name})'
+        for route in routes
+    )
+    payload_index_entries = ",\n".join(
+        f'            entry((Class<? extends ProtocolPayload>) {_message_payload_type(route.message.schema_title, route.family)}.class, {route.constant_name})'
+        for route in routes
+    )
+    return (
+        f"package {ROUTES_PACKAGE};\n\n"
+        "import static java.util.Map.entry;\n\n"
+        "import java.util.Map;\n"
+        f"import {RUNTIME_PACKAGE}.ProtocolPayload;\n"
+        + route_imports
+        + "\n"
+        + "public final class ProtocolRoutes {\n"
+        + '    private ProtocolRoutes() {\n'
+        + '        throw new AssertionError("No org.xcore.protocol.generated.routes.ProtocolRoutes instances");\n'
+        + "    }\n\n"
+        + "    public record MessageKey(String messageType, int messageVersion) {}\n\n"
+        + "    public record RouteResponseDescriptor(\n"
+        + "            String messageType,\n"
+        + "            int messageVersion,\n"
+        + "            Class<? extends ProtocolPayload> payloadType,\n"
+        + "            String stream\n"
+        + "    ) {}\n\n"
+        + "    public record RouteDescriptor(\n"
+        + "            String family,\n"
+        + "            String methodName,\n"
+        + "            String messageType,\n"
+        + "            int messageVersion,\n"
+        + "            Class<? extends ProtocolPayload> payloadType,\n"
+        + "            String kind,\n"
+        + "            String stream,\n"
+        + "            String targetScope,\n"
+        + "            int ttlMs,\n"
+        + "            boolean replayable,\n"
+        + "            boolean idempotentConsumerRecommended,\n"
+        + "            String owner,\n"
+        + "            RouteResponseDescriptor response\n"
+        + "    ) {}\n\n"
+        + constants
+        + "\n\n    public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(\n"
+        + index_entries
+        + "\n    );\n\n"
+        + "    @SuppressWarnings(\"unchecked\")\n"
+        + "    public static final Map<Class<? extends ProtocolPayload>, RouteDescriptor> ROUTES_BY_PAYLOAD_TYPE = Map.ofEntries(\n"
+        + payload_index_entries
+        + "\n    );\n\n"
+        + "    public static RouteDescriptor routeFor(String messageType, int messageVersion) {\n"
+        + "        return ROUTES_BY_MESSAGE.get(new MessageKey(messageType, messageVersion));\n"
+        + "    }\n\n"
+        + "    @SuppressWarnings(\"unchecked\")\n"
+        + "    public static RouteDescriptor routeFor(ProtocolPayload payload) {\n"
+        + "        return ROUTES_BY_PAYLOAD_TYPE.get((Class<? extends ProtocolPayload>) payload.getClass());\n"
+        + "    }\n\n"
+        + "    private static MessageKey key(String messageType, int messageVersion) {\n"
+        + "        return new MessageKey(messageType, messageVersion);\n"
+        + "    }\n"
+        + "}\n"
     )
 
 
