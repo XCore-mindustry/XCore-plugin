@@ -128,34 +128,34 @@ class RedisStreamRouterTest {
         );
 
         assertThat(messageRoute.streamKey()).isEqualTo("xcore:evt:chat:message");
-        assertThat(messageRoute.eventType()).isEqualTo("chat.message");
+        assertThat(messageRoute.messageType()).isEqualTo("chat.message");
 
         assertThat(privateRoute.streamKey()).isEqualTo("xcore:evt:chat:private");
-        assertThat(privateRoute.eventType()).isEqualTo("chat.private");
+        assertThat(privateRoute.messageType()).isEqualTo("chat.private");
 
         assertThat(serverActionRoute.streamKey()).isEqualTo("xcore:evt:server:action");
-        assertThat(serverActionRoute.eventType()).isEqualTo("server.action");
+        assertThat(serverActionRoute.messageType()).isEqualTo("server.action");
 
         assertThat(joinRoute.streamKey()).isEqualTo("xcore:evt:player:joinleave");
-        assertThat(joinRoute.eventType()).isEqualTo("player.join-leave");
+        assertThat(joinRoute.messageType()).isEqualTo("player.join-leave");
 
         assertThat(heartbeatRoute.streamKey()).isEqualTo("xcore:evt:server:heartbeat");
-        assertThat(heartbeatRoute.eventType()).isEqualTo("server.heartbeat");
+        assertThat(heartbeatRoute.messageType()).isEqualTo("server.heartbeat");
 
         assertThat(banRoute.streamKey()).isEqualTo("xcore:evt:moderation:ban");
-        assertThat(banRoute.eventType()).isEqualTo("moderation.ban.created");
+        assertThat(banRoute.messageType()).isEqualTo("moderation.ban.created");
 
         assertThat(muteRoute.streamKey()).isEqualTo("xcore:evt:moderation:mute");
-        assertThat(muteRoute.eventType()).isEqualTo("moderation.mute.created");
+        assertThat(muteRoute.messageType()).isEqualTo("moderation.mute.created");
 
         assertThat(voteKickRoute.streamKey()).isEqualTo("xcore:evt:moderation:votekick");
-        assertThat(voteKickRoute.eventType()).isEqualTo("moderation.vote-kick.created");
+        assertThat(voteKickRoute.messageType()).isEqualTo("moderation.vote-kick.created");
 
         assertThat(auditRoute.streamKey()).isEqualTo("xcore:evt:moderation:audit");
-        assertThat(auditRoute.eventType()).isEqualTo("moderation.audit.appended");
+        assertThat(auditRoute.messageType()).isEqualTo("moderation.audit.appended");
 
         assertThat(discordLinkCodeRoute.streamKey()).isEqualTo("xcore:evt:discord:link-code");
-        assertThat(discordLinkCodeRoute.eventType()).isEqualTo("discord.link-code-created");
+        assertThat(discordLinkCodeRoute.messageType()).isEqualTo("discord.link-code-created");
     }
 
     @Test
@@ -213,27 +213,27 @@ class RedisStreamRouterTest {
         );
 
         assertThat(discordRoute.streamKey()).isEqualTo("xcore:cmd:discord-message:mini-hexed");
-        assertThat(discordRoute.eventType()).isEqualTo("chat.discord-ingress.command");
+        assertThat(discordRoute.messageType()).isEqualTo("chat.discord-ingress.command");
         assertThat(mapsRoute.streamKey()).isEqualTo("xcore:cmd:maps-load:event");
-        assertThat(mapsRoute.eventType()).isEqualTo("maps.load.command");
+        assertThat(mapsRoute.messageType()).isEqualTo("maps.load.command");
         assertThat(customNicknameRoute.streamKey()).isEqualTo("xcore:cmd:player-custom-nickname:survival");
-        assertThat(customNicknameRoute.eventType()).isEqualTo("player.custom-nickname.changed.command");
+        assertThat(customNicknameRoute.messageType()).isEqualTo("player.custom-nickname.changed.command");
         assertThat(activeBadgeRoute.streamKey()).isEqualTo("xcore:cmd:player-active-badge:mini-hexed");
-        assertThat(activeBadgeRoute.eventType()).isEqualTo("player.active-badge.changed.command");
+        assertThat(activeBadgeRoute.messageType()).isEqualTo("player.active-badge.changed.command");
         assertThat(badgeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-inventory:mini-pvp");
-        assertThat(badgeRoute.eventType()).isEqualTo("player.badge-inventory.changed.command");
+        assertThat(badgeRoute.messageType()).isEqualTo("player.badge-inventory.changed.command");
         assertThat(badgeColorModeRoute.streamKey()).isEqualTo("xcore:cmd:player-badge-symbol-color-mode:hexed");
-        assertThat(badgeColorModeRoute.eventType()).isEqualTo("player.badge-symbol-color-mode.changed.command");
+        assertThat(badgeColorModeRoute.messageType()).isEqualTo("player.badge-symbol-color-mode.changed.command");
         assertThat(passwordRoute.streamKey()).isEqualTo("xcore:cmd:player-password-reset:mini-pvp");
-        assertThat(passwordRoute.eventType()).isEqualTo("player.password-reset.command");
+        assertThat(passwordRoute.messageType()).isEqualTo("player.password-reset.command");
         assertThat(discordLinkConfirmRoute.streamKey()).isEqualTo("xcore:cmd:discord-link-confirm:mini-hexed");
-        assertThat(discordLinkConfirmRoute.eventType()).isEqualTo("discord.link.confirm.command");
+        assertThat(discordLinkConfirmRoute.messageType()).isEqualTo("discord.link.confirm.command");
         assertThat(discordLinkStatusRoute.streamKey()).isEqualTo("xcore:evt:discord:link-status");
-        assertThat(discordLinkStatusRoute.eventType()).isEqualTo("discord.link.status-changed");
+        assertThat(discordLinkStatusRoute.messageType()).isEqualTo("discord.link.status-changed");
         assertThat(discordAdminAccessRoute.streamKey()).isEqualTo("xcore:cmd:discord-admin-access:mini-pvp");
-        assertThat(discordAdminAccessRoute.eventType()).isEqualTo("discord.admin-access.changed.command");
+        assertThat(discordAdminAccessRoute.messageType()).isEqualTo("discord.admin-access.changed.command");
         assertThat(discordUnlinkRoute.streamKey()).isEqualTo("xcore:cmd:discord-unlink:mini-hexed");
-        assertThat(discordUnlinkRoute.eventType()).isEqualTo("discord.unlink.command");
+        assertThat(discordUnlinkRoute.messageType()).isEqualTo("discord.unlink.command");
 
         var discordAdminAccessOtherServerRoute = router.route(
                 new DiscordAdminAccessChangedCommandV1(
@@ -334,7 +334,7 @@ class RedisStreamRouterTest {
     @DisplayName("type classification and rpc response mapping are correct")
     void classificationAndResponseMapping() {
         assertThat(router.isReadOnlyType(ServerHeartbeatV1.class)).isTrue();
-        assertThat(router.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isTrue();
+        assertThat(router.isReadOnlyType(ChatDiscordIngressCommandV1.class)).isFalse();
         assertThat(router.isReadOnlyType(ChatPrivateV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkCodeCreatedV1.class)).isTrue();
         assertThat(router.isReadOnlyType(DiscordLinkStatusChangedV1.class)).isTrue();
@@ -351,6 +351,7 @@ class RedisStreamRouterTest {
         assertThat(router.isMutatingType(PlayerActiveBadgeChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(PlayerBadgeSymbolColorModeChangedCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(MapsLoadCommandV1.class)).isTrue();
+        assertThat(router.isMutatingType(ChatDiscordIngressCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordLinkConfirmCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordUnlinkCommandV1.class)).isTrue();
         assertThat(router.isMutatingType(DiscordAdminAccessChangedCommandV1.class)).isTrue();
@@ -359,6 +360,11 @@ class RedisStreamRouterTest {
 
         assertThat(router.isRpcRequestType(MapsListRequestV1.class)).isTrue();
         assertThat(router.isRpcRequestType(ChatMessageV1.class)).isFalse();
+
+        assertThat(router.shouldClaimIdempotency(ChatDiscordIngressCommandV1.class)).isTrue();
+        assertThat(router.shouldClaimIdempotency(ModerationBanCreatedV1.class)).isTrue();
+        assertThat(router.shouldClaimIdempotency(ChatMessageV1.class)).isFalse();
+        assertThat(router.shouldClaimIdempotency(MapsListRequestV1.class)).isFalse();
 
         assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
                 .isEqualTo(MapsListResponseV1.class);

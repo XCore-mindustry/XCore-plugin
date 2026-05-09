@@ -29,7 +29,7 @@ Python-based codegen producing Java records and Python frozen dataclasses from c
 ### Step 5 — Implement Java protocol support ✓
 - Plugin consumes generated `org.xcore.protocol.generated.*` DTOs.
 - `DiscordProtocolMapper` and `ModerationProtocolMapper` produce canonical payloads.
-- `RedisRouteRegistry` routes by generated types.
+- `RedisProtocolRouteAdapter` routes by generated types.
 - `RedisNetworkBackend` serializes via `ProtocolPayload.toPayload()`.
 
 ### Step 6 — Implement Python protocol support ✓

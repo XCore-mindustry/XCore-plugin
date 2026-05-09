@@ -456,7 +456,7 @@ public final class RedisNetworkBackend {
 
         String idempotencyRedisKey = null;
         boolean idempotencyClaimed = false;
-        if (router.isMutatingType(type)) {
+        if (router.shouldClaimIdempotency(type)) {
             String idempotencyKey = message.getBody().getOrDefault("idempotency_key", "");
             if (!idempotencyKey.isBlank()) {
                 long ttlSeconds = envelopeFactory.resolveIdempotencyTtlSeconds(expiresAt);

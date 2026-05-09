@@ -23,12 +23,12 @@ final class RedisEnvelopeFactory {
     Map<String, String> eventFields(RedisStreamRouter.Route route, String payloadJson, long now) {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("schema_version", "1");
-        fields.put("event_type", route.eventType());
+        fields.put("event_type", route.messageType());
         fields.put("event_id", UUID.randomUUID().toString());
         fields.put(
                 "idempotency_key",
                 deterministicIdempotencyKey(
-                        route.eventType(),
+                        route.messageType(),
                         config.server,
                         payloadJson,
                         now,
@@ -51,13 +51,13 @@ final class RedisEnvelopeFactory {
                                          long timeoutMs) {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("schema_version", "1");
-        fields.put("rpc_type", route.eventType());
+        fields.put("rpc_type", route.messageType());
         fields.put("correlation_id", correlationId);
         fields.put("request_id", UUID.randomUUID().toString());
         fields.put(
                 "idempotency_key",
                 deterministicIdempotencyKey(
-                        "rpc." + route.eventType(),
+                        "rpc." + route.messageType(),
                         config.server,
                         requestJson,
                         now,

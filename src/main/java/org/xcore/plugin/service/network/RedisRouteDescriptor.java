@@ -3,21 +3,26 @@ package org.xcore.plugin.service.network;
 public record RedisRouteDescriptor(
         Class<?> payloadType,
         String streamPattern,
-        String eventType,
+        String messageType,
         long ttlMillis,
-        RedisRouteKind kind,
+        RedisDeliveryMode deliveryMode,
+        boolean idempotentConsumerRecommended,
         RedisServerResolver serverResolver,
         Class<?> responseType
 ) {
     public boolean isReadOnly() {
-        return kind == RedisRouteKind.READ_ONLY;
+        return deliveryMode == RedisDeliveryMode.EVENT;
     }
 
     public boolean isMutating() {
-        return kind == RedisRouteKind.MUTATING;
+        return deliveryMode == RedisDeliveryMode.COMMAND;
     }
 
     public boolean isRpcRequest() {
-        return kind == RedisRouteKind.RPC_REQUEST;
+        return deliveryMode == RedisDeliveryMode.RPC_REQUEST;
+    }
+
+    public boolean shouldClaimIdempotency() {
+        return idempotentConsumerRecommended;
     }
 }

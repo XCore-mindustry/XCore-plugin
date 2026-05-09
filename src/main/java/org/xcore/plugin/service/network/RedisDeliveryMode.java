@@ -1,7 +1,7 @@
 package org.xcore.plugin.service.network;
 
-public enum RedisRouteKind {
-    READ_ONLY,
-    MUTATING,
+public enum RedisDeliveryMode {
+    EVENT,
+    COMMAND,
     RPC_REQUEST
 }

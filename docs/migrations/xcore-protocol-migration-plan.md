@@ -73,10 +73,34 @@ Legacy fallback paths (raw transport, snake_case aliases, `TransportEvents.Serve
 ## Transport Model (Current State)
 
 - Plugin publishes and consumes only canonical generated protocol DTOs.
-- `RedisRouteRegistry` registers generated protocol classes only.
+- `RedisProtocolRouteAdapter` derives route metadata from generated `ProtocolRoutes` instead of maintaining a hand-written duplicate catalog.
+- `RedisProtocolRouteCatalog` is a compatibility/assertion view over generated `ProtocolRoutes`, not an independent source of truth.
 - `RedisNetworkBackend` serializes protocol payloads via `ProtocolPayload.toPayload()`.
 - `RedisStreamRouter` routes strictly by generated type.
+- Consumer idempotency is driven by generated route `idempotentConsumerRecommended`, not by local read-only/mutating buckets.
 - Bot uses strict `from_payload()` parsing with no legacy alias normalization.
+
+## Envelope Compatibility Follow-Up
+
+The message payload and route catalog are protocol-first, but the Redis stream envelope is still emitted with the existing XCore Redis field names for cross-service compatibility:
+
+- `schema_version`
+- `event_type` / `rpc_type`
+- `event_id` / `request_id`
+- `idempotency_key`
+- `server`
+- `created_at` / `expires_at`
+- `payload_json`
+
+`xcore-protocol` also defines canonical envelope models with message-oriented fields such as `message_type`, `message_version`, `message_kind`, `message_id`, `target`, `correlation_id`, and `schema_ref`. Moving the live Redis envelope to those names must be a coordinated ecosystem migration because `XCore-discord-bot` and any other consumers may depend on the existing field names.
+
+Recommended migration sequence:
+
+1. Add a dual-read envelope adapter in every consumer that accepts both existing Redis fields and canonical protocol envelope fields.
+2. Add dual-write support in producers for canonical envelope fields while retaining existing fields.
+3. Add cross-repo contract tests proving plugin and bot can consume both envelope shapes.
+4. Deploy tolerant readers before canonical-field writers.
+5. After one release window, switch tests to require canonical fields and remove legacy aliases in a dedicated breaking-change release.
 
 ## Validation Surface
 

@@ -1,29 +1,21 @@
 package org.xcore.plugin.service.network;
 
+import org.xcore.protocol.generated.routes.ProtocolRoutes;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
-import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
-import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveResponseV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
@@ -36,7 +28,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class RedisRouteRegistry {
+/**
+ * Registry of Redis route descriptors derived from the generated {@link ProtocolRoutes} catalog.
+ *
+ * <p>Plugin-local server resolution is preserved. Stream patterns, message types, TTL, delivery
+ * kind, idempotency recommendation, and response mapping come from {@code ProtocolRoutes} as the
+ * canonical source of truth.</p>
+ */
+public final class RedisProtocolRouteAdapter {
     private static final RedisServerResolver MODERATION_SERVER_RESOLVER = (payload, defaultServer) -> {
         String server = moderationServer(payload);
         return server == null || server.isBlank() ? defaultServer : server;
@@ -64,9 +63,26 @@ public final class RedisRouteRegistry {
 
     private final Map<Class<?>, RedisRouteDescriptor> descriptorsByType;
 
-    public RedisRouteRegistry() {
+    public RedisProtocolRouteAdapter() {
         this.descriptorsByType = new LinkedHashMap<>();
-        registerDefaults();
+        for (var entry : ProtocolRoutes.ROUTES_BY_PAYLOAD_TYPE.entrySet()) {
+            Class<?> payloadType = entry.getKey();
+            ProtocolRoutes.RouteDescriptor route = entry.getValue();
+            RedisDeliveryMode deliveryMode = mapDeliveryMode(route);
+            Class<?> responseType = route.response() != null ? route.response().payloadType() : null;
+            RedisServerResolver resolver = resolveServerResolver(route);
+            RedisRouteDescriptor descriptor = new RedisRouteDescriptor(
+                    payloadType,
+                    route.stream(),
+                    route.messageType(),
+                    route.ttlMs(),
+                    deliveryMode,
+                    route.idempotentConsumerRecommended(),
+                    resolver,
+                    responseType
+            );
+            descriptorsByType.put(payloadType, descriptor);
+        }
     }
 
     public RedisRouteDescriptor routeDescriptorFor(Object payload) {
@@ -95,6 +111,11 @@ public final class RedisRouteRegistry {
         return descriptor != null && descriptor.isMutating();
     }
 
+    public boolean shouldClaimIdempotency(Class<?> type) {
+        RedisRouteDescriptor descriptor = routeDescriptorFor(type);
+        return descriptor != null && descriptor.shouldClaimIdempotency();
+    }
+
     public boolean isRpcRequestType(Class<?> type) {
         RedisRouteDescriptor descriptor = routeDescriptorFor(type);
         return descriptor != null && descriptor.isRpcRequest();
@@ -110,7 +131,7 @@ public final class RedisRouteRegistry {
         if (descriptor == null || !descriptor.isRpcRequest()) {
             return null;
         }
-        return descriptor.eventType();
+        return descriptor.messageType();
     }
 
     public String resolveStreamKey(RedisRouteDescriptor descriptor, Object payload, String defaultServer) {
@@ -130,35 +151,24 @@ public final class RedisRouteRegistry {
         return new ArrayList<>(descriptorsByType.values());
     }
 
-    private void registerDefaults() {
-        register(readOnly(ChatMessageV1.class, "xcore:evt:chat:message", "chat.message", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ServerActionV1.class, "xcore:evt:server:action", "server.action", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(PlayerJoinLeaveV1.class, "xcore:evt:player:joinleave", "player.join-leave", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ChatGlobalV1.class, "xcore:evt:chat:global", "chat.global", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ServerHeartbeatV1.class, "xcore:evt:server:heartbeat", "server.heartbeat", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ChatDiscordIngressCommandV1.class, "xcore:cmd:discord-message:{server}", "chat.discord-ingress.command", 60_000L, PAYLOAD_SERVER_RESOLVER));
-        register(readOnly(ChatPrivateV1.class, "xcore:evt:chat:private", "chat.private", 60_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ModerationBanCreatedV1.class, "xcore:evt:moderation:ban", "moderation.ban.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ModerationMuteCreatedV1.class, "xcore:evt:moderation:mute", "moderation.mute.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ModerationVoteKickCreatedV1.class, "xcore:evt:moderation:votekick", "moderation.vote-kick.created", 120_000L, RedisServerResolver.broadcast()));
-        register(readOnly(ModerationAuditAppendedV1.class, "xcore:evt:moderation:audit", "moderation.audit.appended", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(ModerationKickBannedCommandV1.class, "xcore:cmd:kick-banned:{server}", "moderation.kick-banned.command", 120_000L, MODERATION_SERVER_RESOLVER));
-        register(mutating(PlayerCustomNicknameChangedCommandV1.class, "xcore:cmd:player-custom-nickname:{server}", "player.custom-nickname.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(PlayerActiveBadgeChangedCommandV1.class, "xcore:cmd:player-active-badge:{server}", "player.active-badge.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(PlayerBadgeSymbolColorModeChangedCommandV1.class, "xcore:cmd:player-badge-symbol-color-mode:{server}", "player.badge-symbol-color-mode.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(PlayerBadgeInventoryChangedCommandV1.class, "xcore:cmd:player-badge-inventory:{server}", "player.badge-inventory.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(PlayerPasswordResetCommandV1.class, "xcore:cmd:player-password-reset:{server}", "player.password-reset.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(readOnly(DiscordLinkCodeCreatedV1.class, "xcore:evt:discord:link-code", "discord.link-code-created", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(DiscordLinkConfirmCommandV1.class, "xcore:cmd:discord-link-confirm:{server}", "discord.link.confirm.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(DiscordUnlinkCommandV1.class, "xcore:cmd:discord-unlink:{server}", "discord.unlink.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(readOnly(DiscordLinkStatusChangedV1.class, "xcore:evt:discord:link-status", "discord.link.status-changed", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(DiscordAdminAccessChangedCommandV1.class, "xcore:cmd:discord-admin-access:{server}", "discord.admin-access.changed.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(PlayerDataCacheReloadCommandV1.class, "xcore:cmd:reload-cache:{server}", "player-data-cache.reload.command", 120_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(MapsLoadCommandV1.class, "xcore:cmd:maps-load:{server}", "maps.load.command", 300_000L, PAYLOAD_SERVER_RESOLVER));
-        register(mutating(ServerCommandExecuteCommandV1.class, "xcore:cmd:execute-command:broadcast", "server-command.execute.command", 120_000L, RedisServerResolver.broadcast()));
-        register(mutating(ModerationPardonCommandV1.class, "xcore:cmd:pardon-player:{server}", "moderation.pardon.command", 120_000L, MODERATION_SERVER_RESOLVER));
-        register(rpc(MapsListRequestV1.class, "xcore:rpc:req:{server}", "maps.list.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsListResponseV1.class));
-        register(rpc(MapsRemoveRequestV1.class, "xcore:rpc:req:{server}", "maps.remove.request", 10_000L, PAYLOAD_SERVER_RESOLVER, MapsRemoveResponseV1.class));
+    private static RedisDeliveryMode mapDeliveryMode(ProtocolRoutes.RouteDescriptor route) {
+        return switch (route.kind().toLowerCase()) {
+            case "event" -> RedisDeliveryMode.EVENT;
+            case "command" -> RedisDeliveryMode.COMMAND;
+            case "rpc-request", "rpc_request" -> RedisDeliveryMode.RPC_REQUEST;
+            default -> throw new IllegalArgumentException("Unknown route kind: " + route.kind());
+        };
+    }
+
+    private static RedisServerResolver resolveServerResolver(ProtocolRoutes.RouteDescriptor route) {
+        String stream = route.stream();
+        if (stream.contains("{server}")) {
+            if ("moderation".equalsIgnoreCase(route.family())) {
+                return MODERATION_SERVER_RESOLVER;
+            }
+            return PAYLOAD_SERVER_RESOLVER;
+        }
+        return RedisServerResolver.broadcast();
     }
 
     private static String moderationServer(Object payload) {
@@ -238,34 +248,5 @@ public final class RedisRouteRegistry {
             return command.server();
         }
         return null;
-    }
-
-    private void register(RedisRouteDescriptor descriptor) {
-        descriptorsByType.put(descriptor.payloadType(), descriptor);
-    }
-
-    private static RedisRouteDescriptor readOnly(Class<?> payloadType,
-                                                 String streamPattern,
-                                                 String eventType,
-                                                 long ttlMillis,
-                                                 RedisServerResolver serverResolver) {
-        return new RedisRouteDescriptor(payloadType, streamPattern, eventType, ttlMillis, RedisRouteKind.READ_ONLY, serverResolver, null);
-    }
-
-    private static RedisRouteDescriptor mutating(Class<?> payloadType,
-                                                 String streamPattern,
-                                                 String eventType,
-                                                 long ttlMillis,
-                                                 RedisServerResolver serverResolver) {
-        return new RedisRouteDescriptor(payloadType, streamPattern, eventType, ttlMillis, RedisRouteKind.MUTATING, serverResolver, null);
-    }
-
-    private static RedisRouteDescriptor rpc(Class<?> payloadType,
-                                            String streamPattern,
-                                            String eventType,
-                                            long ttlMillis,
-                                            RedisServerResolver serverResolver,
-                                            Class<?> responseType) {
-        return new RedisRouteDescriptor(payloadType, streamPattern, eventType, ttlMillis, RedisRouteKind.RPC_REQUEST, serverResolver, responseType);
     }
 }
