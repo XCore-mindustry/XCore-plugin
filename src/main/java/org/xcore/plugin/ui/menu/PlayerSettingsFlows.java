@@ -129,7 +129,7 @@ final class PlayerSettingsFlows {
                     ACTION_LANGUAGE)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -291,7 +291,7 @@ final class PlayerSettingsFlows {
                     ACTION_TRANSLATOR_LANGUAGE)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -398,7 +398,7 @@ final class PlayerSettingsFlows {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -486,7 +486,7 @@ final class PlayerSettingsFlows {
             rows.add(List.of(MenuButton.of(local.t("badge-menu-symbol-color-player-color"), ACTION_SET_PLAYER_COLOR_MODE)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -594,7 +594,7 @@ final class PlayerSettingsFlows {
             rows.add(bottomRow);
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -690,7 +690,7 @@ final class PlayerSettingsFlows {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));

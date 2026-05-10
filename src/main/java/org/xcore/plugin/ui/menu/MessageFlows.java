@@ -114,7 +114,7 @@ final class MessageFlows {
             ));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
@@ -204,7 +204,7 @@ final class MessageFlows {
             )));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
@@ -353,7 +353,7 @@ final class MessageFlows {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));

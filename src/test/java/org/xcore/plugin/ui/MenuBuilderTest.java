@@ -103,6 +103,32 @@ class MenuBuilderTest {
         );
     }
 
+    @Test
+    @DisplayName("addNavigationRow hides back when only route history exists for legacy screens")
+    void addNavigationRow_hidesBackWhenOnlyRouteHistoryExistsForLegacyScreens() {
+        MenuBuilder builder = new MenuBuilder(menuService, session);
+        session.pushRouteHistory(org.xcore.plugin.ui.route.MenuRoute.of("route.one"));
+
+        builder.addNavigationRow();
+
+        assertThat(builder.rows).containsExactly(
+                java.util.List.of("localized:close")
+        );
+    }
+
+    @Test
+    @DisplayName("addNavigationRow shows back when legacy history exists")
+    void addNavigationRow_showsBackWhenLegacyHistoryExists() {
+        MenuBuilder builder = new MenuBuilder(menuService, session);
+        session.pushHistory(() -> {});
+
+        builder.addNavigationRow();
+
+        assertThat(builder.rows).containsExactly(
+                java.util.List.of("localized:back", "localized:close")
+        );
+    }
+
     private Session session() {
         Player player = Player.create();
         player.con = mock(NetConnection.class);

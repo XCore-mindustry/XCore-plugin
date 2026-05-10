@@ -203,6 +203,10 @@ public class Session {
         return !routeHistory.isEmpty();
     }
 
+    public boolean canGoBack(boolean routeAwareScreen) {
+        return hasHistory() || routeAwareScreen && hasRouteHistory();
+    }
+
     public void resetSender() {
         sender = null;
     }

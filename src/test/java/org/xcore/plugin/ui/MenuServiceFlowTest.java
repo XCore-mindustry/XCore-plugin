@@ -361,6 +361,20 @@ class MenuServiceFlowTest {
     }
 
     @Test
+    @DisplayName("goBack does not consume route history for non routed active screen")
+    void goBack_doesNotConsumeRouteHistoryForNonRoutedActiveScreen() {
+        session.pushRouteHistory(MenuRoute.of("route.one"));
+        menuService.show(session, "Title", "Content", List.of(), List.of(), MenuMode.NORMAL);
+
+        boolean navigated = menuService.goBack(session);
+
+        assertThat(navigated).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isFalse();
+    }
+
+    @Test
     @DisplayName("flow prompt carries route into prompt callbacks")
     void flowPrompt_carriesRouteIntoPromptCallbacks() {
         AtomicReference<MenuRoute> promptRoute = new AtomicReference<>();

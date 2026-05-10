@@ -145,7 +145,7 @@ public class EventMenu extends Menu {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -283,7 +283,7 @@ public class EventMenu extends Menu {
             rows.add(List.of(MenuButton.of(session.locale().t("event-menu-main"), ACTION_MAIN)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
@@ -394,7 +394,7 @@ public class EventMenu extends Menu {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
@@ -479,7 +479,7 @@ public class EventMenu extends Menu {
 
     private MenuScreen eventNotFoundScreen(Session session) {
         List<MenuButton> navigation = new ArrayList<>();
-        if (session.hasHistory() || session.hasRouteHistory()) {
+        if (session.canGoBack(true)) {
             navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
         }
         navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));

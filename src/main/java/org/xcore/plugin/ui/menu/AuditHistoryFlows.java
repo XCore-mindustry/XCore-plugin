@@ -110,7 +110,7 @@ final class AuditHistoryFlows {
             }
 
             List<MenuButton> navRow = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navRow.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navRow.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -203,7 +203,7 @@ final class AuditHistoryFlows {
 
             List<List<MenuButton>> rows = new ArrayList<>();
             List<MenuButton> navRow = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navRow.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navRow.add(MenuButton.of(local.t("close"), ACTION_CLOSE));

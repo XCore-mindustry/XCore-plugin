@@ -175,7 +175,7 @@ public class TopMenu extends Menu {
             }
 
             List<MenuButton> bottomNav = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 bottomNav.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             bottomNav.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -296,7 +296,7 @@ public class TopMenu extends Menu {
             ));
 
             List<MenuButton> navRow = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navRow.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navRow.add(MenuButton.of(local.t("close"), ACTION_CLOSE));

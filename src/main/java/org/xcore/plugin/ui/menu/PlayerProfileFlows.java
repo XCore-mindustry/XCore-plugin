@@ -116,7 +116,7 @@ final class PlayerProfileFlows {
             rows.add(List.of(MenuButton.of(local.t("player-menu-players"), ACTION_PLAYERS)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -267,7 +267,7 @@ final class PlayerProfileFlows {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.hasHistory() || session.hasRouteHistory()) {
+            if (session.canGoBack(true)) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));

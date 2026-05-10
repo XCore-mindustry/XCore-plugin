@@ -165,7 +165,7 @@ public class MenuBuilder {
     public MenuBuilder addNavigationRow() {
         start();
 
-        if (session.hasHistory() || session.hasRouteHistory()) {
+        if (session.canGoBack(false)) {
             row.add(session.add(localization.format("back", args()), () -> {
                 service.goBack(session);
             }));
