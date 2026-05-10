@@ -150,6 +150,7 @@ public class Session {
         });
     }
 
+    @Deprecated
     public void setDraft(Object draft) {
         if (draft != null) {
             drafts.put(draft.getClass(), draft);
@@ -203,8 +204,8 @@ public class Session {
         return !routeHistory.isEmpty();
     }
 
-    public boolean canGoBack(boolean routeAwareScreen) {
-        return hasHistory() || routeAwareScreen && hasRouteHistory();
+    public boolean canGoBack() {
+        return hasHistory() || hasRouteHistory();
     }
 
     public void resetSender() {

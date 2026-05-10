@@ -89,30 +89,15 @@ class MenuBuilderTest {
     }
 
     @Test
-    @DisplayName("legacy add and addLocal delegate to explicit text and key behavior")
-    void legacyAddMethods_delegateToExplicitBehavior() {
-        MenuBuilder builder = new MenuBuilder(menuService, session);
-
-        builder.start()
-                .add("Raw", () -> {})
-                .addLocal("key", () -> {})
-                .end();
-
-        assertThat(builder.rows).containsExactly(
-                java.util.List.of("Raw", "localized:key")
-        );
-    }
-
-    @Test
-    @DisplayName("addNavigationRow hides back when only route history exists for legacy screens")
-    void addNavigationRow_hidesBackWhenOnlyRouteHistoryExistsForLegacyScreens() {
+    @DisplayName("addNavigationRow shows back when route history exists")
+    void addNavigationRow_showsBackWhenRouteHistoryExists() {
         MenuBuilder builder = new MenuBuilder(menuService, session);
         session.pushRouteHistory(org.xcore.plugin.ui.route.MenuRoute.of("route.one"));
 
         builder.addNavigationRow();
 
         assertThat(builder.rows).containsExactly(
-                java.util.List.of("localized:close")
+                java.util.List.of("localized:back", "localized:close")
         );
     }
 

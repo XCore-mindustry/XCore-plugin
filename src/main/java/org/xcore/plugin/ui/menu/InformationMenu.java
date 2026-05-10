@@ -120,7 +120,7 @@ public class InformationMenu extends Menu {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (context.session().canGoBack(true)) {
+            if (context.session().canGoBack()) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -192,7 +192,7 @@ public class InformationMenu extends Menu {
             rows.add(List.of(MenuButton.of(local.t("discord-red-vs-blue"), ACTION_DISCORD_RED_VS_BLUE)));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack(true)) {
+            if (session.canGoBack()) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));

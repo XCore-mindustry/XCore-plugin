@@ -65,7 +65,7 @@ public class DiscordMenu extends Menu {
             return;
         }
 
-        session.setDraft(new DiscordFlows.LinkingState(result));
+        session.setDraft(DiscordFlows.LinkingState.class, new DiscordFlows.LinkingState(result));
         session.menuService.renderRoute(session, MenuRoute.of(DiscordFlows.ROUTE_LINKING).withParam("regenerate", String.valueOf(regenerate)));
     }
 }

@@ -89,7 +89,7 @@ public class MapMenu extends Menu {
 
     MenuScreen mapNotFoundScreen(Session session) {
         List<MenuButton> navigation = new ArrayList<>();
-        if (session.canGoBack(true)) {
+        if (session.canGoBack()) {
             navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
         }
         navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
@@ -123,15 +123,13 @@ public class MapMenu extends Menu {
                             "author", nextAuthor,
                             "seconds", 10
                     ))
-                    .addLocal(likeButtonText, () -> mapService.handleReputation(player, true, current))
-                    .addLocal(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
+                    .addButtonText(likeButtonText, () -> mapService.handleReputation(player, true, current))
+                    .addButtonText(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
                     .end()
-                    .addLocal("current-map", () -> {
-                        session.clearHistory();
+                    .addButtonKey("current-map", () -> {
                         map(player.uuid(), current);
                     })
-                    .addLocal("next-map", () -> {
-                        session.clearHistory();
+                    .addButtonKey("next-map", () -> {
                         map(player.uuid(), next);
                     })
                     .addNavigationRow().show();

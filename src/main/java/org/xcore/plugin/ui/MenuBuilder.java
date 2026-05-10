@@ -79,18 +79,6 @@ public class MenuBuilder {
         return this;
     }
 
-    public MenuBuilder addRow(String buttonText, Runnable action) {
-        return addRowText(buttonText, action);
-    }
-
-    public MenuBuilder addRow(String btn1, Runnable action1, String btn2, Runnable action2) {
-        return addRowText(btn1, action1, btn2, action2);
-    }
-
-    public MenuBuilder addRow(List<MenuBuilder.ButtonDef> buttons) {
-        return addRowText(buttons);
-    }
-
     public MenuBuilder addRowKey(String buttonKey, Runnable action) {
         rows.add(List.of(session.add(localization.t(buttonKey), action)));
         return this;
@@ -109,18 +97,6 @@ public class MenuBuilder {
         return this;
     }
 
-    public MenuBuilder addLocalRow(String buttonText, Runnable action) {
-        return addRowKey(buttonText, action);
-    }
-
-    public MenuBuilder addLocalRow(String btn1, Runnable action1, String btn2, Runnable action2) {
-        return addRowKey(btn1, action1, btn2, action2);
-    }
-
-    public MenuBuilder addLocalRow(List<MenuBuilder.ButtonDef> buttons) {
-        return addRowKey(buttons);
-    }
-
     public MenuBuilder addButtonText(String buttonText, Runnable action) {
         row.add(session.add(buttonText, action));
         return this;
@@ -134,19 +110,6 @@ public class MenuBuilder {
     public MenuBuilder addButtonKey(String buttonKey, Runnable action, Map<String, Object> args) {
         row.add(session.add(localization.t(buttonKey, args), action));
         return this;
-    }
-
-    public MenuBuilder add(String buttonText, Runnable action) {
-        return addButtonText(buttonText, action);
-    }
-
-
-    public MenuBuilder addLocal(String buttonText, Runnable action) {
-        return addButtonKey(buttonText, action);
-    }
-
-    public MenuBuilder addLocal(String buttonText, Runnable action, Map<String, Object> args) {
-        return addButtonKey(buttonText, action, args);
     }
 
     public MenuBuilder start() {
@@ -165,7 +128,7 @@ public class MenuBuilder {
     public MenuBuilder addNavigationRow() {
         start();
 
-        if (session.canGoBack(false)) {
+        if (session.canGoBack()) {
             row.add(session.add(localization.format("back", args()), () -> {
                 service.goBack(session);
             }));
@@ -261,18 +224,6 @@ public class MenuBuilder {
             row.add(session.add(localization.t(buttonKey, args), action));
         }
         return this;
-    }
-
-    public MenuBuilder ifAdd(boolean bool, String buttonText, Runnable action) {
-        return ifAddButtonText(bool, buttonText, action);
-    }
-
-    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action) {
-        return ifAddButtonKey(bool, buttonText, action);
-    }
-
-    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action, Map<String, Object> args) {
-        return ifAddButtonKey(bool, buttonText, action, args);
     }
 
     public MenuBuilder ifElseAdd(boolean bool, String buttonText1, Runnable action1, String buttonText2, Runnable action2) {

@@ -80,7 +80,7 @@ final class DiscordFlows {
             }
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack(true)) {
+            if (session.canGoBack()) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -164,7 +164,7 @@ final class DiscordFlows {
                 List<List<MenuButton>> rows = new ArrayList<>();
                 rows.add(List.of(MenuButton.of(local.t("discord-link-menu-status"), ACTION_STATUS)));
                 List<MenuButton> nav = new ArrayList<>();
-                if (session.canGoBack(true)) {
+                if (session.canGoBack()) {
                     nav.add(MenuButton.of(local.t("back"), ACTION_BACK));
                 }
                 nav.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -192,7 +192,7 @@ final class DiscordFlows {
             ));
 
             List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack(true)) {
+            if (session.canGoBack()) {
                 navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
