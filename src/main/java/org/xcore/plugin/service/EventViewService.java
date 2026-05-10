@@ -42,6 +42,10 @@ public class EventViewService {
         return new EventDetails(event, findMap(event.map), findAuthor(event.author));
     }
 
+    public EventData findById(ObjectId id) {
+        return eventDataRepository.findById(id);
+    }
+
     public EventPage page(int requestedPage, int perPage, Map<String, StatusEnum> filters) {
         int total = (int) eventDataRepository.count(filters);
         var pagination = CustomGatherers.calculatePagination(total, perPage);

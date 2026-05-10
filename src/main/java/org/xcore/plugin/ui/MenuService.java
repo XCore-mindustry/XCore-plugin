@@ -15,8 +15,12 @@ import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.ui.flow.MenuPrompt;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
+import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 @Singleton
@@ -24,6 +28,7 @@ public class MenuService {
 
     private final Provider<SessionService> sessionService;
     private final MindustryMenuGateway gateway;
+    private final Map<String, RoutedMenuFlow<?>> routedFlows = new HashMap<>();
 
     private int globalMenuId;
     private int globalTextId;
@@ -84,6 +89,10 @@ public class MenuService {
     }
 
     public <TState> void show(Session session, MenuScreen screen, MenuFlow<TState> flow, TState state) {
+        show(session, screen, flow, state, null);
+    }
+
+    public <TState> void show(Session session, MenuScreen screen, MenuFlow<TState> flow, TState state, MenuRoute route) {
         if (session == null || session.player == null || session.player.con == null) return;
 
         long version = session.nextUiVersion();
@@ -91,7 +100,7 @@ public class MenuService {
         List<String> actionIds = screen.rows().stream()
                 .flatMap(row -> row.stream().map(MenuButton::actionId))
                 .toList();
-        var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds);
+        var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds, route);
         session.setActiveScreen(active);
 
         String[][] buttons = convertListToArray(screen.toTextRows());
@@ -104,9 +113,74 @@ public class MenuService {
 
     public <TState> void renderFlow(Session session, MenuFlow<TState> flow) {
         TState state = session.getDraft(flow.stateType());
-        var context = new MenuRenderContext<>(this, session, flow, state);
+        renderFlow(session, flow, state, null);
+    }
+
+    public <TState> void renderFlow(Session session, MenuFlow<TState> flow, TState state, MenuRoute route) {
+        var context = new MenuRenderContext<>(this, session, flow, state, route);
         MenuScreen screen = flow.render(context);
-        show(session, screen, flow, state);
+        show(session, screen, flow, state, route);
+    }
+
+    public void registerRoute(RoutedMenuFlow<?> flow) {
+        RoutedMenuFlow<?> previous = routedFlows.putIfAbsent(flow.routeId(), flow);
+        if (previous != null) {
+            throw new IllegalStateException("Duplicate menu route id: " + flow.routeId());
+        }
+    }
+
+    public void renderRoute(Session session, MenuRoute route) {
+        if (session == null || route == null) return;
+
+        RoutedMenuFlow<?> flow = routedFlows.get(route.id());
+        if (flow == null) {
+            throw new IllegalArgumentException("Unknown menu route: " + route.id());
+        }
+
+        renderResolvedRoute(session, route, flow);
+    }
+
+    public void openRoute(Session session, MenuRoute route) {
+        if (session == null || route == null) return;
+
+        var activeScreen = session.activeScreen();
+        if (activeScreen != null && activeScreen.hasRoute()) {
+            session.pushRouteHistory(activeScreen.route());
+        }
+
+        renderRoute(session, route);
+    }
+
+    public boolean goBack(Session session) {
+        if (session == null) {
+            return false;
+        }
+
+        var activeScreen = session.activeScreen();
+        if (session.hasRouteHistory() && (activeScreen == null || activeScreen.hasRoute())) {
+            if (activeScreen != null && activeScreen.mode() == MenuMode.FOLLOW_UP && session.player != null) {
+                gateway.hideFollowUpMenu(session.player, globalMenuId);
+            }
+            renderRoute(session, session.popRouteHistory());
+            return true;
+        }
+
+        Runnable previousMenu = session.popHistory();
+        if (previousMenu != null) {
+            if (activeScreen != null && activeScreen.mode() == MenuMode.FOLLOW_UP && session.player != null) {
+                gateway.hideFollowUpMenu(session.player, globalMenuId);
+            }
+            session.clearActivePrompt();
+            session.textHandler = null;
+            session.actions.clear();
+            if (session.activeScreen() == activeScreen) {
+                session.clearActiveScreen();
+            }
+            previousMenu.run();
+            return true;
+        }
+
+        return false;
     }
 
     public void hideFollowUp(Session session) {
@@ -174,7 +248,8 @@ public class MenuService {
         if (session == null || session.player == null || session.player.con == null) return;
 
         long version = session.nextUiVersion();
-        var active = ActiveMenuPrompt.create(version, globalTextId, null, null, flow, state, prompt.promptId());
+        MenuRoute route = session.activeScreen() != null ? session.activeScreen().route() : null;
+        var active = ActiveMenuPrompt.create(version, globalTextId, null, null, flow, state, prompt.promptId(), route);
         session.setActivePrompt(active);
 
         gateway.textInput(session.player, globalTextId, prompt.title(), prompt.content(), prompt.length(), prompt.defaultValue(), prompt.numeric());
@@ -249,7 +324,7 @@ public class MenuService {
     private void dispatchFlowClose(ActiveMenuScreen screen, Session session) {
         var flow = (MenuFlow<Object>) screen.flow();
         var state = screen.state();
-        var context = new MenuRenderContext<>(this, session, flow, state);
+        var context = new MenuRenderContext<>(this, session, flow, state, screen.route());
         flow.onClose(context);
     }
 
@@ -257,7 +332,7 @@ public class MenuService {
     private void dispatchFlowAction(ActiveMenuScreen screen, Session session, int option) {
         var flow = (MenuFlow<Object>) screen.flow();
         var state = screen.state();
-        var context = new MenuRenderContext<>(this, session, flow, state);
+        var context = new MenuRenderContext<>(this, session, flow, state, screen.route());
         String actionId = screen.actionIdAt(option);
         if (actionId != null) {
             flow.onAction(context, actionId);
@@ -268,11 +343,25 @@ public class MenuService {
     private void dispatchFlowPrompt(ActiveMenuPrompt prompt, Session session, String text) {
         var flow = (MenuFlow<Object>) prompt.flow();
         var state = prompt.state();
-        var context = new MenuRenderContext<>(this, session, flow, state);
+        var context = new MenuRenderContext<>(this, session, flow, state, prompt.route());
         if (text == null) {
             flow.onPromptCancel(context, prompt.promptIdString());
         } else {
             flow.onPromptSubmit(context, prompt.promptIdString(), text);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <TState> void renderResolvedRoute(Session session, MenuRoute route, RoutedMenuFlow<?> routedFlow) {
+        RoutedMenuFlow<TState> flow = (RoutedMenuFlow<TState>) routedFlow;
+        TState currentState = session.getDraft(flow.stateType());
+        TState state = flow.createState(session, route, currentState);
+        if (state != null) {
+            session.setDraft(flow.stateType(), state);
+        }
+
+        var context = new MenuRenderContext<>(this, session, flow, state, route);
+        MenuScreen screen = flow.render(context);
+        show(session, screen, flow, state, route);
     }
 }

@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
@@ -11,10 +12,12 @@ import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.TopMenuService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.MenuButton;
-import org.xcore.plugin.ui.flow.MenuFlow;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
+import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
 import java.text.NumberFormat;
 import java.util.ArrayDeque;
@@ -30,6 +33,9 @@ public class TopMenu extends Menu {
     private static final int PLAYERS_PER_PAGE = 10;
     private static final LeaderboardCursor FIRST_PAGE_MARKER = new LeaderboardCursor(0, 0, -2);
 
+    private static final String ROUTE_TOP_LIST = "top.list";
+    private static final String ROUTE_TOP_CATEGORIES = "top.categories";
+
     private static final String ACTION_PREVIOUS = "previous";
     private static final String ACTION_NEXT = "next";
     private static final String ACTION_CATEGORY = "category";
@@ -39,54 +45,47 @@ public class TopMenu extends Menu {
 
     private final TopMenuService topMenuService;
     private final PlayerMenu playerMenu;
+    private final MenuService menuService;
 
     @Inject
     public TopMenu(Config config,
                    GlobalConfig globalConfig,
                    SessionService sessionService,
+                   MenuService menuService,
                    TopMenuService topMenuService,
                    PlayerMenu playerMenu) {
         super(config, globalConfig, sessionService);
+        this.menuService = menuService;
         this.topMenuService = topMenuService;
         this.playerMenu = playerMenu;
     }
 
+    @PostConstruct
+    public void init() {
+        menuService.registerRoute(new TopListFlow());
+        menuService.registerRoute(new CategoriesFlow());
+    }
+
     public void top(String uuid) {
-        top(uuid, null, null, 1, true);
+        top(uuid, null, 1);
     }
 
     public void top(String uuid, TopCategory category, int page) {
-        top(uuid, category, null, page, true);
-    }
-
-    private void top(String uuid,
-                     TopCategory category,
-                     LeaderboardCursor cursor,
-                     int page,
-                     boolean resetState) {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
 
-        TopMenuState state = session.getDraft(TopMenuState.class);
-        if (state == null) {
-            session.locale().send("error-internal", args());
-            return;
-        }
-
         TopCategory resolvedCategory = category == null ? topMenuService.resolveDefaultCategory() : category;
-        if (resetState || state.category != resolvedCategory) {
-            state.category = resolvedCategory;
-            state.currentPage = page;
-            state.currentCursor = cursor;
-            state.nextCursor = null;
-            state.backStack.clear();
-        } else {
-            state.currentCursor = cursor;
-            state.currentPage = page;
-        }
+        TopMenuState state = session.getDraft(TopMenuState.class);
+        state.category = resolvedCategory;
+        state.currentPage = page;
+        state.currentCursor = null;
+        state.nextCursor = null;
+        state.backStack.clear();
 
-        session.menuService.renderFlow(session, new TopMenuFlow());
+        session.menuService.renderRoute(session, MenuRoute.of(ROUTE_TOP_LIST)
+                .withParam("category", resolvedCategory.name())
+                .withParam("page", String.valueOf(page)));
     }
 
     public void categories(String uuid, TopCategory currentCategory) {
@@ -96,23 +95,44 @@ public class TopMenu extends Menu {
 
         TopCategory resolvedCategory = currentCategory == null ? topMenuService.resolveDefaultCategory() : currentCategory;
 
-        session.builder()
-                .title("top-menu-categories-title")
-                .content("top-menu-categories-content", args(
-                        "category", session.locale().t(resolvedCategory.bundleKey())
-                ))
-                .addRow(
-                        categoryButton(session, TopCategory.MINI_PVP, resolvedCategory),
-                        () -> top(uuid, TopCategory.MINI_PVP, null, 1, true),
-                        categoryButton(session, TopCategory.PLAYTIME, resolvedCategory),
-                        () -> top(uuid, TopCategory.PLAYTIME, null, 1, true)
-                )
-                .addRow(categoryButton(session, TopCategory.HEXED, resolvedCategory), () -> top(uuid, TopCategory.HEXED, null, 1, true))
-                .addNavigationRow()
-                .show();
+        session.menuService.renderRoute(session, MenuRoute.of(ROUTE_TOP_CATEGORIES)
+                .withParam("category", resolvedCategory.name()));
     }
 
-    private final class TopMenuFlow implements MenuFlow<TopMenuState> {
+    private TopCategory parseCategory(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return TopCategory.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private final class TopListFlow implements RoutedMenuFlow<TopMenuState> {
+        @Override
+        public String routeId() {
+            return ROUTE_TOP_LIST;
+        }
+
+        @Override
+        public TopMenuState createState(Session session, MenuRoute route, TopMenuState currentState) {
+            TopCategory routeCategory = parseCategory(route.param("category"));
+            TopCategory resolvedCategory = routeCategory == null ? topMenuService.resolveDefaultCategory() : routeCategory;
+            int routePage = route.intParam("page", 1);
+
+            if (currentState.category != resolvedCategory) {
+                currentState.category = resolvedCategory;
+                currentState.currentPage = routePage;
+                currentState.currentCursor = null;
+                currentState.nextCursor = null;
+                currentState.backStack.clear();
+            }
+
+            return currentState;
+        }
+
         @Override
         public Class<TopMenuState> stateType() {
             return TopMenuState.class;
@@ -155,7 +175,7 @@ public class TopMenu extends Menu {
             }
 
             List<MenuButton> bottomNav = new ArrayList<>();
-            if (session.hasHistory()) {
+            if (session.hasHistory() || session.hasRouteHistory()) {
                 bottomNav.add(MenuButton.of(local.t("back"), ACTION_BACK));
             }
             bottomNav.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
@@ -201,6 +221,9 @@ public class TopMenu extends Menu {
                     int savedPage = state.currentPage;
                     Deque<LeaderboardCursor> savedBackStack = new ArrayDeque<>(state.backStack);
                     LeaderboardCursor savedNextCursor = state.nextCursor;
+                    // This handoff still needs an immutable snapshot. Route history alone only restores
+                    // the route params, while this callback also preserves cursor/back-stack state even
+                    // if the draft is later reset by opening a different leaderboard route.
                     session.pushHistory(() -> {
                         session.clear();
                         TopMenuState histState = session.getDraft(TopMenuState.class);
@@ -209,37 +232,98 @@ public class TopMenu extends Menu {
                         histState.currentPage = savedPage;
                         histState.backStack = savedBackStack;
                         histState.nextCursor = savedNextCursor;
-                        session.menuService.renderFlow(session, new TopMenuFlow());
+                        session.menuService.renderRoute(session, MenuRoute.of(ROUTE_TOP_LIST)
+                                .withParam("category", savedCategory.name()));
                     });
                     session.menuService.hideFollowUp(session);
-                    categories(session.data.uuid, state.category);
+                    session.menuService.renderRoute(session, MenuRoute.of(ROUTE_TOP_CATEGORIES)
+                            .withParam("category", state.category.name()));
                 }
-                case ACTION_BACK -> {
-                    Runnable previousMenu = session.popHistory();
-                    if (previousMenu != null) {
-                        session.menuService.hideFollowUp(session);
-                        previousMenu.run();
-                    }
-                }
+                case ACTION_BACK -> context.goBack();
                 case ACTION_CLOSE -> context.close();
                 default -> {
                     if (actionId.startsWith(ACTION_PROFILE_PREFIX)) {
                         String targetUuid = actionId.substring(ACTION_PROFILE_PREFIX.length());
                         PlayerData target = session.playerDataRepository.findByUuid(targetUuid);
                         if (target != null) {
-                            session.pushHistory(() -> {
-                                session.clear();
-                                TopMenuState histState = session.getDraft(TopMenuState.class);
-                                histState.category = state.category;
-                                histState.currentCursor = state.currentCursor;
-                                histState.currentPage = state.currentPage;
-                                histState.backStack = new ArrayDeque<>(state.backStack);
-                                histState.nextCursor = state.nextCursor;
-                                session.menuService.renderFlow(session, new TopMenuFlow());
-                            });
+                            if (context.route() != null) {
+                                session.pushRouteHistory(context.route());
+                            }
                             session.menuService.hideFollowUp(session);
                             playerMenu.player(session.data.uuid, target);
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    private final class CategoriesFlow implements RoutedMenuFlow<TopCategoriesState> {
+        @Override
+        public String routeId() {
+            return ROUTE_TOP_CATEGORIES;
+        }
+
+        @Override
+        public TopCategoriesState createState(Session session, MenuRoute route, TopCategoriesState currentState) {
+            return currentState == null ? new TopCategoriesState() : currentState;
+        }
+
+        @Override
+        public Class<TopCategoriesState> stateType() {
+            return TopCategoriesState.class;
+        }
+
+        @Override
+        public MenuScreen render(MenuRenderContext<TopCategoriesState> context) {
+            Session session = context.session();
+            Localization local = context.locale();
+
+            TopCategory currentCategory = parseCategory(context.route().param("category"));
+            if (currentCategory == null) {
+                currentCategory = topMenuService.resolveDefaultCategory();
+            }
+
+            String categoryName = local.t(currentCategory.bundleKey());
+
+            List<List<MenuButton>> rows = new ArrayList<>();
+            rows.add(List.of(
+                    MenuButton.of(categoryButton(session, TopCategory.MINI_PVP, currentCategory), TopCategory.MINI_PVP.name()),
+                    MenuButton.of(categoryButton(session, TopCategory.PLAYTIME, currentCategory), TopCategory.PLAYTIME.name())
+            ));
+            rows.add(List.of(
+                    MenuButton.of(categoryButton(session, TopCategory.HEXED, currentCategory), TopCategory.HEXED.name())
+            ));
+
+            List<MenuButton> navRow = new ArrayList<>();
+            if (session.hasHistory() || session.hasRouteHistory()) {
+                navRow.add(MenuButton.of(local.t("back"), ACTION_BACK));
+            }
+            navRow.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
+            rows.add(navRow);
+
+            return MenuScreen.normal(
+                    local.t("top-menu-categories-title"),
+                    local.t("top-menu-categories-content", args("category", categoryName)),
+                    rows
+            );
+        }
+
+        @Override
+        public void onAction(MenuRenderContext<TopCategoriesState> context, String actionId) {
+            Session session = context.session();
+            switch (actionId) {
+                case ACTION_BACK -> context.goBack();
+                case ACTION_CLOSE -> context.close();
+                default -> {
+                    try {
+                        TopCategory category = TopCategory.valueOf(actionId);
+                        session.clear();
+                        session.clearDraft(TopMenuState.class);
+                        session.menuService.renderRoute(session, MenuRoute.of(ROUTE_TOP_LIST)
+                                .withParam("category", category.name())
+                                .withParam("page", "1"));
+                    } catch (IllegalArgumentException ignored) {
                     }
                 }
             }
@@ -303,5 +387,8 @@ public class TopMenu extends Menu {
         public Deque<LeaderboardCursor> backStack = new ArrayDeque<>();
         public LeaderboardCursor currentCursor;
         public LeaderboardCursor nextCursor;
+    }
+
+    public static final class TopCategoriesState {
     }
 }

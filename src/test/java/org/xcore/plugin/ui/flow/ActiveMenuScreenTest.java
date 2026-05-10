@@ -2,6 +2,7 @@ package org.xcore.plugin.ui.flow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,5 +64,24 @@ class ActiveMenuScreenTest {
         assertThat(screen.actionCount()).isEqualTo(1);
         original.clear();
         assertThat(screen.actionCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("create stores route metadata for routed flow screens")
+    void create_storesRouteMetadataForRoutedFlowScreens() {
+        MenuRoute route = MenuRoute.of("player.profile").withParam("targetUuid", "uuid-7");
+
+        ActiveMenuScreen screen = ActiveMenuScreen.create(
+                1L,
+                MenuMode.NORMAL,
+                List.of(),
+                null,
+                null,
+                List.of(),
+                route
+        );
+
+        assertThat(screen.hasRoute()).isTrue();
+        assertThat(screen.route()).isEqualTo(route);
     }
 }

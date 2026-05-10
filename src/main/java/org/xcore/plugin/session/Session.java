@@ -15,6 +15,7 @@ import org.xcore.plugin.ui.MenuBuilder;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
 import org.xcore.plugin.ui.flow.ActiveMenuScreen;
+import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayList;
 import java.util.*;
@@ -36,6 +37,7 @@ public class Session {
     public final List<Runnable> actions = new ArrayList<>();
     public final Map<String, StatusEnum> sortStatus = new HashMap<>();
     public final Deque<Runnable> history = new ArrayDeque<>();
+    public final Deque<MenuRoute> routeHistory = new ArrayDeque<>();
     public final Map<Class<?>, Object> drafts = new HashMap<>();
     public Consumer<String> textHandler;
     public Integer lastPrivateTargetPid;
@@ -154,6 +156,12 @@ public class Session {
         }
     }
 
+    public <T> void setDraft(Class<T> clazz, T draft) {
+        if (clazz != null && draft != null) {
+            drafts.put(clazz, draft);
+        }
+    }
+
     public void clearDraft(Class<?> clazz) {
         drafts.remove(clazz);
     }
@@ -177,12 +185,34 @@ public class Session {
         return !history.isEmpty();
     }
 
+    public void pushRouteHistory(MenuRoute route) {
+        if (route == null) {
+            return;
+        }
+        if (routeHistory.size() >= globalConfig.maxHistory) {
+            routeHistory.removeFirst();
+        }
+        routeHistory.addLast(route);
+    }
+
+    public MenuRoute popRouteHistory() {
+        return routeHistory.pollLast();
+    }
+
+    public boolean hasRouteHistory() {
+        return !routeHistory.isEmpty();
+    }
+
     public void resetSender() {
         sender = null;
     }
 
     public void clearHistory() {
         history.clear();
+    }
+
+    public void clearRouteHistory() {
+        routeHistory.clear();
     }
 
     public void clearSortStatus() {

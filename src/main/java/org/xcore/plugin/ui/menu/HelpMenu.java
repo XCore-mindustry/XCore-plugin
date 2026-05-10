@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
 import arc.util.CommandHandler;
+import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -11,13 +12,22 @@ import org.incendo.cloud.help.result.CommandEntry;
 import org.xcore.cloud.mindustry.MindustryCloudCommand;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.MenuService;
+import org.xcore.plugin.ui.route.MenuRoute;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -25,12 +35,19 @@ import static com.ospx.flubundle.Bundle.args;
 public class HelpMenu extends Menu {
 
     private final Provider<CloudService> cloud;
-    private static final int MAX_DESC_LEN = 40;
+    private final MenuService menuService;
 
     @Inject
-    public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, Provider<CloudService> cloud) {
+    public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, Provider<CloudService> cloud, MenuService menuService) {
         super(config, globalConfig, sessionService);
         this.cloud = cloud;
+        this.menuService = menuService;
+    }
+
+    @PostConstruct
+    public void init() {
+        menuService.registerRoute(new HelpFlows.HelpListFlow(this));
+        menuService.registerRoute(new HelpFlows.HelpDetailsFlow(this));
     }
 
     public void help(String uuid, int page) {
@@ -45,57 +62,17 @@ public class HelpMenu extends Menu {
         }
 
         List<UnifiedCommand> allCommands = collectAllCommands(sender);
-        allCommands.sort(Comparator.comparing(UnifiedCommand::name));
+        allCommands.sort(java.util.Comparator.comparing(UnifiedCommand::name));
 
         if (allCommands.isEmpty()) {
             session.locale().send("empty");
             return;
         }
 
-        var pagination = CustomGatherers.calculatePagination(allCommands.size(), globalConfig.commandsPerPage);
-        int currentPage = pagination.clampPage(page);
-        int skip = (currentPage - 1) * globalConfig.commandsPerPage;
-        List<UnifiedCommand> pageSlice = allCommands.subList(skip, Math.min(skip + globalConfig.commandsPerPage, allCommands.size()));
-
-        session.builder()
-                .title("help-menu-title")
-                .content("help-menu-content", args("page", currentPage, "total", pagination.totalPages()))
-                .start()
-                    .ifAdd(currentPage > 1, session.locale().t("previous"), () -> help(uuid, currentPage - 1))
-                    .ifAdd(currentPage < pagination.totalPages(), session.locale().t("next"), () -> help(uuid, currentPage + 1))
-                .end()
-                .addForEach(pageSlice, (builder, cmd) -> {
-                    String desc = resolveDescription(session, cmd);
-                    String btnText = session.locale().t("help-menu-button", args(
-                            "command", formatCommandLabel(session, cmd),
-                            "description", truncate(desc, MAX_DESC_LEN)
-                    ));
-                    builder.addRow(btnText, () -> {
-                        session.pushHistory(() -> help(uuid, currentPage));
-                        details(uuid, cmd, currentPage);
-                    });
-                })
-                .addNavigationRow()
-                .show();
+        session.menuService.renderRoute(session, MenuRoute.of(HelpFlows.ROUTE_LIST).withParam("page", String.valueOf(page)));
     }
 
-    private void details(String uuid, UnifiedCommand cmd, int returnPage) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-
-        String title = session.locale().t("help-command-title", args("name", cmd.name()));
-        String content = buildCommandContent(session, cmd);
-
-        session.builder()
-                .title(title, true)
-                .rawContent(content)
-                .addRow(session.locale().t("help-back"), () -> help(uuid, returnPage))
-                .addNavigationRow()
-                .show();
-    }
-
-    private String buildCommandContent(Session session, UnifiedCommand cmd) {
+    String buildCommandContent(Session session, UnifiedCommand cmd) {
         boolean hasCloud = cmd.isCloudCommand();
         boolean hasLegacy = !cmd.legacyVariants().isEmpty();
 
@@ -155,7 +132,7 @@ public class HelpMenu extends Menu {
         ));
     }
 
-    private List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
+    List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
         Map<String, UnifiedCommandBuilder> commandMap = new LinkedHashMap<>();
         var handler = Vars.netServer.clientCommands;
         CloudService cloudService = cloud.get();
@@ -193,7 +170,7 @@ public class HelpMenu extends Menu {
         return new ArrayList<>(commandMap.values().stream().map(UnifiedCommandBuilder::build).toList());
     }
 
-    private String resolveDescription(Session session, UnifiedCommand cmd) {
+    String resolveDescription(Session session, UnifiedCommand cmd) {
         String key = "commands-" + cmd.name() + "-description";
         String res = session.locale().t(key);
         if (!res.equals(key)) return res;
@@ -231,7 +208,7 @@ public class HelpMenu extends Menu {
         return new ArrayList<>(uniqueAliases);
     }
 
-    private String formatCommandLabel(Session session, UnifiedCommand cmd) {
+    String formatCommandLabel(Session session, UnifiedCommand cmd) {
         int overloads = cmd.syntaxes().size();
         if (overloads <= 1) return cmd.name();
         return session.locale().t("help-command-with-overload-count", args(
@@ -279,12 +256,12 @@ public class HelpMenu extends Menu {
         }
     }
 
-    private String truncate(String text, int max) {
+    String truncate(String text, int max) {
         if (text == null) return "";
         return text.length() <= max ? text : text.substring(0, max - 3) + "...";
     }
 
-    private record UnifiedCommand(String name, List<CommandVariant> variants) {
+    record UnifiedCommand(String name, List<CommandVariant> variants) {
         List<String> syntaxes() {
             return variants.stream().map(CommandVariant::syntax).toList();
         }

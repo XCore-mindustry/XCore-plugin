@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui.flow;
 
+import org.xcore.plugin.ui.route.MenuRoute;
+
 import java.util.List;
 
 public class ActiveMenuScreen {
@@ -9,22 +11,28 @@ public class ActiveMenuScreen {
     private final MenuFlow<?> flow;
     private final Object state;
     private final List<String> actionIds;
+    private final MenuRoute route;
 
-    private ActiveMenuScreen(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds) {
+    private ActiveMenuScreen(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds, MenuRoute route) {
         this.version = version;
         this.mode = mode;
         this.actions = List.copyOf(actions);
         this.flow = flow;
         this.state = state;
         this.actionIds = actionIds == null ? List.of() : List.copyOf(actionIds);
+        this.route = route;
     }
 
     public static ActiveMenuScreen create(long version, MenuMode mode, List<MenuAction> actions) {
-        return new ActiveMenuScreen(version, mode, actions, null, null, null);
+        return new ActiveMenuScreen(version, mode, actions, null, null, null, null);
     }
 
     public static ActiveMenuScreen create(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds) {
-        return new ActiveMenuScreen(version, mode, actions, flow, state, actionIds);
+        return new ActiveMenuScreen(version, mode, actions, flow, state, actionIds, null);
+    }
+
+    public static ActiveMenuScreen create(long version, MenuMode mode, List<MenuAction> actions, MenuFlow<?> flow, Object state, List<String> actionIds, MenuRoute route) {
+        return new ActiveMenuScreen(version, mode, actions, flow, state, actionIds, route);
     }
 
     public long version() {
@@ -63,6 +71,14 @@ public class ActiveMenuScreen {
 
     public Object state() {
         return state;
+    }
+
+    public boolean hasRoute() {
+        return route != null;
+    }
+
+    public MenuRoute route() {
+        return route;
     }
 
     public String actionIdAt(int index) {

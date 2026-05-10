@@ -17,6 +17,7 @@ import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.ui.menu.MessageMenu;
 
 import java.util.List;
@@ -56,7 +57,8 @@ class MessageMenuTest {
         GlobalConfig globalConfig = new GlobalConfig();
         globalConfig.privateMessageMaxLength = 300;
         globalConfig.privateMessagesPerPage = 10;
-        messageMenu = new MessageMenu(new Config(), globalConfig, sessionService, privateMessageService);
+        messageMenu = new MessageMenu(new Config(), globalConfig, sessionService, privateMessageService, menuService);
+        messageMenu.init();
 
         session = session();
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -73,14 +75,97 @@ class MessageMenuTest {
     }
 
     @Test
+    @DisplayName("inbox renders through route-backed flow runtime")
+    void inbox_rendersThroughRouteBackedFlowRuntime() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
+
+        messageMenu.inbox("viewer-1", 1);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+    }
+
+    @Test
+    @DisplayName("inbox blocked action uses route history and opens blocked route")
+    void inbox_blockedActionUsesRouteHistoryAndOpensBlockedRoute() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.listBlocked(session)).thenReturn(List.of());
+
+        messageMenu.inbox("viewer-1", 1);
+        menuService.onMenuOption(session, 1);
+
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+    }
+
+    @Test
+    @DisplayName("inbox message selection uses route history and opens details")
+    void inbox_messageSelectionUsesRouteHistoryAndOpensDetails() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.inbox(session.data.uuid, 1)).thenReturn(List.of(message));
+
+        messageMenu.inbox("viewer-1", 1);
+        menuService.onMenuOption(session, 0);
+
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+    }
+
+    @Test
+    @DisplayName("details not found renders routed fallback screen when opened from routed inbox")
+    void details_notFoundRendersRoutedFallbackScreenWhenOpenedFromRoutedInbox() {
+        ObjectId missingId = new ObjectId();
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.inbox(session.data.uuid, 1)).thenReturn(List.of(message));
+        when(privateMessageService.getMessage(missingId, session.data.uuid)).thenReturn(null);
+
+        message.id = missingId;
+        messageMenu.inbox("viewer-1", 1);
+        menuService.onMenuOption(session, 0);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.hasRouteHistory()).isTrue();
+    }
+
+    @Test
     @DisplayName("reply opens active prompt through menu service")
     void reply_opensActivePromptThroughMenuService() {
         messageMenu.details("viewer-1", message.id, 1);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
         menuService.onMenuOption(session, 0);
 
         assertThat(session.activePrompt()).isNotNull();
         assertThat(session.textHandler).isNull();
         verify(gateway).textInput(eq(session.player), eq(0), eq("private-message-reply-title"), eq("private-message-reply-message"), eq(300), eq(""), eq(false));
+    }
+
+    @Test
+    @DisplayName("details delete returns through route history when opened from routed inbox")
+    void details_deleteReturnsThroughRouteHistoryWhenOpenedFromRoutedInbox() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(1L);
+        when(privateMessageService.inbox(session.data.uuid, 1)).thenReturn(List.of(message));
+
+        messageMenu.inbox("viewer-1", 1);
+        menuService.onMenuOption(session, 0);
+        menuService.onMenuOption(session, 1);
+
+        verify(privateMessageService).softDelete(message.id, session.data.uuid);
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
     }
 
     @Test
@@ -112,6 +197,8 @@ class MessageMenuTest {
     @Test
     @DisplayName("compose opens target prompt then body prompt")
     void compose_opensTargetPromptThenBodyPrompt() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
         messageMenu.inbox("viewer-1", 1);
         menuService.onMenuOption(session, 0);
 
@@ -128,6 +215,8 @@ class MessageMenuTest {
     @Test
     @DisplayName("compose body submit sends message and returns")
     void composeBodySubmit_sendsMessageAndReturns() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
         messageMenu.inbox("viewer-1", 1);
         menuService.onMenuOption(session, 0);
         when(privateMessageService.parseMenuPid("#55")).thenReturn(55);
@@ -143,6 +232,8 @@ class MessageMenuTest {
     @Test
     @DisplayName("compose target cancel returns without opening stale handler")
     void composeTargetCancel_returnsWithoutOpeningStaleHandler() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
         messageMenu.inbox("viewer-1", 1);
         menuService.onMenuOption(session, 0);
 
@@ -158,6 +249,8 @@ class MessageMenuTest {
     @Test
     @DisplayName("compose invalid target returns without leaving stale prompt")
     void composeInvalidTarget_returnsWithoutLeavingStalePrompt() {
+        when(privateMessageService.countInbox(session.data.uuid)).thenReturn(0L);
+        when(privateMessageService.countUnread(session.data.uuid)).thenReturn(0L);
         messageMenu.inbox("viewer-1", 1);
         menuService.onMenuOption(session, 0);
         when(privateMessageService.parseMenuPid("bad")).thenReturn(null);

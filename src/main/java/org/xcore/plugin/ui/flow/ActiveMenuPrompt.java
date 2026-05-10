@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui.flow;
 
+import org.xcore.plugin.ui.route.MenuRoute;
+
 import java.util.function.Consumer;
 
 public class ActiveMenuPrompt {
@@ -10,8 +12,9 @@ public class ActiveMenuPrompt {
     private final MenuFlow<?> flow;
     private final Object state;
     private final String promptIdString;
+    private final MenuRoute route;
 
-    private ActiveMenuPrompt(long version, int promptId, Consumer<String> onSubmit, Runnable onCancel, MenuFlow<?> flow, Object state, String promptIdString) {
+    private ActiveMenuPrompt(long version, int promptId, Consumer<String> onSubmit, Runnable onCancel, MenuFlow<?> flow, Object state, String promptIdString, MenuRoute route) {
         this.version = version;
         this.promptId = promptId;
         this.onSubmit = onSubmit;
@@ -19,14 +22,19 @@ public class ActiveMenuPrompt {
         this.flow = flow;
         this.state = state;
         this.promptIdString = promptIdString;
+        this.route = route;
     }
 
     public static ActiveMenuPrompt create(long version, int promptId, Consumer<String> onSubmit, Runnable onCancel) {
-        return new ActiveMenuPrompt(version, promptId, onSubmit, onCancel, null, null, null);
+        return new ActiveMenuPrompt(version, promptId, onSubmit, onCancel, null, null, null, null);
     }
 
     public static ActiveMenuPrompt create(long version, int promptId, Consumer<String> onSubmit, Runnable onCancel, MenuFlow<?> flow, Object state, String promptIdString) {
-        return new ActiveMenuPrompt(version, promptId, onSubmit, onCancel, flow, state, promptIdString);
+        return new ActiveMenuPrompt(version, promptId, onSubmit, onCancel, flow, state, promptIdString, null);
+    }
+
+    public static ActiveMenuPrompt create(long version, int promptId, Consumer<String> onSubmit, Runnable onCancel, MenuFlow<?> flow, Object state, String promptIdString, MenuRoute route) {
+        return new ActiveMenuPrompt(version, promptId, onSubmit, onCancel, flow, state, promptIdString, route);
     }
 
     public long version() {
@@ -59,6 +67,14 @@ public class ActiveMenuPrompt {
 
     public Object state() {
         return state;
+    }
+
+    public boolean hasRoute() {
+        return route != null;
+    }
+
+    public MenuRoute route() {
+        return route;
     }
 
     public String promptIdString() {

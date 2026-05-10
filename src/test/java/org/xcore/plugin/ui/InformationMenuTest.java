@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 class InformationMenuTest {
@@ -43,6 +44,10 @@ class InformationMenuTest {
     private InformationMenu informationMenu;
     private Session session;
     private GlobalConfig globalConfig;
+    private Provider<MapMenu> map;
+    private Provider<EventMenu> event;
+    private Provider<HelpMenu> help;
+    private Provider<PlayerMenu> player;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -64,14 +69,55 @@ class InformationMenuTest {
 
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        Provider<MapMenu> map = mock(Provider.class);
-        Provider<EventMenu> event = mock(Provider.class);
-        Provider<HelpMenu> help = mock(Provider.class);
-        Provider<PlayerMenu> player = mock(Provider.class);
-        informationMenu = new InformationMenu(config, globalConfig, sessionService, buildInfo, map, event, help, player);
+        map = mock(Provider.class);
+        event = mock(Provider.class);
+        help = mock(Provider.class);
+        player = mock(Provider.class);
+        informationMenu = new InformationMenu(config, globalConfig, sessionService, buildInfo, menuService, map, event, help, player);
+        informationMenu.init();
 
         session = session();
         when(sessionService.get("viewer-1")).thenReturn(session);
+    }
+
+    @Test
+    @DisplayName("main renders through route-backed flow runtime")
+    void main_rendersThroughRouteBackedFlowRuntime() {
+        informationMenu.main("viewer-1");
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().actionCount()).isEqualTo(5);
+        verify(gateway).menu(eq(session.player), eq(0), eq("menu-main-title"), eq("menu-main-content"), any());
+    }
+
+    @Test
+    @DisplayName("main opens information route from action")
+    void main_opensInformationRouteFromAction() {
+        informationMenu.main("viewer-1");
+
+        menuService.onMenuOption(session, 0);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        verify(gateway).menu(eq(session.player), eq(0), eq("menu-main-title"), eq("menu-main-content"), any());
+        verify(gateway).followUpMenu(eq(session.player), eq(0), eq("commands-info-title"), eq("commands-info-text"), any());
+    }
+
+    @Test
+    @DisplayName("information back action reopens main route")
+    void information_backActionReopensMainRoute() {
+        informationMenu.main("viewer-1");
+        menuService.onMenuOption(session, 0);
+
+        menuService.onMenuOption(session, 5);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+        verify(gateway).hideFollowUpMenu(eq(session.player), eq(0));
+        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("menu-main-title"), eq("menu-main-content"), any());
     }
 
     @Test
@@ -110,6 +156,108 @@ class InformationMenuTest {
     }
 
     @Test
+    @DisplayName("main help action uses route history and opens help menu")
+    void main_helpActionUsesRouteHistoryAndOpensHelpMenu() {
+        HelpMenu helpMenu = mock(HelpMenu.class);
+        when(help.get()).thenReturn(helpMenu);
+
+        informationMenu.main("viewer-1");
+        menuService.onMenuOption(session, 1);
+
+        verify(helpMenu).help("viewer-1", 1);
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main maps action uses route history and opens maps menu")
+    void main_mapsActionUsesRouteHistoryAndOpensMapsMenu() {
+        MapMenu mapMenu = mock(MapMenu.class);
+        when(map.get()).thenReturn(mapMenu);
+
+        informationMenu.main("viewer-1");
+        menuService.onMenuOption(session, 2);
+
+        verify(mapMenu).maps("viewer-1", 1);
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main players action uses route history and opens players menu")
+    void main_playersActionUsesRouteHistoryAndOpensPlayersMenu() {
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        when(player.get()).thenReturn(playerMenu);
+
+        informationMenu.main("viewer-1");
+        menuService.onMenuOption(session, 3);
+
+        verify(playerMenu).players("viewer-1", 1);
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main event main action uses route history and opens event main menu")
+    void main_eventMainActionUsesRouteHistoryAndOpensEventMainMenu() {
+        SessionService localSessionService = mock(SessionService.class);
+        MindustryMenuGateway localGateway = mock(MindustryMenuGateway.class);
+        Provider<SessionService> localSessionProvider = mock(Provider.class);
+        when(localSessionProvider.get()).thenReturn(localSessionService);
+        MenuService localMenuService = new MenuService(localSessionProvider, localGateway);
+        Session localSession = session(localMenuService);
+        when(localSessionService.get("viewer-1")).thenReturn(localSession);
+
+        EventMenu eventMenu = mock(EventMenu.class);
+        Provider<EventMenu> localEvent = mock(Provider.class);
+        when(localEvent.get()).thenReturn(eventMenu);
+
+        Config eventConfig = new Config();
+        eventConfig.server = "event";
+        BuildInfo buildInfo = new BuildInfo();
+        buildInfo.setVersion("test-version");
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        eventInformationMenu.init();
+
+        eventInformationMenu.main("viewer-1");
+        localMenuService.onMenuOption(localSession, 4);
+
+        verify(eventMenu).main("viewer-1");
+        assertThat(localSession.hasHistory()).isFalse();
+        assertThat(localSession.hasRouteHistory()).isTrue();
+    }
+
+    @Test
+    @DisplayName("main event list action uses route history and opens event list menu")
+    void main_eventListActionUsesRouteHistoryAndOpensEventListMenu() {
+        SessionService localSessionService = mock(SessionService.class);
+        MindustryMenuGateway localGateway = mock(MindustryMenuGateway.class);
+        Provider<SessionService> localSessionProvider = mock(Provider.class);
+        when(localSessionProvider.get()).thenReturn(localSessionService);
+        MenuService localMenuService = new MenuService(localSessionProvider, localGateway);
+        Session localSession = session(localMenuService);
+        when(localSessionService.get("viewer-1")).thenReturn(localSession);
+
+        EventMenu eventMenu = mock(EventMenu.class);
+        Provider<EventMenu> localEvent = mock(Provider.class);
+        when(localEvent.get()).thenReturn(eventMenu);
+
+        Config eventConfig = new Config();
+        eventConfig.server = "event";
+        BuildInfo buildInfo = new BuildInfo();
+        buildInfo.setVersion("test-version");
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        eventInformationMenu.init();
+
+        eventInformationMenu.main("viewer-1");
+        localMenuService.onMenuOption(localSession, 5);
+
+        verify(eventMenu).events("viewer-1", 1);
+        assertThat(localSession.hasHistory()).isFalse();
+        assertThat(localSession.hasRouteHistory()).isTrue();
+    }
+
+    @Test
     @DisplayName("information close action clears active screen")
     void information_closeActionClearsActiveScreen() {
         informationMenu.information("viewer-1");
@@ -131,6 +279,10 @@ class InformationMenuTest {
     }
 
     private Session session() {
+        return session(menuService);
+    }
+
+    private Session session(MenuService menuService) {
         Player player = Player.create();
         player.con = mock(NetConnection.class);
         PlayerData data = new PlayerData("viewer-1", true);
