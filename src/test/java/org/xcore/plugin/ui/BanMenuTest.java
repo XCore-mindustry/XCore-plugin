@@ -58,7 +58,8 @@ class BanMenuTest {
         Provider<SessionService> sessionProvider = mock(Provider.class);
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
-        banMenu = new BanMenu(new Config(), new GlobalConfig(), sessionService, moderationService, timeService);
+        banMenu = new BanMenu(new Config(), new GlobalConfig(), sessionService, moderationService, timeService, menuService);
+        banMenu.init();
 
         session = session("admin-uuid", 1);
         target = target("target-uuid");
@@ -238,7 +239,7 @@ class BanMenuTest {
     @SuppressWarnings("unchecked")
     private static Class<Object> draftClass() {
         try {
-            return (Class<Object>) Class.forName("org.xcore.plugin.ui.menu.BanMenu$BanDraft");
+            return (Class<Object>) Class.forName("org.xcore.plugin.ui.menu.BanMenu$BanFlowState");
         } catch (ClassNotFoundException e) {
             throw new AssertionError(e);
         }

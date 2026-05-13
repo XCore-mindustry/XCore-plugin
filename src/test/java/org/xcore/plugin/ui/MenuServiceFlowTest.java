@@ -11,6 +11,8 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.ui.flow.*;
+import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -295,6 +297,125 @@ class MenuServiceFlowTest {
         assertThat(session.activePrompt()).isNull();
     }
 
+    @Test
+    @DisplayName("renderRoute hydrates state and stores route metadata")
+    void renderRoute_hydratesStateAndStoresRouteMetadata() {
+        AtomicReference<String> renderedState = new AtomicReference<>();
+
+        RoutedMenuFlow<StringBuilder> flow = new RoutedMenuFlow<>() {
+            @Override
+            public String routeId() {
+                return "player.profile";
+            }
+
+            @Override
+            public StringBuilder createState(Session session, MenuRoute route, StringBuilder currentState) {
+                StringBuilder next = currentState == null ? new StringBuilder() : currentState;
+                next.setLength(0);
+                next.append(route.param("targetUuid"));
+                return next;
+            }
+
+            @Override
+            public Class<StringBuilder> stateType() {
+                return StringBuilder.class;
+            }
+
+            @Override
+            public MenuScreen render(MenuRenderContext<StringBuilder> context) {
+                renderedState.set(context.state().toString());
+                assertThat(context.route()).isEqualTo(MenuRoute.of("player.profile").withParam("targetUuid", "uuid-42"));
+                return MenuScreen.normal("Profile", "Content", List.of(List.of(MenuButton.of("Open", "open"))));
+            }
+        };
+
+        menuService.registerRoute(flow);
+        menuService.renderRoute(session, MenuRoute.of("player.profile").withParam("targetUuid", "uuid-42"));
+
+        assertThat(renderedState.get()).isEqualTo("uuid-42");
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("player.profile").withParam("targetUuid", "uuid-42"));
+        verify(gateway).menu(eq(session.player), eq(0), eq("Profile"), eq("Content"), any());
+    }
+
+    @Test
+    @DisplayName("openRoute pushes previous route and goBack reopens it")
+    void openRoute_pushesPreviousRouteAndGoBackReopensIt() {
+        menuService.registerRoute(simpleRouteFlow("route.one", "Screen One"));
+        menuService.registerRoute(simpleRouteFlow("route.two", "Screen Two"));
+
+        menuService.renderRoute(session, MenuRoute.of("route.one"));
+        menuService.openRoute(session, MenuRoute.of("route.two"));
+
+        assertThat(session.hasRouteHistory()).isTrue();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("route.two"));
+
+        boolean navigated = menuService.goBack(session);
+
+        assertThat(navigated).isTrue();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("route.one"));
+        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("Screen One"), eq("Content"), any());
+        verify(gateway).menu(eq(session.player), eq(0), eq("Screen Two"), eq("Content"), any());
+    }
+
+    @Test
+    @DisplayName("goBack does not consume route history for non routed active screen")
+    void goBack_doesNotConsumeRouteHistoryForNonRoutedActiveScreen() {
+        session.pushRouteHistory(MenuRoute.of("route.one"));
+        menuService.show(session, "Title", "Content", List.of(), List.of(), MenuMode.NORMAL);
+
+        boolean navigated = menuService.goBack(session);
+
+        assertThat(navigated).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().hasRoute()).isFalse();
+    }
+
+    @Test
+    @DisplayName("flow prompt carries route into prompt callbacks")
+    void flowPrompt_carriesRouteIntoPromptCallbacks() {
+        AtomicReference<MenuRoute> promptRoute = new AtomicReference<>();
+
+        RoutedMenuFlow<StringBuilder> flow = new RoutedMenuFlow<>() {
+            @Override
+            public String routeId() {
+                return "prompt.route";
+            }
+
+            @Override
+            public StringBuilder createState(Session session, MenuRoute route, StringBuilder currentState) {
+                return currentState == null ? new StringBuilder(route.id()) : currentState;
+            }
+
+            @Override
+            public Class<StringBuilder> stateType() {
+                return StringBuilder.class;
+            }
+
+            @Override
+            public MenuScreen render(MenuRenderContext<StringBuilder> context) {
+                return MenuScreen.normal("Prompt", "Content", List.of());
+            }
+
+            @Override
+            public void onPromptSubmit(MenuRenderContext<StringBuilder> context, String promptId, String text) {
+                promptRoute.set(context.route());
+            }
+        };
+
+        MenuRoute route = MenuRoute.of("prompt.route").withParam("id", "7");
+        menuService.registerRoute(flow);
+        menuService.renderRoute(session, route);
+        menuService.openPrompt(session, flow, session.getDraft(StringBuilder.class), new MenuPrompt("prompt", "Title", "Content", 20, "", false));
+
+        menuService.onTextInput(session, "hello");
+
+        assertThat(promptRoute.get()).isEqualTo(route);
+    }
+
     private MenuFlow<String> mockFlow(String title, String content) {
         return new MenuFlow<>() {
             @Override
@@ -305,6 +426,33 @@ class MenuServiceFlowTest {
             @Override
             public MenuScreen render(MenuRenderContext<String> context) {
                 return MenuScreen.normal(title, content, List.of());
+            }
+        };
+    }
+
+    private RoutedMenuFlow<StringBuilder> simpleRouteFlow(String routeId, String title) {
+        return new RoutedMenuFlow<>() {
+            @Override
+            public String routeId() {
+                return routeId;
+            }
+
+            @Override
+            public StringBuilder createState(Session session, MenuRoute route, StringBuilder currentState) {
+                StringBuilder next = currentState == null ? new StringBuilder() : currentState;
+                next.setLength(0);
+                next.append(route.id());
+                return next;
+            }
+
+            @Override
+            public Class<StringBuilder> stateType() {
+                return StringBuilder.class;
+            }
+
+            @Override
+            public MenuScreen render(MenuRenderContext<StringBuilder> context) {
+                return MenuScreen.normal(title, "Content", List.of(List.of(MenuButton.of("Open", "open"))));
             }
         };
     }

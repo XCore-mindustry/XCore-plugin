@@ -13,6 +13,7 @@ import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
 import org.xcore.plugin.ui.flow.ActiveMenuScreen;
 import org.xcore.plugin.ui.flow.MenuMode;
+import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.List;
 
@@ -69,22 +70,56 @@ class SessionUiStateTest {
     void clearUiState_preservesHistoryDraftsSortStatus() {
         Session session = session();
         session.pushHistory(() -> {});
+        session.pushRouteHistory(MenuRoute.of("player.profile"));
         session.setDraft("draft");
         session.sortStatus.put("key", StatusEnum.Active);
 
         session.clearUiState();
 
         assertThat(session.hasHistory()).isTrue();
+        assertThat(session.hasRouteHistory()).isTrue();
         assertThat(session.hasDraft(String.class)).isTrue();
         assertThat(session.sortStatus).containsKey("key");
     }
 
+    @Test
+    @DisplayName("route history is LIFO")
+    void routeHistory_isLifo() {
+        Session session = session();
+        session.pushRouteHistory(MenuRoute.of("route.one"));
+        session.pushRouteHistory(MenuRoute.of("route.two"));
+
+        assertThat(session.popRouteHistory()).isEqualTo(MenuRoute.of("route.two"));
+        assertThat(session.popRouteHistory()).isEqualTo(MenuRoute.of("route.one"));
+        assertThat(session.popRouteHistory()).isNull();
+    }
+
+    @Test
+    @DisplayName("route history over max history drops oldest entry")
+    void routeHistory_overMaxHistory_dropsOldestEntry() {
+        GlobalConfig globalConfig = new GlobalConfig();
+        globalConfig.maxHistory = 2;
+        Session session = session(globalConfig);
+
+        session.pushRouteHistory(MenuRoute.of("route.one"));
+        session.pushRouteHistory(MenuRoute.of("route.two"));
+        session.pushRouteHistory(MenuRoute.of("route.three"));
+
+        assertThat(session.popRouteHistory()).isEqualTo(MenuRoute.of("route.three"));
+        assertThat(session.popRouteHistory()).isEqualTo(MenuRoute.of("route.two"));
+        assertThat(session.popRouteHistory()).isNull();
+    }
+
     private Session session() {
+        return session(new GlobalConfig());
+    }
+
+    private Session session(GlobalConfig globalConfig) {
         Player player = Player.create();
         player.con = mock(NetConnection.class);
         PlayerData data = new PlayerData("uuid-1", true);
         return new Session(
-                new GlobalConfig(),
+                globalConfig,
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),

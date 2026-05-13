@@ -2,6 +2,7 @@ package org.xcore.plugin.ui.flow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,5 +47,15 @@ class ActiveMenuPromptTest {
         ActiveMenuPrompt prompt = ActiveMenuPrompt.create(1L, 42, null, null);
 
         prompt.cancel(); // should not throw
+    }
+
+    @Test
+    @DisplayName("flow prompt stores route metadata")
+    void flowPrompt_storesRouteMetadata() {
+        MenuRoute route = MenuRoute.of("player.profile").withParam("targetUuid", "uuid-9");
+        ActiveMenuPrompt prompt = ActiveMenuPrompt.create(1L, 42, null, null, null, null, "prompt", route);
+
+        assertThat(prompt.hasRoute()).isTrue();
+        assertThat(prompt.route()).isEqualTo(route);
     }
 }

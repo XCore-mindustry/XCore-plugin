@@ -16,11 +16,12 @@ import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.TopMenuService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.ui.menu.PlayerMenu;
-import org.xcore.plugin.ui.menu.TopMenu;
 import org.xcore.plugin.ui.flow.ActiveMenuScreen;
 import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.ui.menu.PlayerMenu;
+import org.xcore.plugin.ui.menu.TopMenu;
+import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.List;
 import java.util.Locale;
@@ -47,7 +48,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -70,6 +72,10 @@ class TopMenuTest {
         menu.top("viewer-1", TopCategory.MINI_PVP, 1);
 
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route()).isEqualTo(
+                MenuRoute.of("top.list").withParam("category", "MINI_PVP").withParam("page", "1")
+        );
         verify(gateway).followUpMenu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
 
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
@@ -90,7 +96,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -137,7 +144,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -177,7 +185,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -230,7 +239,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
@@ -258,12 +268,13 @@ class TopMenuTest {
     }
 
     @Test
-    @DisplayName("player row action pushes history with current cursor and page before opening profile")
-    void playerRowAction_pushesHistoryWithCurrentCursorAndPageBeforeOpeningProfile() {
+    @DisplayName("player row action uses route history before opening profile")
+    void playerRowAction_usesRouteHistoryBeforeOpeningProfile() {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         PlayerData target = player("target-1", 14);
@@ -285,16 +296,19 @@ class TopMenuTest {
         int profileIndex = optionIndexOf(screen, "profile:target-1");
         menuService.onMenuOption(session, profileIndex);
 
-        assertThat(session.hasHistory()).isTrue();
-        Runnable historyCallback = session.popHistory();
+        assertThat(session.hasHistory()).isFalse();
+        assertThat(session.hasRouteHistory()).isTrue();
 
         InOrder inOrder = inOrder(gateway, playerMenu);
         inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
         inOrder.verify(playerMenu).player("viewer-1", target);
 
-        historyCallback.run();
+        menuService.goBack(session);
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
-        verify(topMenuService, times(1)).loadCursorPage(TopCategory.MINI_PVP, currentCursor, 2, 10, session.data);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route().id()).isEqualTo("top.list");
+        verify(topMenuService).loadCursorPage(TopCategory.MINI_PVP, null, 2, 10, session.data);
+        verify(topMenuService).loadCursorPage(TopCategory.MINI_PVP, currentCursor, 2, 10, session.data);
     }
 
     @Test
@@ -303,7 +317,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -325,6 +340,7 @@ class TopMenuTest {
 
         menu.top("viewer-1", TopCategory.MINI_PVP, 2);
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        assertThat(session.activeScreen().route().id()).isEqualTo("top.list");
 
         ActiveMenuScreen screen = session.activeScreen();
         int categoryIndex = optionIndexOf(screen, "category");
@@ -334,6 +350,9 @@ class TopMenuTest {
         inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
         inOrder.verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
 
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route().id()).isEqualTo("top.categories");
         assertThat(session.hasHistory()).isTrue();
         Runnable historyCallback = session.popHistory();
 
@@ -342,6 +361,8 @@ class TopMenuTest {
 
         historyCallback.run();
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route().id()).isEqualTo("top.list");
 
         verify(topMenuService, times(1)).loadCursorPage(TopCategory.MINI_PVP, miniCursor, 2, 10, session.data);
         verify(topMenuService, times(1)).loadCursorPage(TopCategory.PLAYTIME, null, 1, 10, session.data);
@@ -353,7 +374,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -382,7 +404,8 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
 
         Session session = session("viewer-1");
         when(sessionService.get("viewer-1")).thenReturn(session);
@@ -406,6 +429,91 @@ class TopMenuTest {
         InOrder inOrder = inOrder(gateway, previousMenu);
         inOrder.verify(gateway).hideFollowUpMenu(eq(session.player), eq(menuService.getMenuId()));
         inOrder.verify(previousMenu).run();
+    }
+
+    @Test
+    @DisplayName("categories renders routed categories screen with route metadata")
+    void categories_rendersRoutedCategoriesScreen() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+        TopMenuService.TopCursorPage hexedPage = new TopMenuService.TopCursorPage(
+                TopCategory.HEXED, 1, 1, 10, 0, null,
+                List.of(), null, null, false
+        );
+        when(topMenuService.loadCursorPage(TopCategory.HEXED, null, 1, 10, session.data)).thenReturn(hexedPage);
+
+        menu.categories("viewer-1", TopCategory.PLAYTIME);
+
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route()).isEqualTo(
+                MenuRoute.of("top.categories").withParam("category", "PLAYTIME")
+        );
+        verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("categories selecting category renders top list route")
+    void categories_selectingCategoryRendersTopListRoute() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+        TopMenuService.TopCursorPage hexedPage = new TopMenuService.TopCursorPage(
+                TopCategory.HEXED, 1, 1, 10, 0, null,
+                List.of(), null, null, false
+        );
+        when(topMenuService.loadCursorPage(TopCategory.HEXED, null, 1, 10, session.data)).thenReturn(hexedPage);
+
+        menu.categories("viewer-1", TopCategory.PLAYTIME);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        int hexedIndex = optionIndexOf(screen, "HEXED");
+        menuService.onMenuOption(session, hexedIndex);
+
+        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
+        assertThat(session.activeScreen().hasRoute()).isTrue();
+        assertThat(session.activeScreen().route()).isEqualTo(
+                MenuRoute.of("top.list").withParam("category", "HEXED").withParam("page", "1")
+        );
+    }
+
+    @Test
+    @DisplayName("categories back button restores previous menu via goBack")
+    void categories_backButtonRestoresPreviousMenu() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+
+        Runnable previousMenu = mock(Runnable.class);
+        session.pushHistory(previousMenu);
+
+        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+
+        menu.categories("viewer-1", TopCategory.PLAYTIME);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        int backIndex = optionIndexOf(screen, "back");
+        menuService.onMenuOption(session, backIndex);
+
+        verify(previousMenu).run();
     }
 
     private static int optionIndexOf(ActiveMenuScreen screen, String actionId) {

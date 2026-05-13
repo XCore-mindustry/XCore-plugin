@@ -55,7 +55,8 @@ class DiscordMenuTest {
         globalConfig.discordUrl = "https://discord.example";
 
         discordLinkService = mock(DiscordLinkService.class);
-        discordMenu = new DiscordMenu(config, globalConfig, sessionService, discordLinkService);
+        discordMenu = new DiscordMenu(config, globalConfig, sessionService, discordLinkService, menuService);
+        discordMenu.init();
 
         session = session();
         when(sessionService.get("viewer-1")).thenReturn(session);

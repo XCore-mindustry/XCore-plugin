@@ -61,17 +61,17 @@ public class MenuBuilder {
         return this;
     }
 
-    public MenuBuilder addRow(String buttonText, Runnable action) {
+    public MenuBuilder addRowText(String buttonText, Runnable action) {
         rows.add(List.of(session.add(buttonText, action)));
         return this;
     }
 
-    public MenuBuilder addRow(String btn1, Runnable action1, String btn2, Runnable action2) {
+    public MenuBuilder addRowText(String btn1, Runnable action1, String btn2, Runnable action2) {
         rows.add(List.of(session.add(btn1, action1), session.add(btn2, action2)));
         return this;
     }
 
-    public MenuBuilder addRow(List<MenuBuilder.ButtonDef> buttons) {
+    public MenuBuilder addRowText(List<MenuBuilder.ButtonDef> buttons) {
         String[] row = buttons.stream()
                 .map(b -> session.add(b.text, b.action))
                 .toArray(String[]::new);
@@ -79,17 +79,17 @@ public class MenuBuilder {
         return this;
     }
 
-    public MenuBuilder addLocalRow(String buttonText, Runnable action) {
-        rows.add(List.of(session.add(localization.t(buttonText), action)));
+    public MenuBuilder addRowKey(String buttonKey, Runnable action) {
+        rows.add(List.of(session.add(localization.t(buttonKey), action)));
         return this;
     }
 
-    public MenuBuilder addLocalRow(String btn1, Runnable action1, String btn2, Runnable action2) {
-        rows.add(List.of(session.add(localization.t(btn1), action1), session.add(localization.t(btn2), action2)));
+    public MenuBuilder addRowKey(String btn1Key, Runnable action1, String btn2Key, Runnable action2) {
+        rows.add(List.of(session.add(localization.t(btn1Key), action1), session.add(localization.t(btn2Key), action2)));
         return this;
     }
 
-    public MenuBuilder addLocalRow(List<MenuBuilder.ButtonDef> buttons) {
+    public MenuBuilder addRowKey(List<MenuBuilder.ButtonDef> buttons) {
         String[] row = buttons.stream()
                 .map(b -> session.add(localization.t(b.text), b.action))
                 .toArray(String[]::new);
@@ -97,19 +97,18 @@ public class MenuBuilder {
         return this;
     }
 
-    public MenuBuilder add(String buttonText, Runnable action) {
+    public MenuBuilder addButtonText(String buttonText, Runnable action) {
         row.add(session.add(buttonText, action));
         return this;
     }
 
-
-    public MenuBuilder addLocal(String buttonText, Runnable action) {
-        row.add(session.add(localization.t(buttonText), action));
+    public MenuBuilder addButtonKey(String buttonKey, Runnable action) {
+        row.add(session.add(localization.t(buttonKey), action));
         return this;
     }
 
-    public MenuBuilder addLocal(String buttonText, Runnable action, Map<String, Object> args) {
-        row.add(session.add(localization.t(buttonText, args), action));
+    public MenuBuilder addButtonKey(String buttonKey, Runnable action, Map<String, Object> args) {
+        row.add(session.add(localization.t(buttonKey, args), action));
         return this;
     }
 
@@ -129,10 +128,9 @@ public class MenuBuilder {
     public MenuBuilder addNavigationRow() {
         start();
 
-        if (session.hasHistory()) {
+        if (session.canGoBack()) {
             row.add(session.add(localization.format("back", args()), () -> {
-                Runnable previousMenu = session.popHistory();
-                if (previousMenu != null) previousMenu.run();
+                service.goBack(session);
             }));
         }
 
@@ -207,23 +205,23 @@ public class MenuBuilder {
         row.clear();
     }
 
-    public MenuBuilder ifAdd(boolean bool, String buttonText, Runnable action) {
+    public MenuBuilder ifAddButtonText(boolean bool, String buttonText, Runnable action) {
         if (bool) {
             row.add(session.add(buttonText, action));
         }
         return this;
     }
 
-    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action) {
+    public MenuBuilder ifAddButtonKey(boolean bool, String buttonKey, Runnable action) {
         if (bool) {
-            row.add(session.add(localization.t(buttonText), action));
+            row.add(session.add(localization.t(buttonKey), action));
         }
         return this;
     }
 
-    public MenuBuilder ifAddLocal(boolean bool, String buttonText, Runnable action, Map<String, Object> args) {
+    public MenuBuilder ifAddButtonKey(boolean bool, String buttonKey, Runnable action, Map<String, Object> args) {
         if (bool) {
-            row.add(session.add(localization.t(buttonText, args), action));
+            row.add(session.add(localization.t(buttonKey, args), action));
         }
         return this;
     }
