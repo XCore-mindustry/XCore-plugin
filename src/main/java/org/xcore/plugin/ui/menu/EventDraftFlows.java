@@ -11,12 +11,14 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.EventEditorService;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.ui.flow.BaseMenuFlow;
 import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuGrid;
 import org.xcore.plugin.ui.flow.MenuPrompt;
+import org.xcore.plugin.ui.flow.MenuPromptContext;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.plugin.ui.route.MenuRoute;
-import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,22 +31,6 @@ final class EventDraftFlows {
     static final String ROUTE_EDIT = "event.edit";
     static final String ROUTE_MAP_SELECTION = "event.map-selection";
 
-    private static final String ACTION_EDIT_NAME = "edit-name";
-    private static final String ACTION_EDIT_NAME_RESET = "edit-name-reset";
-    private static final String ACTION_EDIT_DESCRIPTION = "edit-description";
-    private static final String ACTION_EDIT_MAP = "edit-map";
-    private static final String ACTION_TOGGLE_TEMPORARY = "toggle-temporary";
-    private static final String ACTION_EDIT_PLANNED_START = "edit-planned-start";
-    private static final String ACTION_EDIT_PLANNED_END = "edit-planned-end";
-    private static final String ACTION_SAVE = "save";
-    private static final String ACTION_CANCEL_EDIT = "cancel-edit";
-    private static final String ACTION_TOGGLE_MAJOR = "toggle-major";
-    private static final String ACTION_PREVIOUS = "previous";
-    private static final String ACTION_NEXT = "next";
-    private static final String ACTION_BACK = "back";
-    private static final String ACTION_CLOSE = "close";
-    private static final String ACTION_MAP_PREFIX = "map:";
-
     private static final String PROMPT_CREATE_NAME = "event-create-name";
     private static final String PROMPT_EDIT_NAME = "event-edit-name";
     private static final String PROMPT_EDIT_DESCRIPTION = "event-edit-description";
@@ -54,28 +40,30 @@ final class EventDraftFlows {
     private EventDraftFlows() {
     }
 
-    static final class CreateStartFlow implements RoutedMenuFlow<CreateStartState> {
+    static final class CreateStartFlow extends BaseMenuFlow<CreateStartState> {
         private final EventMenu menu;
         private final EventEditorService eventEditorService;
 
         CreateStartFlow(EventMenu menu, EventEditorService eventEditorService) {
+            super(ROUTE_CREATE_START, CreateStartState.class);
             this.menu = menu;
             this.eventEditorService = eventEditorService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_CREATE_START;
+            onPrompt(PROMPT_CREATE_NAME, ctx -> {
+                Session session = ctx.renderContext().session();
+                EventData draft = session.getDraft(EventData.class);
+                eventEditorService.updateName(draft, ctx.text());
+                menu.edit(menu.getUuid(session));
+            }, ctx -> {
+                Session session = ctx.session();
+                eventEditorService.cancelDraft(session);
+                menu.main(menu.getUuid(session));
+            });
         }
 
         @Override
         public CreateStartState createState(Session session, MenuRoute route, CreateStartState currentState) {
             return currentState == null ? new CreateStartState() : currentState;
-        }
-
-        @Override
-        public Class<CreateStartState> stateType() {
-            return CreateStartState.class;
         }
 
         @Override
@@ -95,53 +83,105 @@ final class EventDraftFlows {
             ));
             return placeholderScreen();
         }
-
-        @Override
-        public void onPromptSubmit(MenuRenderContext<CreateStartState> context, String promptId, String text) {
-            if (!PROMPT_CREATE_NAME.equals(promptId)) {
-                return;
-            }
-
-            Session session = context.session();
-            EventData draft = session.getDraft(EventData.class);
-            eventEditorService.updateName(draft, text);
-            menu.edit(menu.getUuid(session));
-        }
-
-        @Override
-        public void onPromptCancel(MenuRenderContext<CreateStartState> context, String promptId) {
-            if (!PROMPT_CREATE_NAME.equals(promptId)) {
-                return;
-            }
-
-            Session session = context.session();
-            eventEditorService.cancelDraft(session);
-            menu.main(menu.getUuid(session));
-        }
     }
 
-    static final class EditFlow implements RoutedMenuFlow<EditState> {
+    static final class EditFlow extends BaseMenuFlow<EditState> {
         private final EventMenu menu;
         private final EventEditorService eventEditorService;
 
         EditFlow(EventMenu menu, EventEditorService eventEditorService) {
+            super(ROUTE_EDIT, EditState.class);
             this.menu = menu;
             this.eventEditorService = eventEditorService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_EDIT;
+            action("edit-name", ctx -> {
+                Session session = ctx.session();
+                EventData draft = session.getDraft(EventData.class);
+                ctx.openPrompt(new MenuPrompt(
+                        PROMPT_EDIT_NAME,
+                        session.locale().t("event-menu-edit-name-title"),
+                        "",
+                        24,
+                        draft.name,
+                        false
+                ));
+            });
+            action("edit-name-reset", ctx -> {
+                eventEditorService.resetName(ctx.session().getDraft(EventData.class));
+                ctx.render();
+            });
+            action("edit-description", ctx -> {
+                Session session = ctx.session();
+                EventData draft = session.getDraft(EventData.class);
+                ctx.openPrompt(new MenuPrompt(
+                        PROMPT_EDIT_DESCRIPTION,
+                        session.locale().t("event-menu-edit-description-title"),
+                        "",
+                        1000,
+                        draft.description,
+                        false
+                ));
+            });
+            action("edit-map", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", "1")));
+            action("toggle-temporary", ctx -> {
+                eventEditorService.toggleTemporary(ctx.session().getDraft(EventData.class));
+                ctx.render();
+            });
+            action("edit-planned-start", ctx -> {
+                ctx.openPrompt(new MenuPrompt(
+                        PROMPT_EDIT_PLANNED_START,
+                        ctx.locale().t("event-menu-edit-planned-start-title"),
+                        "",
+                        64,
+                        "",
+                        false
+                ));
+            });
+            action("edit-planned-end", ctx -> {
+                ctx.openPrompt(new MenuPrompt(
+                        PROMPT_EDIT_PLANNED_END,
+                        ctx.locale().t("event-menu-edit-planned-end-title"),
+                        "",
+                        10,
+                        "",
+                        false
+                ));
+            });
+            action("save", ctx -> {
+                if (eventEditorService.saveDraft(ctx.session())) {
+                    menu.events(menu.getUuid(ctx.session()), 1);
+                }
+            });
+            action("cancel-edit", ctx -> {
+                eventEditorService.cancelDraft(ctx.session());
+                menu.main(menu.getUuid(ctx.session()));
+            });
+            action("toggle-major", ctx -> {
+                eventEditorService.toggleMajor(ctx.session().getDraft(EventData.class));
+                ctx.render();
+            });
+
+            onPrompt(PROMPT_EDIT_NAME, ctx -> {
+                eventEditorService.updateName(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
+                ctx.renderContext().render();
+            }, ctx -> ctx.render());
+            onPrompt(PROMPT_EDIT_DESCRIPTION, ctx -> {
+                eventEditorService.updateDescription(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
+                ctx.renderContext().render();
+            }, ctx -> ctx.render());
+            onPrompt(PROMPT_EDIT_PLANNED_START, ctx -> {
+                eventEditorService.updatePlannedStartTime(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
+                ctx.renderContext().render();
+            }, ctx -> ctx.render());
+            onPrompt(PROMPT_EDIT_PLANNED_END, ctx -> {
+                eventEditorService.updatePlannedEndTime(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
+                ctx.renderContext().render();
+            }, ctx -> ctx.render());
         }
 
         @Override
         public EditState createState(Session session, MenuRoute route, EditState currentState) {
             return currentState == null ? new EditState() : currentState;
-        }
-
-        @Override
-        public Class<EditState> stateType() {
-            return EditState.class;
         }
 
         @Override
@@ -154,29 +194,29 @@ final class EventDraftFlows {
             String yes = session.locale().t("yes");
             String no = session.locale().t("no");
 
-            List<List<MenuButton>> rows = new ArrayList<>();
-            rows.add(List.of(
-                    MenuButton.of(session.locale().t("event-menu-edit-name"), ACTION_EDIT_NAME),
-                    MenuButton.of(session.locale().t("event-menu-edit-name-reset"), ACTION_EDIT_NAME_RESET),
-                    MenuButton.of(session.locale().t("event-menu-edit-description"), ACTION_EDIT_DESCRIPTION)
-            ));
-            rows.add(List.of(
-                    MenuButton.of(session.locale().t("event-menu-edit-map"), ACTION_EDIT_MAP),
-                    MenuButton.of(session.locale().t(draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive"), ACTION_TOGGLE_TEMPORARY)
-            ));
-            rows.add(List.of(
-                    MenuButton.of(session.locale().t("event-menu-edit-planned-start"), ACTION_EDIT_PLANNED_START),
-                    MenuButton.of(session.locale().t("event-menu-edit-planned-end"), ACTION_EDIT_PLANNED_END)
-            ));
-            rows.add(List.of(
-                    MenuButton.of("[green]" + session.locale().t("save"), ACTION_SAVE),
-                    MenuButton.of("[red]" + session.locale().t("cancel"), ACTION_CANCEL_EDIT)
-            ));
+            var grid = new MenuGrid();
+            grid.row(
+                    MenuButton.of(session.locale().t("event-menu-edit-name"), "edit-name"),
+                    MenuButton.of(session.locale().t("event-menu-edit-name-reset"), "edit-name-reset"),
+                    MenuButton.of(session.locale().t("event-menu-edit-description"), "edit-description")
+            );
+            grid.row(
+                    MenuButton.of(session.locale().t("event-menu-edit-map"), "edit-map"),
+                    MenuButton.of(session.locale().t(draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive"), "toggle-temporary")
+            );
+            grid.row(
+                    MenuButton.of(session.locale().t("event-menu-edit-planned-start"), "edit-planned-start"),
+                    MenuButton.of(session.locale().t("event-menu-edit-planned-end"), "edit-planned-end")
+            );
+            grid.row(
+                    MenuButton.of("[green]" + session.locale().t("save"), "save"),
+                    MenuButton.of("[red]" + session.locale().t("cancel"), "cancel-edit")
+            );
             if (session.player.admin) {
-                rows.add(List.of(MenuButton.of(
+                grid.row(MenuButton.of(
                         session.locale().t(draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive"),
-                        ACTION_TOGGLE_MAJOR
-                )));
+                        "toggle-major"
+                ));
             }
 
             return MenuScreen.normal(
@@ -191,118 +231,52 @@ final class EventDraftFlows {
                             "plannedStartTime", menu.formatTime(draft.plannedStartTime, session),
                             "plannedEndTime", menu.formatTime(draft.plannedEndTime, session)
                     )),
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<EditState> context, String actionId) {
-            Session session = context.session();
-            EventData draft = session.getDraft(EventData.class);
-            String uuid = menu.getUuid(session);
-
-            switch (actionId) {
-                case ACTION_EDIT_NAME -> context.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_NAME,
-                        session.locale().t("event-menu-edit-name-title"),
-                        "",
-                        24,
-                        draft.name,
-                        false
-                ));
-                case ACTION_EDIT_NAME_RESET -> {
-                    eventEditorService.resetName(draft);
-                    context.render();
-                }
-                case ACTION_EDIT_DESCRIPTION -> context.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_DESCRIPTION,
-                        session.locale().t("event-menu-edit-description-title"),
-                        "",
-                        1000,
-                        draft.description,
-                        false
-                ));
-                case ACTION_EDIT_MAP -> context.openRoute(MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", "1"));
-                case ACTION_TOGGLE_TEMPORARY -> {
-                    eventEditorService.toggleTemporary(draft);
-                    context.render();
-                }
-                case ACTION_EDIT_PLANNED_START -> context.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_PLANNED_START,
-                        session.locale().t("event-menu-edit-planned-start-title"),
-                        "",
-                        64,
-                        "",
-                        false
-                ));
-                case ACTION_EDIT_PLANNED_END -> context.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_PLANNED_END,
-                        session.locale().t("event-menu-edit-planned-end-title"),
-                        "",
-                        10,
-                        "",
-                        false
-                ));
-                case ACTION_SAVE -> {
-                    if (eventEditorService.saveDraft(session)) {
-                        menu.events(uuid, 1);
-                    }
-                }
-                case ACTION_CANCEL_EDIT -> {
-                    eventEditorService.cancelDraft(session);
-                    menu.main(uuid);
-                }
-                case ACTION_TOGGLE_MAJOR -> {
-                    eventEditorService.toggleMajor(draft);
-                    context.render();
-                }
-                default -> {
-                }
-            }
-        }
-
-        @Override
-        public void onPromptSubmit(MenuRenderContext<EditState> context, String promptId, String text) {
-            Session session = context.session();
-            EventData draft = session.getDraft(EventData.class);
-
-            switch (promptId) {
-                case PROMPT_EDIT_NAME -> eventEditorService.updateName(draft, text);
-                case PROMPT_EDIT_DESCRIPTION -> eventEditorService.updateDescription(draft, text);
-                case PROMPT_EDIT_PLANNED_START -> eventEditorService.updatePlannedStartTime(draft, text);
-                case PROMPT_EDIT_PLANNED_END -> eventEditorService.updatePlannedEndTime(draft, text);
-                default -> {
-                    return;
-                }
-            }
-
-            context.render();
-        }
-
-        @Override
-        public void onPromptCancel(MenuRenderContext<EditState> context, String promptId) {
-            switch (promptId) {
-                case PROMPT_EDIT_NAME, PROMPT_EDIT_DESCRIPTION, PROMPT_EDIT_PLANNED_START, PROMPT_EDIT_PLANNED_END -> context.render();
-                default -> {
-                }
-            }
         }
     }
 
-    static final class MapSelectionFlow implements RoutedMenuFlow<MapSelectionState> {
+    static final class MapSelectionFlow extends BaseMenuFlow<MapSelectionState> {
         private final EventMenu menu;
         private final EventEditorService eventEditorService;
         private final MapService mapService;
 
         MapSelectionFlow(EventMenu menu, EventEditorService eventEditorService, MapService mapService) {
+            super(ROUTE_MAP_SELECTION, MapSelectionState.class);
             this.menu = menu;
             this.eventEditorService = eventEditorService;
             this.mapService = mapService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_MAP_SELECTION;
+            action("prev", ctx -> {
+                int currentPage = Math.max(1, ctx.state().page);
+                ctx.session().menuService.renderRoute(ctx.session(),
+                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage - 1)));
+            });
+            action("next", ctx -> {
+                int currentPage = Math.max(1, ctx.state().page);
+                ctx.session().menuService.renderRoute(ctx.session(),
+                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage + 1)));
+            });
+            actionPrefix("map:", (ctx, indexStr) -> {
+                int index;
+                try {
+                    index = Integer.parseInt(indexStr);
+                } catch (NumberFormatException ignored) {
+                    return;
+                }
+                Session session = ctx.session();
+                int currentPage = Math.max(1, ctx.state().page);
+                List<Map> pagedMaps = SeqStream.of(mapService.getAvailableMaps())
+                        .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, currentPage))
+                        .flatMap(List::stream)
+                        .toList();
+                if (index < 0 || index >= pagedMaps.size()) {
+                    return;
+                }
+                Map map = pagedMaps.get(index);
+                eventEditorService.selectMapForDraft(session, map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name());
+                menu.edit(menu.getUuid(session));
+            });
         }
 
         @Override
@@ -310,11 +284,6 @@ final class EventDraftFlows {
             MapSelectionState state = currentState == null ? new MapSelectionState() : currentState;
             state.page = route.intParam("page", 1);
             return state;
-        }
-
-        @Override
-        public Class<MapSelectionState> stateType() {
-            return MapSelectionState.class;
         }
 
         @Override
@@ -329,76 +298,31 @@ final class EventDraftFlows {
                     .flatMap(List::stream)
                     .toList();
 
-            List<List<MenuButton>> rows = new ArrayList<>();
+            var grid = new MenuGrid();
 
             List<MenuButton> paginationRow = new ArrayList<>();
             if (validPage > 1) {
-                paginationRow.add(MenuButton.of(session.locale().t("previous"), ACTION_PREVIOUS));
+                paginationRow.add(MenuButton.of(session.locale().t("previous"), "prev"));
             }
             if (validPage < pagination.totalPages()) {
-                paginationRow.add(MenuButton.of(session.locale().t("next"), ACTION_NEXT));
+                paginationRow.add(MenuButton.of(session.locale().t("next"), "next"));
             }
             if (!paginationRow.isEmpty()) {
-                rows.add(paginationRow);
+                grid.row(paginationRow.toArray(new MenuButton[0]));
             }
 
             for (int i = 0; i < pagedMaps.size(); i++) {
                 Map map = pagedMaps.get(i);
-                rows.add(List.of(MenuButton.of(map.name(), ACTION_MAP_PREFIX + i)));
+                grid.row(MenuButton.of(map.name(), "map:" + i));
             }
 
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+            grid.defaultNavigation(session, session.locale());
 
             return MenuScreen.normal(
                     session.locale().t("event-menu-maps-title"),
                     session.locale().t("event-menu-maps-content", args("page", validPage, "total", pagination.totalPages())),
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<MapSelectionState> context, String actionId) {
-            Session session = context.session();
-            String uuid = menu.getUuid(session);
-            int currentPage = Math.max(1, context.state().page);
-
-            switch (actionId) {
-                case ACTION_PREVIOUS -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage - 1)));
-                case ACTION_NEXT -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage + 1)));
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-                default -> {
-                    if (!actionId.startsWith(ACTION_MAP_PREFIX)) {
-                        return;
-                    }
-
-                    int index;
-                    try {
-                        index = Integer.parseInt(actionId.substring(ACTION_MAP_PREFIX.length()));
-                    } catch (NumberFormatException ignored) {
-                        return;
-                    }
-
-                    List<Map> pagedMaps = SeqStream.of(mapService.getAvailableMaps())
-                            .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, currentPage))
-                            .flatMap(List::stream)
-                            .toList();
-                    if (index < 0 || index >= pagedMaps.size()) {
-                        return;
-                    }
-
-                    Map map = pagedMaps.get(index);
-                    eventEditorService.selectMapForDraft(session, map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name());
-                    menu.edit(uuid);
-                }
-            }
         }
     }
 

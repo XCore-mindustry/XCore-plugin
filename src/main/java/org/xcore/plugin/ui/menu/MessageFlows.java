@@ -7,15 +7,13 @@ import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.BaseMenuFlow;
 import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuGrid;
 import org.xcore.plugin.ui.flow.MenuPrompt;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.plugin.ui.route.MenuRoute;
-import org.xcore.plugin.ui.route.RoutedMenuFlow;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -25,18 +23,6 @@ final class MessageFlows {
     static final String ROUTE_BLOCKED = "message.blocked";
     static final String ROUTE_DETAILS = "message.details";
 
-    private static final String ACTION_PREVIOUS = "previous";
-    private static final String ACTION_NEXT = "next";
-    private static final String ACTION_COMPOSE = "compose";
-    private static final String ACTION_BLOCKED = "blocked";
-    private static final String ACTION_BACK = "back";
-    private static final String ACTION_CLOSE = "close";
-    private static final String ACTION_MESSAGE_PREFIX = "message:";
-    private static final String ACTION_UNBLOCK_PREFIX = "unblock:";
-    private static final String ACTION_REPLY = "reply";
-    private static final String ACTION_DELETE = "delete";
-    private static final String ACTION_TOGGLE_BLOCK = "toggle-block";
-
     private static final String PROMPT_REPLY = "private-message-reply";
     private static final String PROMPT_COMPOSE_TARGET = "private-message-compose-target";
     private static final String PROMPT_COMPOSE_BODY = "private-message-compose-body";
@@ -44,18 +30,36 @@ final class MessageFlows {
     private MessageFlows() {
     }
 
-    static final class InboxFlow implements RoutedMenuFlow<InboxState> {
+    static final class InboxFlow extends BaseMenuFlow<InboxState> {
         private final MessageMenu menu;
         private final PrivateMessageService privateMessageService;
 
         InboxFlow(MessageMenu menu, PrivateMessageService privateMessageService) {
+            super(ROUTE_INBOX, InboxState.class);
             this.menu = menu;
             this.privateMessageService = privateMessageService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_INBOX;
+            action("previous", ctx -> {
+                Session session = ctx.session();
+                int currentPage = Math.max(1, ctx.state().page);
+                session.menuService.renderRoute(session,
+                        MenuRoute.of(ROUTE_INBOX).withParam("page", String.valueOf(currentPage - 1)));
+            });
+            action("next", ctx -> {
+                Session session = ctx.session();
+                int currentPage = Math.max(1, ctx.state().page);
+                session.menuService.renderRoute(session,
+                        MenuRoute.of(ROUTE_INBOX).withParam("page", String.valueOf(currentPage + 1)));
+            });
+            action("compose", ctx -> promptCompose(menu, privateMessageService, menu.getUuid(ctx.session()), ctx::render));
+            action("blocked", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_BLOCKED).withParam("page", "1")));
+            actionPrefix("message:", (ctx, messageIdHex) -> {
+                ObjectId messageId = new ObjectId(messageIdHex);
+                int currentPage = Math.max(1, ctx.state().page);
+                ctx.openRoute(MenuRoute.of(ROUTE_DETAILS)
+                        .withParam("messageId", messageId.toHexString())
+                        .withParam("returnPage", String.valueOf(currentPage)));
+            });
         }
 
         @Override
@@ -63,11 +67,6 @@ final class MessageFlows {
             InboxState state = currentState == null ? new InboxState() : currentState;
             state.page = route.intParam("page", 1);
             return state;
-        }
-
-        @Override
-        public Class<InboxState> stateType() {
-            return InboxState.class;
         }
 
         @Override
@@ -80,19 +79,18 @@ final class MessageFlows {
             var pagination = CustomGatherers.calculatePagination(total, menu.globalConfig.privateMessagesPerPage);
             int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(requestedPage);
             context.state().page = validPage;
-            List<PrivateMessage> messages = privateMessageService.inbox(session.data.uuid, validPage);
+            java.util.List<PrivateMessage> messages = privateMessageService.inbox(session.data.uuid, validPage);
 
-            List<List<MenuButton>> rows = new ArrayList<>();
-
-            List<MenuButton> pagingRow = new ArrayList<>();
+            var grid = new MenuGrid();
+            var pagingRow = new java.util.ArrayList<MenuButton>();
             if (validPage > 1) {
-                pagingRow.add(MenuButton.of(session.locale().t("previous"), ACTION_PREVIOUS));
+                pagingRow.add(MenuButton.of(session.locale().t("previous"), "previous"));
             }
             if (validPage < Math.max(1, pagination.totalPages())) {
-                pagingRow.add(MenuButton.of(session.locale().t("next"), ACTION_NEXT));
+                pagingRow.add(MenuButton.of(session.locale().t("next"), "next"));
             }
             if (!pagingRow.isEmpty()) {
-                rows.add(pagingRow);
+                grid.row(pagingRow.toArray(new MenuButton[0]));
             }
 
             for (PrivateMessage message : messages) {
@@ -105,20 +103,15 @@ final class MessageFlows {
                                 "time", menu.formatTime(message.createdModelTime, session)
                         )
                 );
-                rows.add(List.of(MenuButton.of(text, ACTION_MESSAGE_PREFIX + message.id.toHexString())));
+                grid.row(MenuButton.of(text, "message:" + message.id.toHexString()));
             }
 
-            rows.add(List.of(
-                    MenuButton.of(session.locale().t("private-message-compose"), ACTION_COMPOSE),
-                    MenuButton.of(session.locale().t("private-message-blocked"), ACTION_BLOCKED)
-            ));
+            grid.row(
+                    MenuButton.of(session.locale().t("private-message-compose"), "compose"),
+                    MenuButton.of(session.locale().t("private-message-blocked"), "blocked")
+            );
 
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+            grid.defaultNavigation(session, session.locale());
 
             return MenuScreen.normal(
                     session.locale().t("private-message-menu-title"),
@@ -127,49 +120,75 @@ final class MessageFlows {
                             "total", Math.max(1, pagination.totalPages()),
                             "unread", privateMessageService.countUnread(session.data.uuid)
                     )),
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<InboxState> context, String actionId) {
-            Session session = context.session();
-            String uuid = menu.getUuid(session);
-            int currentPage = Math.max(1, context.state().page);
-
-            switch (actionId) {
-                case ACTION_PREVIOUS -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_INBOX).withParam("page", String.valueOf(currentPage - 1)));
-                case ACTION_NEXT -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_INBOX).withParam("page", String.valueOf(currentPage + 1)));
-                case ACTION_COMPOSE -> promptCompose(menu, privateMessageService, uuid, context::render);
-                case ACTION_BLOCKED -> context.openRoute(MenuRoute.of(ROUTE_BLOCKED).withParam("page", "1"));
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-                default -> {
-                    if (actionId.startsWith(ACTION_MESSAGE_PREFIX)) {
-                        ObjectId messageId = new ObjectId(actionId.substring(ACTION_MESSAGE_PREFIX.length()));
-                        context.openRoute(MenuRoute.of(ROUTE_DETAILS)
-                                .withParam("messageId", messageId.toHexString())
-                                .withParam("returnPage", String.valueOf(currentPage)));
-                    }
-                }
-            }
         }
     }
 
-    static final class DetailsFlow implements RoutedMenuFlow<DetailsState> {
+    static final class DetailsFlow extends BaseMenuFlow<DetailsState> {
         private final MessageMenu menu;
         private final PrivateMessageService privateMessageService;
 
         DetailsFlow(MessageMenu menu, PrivateMessageService privateMessageService) {
+            super(ROUTE_DETAILS, DetailsState.class);
             this.menu = menu;
             this.privateMessageService = privateMessageService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_DETAILS;
+            action("reply", ctx -> {
+                DetailsView view = resolveDetailsView(ctx.session(), ctx.state(), privateMessageService);
+                if (view != null) {
+                    ctx.openPrompt(new MenuPrompt(
+                            PROMPT_REPLY,
+                            ctx.session().locale().t("private-message-reply-title"),
+                            ctx.session().locale().t("private-message-reply-message", args("pid", view.message.fromPid)),
+                            menu.globalConfig.privateMessageMaxLength,
+                            "",
+                            false
+                    ));
+                }
+            });
+            action("delete", ctx -> {
+                Session session = ctx.session();
+                DetailsView view = resolveDetailsView(session, ctx.state(), privateMessageService);
+                if (view == null) {
+                    if (ctx.session().hasRouteHistory()) {
+                        ctx.goBack();
+                    } else {
+                        menu.inbox(menu.getUuid(session), ctx.state().returnPage);
+                    }
+                    return;
+                }
+                privateMessageService.softDelete(view.message.id, session.data.uuid);
+                if (session.hasRouteHistory()) {
+                    ctx.goBack();
+                } else {
+                    menu.inbox(menu.getUuid(session), ctx.state().returnPage);
+                }
+            });
+            action("toggle-block", ctx -> {
+                Session session = ctx.session();
+                DetailsView view = resolveDetailsView(session, ctx.state(), privateMessageService);
+                if (view != null) {
+                    if (view.blocked) {
+                        privateMessageService.unblock(session, view.message.fromPid);
+                    } else {
+                        privateMessageService.block(session, view.message.fromPid);
+                    }
+                    ctx.render();
+                }
+            });
+
+            onPrompt(PROMPT_REPLY,
+                    ctx -> {
+                        Session session = ctx.renderContext().session();
+                        DetailsView view = resolveDetailsView(session, ctx.renderContext().state(), privateMessageService);
+                        if (view != null) {
+                            privateMessageService.send(session, view.message.fromPid, ctx.text());
+                        }
+                        ctx.renderContext().render();
+                    },
+                    ctx -> ctx.render()
+            );
         }
 
         @Override
@@ -181,11 +200,6 @@ final class MessageFlows {
         }
 
         @Override
-        public Class<DetailsState> stateType() {
-            return DetailsState.class;
-        }
-
-        @Override
         public MenuScreen render(MenuRenderContext<DetailsState> context) {
             Session session = context.session();
             DetailsView view = resolveDetailsView(session, context.state(), privateMessageService);
@@ -193,22 +207,16 @@ final class MessageFlows {
                 return notFoundScreen(session);
             }
 
-            List<List<MenuButton>> rows = new ArrayList<>();
-            rows.add(List.of(
-                    MenuButton.of(session.locale().t("reply"), ACTION_REPLY),
-                    MenuButton.of(session.locale().t("delete"), ACTION_DELETE)
-            ));
-            rows.add(List.of(MenuButton.of(
+            var grid = new MenuGrid();
+            grid.row(
+                    MenuButton.of(session.locale().t("reply"), "reply"),
+                    MenuButton.of(session.locale().t("delete"), "delete")
+            );
+            grid.row(MenuButton.of(
                     session.locale().t(view.blocked ? "private-message-unblock" : "private-message-block"),
-                    ACTION_TOGGLE_BLOCK
-            )));
-
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+                    "toggle-block"
+            ));
+            grid.defaultNavigation(session, session.locale());
 
             return MenuScreen.normal(
                     session.locale().t("private-message-details-title"),
@@ -219,92 +227,37 @@ final class MessageFlows {
                             "message", view.message.message,
                             "status", session.locale().t(view.markedRead || view.message.readAt > 0 ? "private-message-status-read" : "private-message-status-unread")
                     )),
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<DetailsState> context, String actionId) {
-            Session session = context.session();
-            DetailsView view = resolveDetailsView(session, context.state(), privateMessageService);
-            if (view == null) {
-                if (ACTION_BACK.equals(actionId)) {
-                    context.goBack();
-                } else if (ACTION_CLOSE.equals(actionId)) {
-                    context.close();
-                }
-                return;
-            }
-
-            switch (actionId) {
-                case ACTION_REPLY -> context.openPrompt(new MenuPrompt(
-                        PROMPT_REPLY,
-                        session.locale().t("private-message-reply-title"),
-                        session.locale().t("private-message-reply-message", args("pid", view.message.fromPid)),
-                        menu.globalConfig.privateMessageMaxLength,
-                        "",
-                        false
-                ));
-                case ACTION_DELETE -> {
-                    privateMessageService.softDelete(view.message.id, session.data.uuid);
-                    if (session.hasRouteHistory()) {
-                        context.goBack();
-                    } else {
-                        menu.inbox(menu.getUuid(session), context.state().returnPage);
-                    }
-                }
-                case ACTION_TOGGLE_BLOCK -> {
-                    if (view.blocked) {
-                        privateMessageService.unblock(session, view.message.fromPid);
-                    } else {
-                        privateMessageService.block(session, view.message.fromPid);
-                    }
-                    context.render();
-                }
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-                default -> {
-                }
-            }
-        }
-
-        @Override
-        public void onPromptSubmit(MenuRenderContext<DetailsState> context, String promptId, String text) {
-            if (!PROMPT_REPLY.equals(promptId)) {
-                return;
-            }
-
-            Session session = context.session();
-            DetailsView view = resolveDetailsView(session, context.state(), privateMessageService);
-            if (view == null) {
-                context.render();
-                return;
-            }
-
-            privateMessageService.send(session, view.message.fromPid, text);
-            context.render();
-        }
-
-        @Override
-        public void onPromptCancel(MenuRenderContext<DetailsState> context, String promptId) {
-            if (PROMPT_REPLY.equals(promptId)) {
-                context.render();
-            }
         }
     }
 
-    static final class BlockedFlow implements RoutedMenuFlow<BlockedState> {
+    static final class BlockedFlow extends BaseMenuFlow<BlockedState> {
         private final MessageMenu menu;
         private final PrivateMessageService privateMessageService;
 
         BlockedFlow(MessageMenu menu, PrivateMessageService privateMessageService) {
+            super(ROUTE_BLOCKED, BlockedState.class);
             this.menu = menu;
             this.privateMessageService = privateMessageService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_BLOCKED;
+            action("previous", ctx -> {
+                Session session = ctx.session();
+                int currentPage = Math.max(1, ctx.state().page);
+                session.menuService.renderRoute(session,
+                        MenuRoute.of(ROUTE_BLOCKED).withParam("page", String.valueOf(currentPage - 1)));
+            });
+            action("next", ctx -> {
+                Session session = ctx.session();
+                int currentPage = Math.max(1, ctx.state().page);
+                session.menuService.renderRoute(session,
+                        MenuRoute.of(ROUTE_BLOCKED).withParam("page", String.valueOf(currentPage + 1)));
+            });
+            actionPrefix("unblock:", (ctx, pidStr) -> {
+                int pid = Integer.parseInt(pidStr);
+                privateMessageService.unblock(ctx.session(), pid);
+                ctx.render();
+            });
         }
 
         @Override
@@ -315,49 +268,38 @@ final class MessageFlows {
         }
 
         @Override
-        public Class<BlockedState> stateType() {
-            return BlockedState.class;
-        }
-
-        @Override
         public MenuScreen render(MenuRenderContext<BlockedState> context) {
             Session session = context.session();
             int requestedPage = Math.max(1, context.state().page);
 
-            List<PlayerData> blockedPlayers = privateMessageService.listBlocked(session);
+            java.util.List<PlayerData> blockedPlayers = privateMessageService.listBlocked(session);
             var pagination = CustomGatherers.calculatePagination(blockedPlayers.size(), menu.globalConfig.privateMessagesPerPage);
             int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(requestedPage);
             context.state().page = validPage;
             int start = (validPage - 1) * menu.globalConfig.privateMessagesPerPage;
             int end = Math.min(start + menu.globalConfig.privateMessagesPerPage, blockedPlayers.size());
-            List<PlayerData> pageItems = start >= blockedPlayers.size() ? List.of() : blockedPlayers.subList(start, end);
+            java.util.List<PlayerData> pageItems = start >= blockedPlayers.size() ? java.util.List.of() : blockedPlayers.subList(start, end);
 
-            List<List<MenuButton>> rows = new ArrayList<>();
-
-            List<MenuButton> pagingRow = new ArrayList<>();
+            var grid = new MenuGrid();
+            var pagingRow = new java.util.ArrayList<MenuButton>();
             if (validPage > 1) {
-                pagingRow.add(MenuButton.of(session.locale().t("previous"), ACTION_PREVIOUS));
+                pagingRow.add(MenuButton.of(session.locale().t("previous"), "previous"));
             }
             if (validPage < Math.max(1, pagination.totalPages())) {
-                pagingRow.add(MenuButton.of(session.locale().t("next"), ACTION_NEXT));
+                pagingRow.add(MenuButton.of(session.locale().t("next"), "next"));
             }
             if (!pagingRow.isEmpty()) {
-                rows.add(pagingRow);
+                grid.row(pagingRow.toArray(new MenuButton[0]));
             }
 
             for (PlayerData playerData : pageItems) {
-                rows.add(List.of(MenuButton.of(
+                grid.row(MenuButton.of(
                         session.locale().t("private-message-blocked-entry", args("target", playerData.nickname, "pid", playerData.pid)),
-                        ACTION_UNBLOCK_PREFIX + playerData.pid
-                )));
+                        "unblock:" + playerData.pid
+                ));
             }
 
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(session.locale().t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+            grid.defaultNavigation(session, session.locale());
 
             return MenuScreen.normal(
                     session.locale().t("private-message-blocked-title"),
@@ -366,30 +308,8 @@ final class MessageFlows {
                             "total", Math.max(1, pagination.totalPages()),
                             "count", blockedPlayers.size()
                     )),
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<BlockedState> context, String actionId) {
-            Session session = context.session();
-            int currentPage = Math.max(1, context.state().page);
-
-            switch (actionId) {
-                case ACTION_PREVIOUS -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_BLOCKED).withParam("page", String.valueOf(currentPage - 1)));
-                case ACTION_NEXT -> session.menuService.renderRoute(session,
-                        MenuRoute.of(ROUTE_BLOCKED).withParam("page", String.valueOf(currentPage + 1)));
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-                default -> {
-                    if (actionId.startsWith(ACTION_UNBLOCK_PREFIX)) {
-                        int pid = Integer.parseInt(actionId.substring(ACTION_UNBLOCK_PREFIX.length()));
-                        privateMessageService.unblock(session, pid);
-                        context.render();
-                    }
-                }
-            }
         }
     }
 
@@ -423,10 +343,10 @@ final class MessageFlows {
     }
 
     private static void handleComposeTarget(MessageMenu menu,
-                                            PrivateMessageService privateMessageService,
-                                            String uuid,
-                                            Runnable onBack,
-                                            String pidText) {
+                                             PrivateMessageService privateMessageService,
+                                             String uuid,
+                                             Runnable onBack,
+                                             String pidText) {
         Session session = menu.sessionService.get(uuid);
         if (session == null || session.data == null) return;
 
@@ -456,13 +376,12 @@ final class MessageFlows {
         if (message == null) {
             return "";
         }
-
         return message.length() <= 40 ? message : message.substring(0, 37) + "...";
     }
 
     private static DetailsView resolveDetailsView(Session session,
-                                                  DetailsState state,
-                                                  PrivateMessageService privateMessageService) {
+                                                    DetailsState state,
+                                                    PrivateMessageService privateMessageService) {
         if (session == null || session.data == null || state == null || state.messageId == null) {
             return null;
         }
@@ -488,10 +407,10 @@ final class MessageFlows {
         return MenuScreen.normal(
                 session.locale().t("private-message-details-title"),
                 session.locale().t("error-private-message-not-found"),
-                List.of(List.of(
-                        MenuButton.of(session.locale().t("back"), ACTION_BACK),
-                        MenuButton.of(session.locale().t("close"), ACTION_CLOSE)
-                ))
+                new MenuGrid().row(
+                        MenuButton.of(session.locale().t("back"), "back"),
+                        MenuButton.of(session.locale().t("close"), "close")
+                ).build()
         );
     }
 
