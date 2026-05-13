@@ -10,11 +10,12 @@ import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.flow.BaseMenuFlow;
 import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuGrid;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.plugin.ui.route.MenuRoute;
-import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -29,34 +30,24 @@ final class PlayerProfileFlows {
     static final String ROUTE_PLAYER = "player.profile";
     static final String ROUTE_PLAYERS = "player.players";
 
-    private static final String ACTION_BACK = "back";
-    private static final String ACTION_CLOSE = "close";
-    private static final String ACTION_SETTINGS = "settings";
-    private static final String ACTION_AUDIT_HISTORY = "audit-history";
-    private static final String ACTION_AUDIT_ACTIONS = "audit-actions";
-    private static final String ACTION_PLAYERS = "players";
-    private static final String ACTION_ADMIN_FILTER = "admin-filter";
-    private static final String ACTION_PREV = "prev";
-    private static final String ACTION_NEXT = "next";
-    private static final String ACTION_SELECT_PREFIX = "select-";
-
     private PlayerProfileFlows() {
     }
 
-    static final class PlayerFlow implements RoutedMenuFlow<PlayerState> {
+    static final class PlayerFlow extends BaseMenuFlow<PlayerState> {
         private final PlayerMenu menu;
         private final GameDataRepository gameDataRepository;
         private final AuditHistoryMenu auditHistoryMenu;
 
         PlayerFlow(PlayerMenu menu, GameDataRepository gameDataRepository, AuditHistoryMenu auditHistoryMenu) {
+            super(ROUTE_PLAYER, PlayerState.class);
             this.menu = menu;
             this.gameDataRepository = gameDataRepository;
             this.auditHistoryMenu = auditHistoryMenu;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_PLAYER;
+            action("settings", ctx -> ctx.openRoute(MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", ctx.state().targetUuid)));
+            action("audit-history", ctx -> auditHistoryMenu.history(ctx.session().data.uuid, resolveTargetData(ctx)));
+            action("audit-actions", ctx -> auditHistoryMenu.actions(ctx.session().data.uuid, resolveTargetData(ctx)));
+            action("players", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_PLAYERS).withParam("page", "1")));
         }
 
         @Override
@@ -66,11 +57,6 @@ final class PlayerProfileFlows {
                 return currentState;
             }
             return new PlayerState(targetUuid);
-        }
-
-        @Override
-        public Class<PlayerState> stateType() {
-            return PlayerState.class;
         }
 
         @Override
@@ -101,26 +87,20 @@ final class PlayerProfileFlows {
             var overallStats = statsOverview.overall();
             NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
 
-            List<List<MenuButton>> rows = new ArrayList<>();
+            var grid = new MenuGrid();
             List<MenuButton> actions = new ArrayList<>();
             if (isOwner || session.player.admin) {
-                actions.add(MenuButton.of(local.t("player-menu-settings"), ACTION_SETTINGS));
+                actions.add(MenuButton.of(local.t("player-menu-settings"), "settings"));
             }
             if (session.player.admin) {
-                actions.add(MenuButton.of(local.t("audit-menu-open"), ACTION_AUDIT_HISTORY));
-                actions.add(MenuButton.of(local.t("audit-menu-actions-open"), ACTION_AUDIT_ACTIONS));
+                actions.add(MenuButton.of(local.t("audit-menu-open"), "audit-history"));
+                actions.add(MenuButton.of(local.t("audit-menu-actions-open"), "audit-actions"));
             }
             if (!actions.isEmpty()) {
-                rows.add(actions);
+                grid.row(actions.toArray(new MenuButton[0]));
             }
-            rows.add(List.of(MenuButton.of(local.t("player-menu-players"), ACTION_PLAYERS)));
-
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+            grid.row(MenuButton.of(local.t("player-menu-players"), "players"));
+            grid.defaultNavigation(session, local);
 
             return MenuScreen.normal(
                     local.t("player-menu-player-title"),
@@ -151,44 +131,55 @@ final class PlayerProfileFlows {
                             "admin", targetData.admin ? local.t("yes") : local.t("no"),
                             "hexedPoints", numberFormat.format(targetData.hexedPoints)
                     )),
-                    rows
+                    grid.build()
             );
         }
 
-        @Override
-        public void onAction(MenuRenderContext<PlayerState> context, String actionId) {
-            Session session = context.session();
-            PlayerState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
-            if (targetData == null) {
-                return;
-            }
-
-            switch (actionId) {
-                case ACTION_SETTINGS -> context.openRoute(MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", state.targetUuid));
-                case ACTION_AUDIT_HISTORY -> auditHistoryMenu.history(session.data.uuid, targetData);
-                case ACTION_AUDIT_ACTIONS -> auditHistoryMenu.actions(session.data.uuid, targetData);
-                case ACTION_PLAYERS -> context.openRoute(MenuRoute.of(ROUTE_PLAYERS).withParam("page", "1"));
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-            }
+        private PlayerData resolveTargetData(MenuRenderContext<PlayerState> context) {
+            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
         }
     }
 
-    static final class PlayersFlow implements RoutedMenuFlow<PlayersState> {
+    static final class PlayersFlow extends BaseMenuFlow<PlayersState> {
         private final PlayerMenu menu;
         private final SessionService sessionService;
         private final PlayerDisplayService playerDisplayService;
 
         PlayersFlow(PlayerMenu menu, SessionService sessionService, PlayerDisplayService playerDisplayService) {
+            super(ROUTE_PLAYERS, PlayersState.class);
             this.menu = menu;
             this.sessionService = sessionService;
             this.playerDisplayService = playerDisplayService;
-        }
 
-        @Override
-        public String routeId() {
-            return ROUTE_PLAYERS;
+            action("admin-filter", ctx -> {
+                ctx.session().setNextStatus("admin");
+                ctx.state().page = 1;
+                ctx.render();
+            });
+            action("prev", ctx -> {
+                ctx.state().page = Math.max(1, ctx.state().page - 1);
+                ctx.render();
+            });
+            action("next", ctx -> {
+                ctx.state().page = ctx.state().page + 1;
+                ctx.render();
+            });
+            actionPrefix("select:", (ctx, indexStr) -> {
+                int index = Integer.parseInt(indexStr);
+                List<Session> onlinePlayers = getFilteredOnlinePlayers(ctx.session(), sessionService, playerDisplayService);
+                int perPage = menu.globalConfig.eventsPerPage;
+                var pagination = CustomGatherers.calculatePagination(onlinePlayers.size(), perPage);
+                int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(ctx.state().page);
+                int skip = (validPage - 1) * perPage;
+                List<Session> players = onlinePlayers.stream()
+                        .skip(skip)
+                        .limit(perPage)
+                        .toList();
+                if (index >= 0 && index < players.size()) {
+                    Session onlinePlayer = players.get(index);
+                    ctx.openRoute(MenuRoute.of(ROUTE_PLAYER).withParam("targetUuid", onlinePlayer.data.uuid));
+                }
+            });
         }
 
         @Override
@@ -198,11 +189,6 @@ final class PlayerProfileFlows {
                 return currentState;
             }
             return new PlayersState(page);
-        }
-
-        @Override
-        public Class<PlayersState> stateType() {
-            return PlayersState.class;
         }
 
         @Override
@@ -233,7 +219,7 @@ final class PlayerProfileFlows {
                 ));
             }
 
-            List<List<MenuButton>> rows = new ArrayList<>();
+            var grid = new MenuGrid();
 
             StatusEnum adminStatus = session.sortStatus.getOrDefault("admin", StatusEnum.Neutral);
             String adminLabel;
@@ -244,17 +230,17 @@ final class PlayerProfileFlows {
             } else {
                 adminLabel = local.t("admin-neutral");
             }
-            rows.add(List.of(MenuButton.of(adminLabel, ACTION_ADMIN_FILTER)));
+            grid.row(MenuButton.of(adminLabel, "admin-filter"));
 
             List<MenuButton> paginationRow = new ArrayList<>();
             if (validPage > 1) {
-                paginationRow.add(MenuButton.of(local.t("previous"), ACTION_PREV));
+                paginationRow.add(MenuButton.of(local.t("previous"), "prev"));
             }
             if (validPage < totalPages) {
-                paginationRow.add(MenuButton.of(local.t("next"), ACTION_NEXT));
+                paginationRow.add(MenuButton.of(local.t("next"), "next"));
             }
             if (!paginationRow.isEmpty()) {
-                rows.add(paginationRow);
+                grid.row(paginationRow.toArray(new MenuButton[0]));
             }
 
             for (int i = 0; i < players.size(); i++) {
@@ -263,63 +249,16 @@ final class PlayerProfileFlows {
                         "nickname", playerDisplayService.resolveBaseName(onlinePlayer.data, onlinePlayer.player),
                         "pid", onlinePlayer.data.pid
                 ));
-                rows.add(List.of(MenuButton.of(label, ACTION_SELECT_PREFIX + i)));
+                grid.row(MenuButton.of(label, "select:" + i));
             }
 
-            List<MenuButton> navigation = new ArrayList<>();
-            if (session.canGoBack()) {
-                navigation.add(MenuButton.of(local.t("back"), ACTION_BACK));
-            }
-            navigation.add(MenuButton.of(local.t("close"), ACTION_CLOSE));
-            rows.add(navigation);
+            grid.defaultNavigation(session, local);
 
             return MenuScreen.normal(
                     local.t("player-menu-players-title"),
                     menuContent,
-                    rows
+                    grid.build()
             );
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<PlayersState> context, String actionId) {
-            Session session = context.session();
-            PlayersState state = context.state();
-
-            switch (actionId) {
-                case ACTION_ADMIN_FILTER -> {
-                    session.setNextStatus("admin");
-                    state.page = 1;
-                    context.render();
-                }
-                case ACTION_PREV -> {
-                    state.page = Math.max(1, state.page - 1);
-                    context.render();
-                }
-                case ACTION_NEXT -> {
-                    state.page = state.page + 1;
-                    context.render();
-                }
-                case ACTION_BACK -> context.goBack();
-                case ACTION_CLOSE -> context.close();
-                default -> {
-                    if (actionId.startsWith(ACTION_SELECT_PREFIX)) {
-                        int index = Integer.parseInt(actionId.substring(ACTION_SELECT_PREFIX.length()));
-                        List<Session> onlinePlayers = getFilteredOnlinePlayers(session, sessionService, playerDisplayService);
-                        int perPage = menu.globalConfig.eventsPerPage;
-                        var pagination = CustomGatherers.calculatePagination(onlinePlayers.size(), perPage);
-                        int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(state.page);
-                        int skip = (validPage - 1) * perPage;
-                        List<Session> players = onlinePlayers.stream()
-                                .skip(skip)
-                                .limit(perPage)
-                                .toList();
-                        if (index >= 0 && index < players.size()) {
-                            Session onlinePlayer = players.get(index);
-                            context.openRoute(MenuRoute.of(ROUTE_PLAYER).withParam("targetUuid", onlinePlayer.data.uuid));
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -350,7 +289,7 @@ final class PlayerProfileFlows {
         return MenuScreen.normal(
                 local.t(titleKey),
                 local.t(messageKey),
-                List.of(List.of(MenuButton.of(local.t("close"), ACTION_CLOSE)))
+                new MenuGrid().row(MenuButton.of(local.t("close"), "close")).build()
         );
     }
 
@@ -405,8 +344,8 @@ final class PlayerProfileFlows {
     }
 
     private static List<Session> getFilteredOnlinePlayers(Session viewerSession,
-                                                          SessionService sessionService,
-                                                          PlayerDisplayService playerDisplayService) {
+                                                           SessionService sessionService,
+                                                           PlayerDisplayService playerDisplayService) {
         return sessionService.streamCached()
                 .filter(onlineSession -> onlineSession != null && onlineSession.data != null && onlineSession.player != null)
                 .filter(onlineSession -> matchesAdminFilter(viewerSession, onlineSession))

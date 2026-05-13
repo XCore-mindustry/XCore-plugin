@@ -12,12 +12,13 @@ import org.xcore.plugin.service.moderation.ModerationService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
+import org.xcore.plugin.ui.flow.BaseMenuFlow;
 import org.xcore.plugin.ui.flow.MenuButton;
+import org.xcore.plugin.ui.flow.MenuGrid;
 import org.xcore.plugin.ui.flow.MenuPrompt;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.plugin.ui.route.MenuRoute;
-import org.xcore.plugin.ui.route.RoutedMenuFlow;
 
 import java.time.Duration;
 import java.util.List;
@@ -31,8 +32,6 @@ public class BanMenu extends Menu {
     private static final String ROUTE_FLOW = "ban.flow";
     private static final String PROMPT_DURATION = "ban-duration";
     private static final String PROMPT_REASON = "ban-reason";
-    private static final String ACTION_APPLY = "apply";
-    private static final String ACTION_CANCEL = "cancel";
 
     private final ModerationService moderationService;
     private final TimeService timeService;
@@ -78,20 +77,43 @@ public class BanMenu extends Menu {
         session.menuService.renderRoute(session, MenuRoute.of(ROUTE_FLOW));
     }
 
-    private final class BanFlow implements RoutedMenuFlow<BanFlowState> {
-        @Override
-        public String routeId() {
-            return ROUTE_FLOW;
+    private final class BanFlow extends BaseMenuFlow<BanFlowState> {
+        BanFlow() {
+            super(ROUTE_FLOW, BanFlowState.class);
+            action("apply", ctx -> applyBan(ctx));
+            action("cancel", ctx -> cancel(ctx));
+
+            onPrompt(PROMPT_DURATION, ctx -> {
+                var state = ctx.renderContext().state();
+                var session = ctx.renderContext().session();
+                String durationInput = ctx.text() == null ? "" : ctx.text().trim();
+                var parsed = timeService.parsePeriod(durationInput, TimeUnit.DAYS);
+                if (parsed == null || parsed.toEpochMilli() <= 0) {
+                    session.locale().send("error-wrong-period-format", args());
+                    ctx.renderContext().render();
+                    return;
+                }
+                state.durationInput = durationInput;
+                state.duration = Duration.ofMillis(parsed.toEpochMilli());
+                state.step = BanFlowState.Step.REASON;
+                ctx.renderContext().render();
+            }, ctx -> cancel(ctx));
+
+            onPrompt(PROMPT_REASON, ctx -> {
+                var state = ctx.renderContext().state();
+                state.reason = (ctx.text() == null || ctx.text().trim().isEmpty()) ? null : ctx.text().trim();
+                state.step = BanFlowState.Step.CONFIRM;
+                ctx.renderContext().render();
+            }, ctx -> {
+                var state = ctx.state();
+                state.step = BanFlowState.Step.DURATION;
+                ctx.render();
+            });
         }
 
         @Override
         public BanFlowState createState(Session session, MenuRoute route, BanFlowState currentState) {
             return currentState == null ? new BanFlowState() : currentState;
-        }
-
-        @Override
-        public Class<BanFlowState> stateType() {
-            return BanFlowState.class;
         }
 
         @Override
@@ -129,6 +151,11 @@ public class BanMenu extends Menu {
                     return placeholderScreen();
                 }
                 case CONFIRM -> {
+                    var grid = new MenuGrid();
+                    grid.row(
+                            MenuButton.of(local.t("ban-menu-confirm-action"), "apply"),
+                            MenuButton.of(local.t("cancel"), "cancel")
+                    );
                     return MenuScreen.followUp(
                             local.t("ban-menu-confirm-title"),
                             local.t("ban-menu-confirm-content", args(
@@ -136,62 +163,11 @@ public class BanMenu extends Menu {
                                     "duration", state.durationInput,
                                     "reason", state.reason == null ? local.t("none") : state.reason
                             )),
-                            List.of(List.of(
-                                    MenuButton.of(local.t("ban-menu-confirm-action"), ACTION_APPLY),
-                                    MenuButton.of(local.t("cancel"), ACTION_CANCEL)
-                            ))
+                            grid.build()
                     );
                 }
                 default -> {
                     return placeholderScreen();
-                }
-            }
-        }
-
-        @Override
-        public void onAction(MenuRenderContext<BanFlowState> context, String actionId) {
-            switch (actionId) {
-                case ACTION_APPLY -> applyBan(context);
-                case ACTION_CANCEL -> cancel(context);
-            }
-        }
-
-        @Override
-        public void onPromptSubmit(MenuRenderContext<BanFlowState> context, String promptId, String text) {
-            var state = context.state();
-            var session = context.session();
-
-            switch (promptId) {
-                case PROMPT_DURATION -> {
-                    String durationInput = text == null ? "" : text.trim();
-                    var parsed = timeService.parsePeriod(durationInput, TimeUnit.DAYS);
-                    if (parsed == null || parsed.toEpochMilli() <= 0) {
-                        session.locale().send("error-wrong-period-format", args());
-                        context.render();
-                        return;
-                    }
-                    state.durationInput = durationInput;
-                    state.duration = Duration.ofMillis(parsed.toEpochMilli());
-                    state.step = BanFlowState.Step.REASON;
-                    context.render();
-                }
-                case PROMPT_REASON -> {
-                    state.reason = (text == null || text.trim().isEmpty()) ? null : text.trim();
-                    state.step = BanFlowState.Step.CONFIRM;
-                    context.render();
-                }
-            }
-        }
-
-        @Override
-        public void onPromptCancel(MenuRenderContext<BanFlowState> context, String promptId) {
-            var state = context.state();
-
-            switch (promptId) {
-                case PROMPT_DURATION -> cancel(context);
-                case PROMPT_REASON -> {
-                    state.step = BanFlowState.Step.DURATION;
-                    context.render();
                 }
             }
         }
