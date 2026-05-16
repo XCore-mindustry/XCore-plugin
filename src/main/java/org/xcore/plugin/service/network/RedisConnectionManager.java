@@ -1,6 +1,6 @@
 package org.xcore.plugin.service.network;
 
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -36,7 +36,7 @@ public final class RedisConnectionManager {
             commands = connection.sync();
             connectionWarningLogged = false;
             transportHealth.markConnected();
-            Log.info("Redis backend connected, url=@", sanitizeRedisUrl(config.redisUrl));
+            PLog.info("Redis connected: url=@", sanitizeRedisUrl(config.redisUrl));
         } catch (RuntimeException e) {
             closeResources();
             transportHealth.markUnavailable();
@@ -61,7 +61,7 @@ public final class RedisConnectionManager {
             transportHealth.markUnavailable();
             if (!connectionWarningLogged) {
                 connectionWarningLogged = true;
-                Log.warn("Redis backend unavailable, continuing without publish: @", e.getMessage());
+                PLog.warn("Redis backend unavailable, continuing without publish: @", e.getMessage());
             }
             return false;
         }

@@ -3,7 +3,7 @@ package org.xcore.plugin.command.controller.server;
 import arc.Core;
 import arc.files.Fi;
 import arc.struct.Seq;
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import com.google.gson.Gson;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -87,7 +87,7 @@ public class MaintainController implements CloudServerController {
     @Command("exit")
     @CommandDescription("Terminates the server process immediately.")
     public void exit(XCoreSender sender) {
-        Log.info("Shutting down server.");
+        PLog.info("Shutting down server.");
         netServer.kickAll(Packets.KickReason.serverRestarting);
         System.exit(0);
     }
@@ -101,13 +101,13 @@ public class MaintainController implements CloudServerController {
         Session targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
 
         if (targetSession == null || targetSession.player == null) {
-            Log.err("[scarlet]Player not found.");
+            PLog.err("&lrPlayer not found.");
             return;
         }
 
         targetSession.player.team(team);
 
-        Log.info("[green]Player's team [white]" + targetSession.player.name() + "[green]changed to [white]" + team.name);
+        PLog.info("&gPlayer '@' team changed to &w@&g.", targetSession.player.name(), team.name);
     }
 
     @Command("set-gamemode [name]")
@@ -115,7 +115,7 @@ public class MaintainController implements CloudServerController {
         Gamemode mode = Seq.with(Gamemode.all).find(g -> g.name().equalsIgnoreCase(name));
 
         if (mode == null) {
-            Log.err("[scarlet]Error: Mode " + name + " not found. Available: survival, sandbox, attack, pvp.");
+            PLog.err("&lrMode '@' not found. Available: survival, sandbox, attack, pvp.", name);
             return;
         }
 
@@ -126,16 +126,16 @@ public class MaintainController implements CloudServerController {
         Core.settings.put("defaultGameMode", mode.name());
         Core.settings.forceSave();
 
-        Log.info("Game mode changed to: " + mode.name());
+        PLog.info("Game mode changed to '@'.", mode.name());
     }
 
     @Command("redis-reload")
     @CommandDescription("Reloads Redis transport connection.")
     public void redisReload(XCoreSender sender) {
         if (network.reloadBackend()) {
-            Log.info("Redis transport reloaded: backend=@", network.backendName());
+            PLog.info("Redis transport reloaded: backend=@", network.backendName());
         } else {
-            Log.err("Redis transport reload failed. Transport backend is now disconnected.");
+            PLog.err("Redis transport reload failed. Transport backend is now disconnected.");
         }
     }
 
@@ -143,9 +143,9 @@ public class MaintainController implements CloudServerController {
     @CommandDescription("Reloads transport backend using current config.")
     public void transportReload(XCoreSender sender) {
         if (network.reloadBackend()) {
-            Log.info("Transport backend reloaded: backend=@", network.backendName());
+            PLog.info("Transport backend reloaded: backend=@", network.backendName());
         } else {
-            Log.err("Transport backend reload failed. Transport backend is now disconnected.");
+            PLog.err("Transport backend reload failed. Transport backend is now disconnected.");
         }
     }
 
@@ -154,7 +154,7 @@ public class MaintainController implements CloudServerController {
     public void ggRestart(XCoreSender sender,
                           @Argument(value = "state", description = "New state") @Default("true") boolean state) {
         pluginState.restartOnGameOver = state;
-        Log.info("GameOver restart turned @", pluginState.restartOnGameOver ? "on" : "off");
+        PLog.info("GameOver restart turned @", pluginState.restartOnGameOver ? "on" : "off");
     }
 
     @Command("db-delete-bots")
@@ -165,7 +165,7 @@ public class MaintainController implements CloudServerController {
             topMenuCacheService.invalidateAll();
         }
         network.post(new PlayerDataCacheReloadCommandV1(config.server));
-        Log.info("Deleted @ bots from database.", deleted);
+        PLog.info("Deleted @ bots from database.", deleted);
     }
 
     @Command("audit-map-votes")
@@ -173,7 +173,7 @@ public class MaintainController implements CloudServerController {
     public void auditMapVotes(XCoreSender sender) {
         var report = mapIdentityAuditService.audit();
 
-        Log.info("Map identity audit: mapsScanned=@ playersScanned=@ conflictGroups=@ conflictingMaps=@ affectedPlayers=@ affectedVoteReferences=@",
+        PLog.info("Map identity audit: mapsScanned=@ playersScanned=@ conflictGroups=@ conflictingMaps=@ affectedPlayers=@ affectedVoteReferences=@",
                 report.mapsScanned(),
                 report.playersScanned(),
                 report.conflictGroups().size(),
@@ -182,12 +182,12 @@ public class MaintainController implements CloudServerController {
                 report.affectedVoteReferenceCount());
 
         if (!report.hasConflicts()) {
-            Log.info("No legacy map identity collisions found.");
+            PLog.info("No legacy map identity collisions found.");
             return;
         }
 
         for (var group : report.conflictGroups()) {
-            Log.info("Conflict group '@' for map '@' mode='@': maps=@ affectedPlayers=@ affectedVoteReferences=@",
+            PLog.info("Conflict group '@' for map '@' mode='@': maps=@ affectedPlayers=@ affectedVoteReferences=@",
                     group.legacyKey(),
                     group.mapName(),
                     group.gameMode(),
@@ -196,7 +196,7 @@ public class MaintainController implements CloudServerController {
                     group.affectedVoteReferences());
 
             for (var map : group.maps()) {
-                Log.info("  mapId=@ file='@' author='@' like=@ dislike=@ reputation=@",
+                PLog.info("  mapId=@ file='@' author='@' like=@ dislike=@ reputation=@",
                         map.mapId(),
                         map.fileName(),
                         map.author(),
@@ -215,7 +215,7 @@ public class MaintainController implements CloudServerController {
                      @Flag(value = "except", description = "Invert targets (execute everywhere EXCEPT targets)") boolean except) {
 
         if (command == null || command.isBlank()) {
-            Log.err("Usage: gcmd [--targets server-a,server-b] [--except] -- <command>");
+            PLog.err("Usage: gcmd [--targets server-a,server-b] [--except] -- <command>");
             return;
         }
 
@@ -223,15 +223,15 @@ public class MaintainController implements CloudServerController {
         String[] targets = parseTargetList(targetsCsv);
 
         if (targets.length == 0) {
-            Log.info("Dispatching '@' to [ALL]", normalizedCommand);
+            PLog.info("Dispatching '@' to [ALL]", normalizedCommand);
             network.post(new ServerCommandExecuteCommandV1(normalizedCommand, List.of(), false));
             return;
         }
 
         if (except) {
-            Log.info("Dispatching '@' to [ALL EXCEPT @]", normalizedCommand, Seq.with(targets));
+            PLog.info("Dispatching '@' to [ALL EXCEPT @]", normalizedCommand, Seq.with(targets));
         } else {
-            Log.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
+            PLog.info("Dispatching '@' to @", normalizedCommand, Seq.with(targets));
         }
 
         network.post(new ServerCommandExecuteCommandV1(normalizedCommand, Arrays.asList(targets), except));
@@ -254,22 +254,22 @@ public class MaintainController implements CloudServerController {
     public void disableCmd(XCoreSender sender, @Argument("command") @Greedy String command) {
         String normalized = toggleConfigService.normalizeCommandName(command);
         if (normalized == null) {
-            Log.err("Command name cannot be empty.");
+            PLog.err("Command name cannot be empty.");
             return;
         }
 
         String rootCommand = toggleConfigService.extractRootCommand(normalized);
         if (PROTECTED_DISABLE_COMMANDS.contains(rootCommand)) {
-            Log.err("Command '@' cannot be disabled.", rootCommand);
+            PLog.err("Command '@' cannot be disabled.", rootCommand);
             return;
         }
 
         if (!toggleConfigService.disable(RuntimeToggleConfigService.ToggleTarget.COMMAND, normalized).changed()) {
-            Log.info("Command '@' is already disabled.", normalized);
+            PLog.info("Command '@' is already disabled.", normalized);
             return;
         }
 
-        Log.info("Command '@' disabled.", normalized);
+        PLog.info("Command '@' disabled.", normalized);
     }
 
     @Command("enable-cmd <command>")
@@ -277,27 +277,27 @@ public class MaintainController implements CloudServerController {
     public void enableCmd(XCoreSender sender, @Argument("command") @Greedy String command) {
         String normalized = toggleConfigService.normalizeCommandName(command);
         if (normalized == null) {
-            Log.err("Command name cannot be empty.");
+            PLog.err("Command name cannot be empty.");
             return;
         }
 
         if (!toggleConfigService.enable(RuntimeToggleConfigService.ToggleTarget.COMMAND, normalized).changed()) {
-            Log.info("Command '@' was not disabled.", normalized);
+            PLog.info("Command '@' was not disabled.", normalized);
             return;
         }
 
-        Log.info("Command '@' enabled.", normalized);
+        PLog.info("Command '@' enabled.", normalized);
     }
 
     @Command("disabled-cmds")
     @CommandDescription("Lists all disabled commands.")
     public void disabledCmds(XCoreSender sender) {
         if (toggleConfigService.isEmpty(RuntimeToggleConfigService.ToggleTarget.COMMAND)) {
-            Log.info("No commands are disabled.");
+            PLog.info("No commands are disabled.");
             return;
         }
 
-        Log.info("Disabled commands: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.COMMAND));
+        PLog.info("Disabled commands: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.COMMAND));
     }
 
     @Command("disable-feature <feature>")
@@ -305,17 +305,17 @@ public class MaintainController implements CloudServerController {
     public void disableFeature(XCoreSender sender, @Argument("feature") String featureKey) {
         var feature = Feature.fromKey(featureKey);
         if (feature.isEmpty()) {
-            Log.err("Unknown feature '@'. Available: @", featureKey,
+            PLog.err("Unknown feature '@'. Available: @", featureKey,
                     java.util.Arrays.stream(Feature.values()).map(Feature::key).collect(java.util.stream.Collectors.joining(", ")));
             return;
         }
 
         if (!toggleConfigService.disable(RuntimeToggleConfigService.ToggleTarget.FEATURE, feature.get().key()).changed()) {
-            Log.info("Feature '@' is already disabled.", feature.get().key());
+            PLog.info("Feature '@' is already disabled.", feature.get().key());
             return;
         }
 
-        Log.info("Feature '@' disabled.", feature.get().key());
+        PLog.info("Feature '@' disabled.", feature.get().key());
     }
 
     @Command("enable-feature <feature>")
@@ -323,28 +323,28 @@ public class MaintainController implements CloudServerController {
     public void enableFeature(XCoreSender sender, @Argument("feature") String featureKey) {
         var feature = Feature.fromKey(featureKey);
         if (feature.isEmpty()) {
-            Log.err("Unknown feature '@'. Available: @", featureKey,
+            PLog.err("Unknown feature '@'. Available: @", featureKey,
                     java.util.Arrays.stream(Feature.values()).map(Feature::key).collect(java.util.stream.Collectors.joining(", ")));
             return;
         }
 
         if (!toggleConfigService.enable(RuntimeToggleConfigService.ToggleTarget.FEATURE, feature.get().key()).changed()) {
-            Log.info("Feature '@' was not disabled.", feature.get().key());
+            PLog.info("Feature '@' was not disabled.", feature.get().key());
             return;
         }
 
-        Log.info("Feature '@' enabled.", feature.get().key());
+        PLog.info("Feature '@' enabled.", feature.get().key());
     }
 
     @Command("disabled-features")
     @CommandDescription("Lists all disabled features.")
     public void disabledFeatures(XCoreSender sender) {
         if (toggleConfigService.isEmpty(RuntimeToggleConfigService.ToggleTarget.FEATURE)) {
-            Log.info("No features are disabled.");
+            PLog.info("No features are disabled.");
             return;
         }
 
-        Log.info("Disabled features: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.FEATURE));
+        PLog.info("Disabled features: @", toggleConfigService.list(RuntimeToggleConfigService.ToggleTarget.FEATURE));
     }
 
 }

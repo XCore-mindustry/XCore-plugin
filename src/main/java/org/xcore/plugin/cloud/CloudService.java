@@ -1,6 +1,5 @@
 package org.xcore.plugin.cloud;
 
-import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -54,8 +53,6 @@ public class CloudService {
 
     @PostConstruct
     public void init() {
-        Log.info("[XCore] Initializing Cloud Command Infrastructure...");
-
         this.clientManager = cloudManagerFactory.createManager(Vars.netServer.clientCommands);
         this.serverManager = cloudManagerFactory.createManager(ServerControl.instance.handler);
 

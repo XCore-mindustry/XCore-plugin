@@ -1,6 +1,6 @@
 package org.xcore.plugin.security.ingress;
 
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
@@ -36,7 +36,7 @@ public class IngressService {
 
         this.virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-        Log.info("[Ingress] Initialized with @ fast checks and @ slow checks",
+        PLog.infoTag("Ingress", "Ready: @ fast checks, @ slow checks",
                 fastChecks.size(), slowChecks.size());
     }
 
@@ -50,12 +50,12 @@ public class IngressService {
             try {
                 AccessResult result = check.check(con, packet);
                 if (result instanceof AccessResult.Denied denied) {
-                    Log.debug("[Ingress] '@' denied: @", check.name(), denied.reason());
+                    PLog.debugTag("Ingress", "'@' denied: @", check.name(), denied.reason());
                     return denied;
                 }
             } catch (Exception e) {
-                Log.err("[Ingress] '@' error", check.name());
-                Log.err(e);
+                PLog.errTag("Ingress", "'@' error", check.name());
+                PLog.errTag("Ingress", e);
             }
         }
 
@@ -76,8 +76,8 @@ public class IngressService {
                 try {
                     return check.check(con, packet);
                 } catch (Exception e) {
-                    Log.err("[Ingress] '@' error", check.name());
-                    Log.err(e);
+                    PLog.err("[Ingress] '@' error", check.name());
+                    PLog.err(e);
                     return AccessResult.Allowed.INSTANCE;
                 }
             }));
@@ -95,14 +95,14 @@ public class IngressService {
                         }
                     }
                 } else {
-                    Log.warn("[Ingress] A parallel check timed out");
+                    PLog.warnTag("Ingress", "A parallel check timed out");
                 }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new AccessResult.Denied("Interrupted", true);
         } catch (ExecutionException e) {
-            Log.err("[Ingress] Check execution failed", e);
+            PLog.errTag("Ingress", "Check execution failed", e);
         } finally {
             cancelRemaining(futures);
         }

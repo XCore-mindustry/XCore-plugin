@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.server;
 
 import arc.util.CommandHandler;
-import arc.util.Log;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
@@ -21,6 +20,7 @@ import org.xcore.cloud.mindustry.MindustryCloudCommand;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
+import org.xcore.plugin.common.PLog;
 
 import java.util.*;
 
@@ -48,12 +48,12 @@ public class ServerHelpController implements CloudServerController {
         List<UnifiedCommand> allCommands = collectAllCommands(sender);
         allCommands.sort(Comparator.comparing(UnifiedCommand::name));
 
-        Log.info("Commands:");
+        PLog.info("&lcCommands:");
         for (UnifiedCommand cmd : allCommands) {
             String desc = cmd.description();
-            Log.info("   @ - @", cmd.name(), desc);
+            PLog.info("  &ly@&fr - &lw@", cmd.name(), desc);
             for (String syntax : cmd.syntaxes()) {
-                Log.info("      @", syntax);
+                PLog.info("    &lg@", syntax);
             }
         }
     }
@@ -65,7 +65,7 @@ public class ServerHelpController implements CloudServerController {
 
         if (result instanceof VerboseCommandResult<XCoreSender> verbose) {
             if (cloud.get().isCommandDisabled(verbose.entry().command())) {
-                Log.info("Command '@' not found.", query);
+                PLog.err("&lrCommand '&w@&lr' not found.", query);
                 return;
             }
 
@@ -76,7 +76,7 @@ public class ServerHelpController implements CloudServerController {
         }
 
         if (result instanceof MultipleCommandResult<XCoreSender> multiple) {
-            Log.info("Multiple matches found: @", Strings.join(", ", multiple.childSuggestions()));
+            PLog.info("&lyMultiple matches found: &lw@", Strings.join(", ", multiple.childSuggestions()));
             return;
         }
 
@@ -91,7 +91,7 @@ public class ServerHelpController implements CloudServerController {
         if (legacyCmd != null && !cloud.get().isCommandDisabled(legacyCmd.text)) {
             printEntryDetails(UnifiedCommand.fromLegacy(legacyCmd));
         } else {
-            Log.info("Command '@' not found.", query);
+            PLog.err("&lrCommand '&w@&lr' not found.", query);
         }
     }
 
@@ -103,22 +103,22 @@ public class ServerHelpController implements CloudServerController {
     }
 
     private void printEntryDetails(UnifiedCommand cmd) {
-        Log.info("Command: @", cmd.name());
-        Log.info("Description: @", cmd.description());
+        PLog.info("&lcCommand: &ly&fb@&fr", cmd.name());
+        PLog.info("&lcDescription: &lw@", cmd.description());
 
         if (cmd.syntaxes().size() == 1) {
-            Log.info("Usage: @", cmd.syntaxes().getFirst());
+            PLog.info("&lcUsage: &lg@", cmd.syntaxes().getFirst());
         } else {
-            Log.info("Usages:");
+            PLog.info("&lcUsages:");
             for (String syntax : cmd.syntaxes()) {
-                Log.info("   @", syntax);
+                PLog.info("  &lg@", syntax);
             }
         }
 
         if (cmd.isCloudCommand() && cmd.primaryCloudEntry() != null) {
             var root = cmd.primaryCloudEntry().command().rootComponent();
             if (!root.aliases().isEmpty()) {
-                Log.info("Aliases: @", Strings.join(", ", root.aliases()));
+                PLog.info("&lcAliases: &ly@", Strings.join(", ", root.aliases()));
             }
 
             List<CommandVariant> cloudVariants = cmd.cloudVariants();
@@ -138,15 +138,15 @@ public class ServerHelpController implements CloudServerController {
                 if (args.isEmpty()) continue;
 
                 if (hasMultipleVariants) {
-                    Log.info("Arguments for @:", variant.syntax());
+                    PLog.info("&lcArguments for &lg@&lc:", variant.syntax());
                 } else {
-                    Log.info("Arguments:");
+                    PLog.info("&lcArguments:");
                 }
 
                 for (var component : args) {
                     String desc = component.description().textDescription();
                     if (desc.isEmpty()) desc = "No description";
-                    Log.info("   @ - @", component.name(), desc);
+                    PLog.info("  &ly@&fr - &lw@", component.name(), desc);
                 }
             }
         }

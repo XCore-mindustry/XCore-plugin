@@ -1,7 +1,7 @@
 package org.xcore.plugin.event.handler;
 
 import arc.func.Cons;
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
@@ -51,10 +51,10 @@ public class MapVoteHandler {
     public Cons<GameOverEvent> getGameOverListener() {
         return event -> {
             if (state.rules.waves) {
-                Log.info("Game over! Reached wave @ with @ players online on map @.",
+                PLog.info("Game over. Reached wave @ with @ players online on map @.",
                         state.wave, Groups.player.size(), Strings.capitalize(state.map.plainName()));
             } else {
-                Log.info("Game over! Team @ is victorious with @ players online on map @.",
+                PLog.info("Game over. Team @ is victorious with @ players online on map @.",
                         event.winner.name, Groups.player.size(), Strings.capitalize(state.map.plainName()));
             }
 
@@ -83,13 +83,13 @@ public class MapVoteHandler {
                             ? "<null>"
                             : ServerControl.instance.lastMode.name();
 
-                    Log.info("About to load next map '@' (file='@', author='@', mode='@')",
+                    PLog.info("Loading next map '@' (file='@', author='@', mode='@')",
                             nextMapName, nextMapFile, nextMapAuthor, nextMapMode);
 
                     try {
                         world.loadMap(nextMap, nextMap.applyRules(ServerControl.instance.lastMode));
                     } catch (Throwable t) {
-                        Log.err("Failed to load next map '@' (file='@', author='@', mode='@')", t,
+                        PLog.err("Failed to load next map '@' (file='@', author='@', mode='@')", t,
                                 nextMapName, nextMapFile, nextMapAuthor, nextMapMode);
                         throw t;
                     }

@@ -1,7 +1,7 @@
 package org.xcore.plugin.service;
 
 import arc.func.Cons;
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.service.network.RedisNetworkBackend.Subscription;
 import org.xcore.plugin.service.network.RedisNetworkBackend.RequestSubscription;
 import io.avaje.inject.PostConstruct;
@@ -30,7 +30,7 @@ public class NetworkService {
         try {
             backend.connect();
         } catch (Exception e) {
-            Log.err("Exception occurred while connecting transport backend", e);
+            PLog.err("Failed to connect transport backend", e);
         }
     }
 
@@ -41,7 +41,7 @@ public class NetworkService {
             replayReconnectHooks();
             return true;
         } catch (Exception e) {
-            Log.err("Failed to reload Redis transport backend", e);
+            PLog.err("Failed to reload Redis transport backend", e);
             backend.disconnect();
             return false;
         }

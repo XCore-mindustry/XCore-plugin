@@ -3,6 +3,7 @@ package org.xcore.plugin.service;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.PlayerData;
@@ -84,7 +85,7 @@ public class EventService {
         eventDataRepository.findActive().ifPresent(event -> {
             if (event.isTemporary && event.plannedEndTime > 0 && now > event.plannedEndTime) {
                 eventDataRepository.finishActiveEvent();
-                arc.util.Log.info("[XCore] Event '@' automatically finished by timer.", event.name);
+                PLog.info("Event '@' finished by timer.", event.name);
                 sessionService.broadcast("event-end", args("name", event.name));
             }
         });

@@ -200,7 +200,6 @@ public class BanMenu extends Menu {
                 "adminName", session.player.coloredName(),
                 "playerName", state.targetColoredName
         ));
-        arc.util.Log.info("@ banned @ (@) for @", session.player.plainName(), state.targetPlainName, state.targetUuid, state.durationInput);
         session.locale().send("commands-ban-success", args("nickname", ban.name));
         context.close();
     }

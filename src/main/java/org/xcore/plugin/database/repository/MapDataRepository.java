@@ -1,7 +1,6 @@
 package org.xcore.plugin.database.repository;
 
 import arc.struct.ObjectMap;
-import arc.util.Log;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
@@ -12,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.model.MapData;
 
@@ -181,7 +181,7 @@ public class MapDataRepository extends DataRepository<MapData> {
         );
 
         if (claimed != null) {
-            Log.info("[XCore] Starting daily degradation of map popularity and interest...");
+            PLog.info("Map popularity degradation started.");
             decayPopularity(0.1);
             decayInterest(0.1);
         }

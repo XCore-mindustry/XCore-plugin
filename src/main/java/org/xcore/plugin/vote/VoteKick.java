@@ -1,7 +1,7 @@
 package org.xcore.plugin.vote;
 
 import arc.func.Cons;
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import com.ospx.flubundle.Bundle;
 import io.avaje.inject.AssistFactory;
 import io.avaje.inject.Assisted;
@@ -100,7 +100,7 @@ public class VoteKick extends VoteSession {
                 "required", votesRequired());
         sessionService.broadcast("votekick-vote", bundleArgs);
         var message = systemLocal.format("votekick-vote", bundleArgs);
-        Log.info(message);
+        PLog.info("Vote kick started: @ (@)", target.plainName(), reason);
 
         if (votes() == 1) {
             sessionService.getCachedAdminTools(
@@ -223,7 +223,7 @@ public class VoteKick extends VoteSession {
                 "target", target.coloredName(),
                 "admin", admin.coloredName());
         sessionService.broadcast("votekick-cancelled", bundleArgs);
-        Log.info(systemLocal.format("votekick-cancelled", bundleArgs));
+        PLog.info("Vote kick cancelled: @", target.plainName());
     }
 
     @Override

@@ -3,7 +3,7 @@ package org.xcore.plugin.session;
 import arc.func.Boolf;
 import arc.func.Cons;
 import arc.struct.ObjectMap;
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import jakarta.inject.Inject;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
@@ -51,7 +51,6 @@ public class SessionService {
 
     @PostConstruct
     void init() {
-        Log.info("PlayerSessionService initialized");
     }
 
     /**
@@ -126,7 +125,7 @@ public class SessionService {
 
         sessionCache.put(player.uuid(), session);
 
-        Log.debug("Player session registered: @ (@)", session.data.nickname, player.uuid());
+        PLog.debug("Player session registered: @ (@)", session.data.nickname, player.uuid());
         return session;
     }
 
@@ -142,7 +141,7 @@ public class SessionService {
         var data = sessionCache.remove(player.uuid());
 
         if (data != null) {
-            Log.debug("Player session unregistered: @ (@)", data.data.nickname, player.uuid());
+            PLog.debug("Player session unregistered: @ (@)", data.data.nickname, player.uuid());
         }
 
         return data;
@@ -199,7 +198,7 @@ public class SessionService {
             sessionCache.put(player.uuid(), session);
         });
 
-        Log.info("Player cache reloaded: @ players", sessionCache.size);
+        PLog.info("Player cache reloaded: @ players", sessionCache.size);
     }
 
     /**

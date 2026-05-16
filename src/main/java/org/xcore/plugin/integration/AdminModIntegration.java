@@ -1,6 +1,6 @@
 package org.xcore.plugin.integration;
 
-import arc.util.Log;
+import org.xcore.plugin.common.PLog;
 import arc.struct.ObjectSet;
 import com.google.gson.Gson;
 import io.avaje.inject.PostConstruct;
@@ -50,7 +50,7 @@ public class AdminModIntegration {
             try {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
-                Log.err("Error processing ban request from @: @", player.name, e.getMessage());
+                PLog.err("Failed to process ban request from '@': @", player.name, e.getMessage());
                 session.locale().send("error-processing-request", args());
                 return;
             }
@@ -84,7 +84,7 @@ public class AdminModIntegration {
                     "adminName", player.coloredName(),
                     "playerName", req.name != null ? req.name : targetData.nickname
             ));
-            Log.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
+            PLog.info("@ banned @ (@) for @", player.plainName(), targetData.nickname, targetData.uuid, req.duration);
             session.locale().send("commands-ban-success", args("nickname", targetData.nickname));
         });
 
@@ -95,7 +95,7 @@ public class AdminModIntegration {
             try {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
-                Log.err("Error processing ban cancellation from @: @", player.name, e.getMessage());
+                PLog.err("Failed to process ban cancellation from '@': @", player.name, e.getMessage());
                 if (session != null) {
                     session.locale().send("error-processing-request", args());
                 }
@@ -118,7 +118,7 @@ public class AdminModIntegration {
             var data = session.data;
 
             if (data == null || data.adminModVersion != null) return;
-            Log.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
+            PLog.info("Player @ joined with the Admin mod version '@'", player.plainName(), content);
 
             var requiredVersion = "1.3";
             if (VersionComparator.compareVersions(content, "1.3") < 0) {
