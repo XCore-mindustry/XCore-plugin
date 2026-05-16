@@ -39,10 +39,10 @@ public class PluginEventService {
         Events.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
         Events.on(String.class, gameLifecycleHandler::onWorldReload);
 
+        Events.on(BlockBuildBeginEvent.class, gameDataHandler::onBlockBuildBegin);
         Events.on(BlockBuildEndEvent.class, gameDataHandler::onBlockBuild);
         Events.on(BlockDestroyEvent.class, gameDataHandler::onBlockDestroy);
-        Events.on(UnitCreateEvent.class, gameDataHandler::onUnitCreate);
-        Events.on(UnitDestroyEvent.class, gameDataHandler::onUnitDestroy);
+        Events.on(PickupEvent.class, gameDataHandler::onPickup);
         Events.on(PlayerJoin.class, gameDataHandler::onPlayerJoin);
         Events.on(PlayerLeave.class, gameDataHandler::onPlayerLeave);
 
