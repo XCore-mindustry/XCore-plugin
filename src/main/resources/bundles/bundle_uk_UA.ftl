@@ -345,7 +345,6 @@ player-menu-player-content =
     { "" }
     { "" }[accent]■ Бойова ефективність[]
     { "" }[gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
-    { "" }[gray]Юніти (Створ/Вбито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-player-max-rank = Досягнуто максимального рангу
 player-menu-player-hexed-progress = { "[" }gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = { "[" }gray]немає даних[]

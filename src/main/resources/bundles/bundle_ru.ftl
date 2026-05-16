@@ -373,7 +373,6 @@ player-menu-player-content =
     { "" }
     { "" }[accent]■ Боевая эффективность[]
     { "" }[gray]Блоки (Стр/Разб/Уничт): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
-    { "" }[gray]Юниты (Созд/Убито): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-players = Онлайн игроки
 player-menu-players-title = { "[" }orange]{ -xcore } — Онлайн игроки
 player-menu-players-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]

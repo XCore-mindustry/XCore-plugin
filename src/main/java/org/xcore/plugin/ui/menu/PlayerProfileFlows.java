@@ -123,8 +123,6 @@ final class PlayerProfileFlows {
                             "blocksBuilt", numberFormat.format(overallStats.blocksBuilt()),
                             "blocksDeconstructed", numberFormat.format(overallStats.blocksDeconstructed()),
                             "blocksDestroyed", numberFormat.format(overallStats.blocksDestroyed()),
-                            "unitsProduced", numberFormat.format(overallStats.unitsProduced()),
-                            "unitsDestroyed", numberFormat.format(overallStats.unitsDestroyed()),
                             "pvpSummary", formatPvpSummary(local, statsOverview.pvp(), numberFormat),
                             "survivalSummary", formatSurvivalSummary(local, statsOverview.survival(), numberFormat),
                             "hexedSummary", formatHexedSummary(local, statsOverview.hexed(), numberFormat),

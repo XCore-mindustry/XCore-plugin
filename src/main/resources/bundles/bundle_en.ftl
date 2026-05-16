@@ -372,7 +372,6 @@ player-menu-player-content =
     { "" }
     { "" }[accent]■ Combat Efficiency[]
     { "" }[gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
-    { "" }[gray]Units (Prod/Kills): [lime]{ $unitsProduced } [darkgray]/ [scarlet]{ $unitsDestroyed }[]
 player-menu-players = Online players
 player-menu-players-title = { "[" }orange]{ -xcore } — Online players
 player-menu-players-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
