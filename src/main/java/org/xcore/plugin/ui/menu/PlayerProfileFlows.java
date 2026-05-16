@@ -335,10 +335,11 @@ final class PlayerProfileFlows {
 
         int currentPoints = targetData.hexedPoints;
         int requiredPoints = rank.next.requirements.wins();
+        int remainingWins = requiredPoints - currentPoints;
         String nextRankName = local.t("hexed-ranks-" + rank.next.name());
         return local.t("player-menu-player-hexed-progress", args(
                 "currentPoints", currentPoints,
-                "requiredPoints", requiredPoints,
+                "requiredPoints", remainingWins,
                 "nextRankName", nextRankName
         ));
     }
