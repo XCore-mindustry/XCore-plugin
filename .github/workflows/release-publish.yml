@@ -35,7 +35,7 @@ jobs:
           echo "XCORE_PUBLISH_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Build, test and publish release
-        run: ./gradlew --refresh-dependencies test publishMavenPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        run: ./gradlew --refresh-dependencies validateRelease publishMavenPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
         env:
           ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
           ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
@@ -45,7 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-libs
-          path: build/libs/
+          path: build/libs/release/
 
       - name: Upload test reports
         if: always()

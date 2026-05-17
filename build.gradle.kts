@@ -191,6 +191,14 @@ tasks.register("getProjectVersion") {
     doLast { println(project.version.toString()) }
 }
 
+tasks.register("validateCi") {
+    dependsOn(tasks.test, tasks.shadowJar)
+}
+
+tasks.register("validateRelease") {
+    dependsOn(tasks.test, tasks.named("shadowJarRelease"))
+}
+
 tasks.withType<MindustryExec> {
     group = Toxopid.TASK_GROUP_NAME
     classpath(tasks.downloadMindustryServer)
