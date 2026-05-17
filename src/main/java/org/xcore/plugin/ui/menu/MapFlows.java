@@ -21,6 +21,7 @@ import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
@@ -108,6 +109,11 @@ final class MapFlows {
             var local = context.locale();
             var grid = new MenuGrid();
 
+            for (int i = 0; i < pageMaps.size(); i++) {
+                Map map = pageMaps.get(i);
+                grid.row(MenuButton.of(formatMapButton(local, map), "map:" + i));
+            }
+
             List<MenuButton> paginationRow = new ArrayList<>();
             if (validPage > 1) {
                 paginationRow.add(MenuButton.of(local.t("previous"), "previous"));
@@ -119,18 +125,30 @@ final class MapFlows {
                 grid.row(paginationRow.toArray(new MenuButton[0]));
             }
 
-            for (int i = 0; i < pageMaps.size(); i++) {
-                Map map = pageMaps.get(i);
-                grid.row(MenuButton.of(map.name(), "map:" + i));
-            }
-
             grid.defaultNavigation(session, local);
 
             return MenuScreen.normal(
                     local.t("commands-maps-title"),
-                    local.t("commands-maps-content", args("page", validPage, "total", pagination.totalPages())),
+                    local.t("commands-maps-content", args(
+                            "current", state.map == null ? local.t("never") : state.map.name(),
+                            "page", validPage,
+                            "total", pagination.totalPages()
+                    )),
                     grid.build()
             );
+        }
+
+        private String formatMapButton(org.xcore.plugin.localization.Localization local, Map map) {
+            boolean current = state.map != null && Objects.equals(mapIdentity(map), mapIdentity(state.map));
+            String name = map.name();
+            return current ? local.t("commands-maps-current-row", args("name", name)) : name;
+        }
+
+        private String mapIdentity(Map map) {
+            if (map == null) {
+                return "";
+            }
+            return map.file == null ? map.name() : map.file.name();
         }
     }
 
@@ -203,10 +221,13 @@ final class MapFlows {
             Map mindustryMap = mapService.findPersistedMap(mapData);
             String last = mapData.playedTimes == 0
                     ? session.locale().t("never")
-                    : (System.currentTimeMillis() - mapData.lastPlayedTime) / 60000 + "m";
+                    : menu.formatPlayTime((int) ((System.currentTimeMillis() - mapData.lastPlayedTime) / 60000), session.locale());
             String desc = (mindustryMap == null || mindustryMap.description().isEmpty())
                     ? session.locale().t("no-description")
                     : mindustryMap.description();
+            String minDuration = menu.formatPlayTime((int) (mapData.minimumGameTime / 60000), session.locale());
+            String averageDuration = menu.formatPlayTime((int) (mapData.averageGameTime / 60000), session.locale());
+            String maxDuration = menu.formatPlayTime((int) (mapData.maximumGameTime / 60000), session.locale());
             Boolean currentVote = session.data.mapVotes.get(mapData.id.toString());
             String likeTxt = Boolean.TRUE.equals(currentVote) ? session.locale().t("map-vote-like-selected") : session.locale().t("map-vote-like");
             String dislikeTxt = Boolean.FALSE.equals(currentVote) ? session.locale().t("map-vote-dislike-selected") : session.locale().t("map-vote-dislike");
@@ -228,7 +249,7 @@ final class MapFlows {
                 grid.row(rtvRow.toArray(new MenuButton[0]));
             }
 
-            grid.row(MenuButton.of(session.locale().t("map-maps"), "maps"));
+            grid.row(MenuButton.of(session.locale().t("map-maps-back"), "maps"));
 
             if (config.isEvent()) {
                 grid.row(MenuButton.of(session.locale().t("event-menu-create-start-map"), "create-start"));
@@ -246,7 +267,7 @@ final class MapFlows {
                             "interest", String.format("%.1f", mapData.interest), "played", mapData.playedTimes,
                             "playedYear", mapData.playedTimesYear, "lastPlayed", last,
                             "like", mapData.like, "dislike", mapData.dislike,
-                            "min", mapData.minimumGameTime / 60000, "avg", mapData.averageGameTime / 60000, "max", mapData.maximumGameTime / 60000
+                            "min", minDuration, "avg", averageDuration, "max", maxDuration
                     )),
                     grid.build()
             );

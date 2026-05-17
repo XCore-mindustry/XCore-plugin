@@ -286,18 +286,29 @@ votekick-success =
 # Maps & RTV
 # ==============================================================================
 commands-map-description = Statistics of a specific map.
-commands-map-title = { "[" }orange]{ -xcore } — Statistics
+commands-map-title = { "[" }orange]{ -xcore } — Map
 commands-map-content =
-    { "" }[white]Map statistics for [green]{ $name }
-    { "" }[white]Author:[green] { $author }[orange] | [white]Size:[green] { $width }x{ $height }[orange]
-    { "" }[white]Reputation:[green] { $reputation }[orange] | [white]Popularity:[green] { $popularity }[orange] | [white]Interest:[green] { $interest }[orange]
-    { "" }[white]Times played:[green] { $played }[orange] | [white]Played this year:[green] { $playedYear }[orange] | [white]Last played:[green] { $lastPlayed }[orange]
-    { "" }[white]Like:[green] { $like }[orange] | [white]Dislike:[green] { $dislike }[orange]
-    { "" }[white]Min time:[green] { $min }[orange] | [white]Avg time:[green] { $avg }[orange] | [white]Max time:[green] { $max }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[] [gray]by [sky]{ $author }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Overview[]
+    { "" }[gray]Size: [white]{ $width }x{ $height } [darkgray]|[gray] Votes: [lime]+{ $like } [darkgray]/[scarlet] -{ $dislike }[]
+    { "" }
+    { "" }[accent]■ Activity[]
+    { "" }[gray]Played total: [white]{ $played } [darkgray]|[gray] This year: [white]{ $playedYear }[]
+    { "" }[gray]Last played: [white]{ $lastPlayed }[]
+    { "" }[gray]Popularity: [white]{ $popularity } [darkgray]|[gray] Interest: [white]{ $interest } [darkgray]|[gray] Reputation: [white]{ $reputation }[]
+    { "" }
+    { "" }[accent]■ Match duration[]
+    { "" }[gray]Min: [white]{ $min } [darkgray]|[gray] Avg: [white]{ $avg } [darkgray]|[gray] Max: [white]{ $max }[]
 commands-maps-description = List of all maps on this server.
-commands-maps-title = { "[" }orange]{ -xcore } — Map List
-commands-maps-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+commands-maps-title = { "[" }orange]{ -xcore } — Maps
+commands-maps-content =
+    { "" }[gray]Current map: [accent]{ $current }[]
+    { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
+commands-maps-current-row = { $name } ★
 commands-maps-text-description = List of all maps on this server.
 commands-maps-text-start-content =
     { "[" }accent]Current map: []{ $name }[white]
@@ -327,6 +338,7 @@ map-vote-dislike-selected = { "[" }gray]You disliked it
 map-rtv = { "[" }orange]Voting
 map-artv = { "[" }red]Instant Change
 map-maps = Maps
+map-maps-back = ← Back to map list
 current-map = Current map
 next-map = Next map
 rtv-vote =

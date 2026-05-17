@@ -287,18 +287,29 @@ votekick-success =
 # Maps & RTV
 # ==============================================================================
 commands-map-description = Статистика конкретной карты
-commands-map-title = { "[" }orange]{ -xcore } — Статистика
+commands-map-title = { "[" }orange]{ -xcore } — Карта
 commands-map-content =
-    { "" }[white]Статистика карты [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Размер:[green] { $width }x{ $height }[orange]
-    { "" }[white]Репутация:[green] { $reputation }[orange] | [white]Популярность:[green] { $popularity }[orange] | [white]Интерес:[green] { $interest }[orange]
-    { "" }[white]Сыграно раз:[green] { $played }[orange] | [white]Сыграно за год:[green] { $playedYear }[orange] | [white]Последняя игра:[green] { $lastPlayed }[orange]
-    { "" }[white]Лайк:[green] { $like }[orange] | [white]Дизлайк:[green] { $dislike }[orange]
-    { "" }[white]Мин. время:[green] { $min }[orange] | [white]Ср. время:[green] { $avg }[orange] | [white]Макс. время:[green] { $max }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[] [gray]от [sky]{ $author }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Общее[]
+    { "" }[gray]Размер: [white]{ $width }x{ $height } [darkgray]|[gray] Голоса: [lime]+{ $like } [darkgray]/[scarlet] -{ $dislike }[]
+    { "" }
+    { "" }[accent]■ Активность[]
+    { "" }[gray]Сыграно всего: [white]{ $played } [darkgray]|[gray] За год: [white]{ $playedYear }[]
+    { "" }[gray]Последняя игра: [white]{ $lastPlayed }[]
+    { "" }[gray]Популярность: [white]{ $popularity } [darkgray]|[gray] Интерес: [white]{ $interest } [darkgray]|[gray] Репутация: [white]{ $reputation }[]
+    { "" }
+    { "" }[accent]■ Длительность партий[]
+    { "" }[gray]Мин: [white]{ $min } [darkgray]|[gray] Сред: [white]{ $avg } [darkgray]|[gray] Макс: [white]{ $max }[]
 commands-maps-description = Список всех карт на этом сервере.
-commands-maps-title = { "[" }orange]{ -xcore } — Список карт
-commands-maps-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+commands-maps-title = { "[" }orange]{ -xcore } — Карты
+commands-maps-content =
+    { "" }[gray]Текущая карта: [accent]{ $current }[]
+    { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
+commands-maps-current-row = { $name } ★
 commands-maps-text-description = Список всех карт на этом сервере.
 commands-maps-text-start-content =
     { "[" }accent]Текущая карта: []{ $name }[white]
@@ -328,6 +339,7 @@ map-vote-dislike-selected = { "[" }gray]Вам не нравится
 map-rtv = { "[" }orange]Голосование
 map-artv = { "[" }red]Мгновенная смена
 map-maps = Карты
+map-maps-back = ← К списку карт
 current-map = Текущая карта
 next-map = Следующая карта
 rtv-vote =

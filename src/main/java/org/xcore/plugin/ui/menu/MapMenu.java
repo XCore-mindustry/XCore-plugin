@@ -95,7 +95,7 @@ public class MapMenu extends Menu {
         navigation.add(MenuButton.of(session.locale().t("close"), ACTION_CLOSE));
         return MenuScreen.normal(
                 session.locale().t("commands-map-title"),
-                session.locale().t("error-internal"),
+                session.locale().t("error-map-not-found"),
                 List.of(navigation)
         );
     }

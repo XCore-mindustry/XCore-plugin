@@ -264,16 +264,27 @@ votekick-success =
 commands-map-description = Статистика конкретної мапи та швидкі дії.
 commands-map-title = { "[" }orange]{ -xcore } — Мапа
 commands-map-content =
-    { "" }[white]Статистика мапи [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Розмір:[green] { $width }x{ $height }[orange]
-    { "" }[white]Репутація:[green] { $reputation }[orange] | [white]Популярність:[green] { $popularity }[orange] | [white]Інтерес:[green] { $interest }[orange]
-    { "" }[white]Зіграно разів:[green] { $played }[orange] | [white]Зіграно за рік:[green] { $playedYear }[orange] | [white]Остання гра:[green] { $lastPlayed }[orange]
-    { "" }[white]Подобається:[green] { $like }[orange] | [white]Не подобається:[green] { $dislike }[orange]
-    { "" }[white]Мін. час:[green] { $min }[orange] | [white]Сер. час:[green] { $avg }[orange] | [white]Макс. час:[green] { $max }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[] [gray]від [sky]{ $author }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Загальне[]
+    { "" }[gray]Розмір: [white]{ $width }x{ $height } [darkgray]|[gray] Голоси: [lime]+{ $like } [darkgray]/[scarlet] -{ $dislike }[]
+    { "" }
+    { "" }[accent]■ Активність[]
+    { "" }[gray]Зіграно всього: [white]{ $played } [darkgray]|[gray] За рік: [white]{ $playedYear }[]
+    { "" }[gray]Остання гра: [white]{ $lastPlayed }[]
+    { "" }[gray]Популярність: [white]{ $popularity } [darkgray]|[gray] Інтерес: [white]{ $interest } [darkgray]|[gray] Репутація: [white]{ $reputation }[]
+    { "" }
+    { "" }[accent]■ Тривалість партій[]
+    { "" }[gray]Мін: [white]{ $min } [darkgray]|[gray] Сер: [white]{ $avg } [darkgray]|[gray] Макс: [white]{ $max }[]
 commands-maps-description = Список усіх мап на цьому сервері.
-commands-maps-title = { "[" }orange]{ -xcore } — Список мап
-commands-maps-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+commands-maps-title = { "[" }orange]{ -xcore } — Мапи
+commands-maps-content =
+    { "" }[gray]Поточна мапа: [accent]{ $current }[]
+    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+commands-maps-current-row = { $name } ★
 commands-maps-text-description = Список усіх мап на цьому сервері.
 commands-maps-text-start-content =
     { "[" }accent]Поточна мапа: []{ $name }[white]
@@ -303,6 +314,7 @@ map-vote-dislike-selected = { "[" }gray]Вам вже не подобаєтьс�
 map-rtv = { "[" }orange]Голосування
 map-artv = { "[" }red]Миттєва зміна
 map-maps = Мапи
+map-maps-back = ← До списку мап
 rtv-vote =
     { $nickname }[lightgray] проголосував за зміну поточної мапи на [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.

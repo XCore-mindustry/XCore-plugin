@@ -120,13 +120,13 @@ class MapMenuTest {
 
         assertThat(session.activeScreen().route().intParam("page", 0)).isEqualTo(1);
 
-        menuService.onMenuOption(session, 0); // next
+        menuService.onMenuOption(session, 2); // next after map rows
 
         assertThat(session.activeScreen()).isNotNull();
         assertThat(session.activeScreen().route().intParam("page", 0)).isEqualTo(2);
         verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("commands-maps-title"), any(), any());
 
-        menuService.onMenuOption(session, 0); // previous
+        menuService.onMenuOption(session, 1); // previous after map row
 
         assertThat(session.activeScreen()).isNotNull();
         assertThat(session.activeScreen().route().intParam("page", 0)).isEqualTo(1);
