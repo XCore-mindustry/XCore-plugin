@@ -27,6 +27,9 @@ import java.nio.charset.StandardCharsets;
 @Singleton
 public class TransportService {
 
+    static final long HOST_RESOLUTION_FAILURE_BACKOFF_MS = 300_000L;
+    private static final String PUBLIC_HOST_RESOLVER_URL = "https://api.ipify.org";
+
     private final ChatTransportHandler chatTransportHandler;
     private final DiscordLinkTransportHandler discordLinkTransportHandler;
     private final ModerationTransportHandler moderationTransportHandler;
@@ -34,6 +37,7 @@ public class TransportService {
     private final NetworkService network;
     private final Config config;
     private volatile String cachedPublicHost;
+    private volatile long nextPublicHostResolveAttemptAtMs;
 
     @Inject
     public TransportService(ChatTransportHandler chatTransportHandler,
@@ -84,13 +88,25 @@ public class TransportService {
     }
 
     protected String resolveHostAddress() {
+        String configuredHost = configuredPublicHostOverride();
+        if (configuredHost != null) {
+            cachedPublicHost = configuredHost;
+            nextPublicHostResolveAttemptAtMs = 0L;
+            return configuredHost;
+        }
+
         String cached = cachedPublicHost;
         if (cached != null && !cached.isBlank()) {
             return cached;
         }
 
+        long now = currentTimeMillis();
+        if (now < nextPublicHostResolveAttemptAtMs) {
+            return null;
+        }
+
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL("https://api.ipify.org").openConnection();
+            HttpURLConnection connection = openPublicHostConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(2000);
             connection.setReadTimeout(2000);
@@ -99,17 +115,36 @@ public class TransportService {
                 String host = new String(stream.readAllBytes(), StandardCharsets.UTF_8).trim();
                 if (!host.isBlank()) {
                     cachedPublicHost = host;
+                    nextPublicHostResolveAttemptAtMs = 0L;
                     return host;
                 }
             }
         } catch (Exception ex) {
             Log.warn("Failed to resolve public host via api.ipify.org: @", ex.toString());
+            nextPublicHostResolveAttemptAtMs = now + hostResolutionFailureBackoffMs();
         }
 
-        try {
-            return cachedPublicHost;
-        } catch (Exception ignored) {
+        return null;
+    }
+
+    protected HttpURLConnection openPublicHostConnection() throws Exception {
+        return (HttpURLConnection) new URL(PUBLIC_HOST_RESOLVER_URL).openConnection();
+    }
+
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
+    protected long hostResolutionFailureBackoffMs() {
+        return HOST_RESOLUTION_FAILURE_BACKOFF_MS;
+    }
+
+    private String configuredPublicHostOverride() {
+        if (config.publicHostOverride == null) {
             return null;
         }
+
+        String normalized = config.publicHostOverride.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

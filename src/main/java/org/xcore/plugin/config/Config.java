@@ -20,6 +20,7 @@ public class Config {
     public String redisUrl = "redis://127.0.0.1:6379";
     public String redisGroupPrefix = "xcore:cg";
     public String redisConsumerName = "xcore-node";
+    public String publicHostOverride = null;
     public boolean consoleEnabled = true;
 
     public int playerLimit = 30;
