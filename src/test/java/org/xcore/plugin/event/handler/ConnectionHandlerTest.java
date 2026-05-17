@@ -25,6 +25,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
@@ -71,6 +72,7 @@ class ConnectionHandlerTest {
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
+        ObserverService observerService = mock(ObserverService.class);
 
         Config config = new Config();
         config.server = "mini-pvp";
@@ -85,7 +87,8 @@ class ConnectionHandlerTest {
                 voteService,
                 privateMessageService,
                 playerDisplayService,
-                discordAdminAccessService
+                discordAdminAccessService,
+                observerService
         );
 
         Player player = Player.create();
@@ -121,6 +124,7 @@ class ConnectionHandlerTest {
         }
 
         verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-1");
+        verify(observerService).restore(player);
         verify(sessionService).updateConnectionData(session, "2.2.2.2", "[#00000000][red]Renamed[]");
         verify(localization).send(eq("error-ip-changed"), anyMap());
         verify(playerDisplayService).refresh(session);

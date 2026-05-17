@@ -14,6 +14,7 @@ import org.xcore.plugin.gamemode.hexed.MiniHexedService;
 import org.xcore.plugin.gamemode.hexed.UnitState;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -24,13 +25,16 @@ public class HexedController implements CloudClientController {
 
     private final SessionService sessionService;
     private final MiniHexedService hexedService;
+    private final ObserverService observerService;
 
     @Inject
     public HexedController(SessionService sessionService,
-                           MiniHexedService hexedService
+                           MiniHexedService hexedService,
+                           ObserverService observerService
     ) {
         this.sessionService = sessionService;
         this.hexedService = hexedService;
+        this.observerService = observerService;
     }
 
     @Command("surrender")
@@ -99,7 +103,7 @@ public class HexedController implements CloudClientController {
 
         var member = hexedService.members.get(session.data.uuid);
 
-        if (session.player.team() == Team.derelict) {
+        if (observerService.isObserving(session)) {
             local.send("error-spectator", args());
             return;
         }

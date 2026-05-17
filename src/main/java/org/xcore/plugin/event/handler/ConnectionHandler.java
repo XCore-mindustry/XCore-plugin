@@ -19,6 +19,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.vote.VoteService;
@@ -40,6 +41,7 @@ public class ConnectionHandler {
     private final PrivateMessageService privateMessageService;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
+    private final ObserverService observerService;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -50,7 +52,8 @@ public class ConnectionHandler {
                              VoteService voteService,
                              PrivateMessageService privateMessageService,
                              PlayerDisplayService playerDisplayService,
-                             DiscordAdminAccessService discordAdminAccessService) {
+                             DiscordAdminAccessService discordAdminAccessService,
+                             ObserverService observerService) {
         this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
@@ -60,6 +63,7 @@ public class ConnectionHandler {
         this.privateMessageService = privateMessageService;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
+        this.observerService = observerService;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -71,6 +75,9 @@ public class ConnectionHandler {
             player.kick("Session is null! Write to us on Discord to resolve issues.");
             return;
         }
+
+        observerService.restore(player);
+
         PlayerData data = session.data;
         Localization locale = session.locale();
 

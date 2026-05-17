@@ -25,6 +25,7 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.enums.FinishReason;
@@ -64,6 +65,7 @@ public class MiniHexedService {
     private final GameDataService gameDataService;
     private final MapStatsService mapStatsService;
     private final TopMenuCacheService topMenuCacheService;
+    private final ObserverService observerService;
 
     private static boolean gameover = false;
 
@@ -76,7 +78,8 @@ public class MiniHexedService {
                             PlayerDisplayService playerDisplayService,
                             GameDataService gameDataService,
                             MapStatsService mapStatsService,
-                            TopMenuCacheService topMenuCacheService) {
+                            TopMenuCacheService topMenuCacheService,
+                            ObserverService observerService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
@@ -87,6 +90,7 @@ public class MiniHexedService {
         this.gameDataService = gameDataService;
         this.mapStatsService = mapStatsService;
         this.topMenuCacheService = topMenuCacheService;
+        this.observerService = observerService;
     }
 
     @PostConstruct
@@ -95,7 +99,7 @@ public class MiniHexedService {
 
         leaderboardService.start((builder, player, locale) -> {
             var teams = Vars.state.teams.getActive().copy()
-                    .select(t -> !t.players.isEmpty() && t.team != Team.derelict)
+                    .select(t -> !t.players.isEmpty() && t.team != Team.derelict && !observerService.isObserving(t.players.first()))
                     .sort(t -> t.cores.size)
                     .reverse();
 
@@ -137,7 +141,7 @@ public class MiniHexedService {
                 var player = team.data().players.first();
 
                 sessionService.broadcast("hexed-eliminated", args("nickname", player.coloredName()));
-                player.team(Team.derelict);
+                observerService.enter(player);
             }
         });
         Events.on(EventType.UnitCreateEvent.class, event -> members.values().forEach((member) -> member.handleUnit(event.unit)));
@@ -187,7 +191,18 @@ public class MiniHexedService {
 
             if (members.containsKey(player.uuid())) member = members.get(player.uuid());
             members.put(player.uuid(), member);
-            return member.join();
+            Team assigned = member.join();
+
+            var session = sessionService.get(player);
+            if (session != null) {
+                if (assigned != Team.derelict && session.observing()) {
+                    observerService.exit(session);
+                } else if (assigned == Team.derelict) {
+                    observerService.enter(player);
+                }
+            }
+
+            return assigned;
         };
 
         info("MiniHexed loaded.");
@@ -338,7 +353,7 @@ public class MiniHexedService {
         if (!team.data().players.isEmpty()) {
             var player = team.data().players.first();
             sessionService.broadcast("hexed-eliminated", args("nickname", player.coloredName()));
-            player.team(Team.derelict);
+            observerService.enter(player);
         }
 
         team.data().cores.each(core -> core.tile.setNet(Blocks.coreShard, Team.green, 0));

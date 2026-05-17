@@ -3,6 +3,7 @@ package org.xcore.plugin.session;
 import io.avaje.inject.AssistFactory;
 import io.avaje.inject.Assisted;
 import lombok.Data;
+import mindustry.game.Team;
 import mindustry.gen.Player;
 import com.ospx.flubundle.Bundle;
 import org.xcore.plugin.cloud.XCoreSender;
@@ -42,6 +43,8 @@ public class Session {
     public Consumer<String> textHandler;
     public Integer lastPrivateTargetPid;
     public long lastPrivateMessageAt;
+    private boolean observing;
+    private Team observerReturnTeam;
 
     private long uiVersion = 0L;
     private ActiveMenuScreen activeScreen;
@@ -128,6 +131,26 @@ public class Session {
 
     public Localization locale() {
         return localization;
+    }
+
+    public boolean observing() {
+        return observing;
+    }
+
+    public Team observerReturnTeam() {
+        return observerReturnTeam;
+    }
+
+    public void beginObserving(Team returnTeam) {
+        observing = true;
+        observerReturnTeam = returnTeam;
+    }
+
+    public Team endObserving() {
+        Team returnTeam = observerReturnTeam;
+        observing = false;
+        observerReturnTeam = null;
+        return returnTeam;
     }
 
     public MenuBuilder builder() {

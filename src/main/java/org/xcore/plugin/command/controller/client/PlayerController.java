@@ -11,6 +11,7 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
@@ -23,16 +24,19 @@ public class PlayerController implements CloudClientController {
 
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
+    private final ObserverService observerService;
     private final PlayerMenu menu;
     private final TopMenu topMenu;
 
     @Inject
     public PlayerController(PlayerDataRepository playerDataRepository,
                             SessionService sessionService,
+                            ObserverService observerService,
                             PlayerMenu menu,
                             TopMenu topMenu) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
+        this.observerService = observerService;
         this.menu = menu;
         this.topMenu = topMenu;
     }
@@ -70,8 +74,7 @@ public class PlayerController implements CloudClientController {
         var player = sender.player();
         var session = sessionService.get(player.uuid());
 
-        player.clearUnit();
-        player.team(Team.derelict);
+        observerService.enter(player);
 
         if (session != null) {
             session.locale().send("commands-observer-success");
@@ -93,6 +96,10 @@ public class PlayerController implements CloudClientController {
 
         if (targetSession == null || targetSession.player == null) {
             return;
+        }
+
+        if (observerService.isObserving(targetSession) && !observerService.isObserverTeam(team)) {
+            observerService.resetObserverState(targetSession.data.uuid);
         }
 
         targetSession.player.clearUnit();

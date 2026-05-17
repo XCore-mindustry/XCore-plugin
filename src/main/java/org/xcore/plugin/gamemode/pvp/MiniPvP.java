@@ -14,6 +14,7 @@ import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.model.PlayerData;
@@ -31,18 +32,21 @@ public class MiniPvP {
     private final PlayerDataRepository playerDataRepository;
     private final LeaderboardService leaderboardService;
     private final TopMenuCacheService topMenuCacheService;
+    private final ObserverService observerService;
 
     @Inject
     public MiniPvP(Config config,
                    SessionService sessionService,
                    PlayerDataRepository playerDataRepository,
                    LeaderboardService leaderboardService,
-                   TopMenuCacheService topMenuCacheService) {
+                   TopMenuCacheService topMenuCacheService,
+                   ObserverService observerService) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.leaderboardService = leaderboardService;
         this.topMenuCacheService = topMenuCacheService;
+        this.observerService = observerService;
     }
 
     @PostConstruct
@@ -72,10 +76,10 @@ public class MiniPvP {
             }
         });
 
-        Events.on(EventType.PlayEvent.class, e -> defeatedPlayers.clear());
+        Events.on(EventType.PlayEvent.class, e -> clearRoundState());
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
-                e.player.team(Team.derelict);
+                observerService.enter(e.player);
                 Session session = sessionService.get(e.player);
                 if (session == null || session.data == null) return;
 
@@ -110,11 +114,12 @@ public class MiniPvP {
             if (event.tile.block() instanceof CoreBlock) {
                 if (team != Team.derelict && team.cores().size <= 1) {
                     int allies = team.data().players.size;
-                    int rawEnemies = Groups.player.count(pl -> pl.team() != team && pl.team() != Team.derelict);
+                    int rawEnemies = Groups.player.count(pl -> pl.team() != team && !observerService.isObserving(pl));
                     final int enemies = Math.max(1, rawEnemies);
 
                     team.data().players.each(p -> {
                         defeatedPlayers.add(p.uuid());
+                        observerService.enter(p);
 
                         var session = sessionService.get(p);
                         var data = session.data;
@@ -141,5 +146,10 @@ public class MiniPvP {
         });
 
         info("MiniPvP loaded.");
+    }
+
+    void clearRoundState() {
+        defeatedPlayers.each(observerService::resetObserverState);
+        defeatedPlayers.clear();
     }
 }

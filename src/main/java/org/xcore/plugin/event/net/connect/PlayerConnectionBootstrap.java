@@ -1,17 +1,30 @@
 package org.xcore.plugin.event.net.connect;
 
 import arc.Events;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
+import org.xcore.plugin.session.ObserverService;
 
 import static mindustry.Vars.netServer;
 
 @Singleton
 public class PlayerConnectionBootstrap {
+
+    private final ObserverService observerService;
+
+    @Inject
+    public PlayerConnectionBootstrap(ObserverService observerService) {
+        this.observerService = observerService;
+    }
+
+    public PlayerConnectionBootstrap() {
+        this(null);
+    }
 
     public void bootstrap(NetConnection con, Packets.ConnectPacket packet) {
         String uuid = packet.uuid;
@@ -35,6 +48,10 @@ public class PlayerConnectionBootstrap {
 
         con.player = player;
         player.team(netServer.assignTeam(player));
+        if (observerService != null) {
+            observerService.restore(player);
+        }
+
         netServer.sendWorldData(player);
 
         Events.fire(new EventType.PlayerConnect(player));
