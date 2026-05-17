@@ -29,6 +29,7 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.LeaderboardService;
+import org.xcore.plugin.service.MapStatsService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.GameDataService;
@@ -61,6 +62,7 @@ public class MiniHexedService {
     private final LeaderboardService leaderboardService;
     private final PlayerDisplayService playerDisplayService;
     private final GameDataService gameDataService;
+    private final MapStatsService mapStatsService;
     private final TopMenuCacheService topMenuCacheService;
 
     private static boolean gameover = false;
@@ -73,6 +75,7 @@ public class MiniHexedService {
                             LeaderboardService leaderboardService,
                             PlayerDisplayService playerDisplayService,
                             GameDataService gameDataService,
+                            MapStatsService mapStatsService,
                             TopMenuCacheService topMenuCacheService) {
         this.config = config;
         this.sessionService = sessionService;
@@ -82,6 +85,7 @@ public class MiniHexedService {
         this.leaderboardService = leaderboardService;
         this.playerDisplayService = playerDisplayService;
         this.gameDataService = gameDataService;
+        this.mapStatsService = mapStatsService;
         this.topMenuCacheService = topMenuCacheService;
     }
 
@@ -221,6 +225,7 @@ public class MiniHexedService {
 
         gameDataService.applyPlacements(placements);
         gameDataService.finishGame(teams.isEmpty() ? null : teams.first().team, FinishReason.NATURAL);
+        registerMapStats(!teams.isEmpty());
 
         if (!teams.isEmpty()) {
             var winnerTeam = teams.get(0);
@@ -309,6 +314,22 @@ public class MiniHexedService {
         } catch (MapException e) {
             Log.err("@: @", e.map.name(), e.getMessage());
         }
+    }
+
+    private void registerMapStats(boolean hasWinner) {
+        if (Vars.state.map == null || Vars.state.isMenu()) {
+            return;
+        }
+
+        String fileName = Vars.state.map.file == null ? null : Vars.state.map.file.name();
+        mapStatsService.registerCompletedGame(
+                Vars.state.map.plainName(),
+                fileName,
+                Vars.state.map.author(),
+                Vars.state.rules.mode().name(),
+                (long) ((Vars.state.tick / 60f) * 1000f),
+                hasWinner
+        );
     }
 
     public void killTeam(Team team) {

@@ -17,11 +17,10 @@ import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
-import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
-import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
+import org.xcore.plugin.service.MapStatsService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -34,27 +33,27 @@ import static mindustry.Vars.*;
 @Singleton
 public class GameLifecycleHandler {
 
-    private final MapDataRepository mapDataRepository;
     private final NetworkService network;
     private final Config config;
     private final Bundle bundle;
     private final SessionService sessionService;
     private final PluginState pluginState;
     private final GameDataService gameDataService;
+    private final MapStatsService mapStatsService;
 
-    public GameLifecycleHandler(MapDataRepository mapDataRepository,
-                                NetworkService network,
+    public GameLifecycleHandler(NetworkService network,
                                 Config config,
                                 Bundle bundle, SessionService sessionService,
                                 PluginState pluginState,
-                                GameDataService gameDataService) {
-        this.mapDataRepository = mapDataRepository;
+                                GameDataService gameDataService,
+                                MapStatsService mapStatsService) {
         this.network = network;
         this.config = config;
         this.bundle = bundle;
         this.sessionService = sessionService;
         this.pluginState = pluginState;
         this.gameDataService = gameDataService;
+        this.mapStatsService = mapStatsService;
     }
 
     public void onPlayEvent(PlayEvent event) {
@@ -98,40 +97,17 @@ public class GameLifecycleHandler {
         network.post(new ServerActionV1(message, config.server));
 
         if (state.map != null && !state.isMenu()) {
-            try {
-                String mapName = state.map.plainName();
-                String fileName = state.map.file.name();
-                String author = state.map.author();
-                String modeName = state.rules.mode().name();
+            String fileName = state.map.file == null ? null : state.map.file.name();
+            boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
 
-                long durationMillis = (long) ((state.tick / 60f) * 1000f);
-
-                if (durationMillis > 120 * 1000) {
-                    MapData stats = mapDataRepository.findOrCreate(mapName, fileName, author, modeName);
-                    boolean isWin = event.winner != null && event.winner != state.rules.waveTeam;
-
-                    stats.registerGame(durationMillis, isWin, modeName, author);
-                    mapDataRepository.registerGameStats(
-                            stats.id,
-                            durationMillis,
-                            isWin,
-                            author,
-                            modeName,
-                            stats.playedTimes,
-                            stats.averageGameTime,
-                            stats.minimumGameTime,
-                            stats.maximumGameTime,
-                            stats.playedTimesYear,
-                            stats.lastPlayedTime,
-                            stats.popularity,
-                            stats.interest
-                    );
-
-                    Log.info("Map stats updated for '@'", mapName);
-                }
-            } catch (Exception e) {
-                Log.err("Failed to update map stats", e);
-            }
+            mapStatsService.registerCompletedGame(
+                    state.map.plainName(),
+                    fileName,
+                    state.map.author(),
+                    state.rules.mode().name(),
+                    (long) ((state.tick / 60f) * 1000f),
+                    isWin
+            );
         }
 
         if (pluginState.restartOnGameOver) restart();
