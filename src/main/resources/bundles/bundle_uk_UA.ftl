@@ -123,6 +123,7 @@ commands-reply-message-description = Текст відповіді.
 commands-inbox-description = Відкрити меню приватних повідомлень.
 commands-inbox-id-description = ID гравця.
 commands-tr-description = Встановити мову перекладача.
+commands-badge-description = Відкрити меню відзнак і керувати активною відзнакою.
 commands-tr-success = { "[" }accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Перекладач [scarlet]вимкнено[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Такої мови не існує.
@@ -244,7 +245,7 @@ support-channel = #reports-appeals
 # Voting (VoteKick)
 # ==============================================================================
 commands-votekick-description = Голосування за вигнання гравця з сервера.
-commands-vote-description = Проголосувати у поточному голосуванні.
+commands-vote-description = Проголосувати в поточному активному голосуванні.
 commands-vote-vote-with = { "[" }scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
@@ -334,6 +335,7 @@ vnw-obsolete = { "[" }lightgray]Хвиля [orange]{ $wave }[lightgray] вже �
 # Statistics & Ranks
 # ==============================================================================
 commands-player-description = Переглянути статистику гравця.
+commands-settings-description = Відкрити налаштування гравця.
 player-menu-player-content =
     { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }[white]{ $customNickname }[] [gray]#{ $pid }[]
@@ -374,7 +376,8 @@ commands-lb-success =
        *[other] { "[" }accent]Таблиця лідерів [scarlet]вимкнена.
     }
 leaderboard = { "[" }blue]Таблиця лідерів
-commands-rank-description = Показує інформацію про ваш ранг або ранг іншого гравця.
+commands-observer-description = Перейти в режим спостерігача. Це знищить вашу поточну одиницю та переведе вас до команди спостерігачів.
+commands-rank-description = Показати ваш ранг або ранг іншого гравця.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
@@ -411,7 +414,7 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
-commands-spectate-description = Перейти в режим спостерігача. Це видалить вашу одиницю.
+commands-spectate-description = Перейти в режим спостерігача. У Hexed це знищить вашу поточну команду, прибере вашу одиницю та переведе вас до команди спостерігачів.
 commands-spectate-success = { "[" }green]Тепер ви спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
 commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)

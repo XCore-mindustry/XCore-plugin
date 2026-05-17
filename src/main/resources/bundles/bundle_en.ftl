@@ -148,6 +148,7 @@ commands-reply-message-description = Private reply text.
 commands-inbox-description = Open the private messages menu.
 commands-inbox-id-description = Player ID.
 commands-tr-description = Set the translator language.
+commands-badge-description = Open the badge menu and manage your active badge.
 commands-tr-success = { "[" }accent]The translator language has been successfully changed to [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Translator is [scarlet]off[]!
 commands-tr-not-found = { "[" }scarlet]⚠ There is no such language.
@@ -269,7 +270,7 @@ support-channel = #reports-appeals
 # Voting (VoteKick)
 # ==============================================================================
 commands-votekick-description = Vote to kick a player from the server.
-commands-vote-description = Vote on the current vote-kick session.
+commands-vote-description = Vote in the current active vote.
 commands-vote-vote-with = { "[" }scarlet]⚠ Vote with [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] voted to kick { $target } [grey]#[white]{ $targetId }[lightgray] for [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
@@ -360,6 +361,7 @@ vnw-obsolete = { "[" }lightgray]Wave [orange]{ $wave }[lightgray] has already st
 # Statistics & Ranks & Players
 # ==============================================================================
 commands-player-description = View a player's Statistics.
+commands-settings-description = Open your player settings.
 player-menu-player = Player
 player-menu-player-title = { "[" }orange]{ -xcore } — Player Statistics
 player-menu-player-content =
@@ -541,7 +543,8 @@ commands-lb-success =
        *[other] { "[" }accent]Leaderboard [scarlet]disabled.
     }
 leaderboard = { "[" }blue]Leaderboard
-commands-rank-description = Shows information about this player's rank.
+commands-observer-description = Switch to observer mode. This removes your current unit and moves you to the spectator team.
+commands-rank-description = Show your rank or another player's rank.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
@@ -578,7 +581,7 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
-commands-spectate-description = Spectate the game. This will clear your unit and change your team so you can view the game easily.
+commands-spectate-description = Switch to spectator mode. This destroys your current team in Hexed, removes your unit, and moves you to the spectator team.
 commands-spectate-success = { "[" }green]You are now spectating
 commands-ai-description = Control AI.
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)

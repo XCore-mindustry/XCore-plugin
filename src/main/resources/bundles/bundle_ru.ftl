@@ -148,6 +148,7 @@ commands-reply-message-description = Текст ответа
 commands-inbox-description = Открыть меню личных сообщений
 commands-inbox-id-description = ID игрока
 commands-tr-description = Установить язык переводчика
+commands-badge-description = Открыть меню бейджей и управлять активным бейджем
 commands-tr-success = { "[" }accent]Язык переводчика был успешно изменен на [grey]{ $translatorLanguage }[]!
 commands-tr-off = { "[" }accent]Переводчик [scarlet]выключен[]!
 commands-tr-not-found = { "[" }scarlet]⚠ Нет такого языка
@@ -269,7 +270,7 @@ support-channel = #reports-appeals
 # Voting (VoteKick)
 # ==============================================================================
 commands-votekick-description = Голосование за кик игрока.
-commands-vote-description = Проголосовать за кик текущего игрока
+commands-vote-description = Проголосовать в текущем активном голосовании
 commands-vote-vote-with = { "[" }scarlet]⚠ Голосуйте с помощью [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] хочет выгнать { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
@@ -361,6 +362,7 @@ vnw-obsolete = { "[" }lightgray]Волна [orange]{ $wave }[lightgray] уже �
 # Statistics & Ranks & Players
 # ==============================================================================
 commands-player-description = Статистика игрока
+commands-settings-description = Открыть настройки игрока
 player-menu-player = Игрок
 player-menu-player-title = { "[" }orange]{ -xcore } — Статистика игрока
 player-menu-player-content =
@@ -486,7 +488,8 @@ commands-lb-success =
        *[other] { "[" }accent]Таблица лидеров [scarlet]выключена
     }
 leaderboard = { "[" }blue]Таблица лидеров
-commands-rank-description = Показывает информацию о вашем ранге или ранге игрока.
+commands-observer-description = Перейти в режим наблюдателя. Это уничтожит вашего текущего юнита и переведёт вас в команду наблюдателей.
+commands-rank-description = Показать ваш ранг или ранг другого игрока.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
@@ -523,7 +526,7 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 # ==============================================================================
 # Game Modes (Hexed, PvP, Spectate, AI)
 # ==============================================================================
-commands-spectate-description = Переключить режим наблюдателя. Это очистит вашего юнита.
+commands-spectate-description = Перейти в режим наблюдателя. В Hexed это уничтожит вашу текущую команду, уберёт юнита и переведёт вас в команду наблюдателей.
 commands-spectate-success = { "[" }green]Теперь вы наблюдаете за игрой
 commands-ai-description = Контролировать ИИ
 commands-ai-usage = { "[" }red]attack(i) []или [accent]idle(i)
