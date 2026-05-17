@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 No changelog entries were recorded in the Unreleased section.
 
+## [4.0.0] - 2026-05-17
+
+### Added
+- Added actor moderation history views with actor identity capture on unban and unmute flows.
+- Added a paginated `/top` leaderboard menu with top-rank highlighting, viewer position context, and Redis-backed cursor caching.
+- Added a player-color badge symbol mode so badge displays can follow the player's active color styling.
+- Added mobile-friendly reset actions for event names and player nicknames.
+
+### Changed
+- **BREAKING** Migrated plugin transport to the canonical `xcore-protocol` model and switched Redis routing to the shared protocol route catalog.
+- **BREAKING** Replaced the deprecated socket event layer and removed the legacy compatibility surface for older transport integrations.
+- Refactored startup coordination, logging, and menu runtime architecture, including declarative menu flows, namespaced flow actions, and refreshed UI flow contracts.
+- Aligned CI and release validation with packaged artifacts and refreshed README and architecture documentation to reflect the current implementation.
+
+### Fixed
+- Fixed map-vote diagnostics and legacy map identity collisions, including an audit path for affected persisted records and votes.
+- Fixed `/top` first-page navigation null handling and improved muted-player feedback when chat or private messages are blocked.
+- Fixed null-safety and resource-leak issues across ingress, vote, RPC, and session runtime paths.
+- Fixed MiniHexed reset flow, Hexed rank progress display and ordinal safety, player profile stat accuracy, stats tracking, badge menu text layout, localization parity, and startup host resolution/bootstrap hardening.
+
 ## [3.2.1] - 2026-04-12
 
 ### Added
@@ -237,7 +257,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...HEAD
+[4.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...4.0.0
 [3.2.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...3.2.1
 [3.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...3.2
 [3.1.8]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.7...3.1.8
