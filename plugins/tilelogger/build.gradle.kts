@@ -24,9 +24,14 @@ dependencies {
     annotationProcessor(libs.avaje.inject.gen)
 }
 
-tasks.withType<JavaCompile>().configureEach {
+tasks.named<JavaCompile>("compileJava") {
     options.encoding = "UTF-8"
     options.headerOutputDirectory.set(layout.buildDirectory.dir("generated/sources/headers/java/main"))
+}
+
+tasks.named<JavaCompile>("compileTestJava") {
+    options.encoding = "UTF-8"
+    options.headerOutputDirectory.set(layout.buildDirectory.dir("generated/sources/headers/java/test"))
 }
 
 tasks.named<Jar>("jar") {

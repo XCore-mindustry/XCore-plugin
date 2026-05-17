@@ -1,4 +1,5 @@
 import org.gradle.internal.os.OperatingSystem
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.nativeplatform.tasks.LinkSharedLibrary
 import org.gradle.jvm.toolchain.JavaToolchainService
 
@@ -12,7 +13,8 @@ library {
     linkage.set(listOf(Linkage.SHARED))
 }
 
-val jniHeadersDir = project(":").layout.buildDirectory.dir("generated/sources/headers/java/main")
+val compileJava = project(":").tasks.named<JavaCompile>("compileJava")
+val jniHeadersDir = compileJava.flatMap { it.options.headerOutputDirectory }
 
 library {
     source.from("src/main/cpp")
@@ -26,7 +28,7 @@ val javaLauncher = javaToolchains.launcherFor {
 val javaHomeProvider = javaLauncher.map { it.metadata.installationPath.asFile }
 
 tasks.withType<CppCompile>().configureEach {
-    dependsOn(":compileJava")
+    dependsOn(compileJava)
 
     includes.from(javaHomeProvider.map { it.resolve("include") })
 
