@@ -460,6 +460,19 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("language selection locale rows use namespaced action ids")
+    void languageSelection_localeRows_useNamespacedActionIds() {
+        when(bundle.getAvailableLocales()).thenReturn(Seq.with(Locale.ENGLISH, new Locale("uk")));
+
+        playerMenu.languageSelectionMenu("viewer-1", targetData, false);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("auto");
+        assertThat(session.activeScreen().actionIdAt(1)).isEqualTo("lang:en");
+        assertThat(session.activeScreen().actionIdAt(2)).isEqualTo("lang:uk_UA");
+    }
+
+    @Test
     @DisplayName("language selection maps uk locale to uk_UA code")
     void languageSelection_ukLocale_mapsToUkUa() {
         Locale ukLocale = new Locale("uk");
@@ -558,6 +571,17 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("badges rows use namespaced action ids")
+    void badges_rowsUseNamespacedActionIds() {
+        targetData.unlockedBadges.add("developer");
+
+        playerMenu.badges("viewer-1", targetData);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("badge:developer");
+    }
+
+    @Test
     @DisplayName("badges symbol color button opens routed symbol color mode via route history")
     void badges_symbolColorButton_opensRoutedSymbolColorModeViaRouteHistory() {
         playerMenu.badges("viewer-1", targetData);
@@ -632,6 +656,16 @@ class PlayerMenuTest {
 
         verify(profileSettings).updateActiveBadge(targetData, "developer", true, true);
         verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-all-title"), any(), any());
+    }
+
+    @Test
+    @DisplayName("all badges rows use namespaced action ids")
+    void allBadges_rowsUseNamespacedActionIds() {
+        playerMenu.allBadges("viewer-1", targetData);
+
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("badge:admin");
+        assertThat(session.activeScreen().actionIdAt(1)).isEqualTo("badge:developer");
     }
 
     @Test

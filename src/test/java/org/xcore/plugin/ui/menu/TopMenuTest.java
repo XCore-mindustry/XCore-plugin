@@ -480,7 +480,7 @@ class TopMenuTest {
         menu.categories("viewer-1", TopCategory.PLAYTIME);
 
         ActiveMenuScreen screen = session.activeScreen();
-        int hexedIndex = optionIndexOf(screen, "HEXED");
+        int hexedIndex = optionIndexOf(screen, "category:HEXED");
         menuService.onMenuOption(session, hexedIndex);
 
         assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.FOLLOW_UP);
@@ -488,6 +488,28 @@ class TopMenuTest {
         assertThat(session.activeScreen().route()).isEqualTo(
                 MenuRoute.of("top.list").withParam("category", "HEXED").withParam("page", "1")
         );
+    }
+
+    @Test
+    @DisplayName("categories use namespaced category action ids")
+    void categories_useNamespacedCategoryActionIds() {
+        SessionService sessionService = mock(SessionService.class);
+        TopMenuService topMenuService = mock(TopMenuService.class);
+        PlayerMenu playerMenu = mock(PlayerMenu.class);
+        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        menu.init();
+
+        Session session = session("viewer-1");
+        when(sessionService.get("viewer-1")).thenReturn(session);
+        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+
+        menu.categories("viewer-1", TopCategory.PLAYTIME);
+
+        ActiveMenuScreen screen = session.activeScreen();
+        assertThat(optionIndexOf(screen, "category:MINI_PVP")).isGreaterThanOrEqualTo(0);
+        assertThat(optionIndexOf(screen, "category:PLAYTIME")).isGreaterThanOrEqualTo(0);
+        assertThat(optionIndexOf(screen, "category:HEXED")).isGreaterThanOrEqualTo(0);
+        assertThat(optionIndexOf(screen, "HEXED")).isEqualTo(-1);
     }
 
     @Test

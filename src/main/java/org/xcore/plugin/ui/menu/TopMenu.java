@@ -38,6 +38,7 @@ public class TopMenu extends Menu {
     private static final String ROUTE_TOP_CATEGORIES = "top.categories";
 
     private static final String ACTION_PROFILE_PREFIX = "profile:";
+    private static final String ACTION_CATEGORY_PREFIX = "category:";
 
     private final TopMenuService topMenuService;
     private final PlayerMenu playerMenu;
@@ -236,9 +237,9 @@ public class TopMenu extends Menu {
     private final class CategoriesFlow extends BaseMenuFlow<TopCategoriesState> {
         CategoriesFlow() {
             super(ROUTE_TOP_CATEGORIES, TopCategoriesState.class);
-            defaultAction((ctx, actionId) -> {
+            actionPrefix(ACTION_CATEGORY_PREFIX, (ctx, categoryName) -> {
                 try {
-                    TopCategory category = TopCategory.valueOf(actionId);
+                    TopCategory category = TopCategory.valueOf(categoryName);
                     Session session = ctx.session();
                     session.clear();
                     session.clearDraft(TopMenuState.class);
@@ -269,10 +270,10 @@ public class TopMenu extends Menu {
 
             var grid = new MenuGrid();
             grid.row(
-                    MenuButton.of(categoryButton(session, TopCategory.MINI_PVP, currentCategory), TopCategory.MINI_PVP.name()),
-                    MenuButton.of(categoryButton(session, TopCategory.PLAYTIME, currentCategory), TopCategory.PLAYTIME.name())
+                    MenuButton.of(categoryButton(session, TopCategory.MINI_PVP, currentCategory), ACTION_CATEGORY_PREFIX + TopCategory.MINI_PVP.name()),
+                    MenuButton.of(categoryButton(session, TopCategory.PLAYTIME, currentCategory), ACTION_CATEGORY_PREFIX + TopCategory.PLAYTIME.name())
             );
-            grid.row(MenuButton.of(categoryButton(session, TopCategory.HEXED, currentCategory), TopCategory.HEXED.name()));
+            grid.row(MenuButton.of(categoryButton(session, TopCategory.HEXED, currentCategory), ACTION_CATEGORY_PREFIX + TopCategory.HEXED.name()));
             grid.defaultNavigation(session, local);
 
             return MenuScreen.normal(

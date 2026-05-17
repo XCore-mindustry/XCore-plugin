@@ -32,6 +32,9 @@ final class PlayerSettingsFlows {
     static final String ROUTE_LANGUAGE_SELECTION = "player.language-selection";
     static final String ROUTE_BADGE_SYMBOL_COLOR = "player.badge-symbol-color";
 
+    private static final String ACTION_LANGUAGE_PREFIX = "lang:";
+    private static final String ACTION_BADGE_PREFIX = "badge:";
+
     private PlayerSettingsFlows() {
     }
 
@@ -288,13 +291,13 @@ final class PlayerSettingsFlows {
                 profileSettings.updateTranslatorLanguage(targetData, "off");
                 ctx.goBack();
             });
-            defaultAction((ctx, actionId) -> {
+            actionPrefix(ACTION_LANGUAGE_PREFIX, (ctx, languageCode) -> {
                 PlayerData targetData = resolveTargetData(ctx);
                 if (targetData == null) return;
                 if (ctx.state().isTranslator) {
-                    profileSettings.updateTranslatorLanguage(targetData, actionId);
+                    profileSettings.updateTranslatorLanguage(targetData, languageCode);
                 } else {
-                    profileSettings.updateLanguage(targetData, actionId);
+                    profileSettings.updateLanguage(targetData, languageCode);
                 }
                 ctx.goBack();
             });
@@ -339,7 +342,7 @@ final class PlayerSettingsFlows {
             for (Locale loc : locales) {
                 String code = "uk".equals(loc.getLanguage()) ? "uk_UA" : loc.getLanguage();
                 String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
-                grid.row(MenuButton.of(langName, code));
+                grid.row(MenuButton.of(langName, ACTION_LANGUAGE_PREFIX + code));
             }
 
             grid.defaultNavigation(session, local);
@@ -432,10 +435,10 @@ final class PlayerSettingsFlows {
                 profileSettings.updateActiveBadge(targetData, "", true, true);
                 ctx.render();
             });
-            defaultAction((ctx, actionId) -> {
+            actionPrefix(ACTION_BADGE_PREFIX, (ctx, badgeId) -> {
                 PlayerData targetData = resolveTargetData(ctx);
                 if (targetData == null) return;
-                Badge badge = Badge.byId(actionId);
+                Badge badge = Badge.byId(badgeId);
                 if (badge != null) {
                     profileSettings.updateActiveBadge(targetData, badge.id(), true, true);
                     ctx.render();
@@ -483,7 +486,7 @@ final class PlayerSettingsFlows {
                                 "badge", badgeLabel(local, badge),
                                 "description", local.t(badge.descriptionKey())
                         )),
-                        badge.id()));
+                        ACTION_BADGE_PREFIX + badge.id()));
             }
 
             grid.row(MenuButton.of(
@@ -516,10 +519,10 @@ final class PlayerSettingsFlows {
             super(ROUTE_ALL_BADGES, AllBadgesState.class);
             this.profileSettings = profileSettings;
 
-            defaultAction((ctx, actionId) -> {
+            actionPrefix(ACTION_BADGE_PREFIX, (ctx, badgeId) -> {
                 PlayerData targetData = resolveTargetData(ctx);
                 if (targetData == null) return;
-                Badge badge = Badge.byId(actionId);
+                Badge badge = Badge.byId(badgeId);
                 if (badge != null) {
                     if (badge.selectable() && !badge.system() && ownsBadge(targetData, badge)) {
                         profileSettings.updateActiveBadge(targetData, badge.id(), true, true);
@@ -564,7 +567,7 @@ final class PlayerSettingsFlows {
                                 "state", badgeState(local, targetData, badge),
                                 "description", local.t(badge.descriptionKey())
                         )),
-                        badge.id()));
+                        ACTION_BADGE_PREFIX + badge.id()));
             }
 
             grid.defaultNavigation(session, local);
