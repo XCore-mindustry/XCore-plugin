@@ -33,12 +33,12 @@ public class HexedController implements CloudClientController {
         this.hexedService = hexedService;
     }
 
-    @Command("spectate")
-    public void spectate(XCoreSender sender) {
+    @Command("surrender")
+    public void surrender(XCoreSender sender) {
         Session session = sessionService.get(sender.player().uuid());
         if (session == null || session.data == null) return;
         hexedService.killTeam(session.player.team());
-        session.locale().send("commands-spectate-success", args());
+        session.locale().send("commands-surrender-success", args());
     }
 
     @Command("rank")

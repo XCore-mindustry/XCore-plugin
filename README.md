@@ -41,7 +41,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 
 ### Events & Gamemodes
 - Event system with voting and dedicated event menus.
-- Hexed mini-game support with rank progression, points, AI control (`/ai`), and spectate.
+- Hexed mini-game support with rank progression, points, AI control (`/ai`), and surrender.
 
 ### Cross-Server Transport
 - Redis-based transport backend using the canonical `xcore-protocol` message model.
@@ -95,6 +95,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `/player [id]` `/stats` `/player-statistics` | Open player profile menu. |
 | `/settings [id]` | Open player settings menu. |
 | `/observer` | Enter spectator mode. |
+| `/surrender` | Surrender in Hexed and enter spectator mode. |
 | `/lb` | Toggle in-game leaderboard. |
 | `/top` | Open paginated rankings menu. |
 | `/t <message>` | Send a team chat message. |

@@ -74,7 +74,7 @@ public class PlayerController implements CloudClientController {
         player.team(Team.derelict);
 
         if (session != null) {
-            session.locale().send("commands-spectate-success");
+            session.locale().send("commands-observer-success");
         }
     }
 

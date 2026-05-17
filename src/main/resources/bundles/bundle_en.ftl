@@ -579,10 +579,11 @@ top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sk
 top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
 top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
-# Game Modes (Hexed, PvP, Spectate, AI)
+# Game Modes (Hexed, PvP, Surrender, AI)
 # ==============================================================================
-commands-spectate-description = Switch to spectator mode. This destroys your current team in Hexed, removes your unit, and moves you to the spectator team.
-commands-spectate-success = { "[" }green]You are now spectating
+commands-surrender-description = Surrender in Hexed. This destroys your current team, removes your unit, and moves you to the spectator team.
+commands-surrender-success = { "[" }green]You surrendered and are now spectating
+commands-observer-success = { "[" }green]You are now spectating
 commands-ai-description = Control AI.
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.
@@ -725,7 +726,7 @@ error-page-number = { "[" }scarlet]'page' must be a number.
 error-wrong-number = { "[" }scarlet]⚠ Wrong number format.
 error-wrong-period-format = { "[" }scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
 error-invalid-id = { "[" }scarlet]⚠ Invalid player-id.
-error-spectator = { "[" }scarlet]⚠ You are a spectator. Run /spectate to return.
+error-spectator = { "[" }scarlet]⚠ You are a spectator and cannot use this command.
 error-admin-password-too-short = { "[" }scarlet]⚠ Admin password must be at least 4 characters long.
 error-wrong-admin-password = { "[" }scarlet]⚠ Incorrect admin password.
 error-internal = { "[" }scarlet]Internal error.

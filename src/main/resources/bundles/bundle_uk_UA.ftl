@@ -412,10 +412,11 @@ top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sk
 top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
 top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
 # ==============================================================================
-# Game Modes (Hexed, PvP, Spectate, AI)
+# Game Modes (Hexed, PvP, Surrender, AI)
 # ==============================================================================
-commands-spectate-description = Перейти в режим спостерігача. У Hexed це знищить вашу поточну команду, прибере вашу одиницю та переведе вас до команди спостерігачів.
-commands-spectate-success = { "[" }green]Тепер ви спостерігаєте за грою
+commands-surrender-description = Здатися в Hexed. Це знищить вашу поточну команду, прибере вашу одиницю та переведе вас до команди спостерігачів.
+commands-surrender-success = { "[" }green]Ви здалися і тепер спостерігаєте за грою
+commands-observer-success = { "[" }green]Тепер ви спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
 commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] до кінця гри.
@@ -555,7 +556,7 @@ error-page-number = { "[" }scarlet]'сторінка' має бути число
 error-wrong-number = { "[" }scarlet]⚠ Неправильний формат числа.
 error-wrong-period-format = { "[" }scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
 error-invalid-id = { "[" }scarlet]⚠ Невірний ID гравця.
-error-spectator = { "[" }scarlet]⚠ Ви спостерігач. Напишіть /spectate, щоб повернутися.
+error-spectator = { "[" }scarlet]⚠ Ви спостерігач і не можете використовувати цю команду.
 error-admin-password-too-short = { "[" }scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи.
 error-wrong-admin-password = { "[" }scarlet]⚠ Невірний пароль адміністратора.
 error-internal = { "[" }scarlet]Внутрішня помилка сервера.
