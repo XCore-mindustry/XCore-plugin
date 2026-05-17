@@ -315,7 +315,7 @@ public class TileLoggerService {
                 .append(" ").append("[#ffd37f]").append(state.getConfigAsString()).append("[]");
 
         if (desc != null) {
-            str.append(" [#6e7080](").append(desc.name).append(")[]");
+            str.append(" [#6e7080](").append(desc).append(")[]");
         }
     }
 }
