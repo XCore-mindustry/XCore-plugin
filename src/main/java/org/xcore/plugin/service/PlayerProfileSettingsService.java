@@ -6,6 +6,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
@@ -21,8 +22,6 @@ public class PlayerProfileSettingsService {
 
     /** Vanilla Mindustry name length limit in UTF-8 bytes (see Vars.maxNameLength). */
     public static final int MAX_PLAIN_NAME_BYTES = 40;
-    public static final int BADGE_ICON_RANGE_START = 0xE800;
-    public static final int BADGE_ICON_RANGE_END = 0xF8FF;
 
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
@@ -205,6 +204,6 @@ public class PlayerProfileSettingsService {
     }
 
     private boolean containsBadgeLikeGlyphs(String input) {
-        return input.codePoints().anyMatch(cp -> cp >= BADGE_ICON_RANGE_START && cp <= BADGE_ICON_RANGE_END);
+        return input.codePoints().anyMatch(Badge::containsReservedGlyph);
     }
 }

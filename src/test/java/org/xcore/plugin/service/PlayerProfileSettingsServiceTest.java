@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
@@ -54,10 +55,10 @@ class PlayerProfileSettingsServiceTest {
     }
 
     @Test
-    @DisplayName("validateCustomNickname rejects badge-like glyphs in private use area")
-    void validateCustomNickname_rejectsBadgeLikeGlyphs() {
+    @DisplayName("validateCustomNickname rejects actual reserved badge glyphs")
+    void validateCustomNickname_rejectsActualReservedBadgeGlyphs() {
         var service = service();
-        String withGlyph = "Player" + Character.toString(0xE800);
+        String withGlyph = "Player" + Badge.DEVELOPER.glyph();
 
         var result = service.validateCustomNickname(withGlyph);
 
@@ -66,10 +67,10 @@ class PlayerProfileSettingsServiceTest {
     }
 
     @Test
-    @DisplayName("validateCustomNickname rejects badge-like glyph at range end")
-    void validateCustomNickname_rejectsGlyphAtRangeEnd() {
+    @DisplayName("validateCustomNickname rejects system badge glyphs too")
+    void validateCustomNickname_rejectsSystemBadgeGlyphsToo() {
         var service = service();
-        String withGlyph = "Player" + Character.toString(0xF8FF);
+        String withGlyph = "Player" + Badge.ADMIN.glyph();
 
         var result = service.validateCustomNickname(withGlyph);
 
@@ -78,12 +79,21 @@ class PlayerProfileSettingsServiceTest {
     }
 
     @Test
-    @DisplayName("validateCustomNickname accepts glyph just outside private use area")
-    void validateCustomNickname_acceptsGlyphOutsideRange() {
+    @DisplayName("validateCustomNickname accepts private-use glyphs that are not reserved badges")
+    void validateCustomNickname_acceptsPrivateUseGlyphsThatAreNotReservedBadges() {
         var service = service();
-        String withGlyph = "Player" + Character.toString(0xE7FF);
+        int nonReservedGlyph = Badge.values()[0].glyph() + 1;
+        String withGlyph = "Player" + Character.toString(nonReservedGlyph);
 
         assertThat(service.validateCustomNickname(withGlyph).valid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("validateCustomNickname accepts crossed swords symbol")
+    void validateCustomNickname_acceptsCrossedSwordsSymbol() {
+        var service = service();
+
+        assertThat(service.validateCustomNickname("Player⚔").valid()).isTrue();
     }
 
     @Test

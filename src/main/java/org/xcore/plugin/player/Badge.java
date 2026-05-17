@@ -52,6 +52,10 @@ public enum Badge {
         return tagPrefix + glyphColorTag + glyph + tagSuffix;
     }
 
+    public char glyph() {
+        return glyph;
+    }
+
     public String nameKey() {
         return nameKey;
     }
@@ -86,6 +90,11 @@ public enum Badge {
         return Arrays.stream(values())
                 .filter(badge -> badge.type == BadgeType.MANUAL && badge.selectable)
                 .toList();
+    }
+
+    public static boolean containsReservedGlyph(int codePoint) {
+        return Arrays.stream(values())
+                .anyMatch(badge -> badge.glyph == codePoint);
     }
 
     public static String normalizeId(String id) {

@@ -203,6 +203,17 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("custom nickname reset button clears nickname without opening prompt")
+    void customNicknameResetButton_clearsNicknameWithoutOpeningPrompt() {
+        playerMenu.settings("viewer-1", targetData);
+
+        menuService.onMenuOption(session, 1);
+
+        verify(profileSettings).updateCustomNickname(targetData, "", true, true);
+        assertThat(session.activePrompt()).isNull();
+    }
+
+    @Test
     @DisplayName("custom nickname prompt cancel returns to settings without updating")
     void customNicknamePromptCancel_returnsWithoutUpdating() {
         playerMenu.settings("viewer-1", targetData);
