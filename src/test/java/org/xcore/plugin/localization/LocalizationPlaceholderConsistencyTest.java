@@ -140,6 +140,42 @@ class LocalizationPlaceholderConsistencyTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("primary locales match canonical english key set")
+    void primaryLocalesMatchCanonicalEnglishKeySet() throws IOException {
+        var bundles = loadBundlePlaceholders();
+        var english = bundles.get("bundle_en.ftl");
+
+        assertThat(english)
+                .withFailMessage("Bundle file %s was not loaded", "bundle_en.ftl")
+                .isNotNull();
+
+        var canonicalKeys = english.keySet();
+        var drift = new ArrayList<String>();
+
+        for (var locale : List.of("bundle_ru.ftl", "bundle_uk_UA.ftl")) {
+            var keys = bundles.get(locale);
+            assertThat(keys)
+                    .withFailMessage("Bundle file %s was not loaded", locale)
+                    .isNotNull();
+
+            var missingKeys = new LinkedHashSet<>(canonicalKeys);
+            missingKeys.removeAll(keys.keySet());
+
+            var extraKeys = new LinkedHashSet<>(keys.keySet());
+            extraKeys.removeAll(canonicalKeys);
+
+            if (!missingKeys.isEmpty() || !extraKeys.isEmpty()) {
+                drift.add(locale + " missing=" + missingKeys + " extra=" + extraKeys);
+            }
+        }
+
+        assertThat(drift)
+                .withFailMessage("Primary locale bundles drifted from bundle_en.ftl:%n%s",
+                        String.join(System.lineSeparator(), drift))
+                .isEmpty();
+    }
+
     private static Map<String, Map<String, Set<String>>> loadBundlePlaceholders() throws IOException {
         var bundles = new LinkedHashMap<String, Map<String, Set<String>>>();
 

@@ -308,6 +308,7 @@ commands-maps-text-content =
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | От: [sky]{ $author }
 commands-artv-description = Изменить карту. [scarlet]Только для админов
 commands-artv-map-skipped = { $nickname }[accent] пропустил карту. Следующая карта: { $name }.
+commands-artv-event-skipped = { $nickname }[accent] пропустил событие. Следующее событие: { $name }.
 commands-rtv-description = Голосование за изменение карты
 commands-vnw-description = Голосование за досрочный старт следующей волны
 commands-avnw-description = Принудительно запустить следующую волну досрочно. [scarlet]Только для админов

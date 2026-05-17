@@ -307,6 +307,7 @@ commands-maps-text-content =
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | By: [sky]{ $author }
 commands-artv-description = Force change map. [scarlet]Admin only.
 commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
+commands-artv-event-skipped = { $nickname }[accent] skipped event. Next event: { $name }.
 commands-rtv-description = Rock the vote to change map.
 commands-vnw-description = Vote to start the next wave early.
 commands-avnw-description = Force start the next wave early. [scarlet]Admin only.
