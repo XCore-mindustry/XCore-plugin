@@ -46,6 +46,7 @@ public class EventMenu extends Menu {
 
     @PostConstruct
     public void init() {
+        menuService.registerRoute(new DateTimePickerFlows.PickerFlow());
         menuService.registerRoute(new EventFlows.MainFlow(this, eventViewService, voteService, eventService));
         menuService.registerRoute(new EventDraftFlows.CreateStartFlow(this, eventEditorService));
         menuService.registerRoute(new EventFlows.EventsFlow(this, eventViewService));

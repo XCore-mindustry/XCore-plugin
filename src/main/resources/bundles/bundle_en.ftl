@@ -653,22 +653,68 @@ commands-events-description = List of all events on the servers.
 event-events = Events
 event-menu-main = Main events
 event-menu-main-title = { "[" }orange]{ -xcore } — Events
-event-menu-main-content = Main events page
+event-menu-main-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Event hub[]
+    { "" }[lightgray]Browse active and planned server events from one place.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Current event[]
+    { "" }[gray]Status: [white]{ $currentEventState }[]
+    { "" }[gray]Selected: [white]{ $currentEventName }[]
+    { "" }
+    { "" }[accent]■ Voting[]
+    { "" }[gray]Vote session: [white]{ $voteStatus }[]
+    { "" }
+    { "" }[accent]■ Actions[]
+    { "" }[gray]Open the catalog, inspect the current event, or prepare a new one.[]
 event-menu-event = Event
 event-menu-event-title = { "[" }orange]{ -xcore } — Event
 event-menu-event-content =
-    { "" }[white]Event statistics [green]{ $name }
-    { "" }[white]Author:[green] { $author }[orange] | [white]Map:[green] { $mapName }[orange]
-    { "" }[white]Is Major?:[green] { $isMajor }[orange] | [white]Conducted?:[green] { $isConducted }[orange]
-    { "" }[white]Is Active?:[green] { $isActive }[orange] | [white]Is Temporary?:[green] { $isTemporary }[orange]
-    { "" }[white]Likes:[green] { $like }[orange] | [white]Dislikes:[green] { $dislike }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Overview[]
+    { "" }[gray]Author: [white]{ $author }[]
+    { "" }[gray]Map: [white]{ $mapName }[]
+    { "" }[gray]Type: [white]{ $eventType }[] [darkgray]|[gray] State: [white]{ $eventState }[]
+    { "" }[gray]Temporary: [white]{ $isTemporary }[]
+    { "" }
+    { "" }[accent]■ Schedule[]
+    { "" }[gray]Created: [white]{ $createdEventTime }[]
+    { "" }[gray]Planned start: [white]{ $plannedStartTime }[]
+    { "" }[gray]Planned end: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Reputation[]
+    { "" }[gray]Likes: [white]{ $like }[] [darkgray]|[gray] Dislikes: [white]{ $dislike }[]
 event-menu-event-map = View map
 event-menu-events = Events list
 event-menu-events-title = { "[" }orange]{ -xcore } — Events List
-event-menu-events-content = { "" }[white]Page [green]{ $page }[] of [green]{ $total }[]
-event-menu-events-empty = No events found
-event-menu-events-selected = { "[" }green]●[] { $name }
+event-menu-events-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Event catalog[]
+    { "" }[lightgray]Page [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Events: [green]{ $count }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Filters[]
+    { "" }[gray]Finished: [white]{ $finished }[]
+    { "" }[gray]Major: [white]{ $major }[] [darkgray]|[gray] Active: [white]{ $active }[]
+    { "" }
+    { "" }[accent]■ List[]
+    { "" }[gray]Select an event below to inspect its card.[]
+event-menu-events-empty =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Event catalog[]
+    { "" }[lightgray]There are no events matching the current filters yet.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Filters[]
+    { "" }[gray]Finished: [white]{ $finished }[]
+    { "" }[gray]Major: [white]{ $major }[] [darkgray]|[gray] Active: [white]{ $active }[]
+event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
+event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
 event-menu-create-start = Create
 event-menu-create-start-title = { "[" }orange]{ -xcore } — Event Creation
 event-menu-create-start-message = Enter the name of the future event
@@ -677,10 +723,24 @@ event-menu-create-start-map = Create event for this map
 event-menu-edit = Edit
 event-menu-edit-title = { "[" }orange]{ -xcore } — Edit Event
 event-menu-edit-content =
-    { "" }[white]Event statistics [green]{ $name }
-    { "" }[white]Author:[green] { $author }[orange] | [white]Map:[green] { $mapName }[orange]
-    { "" }[white]Is Major?:[green] { $isMajor }[orange] | [white]Is Temporary?:[green] { $isTemporary }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Identity[]
+    { "" }[gray]Author: [white]{ $author }[]
+    { "" }[gray]Type: [white]{ $eventType }[]
+    { "" }
+    { "" }[accent]■ Map[]
+    { "" }[gray]Selected map: [white]{ $mapName }[]
+    { "" }
+    { "" }[accent]■ Schedule[]
+    { "" }[gray]Planned start: [white]{ $plannedStartTime }[]
+    { "" }[gray]Planned end: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Flags[]
+    { "" }[gray]Temporary: [white]{ $isTemporary }[]
 event-menu-edit-name = Name
 event-menu-edit-name-reset = [scarlet]Reset name
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Edit Event
@@ -714,6 +774,49 @@ event-avote = { "[" }red]Instant Change
 event-menu-vote-stop = Stop voting
 event-menu-stop = Stop event
 event-menu-this-event = { "[" }orange]Current Event
+event-menu-type-major = Major event
+event-menu-type-regular = Regular event
+event-menu-state-none = No active event
+event-menu-state-planned = Planned
+event-menu-state-active = Active now
+event-menu-state-finished = Finished
+event-menu-vote-status-running = Running
+event-menu-vote-status-idle = Not running
+date-time-picker-title = { "[" }orange]{ -xcore } — Date & Time
+date-time-picker-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $field }[]
+    { "" }[lightgray]Current value: [white]{ $value }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Date[]
+    { "" }[gray]Pick a day first, then refine the time below.[]
+    { "" }
+    { "" }[accent]■ Time[]
+    { "" }[gray]Use presets or fine adjustments for precise planning.[]
+    { "" }
+    { "" }[accent]■ Manual input[]
+    { "" }[gray]Use manual entry only when you need exact milliseconds or a relative +m/+h/+d value.[]
+date-time-picker-field-generic = Planned time
+date-time-picker-today = Today
+date-time-picker-tomorrow = Tomorrow
+date-time-picker-plus-2d = +2 days
+date-time-picker-plus-7d = +7 days
+date-time-picker-now = Now
+date-time-picker-time-0000 = 00:00
+date-time-picker-time-0600 = 06:00
+date-time-picker-time-1200 = 12:00
+date-time-picker-time-1800 = 18:00
+date-time-picker-minus-1d = -1d
+date-time-picker-plus-1d = +1d
+date-time-picker-minus-1h = -1h
+date-time-picker-plus-1h = +1h
+date-time-picker-minus-15m = -15m
+date-time-picker-plus-15m = +15m
+date-time-picker-reset = Reset
+date-time-picker-manual = Manual input
+date-time-picker-manual-title = { "[" }orange]{ -xcore } — Manual Time Input
+date-time-picker-manual-message = Enter absolute milliseconds or relative time like +30m, +2h, +1d.
 event-end = The [green]{ $name }[] event has ended!
 # ==============================================================================
 # Errors

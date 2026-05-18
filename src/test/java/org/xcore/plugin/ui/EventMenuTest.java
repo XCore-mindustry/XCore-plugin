@@ -165,7 +165,7 @@ class EventMenuTest {
     void main_createStartAction_opensPromptWithoutAddingLegacyHistory() {
         eventMenu.main(session.data.uuid);
 
-        menuService.onMenuOption(session, 0);
+        menuService.onMenuOption(session, 1);
 
         assertThat(session.hasHistory()).isFalse();
         assertThat(session.activePrompt()).isNotNull();
@@ -241,7 +241,7 @@ class EventMenuTest {
         session.setDraft(draft);
 
         eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 2);
+        menuService.onMenuOption(session, 1);
 
         assertThat(session.activePrompt()).isNotNull();
         verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-edit-description-title"), eq(""), eq(1000), eq("Unknown"), eq(false));
@@ -254,32 +254,40 @@ class EventMenuTest {
     }
 
     @Test
-    @DisplayName("planned start and end prompts apply parseTime correctly")
-    void plannedStartEnd_submit_appliesParseTime() {
+    @DisplayName("planned start and end open picker and apply values through routed flow")
+    void plannedStartEnd_picker_appliesValues() {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
+        draft.plannedEndTime = 999L;
         session.setDraft(draft);
 
         eventMenu.edit(session.data.uuid);
 
-        // planned start is option 5
-        menuService.onMenuOption(session, 5);
-        assertThat(session.activePrompt()).isNotNull();
-        verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-edit-planned-start-title"), eq(""), eq(64), eq(""), eq(false));
+        // planned start is option 3 and opens the shared picker route
+        menuService.onMenuOption(session, 3);
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("shared.datetime-picker"));
+        assertThat(session.hasRouteHistory()).isTrue();
 
-        menuService.onTextInput(session, "12345");
-        assertThat(draft.plannedStartTime).isEqualTo(12345L);
-        assertThat(session.activePrompt()).isNull();
+        // picker option 0 = Today, option 15 = Apply
+        menuService.onMenuOption(session, 0);
+        menuService.onMenuOption(session, 15);
+        assertThat(draft.plannedStartTime).isGreaterThan(0L);
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
 
-        // planned end is option 6
-        menuService.onMenuOption(session, 6);
-        assertThat(session.activePrompt()).isNotNull();
-        verify(gateway).textInput(eq(session.player), eq(0), eq("event-menu-edit-planned-end-title"), eq(""), eq(10), eq(""), eq(false));
+        // planned end is option 4 and uses reset/apply to write zero back into the draft
+        menuService.onMenuOption(session, 4);
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("shared.datetime-picker"));
 
-        menuService.onTextInput(session, "bad");
+        // picker option 16 = Reset, option 15 = Apply
+        menuService.onMenuOption(session, 16);
+        menuService.onMenuOption(session, 15);
         assertThat(draft.plannedEndTime).isEqualTo(0L);
-        assertThat(session.activePrompt()).isNull();
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("event.edit"));
     }
 
     @Test
@@ -298,7 +306,7 @@ class EventMenuTest {
     void main_eventsAction_opensRoutedEventsViaRouteHistory() {
         eventMenu.main(session.data.uuid);
 
-        menuService.onMenuOption(session, 1);
+        menuService.onMenuOption(session, 0);
 
         assertThat(session.hasHistory()).isFalse();
         assertThat(session.hasRouteHistory()).isTrue();
@@ -354,7 +362,7 @@ class EventMenuTest {
 
         eventMenu.events(session.data.uuid, 1);
 
-        // rows: finished (0), major (1), active (2), next (3), event1 (4), main (5), close (6)
+        // rows: filters (0..2), next (3), event1 (4), main (5), close (6)
         menuService.onMenuOption(session, 3);
 
         assertThat(session.activeScreen()).isNotNull();
@@ -367,7 +375,7 @@ class EventMenuTest {
     void events_statusToggle_changesFilter() {
         eventMenu.events(session.data.uuid, 2);
 
-        // rows: finished (0), major (1), active (2), main (3), close (4)
+        // rows: filters (0..2), main (3), close (4)
         menuService.onMenuOption(session, 0);
 
         assertThat(session.sortStatus.get("finished")).isEqualTo(StatusEnum.Active);
@@ -388,7 +396,7 @@ class EventMenuTest {
 
         eventMenu.events(session.data.uuid, 1);
 
-        // rows: finished (0), major (1), active (2), event1 (3), main (4), back (5), close (6)
+        // rows: filters (0..2), event1 (3), main (4), back (5), close (6)
         menuService.onMenuOption(session, 3);
 
         assertThat(session.hasHistory()).isFalse();
@@ -492,7 +500,7 @@ class EventMenuTest {
 
         eventMenu.edit(session.data.uuid);
 
-        menuService.onMenuOption(session, 3);
+        menuService.onMenuOption(session, 2);
 
         assertThat(session.hasHistory()).isFalse();
         assertThat(session.hasRouteHistory()).isTrue();
@@ -516,7 +524,7 @@ class EventMenuTest {
         when(mapDataRepository.findById(selectedMap.id)).thenReturn(selectedMap);
 
         eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 3);
+        menuService.onMenuOption(session, 2);
         menuService.onMenuOption(session, 0);
 
         assertThat(draft.map).isEqualTo(selectedMap.id);
@@ -536,7 +544,7 @@ class EventMenuTest {
         when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
 
         eventMenu.edit(session.data.uuid);
-        menuService.onMenuOption(session, 3);
+        menuService.onMenuOption(session, 2);
         menuService.onMenuOption(session, 1);
 
         assertThat(session.activeScreen()).isNotNull();
@@ -561,7 +569,7 @@ class EventMenuTest {
 
         eventMenu.event(session.data.uuid, event);
 
-        menuService.onMenuOption(session, 5);
+        menuService.onMenuOption(session, 3);
 
         assertThat(session.hasHistory()).isFalse();
         assertThat(session.hasRouteHistory()).isTrue();

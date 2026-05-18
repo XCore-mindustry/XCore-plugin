@@ -34,9 +34,6 @@ final class EventDraftFlows {
     private static final String PROMPT_CREATE_NAME = "event-create-name";
     private static final String PROMPT_EDIT_NAME = "event-edit-name";
     private static final String PROMPT_EDIT_DESCRIPTION = "event-edit-description";
-    private static final String PROMPT_EDIT_PLANNED_START = "event-edit-planned-start";
-    private static final String PROMPT_EDIT_PLANNED_END = "event-edit-planned-end";
-
     private EventDraftFlows() {
     }
 
@@ -128,24 +125,24 @@ final class EventDraftFlows {
                 ctx.render();
             });
             action("edit-planned-start", ctx -> {
-                ctx.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_PLANNED_START,
-                        ctx.locale().t("event-menu-edit-planned-start-title"),
-                        "",
-                        64,
-                        "",
-                        false
+                Session session = ctx.session();
+                EventData draft = session.getDraft(EventData.class);
+                session.setDraft(DateTimePickerFlows.PickerState.class, DateTimePickerFlows.state(
+                        "event-menu-edit-planned-start",
+                        draft.plannedStartTime,
+                        value -> eventEditorService.updatePlannedStartTime(session.getDraft(EventData.class), value)
                 ));
+                ctx.openRoute(MenuRoute.of(DateTimePickerFlows.ROUTE_PICKER));
             });
             action("edit-planned-end", ctx -> {
-                ctx.openPrompt(new MenuPrompt(
-                        PROMPT_EDIT_PLANNED_END,
-                        ctx.locale().t("event-menu-edit-planned-end-title"),
-                        "",
-                        10,
-                        "",
-                        false
+                Session session = ctx.session();
+                EventData draft = session.getDraft(EventData.class);
+                session.setDraft(DateTimePickerFlows.PickerState.class, DateTimePickerFlows.state(
+                        "event-menu-edit-planned-end",
+                        draft.plannedEndTime,
+                        value -> eventEditorService.updatePlannedEndTime(session.getDraft(EventData.class), value)
                 ));
+                ctx.openRoute(MenuRoute.of(DateTimePickerFlows.ROUTE_PICKER));
             });
             action("save", ctx -> {
                 if (eventEditorService.saveDraft(ctx.session())) {
@@ -169,14 +166,6 @@ final class EventDraftFlows {
                 eventEditorService.updateDescription(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
                 ctx.renderContext().render();
             }, ctx -> ctx.render());
-            onPrompt(PROMPT_EDIT_PLANNED_START, ctx -> {
-                eventEditorService.updatePlannedStartTime(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
-                ctx.renderContext().render();
-            }, ctx -> ctx.render());
-            onPrompt(PROMPT_EDIT_PLANNED_END, ctx -> {
-                eventEditorService.updatePlannedEndTime(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
-                ctx.renderContext().render();
-            }, ctx -> ctx.render());
         }
 
         @Override
@@ -197,42 +186,46 @@ final class EventDraftFlows {
             var grid = new MenuGrid();
             grid.row(
                     MenuButton.of(session.locale().t("event-menu-edit-name"), "edit-name"),
-                    MenuButton.of(session.locale().t("event-menu-edit-name-reset"), "edit-name-reset"),
                     MenuButton.of(session.locale().t("event-menu-edit-description"), "edit-description")
             );
             grid.row(
                     MenuButton.of(session.locale().t("event-menu-edit-map"), "edit-map"),
-                    MenuButton.of(session.locale().t(draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive"), "toggle-temporary")
-            );
-            grid.row(
                     MenuButton.of(session.locale().t("event-menu-edit-planned-start"), "edit-planned-start"),
                     MenuButton.of(session.locale().t("event-menu-edit-planned-end"), "edit-planned-end")
             );
-            grid.row(
-                    MenuButton.of("[green]" + session.locale().t("save"), "save"),
-                    MenuButton.of("[red]" + session.locale().t("cancel"), "cancel-edit")
-            );
+            List<MenuButton> flagsRow = new ArrayList<>();
+            flagsRow.add(MenuButton.of(session.locale().t(draft.isTemporary ? "event-menu-edit-temporary-active" : "event-menu-edit-temporary-inactive"), "toggle-temporary"));
             if (session.player.admin) {
-                grid.row(MenuButton.of(
+                flagsRow.add(MenuButton.of(
                         session.locale().t(draft.isMajor ? "event-menu-edit-major-active" : "event-menu-edit-major-inactive"),
                         "toggle-major"
                 ));
             }
+            grid.row(flagsRow.toArray(new MenuButton[0]));
+            grid.row(MenuButton.of(session.locale().t("event-menu-edit-name-reset"), "edit-name-reset"));
+            grid.row(
+                    MenuButton.of("[green]" + session.locale().t("save"), "save"),
+                    MenuButton.of("[red]" + session.locale().t("cancel"), "cancel-edit")
+            );
 
             return MenuScreen.normal(
                     session.locale().t("event-menu-edit-title"),
                     session.locale().t("event-menu-edit-content", args(
-                            "name", draft.name,
-                            "description", draft.description,
-                            "author", (authorData == null) ? "Unknown" : authorData.nickname,
-                            "mapName", (mapData == null) ? "" : mapData.name,
-                            "isMajor", draft.isMajor ? yes : no,
+                            "name", displayText(session, draft.name, "none"),
+                            "description", displayText(session, draft.description, "no-description"),
+                            "author", authorData == null ? session.locale().t("none") : displayText(session, authorData.nickname, "none"),
+                            "mapName", mapData == null ? session.locale().t("none") : displayText(session, mapData.name, "none"),
+                            "eventType", session.locale().t(draft.isMajor ? "event-menu-type-major" : "event-menu-type-regular"),
                             "isTemporary", draft.isTemporary ? yes : no,
                             "plannedStartTime", menu.formatTime(draft.plannedStartTime, session),
                             "plannedEndTime", menu.formatTime(draft.plannedEndTime, session)
                     )),
                     grid.build()
             );
+        }
+
+        private String displayText(Session session, String value, String fallbackKey) {
+            return value == null || value.isBlank() ? session.locale().t(fallbackKey) : value;
         }
     }
 

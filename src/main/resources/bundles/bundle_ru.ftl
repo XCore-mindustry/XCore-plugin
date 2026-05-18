@@ -599,22 +599,68 @@ commands-events-description = Список всех событий на серв
 event-events = События
 event-menu-main = Основные события
 event-menu-main-title = { "[" }orange]{ -xcore } — События
-event-menu-main-content = Главная страница событий
+event-menu-main-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Центр событий[]
+    { "" }[lightgray]Здесь можно просматривать активные и запланированные события сервера.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Текущее событие[]
+    { "" }[gray]Статус: [white]{ $currentEventState }[]
+    { "" }[gray]Выбрано: [white]{ $currentEventName }[]
+    { "" }
+    { "" }[accent]■ Голосование[]
+    { "" }[gray]Сессия голосования: [white]{ $voteStatus }[]
+    { "" }
+    { "" }[accent]■ Действия[]
+    { "" }[gray]Откройте каталог событий, текущую карточку или подготовьте новое событие.[]
 event-menu-event = Событие
 event-menu-event-title = { "[" }orange]{ -xcore } — Событие
 event-menu-event-content =
-    { "" }[white]Статистика события [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Карта:[green] { $mapName }[orange]
-    { "" }[white]Крупное?:[green] { $isMajor }[orange] | [white]Проведено?:[green] { $isConducted }[orange]
-    { "" }[white]Активно?:[green] { $isActive }[orange] | [white]Временное?:[green] { $isTemporary }[orange]
-    { "" }[white]Лайки:[green] { $like }[orange] | [white]Дизлайки:[green] { $dislike }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Обзор[]
+    { "" }[gray]Автор: [white]{ $author }[]
+    { "" }[gray]Карта: [white]{ $mapName }[]
+    { "" }[gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Состояние: [white]{ $eventState }[]
+    { "" }[gray]Временное: [white]{ $isTemporary }[]
+    { "" }
+    { "" }[accent]■ Расписание[]
+    { "" }[gray]Создано: [white]{ $createdEventTime }[]
+    { "" }[gray]Планируемый старт: [white]{ $plannedStartTime }[]
+    { "" }[gray]Планируемый конец: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Репутация[]
+    { "" }[gray]Лайки: [white]{ $like }[] [darkgray]|[gray] Дизлайки: [white]{ $dislike }[]
 event-menu-event-map = Посмотреть карту
 event-menu-events = Список событий
 event-menu-events-title = { "[" }orange]{ -xcore } — Список событий
-event-menu-events-content = { "" }[white]Страница [green]{ $page }[] из [green]{ $total }[]
-event-menu-events-empty = События не найдены
-event-menu-events-selected = { "[" }green]●[] { $name }
+event-menu-events-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Каталог событий[]
+    { "" }[lightgray]Страница [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Событий: [green]{ $count }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Фильтры[]
+    { "" }[gray]Завершено: [white]{ $finished }[]
+    { "" }[gray]Крупное: [white]{ $major }[] [darkgray]|[gray] Активное: [white]{ $active }[]
+    { "" }
+    { "" }[accent]■ Список[]
+    { "" }[gray]Выберите событие ниже, чтобы открыть его карточку.[]
+event-menu-events-empty =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Каталог событий[]
+    { "" }[lightgray]Сейчас нет событий, подходящих под выбранные фильтры.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Фильтры[]
+    { "" }[gray]Завершено: [white]{ $finished }[]
+    { "" }[gray]Крупное: [white]{ $major }[] [darkgray]|[gray] Активное: [white]{ $active }[]
+event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
+event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
 event-menu-create-start = Создать
 event-menu-create-start-title = { "[" }orange]{ -xcore } — Создание события
 event-menu-create-start-message = Введите название будущего события
@@ -623,10 +669,24 @@ event-menu-create-start-map = Создать событие для этой ка
 event-menu-edit = Редактировать
 event-menu-edit-title = { "[" }orange]{ -xcore } — Редактирование события
 event-menu-edit-content =
-    { "" }[white]Статистика события [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Карта:[green] { $mapName }[orange]
-    { "" }[white]Крупное?:[green] { $isMajor }[orange] | [white]Временное?:[green] { $isTemporary }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Идентичность[]
+    { "" }[gray]Автор: [white]{ $author }[]
+    { "" }[gray]Тип: [white]{ $eventType }[]
+    { "" }
+    { "" }[accent]■ Карта[]
+    { "" }[gray]Выбранная карта: [white]{ $mapName }[]
+    { "" }
+    { "" }[accent]■ Расписание[]
+    { "" }[gray]Планируемый старт: [white]{ $plannedStartTime }[]
+    { "" }[gray]Планируемый конец: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Флаги[]
+    { "" }[gray]Временное: [white]{ $isTemporary }[]
 event-menu-edit-name = Название
 event-menu-edit-name-reset = [scarlet]Сбросить название
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редактирование события
@@ -660,6 +720,49 @@ event-avote = { "[" }red]Мгновенная смена
 event-menu-vote-stop = Остановить голосование
 event-menu-stop = Остановить событие
 event-menu-this-event = { "[" }orange]Текущее событие
+event-menu-type-major = Крупное событие
+event-menu-type-regular = Обычное событие
+event-menu-state-none = Нет активного события
+event-menu-state-planned = Запланировано
+event-menu-state-active = Активно сейчас
+event-menu-state-finished = Завершено
+event-menu-vote-status-running = Идёт
+event-menu-vote-status-idle = Не идёт
+date-time-picker-title = { "[" }orange]{ -xcore } — Дата и время
+date-time-picker-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $field }[]
+    { "" }[lightgray]Текущее значение: [white]{ $value }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Дата[]
+    { "" }[gray]Сначала выберите день, а затем уточните время ниже.[]
+    { "" }
+    { "" }[accent]■ Время[]
+    { "" }[gray]Используйте пресеты или точные корректировки для удобной настройки.[]
+    { "" }
+    { "" }[accent]■ Ручной ввод[]
+    { "" }[gray]Используйте его только если нужны точные миллисекунды или относительное значение вида +m/+h/+d.[]
+date-time-picker-field-generic = Планируемое время
+date-time-picker-today = Сегодня
+date-time-picker-tomorrow = Завтра
+date-time-picker-plus-2d = +2 дня
+date-time-picker-plus-7d = +7 дней
+date-time-picker-now = Сейчас
+date-time-picker-time-0000 = 00:00
+date-time-picker-time-0600 = 06:00
+date-time-picker-time-1200 = 12:00
+date-time-picker-time-1800 = 18:00
+date-time-picker-minus-1d = -1д
+date-time-picker-plus-1d = +1д
+date-time-picker-minus-1h = -1ч
+date-time-picker-plus-1h = +1ч
+date-time-picker-minus-15m = -15м
+date-time-picker-plus-15m = +15м
+date-time-picker-reset = Сбросить
+date-time-picker-manual = Ручной ввод
+date-time-picker-manual-title = { "[" }orange]{ -xcore } — Ручной ввод времени
+date-time-picker-manual-message = Введите абсолютные миллисекунды или относительное время вроде +30m, +2h, +1d.
 event-end = Событие [green]{ $name }[] завершилось!
 # ==============================================================================
 # Errors

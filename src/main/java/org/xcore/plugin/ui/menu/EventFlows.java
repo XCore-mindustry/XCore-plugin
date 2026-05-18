@@ -66,11 +66,14 @@ final class EventFlows {
             Session session = context.session();
             var local = context.locale();
             EventData active = eventViewService.activeEvent();
+            String voteStatus = local.t(voteService.getCurrentSession() instanceof VoteEvent
+                    ? "event-menu-vote-status-running"
+                    : "event-menu-vote-status-idle");
 
             var grid = new MenuGrid();
             grid.row(
-                    MenuButton.of(local.t("event-menu-create-start"), "create-start"),
-                    MenuButton.of(local.t("event-menu-events"), "events")
+                    MenuButton.of(local.t("event-menu-events"), "events"),
+                    MenuButton.of(local.t("event-menu-create-start"), "create-start")
             );
 
             grid.rowIf(active != null, MenuButton.of(local.t("event-menu-this-event"), "this-event"));
@@ -92,7 +95,11 @@ final class EventFlows {
 
             return MenuScreen.normal(
                     local.t("event-menu-main-title"),
-                    local.t("event-menu-main-content"),
+                    local.t("event-menu-main-content", args(
+                            "currentEventState", eventStateText(session, active),
+                            "currentEventName", active == null ? local.t("none") : displayText(session, active.name, "none"),
+                            "voteStatus", voteStatus
+                    )),
                     grid.build()
             );
         }
@@ -141,32 +148,39 @@ final class EventFlows {
         @Override
         public MenuScreen render(MenuRenderContext<EventsState> context) {
             Session session = context.session();
-            String uuid = menu.getUuid(session);
             int requestedPage = Math.max(1, context.state().page);
             int perPage = menu.globalConfig.eventsPerPage;
             EventViewService.EventPage eventPage = eventViewService.page(requestedPage, perPage, session.sortStatus);
+            String finishedFilter = session.locale().t("finished-" + session.sortStatus.getOrDefault("finished", StatusEnum.Neutral).name().toLowerCase());
+            String majorFilter = session.locale().t("major-" + session.sortStatus.getOrDefault("major", StatusEnum.Neutral).name().toLowerCase());
+            String activeFilter = session.locale().t("active-" + session.sortStatus.getOrDefault("active", StatusEnum.Neutral).name().toLowerCase());
+            int displayTotalPages = Math.max(1, eventPage.totalPages());
 
             String menuContent;
             if (eventPage.isEmpty()) {
-                menuContent = session.locale().t("event-menu-events-empty");
+                menuContent = session.locale().t("event-menu-events-empty", args(
+                        "finished", finishedFilter,
+                        "major", majorFilter,
+                        "active", activeFilter
+                ));
             } else {
                 menuContent = session.locale().t("event-menu-events-content", args(
                         "page", eventPage.page(),
-                        "total", eventPage.totalPages()
+                        "total", displayTotalPages,
+                        "count", eventPage.total(),
+                        "finished", finishedFilter,
+                        "major", majorFilter,
+                        "active", activeFilter
                 ));
             }
 
             var grid = new MenuGrid();
 
-            grid.row(MenuButton.of(
-                    session.locale().t("finished-" + session.sortStatus.getOrDefault("finished", StatusEnum.Neutral).name().toLowerCase()),
-                    "status:finished"));
-            grid.row(MenuButton.of(
-                    session.locale().t("major-" + session.sortStatus.getOrDefault("major", StatusEnum.Neutral).name().toLowerCase()),
-                    "status:major"));
-            grid.row(MenuButton.of(
-                    session.locale().t("active-" + session.sortStatus.getOrDefault("active", StatusEnum.Neutral).name().toLowerCase()),
-                    "status:active"));
+            grid.row(
+                    MenuButton.of(finishedFilter, "status:finished"),
+                    MenuButton.of(majorFilter, "status:major"),
+                    MenuButton.of(activeFilter, "status:active")
+            );
 
             List<MenuButton> paginationRow = new ArrayList<>();
             if (eventPage.hasPrevious()) {
@@ -180,7 +194,14 @@ final class EventFlows {
             }
 
             for (EventData e : eventPage.events()) {
-                String text = e.isActive ? session.locale().t("event-menu-events-selected", args("name", e.name)) : e.name;
+                String text = session.locale().t(
+                        e.isActive ? "event-menu-events-selected" : "event-menu-events-row",
+                        args(
+                                "state", eventStateText(session, e),
+                                "type", eventTypeText(session, e),
+                                "name", displayText(session, e.name, "none")
+                        )
+                );
                 grid.row(MenuButton.of(text, "event:" + e.id.toHexString()));
             }
 
@@ -293,28 +314,29 @@ final class EventFlows {
             }
 
             boolean isOwner = session.data.id != null && session.data.id.equals(event.author);
-            if (!event.isFinished && !event.isActive && (!event.isMajor || session.player.admin) && (isOwner || session.player.admin)) {
-                grid.row(MenuButton.of(session.locale().t("event-menu-edit"), "edit"));
-            }
-
-            grid.row(MenuButton.of(session.locale().t("event-menu-events"), "events"));
+            boolean canEdit = !event.isFinished && !event.isActive && (!event.isMajor || session.player.admin) && (isOwner || session.player.admin);
 
             if (mapData != null) {
                 grid.row(MenuButton.of(session.locale().t("event-menu-event-map"), "event-map"));
             }
+
+            if (canEdit) {
+                grid.row(MenuButton.of(session.locale().t("event-menu-edit"), "edit"));
+            }
+
+            grid.row(MenuButton.of(session.locale().t("event-menu-events"), "events"));
 
             grid.defaultNavigation(session, session.locale());
 
             return MenuScreen.normal(
                     session.locale().t("event-menu-event-title"),
                     session.locale().t("event-menu-event-content", args(
-                            "name", event.name,
-                            "description", event.description,
-                            "author", (authorData == null) ? "Unknown" : authorData.nickname,
-                            "mapName", (mapData == null) ? "" : mapData.name,
-                            "isMajor", event.isMajor ? yes : no,
-                            "isConducted", event.isFinished ? yes : no,
-                            "isActive", event.isActive ? yes : no,
+                            "name", displayText(session, event.name, "none"),
+                            "description", displayText(session, event.description, "no-description"),
+                            "author", authorData == null ? session.locale().t("none") : displayText(session, authorData.nickname, "none"),
+                            "mapName", mapData == null ? session.locale().t("none") : displayText(session, mapData.name, "none"),
+                            "eventType", eventTypeText(session, event),
+                            "eventState", eventStateText(session, event),
                             "isTemporary", event.isTemporary ? yes : no,
                             "createdEventTime", menu.formatTime(event.createdModelTime, session),
                             "plannedStartTime", menu.formatTime(event.plannedStartTime, session),
@@ -369,5 +391,26 @@ final class EventFlows {
 
     static final class EventState {
         public String eventId = "";
+    }
+
+    private static String eventTypeText(Session session, EventData event) {
+        return session.locale().t(event != null && event.isMajor ? "event-menu-type-major" : "event-menu-type-regular");
+    }
+
+    private static String eventStateText(Session session, EventData event) {
+        if (event == null) {
+            return session.locale().t("event-menu-state-none");
+        }
+        if (event.isFinished) {
+            return session.locale().t("event-menu-state-finished");
+        }
+        if (event.isActive) {
+            return session.locale().t("event-menu-state-active");
+        }
+        return session.locale().t("event-menu-state-planned");
+    }
+
+    private static String displayText(Session session, String value, String fallbackKey) {
+        return value == null || value.isBlank() ? session.locale().t(fallbackKey) : value;
     }
 }

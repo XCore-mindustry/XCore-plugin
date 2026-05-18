@@ -470,22 +470,68 @@ commands-event-description = Меню керуванням подій.
 commands-events-description = Список усіх подій на серверах.
 event-menu-main = Головних подій
 event-menu-main-title = { "[" }orange]{ -xcore } — Події
-event-menu-main-content = Головна сторінка подій
+event-menu-main-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Центр подій[]
+    { "" }[lightgray]Тут можна переглядати активні та заплановані події сервера.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Поточна подія[]
+    { "" }[gray]Статус: [white]{ $currentEventState }[]
+    { "" }[gray]Вибрано: [white]{ $currentEventName }[]
+    { "" }
+    { "" }[accent]■ Голосування[]
+    { "" }[gray]Сесія голосування: [white]{ $voteStatus }[]
+    { "" }
+    { "" }[accent]■ Дії[]
+    { "" }[gray]Відкрийте каталог подій, теперішню картку або підготуйте нову подію.[]
 event-menu-event = Подія
 event-menu-event-title = { "[" }orange]{ -xcore } — Подія
 event-menu-event-content =
-    { "" }[white]Статистика події [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Мапа:[green] { $mapName }[orange]
-    { "" }[white]Чи масштабна?:[green] { $isMajor }[orange] | [white]Чи проходила?:[green] { $isConducted }[orange]
-    { "" }[white]Чи активна?:[green] { $isActive }[orange] | [white]Чи тимчасова?:[green] { $isTemporary }[orange]
-    { "" }[white]Подобається:[green] { $like }[orange] | [white]Не подобається:[green] { $dislike }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Огляд[]
+    { "" }[gray]Автор: [white]{ $author }[]
+    { "" }[gray]Мапа: [white]{ $mapName }[]
+    { "" }[gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Стан: [white]{ $eventState }[]
+    { "" }[gray]Тимчасова: [white]{ $isTemporary }[]
+    { "" }
+    { "" }[accent]■ Розклад[]
+    { "" }[gray]Створено: [white]{ $createdEventTime }[]
+    { "" }[gray]Запланований старт: [white]{ $plannedStartTime }[]
+    { "" }[gray]Запланований кінець: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Репутація[]
+    { "" }[gray]Вподобайки: [white]{ $like }[] [darkgray]|[gray] Не подобається: [white]{ $dislike }[]
 event-menu-event-map = Подивитися мапу
 event-menu-events = Список подій
 event-menu-events-title = { "[" }orange]{ -xcore } — Список Подій
-event-menu-events-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
-event-menu-events-empty = Немає подій
-event-menu-events-selected = { "[" }green]●[] { $name }
+event-menu-events-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Каталог подій[]
+    { "" }[lightgray]Сторінка [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Подій: [green]{ $count }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Фільтри[]
+    { "" }[gray]Завершено: [white]{ $finished }[]
+    { "" }[gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
+    { "" }
+    { "" }[accent]■ Список[]
+    { "" }[gray]Виберіть подію нижче, щоб відкрити її картку.[]
+event-menu-events-empty =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]Каталог подій[]
+    { "" }[lightgray]Зараз немає подій, що відповідають вибраним фільтрам.[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Фільтри[]
+    { "" }[gray]Завершено: [white]{ $finished }[]
+    { "" }[gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
+event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
+event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
 event-menu-create-start = Створити
 event-menu-create-start-title = { "[" }orange]{ -xcore } — Створення подій
 event-menu-create-start-message = Ведіть назву майбутьної події
@@ -493,10 +539,24 @@ event-menu-create-start-default = { $playerName } Подія
 event-menu-edit = Редагувати
 event-menu-edit-title = { "[" }orange]{ -xcore } — Редагування подій
 event-menu-edit-content =
-    { "" }[white]Статистика події [green]{ $name }
-    { "" }[white]Автор:[green] { $author }[orange] | [white]Мапа:[green] { $mapName }[orange]
-    { "" }[white]Чи масштабна?:[green] { $isMajor }[orange] | [white]Чи тимчасова?:[green] { $isTemporary }[orange]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $name }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Ідентичність[]
+    { "" }[gray]Автор: [white]{ $author }[]
+    { "" }[gray]Тип: [white]{ $eventType }[]
+    { "" }
+    { "" }[accent]■ Мапа[]
+    { "" }[gray]Обрана мапа: [white]{ $mapName }[]
+    { "" }
+    { "" }[accent]■ Розклад[]
+    { "" }[gray]Запланований старт: [white]{ $plannedStartTime }[]
+    { "" }[gray]Запланований кінець: [white]{ $plannedEndTime }[]
+    { "" }
+    { "" }[accent]■ Прапорці[]
+    { "" }[gray]Тимчасова: [white]{ $isTemporary }[]
 event-menu-edit-name = Назва
 event-menu-edit-name-reset = [scarlet]Скинути назву
 event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редагування події
@@ -530,6 +590,14 @@ event-avote = { "[" }red]Миттєва зміна
 event-menu-vote-stop = Зупинити голосування
 event-menu-stop = Зупинити подію
 event-menu-this-event = { "[" }orange]Теперішна подія
+event-menu-type-major = Масштабна подія
+event-menu-type-regular = Звичайна подія
+event-menu-state-none = Немає активної події
+event-menu-state-planned = Запланована
+event-menu-state-active = Активна зараз
+event-menu-state-finished = Завершена
+event-menu-vote-status-running = Триває
+event-menu-vote-status-idle = Не триває
 # ==============================================================================
 # Errors
 # ==============================================================================
@@ -723,6 +791,41 @@ audit-menu-action-quarantine = Карантин
 audit-menu-action-unquarantine = Зняття карантину
 settings-language-label = Мова: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
+date-time-picker-title = { "[" }orange]{ -xcore } — Дата й час
+date-time-picker-content =
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $field }[]
+    { "" }[lightgray]Поточне значення: [white]{ $value }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Дата[]
+    { "" }[gray]Спочатку виберіть день, а потім уточніть час нижче.[]
+    { "" }
+    { "" }[accent]■ Час[]
+    { "" }[gray]Скористайтеся пресетами або точними коригуваннями для зручного планування.[]
+    { "" }
+    { "" }[accent]■ Ручне введення[]
+    { "" }[gray]Використовуйте його лише коли потрібні точні мілісекунди або відносне значення формату +m/+h/+d.[]
+date-time-picker-field-generic = Запланований час
+date-time-picker-today = Сьогодні
+date-time-picker-tomorrow = Завтра
+date-time-picker-plus-2d = +2 дні
+date-time-picker-plus-7d = +7 днів
+date-time-picker-now = Зараз
+date-time-picker-time-0000 = 00:00
+date-time-picker-time-0600 = 06:00
+date-time-picker-time-1200 = 12:00
+date-time-picker-time-1800 = 18:00
+date-time-picker-minus-1d = -1д
+date-time-picker-plus-1d = +1д
+date-time-picker-minus-1h = -1г
+date-time-picker-plus-1h = +1г
+date-time-picker-minus-15m = -15хв
+date-time-picker-plus-15m = +15хв
+date-time-picker-reset = Скинути
+date-time-picker-manual = Ручне введення
+date-time-picker-manual-title = { "[" }orange]{ -xcore } — Ручне введення часу
+date-time-picker-manual-message = Введіть абсолютні мілісекунди або відносний час на кшталт +30m, +2h, +1d.
 event-end = Подія [green]{ $name }[] завершилася!
 error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
 error-no-access = { "[" }scarlet]⚠ Немає доступу.

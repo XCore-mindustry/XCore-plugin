@@ -56,11 +56,19 @@ public class EventEditorService {
     }
 
     public void updatePlannedStartTime(EventData draft, String input) {
-        draft.plannedStartTime = parseTime(input);
+        updatePlannedStartTime(draft, parseTime(input));
     }
 
     public void updatePlannedEndTime(EventData draft, String input) {
-        draft.plannedEndTime = parseTime(input);
+        updatePlannedEndTime(draft, parseTime(input));
+    }
+
+    public void updatePlannedStartTime(EventData draft, long value) {
+        draft.plannedStartTime = Math.max(0L, value);
+    }
+
+    public void updatePlannedEndTime(EventData draft, long value) {
+        draft.plannedEndTime = Math.max(0L, value);
     }
 
     public boolean saveDraft(Session session) {
