@@ -600,6 +600,7 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 commands-surrender-description = Surrender in Hexed. This destroys your current team, removes your unit, and moves you to the spectator team.
 commands-surrender-success = { "[" }green]You surrendered and are now spectating
 commands-observer-success = { "[" }green]You are now spectating
+commands-observer-exit-success = { "[" }green]You are no longer spectating
 commands-ai-description = Control AI.
 commands-ai-usage = { "[" }red]attack(i) []or [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] until the game ends.

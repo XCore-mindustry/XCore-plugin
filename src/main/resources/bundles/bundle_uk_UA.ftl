@@ -417,6 +417,7 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 commands-surrender-description = Здатися в Hexed. Це знищить вашу поточну команду, прибере вашу одиницю та переведе вас до команди спостерігачів.
 commands-surrender-success = { "[" }green]Ви здалися і тепер спостерігаєте за грою
 commands-observer-success = { "[" }green]Тепер ви спостерігаєте за грою
+commands-observer-exit-success = { "[" }green]Ви більше не спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
 commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)
 hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] до кінця гри.

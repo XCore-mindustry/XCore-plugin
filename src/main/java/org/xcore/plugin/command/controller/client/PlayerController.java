@@ -74,6 +74,15 @@ public class PlayerController implements CloudClientController {
         var player = sender.player();
         var session = sessionService.get(player.uuid());
 
+        if (observerService.isObserving(session)) {
+            observerService.exit(session);
+
+            if (session != null) {
+                session.locale().send("commands-observer-exit-success");
+            }
+            return;
+        }
+
         observerService.enter(player);
 
         if (session != null) {

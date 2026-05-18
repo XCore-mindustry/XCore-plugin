@@ -64,6 +64,47 @@ class PlayerControllerObserverTest {
     }
 
     @Test
+    @DisplayName("observer command exits observer mode when player is already observing")
+    void observerCommand_exitsObserverModeWhenPlayerIsAlreadyObserving() {
+        SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
+        ObserverService observerService = new ObserverService(sessionService, observerStateStore);
+        PlayerController controller = new PlayerController(
+                mock(PlayerDataRepository.class),
+                sessionService,
+                observerService,
+                mock(PlayerMenu.class),
+                mock(TopMenu.class)
+        );
+
+        Player player = Player.create();
+        player.con = mock(mindustry.net.NetConnection.class);
+        player.con.uuid = "uuid-1";
+        player.team(Team.get(255));
+
+        Session session = mock(Session.class);
+        Localization localization = mock(Localization.class);
+        session.player = player;
+        session.data = new PlayerData("uuid-1", true);
+
+        when(session.observing()).thenReturn(true);
+        when(session.endObserving()).thenReturn(Team.sharded);
+        when(session.locale()).thenReturn(localization);
+
+        sessionService.update(session);
+
+        XCoreSender sender = mock(XCoreSender.class);
+        when(sender.player()).thenReturn(player);
+
+        controller.observer(sender);
+
+        verify(session).endObserving();
+        verify(observerStateStore).delete("uuid-1");
+        verify(localization).send("commands-observer-exit-success");
+        assertThat(player.team()).isEqualTo(Team.sharded);
+    }
+
+    @Test
     @DisplayName("set-team clears observer state before moving spectator to real team")
     void setTeam_clearsObserverStateBeforeMovingSpectatorToRealTeam() {
         SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
