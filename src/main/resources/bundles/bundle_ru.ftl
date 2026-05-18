@@ -396,18 +396,34 @@ player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Настройки
 player-menu-settings-title = { "[" }orange]{ -xcore } — Настройки игрока
 player-menu-settings-content =
-    { "" }[white]Установленное имя: [green]{ $customNickname }[]
-    { "" }[white]Системный бейдж: [green]{ $systemBadge }[] | Активный бейдж: [green]{ $activeBadge }[]
-    { "" }[white]Настройки чата: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
-    { "" }[white]Таблица лидеров: [green]{ $leaderboard }[]
-    { "" }[white]Язык: [green]{ $language }[]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $displayNickname }[] [gray]#{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Профиль[]
+    { "" }[gray]Имя: [white]{ $nickname } [darkgray]|[gray] Отображается: [lime]{ $customNickname }[]
+    { "" }[gray]Бейдж: [white]{ $activeBadge } [darkgray]|[gray] Системный: [coral]{ $systemBadge }[]
+    { "" }
+    { "" }[accent]■ Видимость[]
+    { "" }[gray]Лидерборд: [white]{ $leaderboard }[]
+    { "" }
+    { "" }[accent]■ Чат[]
+    { "" }[gray]Global: [white]{ $globalChat } [darkgray]|[gray] Discord: [white]{ $discordRelay }[]
+    { "" }[gray]Переводчик: [white]{ $translatorLanguage }[]
+    { "" }
+    { "" }[accent]■ Локализация[]
+    { "" }[gray]Язык: [white]{ $language }[]
 player-menu-settings-chat = Настройки чата
 player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Настройки чата
 player-menu-settings-chat-content =
-    { "" }[white]Global чат: [green]{ $globalChat }[]
-    { "" }[white]Discord relay: [green]{ $discordRelay }[]
-    { "" }[white]Язык переводчика: [green]{ $translatorLanguage }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[accent]■ Видимость чата[]
+    { "" }[gray]Global чат: [white]{ $globalChat }[]
+    { "" }[gray]Discord relay: [white]{ $discordRelay }[]
+    { "" }
+    { "" }[accent]■ Перевод[]
+    { "" }[gray]Язык переводчика: [white]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Выбор языка переводчика
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Выбор языка
 player-menu-settings-customNickname = Изменить имя
@@ -430,8 +446,8 @@ player-menu-player-hexed-summary = { "[" }gray]матчей [white]{ $gamesPlaye
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }ч
 player-menu-time-minutes = { $value }м
-settings-language-label = Перевод: [green]{ $lang }[]
-settings-translator-label = Язык переводчика: [green]{ $lang }[]
+settings-language-label = Язык: [green]{ $lang }[]
+settings-translator-label = Переводчик: [green]{ $lang }[]
 badge-menu-title = { "[" }orange]{ -xcore } — Бейджи
 badge-menu-content =
     { "" }[white]Системный бейдж: [green]{ $systemBadge }[]
@@ -747,8 +763,8 @@ admin = Админ
 admin-neutral = { "[" }orange]Админ
 admin-active = { "[" }green]Админ
 admin-inactive = { "[" }red]Админ
-player-leaderboard-active = { "[" }green]Таблица лидеров
-player-leaderboard-inactive = { "[" }red]Таблица лидеров
+player-leaderboard-active = [green]Лидерборд: включён[]
+player-leaderboard-inactive = [red]Лидерборд: выключен[]
 audit-menu-open = История аудита
 audit-menu-actions-open = Действия
 audit-menu-history-title = { "[" }orange]{ -xcore } — История аудита

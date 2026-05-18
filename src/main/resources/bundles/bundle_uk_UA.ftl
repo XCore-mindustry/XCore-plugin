@@ -368,7 +368,7 @@ player-menu-player-hexed-summary = { "[" }gray]матчів [white]{ $gamesPlaye
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }г
 player-menu-time-minutes = { $value }хв
-settings-translator-label = Мова перекладача: [green]{ $lang }[]
+settings-translator-label = Перекладач: [green]{ $lang }[]
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->
@@ -624,18 +624,34 @@ player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Налаштування
 player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
 player-menu-settings-content =
-    { "" }[white]Встановлене ім'я: [green]{ $customNickname }[]
-    { "" }[white]Системний відзнака: [green]{ $systemBadge }[] | Активний бейдж: [green]{ $activeBadge }[]
-    { "" }[white]Налаштування чату: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
-    { "" }[white]Таблиця лідерів: [green]{ $leaderboard }[]
-    { "" }[white]Мова: [green]{ $language }[]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $displayNickname }[] [gray]#{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Профіль[]
+    { "" }[gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Відображення: [lime]{ $customNickname }[]
+    { "" }[gray]Бейдж: [white]{ $activeBadge } [darkgray]|[gray] Системний: [coral]{ $systemBadge }[]
+    { "" }
+    { "" }[accent]■ Видимість[]
+    { "" }[gray]Лідерборд: [white]{ $leaderboard }[]
+    { "" }
+    { "" }[accent]■ Чат[]
+    { "" }[gray]Global: [white]{ $globalChat } [darkgray]|[gray] Discord: [white]{ $discordRelay }[]
+    { "" }[gray]Перекладач: [white]{ $translatorLanguage }[]
+    { "" }
+    { "" }[accent]■ Локалізація[]
+    { "" }[gray]Мова: [white]{ $language }[]
 player-menu-settings-chat = Налаштування чату
 player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Налаштування чату
 player-menu-settings-chat-content =
-    { "" }[white]Global чат: [green]{ $globalChat }[]
-    { "" }[white]Discord relay: [green]{ $discordRelay }[]
-    { "" }[white]Мова перекладача: [green]{ $translatorLanguage }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[accent]■ Видимість чату[]
+    { "" }[gray]Global чат: [white]{ $globalChat }[]
+    { "" }[gray]Discord relay: [white]{ $discordRelay }[]
+    { "" }
+    { "" }[accent]■ Переклад[]
+    { "" }[gray]Мова перекладача: [white]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
 player-menu-settings-customNickname = Редагувати ім'я
@@ -705,7 +721,7 @@ audit-menu-action-kick = Кік
 audit-menu-action-note = Нотатка
 audit-menu-action-quarantine = Карантин
 audit-menu-action-unquarantine = Зняття карантину
-settings-language-label = Переклад: [green]{ $lang }[]
+settings-language-label = Мова: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
 event-end = Подія [green]{ $name }[] завершилася!
 error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
@@ -761,8 +777,8 @@ off = Вимкнено
 error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
 error-feature-disabled = { "[" }scarlet]⚠ Цю функцію вимкнено на цьому сервері.
 error-nickname-badge-glyph = { "[" }scarlet]⚠ Користувацький нік не може містити зарезервовані іконки відзнак.
-player-leaderboard-active = { "[" }green]Список лідерів
-player-leaderboard-inactive = { "[" }red]Список лідерів
+player-leaderboard-active = [green]Лідерборд: увімкнено[]
+player-leaderboard-inactive = [red]Лідерборд: вимкнено[]
 badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
 badge-menu-content =
     { "" }[white]Системна відзнака: [green]{ $systemBadge }[]

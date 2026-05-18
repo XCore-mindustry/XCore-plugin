@@ -143,6 +143,8 @@ final class PlayerSettingsFlows {
 
             Localization local = context.locale();
 
+            String displayNickname = (targetData.customNickname == null || targetData.customNickname.isEmpty())
+                    ? targetData.nickname : targetData.customNickname;
             String customNickDisplay = (targetData.customNickname == null || targetData.customNickname.isEmpty())
                     ? local.t("none") : targetData.customNickname;
             String descDisplay = (targetData.description == null || targetData.description.isEmpty())
@@ -158,8 +160,10 @@ final class PlayerSettingsFlows {
                     MenuButton.of(local.t("player-menu-settings-customNickname-reset"), "custom-nickname-reset"),
                     MenuButton.of(local.t("player-menu-settings-description"), "description")
             );
-            grid.row(MenuButton.of(local.t("player-menu-settings-chat"), "chat-settings"));
-            grid.row(MenuButton.of(local.t("player-menu-settings-badges"), "badges"));
+            grid.row(
+                    MenuButton.of(local.t("player-menu-settings-chat"), "chat-settings"),
+                    MenuButton.of(local.t("player-menu-settings-badges"), "badges")
+            );
             grid.row(MenuButton.of(
                     local.t(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive"),
                     "leaderboard"));
@@ -171,6 +175,8 @@ final class PlayerSettingsFlows {
             return MenuScreen.normal(
                     local.t("player-menu-settings-title"),
                     local.t("player-menu-settings-content", args(
+                            "displayNickname", displayNickname,
+                            "pid", targetData.pid,
                             "nickname", targetData.nickname,
                             "customNickname", customNickDisplay,
                             "activeBadge", activeBadge,

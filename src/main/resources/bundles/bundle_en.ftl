@@ -395,18 +395,34 @@ player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Settings
 player-menu-settings-title = { "[" }orange]{ -xcore } — Player Settings
 player-menu-settings-content =
-    { "" }[white]Custom Nickname: [green]{ $customNickname }[]
-    { "" }[white]System Badge: [green]{ $systemBadge }[] | Active Badge: [green]{ $activeBadge }[]
-    { "" }[white]Chat Settings: [green]Global { $globalChat }[] [white]| Discord { $discordRelay }[]
-    { "" }[white]Show Leaderboard: [green]{ $leaderboard }[]
-    { "" }[white]Language: [green]{ $language }[]
-    { "" }[green]{ $description }[white]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[white]{ $displayNickname }[] [gray]#{ $pid }[]
+    { "" }[lightgray]{ $description }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }
+    { "" }[accent]■ Profile[]
+    { "" }[gray]Name: [white]{ $nickname } [darkgray]|[gray] Display: [lime]{ $customNickname }[]
+    { "" }[gray]Badge: [white]{ $activeBadge } [darkgray]|[gray] System: [coral]{ $systemBadge }[]
+    { "" }
+    { "" }[accent]■ Visibility[]
+    { "" }[gray]Leaderboard: [white]{ $leaderboard }[]
+    { "" }
+    { "" }[accent]■ Chat[]
+    { "" }[gray]Global: [white]{ $globalChat } [darkgray]|[gray] Discord: [white]{ $discordRelay }[]
+    { "" }[gray]Translator: [white]{ $translatorLanguage }[]
+    { "" }
+    { "" }[accent]■ Localization[]
+    { "" }[gray]Language: [white]{ $language }[]
 player-menu-settings-chat = Chat settings
 player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Chat Settings
 player-menu-settings-chat-content =
-    { "" }[white]Global Chat: [green]{ $globalChat }[]
-    { "" }[white]Discord Relay: [green]{ $discordRelay }[]
-    { "" }[white]Translator Language: [green]{ $translatorLanguage }[]
+    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    { "" }[accent]■ Chat visibility[]
+    { "" }[gray]Global chat: [white]{ $globalChat }[]
+    { "" }[gray]Discord relay: [white]{ $discordRelay }[]
+    { "" }
+    { "" }[accent]■ Translation[]
+    { "" }[gray]Translator language: [white]{ $translatorLanguage }[]
 player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Selection Translator language
 player-menu-settings-language-title = { "[" }orange]{ -xcore } — Selection language
 player-menu-settings-customNickname = Edit name
@@ -485,8 +501,8 @@ player-menu-player-hexed-summary = [gray]matches [white]{ $gamesPlayed }[], top-
 player-menu-time-days = { $value }d
 player-menu-time-hours = { $value }h
 player-menu-time-minutes = { $value }m
-settings-language-label = Translation: [green]{ $lang }[]
-settings-translator-label = Translator language: [green]{ $lang }[]
+settings-language-label = Language: [green]{ $lang }[]
+settings-translator-label = Translator: [green]{ $lang }[]
 badge-menu-title = { "[" }orange]{ -xcore } — Badges
 badge-menu-content =
     { "" }[white]System Badge: [green]{ $systemBadge }[]
@@ -801,8 +817,8 @@ admin = Admin
 admin-neutral = { "[" }orange]Admin
 admin-active = { "[" }green]Admin
 admin-inactive = { "[" }red]Admin
-player-leaderboard-active = { "[" }green]Leaderboard
-player-leaderboard-inactive = { "[" }red]Leaderboard
+player-leaderboard-active = [green]Leaderboard: enabled[]
+player-leaderboard-inactive = [red]Leaderboard: disabled[]
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
