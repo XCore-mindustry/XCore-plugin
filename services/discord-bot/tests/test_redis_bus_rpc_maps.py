@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from types import MethodType, SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -14,6 +15,38 @@ from xcore_protocol.generated.maps import (
 from xcore_protocol.generated.shared import MapEntryV1
 
 from xcore_discord_bot.redis_bus import RedisBus
+
+
+@pytest.mark.asyncio
+async def test_publish_maps_load_uses_expected_event_metadata() -> None:
+    settings = SimpleNamespace(
+        redis_url="redis://127.0.0.1:6379",
+        redis_group_prefix="xcore:cg",
+        redis_consumer_name="discord-bot",
+    )
+    bus = RedisBus(settings)
+    captured: dict[str, Any] = {}
+
+    async def fake_publish_event(self, **kwargs):  # noqa: ANN001
+        captured.update(kwargs)
+
+    bus._publish_event = MethodType(fake_publish_event, bus)
+
+    files = [{"url": "https://example/maps/one.msav", "filename": "one.msav"}]
+    await bus.publish_maps_load(server="mini-pvp", files=files)
+
+    assert captured["stream"] == "xcore:cmd:maps-load:mini-pvp"
+    assert captured["event_type"] == "maps.load.command"
+    assert captured["ttl_ms"] == 300_000
+    assert captured["server"] == "mini-pvp"
+    assert captured["idempotency_prefix"] == "maps.load"
+    payload = captured["payload"]
+    assert payload["messageType"] == "maps.load.command"
+    assert payload["messageVersion"] == 1
+    assert payload["server"] == "mini-pvp"
+    assert payload["files"] == [
+        {"url": "https://example/maps/one.msav", "fileName": "one.msav"}
+    ]
 
 
 @pytest.mark.asyncio

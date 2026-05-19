@@ -663,6 +663,7 @@ class RedisBus:
                 server=server,
                 files=files,
             ).to_payload(),
+            idempotency_prefix="maps.load",
         )
 
     async def publish_player_active_badge_changed(
