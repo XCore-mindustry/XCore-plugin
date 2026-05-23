@@ -265,6 +265,15 @@ kick-admintools-outdated =
     { "" }[scarlet]Your AdminTools version: [grey]{ $version }[]
     { "" }
     { "" }[cyan]Please update your AdminTools to join this server.
+ip-reputation-denied =
+    { "[" }scarlet]⚠ Access denied[]
+    { "" }[lightgray]Your connection was flagged as VPN/proxy/Tor and blocked by server policy.
+    { "" }[lightgray]If this is a mistake, appeal in Discord:
+    { "" }[cyan]{ $discordUrl }
+notification-admin-ip-reputation-denied = [scarlet]IP reputation blocked [white]{ $nickname }[lightgray] from [accent]{ $ip }[]
+commands-ipreputation-lookup-result = [accent]{ $ip }[] → proxy=[accent]{ $proxy }[] hosting=[accent]{ $hosting }[] mobile=[accent]{ $mobile }[]
+commands-ipreputation-allowlist-add-success = [green]Added [accent]{ $ip }[] to the IP reputation allowlist.
+commands-ipreputation-allowlist-remove-success = [green]Removed [accent]{ $ip }[] from the IP reputation allowlist.
 support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)

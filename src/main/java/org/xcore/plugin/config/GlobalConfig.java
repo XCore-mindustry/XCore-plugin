@@ -41,6 +41,7 @@ public class GlobalConfig {
     public boolean isDataBaseReadOnly = false;
     public boolean isDataBaseMigration = false;
     public Map<String, TranslationProviderConfig> translationProviders = defaultTranslationProviders();
+    public IpReputationProviderConfig ipReputationProvider = new IpReputationProviderConfig();
 
     public void normalize() {
         if (translationProviders == null || translationProviders.isEmpty()) {
@@ -54,6 +55,12 @@ public class GlobalConfig {
             normalized.normalize();
             return normalized;
         });
+
+        if (ipReputationProvider == null) {
+            ipReputationProvider = new IpReputationProviderConfig();
+        }
+
+        ipReputationProvider.normalize();
     }
 
     public void postInit(Fi globalConfigFile) {
@@ -135,6 +142,31 @@ public class GlobalConfig {
 
             if (supportedLanguages == null) {
                 supportedLanguages = new LinkedHashSet<>();
+            }
+        }
+    }
+
+    public static class IpReputationProviderConfig {
+        public String baseUrl = "http://ip-api.com/json";
+        public int timeoutSeconds = 10;
+        public int maxRetries = 2;
+        public int rateLimitPerMinute = 45;
+
+        public void normalize() {
+            if (baseUrl == null || baseUrl.isBlank()) {
+                baseUrl = "http://ip-api.com/json";
+            }
+
+            if (timeoutSeconds <= 0) {
+                timeoutSeconds = 10;
+            }
+
+            if (maxRetries < 0) {
+                maxRetries = 2;
+            }
+
+            if (rateLimitPerMinute <= 0) {
+                rateLimitPerMinute = 45;
             }
         }
     }
