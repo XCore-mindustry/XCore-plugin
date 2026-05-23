@@ -56,6 +56,7 @@ public class Config {
     public boolean isEventHubMap = false;
     public String eventHubMapID = "";
     public TranslationConfig translation = new TranslationConfig();
+    public IpReputationConfig ipReputation = new IpReputationConfig();
 
     public void normalize() {
         if (disabledCommands == null) {
@@ -70,7 +71,12 @@ public class Config {
             translation = new TranslationConfig();
         }
 
+        if (ipReputation == null) {
+            ipReputation = new IpReputationConfig();
+        }
+
         translation.normalize();
+        ipReputation.normalize();
     }
 
     public static class TranslationConfig {
@@ -146,6 +152,21 @@ public class Config {
 
             if (maxOutputChars <= 0) {
                 maxOutputChars = 1200;
+            }
+        }
+    }
+
+    public static class IpReputationConfig {
+        public boolean enabled = false;
+        public boolean blockProxy = true;
+        public boolean blockVpn = true;
+        public boolean blockTor = true;
+        public boolean blockHosting = false;
+        public int cacheTtlSeconds = 3600;
+
+        public void normalize() {
+            if (cacheTtlSeconds <= 0) {
+                cacheTtlSeconds = 3600;
             }
         }
     }
