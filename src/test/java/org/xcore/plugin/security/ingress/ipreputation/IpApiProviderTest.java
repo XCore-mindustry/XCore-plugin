@@ -149,6 +149,37 @@ class IpApiProviderTest {
     }
 
     @Test
+    @DisplayName("lookup returns null when local provider rate limit is exceeded")
+    void lookup_rateLimitExceeded_returnsNullWithoutSecondRequest() throws Exception {
+        HttpClient client = mock(HttpClient.class);
+        @SuppressWarnings("unchecked")
+        HttpResponse<String> response = mock(HttpResponse.class);
+
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn("""
+                {
+                  "status": "success",
+                  "query": "1.2.3.4",
+                  "proxy": false,
+                  "hosting": false,
+                  "mobile": false
+                }
+                """);
+        when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+
+        GlobalConfig globalConfig = new GlobalConfig();
+        globalConfig.ipReputationProvider.maxRetries = 0;
+        globalConfig.ipReputationProvider.timeoutSeconds = 1;
+        globalConfig.ipReputationProvider.rateLimitPerMinute = 1;
+
+        IpApiProvider provider = new IpApiProvider(globalConfig, client);
+
+        assertThat(provider.lookup("1.2.3.4")).isNotNull();
+        assertThat(provider.lookup("5.6.7.8")).isNull();
+        verify(client, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
     @DisplayName("lookup succeeds on retry")
     void lookup_succeedsOnRetry() throws Exception {
         HttpClient client = mock(HttpClient.class);

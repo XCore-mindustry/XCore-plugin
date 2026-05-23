@@ -16,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HexFormat;
 
 /**
@@ -31,9 +33,11 @@ import java.util.HexFormat;
 public class IpApiProvider implements IpReputationProvider {
 
     private static final Gson GSON = new Gson();
+    private static final long RATE_LIMIT_WINDOW_MILLIS = 60_000L;
 
     private final GlobalConfig.IpReputationProviderConfig providerConfig;
     private final HttpClient client;
+    private final Deque<Long> requestTimestamps = new ArrayDeque<>();
 
     public IpApiProvider(GlobalConfig globalConfig) {
         this(globalConfig, HttpClient.newBuilder()
@@ -59,6 +63,12 @@ public class IpApiProvider implements IpReputationProvider {
 
         int maxAttempts = Math.max(1, providerConfig.maxRetries + 1);
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (!tryAcquireRequestSlot()) {
+                PLog.warnTag("IpApiProvider", "Skipping lookup for @ because local rate limit @/min was reached",
+                        ipToken, providerConfig.rateLimitPerMinute);
+                return null;
+            }
+
             try {
                 return executeLookup(url);
             } catch (InterruptedException e) {
@@ -139,6 +149,24 @@ public class IpApiProvider implements IpReputationProvider {
             Thread.sleep(Math.min(delayMs, 2000L));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private boolean tryAcquireRequestSlot() {
+        synchronized (requestTimestamps) {
+            long now = System.currentTimeMillis();
+            long cutoff = now - RATE_LIMIT_WINDOW_MILLIS;
+
+            while (!requestTimestamps.isEmpty() && requestTimestamps.peekFirst() <= cutoff) {
+                requestTimestamps.removeFirst();
+            }
+
+            if (requestTimestamps.size() >= providerConfig.rateLimitPerMinute) {
+                return false;
+            }
+
+            requestTimestamps.addLast(now);
+            return true;
         }
     }
 
