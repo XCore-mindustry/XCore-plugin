@@ -47,7 +47,7 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("buildDisplayName uses player color for selected badge symbol when mode is player-color")
+    @DisplayName("buildDisplayName uses player color only for selected badge glyph when mode is player-color")
     void selectedBadgeUsesPlayerColorWhenConfigured() {
         var service = new PlayerDisplayService(config("mini-pvp"));
         var data = basePlayer();
@@ -59,7 +59,7 @@ class PlayerDisplayServiceTest {
         player.color = new Color();
         player.color.set(Color.valueOf("ff8844"));
 
-        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#86dca2]<[white][#ff8844]" + Iconc.wrench + "[]>[] PlayerOne");
+        assertThat(service.buildDisplayName(data, player)).isEqualTo("[#86dca2]<[white][#ff8844]" + Iconc.wrench + "[white][]>[] PlayerOne");
     }
 
     @Test
@@ -122,7 +122,7 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("chat badge prefix uses player color for selected badge symbol when mode is player-color")
+    @DisplayName("chat badge prefix uses player color only for selected badge glyph when mode is player-color")
     void chatBadgePrefixUsesPlayerColorWhenConfigured() {
         var service = new PlayerDisplayService(config("mini-pvp"));
         var data = basePlayer();
@@ -135,7 +135,7 @@ class PlayerDisplayServiceTest {
         player.color.set(Color.valueOf("44ccff"));
 
         assertThat(service.buildChatBadgePrefix(data, player))
-                .isEqualTo("[#79d7ff]<[white][#44ccff]" + Iconc.bookOpen + "[]>[]");
+                .isEqualTo("[#79d7ff]<[white][#44ccff]" + Iconc.bookOpen + "[white][]>[]");
     }
 
     @Test

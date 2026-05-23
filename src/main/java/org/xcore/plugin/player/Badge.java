@@ -49,7 +49,21 @@ public enum Badge {
             return tag();
         }
 
-        return tagPrefix + glyphColorTag + glyph + tagSuffix;
+        return tagPrefix + glyphColorTag + glyph + glyphBaseColorTag() + tagSuffix;
+    }
+
+    private String glyphBaseColorTag() {
+        int colorStart = tagPrefix.lastIndexOf('[');
+        if (colorStart < 0) {
+            return "";
+        }
+
+        int colorEnd = tagPrefix.indexOf(']', colorStart);
+        if (colorEnd < 0) {
+            return "";
+        }
+
+        return tagPrefix.substring(colorStart, colorEnd + 1);
     }
 
     public char glyph() {
