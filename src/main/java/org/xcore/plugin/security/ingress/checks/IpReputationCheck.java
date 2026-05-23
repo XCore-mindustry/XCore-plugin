@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
@@ -52,7 +53,7 @@ public class IpReputationCheck implements IngressCheck {
                 return new AccessResult.Denied(reason, false, 0);
             }
         } catch (Exception e) {
-            // Fail open on any internal error from the reputation service.
+            PLog.errTag("IpReputationCheck", "Reputation service failed open", e);
             return AccessResult.Allowed.INSTANCE;
         }
 

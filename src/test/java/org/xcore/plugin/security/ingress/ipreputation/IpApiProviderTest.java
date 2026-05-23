@@ -12,6 +12,8 @@ import java.net.http.HttpResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class IpApiProviderTest {
@@ -142,6 +144,8 @@ class IpApiProviderTest {
         IpApiProvider provider = new IpApiProvider(globalConfig, client);
 
         assertThat(provider.lookup("1.2.3.4")).isNull();
+        verify(client, times(globalConfig.ipReputationProvider.maxRetries + 1))
+                .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
     @Test

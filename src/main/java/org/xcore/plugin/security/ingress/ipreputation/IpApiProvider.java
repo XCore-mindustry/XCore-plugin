@@ -8,11 +8,15 @@ import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.config.GlobalConfig;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 
 /**
  * IP reputation provider backed by ip-api.com.
@@ -50,6 +54,7 @@ public class IpApiProvider implements IpReputationProvider {
         }
 
         String normalized = ip.trim();
+        String ipToken = hashIp(normalized);
         String url = buildUrl(normalized);
 
         int maxAttempts = Math.max(1, providerConfig.maxRetries + 1);
@@ -58,16 +63,16 @@ public class IpApiProvider implements IpReputationProvider {
                 return executeLookup(url);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                PLog.warnTag("IpApiProvider", "Lookup interrupted for @", normalized);
+                PLog.warnTag("IpApiProvider", "Lookup interrupted for @", ipToken);
                 return null;
             } catch (IOException | RuntimeException e) {
                 if (attempt < maxAttempts) {
                     PLog.warnTag("IpApiProvider", "Lookup failed for @ (attempt @/@), retrying: @",
-                            normalized, attempt, maxAttempts, e.getMessage());
+                            ipToken, attempt, maxAttempts, e.getMessage());
                     backoff(attempt);
                 } else {
                     PLog.warnTag("IpApiProvider", "Lookup failed for @ after @ attempts: @",
-                            normalized, maxAttempts, e.getMessage());
+                            ipToken, maxAttempts, e.getMessage());
                 }
             }
         }
@@ -134,6 +139,16 @@ public class IpApiProvider implements IpReputationProvider {
             Thread.sleep(Math.min(delayMs, 2000L));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private String hashIp(String ip) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(ip.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(digest, 0, 8);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
         }
     }
 }

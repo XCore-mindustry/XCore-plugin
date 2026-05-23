@@ -73,6 +73,7 @@ class IpReputationCheckTest {
 
         assertThat(result).isInstanceOfSatisfying(AccessResult.Denied.class, denied -> {
             assertThat(denied.reason()).contains("ip-reputation-denied");
+            assertThat(denied.reason()).contains("https://discord.example");
             assertThat(denied.silent()).isFalse();
         });
     }

@@ -30,8 +30,17 @@ public class IpReputationPolicy {
             return false;
         }
 
-        boolean shouldBlockProxy = config.blockProxy || config.blockVpn || config.blockTor;
-        if (shouldBlockProxy && result.proxy()) {
+        if (config.blockProxy && result.proxy()) {
+            return true;
+        }
+
+        // ip-api exposes a combined proxy/VPN/Tor signal via the proxy field,
+        // so VPN and Tor policy toggles are evaluated against that same signal.
+        if (config.blockVpn && result.proxy()) {
+            return true;
+        }
+
+        if (config.blockTor && result.proxy()) {
             return true;
         }
 
