@@ -51,7 +51,7 @@ public class IpReputationOrchestrationService implements IpReputationService {
             }
         } catch (Exception e) {
             PLog.warnTag("IpReputation", "Allowlist check failed for @: @", normalized, e.getMessage());
-            // fail open: continue to cache/provider
+            return false;
         }
 
         IpReputationResult result = null;

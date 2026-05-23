@@ -101,18 +101,13 @@ class IpReputationOrchestrationServiceTest {
         when(allowlist.contains("1.2.3.4")).thenThrow(new RuntimeException("redis down"));
 
         IpReputationCache cache = mockCache();
-        when(cache.get("1.2.3.4")).thenReturn(null);
-
         IpReputationProvider provider = mockProvider();
-        IpReputationResult result = new IpReputationResult("1.2.3.4", false, false, false);
-        when(provider.lookup("1.2.3.4")).thenReturn(result);
-
         IpReputationPolicy policy = mockPolicy();
-        when(policy.isBlocked(result)).thenReturn(false);
 
         var service = newService(config, allowlist, cache, provider, policy);
 
         assertThat(service.isBlocked("1.2.3.4")).isFalse();
+        verifyNoInteractions(cache, provider, policy);
     }
 
     @Test
