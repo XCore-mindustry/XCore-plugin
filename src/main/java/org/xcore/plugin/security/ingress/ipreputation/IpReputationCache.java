@@ -9,19 +9,19 @@ package org.xcore.plugin.security.ingress.ipreputation;
 public interface IpReputationCache {
 
     /**
-     * Retrieves a cached result for the given IP.
-     *
-     * @param ip the IP address
-     * @return cached result, or null if not present or lookup failed
-     */
+ * Retrieve the cached reputation result for the specified IP address.
+ *
+ * @param ip the IP address to look up (IPv4 or IPv6)
+ * @return the cached {@link IpReputationResult} for the given IP, or `null` if no entry is present or the lookup failed
+ */
     IpReputationResult get(String ip);
 
     /**
-     * Stores a result in the cache.
-     *
-     * @param ip     the IP address
-     * @param result the reputation result to cache
-     * @return true if the result was stored successfully
-     */
+ * Stores the provided reputation result in the cache for the given IP address.
+ *
+ * @param ip     the IP address used as the cache key
+ * @param result the reputation result to store
+ * @return `true` if the result was stored successfully, `false` otherwise
+ */
     boolean put(String ip, IpReputationResult result);
 }

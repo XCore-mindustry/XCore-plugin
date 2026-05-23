@@ -39,18 +39,41 @@ public class IpApiProvider implements IpReputationProvider {
     private final HttpClient client;
     private final Deque<Long> requestTimestamps = new ArrayDeque<>();
 
+    /**
+     * Creates a new IpApiProvider using values from the provided global configuration.
+     *
+     * The provider will use an HttpClient configured with a connect timeout derived from
+     * globalConfig.ipReputationProvider.timeoutSeconds.
+     *
+     * @param globalConfig global configuration containing ip reputation provider settings
+     */
     public IpApiProvider(GlobalConfig globalConfig) {
         this(globalConfig, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(globalConfig.ipReputationProvider.timeoutSeconds))
                 .build());
     }
 
-    // Package-private for testing
+    /**
+     * Package-private constructor used for testing; initializes the provider with the given configuration and HTTP client.
+     *
+     * @param globalConfig supplies the {@code ipReputationProvider} settings (base URL, timeouts, retries, rate limits)
+     * @param client       the {@link HttpClient} to use for HTTP requests (injected, typically a test client)
+     */
     IpApiProvider(GlobalConfig globalConfig, HttpClient client) {
         this.providerConfig = globalConfig.ipReputationProvider;
         this.client = client;
     }
 
+    /**
+     * Performs an IP reputation lookup for the given IP and returns the parsed result or `null` when unavailable.
+     *
+     * The method trims the input, enforces a local per-minute rate limit, retries transient failures with
+     * exponential backoff up to the configured retry count, and returns `null` on invalid input, interruption,
+     * rate limiting, non-successful responses, parsing errors, or when all attempts fail.
+     *
+     * @param ip the IP address to lookup; leading and trailing whitespace will be ignored
+     * @return the resolved {@code IpReputationResult} for the IP, or {@code null} if the lookup cannot be completed
+     */
     @Override
     public IpReputationResult lookup(String ip) {
         if (ip == null || ip.isBlank()) {
@@ -90,6 +113,15 @@ public class IpApiProvider implements IpReputationProvider {
         return null;
     }
 
+    /**
+     * Performs an HTTP GET to the given URL and parses the JSON response into an IpReputationResult.
+     *
+     * @param url the full request URL (including the target IP) to query
+     * @return the parsed IpReputationResult from the response body, or `null` if the response JSON
+     *         does not indicate a successful lookup or cannot be parsed
+     * @throws IOException if the HTTP response status is not in the 2xx range or an I/O error occurs
+     * @throws InterruptedException if the thread is interrupted while sending the HTTP request
+     */
     private IpReputationResult executeLookup(String url) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -108,6 +140,12 @@ public class IpApiProvider implements IpReputationProvider {
         return parseResponse(response.body());
     }
 
+    /**
+     * Parses the JSON response from ip-api.com and produces an IpReputationResult when the response indicates success.
+     *
+     * @param body the raw JSON response body from ip-api.com
+     * @return an IpReputationResult populated from the response when `status` equals "success", or `null` if the response is missing/invalid, the status is not "success", or parsing fails
+     */
     private IpReputationResult parseResponse(String body) {
         try {
             JsonObject json = GSON.fromJson(body, JsonObject.class);
@@ -133,6 +171,15 @@ public class IpApiProvider implements IpReputationProvider {
         }
     }
 
+    /**
+     * Builds the full request URL for the configured provider by appending the given IP.
+     *
+     * Normalizes the configured base URL by removing a trailing '/' if present, then appends
+     * '/' followed by the provided IP.
+     *
+     * @param ip the IP address to append to the provider base URL
+     * @return the normalized base URL with the IP appended (e.g. "https://api.example.com/1.2.3.4")
+     */
     private String buildUrl(String ip) {
         String base = providerConfig.baseUrl;
         // Normalize: strip trailing slash, then append /{ip}
@@ -142,6 +189,13 @@ public class IpApiProvider implements IpReputationProvider {
         return base + "/" + ip;
     }
 
+    /**
+     * Sleep for an exponential backoff delay based on the attempt number, capped at 2000 ms.
+     *
+     * If the thread is interrupted while sleeping, the interrupt status is restored before returning.
+     *
+     * @param attempt 1-based attempt number used to compute the delay (delay = 200ms * 2^(attempt-1), capped at 2000ms)
+     */
     private void backoff(int attempt) {
         try {
             // Simple exponential backoff: 200ms, 400ms, 800ms...
@@ -152,6 +206,14 @@ public class IpApiProvider implements IpReputationProvider {
         }
     }
 
+    /**
+     * Acquires a local rate-limit slot if the number of requests in the recent window is below the configured per-minute limit.
+     *
+     * Evicts timestamps older than RATE_LIMIT_WINDOW_MILLIS from the internal timestamp deque, compares the remaining count
+     * against providerConfig.rateLimitPerMinute, and if allowed records the current time.
+     *
+     * @return `true` if a request slot was acquired and the current timestamp was recorded, `false` if the per-minute limit has been reached.
+     */
     private boolean tryAcquireRequestSlot() {
         synchronized (requestTimestamps) {
             long now = System.currentTimeMillis();
@@ -170,6 +232,13 @@ public class IpApiProvider implements IpReputationProvider {
         }
     }
 
+    /**
+     * Produce a short SHA-256 fingerprint token for an IP address suitable for logging.
+     *
+     * @param ip the IP address string to hash
+     * @return `sha256:` followed by the first 8 hex characters of the SHA-256 digest of {@code ip}
+     * @throws IllegalStateException if the SHA-256 MessageDigest is unavailable
+     */
     private String hashIp(String ip) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

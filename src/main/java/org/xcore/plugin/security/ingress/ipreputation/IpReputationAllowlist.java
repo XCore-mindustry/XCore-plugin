@@ -11,19 +11,19 @@ import java.util.Set;
 public interface IpReputationAllowlist {
 
     /**
-     * Checks whether the given IP is explicitly allowed.
-     *
-     * @param ip the IP address
-     * @return true if the IP is on the allowlist
-     */
+ * Determines whether the specified IP address is explicitly allowlisted.
+ *
+ * @param ip the IP address to check
+ * @return `true` if the IP address is on the allowlist, `false` otherwise
+ */
     boolean contains(String ip);
 
     /**
-     * Adds an IP to the allowlist.
-     *
-     * @param ip the IP address
-     * @return true if the operation succeeded
-     */
+ * Add the given IP address to the reputation allowlist so it bypasses reputation checks.
+ *
+ * @param ip the IP address to allowlist
+ * @return {@code true} if the IP was successfully added, {@code false} otherwise
+ */
     boolean add(String ip);
 
     /**
@@ -35,9 +35,9 @@ public interface IpReputationAllowlist {
     boolean remove(String ip);
 
     /**
-     * Returns all IPs currently on the allowlist.
-     *
-     * @return a set of allowlisted IPs; may be empty but never null
-     */
+ * Get all IP addresses currently on the allowlist; these addresses bypass IP reputation checks.
+ *
+ * @return a non-null Set containing all allowlisted IP addresses; may be empty
+ */
     Set<String> list();
 }

@@ -43,6 +43,12 @@ public class GlobalConfig {
     public Map<String, TranslationProviderConfig> translationProviders = defaultTranslationProviders();
     public IpReputationProviderConfig ipReputationProvider = new IpReputationProviderConfig();
 
+    /**
+     * Normalizes and populates missing global configuration for translation and IP reputation providers.
+     *
+     * Ensures the translation provider map is present (using defaults when absent), normalizes every
+     * TranslationProviderConfig entry, ensures an IpReputationProviderConfig exists, and normalizes it.
+     */
     public void normalize() {
         if (translationProviders == null || translationProviders.isEmpty()) {
             translationProviders = defaultTranslationProviders();
@@ -63,6 +69,15 @@ public class GlobalConfig {
         ipReputationProvider.normalize();
     }
 
+    /**
+     * Validates required global configuration fields after normalizing the configuration and aborts startup if any are missing.
+     *
+     * Ensures `mongoConnectionString` and `databaseName` are present and non-blank; when validation fails, a formatted error is logged
+     * referencing the provided configuration file and an IllegalStateException is thrown.
+     *
+     * @param globalConfigFile the configuration file used in error messages
+     * @throws IllegalStateException if one or more required fields are missing or blank
+     */
     public void postInit(Fi globalConfigFile) {
         normalize();
 
@@ -115,6 +130,18 @@ public class GlobalConfig {
         public double temperature = 0.0;
         public Set<String> supportedLanguages = new LinkedHashSet<>();
 
+        /**
+         * Ensure configuration fields have sensible defaults and normalized values.
+         *
+         * Applies defaults and normalization to the instance's fields when they are missing or invalid:
+         * - `type` → `"google"` if blank or null
+         * - `baseUrl` → `"https://api.openai.com/v1"` if blank or null
+         * - `model` → `"gpt-5.4"` if blank or null
+         * - `apiMode` → trimmed and lowercased when non-blank
+         * - `timeoutSeconds` → `15` if less than or equal to zero
+         * - `maxRetries` → `1` if negative
+         * - `supportedLanguages` → new empty `LinkedHashSet` if null
+         */
         public void normalize() {
             if (type == null || type.isBlank()) {
                 type = "google";
@@ -152,6 +179,17 @@ public class GlobalConfig {
         public int maxRetries = 2;
         public int rateLimitPerMinute = 45;
 
+        /**
+         * Ensures configuration fields have valid values, replacing missing or invalid entries with defaults.
+         *
+         * <p>Defaults applied:
+         * <ul>
+         *   <li>{@code baseUrl} → {@code "http://ip-api.com/json"} when null or blank</li>
+         *   <li>{@code timeoutSeconds} → {@code 10} when ≤ 0</li>
+         *   <li>{@code maxRetries} → {@code 2} when < 0</li>
+         *   <li>{@code rateLimitPerMinute} → {@code 45} when ≤ 0</li>
+         * </ul>
+         */
         public void normalize() {
             if (baseUrl == null || baseUrl.isBlank()) {
                 baseUrl = "http://ip-api.com/json";

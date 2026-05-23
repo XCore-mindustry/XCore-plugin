@@ -9,15 +9,13 @@ package org.xcore.plugin.security.ingress.ipreputation;
 public interface IpReputationService {
 
     /**
-     * Evaluates whether the given IP should be blocked.
-     * <p>
-     * This method consults the allowlist first, then the cache,
-     * then the configured provider if necessary. Errors at any
-     * stage fail open (return false).
-     *
-     * @param ip the IP address to evaluate
-     * @return true if the IP should be denied access
-     */
+ * Determine whether the specified IP address should be blocked.
+ *
+ * Evaluation consults the allowlist first, then the cache, and finally the configured provider when needed; any errors cause fail-open behavior (treated as not blocked).
+ *
+ * @param ip the IP address to evaluate
+ * @return `true` if the IP should be blocked, `false` otherwise
+ */
     boolean isBlocked(String ip);
 
     /**

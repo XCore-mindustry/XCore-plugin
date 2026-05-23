@@ -20,6 +20,15 @@ public class IpReputationOrchestrationService implements IpReputationService {
     private final IpReputationProvider provider;
     private final IpReputationPolicy policy;
 
+    /**
+     * Create an IpReputationOrchestrationService wired with its required collaborators.
+     *
+     * @param config    configuration containing ip reputation settings (e.g., enablement)
+     * @param allowlist allowlist used to short-circuit evaluations for permitted IPs
+     * @param cache     cache used to read/write IpReputationResult entries
+     * @param provider  provider used to perform authoritative IP reputation lookups
+     * @param policy    policy used to decide whether a given IpReputationResult constitutes a block
+     */
     public IpReputationOrchestrationService(
             Config config,
             IpReputationAllowlist allowlist,
@@ -33,6 +42,19 @@ public class IpReputationOrchestrationService implements IpReputationService {
         this.policy = policy;
     }
 
+    /**
+     * Determine whether the given IP address should be blocked by the IP reputation policy.
+     *
+     * <p>The method is gated by the IP reputation feature flag and treats null or blank input as not blocked.
+     * It consults the allowlist (errors cause the method to treat the IP as not blocked), attempts a cache
+     * lookup, falls back to the provider on cache miss (provider errors cause the method to treat the IP as
+     * not blocked), and attempts to write provider results back to the cache (cache errors do not change the
+     * eventual policy evaluation). The final decision is produced by the configured policy and may be based
+     * on a cached result, a provider result, or {@code null}.</p>
+     *
+     * @param ip the IP address to evaluate; if {@code null} or blank it is treated as not blocked
+     * @return {@code true} if the IP is considered blocked by the configured policy, {@code false} otherwise
+     */
     @Override
     public boolean isBlocked(String ip) {
         if (!config.ipReputation.enabled) {
@@ -85,6 +107,16 @@ public class IpReputationOrchestrationService implements IpReputationService {
         return policy.isBlocked(result);
     }
 
+    /**
+     * Retrieve the reputation information for an IP address from the configured provider.
+     *
+     * <p>Whitespace around the input is trimmed before lookup. If IP reputation is disabled,
+     * the input is null or blank, or the provider lookup fails, this method returns {@code null}.</p>
+     *
+     * @param ip the IP address to look up; leading and trailing whitespace will be ignored
+     * @return the {@code IpReputationResult} for the normalized IP, or {@code null} if disabled,
+     *         the input is null/blank, or a provider error occurs
+     */
     @Override
     public IpReputationResult lookup(String ip) {
         if (!config.ipReputation.enabled) {
