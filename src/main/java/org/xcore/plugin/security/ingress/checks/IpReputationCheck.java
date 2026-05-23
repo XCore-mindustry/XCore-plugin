@@ -29,12 +29,31 @@ public class IpReputationCheck implements IngressCheck {
     private final Bundle bundle;
     private final GlobalConfig globalConfig;
 
+    /**
+     * Constructs an IpReputationCheck that evaluates connection IPs against an IP reputation service.
+     *
+     * @param ipReputationService service used to determine whether an IP is blocked (e.g., proxy/VPN/TOR)
+     * @param bundle               localization bundle used to format denial messages
+     * @param globalConfig         configuration providing values included in denial messages (notably `discordUrl`)
+     */
     public IpReputationCheck(IpReputationService ipReputationService, Bundle bundle, GlobalConfig globalConfig) {
         this.ipReputationService = ipReputationService;
         this.bundle = bundle;
         this.globalConfig = globalConfig;
     }
 
+    /**
+     * Checks the connection's IP against the reputation service and denies access when the IP is blocked.
+     *
+     * If the connection address is null or blank the check allows. When the IP is blocked this returns
+     * an AccessResult.Denied containing a localized denial reason (locale resolved from the connect
+     * packet). If an error occurs while querying the reputation service the method fails open and
+     * returns an allow result.
+     *
+     * @param con    the network connection whose IP address will be evaluated
+     * @param packet the connect packet whose locale is used to localize the denial reason
+     * @return       an AccessResult.Denied with a localized reason when the IP is blocked, `AccessResult.Allowed.INSTANCE` otherwise
+     */
     @Override
     public AccessResult check(NetConnection con, Packets.ConnectPacket packet) {
         String ip = con.address;
@@ -60,11 +79,21 @@ public class IpReputationCheck implements IngressCheck {
         return AccessResult.Allowed.INSTANCE;
     }
 
+    /**
+     * Execution priority of this ingress check.
+     *
+     * @return `10` indicating the check's execution order relative to others; lower values run earlier.
+     */
     @Override
     public int priority() {
         return 10;
     }
 
+    /**
+     * Identifies this ingress check implementation.
+     *
+     * @return the name of the check, "IpReputationCheck"
+     */
     @Override
     public String name() {
         return "IpReputationCheck";

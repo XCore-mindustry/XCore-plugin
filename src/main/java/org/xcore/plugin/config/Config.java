@@ -58,6 +58,15 @@ public class Config {
     public TranslationConfig translation = new TranslationConfig();
     public IpReputationConfig ipReputation = new IpReputationConfig();
 
+    /**
+     * Ensures configuration sub-objects and collections are initialized and normalized.
+     *
+     * If any of the mutable sub-fields are null, replaces them with default instances and
+     * then invokes their normalize methods to enforce sane defaults. Specifically initializes
+     * {@code disabledCommands}, {@code disabledFeatures}, {@code translation}, and
+     * {@code ipReputation} when null and calls {@code translation.normalize()} and
+     * {@code ipReputation.normalize()}.
+     */
     public void normalize() {
         if (disabledCommands == null) {
             disabledCommands = new HashSet<>();
@@ -145,6 +154,11 @@ public class Config {
         public int maxOutputChars = 1200;
         public boolean stripControlCharacters = true;
 
+        /**
+         * Ensures the translation policy's maximum input and output character limits are positive, applying defaults when they are not.
+         *
+         * If `maxInputChars` is less than or equal to zero, it is set to 500. If `maxOutputChars` is less than or equal to zero, it is set to 1200.
+         */
         public void normalize() {
             if (maxInputChars <= 0) {
                 maxInputChars = 500;
@@ -164,6 +178,11 @@ public class Config {
         public boolean blockHosting = false;
         public int cacheTtlSeconds = 3600;
 
+        /**
+         * Ensure configuration fields have valid values and apply defaults where necessary.
+         *
+         * <p>Sets {@code cacheTtlSeconds} to 3600 if its value is less than or equal to zero.</p>
+         */
         public void normalize() {
             if (cacheTtlSeconds <= 0) {
                 cacheTtlSeconds = 3600;

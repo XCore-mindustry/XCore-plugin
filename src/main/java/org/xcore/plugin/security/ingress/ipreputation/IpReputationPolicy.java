@@ -15,15 +15,20 @@ public class IpReputationPolicy {
 
     private final Config.IpReputationConfig config;
 
+    /**
+     * Creates a new IpReputationPolicy using values from the provided application configuration.
+     *
+     * @param config the application configuration whose {@code ipReputation} subsection will be used by this policy
+     */
     public IpReputationPolicy(Config config) {
         this.config = config.ipReputation;
     }
 
     /**
-     * Determines whether the given reputation result should be blocked.
+     * Determines whether an IP represented by the given reputation result should be blocked.
      *
-     * @param result the reputation lookup result, may be null
-     * @return true if the IP should be denied access
+     * @param result the reputation lookup result; may be null
+     * @return `true` if the IP should be denied access, `false` otherwise
      */
     public boolean isBlocked(IpReputationResult result) {
         if (result == null) {
