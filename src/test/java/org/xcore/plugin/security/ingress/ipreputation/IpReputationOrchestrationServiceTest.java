@@ -51,10 +51,11 @@ class IpReputationOrchestrationServiceTest {
         IpReputationPolicy policy = mockPolicy();
         when(policy.isBlocked(cached)).thenReturn(true);
 
-        var service = newService(config, mockAllowlist(), cache, mockProvider(), policy);
+        IpReputationProvider provider = mockProvider();
+        var service = newService(config, mockAllowlist(), cache, provider, policy);
 
         assertThat(service.isBlocked("1.2.3.4")).isTrue();
-        verifyNoInteractions(serviceProvider(mockProvider()));
+        verifyNoInteractions(provider);
     }
 
     @Test
@@ -231,9 +232,5 @@ class IpReputationOrchestrationServiceTest {
 
     private static IpReputationPolicy mockPolicy() {
         return mock(IpReputationPolicy.class);
-    }
-
-    private static IpReputationProvider serviceProvider(IpReputationProvider provider) {
-        return provider;
     }
 }
