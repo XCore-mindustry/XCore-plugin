@@ -11,7 +11,10 @@ import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
 import static com.ospx.flubundle.Bundle.args;
+import static arc.util.Strings.stripColors;
+import static arc.util.Strings.stripGlyphs;
 import static mindustry.Vars.netServer;
+import static org.xcore.plugin.common.TextUtils.stripFooCharacters;
 
 /**
  * Validates player name for pirated clients and empty names.
@@ -51,7 +54,7 @@ public class NameValidationCheck implements IngressCheck {
         }
 
         String fixedName = netServer.fixName(name);
-        if (fixedName == null || fixedName.trim().isEmpty()) {
+        if (fixedName == null || fixedName.trim().isEmpty() || normalizedPlainName(fixedName).isEmpty()) {
             return new AccessResult.Denied(
                     mindustry.net.Packets.KickReason.nameEmpty.name(),
                     false, 0
@@ -71,5 +74,9 @@ public class NameValidationCheck implements IngressCheck {
     @Override
     public String name() {
         return "NameValidationCheck";
+    }
+
+    private String normalizedPlainName(String name) {
+        return stripFooCharacters(stripColors(stripGlyphs(name))).trim();
     }
 }

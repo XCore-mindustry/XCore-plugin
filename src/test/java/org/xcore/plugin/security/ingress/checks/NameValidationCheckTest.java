@@ -61,6 +61,19 @@ class NameValidationCheckTest {
     }
 
     @Test
+    @DisplayName("shouldDenyNameEmpty_whenFixedNamePlainRepresentationIsBlank")
+    void shouldDenyNameEmpty_whenFixedNamePlainRepresentationIsBlank() {
+        var packet = IngressChecksTestSupport.newPacket();
+        packet.name = "[]";
+        when(netServer.fixName(packet.name)).thenReturn("[]");
+
+        var result = check.check(new IngressChecksTestSupport.DummyConnection("1.1.1.1"), packet);
+
+        assertThat(result).isInstanceOfSatisfying(AccessResult.Denied.class,
+                denied -> assertThat(denied.reason()).isEqualTo(Packets.KickReason.nameEmpty.name()));
+    }
+
+    @Test
     @DisplayName("shouldAllowAndNormalizeName_whenNameIsValid")
     void shouldAllowAndNormalizeName_whenNameIsValid() {
         var packet = IngressChecksTestSupport.newPacket();
