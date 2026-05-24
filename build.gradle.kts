@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)
     implementation(libs.gson)
+    implementation(libs.jackson.dataformat.toml)
     implementation(libs.jbcrypt)
     implementation(libs.lettuce)
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })

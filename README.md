@@ -85,7 +85,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
    ./gradlew shadowJar
    ```
 4. Copy the resulting `.jar` file from `build/libs/` to your Mindustry server's `config/mods` folder.
-5. Configure your MongoDB and Redis connections in `<server>/config/xcconfig.json` (server-specific) and `~/secrets.json` (global/shared).
+5. Configure your MongoDB and Redis connections in `<server>/config/xcore.toml` (server-local) and `secrets.toml` (global/shared, in your home directory by default). If legacy `xcconfig.json` or `secrets.json` files already exist, XCore migrates them to TOML automatically on startup and keeps backup copies.
 
 ## Commands
 
@@ -161,8 +161,8 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `disable-feature <feature>` | Disable a feature (`rtv`, `vnw`). |
 | `enable-feature <feature>` | Re-enable a disabled feature. |
 | `disabled-features` | List disabled features. |
-| `xconfig` | Show current XCore configuration. |
-| `xconfig <field> <value>` | Edit a configuration field. |
+| `xconfig` | Show current server-local XCore configuration. |
+| `xconfig <field> <value>` | Edit a server-local config value by TOML path or legacy field alias. |
 | `edit-data <player> <field> <value>` | Edit a player's database entry. |
 | `dbinfo <player>` | Show raw player database JSON. |
 | `players` | List online players with IDs and IPs. |
@@ -180,98 +180,127 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 
 ## Configuration
 
-Configuration is split into two files:
+Configuration is split into two TOML files:
 
-- **Server-specific**: `<server>/config/xcconfig.json` — created automatically on first start if missing.
-- **Global/shared**: `~/secrets.json` — created automatically in the user's home directory if missing. Holds sensitive and shared settings such as the MongoDB connection string.
+- **Server-local**: `<server>/config/xcore.toml` — created automatically on first start if missing.
+- **Global/shared**: `secrets.toml` — created automatically in the user's home directory if missing, or in the directory configured by `paths.global_config_directory`.
 
-### `xcconfig.json` (server-specific)
+If legacy `xcconfig.json` or `secrets.json` files are present, XCore migrates them to TOML on startup and keeps backup copies automatically.
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `server` | `server` | Server identity name used for transport routing and cross-server recognition. |
-| `discord_channel_id` | `0` | Discord channel ID for server relay output. |
-| `redis_url` | `redis://127.0.0.1:6379` | Redis connection URI for the transport backend. |
-| `redis_group_prefix` | `xcore:cg` | Consumer group prefix for Redis streams. |
-| `redis_consumer_name` | `xcore-node` | Unique consumer name within the Redis consumer group. |
-| `redis_reclaim_enabled` | `true` | Whether to reclaim pending stream messages on start. |
-| `redis_reclaim_min_idle_ms` | `15000` | Minimum idle time (ms) before a message is considered orphaned and reclaimed. |
-| `redis_reclaim_batch` | `50` | Maximum number of messages to reclaim per batch. |
-| `redis_dlq_enabled` | `true` | Whether failed deliveries are sent to a dead-letter queue. |
-| `redis_max_delivery_attempts` | `3` | Maximum delivery attempts before a message is moved to the DLQ. |
-| `redis_dlq_prefix` | `xcore:dlq` | Redis key prefix for the dead-letter queue. |
-| `console_enabled` | `true` | Whether the server console is enabled. |
-| `player_limit` | `30` | Base player slot limit. Admin players do not count toward this limit. |
-| `global_config_directory` | `null` | Override directory for the global `secrets.json`. If `null`, the user's home directory is used. |
-| `game_started_timer` | `true` | Whether the game-start timer is active. |
-| `disabled_commands` | `[]` | List of command paths disabled at runtime (e.g., `["rtv"]`). |
-| `disabled_features` | `[]` | List of disabled feature keys (`rtv`, `vnw`). |
-| `is_event_hub_map` | `false` | Whether the current map is the event hub. |
-| `event_hub_map_id` | `""` | Internal map identifier for the event hub. |
-| `translation` | (see below) | Translation pipeline settings. |
+### `xcore.toml` (server-local)
 
-#### Translation settings (`translation` object)
+`xconfig` reads and writes this file. Prefer TOML-style dotted paths such as `transport.redis.url` or `translation.pipeline`; legacy flat field aliases are still accepted for compatibility. Runtime toggle paths under `runtime.disabled_commands` and `runtime.disabled_features` are intentionally managed by `disable-cmd` / `enable-cmd` and `disable-feature` / `enable-feature` instead of `xconfig`.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `enabled` | `true` | Master switch for the translation pipeline. |
-| `pipeline` | `["google"]` | Ordered list of provider IDs to try (e.g., `["google", "openai"]`). |
-| `preserve_original_message_on_failure` | `true` | Whether to send the original untranslated message if all providers fail. |
-| `cache.enabled` | `true` | Whether translation results are cached in Redis. |
-| `cache.ttl_seconds` | `1800` | Cache entry lifetime in seconds. |
-| `cache.max_text_length` | `500` | Maximum text length eligible for caching. |
-| `metrics.enabled` | `true` | Whether translation metrics are collected. |
-| `metrics.minute_buckets_enabled` | `true` | Whether per-minute metric buckets are maintained. |
-| `metrics.minute_bucket_ttl_seconds` | `21600` | TTL for per-minute metric buckets. |
-| `llm.preserve_formatting_tokens` | `true` | Whether Mindustry formatting tokens are preserved when sending text to LLM-based providers. |
-| `llm.structured_output_required` | `true` | Whether structured JSON output is requested from LLM providers. |
-| `llm.max_input_chars` | `500` | Maximum input characters for LLM translation requests. |
-| `llm.max_output_chars` | `1200` | Maximum output characters for LLM translation responses. |
-| `llm.strip_control_characters` | `true` | Whether control characters are stripped before translation. |
+| `version` | `1` | Config schema version for future migrations. |
+| `server.name` | `server` | Server identity name used for transport routing and cross-server recognition. |
+| `server.public_host_override` | `""` | Public host/IP override. Leave blank for auto-detect. |
+| `server.player_limit` | `30` | Base player slot limit. Admin players do not count toward this limit. |
+| `server.console_enabled` | `true` | Whether the server console is enabled. |
+| `server.game_started_timer` | `true` | Whether the game-start timer is active. |
+| `paths.global_config_directory` | `""` | Override directory for `secrets.toml`. Leave blank to use the user's home directory. |
+| `discord.channel_id` | `0` | Discord channel ID for server relay output. |
+| `transport.redis.url` | `redis://127.0.0.1:6379` | Redis connection URI for the transport backend. |
+| `transport.redis.group_prefix` | `xcore:cg` | Consumer group prefix for Redis streams. |
+| `transport.redis.consumer_name` | `xcore-node` | Unique consumer name within the Redis consumer group. |
+| `transport.redis.reclaim.enabled` | `true` | Whether to reclaim pending stream messages on start. |
+| `transport.redis.reclaim.min_idle_ms` | `15000` | Minimum idle time (ms) before a message is considered orphaned and reclaimed. |
+| `transport.redis.reclaim.batch` | `50` | Maximum number of messages to reclaim per batch. |
+| `transport.redis.dlq.enabled` | `true` | Whether failed deliveries are sent to a dead-letter queue. |
+| `transport.redis.dlq.max_delivery_attempts` | `3` | Maximum delivery attempts before a message is moved to the DLQ. |
+| `transport.redis.dlq.prefix` | `xcore:dlq` | Redis key prefix for the dead-letter queue. |
+| `runtime.disabled_commands` | `[]` | Command paths disabled at runtime (for example `["rtv"]`). Prefer dedicated toggle commands for editing this list at runtime. |
+| `runtime.disabled_features` | `[]` | Disabled feature keys (`rtv`, `vnw`). Prefer dedicated toggle commands for editing this list at runtime. |
+| `event_hub.enabled` | `false` | Whether the current map is the event hub. |
+| `event_hub.map_id` | `""` | Internal map identifier for the event hub. |
 
-### `~/secrets.json` (global)
-
-This file contains sensitive and shared settings. **It is created automatically** with defaults; the only required fields are `mongo_connection_string` and `database_name`.
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `mongo_connection_string` | `null` | **Required.** MongoDB connection URI (e.g., `mongodb://localhost:27017`). |
-| `database_name` | `null` | **Required.** MongoDB database name (e.g., `xcore`). |
-| `discord_url` | `https://discord.gg/RUMCCa9QAC` | Public Discord invite URL. |
-| `github_url` | `https://github.com/XCore-mindustry/` | Project GitHub URL. |
-| `donatello_url` | `https://donatello.to/xcore` | Donation page URL. |
-| `weblate_url` | `https://xcore.eradication.fun/` | Weblate translation platform URL. |
-| `discord_red_vs_blue_url` | `https://discord.gg/UdnuFetcNt` | Red vs Blue Discord URL. |
-| `min_play_time_for_votekick` | `60` | Minimum playtime (minutes) required to start a votekick. |
-| `min_play_time_for_global_chat` | `240` | Minimum playtime (minutes) required to use global chat (`/g`). |
-| `vote_kick_ban_duration_minutes` | `30` | Duration of a votekick ban in minutes. |
-| `vote_duration_seconds` | `60.0` | How long a vote session remains open. |
-| `map_switch_delay_seconds` | `10` | Delay before switching maps after a successful vote. |
-| `events_per_page` | `10` | Events shown per page in the event menu. |
-| `maps_per_page` | `10` | Maps shown per page in the map browser. |
-| `commands_per_page` | `6` | Commands shown per page in the help menu. |
-| `private_messages_per_page` | `10` | Messages shown per page in the inbox. |
-| `max_history` | `16` | Maximum tracked message history per player. |
-| `private_message_max_length` | `300` | Maximum length of a private message. |
-| `private_message_cooldown_seconds` | `10` | Cooldown between private messages from the same player. |
-| `private_message_unread_limit` | `30` | Maximum unread messages retained. |
-| `private_message_blocked_limit` | `100` | Maximum blocked-player entries retained. |
-| `is_data_base_read_only` | `false` | When `true`, database writes are suppressed. |
-| `is_data_base_migration` | `false` | When `true`, migration logic runs on startup. |
-| `translation_providers` | `{ "google": { ... } }` | Map of provider configurations keyed by provider ID. |
-
-#### Translation provider config (`translationProviders.<id>`)
+#### Translation settings (`[translation]`, `[translation.cache]`, `[translation.metrics]`, `[translation.llm]`)
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `type` | `google` | Provider type (`google`, `openai`, `nvidia`, etc.). |
-| `enabled` | `true` | Whether this provider is active. |
-| `api_key` | `null` | API key for the provider. |
-| `base_url` | `https://api.openai.com/v1` | Base URL for the provider API. |
-| `api_mode` | `null` | Provider-specific API mode. |
-| `timeout_seconds` | `15` | Request timeout. |
-| `max_retries` | `1` | Number of retries on transient failure. |
-| `supported_languages` | `[]` | Set of language codes this provider supports. |
+| `translation.enabled` | `true` | Master switch for the translation pipeline. |
+| `translation.pipeline` | `["google"]` | Ordered list of provider IDs to try (for example `["google", "openai"]`). |
+| `translation.preserve_original_message_on_failure` | `true` | Whether to send the original untranslated message if all providers fail. |
+| `translation.cache.enabled` | `true` | Whether translation results are cached in Redis. |
+| `translation.cache.ttl_seconds` | `1800` | Cache entry lifetime in seconds. |
+| `translation.cache.max_text_length` | `500` | Maximum text length eligible for caching. |
+| `translation.metrics.enabled` | `true` | Whether translation metrics are collected. |
+| `translation.metrics.minute_buckets_enabled` | `true` | Whether per-minute metric buckets are maintained. |
+| `translation.metrics.minute_bucket_ttl_seconds` | `21600` | TTL for per-minute metric buckets. |
+| `translation.llm.preserve_formatting_tokens` | `true` | Whether Mindustry formatting tokens are preserved when sending text to LLM-based providers. |
+| `translation.llm.structured_output_required` | `true` | Whether structured JSON output is requested from LLM providers. |
+| `translation.llm.max_input_chars` | `500` | Maximum input characters for LLM translation requests. |
+| `translation.llm.max_output_chars` | `1200` | Maximum output characters for LLM translation responses. |
+| `translation.llm.strip_control_characters` | `true` | Whether control characters are stripped before translation. |
+
+#### IP reputation settings (`[ip_reputation]`)
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `ip_reputation.enabled` | `false` | Master switch for IP reputation checks. |
+| `ip_reputation.block_proxy` | `true` | Whether proxy connections are blocked. |
+| `ip_reputation.block_vpn` | `true` | Whether VPN connections are blocked. |
+| `ip_reputation.block_tor` | `true` | Whether Tor exit nodes are blocked. |
+| `ip_reputation.block_hosting` | `false` | Whether hosting-provider IP ranges are blocked. |
+| `ip_reputation.cache_ttl_seconds` | `3600` | Cache lifetime for IP reputation lookups. |
+
+### `secrets.toml` (global/shared)
+
+This file contains sensitive and shared settings. **It is created automatically** with defaults. The required database settings are `database.mongo_connection_string` and `database.name` under the `[database]` section.
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `version` | `1` | Config schema version for future migrations. |
+| `database.mongo_connection_string` | `""` | **Required.** MongoDB connection URI (for example `mongodb://localhost:27017`). |
+| `database.name` | `""` | **Required.** MongoDB database name (for example `xcore`). |
+| `database.read_only` | `false` | When `true`, database writes are suppressed. |
+| `database.migration_enabled` | `false` | When `true`, migration logic runs on startup. |
+| `external_links.discord_url` | `https://discord.gg/RUMCCa9QAC` | Public Discord invite URL. |
+| `external_links.github_url` | `https://github.com/XCore-mindustry/` | Project GitHub URL. |
+| `external_links.donatello_url` | `https://donatello.to/xcore` | Donation page URL. |
+| `external_links.weblate_url` | `https://xcore.eradication.fun/` | Weblate translation platform URL. |
+| `external_links.discord_red_vs_blue_url` | `https://discord.gg/UdnuFetcNt` | Red vs Blue Discord URL. |
+| `moderation.votekick.min_play_time_minutes` | `60` | Minimum playtime (minutes) required to start a votekick. |
+| `moderation.votekick.ban_duration_minutes` | `30` | Duration of a votekick ban in minutes. |
+| `moderation.votekick.vote_duration_seconds` | `60.0` | How long a vote session remains open. |
+| `chat.global.min_play_time_minutes` | `240` | Minimum playtime (minutes) required to use global chat (`/g`). |
+| `maps.voting.switch_delay_seconds` | `10` | Delay before switching maps after a successful vote. |
+| `pagination.events_per_page` | `10` | Events shown per page in the event menu. |
+| `pagination.maps_per_page` | `10` | Maps shown per page in the map browser. |
+| `pagination.commands_per_page` | `6` | Commands shown per page in the help menu. |
+| `pagination.private_messages_per_page` | `10` | Messages shown per page in the inbox. |
+| `messages.history.max_history` | `16` | Maximum tracked message history per player. |
+| `messages.private.max_length` | `300` | Maximum length of a private message. |
+| `messages.private.cooldown_seconds` | `10` | Cooldown between private messages from the same player. |
+| `messages.private.unread_limit` | `30` | Maximum unread messages retained. |
+| `messages.private.blocked_limit` | `100` | Maximum blocked-player entries retained. |
+
+#### Translation provider config (`[translation.providers.<id>]`)
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `translation.providers.<id>.type` | `google` | Provider type (`google`, `openai`, `nvidia`, etc.). |
+| `translation.providers.<id>.enabled` | `true` | Whether this provider is active. |
+| `translation.providers.<id>.api_key` | `""` | API key for the provider. |
+| `translation.providers.<id>.base_url` | `https://api.openai.com/v1` | Base URL for the provider API. |
+| `translation.providers.<id>.model` | `gpt-5.4` | Model identifier for provider integrations that need one. |
+| `translation.providers.<id>.api_mode` | `""` | Provider-specific API mode. |
+| `translation.providers.<id>.organization` | `""` | Optional organization header/value for provider APIs. |
+| `translation.providers.<id>.project` | `""` | Optional project header/value for provider APIs. |
+| `translation.providers.<id>.timeout_seconds` | `15` | Request timeout. |
+| `translation.providers.<id>.max_retries` | `1` | Number of retries on transient failure. |
+| `translation.providers.<id>.temperature` | `0.0` | Temperature passed to LLM-style providers when applicable. |
+| `translation.providers.<id>.supported_languages` | `[]` | Set/list of language codes this provider supports. |
+
+#### IP reputation provider config (`[ip_reputation.provider]`)
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `ip_reputation.provider.base_url` | `http://ip-api.com/json` | Base URL for the IP reputation provider. |
+| `ip_reputation.provider.timeout_seconds` | `10` | Request timeout for IP reputation lookups. |
+| `ip_reputation.provider.max_retries` | `2` | Number of retries on transient IP reputation failures. |
+| `ip_reputation.provider.rate_limit_per_minute` | `45` | Soft per-minute rate limit for provider calls. |
 
 ## Localization
 Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundle. Supported languages include English, Russian, Ukrainian, and Belarusian. Locale resolution follows player preference with automatic fallback.

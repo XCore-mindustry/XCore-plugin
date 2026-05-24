@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.server;
 
 import arc.Core;
-import arc.files.Fi;
 import arc.struct.Seq;
 import org.xcore.plugin.common.PLog;
 import com.google.gson.Gson;
@@ -19,6 +18,7 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.ServerLocalConfigTomlStore;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
@@ -61,7 +61,7 @@ public class MaintainController implements CloudServerController {
                               MapIdentityAuditService mapIdentityAuditService,
                               TopMenuCacheService topMenuCacheService,
                               Config config,
-                              @Named("xcConfigFile") Fi configFile,
+                              ServerLocalConfigTomlStore tomlStore,
                               @Named("pretty") Gson prettyGson) {
         this.network = network;
         this.playerDataRepository = playerDataRepository;
@@ -70,7 +70,7 @@ public class MaintainController implements CloudServerController {
         this.config = config;
         this.mapIdentityAuditService = mapIdentityAuditService;
         this.topMenuCacheService = topMenuCacheService;
-        this.toggleConfigService = new RuntimeToggleConfigService(config, configFile, prettyGson);
+        this.toggleConfigService = new RuntimeToggleConfigService(config, tomlStore);
     }
 
     public MaintainController(NetworkService network,
@@ -79,9 +79,9 @@ public class MaintainController implements CloudServerController {
                               SessionService sessionService,
                               MapIdentityAuditService mapIdentityAuditService,
                               Config config,
-                              Fi configFile,
+                              ServerLocalConfigTomlStore tomlStore,
                               Gson prettyGson) {
-        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, config, configFile, prettyGson);
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, config, tomlStore, prettyGson);
     }
 
     @Command("exit")

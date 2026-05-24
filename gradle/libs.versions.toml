@@ -14,6 +14,7 @@ jbcrypt = "0.4"
 netty = "4.1.107.Final"
 jline = "3.30.6"
 lettuce = "6.8.1.RELEASE"
+jackson = "2.18.2"
 avaje = "12.3"
 flubundle = "1.3"
 lombok = "1.18.42"
@@ -37,6 +38,7 @@ jline-terminal = { module = "org.jline:jline-terminal-jna", version.ref = "jline
 jline-reader = { module = "org.jline:jline-reader", version.ref = "jline" }
 jline-console = { module = "org.jline:jline-console", version.ref = "jline" }
 lettuce = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
 avaje-inject = { module = "io.avaje:avaje-inject", version.ref = "avaje" }
 avaje-inject-generator = { module = "io.avaje:avaje-inject-generator", version.ref = "avaje" }
 avaje-inject-test = { module = "io.avaje:avaje-inject-test", version.ref = "avaje" }

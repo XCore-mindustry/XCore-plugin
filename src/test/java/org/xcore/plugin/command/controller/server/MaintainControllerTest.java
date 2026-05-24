@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.ServerLocalConfigTomlStore;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
@@ -35,6 +36,7 @@ class MaintainControllerTest {
         var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -45,7 +47,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -70,6 +72,7 @@ class MaintainControllerTest {
         var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -80,7 +83,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -105,6 +108,7 @@ class MaintainControllerTest {
         var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -115,7 +119,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -140,6 +144,7 @@ class MaintainControllerTest {
         var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -150,7 +155,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -170,6 +175,7 @@ class MaintainControllerTest {
         var auditService = mock(MapIdentityAuditService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -180,7 +186,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -201,6 +207,7 @@ class MaintainControllerTest {
         var config = new Config();
         config.disabledFeatures.add("rtv");
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -211,7 +218,7 @@ class MaintainControllerTest {
                 sessionService,
                 auditService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 
@@ -232,6 +239,7 @@ class MaintainControllerTest {
         var topMenuCacheService = mock(TopMenuCacheService.class);
         var config = new Config();
         var configFile = mock(Fi.class);
+        var tomlStore = new ServerLocalConfigTomlStore(configFile);
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
@@ -245,7 +253,7 @@ class MaintainControllerTest {
                 auditService,
                 topMenuCacheService,
                 config,
-                configFile,
+                tomlStore,
                 gson
         );
 

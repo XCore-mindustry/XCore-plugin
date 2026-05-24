@@ -1,8 +1,7 @@
 package org.xcore.plugin.command.controller.server;
 
-import arc.files.Fi;
-import com.google.gson.Gson;
 import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.ServerLocalConfigTomlStore;
 
 import java.util.HashSet;
 import java.util.Locale;
@@ -19,13 +18,11 @@ final class RuntimeToggleConfigService {
     }
 
     private final Config config;
-    private final Fi configFile;
-    private final Gson prettyGson;
+    private final ServerLocalConfigTomlStore tomlStore;
 
-    RuntimeToggleConfigService(Config config, Fi configFile, Gson prettyGson) {
+    RuntimeToggleConfigService(Config config, ServerLocalConfigTomlStore tomlStore) {
         this.config = config;
-        this.configFile = configFile;
-        this.prettyGson = prettyGson;
+        this.tomlStore = tomlStore;
     }
 
     ToggleMutationResult disable(ToggleTarget target, String value) {
@@ -102,6 +99,6 @@ final class RuntimeToggleConfigService {
     }
 
     private void save() {
-        configFile.writeString(prettyGson.toJson(config));
+        tomlStore.write(config);
     }
 }
