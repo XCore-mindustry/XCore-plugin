@@ -95,9 +95,14 @@ public class DataController implements CloudServerController {
             return;
         }
 
+        try {
+            tomlStore.write(updated);
+        } catch (Exception e) {
+            Log.err("Failed to persist config change for field '@': @", field, e.getMessage());
+            return;
+        }
         config = updated;
-        tomlStore.write(config);
-        Log.info("Config field '@' updated to '@'.", field, value);
+        Log.info("Config field '@' updated.", field);
     }
 
     @Command("edit-data <player> <field> <value>")

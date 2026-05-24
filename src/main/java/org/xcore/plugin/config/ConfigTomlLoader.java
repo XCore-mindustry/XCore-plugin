@@ -219,7 +219,10 @@ public final class ConfigTomlLoader {
     }
 
     private static LoadResult<Config> migrateLegacyXcoreConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
-        Config legacyConfig = gson.fromJson(jsonFile.reader(), Config.class);
+        Config legacyConfig;
+        try (var reader = jsonFile.reader()) {
+            legacyConfig = gson.fromJson(reader, Config.class);
+        }
         if (legacyConfig == null) {
             legacyConfig = new Config();
         }
@@ -234,7 +237,10 @@ public final class ConfigTomlLoader {
     }
 
     private static LoadResult<GlobalConfig> migrateLegacySecretsConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
-        GlobalConfig legacyGlobal = gson.fromJson(jsonFile.reader(), GlobalConfig.class);
+        GlobalConfig legacyGlobal;
+        try (var reader = jsonFile.reader()) {
+            legacyGlobal = gson.fromJson(reader, GlobalConfig.class);
+        }
         if (legacyGlobal == null) {
             legacyGlobal = new GlobalConfig();
         }
