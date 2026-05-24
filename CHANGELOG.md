@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+No changelog entries were recorded in the Unreleased section.
+
+## [4.1.0] - 2026-05-24
+
 ### Changed
 - Updated Mindustry to version 158.
 
@@ -258,7 +262,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.1.0...HEAD
+[4.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...4.0.0
 [3.2.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...3.2.1
 [3.2]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.1.8...3.2
