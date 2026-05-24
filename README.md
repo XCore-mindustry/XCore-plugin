@@ -60,7 +60,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 - Java 25+
 - MongoDB 6.0+
 - Redis (for cross-server transport)
-- Mindustry v157 (or compatible forks)
+- Mindustry v158 (or compatible forks)
 - `cloud-mindustry` `0.2.0+` from `https://maven.x-core.org/releases`
 - `FluBundle` `1.3+` from `https://maven.x-core.org/releases`
 

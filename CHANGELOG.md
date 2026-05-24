@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-No changelog entries were recorded in the Unreleased section.
+### Changed
+- Updated Mindustry to version 158.
 
 ## [4.0.0] - 2026-05-17
 
