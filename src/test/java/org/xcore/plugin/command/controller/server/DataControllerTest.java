@@ -6,11 +6,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.SerializationFactory;
 import org.xcore.plugin.config.ServerLocalConfigPathEditor;
 import org.xcore.plugin.config.ServerLocalConfigTomlRenderer;
 import org.xcore.plugin.config.ServerLocalConfigTomlStore;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
@@ -30,7 +30,7 @@ class DataControllerTest {
     void xconfigEdit_updatesConfigAndPersistsThroughTomlStore() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -40,9 +40,10 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "playerLimit", "64");
 
-        var configCaptor = ArgumentCaptor.forClass(Config.class);
+        var configCaptor = ArgumentCaptor.forClass(TomlXcoreConfig.class);
         verify(tomlStore).write(configCaptor.capture());
-        assertThat(configCaptor.getValue().playerLimit).isEqualTo(64);
+        assertThat(configCaptor.getValue().server.playerLimit).isEqualTo(64);
+        assertThat(config.server.playerLimit).isEqualTo(64);
     }
 
     @Test
@@ -50,7 +51,7 @@ class DataControllerTest {
     void xconfigEdit_supportsNestedTomlPaths() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -60,9 +61,10 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "transport.redis.url", "redis://example:6379");
 
-        var configCaptor = ArgumentCaptor.forClass(Config.class);
+        var configCaptor = ArgumentCaptor.forClass(TomlXcoreConfig.class);
         verify(tomlStore).write(configCaptor.capture());
-        assertThat(configCaptor.getValue().redisUrl).isEqualTo("redis://example:6379");
+        assertThat(configCaptor.getValue().transport.redis.url).isEqualTo("redis://example:6379");
+        assertThat(config.transport.redis.url).isEqualTo("redis://example:6379");
     }
 
     @Test
@@ -70,7 +72,7 @@ class DataControllerTest {
     void xconfigEdit_supportsCommaSeparatedTranslationPipeline() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -80,9 +82,11 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "translation.pipeline", "google, openai, deepl");
 
-        var configCaptor = ArgumentCaptor.forClass(Config.class);
+        var configCaptor = ArgumentCaptor.forClass(TomlXcoreConfig.class);
         verify(tomlStore).write(configCaptor.capture());
         assertThat(configCaptor.getValue().translation.pipeline)
+                .containsExactly("google", "openai", "deepl");
+        assertThat(config.translation.pipeline)
                 .containsExactly("google", "openai", "deepl");
     }
 
@@ -91,7 +95,7 @@ class DataControllerTest {
     void xconfigEdit_supportsJsonArrayTranslationPipeline() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -101,9 +105,11 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "translation.pipeline", "[\"google\", \"openai\"]");
 
-        var configCaptor = ArgumentCaptor.forClass(Config.class);
+        var configCaptor = ArgumentCaptor.forClass(TomlXcoreConfig.class);
         verify(tomlStore).write(configCaptor.capture());
         assertThat(configCaptor.getValue().translation.pipeline)
+                .containsExactly("google", "openai");
+        assertThat(config.translation.pipeline)
                 .containsExactly("google", "openai");
     }
 
@@ -112,7 +118,7 @@ class DataControllerTest {
     void xconfigEdit_doesNotPersistWhenFieldIsMissing() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -122,8 +128,8 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "missing_field", "value");
 
-        verify(tomlStore, never()).write(any(Config.class));
-        assertThat(config.playerLimit).isEqualTo(30);
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
+        assertThat(config.server.playerLimit).isEqualTo(30);
     }
 
     @Test
@@ -131,7 +137,7 @@ class DataControllerTest {
     void xconfigEdit_doesNotPersistWhenIntegerValueIsInvalid() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -141,8 +147,8 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "playerLimit", "not-a-number");
 
-        verify(tomlStore, never()).write(any(Config.class));
-        assertThat(config.playerLimit).isEqualTo(30);
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
+        assertThat(config.server.playerLimit).isEqualTo(30);
     }
 
     @Test
@@ -150,7 +156,7 @@ class DataControllerTest {
     void xconfigEdit_doesNotPersistWhenBooleanValueIsInvalid() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -160,8 +166,8 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "consoleEnabled", "maybe");
 
-        verify(tomlStore, never()).write(any(Config.class));
-        assertThat(config.consoleEnabled).isTrue();
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
+        assertThat(config.server.consoleEnabled).isTrue();
     }
 
     @Test
@@ -169,7 +175,7 @@ class DataControllerTest {
     void xconfigEdit_doesNotPersistWhenTranslationPipelineArrayIsMalformed() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -180,7 +186,7 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "translation.pipeline", "[\"google\",");
 
-        verify(tomlStore, never()).write(any(Config.class));
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
         assertThat(config.translation.pipeline).containsExactly("google");
     }
 
@@ -189,7 +195,7 @@ class DataControllerTest {
     void xconfigEdit_rejectsDedicatedDisabledCommandPaths() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -199,9 +205,9 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "runtime.disabled_commands", "[\"help\"]");
 
-        verify(tomlStore, never()).write(any(Config.class));
-        verify(pathEditor, never()).update(any(Config.class), any(String.class), any(String.class));
-        assertThat(config.disabledCommands).isEmpty();
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
+        verify(pathEditor, never()).update(any(TomlXcoreConfig.class), any(String.class), any(String.class));
+        assertThat(config.runtime.disabledCommands).isEmpty();
     }
 
     @Test
@@ -209,7 +215,7 @@ class DataControllerTest {
     void xconfigEdit_rejectsDedicatedDisabledFeaturePaths() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -219,9 +225,9 @@ class DataControllerTest {
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
         controller.xconfigEdit(sender, "disabledFeatures", "[\"rtv\"]");
 
-        verify(tomlStore, never()).write(any(Config.class));
-        verify(pathEditor, never()).update(any(Config.class), any(String.class), any(String.class));
-        assertThat(config.disabledFeatures).isEmpty();
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
+        verify(pathEditor, never()).update(any(TomlXcoreConfig.class), any(String.class), any(String.class));
+        assertThat(config.runtime.disabledFeatures).isEmpty();
     }
 
     @Test
@@ -230,7 +236,7 @@ class DataControllerTest {
         var repository = mock(PlayerDataRepository.class);
         var topMenuCacheService = mock(TopMenuCacheService.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
+        var config = new TomlXcoreConfig();
         var gson = new Gson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -264,10 +270,10 @@ class DataControllerTest {
     void xconfigShow_rendersTomlShapedServerLocalConfig() {
         var repository = mock(PlayerDataRepository.class);
         var tomlStore = mock(ServerLocalConfigTomlStore.class);
-        var config = new Config();
-        config.server = "alpha";
-        config.playerLimit = 64;
-        config.redisUrl = "redis://example:6379";
+        var config = new TomlXcoreConfig();
+        config.server.name = "alpha";
+        config.server.playerLimit = 64;
+        config.transport.redis.url = "redis://example:6379";
         var gson = new SerializationFactory().prettyGson();
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
@@ -284,6 +290,6 @@ class DataControllerTest {
 
         controller.xconfigShow(sender);
 
-        verify(tomlStore, never()).write(any(Config.class));
+        verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
     }
 }

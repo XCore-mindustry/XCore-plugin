@@ -10,7 +10,7 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
@@ -29,13 +29,13 @@ import static org.xcore.plugin.common.PLog.info;
 public class MapTransportHandler {
 
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
 
     @Inject
     public MapTransportHandler(NetworkService network,
-                               Config config,
+                               TomlXcoreConfig config,
                                MapService mapService,
                                MapDataRepository mapDataRepository) {
         this.network = network;
@@ -46,7 +46,7 @@ public class MapTransportHandler {
 
     public void registerListeners() {
         network.subscribe(MapsListRequestV1.class, request -> {
-            if (!request.server().equals(config.server)) return;
+            if (!request.server().equals(config.server.name)) return;
 
             var customMaps = maps.customMaps();
             String currentGameMode = state.rules.mode().name();
@@ -62,7 +62,7 @@ public class MapTransportHandler {
         });
 
         network.subscribe(MapsRemoveRequestV1.class, request -> {
-            if (!request.server().equals(config.server)) return;
+            if (!request.server().equals(config.server.name)) return;
 
             var map = mapService.findMapByFileName(request.fileName());
             if (map != null) {
@@ -79,7 +79,7 @@ public class MapTransportHandler {
         });
 
         network.subscribe(MapsLoadCommandV1.class, e -> {
-            if (!config.server.equals(e.server())) return;
+            if (!config.server.name.equals(e.server())) return;
 
             AtomicInteger counter = new AtomicInteger();
             for (MapFileSourceV1 file : e.files()) {

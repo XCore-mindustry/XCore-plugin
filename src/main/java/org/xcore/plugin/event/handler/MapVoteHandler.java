@@ -13,7 +13,7 @@ import mindustry.gen.Groups;
 import mindustry.maps.Map;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
@@ -29,7 +29,7 @@ public class MapVoteHandler {
     private final Provider<MapMenu> mapMenu;
     private final GameDataService gameDataService;
     private final EventDataRepository eventDataRepository;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final MapService mapService;
 
 
@@ -38,7 +38,7 @@ public class MapVoteHandler {
                           Provider<MapMenu> mapMenu,
                           GameDataService gameDataService,
                           EventDataRepository eventDataRepository,
-                          Config config,
+                          TomlXcoreConfig config,
                           MapService mapService) {
         this.mapDataRepository = mapDataRepository;
         this.mapMenu = mapMenu;
@@ -72,7 +72,7 @@ public class MapVoteHandler {
                 mapMenu.get().showGameOverMenu(mapData, nextMapData, event.winner);
 
 
-                gameDataService.startNewGame(nextMapData, state.rules.modeName, config.isEvent() ? eventDataRepository.findActive().orElse(null) : null);
+                gameDataService.startNewGame(nextMapData, state.rules.modeName, "event".equals(config.server.name) ? eventDataRepository.findActive().orElse(null) : null);
                 Groups.player.each(gameDataService::addPlayer);
 
                 ServerControl.instance.play(() -> {

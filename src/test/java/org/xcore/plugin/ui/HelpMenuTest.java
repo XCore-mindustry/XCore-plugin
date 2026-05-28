@@ -16,7 +16,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -54,7 +53,6 @@ class HelpMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
         globalConfig = new GlobalConfig();
         globalConfig.commandsPerPage = 2;
 
@@ -70,7 +68,7 @@ class HelpMenuTest {
         Provider<CloudService> cloudProvider = mock(Provider.class);
         when(cloudProvider.get()).thenReturn(cloudService);
 
-        helpMenu = new HelpMenu(config, globalConfig, sessionService, cloudProvider, menuService);
+        helpMenu = new HelpMenu(globalConfig, sessionService, cloudProvider, menuService);
         helpMenu.init();
 
         previousNetServer = Vars.netServer;

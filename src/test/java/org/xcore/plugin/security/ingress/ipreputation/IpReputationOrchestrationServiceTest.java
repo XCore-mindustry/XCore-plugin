@@ -2,7 +2,7 @@ package org.xcore.plugin.security.ingress.ipreputation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -12,7 +12,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked returns false when feature is disabled")
     void isBlocked_featureDisabled_returnsFalse() {
-        Config config = configWithEnabled(false);
+        TomlXcoreConfig config = configWithEnabled(false);
         var service = newService(config, mockAllowlist(), mockCache(), mockProvider(), mockPolicy());
 
         assertThat(service.isBlocked("1.2.3.4")).isFalse();
@@ -21,7 +21,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked returns false for blank ip")
     void isBlocked_blankIp_returnsFalse() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         var service = newService(config, mockAllowlist(), mockCache(), mockProvider(), mockPolicy());
 
         assertThat(service.isBlocked("")).isFalse();
@@ -31,7 +31,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked returns false when ip is on allowlist")
     void isBlocked_allowlisted_returnsFalse() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationAllowlist allowlist = mockAllowlist();
         when(allowlist.contains("1.2.3.4")).thenReturn(true);
 
@@ -43,7 +43,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked uses cache hit when available")
     void isBlocked_cacheHit_usesCache() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         IpReputationResult cached = new IpReputationResult("1.2.3.4", true, false, false);
         when(cache.get("1.2.3.4")).thenReturn(cached);
@@ -61,7 +61,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked consults provider on cache miss and caches result")
     void isBlocked_cacheMiss_consultsProviderAndCaches() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         when(cache.get("1.2.3.4")).thenReturn(null);
 
@@ -81,7 +81,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked fails open when provider returns null")
     void isBlocked_providerNull_failsOpen() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         when(cache.get("1.2.3.4")).thenReturn(null);
 
@@ -96,7 +96,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked fails open when allowlist throws")
     void isBlocked_allowlistThrows_failsOpen() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationAllowlist allowlist = mockAllowlist();
         when(allowlist.contains("1.2.3.4")).thenThrow(new RuntimeException("redis down"));
 
@@ -113,7 +113,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked fails open when cache throws")
     void isBlocked_cacheThrows_failsOpen() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         when(cache.get("1.2.3.4")).thenThrow(new RuntimeException("redis down"));
 
@@ -132,7 +132,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked fails open when provider throws")
     void isBlocked_providerThrows_failsOpen() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         when(cache.get("1.2.3.4")).thenReturn(null);
 
@@ -147,7 +147,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("isBlocked fails open when cache put throws")
     void isBlocked_cachePutThrows_stillEvaluatesPolicy() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationCache cache = mockCache();
         when(cache.get("1.2.3.4")).thenReturn(null);
         when(cache.put(anyString(), any())).thenThrow(new RuntimeException("redis down"));
@@ -167,7 +167,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("lookup returns null when feature is disabled")
     void lookup_featureDisabled_returnsNull() {
-        Config config = configWithEnabled(false);
+        TomlXcoreConfig config = configWithEnabled(false);
         var service = newService(config, mockAllowlist(), mockCache(), mockProvider(), mockPolicy());
 
         assertThat(service.lookup("1.2.3.4")).isNull();
@@ -176,7 +176,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("lookup returns provider result when enabled")
     void lookup_featureEnabled_returnsProviderResult() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationProvider provider = mockProvider();
         IpReputationResult result = new IpReputationResult("1.2.3.4", true, false, false);
         when(provider.lookup("1.2.3.4")).thenReturn(result);
@@ -189,7 +189,7 @@ class IpReputationOrchestrationServiceTest {
     @Test
     @DisplayName("lookup fails open when provider throws")
     void lookup_providerThrows_failsOpen() {
-        Config config = configWithEnabled(true);
+        TomlXcoreConfig config = configWithEnabled(true);
         IpReputationProvider provider = mockProvider();
         when(provider.lookup("1.2.3.4")).thenThrow(new RuntimeException("timeout"));
 
@@ -199,7 +199,7 @@ class IpReputationOrchestrationServiceTest {
     }
 
     private static IpReputationOrchestrationService newService(
-            Config config,
+            TomlXcoreConfig config,
             IpReputationAllowlist allowlist,
             IpReputationCache cache,
             IpReputationProvider provider,
@@ -207,8 +207,8 @@ class IpReputationOrchestrationServiceTest {
         return new IpReputationOrchestrationService(config, allowlist, cache, provider, policy);
     }
 
-    private static Config configWithEnabled(boolean enabled) {
-        Config config = new Config();
+    private static TomlXcoreConfig configWithEnabled(boolean enabled) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
         config.ipReputation.enabled = enabled;
         return config;
     }

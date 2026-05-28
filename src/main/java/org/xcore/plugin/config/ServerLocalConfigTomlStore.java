@@ -10,13 +10,12 @@ import java.nio.file.Files;
 import java.util.Objects;
 
 /**
- * Focused helper that persists the server-local {@link Config} runtime model
- * back to {@code xcore.toml}.
+ * Focused helper that persists the server-local TOML runtime owner back to
+ * {@code xcore.toml}.
  *
- * <p>This helper keeps TOML write logic out of controllers and does not
- * touch global/secrets persistence. It uses the existing
- * {@link ConfigTomlMapper#toTomlXcoreConfig(Config)} mapping so that
- * written values match the startup TOML schema.</p>
+ * <p>This helper keeps TOML write logic out of controllers and does not touch
+ * global/secrets persistence. {@link TomlXcoreConfig} is the direct helper
+ * boundary.</p>
  */
 public final class ServerLocalConfigTomlStore {
     private final Fi tomlFile;
@@ -26,20 +25,20 @@ public final class ServerLocalConfigTomlStore {
     }
 
     /**
-     * Writes the given {@link Config} to the configured {@code xcore.toml} file.
+     * Writes the given {@link TomlXcoreConfig} to the configured
+     * {@code xcore.toml} file.
      *
-     * <p>The config is normalized and mapped to {@link TomlXcoreConfig} before
-     * writing so the output matches the startup TOML schema.</p>
+     * <p>The config is normalized before writing so the output matches the
+     * startup TOML schema.</p>
      *
-     * @param config the runtime config to persist; must not be {@code null}
+     * @param config the structured runtime config to persist; must not be {@code null}
      * @throws NullPointerException if {@code config} is {@code null}
      * @throws IllegalStateException if writing fails
      */
-    public void write(Config config) {
+    public void write(TomlXcoreConfig config) {
         Objects.requireNonNull(config, "config must not be null");
-
-        TomlXcoreConfig toml = ConfigTomlMapper.toTomlXcoreConfig(config);
-        writeToml(tomlFile, toml);
+        config.normalize();
+        writeToml(tomlFile, config);
     }
 
     /**

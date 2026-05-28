@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
@@ -103,8 +103,8 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -132,8 +132,8 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -158,8 +158,8 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -182,7 +182,7 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -206,7 +206,7 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -229,7 +229,7 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -252,7 +252,7 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -273,7 +273,7 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -297,8 +297,8 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -323,8 +323,8 @@ class PlayerProfileSettingsServiceTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerDisplayService displayService = mock(PlayerDisplayService.class);
         NetworkService network = mock(NetworkService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         PlayerProfileSettingsService service = new PlayerProfileSettingsService(
                 sessionService, repository, displayService, network, config);
@@ -346,6 +346,6 @@ class PlayerProfileSettingsServiceTest {
                 mock(PlayerDataRepository.class),
                 mock(PlayerDisplayService.class),
                 mock(NetworkService.class),
-                new Config());
+                new TomlXcoreConfig());
     }
 }

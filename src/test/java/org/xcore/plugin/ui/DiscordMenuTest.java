@@ -6,7 +6,6 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -49,13 +48,11 @@ class DiscordMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
-        config.server = "xcore";
         globalConfig = new GlobalConfig();
         globalConfig.discordUrl = "https://discord.example";
 
         discordLinkService = mock(DiscordLinkService.class);
-        discordMenu = new DiscordMenu(config, globalConfig, sessionService, discordLinkService, menuService);
+        discordMenu = new DiscordMenu(globalConfig, sessionService, discordLinkService, menuService);
         discordMenu.init();
 
         session = session();

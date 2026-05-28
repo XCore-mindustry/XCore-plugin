@@ -14,8 +14,8 @@ import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.config.CloudGuardConfigurer;
 import org.xcore.plugin.cloud.config.DisabledCommandPolicy;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.session.SessionService;
 
@@ -39,8 +39,8 @@ class CloudCommandPipelineIntegrationTest {
         var sessionService = mock(SessionService.class);
         var bundle = mock(Bundle.class);
         var globalConfig = new GlobalConfig();
-        var config = new Config();
-        config.disabledCommands = Set.of("test foo", "root");
+        var config = new TomlXcoreConfig();
+        config.runtime.disabledCommands = Set.of("test foo", "root");
 
         var player = mock(mindustry.gen.Player.class);
         when(player.uuid()).thenReturn("test-uuid");

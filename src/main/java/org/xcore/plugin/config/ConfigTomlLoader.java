@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  *
  * <p>Resolution order for each config:</p>
  * <ol>
- *   <li>If the TOML file exists, load it via Jackson TOML and map to the legacy model.</li>
+ *   <li>If the TOML file exists, load it via Jackson TOML.</li>
  *   <li>Else if the legacy JSON file exists, migrate it to TOML, back up the JSON file, then reload from TOML.</li>
  *   <li>Else write a commented default TOML template, then load it.</li>
  * </ol>
@@ -57,7 +57,7 @@ public final class ConfigTomlLoader {
      * Result of a config load operation, carrying the resolved object, the
      * source that was used, and the file that was read or created.
      *
-     * @param <T> the configuration type, either {@link Config} or {@link GlobalConfig}
+     * @param <T> the configuration type, either {@link TomlXcoreConfig} or {@link GlobalConfig}
      */
     public static final class LoadResult<T> {
         public final T config;
@@ -154,18 +154,18 @@ public final class ConfigTomlLoader {
     /**
      * Loads the server-local configuration following the TOML-first resolution order.
      *
-     * <p>The returned {@link Config} is fully normalized regardless of source.</p>
+     * <p>The returned {@link TomlXcoreConfig} is fully normalized regardless of source.</p>
      *
      * @param dataDirectory the Mindustry data directory
      * @param gson          the Gson instance used for legacy JSON fallback
-     * @return a {@link LoadResult} containing the resolved {@link Config}
+     * @return a {@link LoadResult} containing the resolved {@link TomlXcoreConfig}
      */
-    public static LoadResult<Config> loadXcoreConfig(Fi dataDirectory, Gson gson) {
+    public static LoadResult<TomlXcoreConfig> loadXcoreConfig(Fi dataDirectory, Gson gson) {
         Fi tomlFile = resolveXcoreToml(dataDirectory);
         if (tomlFile.exists()) {
             TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-            Config config = ConfigTomlMapper.toConfig(toml);
-            return new LoadResult<>(config, Source.TOML, tomlFile);
+            toml.normalize();
+            return new LoadResult<>(toml, Source.TOML, tomlFile);
         }
 
         Fi jsonFile = resolveLegacyXcoreJson(dataDirectory);
@@ -175,8 +175,8 @@ public final class ConfigTomlLoader {
 
         ConfigTomlTemplateWriter.writeDefaultXcoreToml(tomlFile);
         TomlXcoreConfig toml = readToml(tomlFile, TomlXcoreConfig.class);
-        Config config = ConfigTomlMapper.toConfig(toml);
-        return new LoadResult<>(config, Source.DEFAULT_TEMPLATE, tomlFile);
+        toml.normalize();
+        return new LoadResult<>(toml, Source.DEFAULT_TEMPLATE, tomlFile);
     }
 
     /**
@@ -218,10 +218,13 @@ public final class ConfigTomlLoader {
                 : globalConfigDirectory);
     }
 
-    private static LoadResult<Config> migrateLegacyXcoreConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
+    private static LoadResult<TomlXcoreConfig> migrateLegacyXcoreConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
         Config legacyConfig;
         try (var reader = jsonFile.reader()) {
             legacyConfig = gson.fromJson(reader, Config.class);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to read legacy JSON from " + jsonFile.absolutePath() + ": " + e.getMessage(), e);
         }
         if (legacyConfig == null) {
             legacyConfig = new Config();
@@ -232,14 +235,18 @@ public final class ConfigTomlLoader {
         writeToml(tomlFile, migratedToml);
         Fi backupFile = backupLegacyFile(jsonFile);
 
-        Config migratedConfig = ConfigTomlMapper.toConfig(readToml(tomlFile, TomlXcoreConfig.class));
-        return new LoadResult<>(migratedConfig, Source.MIGRATED, tomlFile, backupFile);
+        TomlXcoreConfig reloadedToml = readToml(tomlFile, TomlXcoreConfig.class);
+        reloadedToml.normalize();
+        return new LoadResult<>(reloadedToml, Source.MIGRATED, tomlFile, backupFile);
     }
 
     private static LoadResult<GlobalConfig> migrateLegacySecretsConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
         GlobalConfig legacyGlobal;
         try (var reader = jsonFile.reader()) {
             legacyGlobal = gson.fromJson(reader, GlobalConfig.class);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to read legacy JSON from " + jsonFile.absolutePath() + ": " + e.getMessage(), e);
         }
         if (legacyGlobal == null) {
             legacyGlobal = new GlobalConfig();

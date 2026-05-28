@@ -8,7 +8,6 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -77,8 +76,6 @@ class PlayerMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
         GlobalConfig globalConfig = new GlobalConfig();
         globalConfig.eventsPerPage = 2;
 
@@ -86,7 +83,7 @@ class PlayerMenuTest {
         when(bundle.getAvailableLocales()).thenReturn(new Seq<>());
 
         playerDataRepository = mock(PlayerDataRepository.class);
-        auditHistoryMenu = new AuditHistoryMenu(config, globalConfig, sessionService, auditService, menuService);
+        auditHistoryMenu = new AuditHistoryMenu(globalConfig, sessionService, auditService, menuService);
         auditHistoryMenu.init();
         when(playerDisplayService.resolveBaseName(any(), any())).thenAnswer(invocation -> {
             PlayerData data = invocation.getArgument(0);
@@ -94,7 +91,7 @@ class PlayerMenuTest {
         });
 
         playerMenu = new PlayerMenu(
-                config, globalConfig, sessionService,
+                globalConfig, sessionService,
                 gameDataRepository,
                 bundle,
                 playerDisplayService, profileSettings,

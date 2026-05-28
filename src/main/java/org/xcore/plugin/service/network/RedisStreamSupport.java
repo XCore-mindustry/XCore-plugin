@@ -5,7 +5,7 @@ import io.lettuce.core.XGroupCreateArgs;
 import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.Map;
 
@@ -17,16 +17,16 @@ final class RedisStreamSupport {
     private static final long MAXLEN_RPC_RESP = 20_000L;
     private static final long MAXLEN_DLQ = 100_000L;
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
-    RedisStreamSupport(Config config) {
+    RedisStreamSupport(TomlXcoreConfig config) {
         this.config = config;
     }
 
     String groupFor(Class<?> type, String stream) {
-        return config.redisGroupPrefix
+        return config.transport.redis.groupPrefix
                 + ":"
-                + config.server
+                + config.server.name
                 + ":"
                 + type.getSimpleName().toLowerCase()
                 + ":"
@@ -65,7 +65,7 @@ final class RedisStreamSupport {
         if (stream.startsWith("xcore:rpc:resp:")) {
             return MAXLEN_RPC_RESP;
         }
-        if (stream.startsWith(config.redisDlqPrefix + ":")) {
+        if (stream.startsWith(config.transport.redis.dlq.prefix + ":")) {
             return MAXLEN_DLQ;
         }
         return MAXLEN_EVT;
@@ -73,12 +73,12 @@ final class RedisStreamSupport {
 
     String dlqStreamFor(String sourceStream) {
         if (sourceStream.startsWith("xcore:rpc:")) {
-            return config.redisDlqPrefix + ":rpc";
+            return config.transport.redis.dlq.prefix + ":rpc";
         }
         if (sourceStream.startsWith("xcore:cmd:")) {
-            return config.redisDlqPrefix + ":cmd";
+            return config.transport.redis.dlq.prefix + ":cmd";
         }
-        return config.redisDlqPrefix + ":evt";
+        return config.transport.redis.dlq.prefix + ":evt";
     }
 
     String failureKey(String stream, String messageId) {

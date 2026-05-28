@@ -6,7 +6,7 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
@@ -24,10 +24,10 @@ public class BadgeController implements CloudClientController {
     private final PlayerMenu playerMenu;
     private final PlayerDisplayService playerDisplayService;
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public BadgeController(Config config,
+    public BadgeController(TomlXcoreConfig config,
                            SessionService sessionService,
                            PlayerMenu playerMenu,
                            PlayerDisplayService playerDisplayService,
@@ -53,7 +53,7 @@ public class BadgeController implements CloudClientController {
 
         sessionService.setActiveBadge(session, "");
         playerDisplayService.refresh(session);
-        network.post(new PlayerActiveBadgeChangedCommandV1(session.data.uuid, session.data.activeBadge, config.server));
+        network.post(new PlayerActiveBadgeChangedCommandV1(session.data.uuid, session.data.activeBadge, config.server.name));
         session.locale().send("badge-clear-success", args());
     }
 
@@ -80,7 +80,7 @@ public class BadgeController implements CloudClientController {
 
         sessionService.setActiveBadge(session, badge.id());
         playerDisplayService.refresh(session);
-        network.post(new PlayerActiveBadgeChangedCommandV1(session.data.uuid, session.data.activeBadge, config.server));
+        network.post(new PlayerActiveBadgeChangedCommandV1(session.data.uuid, session.data.activeBadge, config.server.name));
         session.locale().send("badge-set-success", args("badge", session.locale().t(badge.nameKey())));
     }
 }

@@ -3,7 +3,7 @@ package org.xcore.plugin.service.network;
 import com.google.gson.Gson;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,8 +12,8 @@ class RedisSupportTest {
     @Test
     @DisplayName("stream support resolves max lengths and dlq streams by prefix")
     void streamSupport_resolvesMaxLengthsAndDlqTargets() {
-        Config config = new Config();
-        config.redisDlqPrefix = "xcore:dead";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.transport.redis.dlq.prefix = "xcore:dead";
         RedisStreamSupport support = new RedisStreamSupport(config);
 
         assertThat(support.streamMaxLen("xcore:evt:chat:message")).isEqualTo(50_000L);
@@ -29,8 +29,8 @@ class RedisSupportTest {
     @Test
     @DisplayName("envelope factory builds deterministic idempotent event metadata")
     void envelopeFactory_buildsEventMetadata() {
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
         RedisEnvelopeFactory factory = new RedisEnvelopeFactory(config, new Gson());
         RedisStreamRouter.Route route = new RedisStreamRouter.Route("xcore:evt:chat:message", "chat.message", 60_000L);
 

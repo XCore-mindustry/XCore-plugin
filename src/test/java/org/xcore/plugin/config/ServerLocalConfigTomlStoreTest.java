@@ -19,19 +19,19 @@ class ServerLocalConfigTomlStoreTest {
     Path tempDir;
 
     @Test
-    @DisplayName("write persists Config to xcore.toml and round-trips correctly")
-    void write_persistsConfig_andRoundTrips() throws IOException {
+    @DisplayName("write persists TomlXcoreConfig directly and round-trips correctly")
+    void write_persistsTomlXcoreConfig_andRoundTrips() throws IOException {
         Path tomlPath = tempDir.resolve("xcore.toml");
         Fi tomlFile = new Fi(tomlPath.toFile());
         ServerLocalConfigTomlStore store = new ServerLocalConfigTomlStore(tomlFile);
 
-        Config config = new Config();
-        config.server = "test-server";
-        config.playerLimit = 42;
-        config.consoleEnabled = false;
-        config.publicHostOverride = "192.168.1.1";
-        config.disabledCommands = Set.of("rtv", "maps");
-        config.disabledFeatures = Set.of("chat");
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "test-server";
+        config.server.playerLimit = 42;
+        config.server.consoleEnabled = false;
+        config.server.publicHostOverride = "192.168.1.1";
+        config.runtime.disabledCommands = Set.of("rtv", "maps");
+        config.runtime.disabledFeatures = Set.of("chat");
 
         store.write(config);
 
@@ -39,38 +39,37 @@ class ServerLocalConfigTomlStoreTest {
         String written = Files.readString(tomlPath);
         assertThat(written).isNotBlank();
 
-        // Round-trip: load back via ConfigTomlLoader
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(
                 new Fi(tempDir.toFile()),
                 new SerializationFactory().prettyGson()
         );
-        assertThat(result.config.server).isEqualTo("test-server");
-        assertThat(result.config.playerLimit).isEqualTo(42);
-        assertThat(result.config.consoleEnabled).isFalse();
-        assertThat(result.config.publicHostOverride).isEqualTo("192.168.1.1");
-        assertThat(result.config.disabledCommands).containsExactlyInAnyOrder("rtv", "maps");
-        assertThat(result.config.disabledFeatures).containsExactly("chat");
+        assertThat(result.config.server.name).isEqualTo("test-server");
+        assertThat(result.config.server.playerLimit).isEqualTo(42);
+        assertThat(result.config.server.consoleEnabled).isFalse();
+        assertThat(result.config.server.publicHostOverride).isEqualTo("192.168.1.1");
+        assertThat(result.config.runtime.disabledCommands).containsExactlyInAnyOrder("rtv", "maps");
+        assertThat(result.config.runtime.disabledFeatures).containsExactly("chat");
     }
 
     @Test
-    @DisplayName("write normalizes config before persisting")
-    void write_normalizesBeforePersisting() {
+    @DisplayName("write normalizes TomlXcoreConfig before persisting")
+    void write_normalizesTomlXcoreConfigBeforePersisting() {
         Path tomlPath = tempDir.resolve("xcore.toml");
         Fi tomlFile = new Fi(tomlPath.toFile());
         ServerLocalConfigTomlStore store = new ServerLocalConfigTomlStore(tomlFile);
 
-        Config config = new Config();
-        config.server = null; // will normalize to "server" via TomlXcoreConfig
-        config.disabledCommands = null;
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = null;
+        config.runtime.disabledCommands = null;
 
         store.write(config);
 
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(
                 new Fi(tempDir.toFile()),
                 new SerializationFactory().prettyGson()
         );
-        assertThat(result.config.server).isEqualTo("server");
-        assertThat(result.config.disabledCommands).isNotNull().isEmpty();
+        assertThat(result.config.server.name).isEqualTo("server");
+        assertThat(result.config.runtime.disabledCommands).isNotNull().isEmpty();
     }
 
     @Test
@@ -88,7 +87,7 @@ class ServerLocalConfigTomlStoreTest {
         Fi tomlFile = new Fi(tomlPath.toFile());
         ServerLocalConfigTomlStore store = new ServerLocalConfigTomlStore(tomlFile);
 
-        assertThatThrownBy(() -> store.write(null))
+        assertThatThrownBy(() -> store.write((TomlXcoreConfig) null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("config must not be null");
     }

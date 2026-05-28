@@ -11,8 +11,8 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -67,8 +67,8 @@ class MapServiceTest {
         when(eventDataRepository.findActive()).thenReturn(Optional.of(eventData));
         when(mapDataRepository.findById(eventData.map)).thenReturn(eventMapData);
 
-        Config config = new Config();
-        config.server = "event";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "event";
 
         MapService service = new MapService(
                 eventDataRepository,
@@ -100,8 +100,8 @@ class MapServiceTest {
         Map next = mock(Map.class);
         when(maps.getNextMap(Gamemode.pvp, previous)).thenReturn(next);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         MapService service = new MapService(
                 mock(EventDataRepository.class),
@@ -150,7 +150,7 @@ class MapServiceTest {
                 mock(EventDataRepository.class),
                 mock(MapDataRepository.class),
                 mock(SessionService.class),
-                new Config(),
+                new TomlXcoreConfig(),
                 new GlobalConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),

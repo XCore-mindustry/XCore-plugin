@@ -12,7 +12,7 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
@@ -35,7 +35,7 @@ public class TransportService {
     private final ModerationTransportHandler moderationTransportHandler;
     private final MapTransportHandler mapTransportHandler;
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private volatile String cachedPublicHost;
     private volatile long nextPublicHostResolveAttemptAtMs;
 
@@ -45,7 +45,7 @@ public class TransportService {
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
                             NetworkService network,
-                            Config config) {
+                             TomlXcoreConfig config) {
         this.chatTransportHandler = chatTransportHandler;
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
@@ -60,15 +60,15 @@ public class TransportService {
         registerListeners();
 
         Events.on(EventType.ServerLoadEvent.class, event -> {
-            network.post(new ServerActionV1("Server loaded", config.server));
+            network.post(new ServerActionV1("Server loaded", config.server.name));
 
             Timer.schedule(() -> {
                 try {
                     network.post(new ServerHeartbeatV1(
-                            config.server,
-                            config.discordChannelId,
+                            config.server.name,
+                            config.discord.channelId,
                             Groups.player.size(),
-                            config.getNoAdminPlayerLimit(),
+                            config.server.playerLimit + Groups.player.count(p -> p.admin),
                             Version.buildString(),
                             resolveHostAddress(),
                             Administration.Config.port.num()
@@ -140,11 +140,11 @@ public class TransportService {
     }
 
     private String configuredPublicHostOverride() {
-        if (config.publicHostOverride == null) {
+        if (config.server.publicHostOverride == null) {
             return null;
         }
 
-        String normalized = config.publicHostOverride.trim();
+        String normalized = config.server.publicHostOverride.trim();
         return normalized.isEmpty() ? null : normalized;
     }
 }

@@ -5,7 +5,7 @@ import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
@@ -23,10 +23,10 @@ public class TopMenuCacheService {
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public TopMenuCacheService(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public TopMenuCacheService(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
@@ -134,7 +134,7 @@ public class TopMenuCacheService {
     }
 
     private String keyPrefix() {
-        return "xcore:top:cache:" + config.server;
+        return "xcore:top:cache:" + config.server.name;
     }
 
     record CachedCount(long totalEntries, long createdAt) {

@@ -10,8 +10,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.DiscordAdminAccessService;
@@ -69,8 +69,8 @@ class ModerationTransportHandlerTest {
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
@@ -104,8 +104,8 @@ class ModerationTransportHandlerTest {
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
@@ -139,8 +139,8 @@ class ModerationTransportHandlerTest {
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
@@ -185,8 +185,8 @@ class ModerationTransportHandlerTest {
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 
@@ -225,8 +225,8 @@ class ModerationTransportHandlerTest {
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(network, sessionService, config, playerDisplayService, discordAdminAccessService);
 

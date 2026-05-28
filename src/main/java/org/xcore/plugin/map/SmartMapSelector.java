@@ -11,7 +11,7 @@ import mindustry.game.Gamemode;
 import mindustry.maps.Map;
 import mindustry.maps.Maps.MapProvider;
 import org.bson.types.ObjectId;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -24,7 +24,7 @@ public class SmartMapSelector implements MapProvider {
     private final Seq<Map> recentMaps = new Seq<>();
     private static final int HISTORY_SIZE = 5;
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
@@ -32,7 +32,7 @@ public class SmartMapSelector implements MapProvider {
     private final EventService eventService;
 
     @Inject
-    public SmartMapSelector(Config config, EventDataRepository eventDataRepository, MapDataRepository mapDataRepository, EventService eventService) {
+    public SmartMapSelector(TomlXcoreConfig config, EventDataRepository eventDataRepository, MapDataRepository mapDataRepository, EventService eventService) {
         this.config = config;
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
@@ -41,7 +41,7 @@ public class SmartMapSelector implements MapProvider {
 
     @Override
     public Map next(Gamemode mode, Map previous) {
-        if (config.isEvent()) {
+        if ("event".equals(config.server.name)) {
             eventService.checkTimedEvents();
 
             var activeEventOpt = eventDataRepository.findActive();
@@ -59,9 +59,9 @@ public class SmartMapSelector implements MapProvider {
                 if (map != null) return map;
             }
 
-            if (config.isEventHubMap && config.eventHubMapID != null && !config.eventHubMapID.isEmpty()) {
-                if (ObjectId.isValid(config.eventHubMapID)) {
-                    Map map = findMindustryMap(new ObjectId(config.eventHubMapID));
+            if (config.eventHub.enabled && config.eventHub.mapId != null && !config.eventHub.mapId.isEmpty()) {
+                if (ObjectId.isValid(config.eventHub.mapId)) {
+                    Map map = findMindustryMap(new ObjectId(config.eventHub.mapId));
                     if (map != null) return map;
                 } else {
                     Log.err("Invalid eventHubMapID");

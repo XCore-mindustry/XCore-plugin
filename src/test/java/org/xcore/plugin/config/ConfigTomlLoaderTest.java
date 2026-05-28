@@ -39,12 +39,12 @@ class ConfigTomlLoaderTest {
                 """);
 
         Fi dataDir = new Fi(tempDir.toFile());
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
 
         assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
         assertThat(result.file.name()).isEqualTo("xcore.toml");
-        assertThat(result.config.server).isEqualTo("test-server");
-        assertThat(result.config.playerLimit).isEqualTo(42);
+        assertThat(result.config.server.name).isEqualTo("test-server");
+        assertThat(result.config.server.playerLimit).isEqualTo(42);
     }
 
     @Test
@@ -61,7 +61,7 @@ class ConfigTomlLoaderTest {
         ConfigTomlLoader.setBackupTimestampSupplier(() -> LocalDateTime.of(2026, 5, 24, 16, 30, 45));
 
         Fi dataDir = new Fi(tempDir.toFile());
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
 
         assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.MIGRATED);
         assertThat(result.file.name()).isEqualTo("xcore.toml");
@@ -70,21 +70,21 @@ class ConfigTomlLoaderTest {
         assertThat(tempDir.resolve("xcconfig.json")).doesNotExist();
         assertThat(tempDir.resolve("xcore.toml")).exists();
         assertThat(tempDir.resolve("xcconfig.json.bak-20260524-163045")).exists();
-        assertThat(result.config.server).isEqualTo("legacy-server");
-        assertThat(result.config.playerLimit).isEqualTo(99);
+        assertThat(result.config.server.name).isEqualTo("legacy-server");
+        assertThat(result.config.server.playerLimit).isEqualTo(99);
     }
 
     @Test
     @DisplayName("loadXcoreConfig returns DEFAULT_TEMPLATE source and creates file when neither exists")
     void loadXcoreConfig_returnsDefaultTemplateSource_whenNeitherExists() {
         Fi dataDir = new Fi(tempDir.toFile());
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
 
         assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.DEFAULT_TEMPLATE);
         assertThat(result.file.name()).isEqualTo("xcore.toml");
         assertThat(result.file.exists()).isTrue();
-        assertThat(result.config.server).isEqualTo("server");
-        assertThat(result.config.playerLimit).isEqualTo(30);
+        assertThat(result.config.server.name).isEqualTo("server");
+        assertThat(result.config.server.playerLimit).isEqualTo(30);
     }
 
     @Test
@@ -106,10 +106,10 @@ class ConfigTomlLoaderTest {
                 """);
 
         Fi dataDir = new Fi(tempDir.toFile());
-        ConfigTomlLoader.LoadResult<Config> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
 
         assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
-        assertThat(result.config.server).isEqualTo("toml-wins");
+        assertThat(result.config.server.name).isEqualTo("toml-wins");
     }
 
     @Test

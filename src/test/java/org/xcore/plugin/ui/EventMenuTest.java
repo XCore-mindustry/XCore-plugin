@@ -15,8 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -93,7 +93,6 @@ class EventMenuTest {
         EventEditorService eventEditorService = new EventEditorService(eventDataRepository, mapDataRepository, playerDataRepository);
         EventViewService eventViewService = new EventViewService(eventDataRepository, mapDataRepository, playerDataRepository);
         eventMenu = new EventMenu(
-                new Config(),
                 globalConfig,
                 sessionService,
                 mapService,
@@ -109,7 +108,7 @@ class EventMenuTest {
         Provider<EventMenu> eventMenuProvider = mock(Provider.class);
         when(eventMenuProvider.get()).thenReturn(eventMenu);
         mapMenu = new MapMenu(
-                new Config(),
+                new TomlXcoreConfig(),
                 globalConfig,
                 sessionService,
                 mapDataRepository,

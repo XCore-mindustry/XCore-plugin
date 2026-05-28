@@ -5,7 +5,7 @@ import jakarta.inject.Singleton;
 import arc.util.Strings;
 import org.bson.types.ObjectId;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
 import org.xcore.plugin.model.PlayerData;
@@ -27,7 +27,7 @@ public class PrivateMessageService {
     private final SessionService sessionService;
     private final SecurityService securityService;
     private final NetworkService networkService;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
 
     @Inject
@@ -35,7 +35,7 @@ public class PrivateMessageService {
                                  SessionService sessionService,
                                  SecurityService securityService,
                                  NetworkService networkService,
-                                 Config config,
+                                 TomlXcoreConfig config,
                                  GlobalConfig globalConfig) {
         this.privateMessageRepository = privateMessageRepository;
         this.sessionService = sessionService;
@@ -339,7 +339,7 @@ public class PrivateMessageService {
                 privateMessage.toUuid,
                 privateMessage.toPid,
                 privateMessage.message,
-                config.server
+                config.server.name
         ));
     }
 

@@ -8,17 +8,16 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * Renders the server-local runtime {@link Config} as a TOML-shaped view for
+ * Renders the server-local runtime config as a TOML-shaped view for
  * operator-facing inspection commands such as {@code xconfig}.
  */
 public final class ServerLocalConfigTomlRenderer {
 
-    public String render(Config config) {
+    public String render(TomlXcoreConfig config) {
         Objects.requireNonNull(config, "config must not be null");
-
-        TomlXcoreConfig toml = ConfigTomlMapper.toTomlXcoreConfig(config);
+        config.normalize();
         try {
-            return createTomlMapper().writeValueAsString(toml).trim();
+            return createTomlMapper().writeValueAsString(config).trim();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to render server-local config as TOML: " + e.getMessage(), e);
         }

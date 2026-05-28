@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.service.NetworkService;
@@ -35,8 +35,8 @@ class ChatTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 
@@ -65,8 +65,8 @@ class ChatTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 
@@ -87,8 +87,8 @@ class ChatTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 
@@ -115,8 +115,8 @@ class ChatTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         SessionService sessionService = mock(SessionService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
 

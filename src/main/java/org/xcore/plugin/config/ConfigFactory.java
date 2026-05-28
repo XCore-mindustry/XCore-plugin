@@ -20,11 +20,18 @@ public class ConfigFactory {
     }
 
     @Bean
-    public Config config(@Named("pretty") Gson gson) {
+    public TomlXcoreConfig serverLocalConfig(@Named("pretty") Gson gson) {
         var result = ConfigTomlLoader.loadXcoreConfig(dataDirectory, gson);
         logSource("Config", result.file, result.source);
 
-        Config config = result.config;
+        TomlXcoreConfig config = result.config;
+        config.normalize();
+        return config;
+    }
+
+    @Bean
+    public Config config(TomlXcoreConfig serverLocalConfig) {
+        Config config = ConfigTomlMapper.toConfig(serverLocalConfig);
         config.normalize();
         return config;
     }

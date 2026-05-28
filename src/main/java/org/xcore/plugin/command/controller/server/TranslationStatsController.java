@@ -7,8 +7,8 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationMetricsService;
 
 import java.util.Locale;
@@ -17,12 +17,12 @@ import java.util.Map;
 @Singleton
 public class TranslationStatsController implements CloudServerController {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
     private final TranslationMetricsService translationMetricsService;
 
     @Inject
-    public TranslationStatsController(Config config,
+    public TranslationStatsController(TomlXcoreConfig config,
                                       GlobalConfig globalConfig,
                                       TranslationMetricsService translationMetricsService) {
         this.config = config;
@@ -33,7 +33,7 @@ public class TranslationStatsController implements CloudServerController {
     @Command("trstats")
     @CommandDescription("Shows translation pipeline metrics and per-provider statistics.")
     public void translationStats(XCoreSender sender) {
-        Log.info("Translation stats for server '@':", config.server);
+        Log.info("Translation stats for server '@':", config.server.name);
         Log.info(" Pipeline enabled: @", config.translation.enabled);
         Log.info(" Pipeline: @", String.join(" -> ", config.translation.pipeline));
 

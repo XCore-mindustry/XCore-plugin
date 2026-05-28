@@ -3,7 +3,7 @@ package org.xcore.plugin.service;
 import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
@@ -27,14 +27,14 @@ public class PlayerProfileSettingsService {
     private final PlayerDataRepository playerDataRepository;
     private final PlayerDisplayService playerDisplayService;
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
     public PlayerProfileSettingsService(SessionService sessionService,
                                         PlayerDataRepository playerDataRepository,
                                         PlayerDisplayService playerDisplayService,
                                         NetworkService network,
-                                        Config config) {
+                                        TomlXcoreConfig config) {
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.playerDisplayService = playerDisplayService;
@@ -77,7 +77,7 @@ public class PlayerProfileSettingsService {
         mutate(targetData,
                 data -> data.customNickname = customNickname,
                 data -> playerDataRepository.updateCustomNickname(data.uuid, customNickname),
-                data -> new PlayerCustomNicknameChangedCommandV1(data.uuid, data.customNickname, config.server),
+                data -> new PlayerCustomNicknameChangedCommandV1(data.uuid, data.customNickname, config.server.name),
                 refreshDisplay,
                 sync);
     }
@@ -164,7 +164,7 @@ public class PlayerProfileSettingsService {
         mutate(targetData,
                 data -> data.activeBadge = badgeId,
                 data -> playerDataRepository.setActiveBadge(data.uuid, badgeId),
-                data -> new PlayerActiveBadgeChangedCommandV1(data.uuid, data.activeBadge, config.server),
+                data -> new PlayerActiveBadgeChangedCommandV1(data.uuid, data.activeBadge, config.server.name),
                 refreshDisplay,
                 sync);
     }
@@ -173,7 +173,7 @@ public class PlayerProfileSettingsService {
         mutate(targetData,
                 data -> data.badgeSymbolColorMode = mode,
                 data -> playerDataRepository.updateBadgeSymbolColorMode(data.uuid, mode),
-                data -> new PlayerBadgeSymbolColorModeChangedCommandV1(data.uuid, data.badgeSymbolColorMode, config.server),
+                data -> new PlayerBadgeSymbolColorModeChangedCommandV1(data.uuid, data.badgeSymbolColorMode, config.server.name),
                 refreshDisplay,
                 sync);
     }

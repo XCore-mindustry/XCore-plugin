@@ -12,7 +12,7 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -42,7 +42,7 @@ public class VoteKick extends VoteSession {
     private final SessionService sessionService;
     private final NetworkService network;
     private final VoteService voteService;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
 
     @Inject
@@ -55,7 +55,7 @@ public class VoteKick extends VoteSession {
             SessionService sessionService,
             NetworkService network,
             VoteService voteService,
-            Config config,
+            TomlXcoreConfig config,
             GlobalConfig globalConfig) {
         super(globalConfig);
         this.starter = starter;
@@ -111,7 +111,7 @@ public class VoteKick extends VoteSession {
         }
 
         if (network != null) {
-            network.post(new ServerActionV1(stripColors(message), config.server));
+            network.post(new ServerActionV1(stripColors(message), config.server.name));
         }
     }
 
@@ -147,7 +147,7 @@ public class VoteKick extends VoteSession {
                 reason,
                 List.copyOf(votesFor),
                 List.copyOf(votesAgainst),
-                config.server,
+                config.server.name,
                 Instant.now()
         );
     }
@@ -211,7 +211,7 @@ public class VoteKick extends VoteSession {
         if (network != null) {
             network.post(buildVoteKickEvent());
             network.post(new ServerActionV1(
-                    systemLocal.format("votekick-success", bundleArgs), config.server));
+                    systemLocal.format("votekick-success", bundleArgs), config.server.name));
         }
         onKick.get(target);
     }

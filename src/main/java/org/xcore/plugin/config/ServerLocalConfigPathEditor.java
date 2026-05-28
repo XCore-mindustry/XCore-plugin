@@ -12,8 +12,7 @@ import java.util.Objects;
 
 /**
  * Updates server-local config values using either legacy flat field names or
- * TOML-oriented dotted paths, then maps the structured TOML view back into the
- * legacy runtime {@link Config} model.
+ * TOML-oriented dotted paths.
  */
 public final class ServerLocalConfigPathEditor {
     private static final Map<String, PathBinding> PATH_BINDINGS = createPathBindings();
@@ -24,7 +23,7 @@ public final class ServerLocalConfigPathEditor {
         this.prettyGson = Objects.requireNonNull(prettyGson, "prettyGson must not be null");
     }
 
-    public Config update(Config config, String fieldPath, String value) {
+    public TomlXcoreConfig update(TomlXcoreConfig config, String fieldPath, String value) {
         Objects.requireNonNull(config, "config must not be null");
         Objects.requireNonNull(fieldPath, "fieldPath must not be null");
         Objects.requireNonNull(value, "value must not be null");
@@ -34,8 +33,10 @@ public final class ServerLocalConfigPathEditor {
             return null;
         }
 
-        TomlXcoreConfig toml = ConfigTomlMapper.toTomlXcoreConfig(config);
-        JsonObject root = JsonParser.parseString(prettyGson.toJson(toml)).getAsJsonObject();
+        TomlXcoreConfig workingCopy = prettyGson.fromJson(prettyGson.toJson(config), TomlXcoreConfig.class);
+        workingCopy.normalize();
+
+        JsonObject root = JsonParser.parseString(prettyGson.toJson(workingCopy)).getAsJsonObject();
         PathLocation target = resolvePath(root, binding.canonicalPath());
         if (target == null) {
             return null;
@@ -44,7 +45,8 @@ public final class ServerLocalConfigPathEditor {
         binding.valueType().apply(target.parent(), target.key(), value, prettyGson);
 
         TomlXcoreConfig updatedToml = prettyGson.fromJson(root, TomlXcoreConfig.class);
-        return ConfigTomlMapper.toConfig(updatedToml);
+        updatedToml.normalize();
+        return updatedToml;
     }
 
     public static IllegalArgumentException invalidValue(String fieldPath, String expected, String value, Throwable cause) {

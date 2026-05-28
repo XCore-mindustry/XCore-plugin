@@ -3,8 +3,8 @@ package org.xcore.plugin.command.controller.server;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationMetricsService;
 
 import java.util.LinkedHashMap;
@@ -20,8 +20,8 @@ class TranslationStatsControllerTest {
     @Test
     @DisplayName("trstats queries global and per-provider translation metrics")
     void translationStats_queriesGlobalAndPerProviderMetrics() {
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
         config.translation.pipeline = java.util.List.of("nvidia-mistral-small", "google");
 
         GlobalConfig globalConfig = new GlobalConfig();

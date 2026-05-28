@@ -3,7 +3,6 @@ package org.xcore.plugin.ui.menu;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.session.Session;
@@ -20,12 +19,11 @@ public class DiscordMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public DiscordMenu(Config config,
-                       GlobalConfig globalConfig,
+    public DiscordMenu(GlobalConfig globalConfig,
                        SessionService sessionService,
                        DiscordLinkService discordLinkService,
                        MenuService menuService) {
-        super(config, globalConfig, sessionService);
+        super(globalConfig, sessionService);
         this.discordLinkService = discordLinkService;
         this.menuService = menuService;
     }

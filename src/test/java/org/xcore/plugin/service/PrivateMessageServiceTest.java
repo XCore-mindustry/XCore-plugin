@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.GlobalConfig;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -76,9 +76,11 @@ class PrivateMessageServiceTest {
         assertThat(result).isTrue();
         assertThat(sender.lastPrivateTargetPid).isEqualTo(42);
         assertThat(sender.lastPrivateMessageAt).isGreaterThan(0L);
+        var transportEvent = org.mockito.ArgumentCaptor.forClass(ChatPrivateV1.class);
         verify(privateMessageRepository).save(any(PrivateMessage.class));
         verify(sender.locale()).send(eq("private-message-sent"), anyMap());
-        verify(networkService).post(any(ChatPrivateV1.class));
+        verify(networkService).post(transportEvent.capture());
+        assertThat(transportEvent.getValue().server()).isEqualTo("mini-pvp");
     }
 
     @Test
@@ -272,10 +274,16 @@ class PrivateMessageServiceTest {
         return session;
     }
 
+    private static TomlXcoreConfig config(String serverName) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = serverName;
+        return config;
+    }
+
     private static final class PrivateMessageModule implements AvajeModule {
         @Override
         public Class<?>[] classes() {
-            return new Class<?>[]{PrivateMessageService.class, GlobalConfig.class};
+            return new Class<?>[]{PrivateMessageService.class, GlobalConfig.class, TomlXcoreConfig.class};
         }
 
         @Override
@@ -283,8 +291,8 @@ class PrivateMessageServiceTest {
             if (builder.isBeanAbsent(GlobalConfig.class)) {
                 builder.register(new GlobalConfig());
             }
-            if (builder.isBeanAbsent(Config.class)) {
-                builder.register(new Config());
+            if (builder.isBeanAbsent(TomlXcoreConfig.class)) {
+                builder.register(config("mini-pvp"));
             }
             if (builder.isBeanAbsent(PrivateMessageService.class)) {
                 builder.register(new PrivateMessageService(
@@ -292,7 +300,7 @@ class PrivateMessageServiceTest {
                         builder.get(SessionService.class),
                         builder.get(SecurityService.class),
                         builder.get(NetworkService.class),
-                        builder.get(Config.class),
+                        builder.get(TomlXcoreConfig.class),
                         builder.get(GlobalConfig.class)
                 ));
             }

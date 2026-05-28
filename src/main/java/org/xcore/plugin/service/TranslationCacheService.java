@@ -5,7 +5,7 @@ import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 
 import java.nio.charset.StandardCharsets;
@@ -19,10 +19,10 @@ public class TranslationCacheService {
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public TranslationCacheService(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public TranslationCacheService(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
@@ -91,7 +91,7 @@ public class TranslationCacheService {
         String normalizedPipeline = normalize(pipelineSignature, "default");
         String payload = normalizedSource + "|" + normalizedTarget + "|" + normalizedPipeline + "|" + inputText;
 
-        return "xcore:translation:cache:" + config.server + ":" + sha256(payload);
+        return "xcore:translation:cache:" + config.server.name + ":" + sha256(payload);
     }
 
     private String normalize(String value, String fallback) {

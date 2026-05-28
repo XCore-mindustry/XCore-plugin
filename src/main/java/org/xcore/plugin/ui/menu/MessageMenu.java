@@ -4,7 +4,6 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.types.ObjectId;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.session.Session;
@@ -19,12 +18,11 @@ public class MessageMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public MessageMenu(Config config,
-                       GlobalConfig globalConfig,
+    public MessageMenu(GlobalConfig globalConfig,
                        SessionService sessionService,
                        PrivateMessageService privateMessageService,
                        MenuService menuService) {
-        super(config, globalConfig, sessionService);
+        super(globalConfig, sessionService);
         this.privateMessageService = privateMessageService;
         this.menuService = menuService;
     }

@@ -14,10 +14,10 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.ServerLocalConfigPathEditor;
 import org.xcore.plugin.config.ServerLocalConfigTomlRenderer;
 import org.xcore.plugin.config.ServerLocalConfigTomlStore;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
@@ -29,7 +29,7 @@ public class DataController implements CloudServerController {
     private static final String DISABLED_FEATURES_PATH = "runtime.disabled_features";
 
     private final PlayerDataRepository playerDataRepository;
-    private Config config;
+    private final TomlXcoreConfig config;
     private final Gson prettyGson;
     private final FindService find;
     private final TopMenuCacheService topMenuCacheService;
@@ -39,7 +39,7 @@ public class DataController implements CloudServerController {
 
     @Inject
     public DataController(PlayerDataRepository playerDataRepository,
-                          Config config,
+                          TomlXcoreConfig config,
                           @Named("pretty") Gson prettyGson,
                           FindService find,
                           TopMenuCacheService topMenuCacheService,
@@ -57,7 +57,7 @@ public class DataController implements CloudServerController {
     }
 
     public DataController(PlayerDataRepository playerDataRepository,
-                          Config config,
+                          TomlXcoreConfig config,
                           Gson prettyGson,
                           FindService find,
                           ServerLocalConfigPathEditor pathEditor,
@@ -82,7 +82,7 @@ public class DataController implements CloudServerController {
             return;
         }
 
-        Config updated;
+        TomlXcoreConfig updated;
         try {
             updated = pathEditor.update(config, field, value);
         } catch (IllegalArgumentException e) {
@@ -101,7 +101,8 @@ public class DataController implements CloudServerController {
             Log.err("Failed to persist config change for field '@': @", field, e.getMessage());
             return;
         }
-        config = updated;
+
+        applyUpdatedConfig(updated);
         Log.info("Config field '@' updated.", field);
     }
 
@@ -166,5 +167,17 @@ public class DataController implements CloudServerController {
             case longValue -> jfield.set(Long.parseLong(value), null);
             case doubleValue -> jfield.set(Double.parseDouble(value), null);
         }
+    }
+
+    private void applyUpdatedConfig(TomlXcoreConfig updated) {
+        config.version = updated.version;
+        config.server = updated.server;
+        config.paths = updated.paths;
+        config.discord = updated.discord;
+        config.transport = updated.transport;
+        config.runtime = updated.runtime;
+        config.eventHub = updated.eventHub;
+        config.translation = updated.translation;
+        config.ipReputation = updated.ipReputation;
     }
 }

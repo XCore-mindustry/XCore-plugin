@@ -20,7 +20,7 @@ import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
@@ -62,7 +62,7 @@ class ModerationServiceAvajeTest {
     private FindService find;
     private TimeService time;
     private AuditService auditService;
-    private Config config;
+    private TomlXcoreConfig config;
     private Administration admins;
 
     @BeforeEach
@@ -98,7 +98,7 @@ class ModerationServiceAvajeTest {
         find = scope.get(FindService.class);
         time = scope.get(TimeService.class);
         auditService = scope.get(AuditService.class);
-        config = scope.get(Config.class);
+        config = scope.get(TomlXcoreConfig.class);
 
         when(auditService.append(any())).thenReturn(org.xcore.plugin.model.AuditAppendResult.success(
                 validAuditRecord()
@@ -655,9 +655,9 @@ class ModerationServiceAvajeTest {
 
         @Override
         public void build(Builder builder) {
-            if (builder.isBeanAbsent(Config.class)) {
-                Config config = new Config();
-                config.server = "test-server";
+            if (builder.isBeanAbsent(TomlXcoreConfig.class)) {
+                TomlXcoreConfig config = new TomlXcoreConfig();
+                config.server.name = "test-server";
                 builder.register(config);
             }
             if (builder.isBeanAbsent(ModerationService.class)) {
@@ -670,7 +670,7 @@ class ModerationServiceAvajeTest {
                         builder.get(FindService.class),
                         builder.get(TimeService.class),
                         builder.get(AuditService.class),
-                        builder.get(Config.class)
+                        builder.get(TomlXcoreConfig.class)
                 ));
             }
         }

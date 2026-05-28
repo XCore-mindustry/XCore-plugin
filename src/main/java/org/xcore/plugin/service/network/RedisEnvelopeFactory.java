@@ -2,7 +2,7 @@ package org.xcore.plugin.service.network;
 
 import com.google.gson.Gson;
 import io.lettuce.core.StreamMessage;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -12,10 +12,10 @@ import java.util.Map;
 import java.util.UUID;
 
 final class RedisEnvelopeFactory {
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final Gson gson;
 
-    RedisEnvelopeFactory(Config config, Gson gson) {
+    RedisEnvelopeFactory(TomlXcoreConfig config, Gson gson) {
         this.config = config;
         this.gson = gson;
     }
@@ -29,16 +29,16 @@ final class RedisEnvelopeFactory {
                 "idempotency_key",
                 deterministicIdempotencyKey(
                         route.messageType(),
-                        config.server,
+                        config.server.name,
                         payloadJson,
                         now,
                         Math.max(60_000L, route.ttlMillis())
                 )
         );
-        fields.put("producer", "server:" + config.server);
+        fields.put("producer", "server:" + config.server.name);
         fields.put("created_at", String.valueOf(now));
         fields.put("expires_at", String.valueOf(now + route.ttlMillis()));
-        fields.put("server", config.server);
+        fields.put("server", config.server.name);
         fields.put("payload_json", payloadJson);
         return fields;
     }
@@ -58,15 +58,15 @@ final class RedisEnvelopeFactory {
                 "idempotency_key",
                 deterministicIdempotencyKey(
                         "rpc." + route.messageType(),
-                        config.server,
+                        config.server.name,
                         requestJson,
                         now,
                         Math.max(60_000L, timeoutMs)
                 )
         );
         fields.put("reply_to", replyTo);
-        fields.put("requested_by", "server:" + config.server);
-        fields.put("server", config.server);
+        fields.put("requested_by", "server:" + config.server.name);
+        fields.put("server", config.server.name);
         fields.put("timeout_ms", String.valueOf(timeoutMs));
         fields.put("created_at", String.valueOf(now));
         fields.put("expires_at", String.valueOf(now + timeoutMs));
@@ -79,7 +79,7 @@ final class RedisEnvelopeFactory {
         fields.put("schema_version", "1");
         fields.put("rpc_type", context.rpcType());
         fields.put("correlation_id", context.correlationId());
-        fields.put("server", config.server);
+        fields.put("server", config.server.name);
         fields.put("status", "ok");
         fields.put("error_code", "");
         fields.put("error_message", "");

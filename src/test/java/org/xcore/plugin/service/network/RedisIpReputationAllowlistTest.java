@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -166,9 +166,9 @@ class RedisIpReputationAllowlistTest {
         return commands;
     }
 
-    private static Config config(String server) {
-        Config config = new Config();
-        config.server = server;
+    private static TomlXcoreConfig config(String server) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = server;
         return config;
     }
 }

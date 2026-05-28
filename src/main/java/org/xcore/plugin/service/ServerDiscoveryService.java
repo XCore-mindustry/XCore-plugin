@@ -8,7 +8,7 @@ import mindustry.core.Version;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.plugin.common.PluginState;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -19,19 +19,19 @@ import static org.xcore.plugin.common.PacketUtils.writeString;
 @Singleton
 public class ServerDiscoveryService {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final PluginState pluginState;
 
     private String footer = "";
 
     @Inject
-    public ServerDiscoveryService(Config config, PluginState pluginState) {
+    public ServerDiscoveryService(TomlXcoreConfig config, PluginState pluginState) {
         this.config = config;
         this.pluginState = pluginState;
     }
 
     public void updateFooter() {
-        this.footer = config.gameStartedTimer
+        this.footer = config.server.gameStartedTimer
                 ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - pluginState.gameStartTime).toMinutes() + "[] minutes ago."
                 : "";
     }
@@ -52,7 +52,7 @@ public class ServerDiscoveryService {
         writeString(buffer, Version.type);
 
         buffer.put((byte) state.rules.mode().ordinal());
-        buffer.putInt(config.playerLimit > 0 ? config.getNoAdminPlayerLimit() : 0);
+        buffer.putInt(config.server.playerLimit > 0 ? noAdminPlayerLimit() : 0);
 
         writeString(buffer, description, 200);
         if (state.rules.modeName != null) {
@@ -60,5 +60,9 @@ public class ServerDiscoveryService {
         }
 
         buffer.position(0);
+    }
+
+    private int noAdminPlayerLimit() {
+        return config.server.playerLimit + Groups.player.count(player -> player.admin);
     }
 }

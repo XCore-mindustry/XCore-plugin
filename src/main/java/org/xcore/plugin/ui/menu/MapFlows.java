@@ -4,7 +4,7 @@ import arc.struct.Seq;
 import mindustry.maps.Map;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.SeqStream;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -154,11 +154,11 @@ final class MapFlows {
 
     static final class MapFlow extends BaseMenuFlow<MapState> {
         private final MapMenu menu;
-        private final Config config;
+        private final TomlXcoreConfig config;
         private final EventDataRepository eventDataRepository;
         private final MapService mapService;
 
-        MapFlow(MapMenu menu, Config config, EventDataRepository eventDataRepository, MapService mapService) {
+        MapFlow(MapMenu menu, TomlXcoreConfig config, EventDataRepository eventDataRepository, MapService mapService) {
             super(ROUTE_MAP, MapState.class);
             this.menu = menu;
             this.config = config;
@@ -202,6 +202,14 @@ final class MapFlows {
             });
         }
 
+        private boolean isFeatureDisabled(Feature feature) {
+            return config.runtime.disabledFeatures.contains(feature.key());
+        }
+
+        private boolean isEvent() {
+            return "event".equals(config.server.name);
+        }
+
         @Override
         public MapState createState(Session session, MenuRoute route, MapState currentState) {
             MapState state = currentState == null ? new MapState() : currentState;
@@ -239,8 +247,8 @@ final class MapFlows {
             );
 
             EventData activeEvent = eventDataRepository.findActive().orElse(null);
-            boolean rtvEnabled = !config.isFeatureDisabled(Feature.RTV);
-            if (rtvEnabled && (!config.isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(mapData.id))) {
+            boolean rtvEnabled = !isFeatureDisabled(Feature.RTV);
+            if (rtvEnabled && (!isEvent() || (activeEvent == null || !activeEvent.isActive) || activeEvent.map.equals(mapData.id))) {
                 List<MenuButton> rtvRow = new ArrayList<>();
                 rtvRow.add(MenuButton.of(session.locale().t("map-rtv"), "rtv"));
                 if (session.player.admin) {
@@ -251,7 +259,7 @@ final class MapFlows {
 
             grid.row(MenuButton.of(session.locale().t("map-maps-back"), "maps"));
 
-            if (config.isEvent()) {
+            if (isEvent()) {
                 grid.row(MenuButton.of(session.locale().t("event-menu-create-start-map"), "create-start"));
             }
 

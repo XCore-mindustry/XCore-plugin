@@ -1,7 +1,7 @@
 package org.xcore.plugin.command.controller.server;
 
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.ServerLocalConfigTomlStore;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.HashSet;
 import java.util.Locale;
@@ -17,10 +17,10 @@ final class RuntimeToggleConfigService {
     record ToggleMutationResult(boolean changed, String value) {
     }
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final ServerLocalConfigTomlStore tomlStore;
 
-    RuntimeToggleConfigService(Config config, ServerLocalConfigTomlStore tomlStore) {
+    RuntimeToggleConfigService(TomlXcoreConfig config, ServerLocalConfigTomlStore tomlStore) {
         this.config = config;
         this.tomlStore = tomlStore;
     }
@@ -77,8 +77,8 @@ final class RuntimeToggleConfigService {
 
     private Set<String> values(ToggleTarget target) {
         return switch (target) {
-            case COMMAND -> config.disabledCommands;
-            case FEATURE -> config.disabledFeatures;
+            case COMMAND -> config.runtime.disabledCommands;
+            case FEATURE -> config.runtime.disabledFeatures;
         };
     }
 
@@ -91,8 +91,8 @@ final class RuntimeToggleConfigService {
         }
 
         switch (target) {
-            case COMMAND -> config.disabledCommands = current;
-            case FEATURE -> config.disabledFeatures = current;
+            case COMMAND -> config.runtime.disabledCommands = current;
+            case FEATURE -> config.runtime.disabledFeatures = current;
         }
 
         return current;

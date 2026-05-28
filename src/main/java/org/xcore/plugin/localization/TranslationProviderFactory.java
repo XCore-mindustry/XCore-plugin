@@ -4,8 +4,8 @@ import io.avaje.inject.Bean;
 import io.avaje.inject.Factory;
 import jakarta.inject.Inject;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.util.ArrayList;
@@ -14,11 +14,11 @@ import java.util.List;
 @Factory
 public class TranslationProviderFactory {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
 
     @Inject
-    public TranslationProviderFactory(Config config, GlobalConfig globalConfig) {
+    public TranslationProviderFactory(TomlXcoreConfig config, GlobalConfig globalConfig) {
         this.config = config;
         this.globalConfig = globalConfig;
     }

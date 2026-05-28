@@ -9,7 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.security.ingress.AccessResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +21,7 @@ class PlayerLimitCheckTest {
 
     private IngressChecksTestSupport.VarsState varsState;
     private Administration admins;
-    private Config config;
+    private TomlXcoreConfig config;
     private PlayerLimitCheck check;
 
     @BeforeEach
@@ -34,7 +34,7 @@ class PlayerLimitCheckTest {
         Vars.netServer = netServer;
         Groups.player = IngressChecksTestSupport.newPlayerGroup();
 
-        config = new Config();
+        config = new TomlXcoreConfig();
         check = new PlayerLimitCheck(config);
     }
 
@@ -46,7 +46,7 @@ class PlayerLimitCheckTest {
     @Test
     @DisplayName("shouldAllow_whenPlayerLimitIsDisabled")
     void shouldAllow_whenPlayerLimitIsDisabled() {
-        config.playerLimit = 0;
+        config.server.playerLimit = 0;
         var packet = IngressChecksTestSupport.newPacket();
 
         var result = check.check(new IngressChecksTestSupport.DummyConnection("1.1.1.1"), packet);
@@ -57,7 +57,7 @@ class PlayerLimitCheckTest {
     @Test
     @DisplayName("shouldAllow_whenPlayerIsAdmin")
     void shouldAllow_whenPlayerIsAdmin() {
-        config.playerLimit = 1;
+        config.server.playerLimit = 1;
         var packet = IngressChecksTestSupport.newPacket();
         when(admins.isAdmin(packet.uuid, packet.usid)).thenReturn(true);
         Groups.player.add(IngressChecksTestSupport.createPlayer("A", "uuid-a", "usid-a", false));
@@ -71,7 +71,7 @@ class PlayerLimitCheckTest {
     @Test
     @DisplayName("shouldDenyPlayerLimit_whenPlayerCountExceedsNoAdminLimit")
     void shouldDenyPlayerLimit_whenPlayerCountExceedsNoAdminLimit() {
-        config.playerLimit = 2;
+        config.server.playerLimit = 2;
         var packet = IngressChecksTestSupport.newPacket();
         when(admins.isAdmin(packet.uuid, packet.usid)).thenReturn(false);
         Groups.player.add(IngressChecksTestSupport.createPlayer("A", "uuid-a", "usid-a", false));
@@ -86,7 +86,7 @@ class PlayerLimitCheckTest {
     @Test
     @DisplayName("shouldAllow_whenPlayerCountIsWithinLimit")
     void shouldAllow_whenPlayerCountIsWithinLimit() {
-        config.playerLimit = 2;
+        config.server.playerLimit = 2;
         var packet = IngressChecksTestSupport.newPacket();
         when(admins.isAdmin(packet.uuid, packet.usid)).thenReturn(false);
         Groups.player.add(IngressChecksTestSupport.createPlayer("A", "uuid-a", "usid-a", false));

@@ -3,7 +3,7 @@ package org.xcore.plugin.service;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.CustomGatherers;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
@@ -15,12 +15,12 @@ import java.util.List;
 @Singleton
 public class TopMenuService {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final PlayerDataRepository playerDataRepository;
     private final TopMenuCacheService topMenuCacheService;
 
     @Inject
-    public TopMenuService(Config config,
+    public TopMenuService(TomlXcoreConfig config,
                           PlayerDataRepository playerDataRepository,
                           TopMenuCacheService topMenuCacheService) {
         this.config = config;
@@ -29,15 +29,23 @@ public class TopMenuService {
     }
 
     public TopCategory resolveDefaultCategory() {
-        if (config.isMiniPvP()) {
+        if (isMiniPvPServer()) {
             return TopCategory.MINI_PVP;
         }
 
-        if (config.isMiniHexed()) {
+        if (isMiniHexedServer()) {
             return TopCategory.HEXED;
         }
 
         return TopCategory.PLAYTIME;
+    }
+
+    private boolean isMiniPvPServer() {
+        return "mini-pvp".equals(config.server.name);
+    }
+
+    private boolean isMiniHexedServer() {
+        return "mini-hexed".equals(config.server.name);
     }
 
     public void invalidateLeaderboardCache() {

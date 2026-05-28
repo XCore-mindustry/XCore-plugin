@@ -39,15 +39,17 @@ class ConfigFactoryTest {
     }
 
     @Test
-    @DisplayName("config creates missing xcore.toml from defaults and loads normalized Config")
+    @DisplayName("server-local config creates missing xcore.toml from defaults and projects normalized Config")
     void config_createsMissingXcoreTomlFromDefaultsAndLoadsNormalizedConfig() {
         // Arrange
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        Config config = factory.config(prettyGson);
+        TomlXcoreConfig serverLocalConfig = factory.serverLocalConfig(prettyGson);
+        Config config = factory.config(serverLocalConfig);
 
         // Assert
+        assertThat(serverLocalConfig.server.name).isEqualTo("server");
         assertThat(config.server).isEqualTo("server");
         assertThat(config.disabledCommands).isNotNull().isEmpty();
         assertThat(config.disabledFeatures).isNotNull().isEmpty();
@@ -60,7 +62,7 @@ class ConfigFactoryTest {
     }
 
     @Test
-    @DisplayName("config loads xcore.toml when both TOML and legacy JSON exist")
+    @DisplayName("server-local config loads xcore.toml when both TOML and legacy JSON exist")
     void config_tomlTakesPrecedenceOverLegacyJson() throws IOException {
         // Arrange
         Path tomlPath = tempDir.resolve("xcore.toml");
@@ -81,14 +83,16 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        Config config = factory.config(prettyGson);
+        TomlXcoreConfig serverLocalConfig = factory.serverLocalConfig(prettyGson);
+        Config config = factory.config(serverLocalConfig);
 
         // Assert
+        assertThat(serverLocalConfig.server.name).isEqualTo("toml-server");
         assertThat(config.server).isEqualTo("toml-server");
     }
 
     @Test
-    @DisplayName("config falls back to legacy xcconfig.json when xcore.toml is absent")
+    @DisplayName("server-local config falls back to legacy xcconfig.json when xcore.toml is absent")
     void config_legacyJsonFallbackWorksWhenTomlAbsent() throws IOException {
         // Arrange
         Path jsonPath = tempDir.resolve("xcconfig.json");
@@ -106,9 +110,11 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        Config config = factory.config(prettyGson);
+        TomlXcoreConfig serverLocalConfig = factory.serverLocalConfig(prettyGson);
+        Config config = factory.config(serverLocalConfig);
 
         // Assert
+        assertThat(serverLocalConfig.server.name).isEqualTo("legacy-server");
         assertThat(config.server).isEqualTo("legacy-server");
         assertThat(config.disabledCommands).isNotNull().isEmpty();
         assertThat(config.disabledFeatures).isNotNull().isEmpty();

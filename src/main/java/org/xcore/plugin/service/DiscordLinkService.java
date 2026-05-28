@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
@@ -25,7 +25,7 @@ public class DiscordLinkService {
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final NetworkService networkService;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final DiscordAdminAccessService discordAdminAccessService;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -33,9 +33,9 @@ public class DiscordLinkService {
     public DiscordLinkService(RedisDiscordLinkCodeStore discordLinkCodeStore,
                               PlayerDataRepository playerDataRepository,
                               SessionService sessionService,
-                              NetworkService networkService,
-                              Config config,
-                              DiscordAdminAccessService discordAdminAccessService) {
+                               NetworkService networkService,
+                               TomlXcoreConfig config,
+                               DiscordAdminAccessService discordAdminAccessService) {
         this.discordLinkCodeStore = discordLinkCodeStore;
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
@@ -65,7 +65,7 @@ public class DiscordLinkService {
                 data.uuid,
                 data.pid,
                 data.nickname,
-                config.server,
+                config.server.name,
                 now,
                 expiresAt
         );
@@ -79,7 +79,7 @@ public class DiscordLinkService {
                 data.uuid,
                 data.pid,
                 data.nickname,
-                config.server,
+                config.server.name,
                 now,
                 expiresAt
         ));
@@ -250,7 +250,7 @@ public class DiscordLinkService {
                 discordId,
                 discordUsername,
                 status,
-                config.server,
+                config.server.name,
                 timestamp
         ));
     }
@@ -277,7 +277,7 @@ public class DiscordLinkService {
                 source,
                 actor,
                 reason,
-                config.server,
+                config.server.name,
                 System.currentTimeMillis()
         ));
     }
@@ -292,7 +292,7 @@ public class DiscordLinkService {
                 data.discordId,
                 data.discordUsername,
                 actor,
-                config.server,
+                config.server.name,
                 System.currentTimeMillis()
         );
     }

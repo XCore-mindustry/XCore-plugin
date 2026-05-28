@@ -14,7 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -68,7 +68,8 @@ class MapMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.normalize();
         globalConfig = new GlobalConfig();
         globalConfig.mapsPerPage = 2;
 
@@ -200,8 +201,9 @@ class MapMenuTest {
     @DisplayName("map create start action opens prompt without adding legacy history")
     @SuppressWarnings("unchecked")
     void map_createStartAction_opensPromptWithoutAddingLegacyHistory() {
-        Config eventConfig = new Config();
-        eventConfig.server = "event";
+        TomlXcoreConfig eventConfig = new TomlXcoreConfig();
+        eventConfig.server.name = "event";
+        eventConfig.normalize();
 
         SessionService localSessionService = mock(SessionService.class);
         MindustryMenuGateway localGateway = mock(MindustryMenuGateway.class);
@@ -220,7 +222,7 @@ class MapMenuTest {
                 mock(org.xcore.plugin.database.repository.PlayerDataRepository.class));
 
         Provider<MapMenu> localMapProvider = mock(Provider.class);
-        EventMenu realEventMenu = new EventMenu(eventConfig, globalConfig, localSessionService,
+        EventMenu realEventMenu = new EventMenu(globalConfig, localSessionService,
                 mapService, eventService, eventEditorService, eventViewService, voteService, localMapProvider, localMenuService);
         realEventMenu.init();
 
@@ -296,10 +298,10 @@ class MapMenuTest {
     }
 
     private Session session() {
-        return session(new Config(), menuService);
+        return session(new TomlXcoreConfig(), menuService);
     }
 
-    private Session session(Config config, MenuService menuService) {
+    private Session session(TomlXcoreConfig config, MenuService menuService) {
         Player player = Player.create();
         player.con = mock(NetConnection.class);
         PlayerData data = new PlayerData("viewer-1", true);

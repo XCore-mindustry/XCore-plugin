@@ -7,7 +7,7 @@ import mindustry.net.Packets;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
 import org.xcore.plugin.event.net.chat.VoteChatInterceptor;
@@ -38,7 +38,7 @@ class NetEventServiceTest {
     @DisplayName("chat muted player does not translate or publish message")
     void chatMutedPlayer_doesNotTranslateOrPublish() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
@@ -83,8 +83,8 @@ class NetEventServiceTest {
     @DisplayName("chat happy path formats translates and publishes message")
     void chatHappyPath_formatsTranslatesAndPublishes() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
-        config.server = "main";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "main";
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
@@ -131,7 +131,7 @@ class NetEventServiceTest {
     @DisplayName("connect packet ignores already kicked connection")
     void connectPacket_ignoresAlreadyKickedConnection() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
@@ -174,7 +174,7 @@ class NetEventServiceTest {
     @DisplayName("connect packet closes connection on silent deny")
     void connectPacket_closesOnSilentDeny() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
@@ -217,7 +217,7 @@ class NetEventServiceTest {
     @DisplayName("connect filter accepts allowed ip without changing counters")
     void connectFilter_acceptsAllowedIp() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
@@ -260,7 +260,7 @@ class NetEventServiceTest {
     @DisplayName("connect filter rejects blocked ip and increments counters")
     void connectFilter_rejectsBlockedIpAndIncrementsCounters() {
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TranslatorService translatorService = mock(TranslatorService.class);
         NetworkService network = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);

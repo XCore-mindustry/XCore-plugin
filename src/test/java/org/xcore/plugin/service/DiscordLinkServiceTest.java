@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.network.RedisDiscordLinkCodeStore;
@@ -32,8 +32,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(true);
 
@@ -59,8 +59,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(false);
 
@@ -83,8 +83,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 
@@ -111,8 +111,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 
@@ -141,8 +141,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         when(codeStore.store(any())).thenReturn(true);
 
@@ -173,8 +173,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 
@@ -210,8 +210,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 
@@ -243,8 +243,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 
@@ -277,8 +277,8 @@ class DiscordLinkServiceTest {
         SessionService sessionService = mock(SessionService.class);
         NetworkService networkService = mock(NetworkService.class);
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
 
         DiscordLinkService service = new DiscordLinkService(codeStore, playerDataRepository, sessionService, networkService, config, discordAdminAccessService);
 

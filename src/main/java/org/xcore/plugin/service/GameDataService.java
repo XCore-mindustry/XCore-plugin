@@ -6,7 +6,7 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.model.*;
 import org.xcore.plugin.model.enums.FinishReason;
@@ -21,7 +21,7 @@ import static mindustry.Vars.state;
 @Singleton
 public class GameDataService {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GameDataRepository gameDataRepository;
 
     private GameData currentBag;
@@ -29,7 +29,7 @@ public class GameDataService {
     private final Map<String, PlayerGameStats> playerStatsCache = new HashMap<>();
 
     @Inject
-    public GameDataService(Config config, GameDataRepository gameDataRepository) {
+    public GameDataService(TomlXcoreConfig config, GameDataRepository gameDataRepository) {
         this.config = config;
         this.gameDataRepository = gameDataRepository;
     }
@@ -145,7 +145,7 @@ public class GameDataService {
     private GameStatsCategory resolveStatsCategory(String mode, boolean eventGame) {
         var rules = state == null ? null : state.rules;
 
-        if (config.isMiniHexed() || configIsHexedMode(mode)) {
+        if (isMiniHexedServer() || configIsHexedMode(mode)) {
             return GameStatsCategory.HEXED;
         }
         if (eventGame) {
@@ -180,6 +180,10 @@ public class GameDataService {
 
     private boolean configIsHexedMode(String mode) {
         return mode != null && mode.toLowerCase().contains("hexed");
+    }
+
+    private boolean isMiniHexedServer() {
+        return "mini-hexed".equals(config.server.name);
     }
 
     private String resolveServerName() {

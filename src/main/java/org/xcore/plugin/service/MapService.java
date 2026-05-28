@@ -11,8 +11,8 @@ import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
 import org.xcore.plugin.common.TextUtils;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
@@ -40,7 +40,7 @@ public class MapService {
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
     private final SessionService sessionService;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
     private final VoteService voteService;
     private final VoteNewWaveFactory voteNewWaveFactory;
@@ -51,7 +51,7 @@ public class MapService {
     public MapService(EventDataRepository eventDataRepository,
                       MapDataRepository mapDataRepository,
                       SessionService sessionService,
-                      Config config,
+                      TomlXcoreConfig config,
                       GlobalConfig globalConfig,
                       VoteService voteService,
                       VoteNewWaveFactory voteNewWaveFactory,
@@ -130,7 +130,7 @@ public class MapService {
     public void startRtvSession(Player player, Map target, boolean isManual, boolean forced) {
         var session = sessionService.get(player.uuid());
 
-        if (config.isFeatureDisabled(Feature.RTV)) {
+        if (isFeatureDisabled(Feature.RTV)) {
             session.locale().send("error-feature-disabled");
             return;
         }
@@ -165,7 +165,7 @@ public class MapService {
     public void startNewWaveSession(Player player, boolean forced) {
         var session = sessionService.get(player.uuid());
 
-        if (config.isFeatureDisabled(Feature.VNW)) {
+        if (isFeatureDisabled(Feature.VNW)) {
             session.locale().send("error-feature-disabled");
             return;
         }
@@ -281,12 +281,20 @@ public class MapService {
     }
 
     private EventData getActiveEventOrNull() {
-        if (!config.isEvent()) {
+        if (!isEvent()) {
             return null;
         }
 
         EventData event = eventDataRepository.findActive().orElse(null);
         return event != null && event.isActive ? event : null;
+    }
+
+    private boolean isFeatureDisabled(Feature feature) {
+        return config.runtime.disabledFeatures.contains(feature.key());
+    }
+
+    private boolean isEvent() {
+        return "event".equals(config.server.name);
     }
 
     private VoteDelta buildVoteDelta(Boolean previousVote, boolean like) {

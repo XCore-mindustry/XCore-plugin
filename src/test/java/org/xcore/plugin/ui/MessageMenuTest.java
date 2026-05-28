@@ -8,7 +8,6 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -57,7 +56,7 @@ class MessageMenuTest {
         GlobalConfig globalConfig = new GlobalConfig();
         globalConfig.privateMessageMaxLength = 300;
         globalConfig.privateMessagesPerPage = 10;
-        messageMenu = new MessageMenu(new Config(), globalConfig, sessionService, privateMessageService, menuService);
+        messageMenu = new MessageMenu(globalConfig, sessionService, privateMessageService, menuService);
         messageMenu.init();
 
         session = session();

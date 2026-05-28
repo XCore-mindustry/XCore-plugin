@@ -9,8 +9,8 @@ import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.localization.Localization;
@@ -35,7 +35,7 @@ public class ConnectionHandler {
     private final SessionService sessionService;
     private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final GlobalConfig globalConfig;
     private final VoteService voteService;
     private final PrivateMessageService privateMessageService;
@@ -47,7 +47,7 @@ public class ConnectionHandler {
     public ConnectionHandler(SessionService sessionService,
                              AdminDataRepository adminDataRepository,
                              NetworkService network,
-                             Config config,
+                             TomlXcoreConfig config,
                              GlobalConfig globalConfig,
                              VoteService voteService,
                              PrivateMessageService privateMessageService,
@@ -129,7 +129,7 @@ public class ConnectionHandler {
                 "pid", data.pid));
         network.post(new PlayerJoinLeaveV1(
                 player.plainName() + " #" + data.pid,
-                config.server,
+                config.server.name,
                 true)
         );
     }
@@ -151,7 +151,7 @@ public class ConnectionHandler {
 
             network.post(new PlayerJoinLeaveV1(
                     player.plainName() + " #" + data.pid,
-                    config.server,
+                    config.server.name,
                     false)
             );
         }

@@ -8,8 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.common.BuildInfo;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -58,8 +58,8 @@ class InformationMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
-        config.server = "xcore";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "xcore";
         globalConfig = new GlobalConfig();
         globalConfig.discordUrl = "https://discord.example";
         globalConfig.githubUrl = "https://github.example";
@@ -212,8 +212,8 @@ class InformationMenuTest {
         Provider<EventMenu> localEvent = mock(Provider.class);
         when(localEvent.get()).thenReturn(eventMenu);
 
-        Config eventConfig = new Config();
-        eventConfig.server = "event";
+        TomlXcoreConfig eventConfig = new TomlXcoreConfig();
+        eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
         InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
@@ -242,8 +242,8 @@ class InformationMenuTest {
         Provider<EventMenu> localEvent = mock(Provider.class);
         when(localEvent.get()).thenReturn(eventMenu);
 
-        Config eventConfig = new Config();
-        eventConfig.server = "event";
+        TomlXcoreConfig eventConfig = new TomlXcoreConfig();
+        eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
         InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);

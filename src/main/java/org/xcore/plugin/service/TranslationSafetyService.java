@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslationFailure;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
@@ -23,11 +23,11 @@ public class TranslationSafetyService {
     );
     private static final Pattern SENTINEL_PATTERN = Pattern.compile("⟪XCORE_TOKEN_\\d+⟫");
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final Gson gson;
 
     @Inject
-    public TranslationSafetyService(Config config) {
+    public TranslationSafetyService(TomlXcoreConfig config) {
         this.config = config;
         this.gson = new Gson();
     }

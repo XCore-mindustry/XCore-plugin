@@ -7,8 +7,8 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.io.IOException;
@@ -168,7 +168,7 @@ class OpenAITranslationProviderTest {
     }
 
     private TranslationSafetyService translationSafetyService(boolean structuredOutputRequired) {
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         config.translation.llm.structuredOutputRequired = structuredOutputRequired;
         return new TranslationSafetyService(config);
     }

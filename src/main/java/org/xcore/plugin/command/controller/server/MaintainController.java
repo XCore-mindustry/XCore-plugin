@@ -17,8 +17,8 @@ import org.incendo.cloud.annotations.*;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.ServerLocalConfigTomlStore;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.enums.Feature;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
@@ -48,7 +48,7 @@ public class MaintainController implements CloudServerController {
     private final PlayerDataRepository playerDataRepository;
     private final PluginState pluginState;
     private final SessionService sessionService;
-    private final Config config;
+    private final TomlXcoreConfig serverLocalConfig;
     private final RuntimeToggleConfigService toggleConfigService;
     private final MapIdentityAuditService mapIdentityAuditService;
     private final TopMenuCacheService topMenuCacheService;
@@ -60,17 +60,17 @@ public class MaintainController implements CloudServerController {
                               SessionService sessionService,
                               MapIdentityAuditService mapIdentityAuditService,
                               TopMenuCacheService topMenuCacheService,
-                              Config config,
+                              TomlXcoreConfig serverLocalConfig,
                               ServerLocalConfigTomlStore tomlStore,
                               @Named("pretty") Gson prettyGson) {
         this.network = network;
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
         this.sessionService = sessionService;
-        this.config = config;
+        this.serverLocalConfig = serverLocalConfig;
         this.mapIdentityAuditService = mapIdentityAuditService;
         this.topMenuCacheService = topMenuCacheService;
-        this.toggleConfigService = new RuntimeToggleConfigService(config, tomlStore);
+        this.toggleConfigService = new RuntimeToggleConfigService(serverLocalConfig, tomlStore);
     }
 
     public MaintainController(NetworkService network,
@@ -78,10 +78,10 @@ public class MaintainController implements CloudServerController {
                               PluginState pluginState,
                               SessionService sessionService,
                               MapIdentityAuditService mapIdentityAuditService,
-                              Config config,
+                              TomlXcoreConfig serverLocalConfig,
                               ServerLocalConfigTomlStore tomlStore,
                               Gson prettyGson) {
-        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, config, tomlStore, prettyGson);
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, serverLocalConfig, tomlStore, prettyGson);
     }
 
     @Command("exit")
@@ -164,7 +164,7 @@ public class MaintainController implements CloudServerController {
         if (deleted > 0 && topMenuCacheService != null) {
             topMenuCacheService.invalidateAll();
         }
-        network.post(new PlayerDataCacheReloadCommandV1(config.server));
+        network.post(new PlayerDataCacheReloadCommandV1(serverLocalConfig.server.name));
         PLog.info("Deleted @ bots from database.", deleted);
     }
 

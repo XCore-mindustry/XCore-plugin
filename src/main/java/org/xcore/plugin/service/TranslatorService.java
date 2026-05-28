@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
 import org.xcore.plugin.common.PLog;
@@ -15,7 +15,7 @@ import org.xcore.plugin.session.SessionService;
 
 @Singleton
 public class TranslatorService {
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final SessionService sessionService;
     private final ChatFormatService chatFormatService;
     private final ClientCompatibilityService clientCompatibilityService;
@@ -24,7 +24,7 @@ public class TranslatorService {
     private final TranslationMetricsService translationMetricsService;
 
     @Inject
-    public TranslatorService(Config config,
+    public TranslatorService(TomlXcoreConfig config,
                              SessionService sessionService,
                              ChatFormatService chatFormatService,
                              ClientCompatibilityService clientCompatibilityService,

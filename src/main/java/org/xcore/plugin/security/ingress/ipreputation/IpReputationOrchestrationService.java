@@ -2,7 +2,7 @@ package org.xcore.plugin.security.ingress.ipreputation;
 
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 /**
  * Concrete implementation of {@link IpReputationService} that orchestrates
@@ -14,7 +14,7 @@ import org.xcore.plugin.config.Config;
 @Singleton
 public class IpReputationOrchestrationService implements IpReputationService {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final IpReputationAllowlist allowlist;
     private final IpReputationCache cache;
     private final IpReputationProvider provider;
@@ -30,7 +30,7 @@ public class IpReputationOrchestrationService implements IpReputationService {
      * @param policy    policy used to decide whether a given IpReputationResult constitutes a block
      */
     public IpReputationOrchestrationService(
-            Config config,
+            TomlXcoreConfig config,
             IpReputationAllowlist allowlist,
             IpReputationCache cache,
             IpReputationProvider provider,

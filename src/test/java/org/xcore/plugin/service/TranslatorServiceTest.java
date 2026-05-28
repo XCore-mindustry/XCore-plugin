@@ -9,7 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.localization.TranslationFailure;
 import org.xcore.plugin.localization.TranslationProvider;
@@ -49,7 +49,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate sends original message when all translation providers fail")
     void translate_sendsOriginalMessage_whenAllTranslationProvidersFail() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -95,7 +95,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate sends original message when target language is unsupported")
     void translate_sendsOriginalMessage_whenTargetLanguageIsUnsupported() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -138,7 +138,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate uses cached translation before provider pipeline")
     void translate_usesCachedTranslation_beforeProviderPipeline() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -170,7 +170,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate sends original message when translation matches original text")
     void translate_sendsOriginalMessage_whenTranslationMatchesOriginalText() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -217,7 +217,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate sends original message when provider returns blank translation")
     void translate_sendsOriginalMessage_whenProviderReturnsBlankTranslation() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -264,7 +264,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translate does not send original message when preserveOriginalMessageOnFailure is disabled")
     void translate_doesNotSendOriginalMessage_whenPreserveOriginalMessageOnFailureDisabled() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         config.translation.preserveOriginalMessageOnFailure = false;
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
@@ -312,7 +312,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat sends translated team message when translator is enabled")
     void translateTeamChat_sendsTranslatedTeamMessage_whenTranslatorIsEnabled() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -372,7 +372,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat reuses translation for same target language")
     void translateTeamChat_reusesTranslation_forSameTargetLanguage() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -444,7 +444,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat sends original team message when translation matches original text")
     void translateTeamChat_sendsOriginalTeamMessage_whenTranslationMatchesOriginalText() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -504,7 +504,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat sends original raw message for foos client when translation matches original text")
     void translateTeamChat_sendsOriginalRawMessage_forFoosClientWhenTranslationMatchesOriginalText() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -564,7 +564,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat does not send original message when preserveOriginalMessageOnFailure is disabled")
     void translateTeamChat_doesNotSendOriginalMessage_whenPreserveOriginalMessageOnFailureDisabled() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         config.translation.preserveOriginalMessageOnFailure = false;
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
@@ -625,7 +625,7 @@ class TranslatorServiceTest {
     @Test
     @DisplayName("translateTeamChat sends foos-compatible raw message for likely foos client")
     void translateTeamChat_sendsFoosCompatibleRawMessage_forLikelyFoosClient() {
-        Config config = new Config();
+        TomlXcoreConfig config = config();
         SessionService sessionService = mock(SessionService.class);
         ChatFormatService chatFormatService = mock(ChatFormatService.class);
         ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
@@ -680,5 +680,8 @@ class TranslatorServiceTest {
 
         verify(author).sendMessage("team-author", author);
         verify(recipient).sendMessage("team-recipient [white]([lightgray]привет[])", author, "hello (привет)");
+    }
+    private static TomlXcoreConfig config() {
+        return new TomlXcoreConfig();
     }
 }

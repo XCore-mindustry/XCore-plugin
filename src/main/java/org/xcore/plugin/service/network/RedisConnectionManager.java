@@ -5,13 +5,13 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.net.URI;
 
 @Singleton
 public final class RedisConnectionManager {
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final RedisTransportHealth transportHealth;
 
     private RedisClient client;
@@ -19,7 +19,7 @@ public final class RedisConnectionManager {
     private RedisCommands<String, String> commands;
     private boolean connectionWarningLogged;
 
-    public RedisConnectionManager(Config config, RedisTransportHealth transportHealth) {
+    public RedisConnectionManager(TomlXcoreConfig config, RedisTransportHealth transportHealth) {
         this.config = config;
         this.transportHealth = transportHealth;
     }
@@ -31,12 +31,12 @@ public final class RedisConnectionManager {
 
         transportHealth.markConnecting();
         try {
-            client = RedisClient.create(config.redisUrl);
+            client = RedisClient.create(config.transport.redis.url);
             connection = client.connect();
             commands = connection.sync();
             connectionWarningLogged = false;
             transportHealth.markConnected();
-            PLog.info("Redis connected: url=@", sanitizeRedisUrl(config.redisUrl));
+            PLog.info("Redis connected: url=@", sanitizeRedisUrl(config.transport.redis.url));
         } catch (RuntimeException e) {
             closeResources();
             transportHealth.markUnavailable();

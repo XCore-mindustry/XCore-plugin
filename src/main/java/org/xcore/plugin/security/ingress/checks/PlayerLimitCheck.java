@@ -6,7 +6,7 @@ import mindustry.gen.Groups;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import mindustry.net.Packets.ConnectPacket;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
@@ -19,16 +19,16 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class PlayerLimitCheck implements IngressCheck {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public PlayerLimitCheck(Config config) {
+    public PlayerLimitCheck(TomlXcoreConfig config) {
         this.config = config;
     }
 
     @Override
     public AccessResult check(NetConnection con, ConnectPacket packet) {
-        if (config.playerLimit <= 0) {
+        if (config.server.playerLimit <= 0) {
             return AccessResult.Allowed.INSTANCE;
         }
 
@@ -37,7 +37,7 @@ public class PlayerLimitCheck implements IngressCheck {
             return AccessResult.Allowed.INSTANCE;
         }
 
-        if (Groups.player.size() >= config.getNoAdminPlayerLimit()) {
+        if (Groups.player.size() >= noAdminPlayerLimit()) {
             return new AccessResult.Denied(Packets.KickReason.playerLimit.name(), false, 0);
         }
 
@@ -52,5 +52,9 @@ public class PlayerLimitCheck implements IngressCheck {
     @Override
     public String name() {
         return "PlayerLimitCheck";
+    }
+
+    private int noAdminPlayerLimit() {
+        return config.server.playerLimit + Groups.player.count(player -> player.admin);
     }
 }

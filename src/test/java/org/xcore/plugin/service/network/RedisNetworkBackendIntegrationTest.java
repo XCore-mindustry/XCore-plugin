@@ -27,7 +27,7 @@ import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
@@ -67,7 +67,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("send rejects unsupported payloads without publishing any fallback stream")
     void sendRejectsUnsupportedPayloadsWithoutPublishingAnyFallbackStream() {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -76,7 +76,7 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(1L);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isZero();
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             List<StreamMessage<String, String>> messages = connection.sync().xread(
                     XReadArgs.StreamOffset.from("xcore:evt:raw", "0-0")
@@ -89,7 +89,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("send publishes envelope to mapped stream")
     void sendPublishesEnvelopeToMappedStream() {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -97,7 +97,7 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isGreaterThanOrEqualTo(1L);
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             List<StreamMessage<String, String>> messages = connection.sync().xread(
                     XReadArgs.StreamOffset.from("xcore:evt:chat:message", "0-0")
@@ -120,8 +120,8 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("global chat is delivered to subscribers on different servers")
     void globalChatDeliveredAcrossServers() throws InterruptedException {
-        Config alphaConfig = baseConfig("alpha");
-        Config betaConfig = baseConfig("beta");
+        TomlXcoreConfig alphaConfig = baseConfig("alpha");
+        TomlXcoreConfig betaConfig = baseConfig("beta");
 
         serverBackend = new RedisNetworkBackend(alphaConfig);
         requesterBackend = new RedisNetworkBackend(betaConfig);
@@ -164,8 +164,8 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("execute command broadcast is delivered to all servers")
     void executeCommandBroadcastDeliveredAcrossServers() throws InterruptedException {
-        Config alphaConfig = baseConfig("alpha");
-        Config betaConfig = baseConfig("beta");
+        TomlXcoreConfig alphaConfig = baseConfig("alpha");
+        TomlXcoreConfig betaConfig = baseConfig("beta");
 
         serverBackend = new RedisNetworkBackend(alphaConfig);
         requesterBackend = new RedisNetworkBackend(betaConfig);
@@ -208,7 +208,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("send serializes canonical moderation ban created event on primary route")
     void sendSerializesBanDataInstant() {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -222,7 +222,7 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             List<StreamMessage<String, String>> messages = connection.sync().xread(
                     XReadArgs.StreamOffset.from("xcore:evt:moderation:ban", "0-0")
@@ -247,7 +247,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("send serializes canonical moderation mute created event")
     void sendSerializesCanonicalModerationMuteCreatedEvent() {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -261,7 +261,7 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             List<StreamMessage<String, String>> messages = connection.sync().xread(
                     XReadArgs.StreamOffset.from("xcore:evt:moderation:mute", "0-0")
@@ -286,7 +286,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("subscribe consumes canonical moderation ban created event from primary route")
     void subscribeConsumesCanonicalModerationBanCreatedEvent() throws InterruptedException {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -322,7 +322,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("send serializes canonical vote-kick event to moderation votekick stream")
     void sendSerializesVoteKickEvent() {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
 
@@ -342,7 +342,7 @@ class RedisNetworkBackendIntegrationTest {
 
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             List<StreamMessage<String, String>> messages = connection.sync().xread(
                     XReadArgs.StreamOffset.from("xcore:evt:moderation:votekick", "0-0")
@@ -364,7 +364,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("subscribe consumes read-only stream messages")
     void subscribeConsumesReadOnlyStreamMessages() throws InterruptedException {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -390,7 +390,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("kick-banned canonical command subscribe works")
     void kickBannedSubscribeWorks() throws InterruptedException {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -427,9 +427,9 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("rpc request/response roundtrip works for maps list")
     void rpcRequestResponseRoundtripWorks() throws InterruptedException {
-        Config serverConfig = baseConfig("target");
+        TomlXcoreConfig serverConfig = baseConfig("target");
 
-        Config requesterConfig = baseConfig("discord");
+        TomlXcoreConfig requesterConfig = baseConfig("discord");
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         requesterBackend = new RedisNetworkBackend(requesterConfig);
@@ -472,9 +472,9 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("rpc dispatch filters by rpc_type and does not cross-trigger handlers")
     void rpcDispatchDoesNotCrossTriggerHandlers() throws InterruptedException {
-        Config serverConfig = baseConfig("target");
+        TomlXcoreConfig serverConfig = baseConfig("target");
 
-        Config requesterConfig = baseConfig("discord");
+        TomlXcoreConfig requesterConfig = baseConfig("discord");
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         requesterBackend = new RedisNetworkBackend(requesterConfig);
@@ -521,7 +521,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("expired rpc request is ACKed and dropped without handler execution")
     void expiredRpcRequestIsDropped() throws InterruptedException {
-        Config serverConfig = baseConfig("target");
+        TomlXcoreConfig serverConfig = baseConfig("target");
 
         serverBackend = new RedisNetworkBackend(serverConfig);
         serverBackend.connect();
@@ -530,7 +530,7 @@ class RedisNetworkBackendIntegrationTest {
         Subscription<MapsListRequestV1> subscription =
                 serverBackend.subscribe(MapsListRequestV1.class, request -> handlerLatch.countDown());
 
-        try (RedisClient client = RedisClient.create(serverConfig.redisUrl);
+        try (RedisClient client = RedisClient.create(serverConfig.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             long now = System.currentTimeMillis();
             connection.sync().xadd("xcore:rpc:req:target", java.util.Map.ofEntries(
@@ -559,7 +559,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("mutating event with same idempotency_key executes once")
     void mutatingDuplicateMessageExecutesOnce() throws InterruptedException {
-        Config config = baseConfig("alpha");
+        TomlXcoreConfig config = baseConfig("alpha");
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -574,7 +574,7 @@ class RedisNetworkBackendIntegrationTest {
                 }
         );
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             long now = System.currentTimeMillis();
             long expires = now + 120_000;
@@ -607,9 +607,9 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("failed consume routes message to DLQ after max attempts")
     void failedConsumeRoutesMessageToDlq() throws InterruptedException {
-        Config config = baseConfig("alpha");
-        config.redisDlqEnabled = true;
-        config.redisMaxDeliveryAttempts = 1;
+        TomlXcoreConfig config = baseConfig("alpha");
+        config.transport.redis.dlq.enabled = true;
+        config.transport.redis.dlq.maxDeliveryAttempts = 1;
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -623,7 +623,7 @@ class RedisNetworkBackendIntegrationTest {
         requesterBackend.send(new ChatMessageV1("tester", "poison", "alpha"));
         assertThat(failureSeen.await(10, TimeUnit.SECONDS)).isTrue();
 
-        try (RedisClient client = RedisClient.create(config.redisUrl);
+        try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
             long deadline = System.currentTimeMillis() + 10000;
             boolean dlqFound = false;
@@ -657,8 +657,8 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("unsubscribe stops subscriber lifecycle threads")
     void unsubscribeStopsSubscriberLifecycleThreads() {
-        Config config = baseConfig("alpha");
-        config.redisReclaimEnabled = true;
+        TomlXcoreConfig config = baseConfig("alpha");
+        config.transport.redis.reclaim.enabled = true;
 
         requesterBackend = new RedisNetworkBackend(config);
         requesterBackend.connect();
@@ -676,7 +676,7 @@ class RedisNetworkBackendIntegrationTest {
     @Test
     @DisplayName("request cancel stops rpc await lifecycle")
     void requestCancelStopsRpcAwaitLifecycle() {
-        Config requesterConfig = baseConfig("discord");
+        TomlXcoreConfig requesterConfig = baseConfig("discord");
 
         requesterBackend = new RedisNetworkBackend(requesterConfig);
         requesterBackend.connect();
@@ -716,11 +716,11 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(backend.metricsSnapshot().getOrDefault(key, -1L)).isEqualTo(expectedValue);
     }
 
-    private Config baseConfig(String server) {
-        Config config = new Config();
-        config.server = server;
-        config.redisUrl = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
-        config.redisReclaimEnabled = false;
+    private TomlXcoreConfig baseConfig(String server) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = server;
+        config.transport.redis.url = "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379);
+        config.transport.redis.reclaim.enabled = false;
         return config;
     }
 

@@ -6,7 +6,6 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -376,7 +375,7 @@ class AuditHistoryMenuFlowTest {
     }
 
     private AuditHistoryMenu createMenu(SessionService sessionService, AuditService auditService) {
-        var menu = new AuditHistoryMenu(new Config(), new GlobalConfig(), sessionService, auditService, menuService);
+        var menu = new AuditHistoryMenu(new GlobalConfig(), sessionService, auditService, menuService);
         menu.init();
         return menu;
     }

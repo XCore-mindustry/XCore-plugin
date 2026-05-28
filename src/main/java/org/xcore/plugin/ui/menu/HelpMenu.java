@@ -12,7 +12,6 @@ import org.incendo.cloud.help.result.CommandEntry;
 import org.xcore.cloud.mindustry.MindustryCloudCommand;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -38,8 +37,8 @@ public class HelpMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public HelpMenu(Config config, GlobalConfig globalConfig, SessionService sessionService, Provider<CloudService> cloud, MenuService menuService) {
-        super(config, globalConfig, sessionService);
+    public HelpMenu(GlobalConfig globalConfig, SessionService sessionService, Provider<CloudService> cloud, MenuService menuService) {
+        super(globalConfig, sessionService);
         this.cloud = cloud;
         this.menuService = menuService;
     }

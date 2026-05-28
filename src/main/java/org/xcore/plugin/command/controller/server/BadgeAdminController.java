@@ -7,7 +7,7 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
@@ -32,14 +32,14 @@ public class BadgeAdminController implements CloudServerController {
     private final NetworkService network;
     private final PlayerDisplayService playerDisplayService;
     private final PlayerDataRepository playerDataRepository;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
     public BadgeAdminController(SessionService sessionService,
                                 NetworkService network,
                                 PlayerDisplayService playerDisplayService,
                                 PlayerDataRepository playerDataRepository,
-                                Config config) {
+                                TomlXcoreConfig config) {
         this.sessionService = sessionService;
         this.network = network;
         this.playerDisplayService = playerDisplayService;
@@ -124,7 +124,7 @@ public class BadgeAdminController implements CloudServerController {
                 target.uuid,
                 updatedActiveBadge,
                 List.copyOf(updatedBadges),
-                config.server
+                config.server.name
         ));
         if (grant) {
             Log.info("Granted badge '@' to @ (#@).", badge.id(), target.nickname, target.pid);
