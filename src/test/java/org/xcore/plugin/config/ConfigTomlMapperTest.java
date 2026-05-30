@@ -244,8 +244,8 @@ class ConfigTomlMapperTest {
         assertThat(google.type).isEqualTo("google");
         assertThat(google.enabled).isTrue();
         assertThat(google.apiKey).isNull(); // blankToNull
-        assertThat(google.baseUrl).isEqualTo("https://api.openai.com/v1");
-        assertThat(google.model).isEqualTo("gpt-5.4");
+        assertThat(google.baseUrl).isNull(); // blankToNull
+        assertThat(google.model).isNull(); // blankToNull
         assertThat(google.apiMode).isNull(); // blankToNull
         assertThat(google.organization).isNull(); // blankToNull
         assertThat(google.project).isNull(); // blankToNull

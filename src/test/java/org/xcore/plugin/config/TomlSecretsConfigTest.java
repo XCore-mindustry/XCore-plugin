@@ -52,8 +52,8 @@ class TomlSecretsConfigTest {
         assertThat(google.type).isEqualTo("google");
         assertThat(google.enabled).isTrue();
         assertThat(google.apiKey).isEqualTo("");
-        assertThat(google.baseUrl).isEqualTo("https://api.openai.com/v1");
-        assertThat(google.model).isEqualTo("gpt-5.4");
+        assertThat(google.baseUrl).isEqualTo("");
+        assertThat(google.model).isEqualTo("");
         assertThat(google.apiMode).isEqualTo("");
         assertThat(google.organization).isEqualTo("");
         assertThat(google.project).isEqualTo("");
@@ -132,16 +132,16 @@ class TomlSecretsConfigTest {
 
         TomlSecretsConfig.TranslationSection.ProviderConfig normalized = toml.translation.providers.get("llm");
         assertThat(normalized.type).isEqualTo("google");
-        assertThat(normalized.baseUrl).isEqualTo("https://api.openai.com/v1");
-        assertThat(normalized.model).isEqualTo("gpt-5.4");
+        assertThat(normalized.baseUrl).isEqualTo("");
+        assertThat(normalized.model).isEqualTo("");
         assertThat(normalized.timeoutSeconds).isEqualTo(15);
         assertThat(normalized.maxRetries).isEqualTo(1);
         assertThat(normalized.supportedLanguages).isNotNull().isEmpty();
     }
 
     @Test
-    @DisplayName("normalize preserves blank optional strings for mapper blankToNull")
-    void normalize_preservesBlankOptionalStrings_forMapperBlankToNull() {
+    @DisplayName("normalize preserves blank optional strings; blank-to-null conversion happens in mapper")
+    void normalize_preservesBlankOptionalStrings_forLaterMapperConversion() {
         TomlSecretsConfig toml = new TomlSecretsConfig();
         TomlSecretsConfig.TranslationSection.ProviderConfig provider = toml.translation.providers.get("google");
         provider.apiKey = "";

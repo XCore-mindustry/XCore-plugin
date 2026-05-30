@@ -31,7 +31,12 @@ final class RuntimeToggleConfigService {
             return new ToggleMutationResult(false, value);
         }
 
-        save();
+        try {
+            save();
+        } catch (RuntimeException e) {
+            values.remove(value);
+            throw e;
+        }
         return new ToggleMutationResult(true, value);
     }
 
@@ -41,7 +46,12 @@ final class RuntimeToggleConfigService {
             return new ToggleMutationResult(false, value);
         }
 
-        save();
+        try {
+            save();
+        } catch (RuntimeException e) {
+            values.add(value);
+            throw e;
+        }
         return new ToggleMutationResult(true, value);
     }
 

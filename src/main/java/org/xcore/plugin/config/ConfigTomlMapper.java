@@ -415,8 +415,8 @@ public final class ConfigTomlMapper {
         dst.type = src.type;
         dst.enabled = src.enabled;
         dst.apiKey = blankToNull(src.apiKey);
-        dst.baseUrl = src.baseUrl;
-        dst.model = src.model;
+        dst.baseUrl = blankToNull(src.baseUrl);
+        dst.model = blankToNull(src.model);
         dst.apiMode = blankToNull(src.apiMode);
         dst.organization = blankToNull(src.organization);
         dst.project = blankToNull(src.project);

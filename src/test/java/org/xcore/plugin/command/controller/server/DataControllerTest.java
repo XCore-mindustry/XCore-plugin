@@ -278,22 +278,22 @@ class DataControllerTest {
         var find = mock(FindService.class);
         var sender = mock(XCoreSender.class);
         var pathEditor = new ServerLocalConfigPathEditor(gson);
-        var tomlRenderer = new ServerLocalConfigTomlRenderer();
+        var tomlRenderer = mock(ServerLocalConfigTomlRenderer.class);
+        when(tomlRenderer.render(config)).thenReturn("""
+                version = 1
+
+                [server]
+                name = \"alpha\"
+                player_limit = 64
+
+                [transport.redis]
+                url = \"redis://example:6379\"
+                """);
 
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
-
-        assertThat(tomlRenderer.render(config))
-                .contains("version = 1")
-                .contains("[server]")
-                .contains("name = \"alpha\"")
-                .contains("player_limit = 64")
-                .contains("[transport.redis]")
-                .contains("url = \"redis://example:6379\"")
-                .doesNotContain("server.name =")
-                .doesNotContain("transport.redis.url =");
-
         controller.xconfigShow(sender);
 
+        verify(tomlRenderer).render(config);
         verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
     }
 }

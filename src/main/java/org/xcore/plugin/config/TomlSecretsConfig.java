@@ -173,8 +173,8 @@ public class TomlSecretsConfig {
             public String type = "google";
             public boolean enabled = true;
             public String apiKey = "";
-            public String baseUrl = "https://api.openai.com/v1";
-            public String model = "gpt-5.4";
+            public String baseUrl = "";
+            public String model = "";
             public String apiMode = "";
             public String organization = "";
             public String project = "";
@@ -187,11 +187,13 @@ public class TomlSecretsConfig {
                 if (type == null || type.isBlank()) {
                     type = "google";
                 }
-                if (baseUrl == null || baseUrl.isBlank()) {
-                    baseUrl = "https://api.openai.com/v1";
-                }
-                if (model == null || model.isBlank()) {
-                    model = "gpt-5.4";
+                if ("openai".equalsIgnoreCase(type)) {
+                    if (baseUrl == null || baseUrl.isBlank()) {
+                        baseUrl = "https://api.openai.com/v1";
+                    }
+                    if (model == null || model.isBlank()) {
+                        model = "gpt-5.4";
+                    }
                 }
                 if (apiMode != null && !apiMode.isBlank()) {
                     apiMode = apiMode.trim().toLowerCase();
