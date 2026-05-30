@@ -38,6 +38,13 @@ class ServerLocalConfigTomlStoreTest {
         assertThat(tomlPath).exists();
         String written = Files.readString(tomlPath);
         assertThat(written).isNotBlank();
+        assertThat(written)
+                .contains("[server]")
+                .contains("name = \"test-server\"")
+                .contains("[runtime]")
+                .contains("disabled_commands =")
+                .doesNotContain("server.name =")
+                .doesNotContain("runtime.disabled_commands =");
 
         ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(
                 new Fi(tempDir.toFile()),

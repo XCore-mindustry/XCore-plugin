@@ -70,6 +70,10 @@ class ConfigTomlLoaderTest {
         assertThat(tempDir.resolve("xcconfig.json")).doesNotExist();
         assertThat(tempDir.resolve("xcore.toml")).exists();
         assertThat(tempDir.resolve("xcconfig.json.bak-20260524-163045")).exists();
+        assertThat(Files.readString(tempDir.resolve("xcore.toml")))
+                .contains("[server]")
+                .contains("name = \"legacy-server\"")
+                .doesNotContain("server.name =");
         assertThat(result.config.server.name).isEqualTo("legacy-server");
         assertThat(result.config.server.playerLimit).isEqualTo(99);
     }
@@ -174,6 +178,10 @@ class ConfigTomlLoaderTest {
         assertThat(tempDir.resolve("secrets.json")).doesNotExist();
         assertThat(tempDir.resolve("secrets.toml")).exists();
         assertThat(tempDir.resolve("secrets.json.bak-20260524-163146")).exists();
+        assertThat(Files.readString(tempDir.resolve("secrets.toml")))
+                .contains("[database]")
+                .contains("mongo_connection_string = \"mongodb://json:27017\"")
+                .doesNotContain("database.mongo_connection_string =");
         assertThat(result.config.mongoConnectionString).isEqualTo("mongodb://json:27017");
         assertThat(result.config.databaseName).isEqualTo("json-db");
     }
@@ -200,6 +208,10 @@ class ConfigTomlLoaderTest {
         assertThat(tempDir.resolve("secrets.json")).doesNotExist();
         assertThat(tempDir.resolve("secrets.toml")).exists();
         assertThat(tempDir.resolve("secrets.json.bak-20260524-163146")).exists();
+        assertThat(Files.readString(tempDir.resolve("secrets.toml")))
+                .contains("[database]")
+                .contains("mongo_connection_string = \"mongodb://json:27017\"")
+                .doesNotContain("database.mongo_connection_string =");
         assertThat(result.config.database.mongoConnectionString).isEqualTo("mongodb://json:27017");
         assertThat(result.config.database.name).isEqualTo("json-db");
     }

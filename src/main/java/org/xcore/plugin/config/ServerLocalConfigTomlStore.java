@@ -1,11 +1,6 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.dataformat.toml.TomlMapper;
-
-import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Objects;
 
@@ -59,18 +54,11 @@ public final class ServerLocalConfigTomlStore {
                     Files.createDirectories(parent);
                 }
             }
-            String tomlString = createTomlMapper().writeValueAsString(config);
+            String tomlString = HumanReadableTomlWriter.write(config);
             file.writeString(tomlString);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new IllegalStateException(
                     "Failed to write TOML to " + file.absolutePath() + ": " + e.getMessage(), e);
         }
-    }
-
-    private static TomlMapper createTomlMapper() {
-        return TomlMapper.builder()
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .build();
     }
 }

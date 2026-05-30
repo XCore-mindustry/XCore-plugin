@@ -287,7 +287,7 @@ public final class ConfigTomlLoader {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            String tomlString = createTomlMapper().writeValueAsString(config);
+            String tomlString = HumanReadableTomlWriter.write(config);
             file.writeString(tomlString);
         } catch (IOException e) {
             throw new IllegalStateException(

@@ -20,9 +20,13 @@ class ServerLocalConfigTomlRendererTest {
 
         assertThat(renderer.render(config))
                 .contains("version = 1")
-                .contains("server.name = 'alpha'")
-                .contains("server.player_limit = 64")
-                .contains("transport.redis.url = 'redis://example:6379'");
+                .contains("[server]")
+                .contains("name = \"alpha\"")
+                .contains("player_limit = 64")
+                .contains("[transport.redis]")
+                .contains("url = \"redis://example:6379\"")
+                .doesNotContain("server.name =")
+                .doesNotContain("transport.redis.url =");
     }
 
     @Test
