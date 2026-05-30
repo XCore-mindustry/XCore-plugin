@@ -260,7 +260,7 @@ final class EventDraftFlows {
                 Session session = ctx.session();
                 int currentPage = Math.max(1, ctx.state().page);
                 List<Map> pagedMaps = SeqStream.of(mapService.getAvailableMaps())
-                        .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, currentPage))
+                        .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, currentPage))
                         .flatMap(List::stream)
                         .toList();
                 if (index < 0 || index >= pagedMaps.size()) {
@@ -283,11 +283,11 @@ final class EventDraftFlows {
         public MenuScreen render(MenuRenderContext<MapSelectionState> context) {
             Session session = context.session();
             Seq<Map> maps = mapService.getAvailableMaps();
-            var pagination = CustomGatherers.calculatePagination(maps.size, menu.globalConfig.mapsPerPage);
+            var pagination = CustomGatherers.calculatePagination(maps.size, menu.secretsConfig.pagination.mapsPerPage);
 
             int validPage = pagination.clampPage(Math.max(1, context.state().page));
             List<Map> pagedMaps = SeqStream.of(maps)
-                    .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, validPage))
+                    .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
                     .flatMap(List::stream)
                     .toList();
 

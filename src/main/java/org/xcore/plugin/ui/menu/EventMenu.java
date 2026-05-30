@@ -4,7 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.EventEditorService;
@@ -29,11 +29,11 @@ public class EventMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public EventMenu(GlobalConfig globalConfig, SessionService sessionService,
+    public EventMenu(TomlSecretsConfig secretsConfig, SessionService sessionService,
                      MapService mapService, EventService eventService, EventEditorService eventEditorService,
                      EventViewService eventViewService, VoteService voteService, Provider<MapMenu> mapMenu,
                      MenuService menuService) {
-        super(globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.mapService = mapService;
         this.eventService = eventService;
         this.eventEditorService = eventEditorService;

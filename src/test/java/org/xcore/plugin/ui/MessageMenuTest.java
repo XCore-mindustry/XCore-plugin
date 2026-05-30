@@ -8,7 +8,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -53,10 +53,10 @@ class MessageMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.privateMessageMaxLength = 300;
-        globalConfig.privateMessagesPerPage = 10;
-        messageMenu = new MessageMenu(globalConfig, sessionService, privateMessageService, menuService);
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.messages.privateMessages.maxLength = 300;
+        secretsConfig.pagination.privateMessagesPerPage = 10;
+        messageMenu = new MessageMenu(secretsConfig, sessionService, privateMessageService, menuService);
         messageMenu.init();
 
         session = session();
@@ -270,7 +270,7 @@ class MessageMenuTest {
         data.uuid = "viewer-1";
         data.pid = 7;
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

@@ -6,7 +6,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -36,7 +36,7 @@ class DiscordMenuTest {
     private MenuService menuService;
     private DiscordMenu discordMenu;
     private Session session;
-    private GlobalConfig globalConfig;
+    private TomlSecretsConfig secretsConfig;
     private DiscordLinkService discordLinkService;
 
     @BeforeEach
@@ -48,11 +48,11 @@ class DiscordMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        globalConfig = new GlobalConfig();
-        globalConfig.discordUrl = "https://discord.example";
+        secretsConfig = new TomlSecretsConfig();
+        secretsConfig.externalLinks.discordUrl = "https://discord.example";
 
         discordLinkService = mock(DiscordLinkService.class);
-        discordMenu = new DiscordMenu(globalConfig, sessionService, discordLinkService, menuService);
+        discordMenu = new DiscordMenu(secretsConfig, sessionService, discordLinkService, menuService);
         discordMenu.init();
 
         session = session();
@@ -70,7 +70,7 @@ class DiscordMenuTest {
 
         menuService.onMenuOption(session, 0);
 
-        verify(gateway).openUri(eq(session.player), eq(globalConfig.discordUrl));
+        verify(gateway).openUri(eq(session.player), eq(secretsConfig.externalLinks.discordUrl));
     }
 
     @Test
@@ -141,7 +141,7 @@ class DiscordMenuTest {
         PlayerData data = new PlayerData("viewer-1", true);
         data.uuid = "viewer-1";
         Session session = new Session(
-                globalConfig,
+                secretsConfig,
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

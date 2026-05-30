@@ -8,7 +8,7 @@ import mindustry.gen.Player;
 import com.ospx.flubundle.Bundle;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.common.StatusEnum;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 @AssistFactory(SessionFactory.class)
 @Data
 public class Session {
-    public final GlobalConfig globalConfig;
+    public final TomlSecretsConfig secretsConfig;
     public final Bundle bundle;
     public final MenuService menuService;
     public final PlayerDataRepository playerDataRepository;
@@ -50,13 +50,13 @@ public class Session {
     private ActiveMenuScreen activeScreen;
     private ActiveMenuPrompt activePrompt;
 
-    public Session(GlobalConfig globalConfig,
+    public Session(TomlSecretsConfig secretsConfig,
                    Bundle bundle,
                    MenuService menuService,
                    PlayerDataRepository playerDataRepository,
                    @Assisted Player player,
                    @Assisted PlayerData playerData) {
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.bundle = bundle;
         this.menuService = menuService;
         this.playerDataRepository = playerDataRepository;
@@ -195,7 +195,7 @@ public class Session {
     }
 
     public void pushHistory(Runnable menuLoader) {
-        if (history.size() >= globalConfig.maxHistory) {
+        if (history.size() >= secretsConfig.messages.history.maxHistory) {
             history.removeFirst();
         }
         history.addLast(menuLoader);
@@ -213,7 +213,7 @@ public class Session {
         if (route == null) {
             return;
         }
-        if (routeHistory.size() >= globalConfig.maxHistory) {
+        if (routeHistory.size() >= secretsConfig.messages.history.maxHistory) {
             routeHistory.removeFirst();
         }
         routeHistory.addLast(route);

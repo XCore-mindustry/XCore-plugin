@@ -7,7 +7,7 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationMetricsService;
 
@@ -18,15 +18,15 @@ import java.util.Map;
 public class TranslationStatsController implements CloudServerController {
 
     private final TomlXcoreConfig config;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
     private final TranslationMetricsService translationMetricsService;
 
     @Inject
     public TranslationStatsController(TomlXcoreConfig config,
-                                      GlobalConfig globalConfig,
+                                      TomlSecretsConfig secretsConfig,
                                       TranslationMetricsService translationMetricsService) {
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.translationMetricsService = translationMetricsService;
     }
 
@@ -65,7 +65,7 @@ public class TranslationStatsController implements CloudServerController {
                 continue;
             }
 
-            GlobalConfig.TranslationProviderConfig providerConfig = globalConfig.translationProviders.get(providerId);
+            TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = secretsConfig.translation.providers.get(providerId);
             if (providerConfig == null) {
                 Log.info("  - @ (missing config)", providerId);
                 continue;

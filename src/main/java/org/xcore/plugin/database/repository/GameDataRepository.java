@@ -9,7 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.xcore.plugin.model.AggregatedPlayerStats;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.GameData;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerStatsOverview;
@@ -26,8 +26,8 @@ public class GameDataRepository extends DataRepository<GameData> {
     private static final String COLLECTION_NAME = "games_v2";
 
     @Inject
-    public GameDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, COLLECTION_NAME, GameData.class, globalConfig);
+    public GameDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, COLLECTION_NAME, GameData.class, secretsConfig);
 
         collection.createIndex(new Document("map", 1));
         collection.createIndex(new Document("event", 1));

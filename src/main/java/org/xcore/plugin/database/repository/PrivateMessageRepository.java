@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.PrivateMessage;
 
 import java.util.ArrayList;
@@ -20,8 +20,8 @@ import static com.mongodb.client.model.Filters.eq;
 public class PrivateMessageRepository extends DataRepository<PrivateMessage> {
 
     @Inject
-    public PrivateMessageRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "private_messages", PrivateMessage.class, globalConfig);
+    public PrivateMessageRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, "private_messages", PrivateMessage.class, secretsConfig);
 
         collection.createIndex(
                 new Document("to_uuid", 1)

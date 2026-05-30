@@ -149,7 +149,7 @@ final class EventFlows {
         public MenuScreen render(MenuRenderContext<EventsState> context) {
             Session session = context.session();
             int requestedPage = Math.max(1, context.state().page);
-            int perPage = menu.globalConfig.eventsPerPage;
+            int perPage = menu.secretsConfig.pagination.eventsPerPage;
             EventViewService.EventPage eventPage = eventViewService.page(requestedPage, perPage, session.sortStatus);
             String finishedFilter = session.locale().t("finished-" + session.sortStatus.getOrDefault("finished", StatusEnum.Neutral).name().toLowerCase());
             String majorFilter = session.locale().t("major-" + session.sortStatus.getOrDefault("major", StatusEnum.Neutral).name().toLowerCase());

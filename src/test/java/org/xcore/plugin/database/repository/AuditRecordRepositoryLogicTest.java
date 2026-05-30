@@ -8,7 +8,7 @@ import org.bson.conversions.Bson;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.AuditCursor;
 import org.xcore.plugin.model.AuditRecord;
 
@@ -27,7 +27,7 @@ class AuditRecordRepositoryLogicTest {
         MongoCollection<AuditRecord> collection = mock(MongoCollection.class);
         when(database.getCollection("moderation_audit", AuditRecord.class)).thenReturn(collection);
 
-        repository = new AuditRecordRepository(database, new GlobalConfig());
+        repository = new AuditRecordRepository(database, new TomlSecretsConfig());
     }
 
     @Test

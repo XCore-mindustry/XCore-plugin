@@ -10,7 +10,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -153,7 +152,7 @@ class ModerationTransportHandlerTest {
         playerData.activeBadge = "";
         playerData.badgeSymbolColorMode = "default";
         Session session = new Session(
-                mock(GlobalConfig.class),
+                mock(org.xcore.plugin.config.TomlSecretsConfig.class),
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),
@@ -198,7 +197,7 @@ class ModerationTransportHandlerTest {
         playerData.activeBadge = "old-badge";
         playerData.unlockedBadges = new java.util.HashSet<>();
         Session session = new Session(
-                mock(GlobalConfig.class),
+                mock(org.xcore.plugin.config.TomlSecretsConfig.class),
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),
@@ -237,7 +236,7 @@ class ModerationTransportHandlerTest {
         playerData.uuid = "uuid-1";
         playerData.password = "old-hash";
         Session session = new Session(
-                mock(GlobalConfig.class),
+                mock(org.xcore.plugin.config.TomlSecretsConfig.class),
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),

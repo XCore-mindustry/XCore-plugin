@@ -3,7 +3,7 @@ package org.xcore.plugin.ui.menu;
 import mindustry.gen.Player;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -11,11 +11,11 @@ import org.xcore.plugin.session.SessionService;
 import static com.ospx.flubundle.Bundle.args;
 
 public class Menu {
-    protected final GlobalConfig globalConfig;
+    protected final TomlSecretsConfig secretsConfig;
     protected final SessionService sessionService;
 
-    public Menu(GlobalConfig globalConfig, SessionService sessionService) {
-        this.globalConfig = globalConfig;
+    public Menu(TomlSecretsConfig secretsConfig, SessionService sessionService) {
+        this.secretsConfig = secretsConfig;
         this.sessionService = sessionService;
     }
 

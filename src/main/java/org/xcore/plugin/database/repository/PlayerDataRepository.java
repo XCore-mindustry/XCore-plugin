@@ -14,7 +14,7 @@ import mindustry.gen.Player;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.common.StatusEnum;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.LeaderboardCursor;
@@ -40,9 +40,9 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
 
     @Inject
-    public PlayerDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
+    public PlayerDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
 
-        super(database, "players", PlayerData.class, globalConfig);
+        super(database, "players", PlayerData.class, secretsConfig);
         this.counters = database.getCollection("counters");
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));

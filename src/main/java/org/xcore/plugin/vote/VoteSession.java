@@ -5,7 +5,7 @@ import arc.struct.IntIntMap;
 import arc.util.Timer;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 
 import static arc.Core.app;
 
@@ -14,8 +14,8 @@ public abstract class VoteSession {
     public final IntIntMap voted = new IntIntMap();
     public final Timer.Task end;
 
-    public VoteSession(GlobalConfig config) {
-        end = Timer.schedule(this::fail, config.voteDurationSeconds);
+    public VoteSession(TomlSecretsConfig secretsConfig) {
+        end = Timer.schedule(this::fail, secretsConfig.moderation.votekick.voteDurationSeconds);
     }
 
     public void vote(Player player, int sign) {

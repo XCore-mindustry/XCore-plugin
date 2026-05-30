@@ -4,7 +4,7 @@ import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
@@ -17,17 +17,17 @@ public class PlayerActivityService {
 
     private final SessionService sessionService;
     private final FindService findService;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
     private final ServerDiscoveryService discoveryService;
 
     @Inject
     public PlayerActivityService(SessionService sessionService,
                                  FindService findService,
-                                 GlobalConfig globalConfig,
+                                 TomlSecretsConfig secretsConfig,
                                  ServerDiscoveryService discoveryService) {
         this.sessionService = sessionService;
         this.findService = findService;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.discoveryService = discoveryService;
     }
 
@@ -46,13 +46,13 @@ public class PlayerActivityService {
 
                 sessionService.incrementPlayTime(session, 1);
 
-                if (data.totalPlayTime == globalConfig.minPlayTimeForVotekick) {
+                if (data.totalPlayTime == secretsConfig.moderation.votekick.minPlayTimeMinutes) {
                     local.send("notification-votekick-playtime",
-                            args("votekickPlayTime", globalConfig.minPlayTimeForVotekick));
+                            args("votekickPlayTime", secretsConfig.moderation.votekick.minPlayTimeMinutes));
                 }
-                if (data.totalPlayTime == globalConfig.minPlayTimeForGlobalChat) {
+                if (data.totalPlayTime == secretsConfig.chat.global.minPlayTimeMinutes) {
                     local.send("notification-global-chat-playtime",
-                            args("globalChatPlayTime", globalConfig.minPlayTimeForGlobalChat));
+                            args("globalChatPlayTime", secretsConfig.chat.global.minPlayTimeMinutes));
                 }
 
             }

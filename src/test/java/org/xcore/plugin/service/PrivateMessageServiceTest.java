@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
 import org.xcore.plugin.localization.Localization;
@@ -283,13 +283,13 @@ class PrivateMessageServiceTest {
     private static final class PrivateMessageModule implements AvajeModule {
         @Override
         public Class<?>[] classes() {
-            return new Class<?>[]{PrivateMessageService.class, GlobalConfig.class, TomlXcoreConfig.class};
+            return new Class<?>[]{PrivateMessageService.class, TomlSecretsConfig.class, TomlXcoreConfig.class};
         }
 
         @Override
         public void build(Builder builder) {
-            if (builder.isBeanAbsent(GlobalConfig.class)) {
-                builder.register(new GlobalConfig());
+            if (builder.isBeanAbsent(TomlSecretsConfig.class)) {
+                builder.register(new TomlSecretsConfig());
             }
             if (builder.isBeanAbsent(TomlXcoreConfig.class)) {
                 builder.register(config("mini-pvp"));
@@ -301,7 +301,7 @@ class PrivateMessageServiceTest {
                         builder.get(SecurityService.class),
                         builder.get(NetworkService.class),
                         builder.get(TomlXcoreConfig.class),
-                        builder.get(GlobalConfig.class)
+                        builder.get(TomlSecretsConfig.class)
                 ));
             }
         }

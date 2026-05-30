@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -52,7 +52,7 @@ class MapMenuTest {
     private MenuService menuService;
     private MapMenu mapMenu;
     private Session session;
-    private GlobalConfig globalConfig;
+    private TomlSecretsConfig secretsConfig;
     private GameState originalState;
 
     @BeforeEach
@@ -70,12 +70,12 @@ class MapMenuTest {
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.normalize();
-        globalConfig = new GlobalConfig();
-        globalConfig.mapsPerPage = 2;
+        secretsConfig = new TomlSecretsConfig();
+        secretsConfig.pagination.mapsPerPage = 2;
 
         Provider<EventMenu> eventMenu = mock(Provider.class);
 
-        mapMenu = new MapMenu(config, globalConfig, sessionService,
+        mapMenu = new MapMenu(config, secretsConfig, sessionService,
                 mapDataRepository, eventDataRepository, mapService, eventMenu, menuService);
         mapMenu.init();
 
@@ -222,13 +222,13 @@ class MapMenuTest {
                 mock(org.xcore.plugin.database.repository.PlayerDataRepository.class));
 
         Provider<MapMenu> localMapProvider = mock(Provider.class);
-        EventMenu realEventMenu = new EventMenu(globalConfig, localSessionService,
+        EventMenu realEventMenu = new EventMenu(secretsConfig, localSessionService,
                 mapService, eventService, eventEditorService, eventViewService, voteService, localMapProvider, localMenuService);
         realEventMenu.init();
 
         Provider<EventMenu> eventMenuProvider = mock(Provider.class);
         when(eventMenuProvider.get()).thenReturn(realEventMenu);
-        MapMenu eventMapMenu = new MapMenu(eventConfig, globalConfig, localSessionService,
+        MapMenu eventMapMenu = new MapMenu(eventConfig, secretsConfig, localSessionService,
                 mapDataRepository, eventDataRepository, mapService, eventMenuProvider, localMenuService);
         eventMapMenu.init();
         when(localMapProvider.get()).thenReturn(eventMapMenu);
@@ -307,7 +307,7 @@ class MapMenuTest {
         PlayerData data = new PlayerData("viewer-1", true);
         data.uuid = "viewer-1";
         Session session = new Session(
-                globalConfig,
+                secretsConfig,
                 mock(Bundle.class),
                 menuService,
                 mock(org.xcore.plugin.database.repository.PlayerDataRepository.class),

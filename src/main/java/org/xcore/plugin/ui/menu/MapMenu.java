@@ -6,7 +6,7 @@ import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -38,10 +38,10 @@ public class MapMenu extends Menu {
     private final EventDataRepository eventDataRepository;
 
     @Inject
-    public MapMenu(TomlXcoreConfig config, GlobalConfig globalConfig, SessionService sessionService,
+    public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
                    MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService) {
-        super(globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.config = config;
         this.mapDataRepository = mapDataRepository;
         this.eventDataRepository = eventDataRepository;

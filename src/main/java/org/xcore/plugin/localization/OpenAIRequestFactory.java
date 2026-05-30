@@ -2,7 +2,7 @@ package org.xcore.plugin.localization;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.net.URI;
@@ -15,10 +15,10 @@ final class OpenAIRequestFactory {
     static final String API_MODE_RESPONSES = "responses";
     static final String API_MODE_CHAT_COMPLETIONS = "chat_completions";
 
-    private final GlobalConfig.TranslationProviderConfig providerConfig;
+    private final TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig;
     private final TranslationSafetyService translationSafetyService;
 
-    OpenAIRequestFactory(GlobalConfig.TranslationProviderConfig providerConfig,
+    OpenAIRequestFactory(TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig,
                          TranslationSafetyService translationSafetyService) {
         this.providerConfig = providerConfig;
         this.translationSafetyService = translationSafetyService;

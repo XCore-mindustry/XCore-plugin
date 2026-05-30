@@ -11,7 +11,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -75,7 +75,7 @@ class MapServiceTest {
                 mapDataRepository,
                 mock(SessionService.class),
                 config,
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
@@ -108,7 +108,7 @@ class MapServiceTest {
                 mock(MapDataRepository.class),
                 mock(SessionService.class),
                 config,
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
@@ -151,7 +151,7 @@ class MapServiceTest {
                 mock(MapDataRepository.class),
                 mock(SessionService.class),
                 new TomlXcoreConfig(),
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),

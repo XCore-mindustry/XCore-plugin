@@ -52,13 +52,20 @@ public class ConfigFactory {
     }
 
     @Bean
-    public GlobalConfig globalConfig(Config config, @Named("pretty") Gson gson) {
-        var result = ConfigTomlLoader.loadGlobalConfig(config.globalConfigDirectory, gson);
+    public TomlSecretsConfig tomlSecretsConfig(Config config, @Named("pretty") Gson gson) {
+        var result = ConfigTomlLoader.loadTomlSecretsConfig(config.globalConfigDirectory, gson);
         logSource("GlobalConfig", result.file, result.source);
 
-        GlobalConfig globalConfig = result.config;
+        TomlSecretsConfig tomlSecretsConfig = result.config;
+        tomlSecretsConfig.normalize();
+        return tomlSecretsConfig;
+    }
+
+    @Bean
+    public GlobalConfig globalConfig(Config config, TomlSecretsConfig tomlSecretsConfig) {
+        GlobalConfig globalConfig = ConfigTomlMapper.toGlobalConfig(tomlSecretsConfig);
         globalConfig.normalize();
-        globalConfig.postInit(result.file);
+        globalConfig.postInit(ConfigTomlLoader.resolveSecretsToml(config.globalConfigDirectory));
         return globalConfig;
     }
 

@@ -57,7 +57,7 @@ public final class ConfigTomlLoader {
      * Result of a config load operation, carrying the resolved object, the
      * source that was used, and the file that was read or created.
      *
-     * @param <T> the configuration type, either {@link TomlXcoreConfig} or {@link GlobalConfig}
+     * @param <T> the configuration type, such as {@link TomlXcoreConfig}, {@link TomlSecretsConfig}, or {@link GlobalConfig}
      */
     public static final class LoadResult<T> {
         public final T config;
@@ -190,11 +190,26 @@ public final class ConfigTomlLoader {
      * @return a {@link LoadResult} containing the resolved {@link GlobalConfig}
      */
     public static LoadResult<GlobalConfig> loadGlobalConfig(String globalConfigDirectory, Gson gson) {
+        LoadResult<TomlSecretsConfig> result = loadTomlSecretsConfig(globalConfigDirectory, gson);
+        GlobalConfig global = ConfigTomlMapper.toGlobalConfig(result.config);
+        return new LoadResult<>(global, result.source, result.file, result.backupFile);
+    }
+
+    /**
+     * Loads the shared global/secrets configuration as the structured TOML DTO following the TOML-first resolution order.
+     *
+     * <p>The returned {@link TomlSecretsConfig} is fully normalized regardless of source.</p>
+     *
+     * @param globalConfigDirectory explicit global directory, or {@code null} to use the user home
+     * @param gson                  the Gson instance used for legacy JSON fallback
+     * @return a {@link LoadResult} containing the resolved {@link TomlSecretsConfig}
+     */
+    public static LoadResult<TomlSecretsConfig> loadTomlSecretsConfig(String globalConfigDirectory, Gson gson) {
         Fi tomlFile = resolveSecretsToml(globalConfigDirectory);
         if (tomlFile.exists()) {
             TomlSecretsConfig toml = readToml(tomlFile, TomlSecretsConfig.class);
-            GlobalConfig global = ConfigTomlMapper.toGlobalConfig(toml);
-            return new LoadResult<>(global, Source.TOML, tomlFile);
+            toml.normalize();
+            return new LoadResult<>(toml, Source.TOML, tomlFile);
         }
 
         Fi jsonFile = resolveLegacySecretsJson(globalConfigDirectory);
@@ -204,8 +219,8 @@ public final class ConfigTomlLoader {
 
         ConfigTomlTemplateWriter.writeDefaultSecretsToml(tomlFile);
         TomlSecretsConfig toml = readToml(tomlFile, TomlSecretsConfig.class);
-        GlobalConfig global = ConfigTomlMapper.toGlobalConfig(toml);
-        return new LoadResult<>(global, Source.DEFAULT_TEMPLATE, tomlFile);
+        toml.normalize();
+        return new LoadResult<>(toml, Source.DEFAULT_TEMPLATE, tomlFile);
     }
 
     // ------------------------------------------------------------------
@@ -240,7 +255,7 @@ public final class ConfigTomlLoader {
         return new LoadResult<>(reloadedToml, Source.MIGRATED, tomlFile, backupFile);
     }
 
-    private static LoadResult<GlobalConfig> migrateLegacySecretsConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
+    private static LoadResult<TomlSecretsConfig> migrateLegacySecretsConfig(Fi jsonFile, Fi tomlFile, Gson gson) {
         GlobalConfig legacyGlobal;
         try (var reader = jsonFile.reader()) {
             legacyGlobal = gson.fromJson(reader, GlobalConfig.class);
@@ -257,8 +272,9 @@ public final class ConfigTomlLoader {
         writeToml(tomlFile, migratedToml);
         Fi backupFile = backupLegacyFile(jsonFile);
 
-        GlobalConfig migratedGlobal = ConfigTomlMapper.toGlobalConfig(readToml(tomlFile, TomlSecretsConfig.class));
-        return new LoadResult<>(migratedGlobal, Source.MIGRATED, tomlFile, backupFile);
+        TomlSecretsConfig reloadedToml = readToml(tomlFile, TomlSecretsConfig.class);
+        reloadedToml.normalize();
+        return new LoadResult<>(reloadedToml, Source.MIGRATED, tomlFile, backupFile);
     }
 
     private static String currentBackupTimestamp() {

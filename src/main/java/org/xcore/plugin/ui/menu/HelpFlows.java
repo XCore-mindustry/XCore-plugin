@@ -68,10 +68,10 @@ final class HelpFlows {
                 return errorScreen(session);
             }
 
-            var pagination = CustomGatherers.calculatePagination(allCommands.size(), menu.globalConfig.commandsPerPage);
+            var pagination = CustomGatherers.calculatePagination(allCommands.size(), menu.secretsConfig.pagination.commandsPerPage);
             int currentPage = pagination.clampPage(page);
-            int skip = (currentPage - 1) * menu.globalConfig.commandsPerPage;
-            List<HelpMenu.UnifiedCommand> pageSlice = allCommands.subList(skip, Math.min(skip + menu.globalConfig.commandsPerPage, allCommands.size()));
+            int skip = (currentPage - 1) * menu.secretsConfig.pagination.commandsPerPage;
+            List<HelpMenu.UnifiedCommand> pageSlice = allCommands.subList(skip, Math.min(skip + menu.secretsConfig.pagination.commandsPerPage, allCommands.size()));
 
             var local = context.locale();
             var grid = new MenuGrid()

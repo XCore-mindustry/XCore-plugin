@@ -76,7 +76,7 @@ final class MessageFlows {
             int requestedPage = Math.max(1, context.state().page);
 
             long total = privateMessageService.countInbox(session.data.uuid);
-            var pagination = CustomGatherers.calculatePagination(total, menu.globalConfig.privateMessagesPerPage);
+            var pagination = CustomGatherers.calculatePagination(total, menu.secretsConfig.pagination.privateMessagesPerPage);
             int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(requestedPage);
             context.state().page = validPage;
             java.util.List<PrivateMessage> messages = privateMessageService.inbox(session.data.uuid, validPage);
@@ -141,7 +141,7 @@ final class MessageFlows {
                             PROMPT_REPLY,
                             ctx.session().locale().t("private-message-reply-title"),
                             ctx.session().locale().t("private-message-reply-message", args("pid", view.message.fromPid)),
-                            menu.globalConfig.privateMessageMaxLength,
+                            menu.secretsConfig.messages.privateMessages.maxLength,
                             "",
                             false
                     ));
@@ -273,11 +273,11 @@ final class MessageFlows {
             int requestedPage = Math.max(1, context.state().page);
 
             java.util.List<PlayerData> blockedPlayers = privateMessageService.listBlocked(session);
-            var pagination = CustomGatherers.calculatePagination(blockedPlayers.size(), menu.globalConfig.privateMessagesPerPage);
+            var pagination = CustomGatherers.calculatePagination(blockedPlayers.size(), menu.secretsConfig.pagination.privateMessagesPerPage);
             int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(requestedPage);
             context.state().page = validPage;
-            int start = (validPage - 1) * menu.globalConfig.privateMessagesPerPage;
-            int end = Math.min(start + menu.globalConfig.privateMessagesPerPage, blockedPlayers.size());
+            int start = (validPage - 1) * menu.secretsConfig.pagination.privateMessagesPerPage;
+            int end = Math.min(start + menu.secretsConfig.pagination.privateMessagesPerPage, blockedPlayers.size());
             java.util.List<PlayerData> pageItems = start >= blockedPlayers.size() ? java.util.List.of() : blockedPlayers.subList(start, end);
 
             var grid = new MenuGrid();
@@ -362,7 +362,7 @@ final class MessageFlows {
                         PROMPT_COMPOSE_BODY,
                         session.locale().t("private-message-compose-body-title"),
                         session.locale().t("private-message-compose-body-message", args("pid", "#" + targetPid)),
-                        menu.globalConfig.privateMessageMaxLength,
+                        menu.secretsConfig.messages.privateMessages.maxLength,
                         "",
                         false),
                 message -> {

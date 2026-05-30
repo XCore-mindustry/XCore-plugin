@@ -8,7 +8,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -219,7 +219,7 @@ class EventEditorServiceTest {
         MenuService menuService = new MenuService(sessionProvider, gateway);
 
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

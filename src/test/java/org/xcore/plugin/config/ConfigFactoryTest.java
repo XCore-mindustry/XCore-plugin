@@ -135,7 +135,7 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act + Assert
-        assertThatThrownBy(() -> factory.globalConfig(config, prettyGson))
+        assertThatThrownBy(() -> factory.globalConfig(config, factory.tomlSecretsConfig(config, prettyGson)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Missing required config in secrets.toml")
                 .hasMessageContaining("database.mongo_connection_string")
@@ -176,9 +176,12 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        GlobalConfig globalConfig = factory.globalConfig(config, prettyGson);
+        TomlSecretsConfig tomlSecretsConfig = factory.tomlSecretsConfig(config, prettyGson);
+        GlobalConfig globalConfig = factory.globalConfig(config, tomlSecretsConfig);
 
         // Assert
+        assertThat(tomlSecretsConfig.database.mongoConnectionString).isEqualTo("mongodb://toml:27017");
+        assertThat(tomlSecretsConfig.database.name).isEqualTo("toml-db");
         assertThat(globalConfig.mongoConnectionString).isEqualTo("mongodb://toml:27017");
         assertThat(globalConfig.databaseName).isEqualTo("toml-db");
     }
@@ -205,9 +208,12 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        GlobalConfig globalConfig = factory.globalConfig(config, prettyGson);
+        TomlSecretsConfig tomlSecretsConfig = factory.tomlSecretsConfig(config, prettyGson);
+        GlobalConfig globalConfig = factory.globalConfig(config, tomlSecretsConfig);
 
         // Assert
+        assertThat(tomlSecretsConfig.database.mongoConnectionString).isEqualTo("mongodb://legacy:27017");
+        assertThat(tomlSecretsConfig.database.name).isEqualTo("legacy-db");
         assertThat(globalConfig.mongoConnectionString).isEqualTo("mongodb://legacy:27017");
         assertThat(globalConfig.databaseName).isEqualTo("legacy-db");
         assertThat(globalConfig.translationProviders).containsOnlyKeys("google");
@@ -237,9 +243,12 @@ class ConfigFactoryTest {
         ConfigFactory factory = new ConfigFactory();
 
         // Act
-        GlobalConfig globalConfig = factory.globalConfig(config, prettyGson);
+        TomlSecretsConfig tomlSecretsConfig = factory.tomlSecretsConfig(config, prettyGson);
+        GlobalConfig globalConfig = factory.globalConfig(config, tomlSecretsConfig);
 
         // Assert
+        assertThat(tomlSecretsConfig.database.mongoConnectionString).isEqualTo("mongodb://localhost:27017");
+        assertThat(tomlSecretsConfig.database.name).isEqualTo("xcore");
         assertThat(globalConfig.mongoConnectionString).isEqualTo("mongodb://localhost:27017");
         assertThat(globalConfig.databaseName).isEqualTo("xcore");
         assertThat(globalConfig.translationProviders).containsOnlyKeys("google");

@@ -62,11 +62,11 @@ final class MapFlows {
                 Session session = ctx.session();
                 int page = ctx.route().intParam("page", 1);
                 Seq<Map> availableMaps = mapService.getAvailableMaps();
-                var pagination = CustomGatherers.calculatePagination(availableMaps.size, menu.globalConfig.mapsPerPage);
+                var pagination = CustomGatherers.calculatePagination(availableMaps.size, menu.secretsConfig.pagination.mapsPerPage);
                 int validPage = pagination.clampPage(page);
                 String gameMode = state.rules.mode().name();
                 List<Map> pageMaps = SeqStream.of(availableMaps)
-                        .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, validPage))
+                        .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
                         .flatMap(List::stream)
                         .toList();
                 if (index >= 0 && index < pageMaps.size()) {
@@ -89,7 +89,7 @@ final class MapFlows {
             Session session = context.session();
             int page = context.route().intParam("page", 1);
             Seq<Map> availableMaps = mapService.getAvailableMaps();
-            var pagination = CustomGatherers.calculatePagination(availableMaps.size, menu.globalConfig.mapsPerPage);
+            var pagination = CustomGatherers.calculatePagination(availableMaps.size, menu.secretsConfig.pagination.mapsPerPage);
 
             if (availableMaps.isEmpty()) {
                 session.locale().send("empty");
@@ -102,7 +102,7 @@ final class MapFlows {
 
             int validPage = pagination.clampPage(page);
             List<Map> pageMaps = SeqStream.of(availableMaps)
-                    .gather(CustomGatherers.page(menu.globalConfig.mapsPerPage, validPage))
+                    .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
                     .flatMap(List::stream)
                     .toList();
 

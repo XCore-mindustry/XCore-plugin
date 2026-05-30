@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.ModelData;
 
 import static com.mongodb.client.model.Filters.eq;
@@ -17,12 +17,12 @@ public abstract class DataRepository<T extends ModelData> {
     protected final MongoDatabase database;
     protected final MongoCollection<T> collection;
 
-    protected final GlobalConfig globalConfig;
+    protected final TomlSecretsConfig secretsConfig;
 
-    protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz, GlobalConfig globalConfig) {
+    protected DataRepository(MongoDatabase database, String collectionName, Class<T> clazz, TomlSecretsConfig secretsConfig) {
         this.database = database;
         this.collection = database.getCollection(collectionName, clazz);
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
 
         collection.createIndex(new Document("version", -1));
         collection.createIndex(new Document("is_visible", -1));
@@ -55,7 +55,7 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public boolean isReadOnly() {
-        return globalConfig.isDataBaseReadOnly;
+        return secretsConfig.database.readOnly;
     }
 
     public long count() {

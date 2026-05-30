@@ -7,7 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
@@ -81,7 +81,7 @@ class BadgeControllerTest {
         data.activeBadge = activeBadge;
 
         return new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 bundle,
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),

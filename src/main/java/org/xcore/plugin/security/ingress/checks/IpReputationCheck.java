@@ -4,7 +4,7 @@ import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.security.ingress.AccessResult;
@@ -27,19 +27,19 @@ public class IpReputationCheck implements IngressCheck {
 
     private final IpReputationService ipReputationService;
     private final Bundle bundle;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
 
     /**
      * Constructs an IpReputationCheck that evaluates connection IPs against an IP reputation service.
      *
      * @param ipReputationService service used to determine whether an IP is blocked (e.g., proxy/VPN/TOR)
      * @param bundle               localization bundle used to format denial messages
-     * @param globalConfig         configuration providing values included in denial messages (notably `discordUrl`)
+     * @param secretsConfig        configuration providing values included in denial messages (notably `discordUrl`)
      */
-    public IpReputationCheck(IpReputationService ipReputationService, Bundle bundle, GlobalConfig globalConfig) {
+    public IpReputationCheck(IpReputationService ipReputationService, Bundle bundle, TomlSecretsConfig secretsConfig) {
         this.ipReputationService = ipReputationService;
         this.bundle = bundle;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
     }
 
     /**
@@ -67,7 +67,7 @@ public class IpReputationCheck implements IngressCheck {
             if (ipReputationService.isBlocked(normalized)) {
                 Localization local = new Localization(bundle, bundle.resolveLocale(packet.locale));
                 String reason = local.format("ip-reputation-denied", args(
-                        "discordUrl", globalConfig.discordUrl
+                        "discordUrl", secretsConfig.externalLinks.discordUrl
                 ));
                 return new AccessResult.Denied(reason, false, 0);
             }

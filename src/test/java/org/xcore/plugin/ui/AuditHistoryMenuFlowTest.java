@@ -6,7 +6,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.AuditAction;
@@ -375,7 +375,9 @@ class AuditHistoryMenuFlowTest {
     }
 
     private AuditHistoryMenu createMenu(SessionService sessionService, AuditService auditService) {
-        var menu = new AuditHistoryMenu(new GlobalConfig(), sessionService, auditService, menuService);
+        var secretsConfig = new TomlSecretsConfig();
+        secretsConfig.pagination.eventsPerPage = 10;
+        var menu = new AuditHistoryMenu(secretsConfig, sessionService, auditService, menuService);
         menu.init();
         return menu;
     }
@@ -397,7 +399,7 @@ class AuditHistoryMenuFlowTest {
         data.uuid = uuid;
 
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

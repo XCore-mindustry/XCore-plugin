@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
@@ -43,7 +43,7 @@ class SocialControllerTest {
                 sessionService,
                 network,
                 config,
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(TranslatorLanguagesProvider.class),
                 mock(ChatFormatService.class),
                 mock(TranslatorService.class),
@@ -76,7 +76,7 @@ class SocialControllerTest {
         data.uuid = uuid;
 
         return new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),

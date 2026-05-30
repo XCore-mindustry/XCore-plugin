@@ -3,7 +3,7 @@ package org.xcore.plugin.localization;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
@@ -29,7 +29,7 @@ class TranslationProviderFactoryTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.translation.enabled = false;
 
-        TranslationProviderPipeline pipeline = new TranslationProviderFactory(config, new GlobalConfig())
+        TranslationProviderPipeline pipeline = new TranslationProviderFactory(config, new TomlSecretsConfig())
                 .translationProviderPipeline(
                         googleTranslationProvider(),
                         translationSafetyService(),
@@ -45,13 +45,13 @@ class TranslationProviderFactoryTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.translation.pipeline = List.of("openai-main", "missing", "google", "openai-disabled");
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.translationProviders = new LinkedHashMap<>();
-        globalConfig.translationProviders.put("openai-main", openAiProviderConfig(true));
-        globalConfig.translationProviders.put("google", googleProviderConfig(true));
-        globalConfig.translationProviders.put("openai-disabled", openAiProviderConfig(false));
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.translation.providers = new LinkedHashMap<>();
+        secretsConfig.translation.providers.put("openai-main", openAiProviderConfig(true));
+        secretsConfig.translation.providers.put("google", googleProviderConfig(true));
+        secretsConfig.translation.providers.put("openai-disabled", openAiProviderConfig(false));
 
-        TranslationProviderPipeline pipeline = new TranslationProviderFactory(config, globalConfig)
+        TranslationProviderPipeline pipeline = new TranslationProviderFactory(config, secretsConfig)
                 .translationProviderPipeline(
                         googleTranslationProvider(),
                         translationSafetyService(),
@@ -79,8 +79,8 @@ class TranslationProviderFactoryTest {
         return translationExecutor;
     }
 
-    private GlobalConfig.TranslationProviderConfig openAiProviderConfig(boolean enabled) {
-        GlobalConfig.TranslationProviderConfig providerConfig = new GlobalConfig.TranslationProviderConfig();
+    private TomlSecretsConfig.TranslationSection.ProviderConfig openAiProviderConfig(boolean enabled) {
+        TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = new TomlSecretsConfig.TranslationSection.ProviderConfig();
         providerConfig.type = "openai";
         providerConfig.enabled = enabled;
         providerConfig.apiKey = "test-key";
@@ -89,8 +89,8 @@ class TranslationProviderFactoryTest {
         return providerConfig;
     }
 
-    private GlobalConfig.TranslationProviderConfig googleProviderConfig(boolean enabled) {
-        GlobalConfig.TranslationProviderConfig providerConfig = new GlobalConfig.TranslationProviderConfig();
+    private TomlSecretsConfig.TranslationSection.ProviderConfig googleProviderConfig(boolean enabled) {
+        TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = new TomlSecretsConfig.TranslationSection.ProviderConfig();
         providerConfig.type = "google";
         providerConfig.enabled = enabled;
         providerConfig.normalize();

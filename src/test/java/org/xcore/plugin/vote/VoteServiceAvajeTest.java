@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -182,9 +182,9 @@ class VoteServiceAvajeTest {
         public void cancelByAdmin(Player admin) {
         }
 
-        private static GlobalConfig testConfig() {
-            var config = new GlobalConfig();
-            config.voteDurationSeconds = 10_000.0f;
+        private static TomlSecretsConfig testConfig() {
+            var config = new TomlSecretsConfig();
+            config.moderation.votekick.voteDurationSeconds = 10_000.0f;
             return config;
         }
     }

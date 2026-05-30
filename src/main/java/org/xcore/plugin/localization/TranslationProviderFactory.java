@@ -4,7 +4,7 @@ import io.avaje.inject.Bean;
 import io.avaje.inject.Factory;
 import jakarta.inject.Inject;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
@@ -15,12 +15,12 @@ import java.util.List;
 public class TranslationProviderFactory {
 
     private final TomlXcoreConfig config;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
 
     @Inject
-    public TranslationProviderFactory(TomlXcoreConfig config, GlobalConfig globalConfig) {
+    public TranslationProviderFactory(TomlXcoreConfig config, TomlSecretsConfig secretsConfig) {
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
     }
 
     @Bean
@@ -38,7 +38,7 @@ public class TranslationProviderFactory {
                 continue;
             }
 
-            GlobalConfig.TranslationProviderConfig providerConfig = globalConfig.translationProviders.get(providerId);
+            TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = secretsConfig.translation.providers.get(providerId);
             if (providerConfig == null) {
                 PLog.err("Translation provider '@' is referenced in pipeline but missing in global config", providerId);
                 continue;
@@ -71,7 +71,7 @@ public class TranslationProviderFactory {
     }
 
     private TranslationProvider createProvider(String providerId,
-                                               GlobalConfig.TranslationProviderConfig providerConfig,
+                                               TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig,
                                                GoogleTranslationProvider googleTranslationProvider,
                                                TranslationSafetyService translationSafetyService,
                                                TranslationExecutor translationExecutor) {

@@ -5,7 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.BuildInfo;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -35,10 +35,10 @@ public class InformationMenu extends Menu {
     private final Provider<PlayerMenu> player;
 
     @Inject
-    public InformationMenu(TomlXcoreConfig config, GlobalConfig globalConfig, SessionService sessionService,
+    public InformationMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                            BuildInfo buildInfo, MenuService menuService, Provider<MapMenu> map, Provider<EventMenu> event,
                            Provider<HelpMenu> help, Provider<PlayerMenu> player) {
-        super(globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.config = config;
         this.buildInfo = buildInfo;
         this.menuService = menuService;
@@ -119,11 +119,11 @@ public class InformationMenu extends Menu {
     private final class InformationFlow extends BaseMenuFlow<NoState> {
         InformationFlow() {
             super(ROUTE_INFORMATION, NoState.class);
-            action("discord", ctx -> openUrl(ctx.session(), globalConfig.discordUrl));
-            action("github", ctx -> openUrl(ctx.session(), globalConfig.githubUrl));
-            action("donatello", ctx -> openUrl(ctx.session(), globalConfig.donatelloUrl));
-            action("weblate", ctx -> openUrl(ctx.session(), globalConfig.weblateUrl));
-            action("discord-red-vs-blue", ctx -> openUrl(ctx.session(), globalConfig.discordRedVSBlueUrl));
+            action("discord", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.discordUrl));
+            action("github", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.githubUrl));
+            action("donatello", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.donatelloUrl));
+            action("weblate", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.weblateUrl));
+            action("discord-red-vs-blue", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.discordRedVSBlueUrl));
         }
 
         @Override

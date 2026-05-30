@@ -133,6 +133,26 @@ class ConfigTomlLoaderTest {
     }
 
     @Test
+    @DisplayName("loadTomlSecretsConfig returns TOML source when secrets.toml exists")
+    void loadTomlSecretsConfig_returnsTomlSource_whenTomlExists() throws IOException {
+        Path tomlPath = tempDir.resolve("secrets.toml");
+        Files.writeString(tomlPath, """
+                version = 1
+
+                [database]
+                mongo_connection_string = "mongodb://toml:27017"
+                name = "toml-db"
+                """);
+
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> result = ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
+        assertThat(result.file.name()).isEqualTo("secrets.toml");
+        assertThat(result.config.database.mongoConnectionString).isEqualTo("mongodb://toml:27017");
+        assertThat(result.config.database.name).isEqualTo("toml-db");
+    }
+
+    @Test
     @DisplayName("loadGlobalConfig returns LEGACY_JSON source when only secrets.json exists")
     void loadGlobalConfig_returnsLegacyJsonSource_whenOnlyJsonExists() throws IOException {
         Path jsonPath = tempDir.resolve("secrets.json");
@@ -159,6 +179,32 @@ class ConfigTomlLoaderTest {
     }
 
     @Test
+    @DisplayName("loadTomlSecretsConfig returns MIGRATED source when only secrets.json exists")
+    void loadTomlSecretsConfig_returnsMigratedSource_whenOnlyJsonExists() throws IOException {
+        Path jsonPath = tempDir.resolve("secrets.json");
+        Files.writeString(jsonPath, """
+                {
+                  "mongo_connection_string": "mongodb://json:27017",
+                  "database_name": "json-db"
+                }
+                """);
+
+        ConfigTomlLoader.setBackupTimestampSupplier(() -> LocalDateTime.of(2026, 5, 24, 16, 31, 46));
+
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> result = ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.MIGRATED);
+        assertThat(result.file.name()).isEqualTo("secrets.toml");
+        assertThat(result.backupFile).isNotNull();
+        assertThat(result.backupFile.name()).isEqualTo("secrets.json.bak-20260524-163146");
+        assertThat(tempDir.resolve("secrets.json")).doesNotExist();
+        assertThat(tempDir.resolve("secrets.toml")).exists();
+        assertThat(tempDir.resolve("secrets.json.bak-20260524-163146")).exists();
+        assertThat(result.config.database.mongoConnectionString).isEqualTo("mongodb://json:27017");
+        assertThat(result.config.database.name).isEqualTo("json-db");
+    }
+
+    @Test
     @DisplayName("loadGlobalConfig returns DEFAULT_TEMPLATE source and creates file when neither exists")
     void loadGlobalConfig_returnsDefaultTemplateSource_whenNeitherExists() {
         ConfigTomlLoader.LoadResult<GlobalConfig> result = ConfigTomlLoader.loadGlobalConfig(tempDir.toString(), gson);
@@ -168,6 +214,18 @@ class ConfigTomlLoaderTest {
         assertThat(result.file.exists()).isTrue();
         assertThat(result.config.mongoConnectionString).isNull();
         assertThat(result.config.databaseName).isNull();
+    }
+
+    @Test
+    @DisplayName("loadTomlSecretsConfig returns DEFAULT_TEMPLATE source and creates file when neither exists")
+    void loadTomlSecretsConfig_returnsDefaultTemplateSource_whenNeitherExists() {
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> result = ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.DEFAULT_TEMPLATE);
+        assertThat(result.file.name()).isEqualTo("secrets.toml");
+        assertThat(result.file.exists()).isTrue();
+        assertThat(result.config.database.mongoConnectionString).isEqualTo("");
+        assertThat(result.config.database.name).isEqualTo("");
     }
 
     @Test
@@ -195,6 +253,33 @@ class ConfigTomlLoaderTest {
         assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
         assertThat(result.config.mongoConnectionString).isEqualTo("mongodb://toml:27017");
         assertThat(result.config.databaseName).isEqualTo("toml-db");
+    }
+
+    @Test
+    @DisplayName("loadTomlSecretsConfig prefers TOML over legacy JSON when both exist")
+    void loadTomlSecretsConfig_prefersTomlOverLegacyJson() throws IOException {
+        Path tomlPath = tempDir.resolve("secrets.toml");
+        Files.writeString(tomlPath, """
+                version = 1
+
+                [database]
+                mongo_connection_string = "mongodb://toml:27017"
+                name = "toml-db"
+                """);
+
+        Path jsonPath = tempDir.resolve("secrets.json");
+        Files.writeString(jsonPath, """
+                {
+                  "mongo_connection_string": "mongodb://json:27017",
+                  "database_name": "json-db"
+                }
+                """);
+
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> result = ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
+        assertThat(result.config.database.mongoConnectionString).isEqualTo("mongodb://toml:27017");
+        assertThat(result.config.database.name).isEqualTo("toml-db");
     }
 
     @Test

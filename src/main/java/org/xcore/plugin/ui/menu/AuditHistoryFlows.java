@@ -83,12 +83,12 @@ final class AuditHistoryFlows {
             }
 
             var slice = switch (state.mode) {
-                case TARGET -> menu.auditService.findSummaryByTargetUuid(state.targetUuid, state.currentCursor, menu.globalConfig.eventsPerPage);
+                case TARGET -> menu.auditService.findSummaryByTargetUuid(state.targetUuid, state.currentCursor, menu.secretsConfig.pagination.eventsPerPage);
                 case ACTOR -> menu.findSummaryByActor(
                         AuditActorType.PLAYER_ADMIN,
                         menu.actorLookupIds(state.targetDiscordId, state.targetNickname),
                         state.currentCursor,
-                        menu.globalConfig.eventsPerPage
+                        menu.secretsConfig.pagination.eventsPerPage
                 );
             };
             state.nextCursor = slice.nextCursor();

@@ -3,7 +3,7 @@ package org.xcore.plugin.localization;
 import arc.func.Cons;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.io.IOException;
@@ -22,7 +22,7 @@ public final class OpenAITranslationProvider implements TranslationProvider {
     private static final Gson GSON = new Gson();
 
     private final String providerId;
-    private final GlobalConfig.TranslationProviderConfig providerConfig;
+    private final TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig;
     private final TranslationSafetyService translationSafetyService;
     private final TranslationExecutor translationExecutor;
     private final HttpClient client;
@@ -32,7 +32,7 @@ public final class OpenAITranslationProvider implements TranslationProvider {
     private final OpenAIRetryPolicy retryPolicy;
 
     public OpenAITranslationProvider(String providerId,
-                                     GlobalConfig.TranslationProviderConfig providerConfig,
+                                     TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig,
                                      TranslationSafetyService translationSafetyService,
                                      TranslationExecutor translationExecutor) {
         this.providerId = providerId;

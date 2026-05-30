@@ -3,7 +3,7 @@ package org.xcore.plugin.ui.menu;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.PlayerData;
@@ -44,12 +44,12 @@ public class TopMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public TopMenu(GlobalConfig globalConfig,
+    public TopMenu(TomlSecretsConfig secretsConfig,
                    SessionService sessionService,
                    MenuService menuService,
                    TopMenuService topMenuService,
                    PlayerMenu playerMenu) {
-        super(globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.menuService = menuService;
         this.topMenuService = topMenuService;
         this.playerMenu = playerMenu;

@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.service.GameStateService;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
@@ -28,7 +28,7 @@ public class VoteRtv extends VoteSession {
     public final boolean isManualSelection;
 
     private final MapDataRepository mapDataRepository;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
     private final SessionService sessionService;
     private final VoteService voteService;
     private final GameStateService gameStateService;
@@ -40,16 +40,16 @@ public class VoteRtv extends VoteSession {
             @Assisted boolean isManualSelection,
 
             MapDataRepository mapDataRepository,
-            GlobalConfig globalConfig,
+            TomlSecretsConfig secretsConfig,
             SessionService sessionService,
             VoteService voteService,
             GameStateService gameStateService,
             GameDataService gameDataService) {
-        super(globalConfig);
+        super(secretsConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
         this.mapDataRepository = mapDataRepository;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.sessionService = sessionService;
         this.voteService = voteService;
         this.gameStateService = gameStateService;
@@ -81,7 +81,7 @@ public class VoteRtv extends VoteSession {
         stop();
         sessionService.broadcast("rtv-success", args(
                 "mapName", target.name(),
-                "mapLoadDelay", globalConfig.mapSwitchDelaySeconds));
+                "mapLoadDelay", secretsConfig.maps.voting.switchDelaySeconds));
 
         if (state.map != null && !state.isMenu()) {
             String currentMapName = state.map.plainName();
@@ -118,7 +118,7 @@ public class VoteRtv extends VoteSession {
                                 Groups.player.each(gameDataService::addPlayer);
                             });
                 },
-                globalConfig.mapSwitchDelaySeconds);
+                secretsConfig.maps.voting.switchDelaySeconds);
     }
 
     @Override

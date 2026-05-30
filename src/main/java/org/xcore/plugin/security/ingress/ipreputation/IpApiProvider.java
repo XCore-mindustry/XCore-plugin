@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +35,7 @@ public class IpApiProvider implements IpReputationProvider {
     private static final Gson GSON = new Gson();
     private static final long RATE_LIMIT_WINDOW_MILLIS = 60_000L;
 
-    private final GlobalConfig.IpReputationProviderConfig providerConfig;
+    private final TomlSecretsConfig.IpReputationSection.ProviderConfig providerConfig;
     private final HttpClient client;
     private final Deque<Long> requestTimestamps = new ArrayDeque<>();
 
@@ -43,24 +43,24 @@ public class IpApiProvider implements IpReputationProvider {
      * Creates a new IpApiProvider using values from the provided global configuration.
      *
      * The provider will use an HttpClient configured with a connect timeout derived from
-     * globalConfig.ipReputationProvider.timeoutSeconds.
+     * secretsConfig.ipReputation.provider.timeoutSeconds.
      *
-     * @param globalConfig global configuration containing ip reputation provider settings
+     * @param secretsConfig structured secrets configuration containing ip reputation provider settings
      */
-    public IpApiProvider(GlobalConfig globalConfig) {
-        this(globalConfig, HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(globalConfig.ipReputationProvider.timeoutSeconds))
+    public IpApiProvider(TomlSecretsConfig secretsConfig) {
+        this(secretsConfig, HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(secretsConfig.ipReputation.provider.timeoutSeconds))
                 .build());
     }
 
     /**
      * Package-private constructor used for testing; initializes the provider with the given configuration and HTTP client.
      *
-     * @param globalConfig supplies the {@code ipReputationProvider} settings (base URL, timeouts, retries, rate limits)
+     * @param secretsConfig supplies the structured ip reputation provider settings (base URL, timeouts, retries, rate limits)
      * @param client       the {@link HttpClient} to use for HTTP requests (injected, typically a test client)
      */
-    IpApiProvider(GlobalConfig globalConfig, HttpClient client) {
-        this.providerConfig = globalConfig.ipReputationProvider;
+    IpApiProvider(TomlSecretsConfig secretsConfig, HttpClient client) {
+        this.providerConfig = secretsConfig.ipReputation.provider;
         this.client = client;
     }
 

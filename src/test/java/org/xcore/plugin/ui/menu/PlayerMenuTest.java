@@ -8,7 +8,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -76,14 +76,14 @@ class PlayerMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.eventsPerPage = 2;
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.pagination.eventsPerPage = 2;
 
         bundle = mock(Bundle.class);
         when(bundle.getAvailableLocales()).thenReturn(new Seq<>());
 
         playerDataRepository = mock(PlayerDataRepository.class);
-        auditHistoryMenu = new AuditHistoryMenu(globalConfig, sessionService, auditService, menuService);
+        auditHistoryMenu = new AuditHistoryMenu(secretsConfig, sessionService, auditService, menuService);
         auditHistoryMenu.init();
         when(playerDisplayService.resolveBaseName(any(), any())).thenAnswer(invocation -> {
             PlayerData data = invocation.getArgument(0);
@@ -91,7 +91,7 @@ class PlayerMenuTest {
         });
 
         playerMenu = new PlayerMenu(
-                globalConfig, sessionService,
+                secretsConfig, sessionService,
                 gameDataRepository,
                 bundle,
                 playerDisplayService, profileSettings,
@@ -719,7 +719,7 @@ class PlayerMenuTest {
         when(playerDataRepository.findByUuid("viewer-1")).thenReturn(data);
 
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 playerDataRepository,
@@ -759,7 +759,7 @@ class PlayerMenuTest {
         data.badgeSymbolColorMode = "default";
 
         Session s = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 playerDataRepository,

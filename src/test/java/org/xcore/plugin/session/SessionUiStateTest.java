@@ -6,7 +6,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.common.StatusEnum;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.ui.MenuService;
@@ -97,9 +97,9 @@ class SessionUiStateTest {
     @Test
     @DisplayName("route history over max history drops oldest entry")
     void routeHistory_overMaxHistory_dropsOldestEntry() {
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.maxHistory = 2;
-        Session session = session(globalConfig);
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.messages.history.maxHistory = 2;
+        Session session = session(secretsConfig);
 
         session.pushRouteHistory(MenuRoute.of("route.one"));
         session.pushRouteHistory(MenuRoute.of("route.two"));
@@ -111,15 +111,15 @@ class SessionUiStateTest {
     }
 
     private Session session() {
-        return session(new GlobalConfig());
+        return session(new TomlSecretsConfig());
     }
 
-    private Session session(GlobalConfig globalConfig) {
+    private Session session(TomlSecretsConfig secretsConfig) {
         Player player = Player.create();
         player.con = mock(NetConnection.class);
         PlayerData data = new PlayerData("uuid-1", true);
         return new Session(
-                globalConfig,
+                secretsConfig,
                 mock(Bundle.class),
                 mock(MenuService.class),
                 mock(PlayerDataRepository.class),

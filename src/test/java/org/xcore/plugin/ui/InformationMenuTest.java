@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.common.BuildInfo;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -43,7 +43,7 @@ class InformationMenuTest {
     private MenuService menuService;
     private InformationMenu informationMenu;
     private Session session;
-    private GlobalConfig globalConfig;
+    private TomlSecretsConfig secretsConfig;
     private Provider<MapMenu> map;
     private Provider<EventMenu> event;
     private Provider<HelpMenu> help;
@@ -60,12 +60,12 @@ class InformationMenuTest {
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "xcore";
-        globalConfig = new GlobalConfig();
-        globalConfig.discordUrl = "https://discord.example";
-        globalConfig.githubUrl = "https://github.example";
-        globalConfig.donatelloUrl = "https://donate.example";
-        globalConfig.weblateUrl = "https://translate.example";
-        globalConfig.discordRedVSBlueUrl = "https://rvb.example";
+        secretsConfig = new TomlSecretsConfig();
+        secretsConfig.externalLinks.discordUrl = "https://discord.example";
+        secretsConfig.externalLinks.githubUrl = "https://github.example";
+        secretsConfig.externalLinks.donatelloUrl = "https://donate.example";
+        secretsConfig.externalLinks.weblateUrl = "https://translate.example";
+        secretsConfig.externalLinks.discordRedVSBlueUrl = "https://rvb.example";
 
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
@@ -73,7 +73,7 @@ class InformationMenuTest {
         event = mock(Provider.class);
         help = mock(Provider.class);
         player = mock(Provider.class);
-        informationMenu = new InformationMenu(config, globalConfig, sessionService, buildInfo, menuService, map, event, help, player);
+        informationMenu = new InformationMenu(config, secretsConfig, sessionService, buildInfo, menuService, map, event, help, player);
         informationMenu.init();
 
         session = session();
@@ -216,7 +216,7 @@ class InformationMenuTest {
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");
@@ -246,7 +246,7 @@ class InformationMenuTest {
         eventConfig.server.name = "event";
         BuildInfo buildInfo = new BuildInfo();
         buildInfo.setVersion("test-version");
-        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, globalConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
+        InformationMenu eventInformationMenu = new InformationMenu(eventConfig, secretsConfig, localSessionService, buildInfo, localMenuService, map, localEvent, help, player);
         eventInformationMenu.init();
 
         eventInformationMenu.main("viewer-1");
@@ -275,7 +275,7 @@ class InformationMenuTest {
 
         menuService.onMenuOption(session, 0);
 
-        verify(gateway).openUri(eq(session.player), eq(globalConfig.discordUrl));
+        verify(gateway).openUri(eq(session.player), eq(secretsConfig.externalLinks.discordUrl));
     }
 
     private Session session() {
@@ -288,7 +288,7 @@ class InformationMenuTest {
         PlayerData data = new PlayerData("viewer-1", true);
         data.uuid = "viewer-1";
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),
