@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.ospx.flubundle.Bundle;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.security.ingress.AccessResult;
@@ -41,10 +41,10 @@ class BanCheckTest {
 
         banDataRepository = mock(BanDataRepository.class);
         var bundle = IngressChecksTestSupport.testBundle();
-        var globalConfig = new GlobalConfig();
-        globalConfig.discordUrl = "https://discord.example";
+        var secretsConfig = new TomlSecretsConfig();
+        secretsConfig.externalLinks.discordUrl = "https://discord.example";
 
-        check = new BanCheck(banDataRepository, bundle, globalConfig);
+        check = new BanCheck(banDataRepository, bundle, secretsConfig);
     }
 
     @AfterEach
@@ -125,7 +125,7 @@ class BanCheckTest {
                 return id;
             }
         };
-        check = new BanCheck(banDataRepository, bundle, new GlobalConfig());
+        check = new BanCheck(banDataRepository, bundle, new TomlSecretsConfig());
 
         var result = check.check(con, packet);
 

@@ -4,7 +4,7 @@ import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.BanData;
@@ -27,12 +27,12 @@ public class BanCheck implements IngressCheck {
 
     private final BanDataRepository banDataRepository;
     private final Bundle bundle;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
 
-    public BanCheck(BanDataRepository banDataRepository, Bundle bundle, GlobalConfig globalConfig) {
+    public BanCheck(BanDataRepository banDataRepository, Bundle bundle, TomlSecretsConfig secretsConfig) {
         this.banDataRepository = banDataRepository;
         this.bundle = bundle;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class BanCheck implements IngressCheck {
                     "days", duration.toDays(),
                     "hours", duration.toHoursPart(),
                     "minutes", duration.toMinutesPart(),
-                    "discordUrl", globalConfig.discordUrl
+                    "discordUrl", secretsConfig.externalLinks.discordUrl
             ));
 
             return new AccessResult.Denied(reason, false, 0);
@@ -73,7 +73,7 @@ public class BanCheck implements IngressCheck {
 
             String reason = local.format("ban-content", args(
                     "nickname", stripColors(packet.name),
-                    "discordUrl", globalConfig.discordUrl
+                    "discordUrl", secretsConfig.externalLinks.discordUrl
             ));
 
             return new AccessResult.Denied(reason, false, 0);

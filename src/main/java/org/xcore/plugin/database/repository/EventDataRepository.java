@@ -8,7 +8,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.common.StatusEnum;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.EventData;
 
 import java.util.ArrayList;
@@ -22,8 +22,8 @@ import static com.mongodb.client.model.Filters.*;
 public class EventDataRepository extends DataRepository<EventData> {
 
     @Inject
-    public EventDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "events", EventData.class, globalConfig);
+    public EventDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, "events", EventData.class, secretsConfig);
 
         collection.createIndex(new Document("name", 1).append("map", 1).append("author", 1));
         collection.createIndex(new Document("is_active", -1));

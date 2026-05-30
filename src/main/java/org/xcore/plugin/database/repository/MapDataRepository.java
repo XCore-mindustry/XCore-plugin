@@ -12,7 +12,7 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.MapData;
 
 import java.util.Optional;
@@ -25,8 +25,8 @@ import static com.mongodb.client.model.Filters.*;
 public class MapDataRepository extends DataRepository<MapData> {
 
     @Inject
-    public MapDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "maps", MapData.class, globalConfig);
+    public MapDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, "maps", MapData.class, secretsConfig);
 
         collection.createIndex(new Document("name", -1));
         collection.createIndex(new Document("author", -1));

@@ -3,7 +3,7 @@ package org.xcore.plugin.service.moderation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AuditRecordRepository;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActor;
@@ -35,8 +35,8 @@ class DefaultAuditServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(AuditRecordRepository.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
         service = new DefaultAuditService(repository, config);
     }
 

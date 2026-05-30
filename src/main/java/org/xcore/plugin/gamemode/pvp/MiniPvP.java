@@ -11,7 +11,7 @@ import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.session.ObserverService;
@@ -27,7 +27,7 @@ import static org.xcore.plugin.common.PLog.info;
 public class MiniPvP {
     public final Seq<String> defeatedPlayers = new Seq<>();
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final LeaderboardService leaderboardService;
@@ -35,7 +35,7 @@ public class MiniPvP {
     private final ObserverService observerService;
 
     @Inject
-    public MiniPvP(Config config,
+    public MiniPvP(TomlXcoreConfig config,
                    SessionService sessionService,
                    PlayerDataRepository playerDataRepository,
                    LeaderboardService leaderboardService,
@@ -51,7 +51,7 @@ public class MiniPvP {
 
     @PostConstruct
     public void init() {
-        if (!config.isMiniPvP()) return;
+        if (!"mini-pvp".equals(config.server.name)) return;
 
         leaderboardService.start((builder, player, locale) -> {
             Seq<PlayerData> sorted = new Seq<>();

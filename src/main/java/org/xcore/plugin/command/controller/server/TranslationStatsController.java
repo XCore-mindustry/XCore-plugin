@@ -7,8 +7,8 @@ import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationMetricsService;
 
 import java.util.Locale;
@@ -17,23 +17,23 @@ import java.util.Map;
 @Singleton
 public class TranslationStatsController implements CloudServerController {
 
-    private final Config config;
-    private final GlobalConfig globalConfig;
+    private final TomlXcoreConfig config;
+    private final TomlSecretsConfig secretsConfig;
     private final TranslationMetricsService translationMetricsService;
 
     @Inject
-    public TranslationStatsController(Config config,
-                                      GlobalConfig globalConfig,
+    public TranslationStatsController(TomlXcoreConfig config,
+                                      TomlSecretsConfig secretsConfig,
                                       TranslationMetricsService translationMetricsService) {
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.translationMetricsService = translationMetricsService;
     }
 
     @Command("trstats")
     @CommandDescription("Shows translation pipeline metrics and per-provider statistics.")
     public void translationStats(XCoreSender sender) {
-        Log.info("Translation stats for server '@':", config.server);
+        Log.info("Translation stats for server '@':", config.server.name);
         Log.info(" Pipeline enabled: @", config.translation.enabled);
         Log.info(" Pipeline: @", String.join(" -> ", config.translation.pipeline));
 
@@ -65,7 +65,7 @@ public class TranslationStatsController implements CloudServerController {
                 continue;
             }
 
-            GlobalConfig.TranslationProviderConfig providerConfig = globalConfig.translationProviders.get(providerId);
+            TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = secretsConfig.translation.providers.get(providerId);
             if (providerConfig == null) {
                 Log.info("  - @ (missing config)", providerId);
                 continue;

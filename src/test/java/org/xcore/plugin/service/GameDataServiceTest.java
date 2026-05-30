@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.model.GameData;
 import org.xcore.plugin.model.MapData;
@@ -50,8 +50,7 @@ class GameDataServiceTest {
     @DisplayName("finishGame marks players on winning team before saving")
     void finishGameMarksWinningPlayersBeforeSaving() {
         var repository = mock(GameDataRepository.class);
-        var config = new Config();
-        config.server = "mini-pvp";
+        var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
         state.rules.pvp = true;
@@ -83,8 +82,7 @@ class GameDataServiceTest {
     @DisplayName("finishGame does not mark winners for derelict team")
     void finishGameDoesNotMarkWinnersForDerelictTeam() {
         var repository = mock(GameDataRepository.class);
-        var config = new Config();
-        config.server = "mini-pvp";
+        var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
         state.rules.pvp = true;
@@ -111,7 +109,7 @@ class GameDataServiceTest {
     @Test
     @DisplayName("markWinners only marks players whose final team matches winner")
     void markWinnersMatchesFinalTeam() {
-        var service = new GameDataService(new Config(), mock(GameDataRepository.class));
+        var service = new GameDataService(config("server"), mock(GameDataRepository.class));
         var map = new MapData("Map", "map.msav", "Author", "pvp");
 
         service.startNewGame(map, "pvp", null);
@@ -133,7 +131,7 @@ class GameDataServiceTest {
     @DisplayName("finishGame stores wave metadata for survival defeat")
     void finishGameStoresWaveMetadataForSurvivalDefeat() {
         var repository = mock(GameDataRepository.class);
-        var service = new GameDataService(new Config(), repository);
+        var service = new GameDataService(config("server"), repository);
         var map = new MapData("Map", "map.msav", "Author", "survival");
 
         state.wave = 42;
@@ -158,8 +156,7 @@ class GameDataServiceTest {
     @DisplayName("finishGame stores non-natural finish as not counted in stats")
     void finishGameStoresNonNaturalFinishAsNotCounted() {
         var repository = mock(GameDataRepository.class);
-        var config = new Config();
-        config.server = "mini-pvp";
+        var config = config("mini-pvp");
         var service = new GameDataService(config, repository);
         var map = new MapData("Map", "map.msav", "Author", "pvp");
 
@@ -178,7 +175,7 @@ class GameDataServiceTest {
     @Test
     @DisplayName("applyPlacements stores placement on matching players")
     void applyPlacementsStoresPlacement() {
-        var service = new GameDataService(new Config(), mock(GameDataRepository.class));
+        var service = new GameDataService(config("server"), mock(GameDataRepository.class));
         var map = new MapData("Map", "map.msav", "Author", "hexed");
 
         service.startNewGame(map, "hexed", null);
@@ -198,6 +195,19 @@ class GameDataServiceTest {
         assertThat(second.getPlacement()).isEqualTo(2);
     }
 
+    @Test
+    @DisplayName("startNewGame classifies mini-hexed server as HEXED")
+    void startNewGameClassifiesMiniHexedServerAsHexed() {
+        var service = new GameDataService(config("mini-hexed"), mock(GameDataRepository.class));
+        var map = new MapData("Map", "map.msav", "Author", "pvp");
+
+        state.rules.pvp = true;
+        service.startNewGame(map, "pvp", null);
+
+        assertThat(service.getCurrent().getStatsCategory()).isEqualTo(GameStatsCategory.HEXED);
+        assertThat(service.getCurrent().isRanked()).isTrue();
+    }
+
     private static PlayerGameStats playerStats(String uuid, String finalTeam) {
         return PlayerGameStats.builder()
                 .uuid(uuid)
@@ -205,5 +215,11 @@ class GameDataServiceTest {
                 .initialTeam(finalTeam)
                 .finalTeam(finalTeam)
                 .build();
+    }
+
+    private static TomlXcoreConfig config(String serverName) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = serverName;
+        return config;
     }
 }

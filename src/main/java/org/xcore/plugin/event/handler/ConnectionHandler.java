@@ -9,8 +9,8 @@ import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.localization.Localization;
@@ -35,8 +35,8 @@ public class ConnectionHandler {
     private final SessionService sessionService;
     private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
-    private final Config config;
-    private final GlobalConfig globalConfig;
+    private final TomlXcoreConfig config;
+    private final TomlSecretsConfig secretsConfig;
     private final VoteService voteService;
     private final PrivateMessageService privateMessageService;
     private final PlayerDisplayService playerDisplayService;
@@ -47,8 +47,8 @@ public class ConnectionHandler {
     public ConnectionHandler(SessionService sessionService,
                              AdminDataRepository adminDataRepository,
                              NetworkService network,
-                             Config config,
-                             GlobalConfig globalConfig,
+                             TomlXcoreConfig config,
+                             TomlSecretsConfig secretsConfig,
                              VoteService voteService,
                              PrivateMessageService privateMessageService,
                              PlayerDisplayService playerDisplayService,
@@ -58,7 +58,7 @@ public class ConnectionHandler {
         this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.voteService = voteService;
         this.privateMessageService = privateMessageService;
         this.playerDisplayService = playerDisplayService;
@@ -115,7 +115,7 @@ public class ConnectionHandler {
         playerDisplayService.refresh(session);
 
         if (player.getInfo().timesJoined < 5) {
-            Call.openURI(player.con, globalConfig.discordUrl);
+            Call.openURI(player.con, secretsConfig.externalLinks.discordUrl);
         }
 
         long unreadMessages = privateMessageService.countUnread(data.uuid);
@@ -129,7 +129,7 @@ public class ConnectionHandler {
                 "pid", data.pid));
         network.post(new PlayerJoinLeaveV1(
                 player.plainName() + " #" + data.pid,
-                config.server,
+                config.server.name,
                 true)
         );
     }
@@ -151,7 +151,7 @@ public class ConnectionHandler {
 
             network.post(new PlayerJoinLeaveV1(
                     player.plainName() + " #" + data.pid,
-                    config.server,
+                    config.server.name,
                     false)
             );
         }

@@ -15,8 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -67,7 +67,7 @@ class EventMenuTest {
     private EventMenu eventMenu;
     private MapMenu mapMenu;
     private Session session;
-    private GlobalConfig globalConfig;
+    private TomlSecretsConfig secretsConfig;
     private GameState originalState;
 
     @BeforeEach
@@ -87,14 +87,13 @@ class EventMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        globalConfig = new GlobalConfig();
-        globalConfig.eventsPerPage = 10;
-        globalConfig.mapsPerPage = 10;
+        secretsConfig = new TomlSecretsConfig();
+        secretsConfig.pagination.eventsPerPage = 10;
+        secretsConfig.pagination.mapsPerPage = 10;
         EventEditorService eventEditorService = new EventEditorService(eventDataRepository, mapDataRepository, playerDataRepository);
         EventViewService eventViewService = new EventViewService(eventDataRepository, mapDataRepository, playerDataRepository);
         eventMenu = new EventMenu(
-                new Config(),
-                globalConfig,
+                secretsConfig,
                 sessionService,
                 mapService,
                 eventService,
@@ -109,8 +108,8 @@ class EventMenuTest {
         Provider<EventMenu> eventMenuProvider = mock(Provider.class);
         when(eventMenuProvider.get()).thenReturn(eventMenu);
         mapMenu = new MapMenu(
-                new Config(),
-                globalConfig,
+                new TomlXcoreConfig(),
+                secretsConfig,
                 sessionService,
                 mapDataRepository,
                 eventDataRepository,
@@ -356,7 +355,7 @@ class EventMenuTest {
         event2.id = new ObjectId();
         event2.name = "Event Two";
 
-        globalConfig.eventsPerPage = 1;
+        secretsConfig.pagination.eventsPerPage = 1;
         when(eventDataRepository.count(anyMapOfStatus())).thenReturn(2L);
         when(eventDataRepository.findPage(anyInt(), anyInt(), any())).thenReturn(List.of(event1), List.of(event2));
 
@@ -602,7 +601,7 @@ class EventMenuTest {
         data.uuid = "test-uuid";
         data.id = new ObjectId();
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

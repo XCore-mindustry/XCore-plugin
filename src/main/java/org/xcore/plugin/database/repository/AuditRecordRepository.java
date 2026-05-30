@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditCursor;
@@ -31,8 +31,8 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
     private static final int DEFAULT_LIMIT = 20;
 
     @Inject
-    public AuditRecordRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "moderation_audit", AuditRecord.class, globalConfig);
+    public AuditRecordRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, "moderation_audit", AuditRecord.class, secretsConfig);
 
         collection.createIndex(new Document("target.uuid", 1)
                 .append("created_at_epoch_ms", -1)

@@ -5,8 +5,8 @@ import jakarta.inject.Singleton;
 import arc.util.Strings;
 import org.bson.types.ObjectId;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PrivateMessageRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PrivateMessage;
@@ -27,22 +27,22 @@ public class PrivateMessageService {
     private final SessionService sessionService;
     private final SecurityService securityService;
     private final NetworkService networkService;
-    private final Config config;
-    private final GlobalConfig globalConfig;
+    private final TomlXcoreConfig config;
+    private final TomlSecretsConfig secretsConfig;
 
     @Inject
     public PrivateMessageService(PrivateMessageRepository privateMessageRepository,
                                  SessionService sessionService,
                                  SecurityService securityService,
                                  NetworkService networkService,
-                                 Config config,
-                                 GlobalConfig globalConfig) {
+                                 TomlXcoreConfig config,
+                                 TomlSecretsConfig secretsConfig) {
         this.privateMessageRepository = privateMessageRepository;
         this.sessionService = sessionService;
         this.securityService = securityService;
         this.networkService = networkService;
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
     }
 
     public boolean send(Session senderSession, int targetPid, String rawMessage) {
@@ -71,8 +71,8 @@ public class PrivateMessageService {
             return false;
         }
 
-        if (message.length() > globalConfig.privateMessageMaxLength) {
-            senderSession.locale().send("error-private-message-too-long", args("max", globalConfig.privateMessageMaxLength));
+        if (message.length() > secretsConfig.messages.privateMessages.maxLength) {
+            senderSession.locale().send("error-private-message-too-long", args("max", secretsConfig.messages.privateMessages.maxLength));
             return false;
         }
 
@@ -87,7 +87,7 @@ public class PrivateMessageService {
             return false;
         }
 
-        if (privateMessageRepository.countUnread(targetData.uuid) >= globalConfig.privateMessageUnreadLimit) {
+        if (privateMessageRepository.countUnread(targetData.uuid) >= secretsConfig.messages.privateMessages.unreadLimit) {
             senderSession.locale().send("error-private-message-target-unavailable", args());
             return false;
         }
@@ -137,7 +137,7 @@ public class PrivateMessageService {
 
     public List<PrivateMessage> inbox(String uuid, int page) {
         int safePage = Math.max(1, page);
-        int limit = Math.max(1, globalConfig.privateMessagesPerPage);
+        int limit = Math.max(1, secretsConfig.pagination.privateMessagesPerPage);
         int skip = (safePage - 1) * limit;
         return privateMessageRepository.findInbox(uuid, skip, limit);
     }
@@ -197,8 +197,8 @@ public class PrivateMessageService {
             return false;
         }
 
-        if (session.data.blockedPrivateUuids.size() >= globalConfig.privateMessageBlockedLimit) {
-            session.locale().send("error-private-message-block-limit", args("limit", globalConfig.privateMessageBlockedLimit));
+        if (session.data.blockedPrivateUuids.size() >= secretsConfig.messages.privateMessages.blockedLimit) {
+            session.locale().send("error-private-message-block-limit", args("limit", secretsConfig.messages.privateMessages.blockedLimit));
             return false;
         }
 
@@ -298,11 +298,11 @@ public class PrivateMessageService {
 
     private boolean isRateLimited(Session session) {
         long diff = System.currentTimeMillis() - session.lastPrivateMessageAt;
-        return diff < globalConfig.privateMessageCooldownSeconds * 1000L;
+        return diff < secretsConfig.messages.privateMessages.cooldownSeconds * 1000L;
     }
 
     private long cooldownRemainingSeconds(Session session) {
-        long remainingMillis = globalConfig.privateMessageCooldownSeconds * 1000L - (System.currentTimeMillis() - session.lastPrivateMessageAt);
+        long remainingMillis = secretsConfig.messages.privateMessages.cooldownSeconds * 1000L - (System.currentTimeMillis() - session.lastPrivateMessageAt);
         return Math.max(1L, (long) Math.ceil(remainingMillis / 1000.0));
     }
 
@@ -339,7 +339,7 @@ public class PrivateMessageService {
                 privateMessage.toUuid,
                 privateMessage.toPid,
                 privateMessage.message,
-                config.server
+                config.server.name
         ));
     }
 

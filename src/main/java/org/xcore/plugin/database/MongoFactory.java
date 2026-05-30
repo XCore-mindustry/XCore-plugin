@@ -11,7 +11,7 @@ import io.avaje.inject.PreDestroy;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.xcore.plugin.common.PLog;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -20,16 +20,16 @@ import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 @Factory
 public class MongoFactory {
 
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig config;
     private MongoClient mongoClient;
 
-    public MongoFactory(GlobalConfig globalConfig) {
-        this.globalConfig = globalConfig;
+    public MongoFactory(TomlSecretsConfig config) {
+        this.config = config;
     }
 
     @Bean
     public MongoClient mongoClient() {
-        var connectionString = new ConnectionString(globalConfig.mongoConnectionString);
+        var connectionString = new ConnectionString(config.database.mongoConnectionString);
         var settings = MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build();
@@ -45,8 +45,8 @@ public class MongoFactory {
                 fromProviders(PojoCodecProvider.builder().automatic(true).build())
         );
 
-        PLog.info("MongoDB: using database '@'", globalConfig.databaseName);
-        return client.getDatabase(globalConfig.databaseName)
+        PLog.info("MongoDB: using database '@'", config.database.name);
+        return client.getDatabase(config.database.name)
                 .withCodecRegistry(pojoCodecRegistry);
     }
 

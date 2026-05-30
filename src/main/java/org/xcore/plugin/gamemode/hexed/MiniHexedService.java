@@ -23,7 +23,7 @@ import mindustry.net.Packets;
 import mindustry.net.WorldReloader;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.SessionService;
@@ -55,7 +55,7 @@ public class MiniHexedService {
     private static final int INITIAL_WIN_SCORE = 2400;
     private static int winScore = INITIAL_WIN_SCORE;
 
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
     private final NetworkService network;
@@ -69,7 +69,7 @@ public class MiniHexedService {
 
     private static boolean gameover = false;
 
-    public MiniHexedService(Config config,
+    public MiniHexedService(TomlXcoreConfig config,
                             SessionService sessionService,
                             PlayerDataRepository playerDataRepository,
                             NetworkService networkService,
@@ -95,7 +95,7 @@ public class MiniHexedService {
 
     @PostConstruct
     public void init() {
-        if (!config.isMiniHexed()) return;
+        if (!"mini-hexed".equals(config.server.name)) return;
 
         leaderboardService.start((builder, player, locale) -> {
             var teams = Vars.state.teams.getActive().copy()
@@ -295,7 +295,7 @@ public class MiniHexedService {
         });
 
         String rawMessage = generateMessage.get(new Localization(bundle));
-        network.post(new ServerActionV1(Strings.stripColors(rawMessage), config.server));
+        network.post(new ServerActionV1(Strings.stripColors(rawMessage), config.server.name));
 
         Events.fire("hexed_world-reload");
         Timer.schedule(this::reloadMap, 10);

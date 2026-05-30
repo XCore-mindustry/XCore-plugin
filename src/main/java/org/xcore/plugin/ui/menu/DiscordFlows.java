@@ -29,7 +29,7 @@ final class DiscordFlows {
             this.menu = menu;
             this.discordLinkService = discordLinkService;
 
-            action("open", ctx -> ctx.session().menuService.openUri(ctx.session(), menu.globalConfig.discordUrl));
+            action("open", ctx -> ctx.session().menuService.openUri(ctx.session(), menu.secretsConfig.externalLinks.discordUrl));
             action("status", ctx -> ctx.render());
             action("link", ctx -> {
                 ctx.session().clearDraft(LinkingState.class);
@@ -74,7 +74,7 @@ final class DiscordFlows {
                     local.t("discord-menu-title"),
                     local.t("discord-menu-content", args(
                             "status", statusText,
-                            "discordUrl", menu.globalConfig.discordUrl
+                            "discordUrl", menu.secretsConfig.externalLinks.discordUrl
                     )),
                     grid.build()
             );
@@ -90,7 +90,7 @@ final class DiscordFlows {
             this.menu = menu;
             this.discordLinkService = discordLinkService;
 
-            action("open", ctx -> ctx.session().menuService.openUri(ctx.session(), menu.globalConfig.discordUrl));
+            action("open", ctx -> ctx.session().menuService.openUri(ctx.session(), menu.secretsConfig.externalLinks.discordUrl));
             action("copy", ctx -> {
                 var result = ctx.state().result;
                 if (result != null && result.success()) {
@@ -138,7 +138,7 @@ final class DiscordFlows {
                         local.t("discord-link-menu-content", args(
                                 "code", "----",
                                 "expireMinutes", 0,
-                                "discordUrl", menu.globalConfig.discordUrl
+                                "discordUrl", menu.secretsConfig.externalLinks.discordUrl
                         )),
                         grid.build()
                 );
@@ -161,7 +161,7 @@ final class DiscordFlows {
                     local.t("discord-link-menu-content", args(
                             "code", result.code(),
                             "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
-                            "discordUrl", menu.globalConfig.discordUrl
+                            "discordUrl", menu.secretsConfig.externalLinks.discordUrl
                     )),
                     grid.build()
             );

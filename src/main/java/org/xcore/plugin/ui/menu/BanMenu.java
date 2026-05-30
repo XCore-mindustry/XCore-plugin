@@ -4,8 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.service.TimeService;
 import org.xcore.plugin.service.moderation.ModerationService;
@@ -38,13 +37,12 @@ public class BanMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public BanMenu(Config config,
-                   GlobalConfig globalConfig,
+    public BanMenu(TomlSecretsConfig secretsConfig,
                    SessionService sessionService,
                    ModerationService moderationService,
                    TimeService timeService,
                    MenuService menuService) {
-        super(config, globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.moderationService = moderationService;
         this.timeService = timeService;
         this.menuService = menuService;

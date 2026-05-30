@@ -2,7 +2,7 @@ package org.xcore.plugin.service.moderation;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AuditRecordRepository;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActorType;
@@ -29,10 +29,10 @@ public class DefaultAuditService implements AuditService {
     private static final String DEFAULT_SOURCE = "xcore-plugin";
 
     private final AuditRecordRepository repository;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public DefaultAuditService(AuditRecordRepository repository, Config config) {
+    public DefaultAuditService(AuditRecordRepository repository, TomlXcoreConfig config) {
         this.repository = repository;
         this.config = config;
     }
@@ -114,7 +114,7 @@ public class DefaultAuditService implements AuditService {
             value.source = DEFAULT_SOURCE;
         }
         if (value.serverId == null || value.serverId.isBlank()) {
-            value.serverId = config.server;
+            value.serverId = config.server.name;
         }
         if (value.channel == null) {
             value.channel = AuditOriginChannel.SYSTEM;

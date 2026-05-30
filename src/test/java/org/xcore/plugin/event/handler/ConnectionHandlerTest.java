@@ -16,8 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -74,16 +74,16 @@ class ConnectionHandlerTest {
         DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
         ObserverService observerService = mock(ObserverService.class);
 
-        Config config = new Config();
-        config.server = "mini-pvp";
-        GlobalConfig globalConfig = new GlobalConfig();
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
 
         ConnectionHandler handler = new ConnectionHandler(
                 sessionService,
                 adminDataRepository,
                 networkService,
                 config,
-                globalConfig,
+                secretsConfig,
                 voteService,
                 privateMessageService,
                 playerDisplayService,

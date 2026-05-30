@@ -5,8 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.common.BuildInfo;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
@@ -27,6 +27,7 @@ public class InformationMenu extends Menu {
 
     private final BuildInfo buildInfo;
     private final MenuService menuService;
+    private final TomlXcoreConfig config;
 
     private final Provider<MapMenu> map;
     private final Provider<EventMenu> event;
@@ -34,10 +35,11 @@ public class InformationMenu extends Menu {
     private final Provider<PlayerMenu> player;
 
     @Inject
-    public InformationMenu(Config config, GlobalConfig globalConfig, SessionService sessionService,
+    public InformationMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                            BuildInfo buildInfo, MenuService menuService, Provider<MapMenu> map, Provider<EventMenu> event,
                            Provider<HelpMenu> help, Provider<PlayerMenu> player) {
-        super(config, globalConfig, sessionService);
+        super(secretsConfig, sessionService);
+        this.config = config;
         this.buildInfo = buildInfo;
         this.menuService = menuService;
         this.map = map;
@@ -91,7 +93,7 @@ public class InformationMenu extends Menu {
                             MenuButton.of(local.t("map-maps"), "maps"),
                             MenuButton.of(local.t("player-menu-players"), "players")
                     );
-            if (config.isEvent()) {
+            if ("event".equals(config.server.name)) {
                 grid.row(
                         MenuButton.of(local.t("event-menu-main"), "event-main"),
                         MenuButton.of(local.t("event-events"), "event-list")
@@ -117,11 +119,11 @@ public class InformationMenu extends Menu {
     private final class InformationFlow extends BaseMenuFlow<NoState> {
         InformationFlow() {
             super(ROUTE_INFORMATION, NoState.class);
-            action("discord", ctx -> openUrl(ctx.session(), globalConfig.discordUrl));
-            action("github", ctx -> openUrl(ctx.session(), globalConfig.githubUrl));
-            action("donatello", ctx -> openUrl(ctx.session(), globalConfig.donatelloUrl));
-            action("weblate", ctx -> openUrl(ctx.session(), globalConfig.weblateUrl));
-            action("discord-red-vs-blue", ctx -> openUrl(ctx.session(), globalConfig.discordRedVSBlueUrl));
+            action("discord", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.discordUrl));
+            action("github", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.githubUrl));
+            action("donatello", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.donatelloUrl));
+            action("weblate", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.weblateUrl));
+            action("discord-red-vs-blue", ctx -> openUrl(ctx.session(), secretsConfig.externalLinks.discordRedVSBlueUrl));
         }
 
         @Override
@@ -139,7 +141,7 @@ public class InformationMenu extends Menu {
                     .row(MenuButton.of(local.t("discord-red-vs-blue"), "discord-red-vs-blue"))
                     .defaultNavigation(context.session(), local);
             return MenuScreen.followUp(
-                    local.t("commands-info-title", args("server-name", config.server)),
+                    local.t("commands-info-title", args("server-name", config.server.name)),
                     local.t("commands-info-text", args("version", buildInfo.getVersion())),
                     grid.build()
             );

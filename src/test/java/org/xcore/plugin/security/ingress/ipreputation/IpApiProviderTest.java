@@ -2,7 +2,7 @@ package org.xcore.plugin.security.ingress.ipreputation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -137,14 +137,14 @@ class IpApiProviderTest {
         when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new IOException("connection refused"));
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.ipReputationProvider.maxRetries = 2;
-        globalConfig.ipReputationProvider.timeoutSeconds = 1;
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.ipReputation.provider.maxRetries = 2;
+        secretsConfig.ipReputation.provider.timeoutSeconds = 1;
 
-        IpApiProvider provider = new IpApiProvider(globalConfig, client);
+        IpApiProvider provider = new IpApiProvider(secretsConfig, client);
 
         assertThat(provider.lookup("1.2.3.4")).isNull();
-        verify(client, times(globalConfig.ipReputationProvider.maxRetries + 1))
+        verify(client, times(secretsConfig.ipReputation.provider.maxRetries + 1))
                 .send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
@@ -167,12 +167,12 @@ class IpApiProviderTest {
                 """);
         when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(response);
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.ipReputationProvider.maxRetries = 0;
-        globalConfig.ipReputationProvider.timeoutSeconds = 1;
-        globalConfig.ipReputationProvider.rateLimitPerMinute = 1;
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.ipReputation.provider.maxRetries = 0;
+        secretsConfig.ipReputation.provider.timeoutSeconds = 1;
+        secretsConfig.ipReputation.provider.rateLimitPerMinute = 1;
 
-        IpApiProvider provider = new IpApiProvider(globalConfig, client);
+        IpApiProvider provider = new IpApiProvider(secretsConfig, client);
 
         assertThat(provider.lookup("1.2.3.4")).isNotNull();
         assertThat(provider.lookup("5.6.7.8")).isNull();
@@ -200,11 +200,11 @@ class IpApiProviderTest {
                 .thenThrow(new IOException("first attempt fails"))
                 .thenReturn(response);
 
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.ipReputationProvider.maxRetries = 2;
-        globalConfig.ipReputationProvider.timeoutSeconds = 1;
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.ipReputation.provider.maxRetries = 2;
+        secretsConfig.ipReputation.provider.timeoutSeconds = 1;
 
-        IpApiProvider provider = new IpApiProvider(globalConfig, client);
+        IpApiProvider provider = new IpApiProvider(secretsConfig, client);
         IpReputationResult result = provider.lookup("1.2.3.4");
 
         assertThat(result).isNotNull();
@@ -224,9 +224,9 @@ class IpApiProviderTest {
     }
 
     private static IpApiProvider newProvider(HttpClient client) {
-        GlobalConfig globalConfig = new GlobalConfig();
-        globalConfig.ipReputationProvider.maxRetries = 0;
-        globalConfig.ipReputationProvider.timeoutSeconds = 1;
-        return new IpApiProvider(globalConfig, client);
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+        secretsConfig.ipReputation.provider.maxRetries = 0;
+        secretsConfig.ipReputation.provider.timeoutSeconds = 1;
+        return new IpApiProvider(secretsConfig, client);
     }
 }

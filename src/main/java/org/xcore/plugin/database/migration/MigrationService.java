@@ -10,8 +10,8 @@ import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.UpdateOptions;
 import jakarta.inject.Singleton;
 import org.bson.Document;
-import org.xcore.plugin.config.Config; // Твій звичайний конфіг з назвою сервера
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.Comparator;
 import java.util.List;
@@ -19,13 +19,13 @@ import java.util.List;
 @Singleton
 public class MigrationService {
     private final MongoDatabase database;
-    private final GlobalConfig globalConfig;
-    private final Config config;
+    private final TomlSecretsConfig secretsConfig;
+    private final TomlXcoreConfig config;
     private final List<Migration> migrations;
 
-    public MigrationService(MongoDatabase database, GlobalConfig globalConfig, Config config, List<Migration> migrations) {
+    public MigrationService(MongoDatabase database, TomlSecretsConfig secretsConfig, TomlXcoreConfig config, List<Migration> migrations) {
         this.database = database;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.config = config;
         this.migrations = migrations.stream()
                 .sorted(Comparator.comparingInt(Migration::getVersion))
@@ -33,7 +33,7 @@ public class MigrationService {
     }
 
     public boolean run() {
-        if (globalConfig.isDataBaseReadOnly) {
+        if (secretsConfig.database.readOnly) {
             Log.info("[Migrations] Database is in Read-Only mode. Skipping.");
             return true;
         }
@@ -53,9 +53,9 @@ public class MigrationService {
             return true;
         }
 
-        if (!globalConfig.isDataBaseMigration) {
+        if (!secretsConfig.database.migrationEnabled) {
             Log.warn("[Migrations] Update needed (v@ -> v@) but migrations are disabled.", dbVersion, targetVersion);
-            globalConfig.isDataBaseReadOnly = true;
+            secretsConfig.database.readOnly = true;
             return true;
         }
 
@@ -68,8 +68,8 @@ public class MigrationService {
             }
         } else {
             Log.warn("[Migrations] Another server (@) is currently performing migrations.", getLockOwner(settings));
-            Log.warn("[Migrations] This server (@) will enter Read-Only mode until restart.", config.server);
-            globalConfig.isDataBaseReadOnly = true;
+            Log.warn("[Migrations] This server (@) will enter Read-Only mode until restart.", config.server.name);
+            secretsConfig.database.readOnly = true;
             return true;
         }
     }
@@ -110,13 +110,13 @@ public class MigrationService {
             ),
             Updates.combine(
                 Updates.set("locked", true),
-                Updates.set("locked_by", config.server),
+                Updates.set("locked_by", config.server.name),
                 Updates.set("locked_at", now)
             ),
             new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
         );
 
-        return result != null && result.getString("locked_by").equals(config.server);
+        return result != null && result.getString("locked_by").equals(config.server.name);
     }
 
     private void releaseLock(MongoCollection<Document> settings) {

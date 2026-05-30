@@ -14,8 +14,8 @@ import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresMuteCheck;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
@@ -34,10 +34,9 @@ public class SocialController implements CloudClientController {
 
     private final SessionService sessionService;
     private final NetworkService network;
-    private final Config config;
-    private final GlobalConfig globalConfig;
+    private final TomlXcoreConfig config;
+    private final TomlSecretsConfig secretsConfig;
     private final TranslatorLanguagesProvider translatorLanguagesProvider;
-    private final ChatFormatService chatFormatService;
     private final TranslatorService translatorService;
     private final DiscordLinkService discordLinkService;
     private final DiscordMenu discordMenu;
@@ -45,9 +44,9 @@ public class SocialController implements CloudClientController {
     @Inject
     public SocialController(SessionService sessionService,
                             NetworkService network,
-                             Config config,
-                             GlobalConfig globalConfig,
-                             TranslatorLanguagesProvider translatorLanguagesProvider,
+                              TomlXcoreConfig config,
+                              TomlSecretsConfig secretsConfig,
+                              TranslatorLanguagesProvider translatorLanguagesProvider,
                              ChatFormatService chatFormatService,
                              TranslatorService translatorService,
                              DiscordLinkService discordLinkService,
@@ -55,9 +54,8 @@ public class SocialController implements CloudClientController {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.translatorLanguagesProvider = translatorLanguagesProvider;
-        this.chatFormatService = chatFormatService;
         this.translatorService = translatorService;
         this.discordLinkService = discordLinkService;
         this.discordMenu = discordMenu;
@@ -79,12 +77,12 @@ public class SocialController implements CloudClientController {
         network.post(new ChatGlobalV1(
                 session.player.coloredName(),
                 message,
-                config.server
+                config.server.name
         ));
 
         network.post(new ChatMessageV1(
                 session.player.plainName(),
-                "[" + config.server + "] " + message.replace("`", "*"),
+                "[" + config.server.name + "] " + message.replace("`", "*"),
                 "global"
         ));
     }
@@ -114,7 +112,7 @@ public class SocialController implements CloudClientController {
         local.send("commands-discord-link-created", args(
                 "code", result.code(),
                 "expireMinutes", result.remainingMinutes(System.currentTimeMillis()),
-                "discordUrl", globalConfig.discordUrl
+                "discordUrl", secretsConfig.externalLinks.discordUrl
         ));
     }
 

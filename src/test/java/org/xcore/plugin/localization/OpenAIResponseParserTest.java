@@ -3,7 +3,7 @@ package org.xcore.plugin.localization;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +39,7 @@ class OpenAIResponseParserTest {
     }
 
     private TranslationSafetyService translationSafetyService(boolean structuredOutputRequired) {
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         config.translation.llm.structuredOutputRequired = structuredOutputRequired;
         return new TranslationSafetyService(config);
     }

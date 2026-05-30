@@ -12,8 +12,8 @@ import mindustry.gen.Player;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
@@ -42,8 +42,8 @@ public class VoteKick extends VoteSession {
     private final SessionService sessionService;
     private final NetworkService network;
     private final VoteService voteService;
-    private final Config config;
-    private final GlobalConfig globalConfig;
+    private final TomlXcoreConfig config;
+    private final TomlSecretsConfig secretsConfig;
 
     @Inject
     public VoteKick(
@@ -55,9 +55,9 @@ public class VoteKick extends VoteSession {
             SessionService sessionService,
             NetworkService network,
             VoteService voteService,
-            Config config,
-            GlobalConfig globalConfig) {
-        super(globalConfig);
+            TomlXcoreConfig config,
+            TomlSecretsConfig secretsConfig) {
+        super(secretsConfig);
         this.starter = starter;
         this.target = target;
         this.reason = reason;
@@ -66,7 +66,7 @@ public class VoteKick extends VoteSession {
         this.network = network;
         this.voteService = voteService;
         this.config = config;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
     }
 
     public static void setOnKick(Cons<Player> onKick) {
@@ -111,7 +111,7 @@ public class VoteKick extends VoteSession {
         }
 
         if (network != null) {
-            network.post(new ServerActionV1(stripColors(message), config.server));
+            network.post(new ServerActionV1(stripColors(message), config.server.name));
         }
     }
 
@@ -147,7 +147,7 @@ public class VoteKick extends VoteSession {
                 reason,
                 List.copyOf(votesFor),
                 List.copyOf(votesAgainst),
-                config.server,
+                config.server.name,
                 Instant.now()
         );
     }
@@ -204,14 +204,14 @@ public class VoteKick extends VoteSession {
         stop();
         var bundleArgs = args(
                 "target", target.coloredName(),
-                "minutes", globalConfig.voteKickBanDurationMinutes);
+                "minutes", secretsConfig.moderation.votekick.banDurationMinutes);
         sessionService.broadcast("votekick-success", bundleArgs);
-        target.kick(Packets.KickReason.vote, (long) globalConfig.voteKickBanDurationMinutes * 60 * 1000);
+        target.kick(Packets.KickReason.vote, (long) secretsConfig.moderation.votekick.banDurationMinutes * 60 * 1000);
 
         if (network != null) {
             network.post(buildVoteKickEvent());
             network.post(new ServerActionV1(
-                    systemLocal.format("votekick-success", bundleArgs), config.server));
+                    systemLocal.format("votekick-success", bundleArgs), config.server.name));
         }
         onKick.get(target);
     }

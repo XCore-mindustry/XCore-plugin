@@ -16,8 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -41,7 +40,7 @@ class HelpMenuTest {
     private MenuService menuService;
     private HelpMenu helpMenu;
     private Session session;
-    private GlobalConfig globalConfig;
+    private TomlSecretsConfig secretsConfig;
     private NetServer previousNetServer;
     private CloudService cloudService;
 
@@ -54,9 +53,8 @@ class HelpMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        Config config = new Config();
-        globalConfig = new GlobalConfig();
-        globalConfig.commandsPerPage = 2;
+        secretsConfig = new TomlSecretsConfig();
+        secretsConfig.pagination.commandsPerPage = 2;
 
         cloudService = mock(CloudService.class);
         HelpHandler<XCoreSender> helpHandler = mock(HelpHandler.class);
@@ -70,7 +68,7 @@ class HelpMenuTest {
         Provider<CloudService> cloudProvider = mock(Provider.class);
         when(cloudProvider.get()).thenReturn(cloudService);
 
-        helpMenu = new HelpMenu(config, globalConfig, sessionService, cloudProvider, menuService);
+        helpMenu = new HelpMenu(secretsConfig, sessionService, cloudProvider, menuService);
         helpMenu.init();
 
         previousNetServer = Vars.netServer;
@@ -185,7 +183,7 @@ class HelpMenuTest {
         PlayerData data = new PlayerData("viewer-1", true);
         data.uuid = "viewer-1";
         Session session = new Session(
-                globalConfig,
+                secretsConfig,
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

@@ -3,7 +3,6 @@ package org.xcore.plugin.event.transport;
 import arc.func.Cons;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
@@ -36,10 +35,8 @@ class DiscordLinkTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, config);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -75,10 +72,8 @@ class DiscordLinkTransportHandlerTest {
         NetworkService network = mock(NetworkService.class);
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
-        Config config = new Config();
-        config.server = "mini-pvp";
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, config);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {

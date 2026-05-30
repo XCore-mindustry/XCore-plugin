@@ -7,8 +7,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.BanData;
@@ -58,7 +57,7 @@ class BanMenuTest {
         Provider<SessionService> sessionProvider = mock(Provider.class);
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
-        banMenu = new BanMenu(new Config(), new GlobalConfig(), sessionService, moderationService, timeService, menuService);
+        banMenu = new BanMenu(new TomlSecretsConfig(), sessionService, moderationService, timeService, menuService);
         banMenu.init();
 
         session = session("admin-uuid", 1);
@@ -217,7 +216,7 @@ class BanMenuTest {
         data.pid = pid;
         data.discordId = "discord-admin";
 
-        Session session = new Session(new GlobalConfig(), mock(Bundle.class), menuService, mock(PlayerDataRepository.class), player, data);
+        Session session = new Session(new TomlSecretsConfig(), mock(Bundle.class), menuService, mock(PlayerDataRepository.class), player, data);
         Localization localization = mock(Localization.class);
         when(localization.t(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.t(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));

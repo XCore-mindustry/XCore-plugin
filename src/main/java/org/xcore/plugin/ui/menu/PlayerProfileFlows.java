@@ -165,7 +165,7 @@ final class PlayerProfileFlows {
             actionPrefix("select:", (ctx, indexStr) -> {
                 int index = Integer.parseInt(indexStr);
                 List<Session> onlinePlayers = getFilteredOnlinePlayers(ctx.session(), sessionService, playerDisplayService);
-                int perPage = menu.globalConfig.eventsPerPage;
+                int perPage = menu.secretsConfig.pagination.eventsPerPage;
                 var pagination = CustomGatherers.calculatePagination(onlinePlayers.size(), perPage);
                 int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(ctx.state().page);
                 int skip = (validPage - 1) * perPage;
@@ -197,7 +197,7 @@ final class PlayerProfileFlows {
 
             List<Session> onlinePlayers = getFilteredOnlinePlayers(session, sessionService, playerDisplayService);
             int totalPlayers = onlinePlayers.size();
-            int perPage = menu.globalConfig.eventsPerPage;
+            int perPage = menu.secretsConfig.pagination.eventsPerPage;
             var pagination = CustomGatherers.calculatePagination(totalPlayers, perPage);
             int totalPages = Math.max(1, pagination.totalPages());
             int validPage = pagination.totalPages() <= 0 ? 1 : pagination.clampPage(state.page);

@@ -2,7 +2,7 @@ package org.xcore.plugin.security.ingress.ipreputation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,7 +11,7 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("returns false for null result")
     void returnsFalse_forNullResult() {
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
 
         assertThat(new IpReputationPolicy(config).isBlocked(null)).isFalse();
     }
@@ -19,7 +19,7 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("blockProxy honors proxy signal independently")
     void blockProxy_honorsProxySignalIndependently() {
-        Config config = baseConfig();
+        TomlXcoreConfig config = baseConfig();
         config.ipReputation.blockProxy = true;
         config.ipReputation.blockVpn = false;
         config.ipReputation.blockTor = false;
@@ -30,7 +30,7 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("blockVpn honors combined provider proxy signal independently")
     void blockVpn_honorsCombinedProviderSignalIndependently() {
-        Config config = baseConfig();
+        TomlXcoreConfig config = baseConfig();
         config.ipReputation.blockProxy = false;
         config.ipReputation.blockVpn = true;
         config.ipReputation.blockTor = false;
@@ -41,7 +41,7 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("blockTor honors combined provider proxy signal independently")
     void blockTor_honorsCombinedProviderSignalIndependently() {
-        Config config = baseConfig();
+        TomlXcoreConfig config = baseConfig();
         config.ipReputation.blockProxy = false;
         config.ipReputation.blockVpn = false;
         config.ipReputation.blockTor = true;
@@ -52,7 +52,7 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("blockHosting honors hosting signal")
     void blockHosting_honorsHostingSignal() {
-        Config config = baseConfig();
+        TomlXcoreConfig config = baseConfig();
         config.ipReputation.blockHosting = true;
 
         IpReputationResult result = new IpReputationResult("1.2.3.4", false, true, false);
@@ -63,13 +63,13 @@ class IpReputationPolicyTest {
     @Test
     @DisplayName("returns false when all toggles are disabled")
     void returnsFalse_whenAllTogglesDisabled() {
-        Config config = baseConfig();
+        TomlXcoreConfig config = baseConfig();
 
         assertThat(new IpReputationPolicy(config).isBlocked(proxyResult())).isFalse();
     }
 
-    private static Config baseConfig() {
-        Config config = new Config();
+    private static TomlXcoreConfig baseConfig() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
         config.ipReputation.blockProxy = false;
         config.ipReputation.blockVpn = false;
         config.ipReputation.blockTor = false;

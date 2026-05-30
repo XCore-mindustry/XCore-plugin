@@ -2,7 +2,7 @@ package org.xcore.plugin.service.moderation;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -55,7 +55,7 @@ public class ModerationService {
     private final FindService find;
     private final TimeService time;
     private final AuditService auditService;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
     public ModerationService(PlayerDataRepository playerDataRepository,
@@ -66,7 +66,7 @@ public class ModerationService {
                              FindService find,
                              TimeService timeService,
                              AuditService auditService,
-                             Config config) {
+                             TomlXcoreConfig config) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.muteDataRepository = muteDataRepository;
@@ -131,7 +131,7 @@ public class ModerationService {
                     target.pid,
                     target.nickname,
                     ip,
-                    config.server,
+                    config.server.name,
                     commandOccurredAt(audit)
             ));
         }
@@ -211,7 +211,7 @@ public class ModerationService {
                 null
         );
 
-        network.post(ModerationProtocolMapper.toMuteCreated(mute, config.server, eventOccurredAt(audit)));
+        network.post(ModerationProtocolMapper.toMuteCreated(mute, config.server.name, eventOccurredAt(audit)));
         postAuditEvent(audit);
 
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
@@ -300,7 +300,7 @@ public class ModerationService {
                 null,
                 ban.name,
                 ip,
-                config.server,
+                config.server.name,
                 commandOccurredAt(audit)
         ));
 
@@ -397,12 +397,12 @@ public class ModerationService {
 
     private void postAuditEvent(AuditRecord audit) {
         if (audit != null) {
-            network.post(ModerationProtocolMapper.toAuditAppended(audit, config.server));
+            network.post(ModerationProtocolMapper.toAuditAppended(audit, config.server.name));
         }
     }
 
     private void postBanEvents(BanData ban, AuditRecord audit) {
-        network.post(ModerationProtocolMapper.toBanCreated(ban, config.server, eventOccurredAt(audit)));
+        network.post(ModerationProtocolMapper.toBanCreated(ban, config.server.name, eventOccurredAt(audit)));
     }
 
     private ModerationPardonCommandV1 toPardonCommand(String uuid, Integer pid, String playerName, String ip, AuditRecord audit) {
@@ -411,7 +411,7 @@ public class ModerationService {
                 pid,
                 playerName,
                 ip,
-                config.server,
+                config.server.name,
                 commandOccurredAt(audit)
         );
     }

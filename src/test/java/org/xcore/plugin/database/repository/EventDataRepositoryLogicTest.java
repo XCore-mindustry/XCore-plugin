@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.common.StatusEnum;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.EventData;
 
 import java.util.Map;
@@ -29,7 +29,7 @@ class EventDataRepositoryLogicTest {
         MongoCollection<EventData> collection = mock(MongoCollection.class);
         when(database.getCollection("events", EventData.class)).thenReturn(collection);
 
-        repository = new EventDataRepository(database, new GlobalConfig());
+        repository = new EventDataRepository(database, new TomlSecretsConfig());
     }
 
     @Test

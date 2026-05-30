@@ -7,8 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.PlayerData;
@@ -48,7 +47,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -96,7 +95,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -144,7 +143,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -185,7 +184,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -239,7 +238,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -273,7 +272,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -317,7 +316,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -374,7 +373,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -404,7 +403,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -437,7 +436,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -465,7 +464,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -496,7 +495,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -518,7 +517,7 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new Config(), new GlobalConfig(), sessionService, menuService, topMenuService, playerMenu);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
         menu.init();
 
         Session session = session("viewer-1");
@@ -561,7 +560,7 @@ class TopMenuTest {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
 
         Session session = new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 repository,

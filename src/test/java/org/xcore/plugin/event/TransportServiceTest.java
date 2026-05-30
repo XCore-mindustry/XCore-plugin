@@ -2,7 +2,7 @@ package org.xcore.plugin.event;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
@@ -28,8 +28,8 @@ class TransportServiceTest {
     @DisplayName("resolve host address returns configured override without contacting resolver")
     void resolveHostAddress_returnsConfiguredOverrideWithoutContactingResolver() {
         // Arrange
-        Config config = new Config();
-        config.publicHostOverride = "  play.xcore.example  ";
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.publicHostOverride = "  play.xcore.example  ";
         TestTransportService service = new TestTransportService(config);
 
         // Act
@@ -44,7 +44,7 @@ class TransportServiceTest {
     @DisplayName("resolve host address caches successful resolver response")
     void resolveHostAddress_cachesSuccessfulResolverResponse() {
         // Arrange
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TestTransportService service = new TestTransportService(config);
         service.enqueueConnection(new StubHttpURLConnection("198.51.100.24\n"));
 
@@ -62,7 +62,7 @@ class TransportServiceTest {
     @DisplayName("resolve host address backs off after resolver failure until retry window expires")
     void resolveHostAddress_backsOffAfterResolverFailureUntilRetryWindowExpires() {
         // Arrange
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         TestTransportService service = new TestTransportService(config);
         service.setCurrentTimeMillis(10_000L);
         service.setFailureBackoffMs(5_000L);
@@ -90,7 +90,7 @@ class TransportServiceTest {
         private long failureBackoffMs = HOST_RESOLUTION_FAILURE_BACKOFF_MS;
         private int openConnectionCount;
 
-        private TestTransportService(Config config) {
+        private TestTransportService(TomlXcoreConfig config) {
             super(
                     mock(ChatTransportHandler.class),
                     mock(DiscordLinkTransportHandler.class),

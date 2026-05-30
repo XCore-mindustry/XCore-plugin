@@ -5,7 +5,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
 import org.xcore.plugin.model.BanData;
@@ -18,8 +18,8 @@ import static com.mongodb.client.model.Filters.or;
 public class BanDataRepository extends DataRepository<BanData> {
 
     @Inject
-    public BanDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database, "bans", BanData.class, globalConfig);
+    public BanDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database, "bans", BanData.class, secretsConfig);
     }
 
     public BanData find(String uuid, String ip) {

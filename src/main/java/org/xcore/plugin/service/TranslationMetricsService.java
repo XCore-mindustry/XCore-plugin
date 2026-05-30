@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.network.RedisNetworkBackend;
 
 import java.time.Instant;
@@ -19,10 +19,10 @@ public class TranslationMetricsService {
             .withZone(ZoneOffset.UTC);
 
     private final RedisNetworkBackend backend;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public TranslationMetricsService(RedisNetworkBackend backend, Config config) {
+    public TranslationMetricsService(RedisNetworkBackend backend, TomlXcoreConfig config) {
         this.backend = backend;
         this.config = config;
     }
@@ -139,19 +139,19 @@ public class TranslationMetricsService {
     }
 
     private String globalTotalsKey() {
-        return "xcore:translation:metrics:" + config.server + ":totals";
+        return "xcore:translation:metrics:" + config.server.name + ":totals";
     }
 
     private String providerTotalsKey(String providerId) {
-        return "xcore:translation:metrics:" + config.server + ":provider:" + sanitize(providerId) + ":totals";
+        return "xcore:translation:metrics:" + config.server.name + ":provider:" + sanitize(providerId) + ":totals";
     }
 
     private String globalMinuteKey() {
-        return "xcore:translation:metrics:" + config.server + ":minute:" + currentMinuteBucket();
+        return "xcore:translation:metrics:" + config.server.name + ":minute:" + currentMinuteBucket();
     }
 
     private String providerMinuteKey(String providerId) {
-        return "xcore:translation:metrics:" + config.server + ":provider:" + sanitize(providerId) + ":minute:" + currentMinuteBucket();
+        return "xcore:translation:metrics:" + config.server.name + ":provider:" + sanitize(providerId) + ":minute:" + currentMinuteBucket();
     }
 
     private String currentMinuteBucket() {

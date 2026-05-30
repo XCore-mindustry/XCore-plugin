@@ -5,7 +5,7 @@ import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
 import org.xcore.plugin.model.PlayerData;
@@ -112,9 +112,9 @@ class TopMenuCacheServiceTest {
         return commands;
     }
 
-    private static Config config(String server) {
-        Config config = new Config();
-        config.server = server;
+    private static TomlXcoreConfig config(String server) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = server;
         return config;
     }
 }

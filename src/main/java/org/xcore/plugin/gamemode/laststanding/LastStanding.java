@@ -10,7 +10,7 @@ import mindustry.entities.units.AIController;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.world.Block;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.gamemode.laststanding.LastStandingAi;
 
 import static arc.Core.app;
@@ -25,16 +25,16 @@ public class LastStanding {
             Team.blue, Blocks.metalFloor4
     );
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public LastStanding(Config config) {
+    public LastStanding(TomlXcoreConfig config) {
         this.config = config;
     }
 
     @PostConstruct
     public void init() {
-        if (!config.isLastStanding()) return;
+        if (!"the-last-standing".equals(config.server.name)) return;
 
         Events.on(EventType.CoreChangeEvent.class,
                 event -> app.post(() -> spawnFloors.each((team, floor) -> {

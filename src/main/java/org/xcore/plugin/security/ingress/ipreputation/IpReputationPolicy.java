@@ -1,7 +1,7 @@
 package org.xcore.plugin.security.ingress.ipreputation;
 
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 /**
  * Evaluates whether an IP reputation result should trigger a block
@@ -13,14 +13,14 @@ import org.xcore.plugin.config.Config;
 @Singleton
 public class IpReputationPolicy {
 
-    private final Config.IpReputationConfig config;
+    private final TomlXcoreConfig.IpReputationConfig config;
 
     /**
      * Creates a new IpReputationPolicy using values from the provided application configuration.
      *
      * @param config the application configuration whose {@code ipReputation} subsection will be used by this policy
      */
-    public IpReputationPolicy(Config config) {
+    public IpReputationPolicy(TomlXcoreConfig config) {
         this.config = config.ipReputation;
     }
 

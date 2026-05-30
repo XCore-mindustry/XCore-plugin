@@ -4,7 +4,7 @@ import com.ospx.flubundle.Bundle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.gamemode.hexed.HexMember;
 import org.xcore.plugin.gamemode.hexed.MiniHexedService;
 import org.xcore.plugin.localization.Localization;
@@ -34,7 +34,7 @@ class HexedControllerObserverTest {
         SessionService sessionService = mock(SessionService.class);
         ObserverService observerService = mock(ObserverService.class);
         MiniHexedService hexedService = new MiniHexedService(
-                mock(Config.class),
+                mock(TomlXcoreConfig.class),
                 sessionService,
                 mock(PlayerDataRepository.class),
                 mock(NetworkService.class),

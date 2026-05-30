@@ -6,7 +6,7 @@ import mindustry.gen.Player;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.model.PlayerData;
 
@@ -182,9 +182,9 @@ class PlayerDisplayServiceTest {
         return data;
     }
 
-    private static Config config(String server) {
-        var config = new Config();
-        config.server = server;
+    private static TomlXcoreConfig config(String server) {
+        var config = new TomlXcoreConfig();
+        config.server.name = server;
         return config;
     }
 }

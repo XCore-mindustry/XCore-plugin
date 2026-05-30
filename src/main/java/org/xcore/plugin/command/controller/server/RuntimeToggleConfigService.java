@@ -1,8 +1,7 @@
 package org.xcore.plugin.command.controller.server;
 
-import arc.files.Fi;
-import com.google.gson.Gson;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.ServerLocalConfigTomlStore;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.HashSet;
 import java.util.Locale;
@@ -18,14 +17,12 @@ final class RuntimeToggleConfigService {
     record ToggleMutationResult(boolean changed, String value) {
     }
 
-    private final Config config;
-    private final Fi configFile;
-    private final Gson prettyGson;
+    private final TomlXcoreConfig config;
+    private final ServerLocalConfigTomlStore tomlStore;
 
-    RuntimeToggleConfigService(Config config, Fi configFile, Gson prettyGson) {
+    RuntimeToggleConfigService(TomlXcoreConfig config, ServerLocalConfigTomlStore tomlStore) {
         this.config = config;
-        this.configFile = configFile;
-        this.prettyGson = prettyGson;
+        this.tomlStore = tomlStore;
     }
 
     ToggleMutationResult disable(ToggleTarget target, String value) {
@@ -34,7 +31,12 @@ final class RuntimeToggleConfigService {
             return new ToggleMutationResult(false, value);
         }
 
-        save();
+        try {
+            save();
+        } catch (RuntimeException e) {
+            values.remove(value);
+            throw e;
+        }
         return new ToggleMutationResult(true, value);
     }
 
@@ -44,7 +46,12 @@ final class RuntimeToggleConfigService {
             return new ToggleMutationResult(false, value);
         }
 
-        save();
+        try {
+            save();
+        } catch (RuntimeException e) {
+            values.add(value);
+            throw e;
+        }
         return new ToggleMutationResult(true, value);
     }
 
@@ -80,8 +87,8 @@ final class RuntimeToggleConfigService {
 
     private Set<String> values(ToggleTarget target) {
         return switch (target) {
-            case COMMAND -> config.disabledCommands;
-            case FEATURE -> config.disabledFeatures;
+            case COMMAND -> config.runtime.disabledCommands;
+            case FEATURE -> config.runtime.disabledFeatures;
         };
     }
 
@@ -94,14 +101,14 @@ final class RuntimeToggleConfigService {
         }
 
         switch (target) {
-            case COMMAND -> config.disabledCommands = current;
-            case FEATURE -> config.disabledFeatures = current;
+            case COMMAND -> config.runtime.disabledCommands = current;
+            case FEATURE -> config.runtime.disabledFeatures = current;
         }
 
         return current;
     }
 
     private void save() {
-        configFile.writeString(prettyGson.toJson(config));
+        tomlStore.write(config);
     }
 }

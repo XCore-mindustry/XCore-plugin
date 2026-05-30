@@ -2,18 +2,16 @@ package org.xcore.plugin.command.controller.client;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
-import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -24,22 +22,16 @@ public class AuthController implements CloudClientController {
 
     private final AdminDataRepository adminDataRepository;
     private final SessionService sessionService;
-    private final NetworkService network;
-    private final Config config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
     public AuthController(AdminDataRepository adminDataRepository,
                           SessionService sessionService,
-                          NetworkService network,
-                          Config config,
                           PlayerDisplayService playerDisplayService,
                           DiscordAdminAccessService discordAdminAccessService) {
         this.adminDataRepository = adminDataRepository;
         this.sessionService = sessionService;
-        this.network = network;
-        this.config = config;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
     }
@@ -50,7 +42,6 @@ public class AuthController implements CloudClientController {
         if (session == null || session.data == null) return;
         PlayerData data = session.data;
         Localization local = session.locale();
-
 
         if (password.length() < 4) {
             local.send("error-admin-password-too-short", args());

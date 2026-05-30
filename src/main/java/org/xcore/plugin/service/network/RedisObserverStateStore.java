@@ -6,7 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 @Singleton
 public class RedisObserverStateStore {
@@ -15,10 +15,10 @@ public class RedisObserverStateStore {
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public RedisObserverStateStore(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public RedisObserverStateStore(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
@@ -73,7 +73,7 @@ public class RedisObserverStateStore {
     }
 
     private String key(String playerUuid) {
-        return "xcore:observer:" + config.server + ":" + playerUuid;
+        return "xcore:observer:" + config.server.name + ":" + playerUuid;
     }
 
     public record CachedObserverState(int returnTeamId, long createdAt) {

@@ -9,7 +9,7 @@ import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.SecurityService;
 
@@ -22,17 +22,17 @@ public class CloudGuardConfigurer {
 
     private final Provider<SecurityService> securityService;
     private final Provider<SessionService> sessionService;
-    private final GlobalConfig globalConfig;
+    private final TomlSecretsConfig secretsConfig;
     private final DisabledCommandPolicy disabledCommandPolicy;
 
     @Inject
     public CloudGuardConfigurer(Provider<SecurityService> securityService,
                                 Provider<SessionService> sessionService,
-                                GlobalConfig globalConfig,
+                                TomlSecretsConfig secretsConfig,
                                 DisabledCommandPolicy disabledCommandPolicy) {
         this.securityService = securityService;
         this.sessionService = sessionService;
-        this.globalConfig = globalConfig;
+        this.secretsConfig = secretsConfig;
         this.disabledCommandPolicy = disabledCommandPolicy;
     }
 
@@ -74,8 +74,8 @@ public class CloudGuardConfigurer {
             }
 
             int requiredMinutes = switch (playTimeLimit) {
-                case GLOBAL_CHAT -> globalConfig.minPlayTimeForGlobalChat;
-                case VOTE_KICK -> globalConfig.minPlayTimeForVotekick;
+                case GLOBAL_CHAT -> secretsConfig.chat.global.minPlayTimeMinutes;
+                case VOTE_KICK -> secretsConfig.moderation.votekick.minPlayTimeMinutes;
                 case CUSTOM -> 0;
             };
 

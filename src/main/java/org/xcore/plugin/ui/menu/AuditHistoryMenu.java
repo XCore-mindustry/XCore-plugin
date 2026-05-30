@@ -3,8 +3,7 @@ package org.xcore.plugin.ui.menu;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditCursor;
@@ -34,12 +33,11 @@ public class AuditHistoryMenu extends Menu {
     private final MenuService menuService;
 
     @Inject
-    public AuditHistoryMenu(Config config,
-                            GlobalConfig globalConfig,
+    public AuditHistoryMenu(TomlSecretsConfig secretsConfig,
                             SessionService sessionService,
                             AuditService auditService,
                             MenuService menuService) {
-        super(config, globalConfig, sessionService);
+        super(secretsConfig, sessionService);
         this.auditService = auditService;
         this.menuService = menuService;
     }

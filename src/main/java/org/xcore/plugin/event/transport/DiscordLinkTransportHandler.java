@@ -2,7 +2,6 @@ package org.xcore.plugin.event.transport;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
@@ -17,17 +16,14 @@ public class DiscordLinkTransportHandler {
     private final NetworkService network;
     private final DiscordLinkService discordLinkService;
     private final SessionService sessionService;
-    private final Config config;
 
     @Inject
     public DiscordLinkTransportHandler(NetworkService network,
                                        DiscordLinkService discordLinkService,
-                                       SessionService sessionService,
-                                       Config config) {
+                                       SessionService sessionService) {
         this.network = network;
         this.discordLinkService = discordLinkService;
         this.sessionService = sessionService;
-        this.config = config;
     }
 
     public void registerListeners() {

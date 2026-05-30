@@ -5,7 +5,7 @@ import io.avaje.inject.Assisted;
 import jakarta.inject.Inject;
 import mindustry.Vars;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.session.SessionService;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -22,11 +22,11 @@ public class VoteNewWave extends VoteSession {
     @Inject
     public VoteNewWave(
             @Assisted int sourceWave,
-            GlobalConfig globalConfig,
+            TomlSecretsConfig secretsConfig,
             SessionService sessionService,
             VoteService voteService
     ) {
-        super(globalConfig);
+        super(secretsConfig);
         this.sourceWave = sourceWave;
         this.sessionService = sessionService;
         this.voteService = voteService;

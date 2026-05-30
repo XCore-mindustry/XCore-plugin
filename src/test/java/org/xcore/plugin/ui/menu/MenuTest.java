@@ -15,7 +15,7 @@ class MenuTest {
     @Test
     @DisplayName("formatPlayTime omits empty units and keeps localized order")
     void formatPlayTimeOmitsEmptyUnitsAndKeepsLocalizedOrder() {
-        var menu = new Menu(null, null, null);
+        var menu = new Menu(null, null);
         var local = mock(Localization.class);
 
         when(local.t("player-menu-time-days", java.util.Map.of("value", 1))).thenReturn("1d");
@@ -28,7 +28,7 @@ class MenuTest {
     @Test
     @DisplayName("formatPlayTime falls back to zero minutes")
     void formatPlayTimeFallsBackToZeroMinutes() {
-        var menu = new Menu(null, null, null);
+        var menu = new Menu(null, null);
         var local = mock(Localization.class);
 
         when(local.t("player-menu-time-minutes", java.util.Map.of("value", 0))).thenReturn("0m");

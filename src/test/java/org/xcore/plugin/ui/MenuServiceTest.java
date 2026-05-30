@@ -7,7 +7,7 @@ import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
@@ -186,7 +186,7 @@ class MenuServiceTest {
         player.con = mock(NetConnection.class);
         PlayerData data = new PlayerData("uuid-1", true);
         return new Session(
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(Bundle.class),
                 menuService,
                 mock(PlayerDataRepository.class),

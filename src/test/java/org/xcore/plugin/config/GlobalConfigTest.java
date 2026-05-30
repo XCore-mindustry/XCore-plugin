@@ -20,14 +20,14 @@ class GlobalConfigTest {
     void postInit_throwsClearErrorWhenRequiredFieldsAreMissing() {
         // Arrange
         GlobalConfig globalConfig = new GlobalConfig();
-        Fi globalConfigFile = new Fi(tempDir.resolve("secrets.json").toFile());
+        Fi globalConfigFile = new Fi(tempDir.resolve("secrets.toml").toFile());
 
         // Act + Assert
         assertThatThrownBy(() -> globalConfig.postInit(globalConfigFile))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("secrets.json")
-                .hasMessageContaining("mongo_connection_string")
-                .hasMessageContaining("database_name");
+                .hasMessageContaining("secrets.toml")
+                .hasMessageContaining("database.mongo_connection_string")
+                .hasMessageContaining("database.name");
     }
 
     @Test
@@ -38,7 +38,7 @@ class GlobalConfigTest {
         globalConfig.mongoConnectionString = "mongodb://localhost:27017";
         globalConfig.databaseName = "xcore";
         globalConfig.translationProviders = null;
-        Fi globalConfigFile = new Fi(tempDir.resolve("secrets.json").toFile());
+        Fi globalConfigFile = new Fi(tempDir.resolve("secrets.toml").toFile());
 
         // Act + Assert
         assertThatCode(() -> globalConfig.postInit(globalConfigFile))

@@ -4,7 +4,7 @@ import com.ospx.flubundle.Bundle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.security.ingress.AccessResult;
 import org.xcore.plugin.security.ingress.ipreputation.IpReputationService;
 
@@ -24,8 +24,8 @@ class IpReputationCheckTest {
     @BeforeEach
     void setUp() {
         ipReputationService = mock(IpReputationService.class);
-        var globalConfig = new GlobalConfig();
-        globalConfig.discordUrl = "https://discord.example";
+        var secretsConfig = new TomlSecretsConfig();
+        secretsConfig.externalLinks.discordUrl = "https://discord.example";
 
         Bundle bundle = new Bundle(Locale.ENGLISH) {
             @Override
@@ -47,7 +47,7 @@ class IpReputationCheckTest {
             }
         };
 
-        check = new IpReputationCheck(ipReputationService, bundle, globalConfig);
+        check = new IpReputationCheck(ipReputationService, bundle, secretsConfig);
     }
 
     @Test

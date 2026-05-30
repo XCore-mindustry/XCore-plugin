@@ -5,7 +5,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.model.MuteData;
 
 import static com.mongodb.client.model.Filters.eq;
@@ -14,8 +14,8 @@ import static com.mongodb.client.model.Filters.eq;
 public class MuteDataRepository extends DataRepository<MuteData> {
 
     @Inject
-    public MuteDataRepository(MongoDatabase database, GlobalConfig globalConfig) {
-        super(database,"mutes", MuteData.class, globalConfig);
+    public MuteDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        super(database,"mutes", MuteData.class, secretsConfig);
     }
 
     public MuteData findByUuid(String uuid) {

@@ -7,7 +7,7 @@ import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
@@ -35,14 +35,14 @@ public class ModerationTransportHandler {
 
     private final NetworkService network;
     private final SessionService sessionService;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
     public ModerationTransportHandler(NetworkService network,
                                       SessionService sessionService,
-                                      Config config,
+                                      TomlXcoreConfig config,
                                       PlayerDisplayService playerDisplayService,
                                       DiscordAdminAccessService discordAdminAccessService) {
         this.network = network;
@@ -135,8 +135,8 @@ public class ModerationTransportHandler {
         network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
             if (!e.targetServers().isEmpty()) {
                 if (e.exclusion()) {
-                    if (e.targetServers().contains(config.server)) return;
-                } else if (!e.targetServers().contains(config.server)) {
+                    if (e.targetServers().contains(config.server.name)) return;
+                } else if (!e.targetServers().contains(config.server.name)) {
                     return;
                 }
             }

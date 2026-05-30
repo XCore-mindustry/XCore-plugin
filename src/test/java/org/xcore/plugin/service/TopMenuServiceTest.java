@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.LeaderboardSlice;
@@ -131,9 +131,9 @@ class TopMenuServiceTest {
         verify(cacheService, times(1)).invalidateAll();
     }
 
-    private static Config config(String server) {
-        Config config = new Config();
-        config.server = server;
+    private static TomlXcoreConfig config(String server) {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = server;
         return config;
     }
 

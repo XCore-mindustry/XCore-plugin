@@ -14,7 +14,7 @@ import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 import java.time.Instant;
@@ -40,7 +40,7 @@ public final class RedisNetworkBackend {
     public abstract static class RequestSubscription<T> {
         public abstract void cancel();
     }
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final Gson gson;
     private final RedisStreamRouter router;
     private final RedisEnvelopeFactory envelopeFactory;
@@ -63,7 +63,7 @@ public final class RedisNetworkBackend {
     private final AtomicLong reclaimedMessages = new AtomicLong();
 
     @Inject
-    public RedisNetworkBackend(Config config,
+    public RedisNetworkBackend(TomlXcoreConfig config,
                                @Named("redis") Gson gson,
                                RedisStreamRouter router,
                                RedisStreamSupport streamSupport,
@@ -80,11 +80,11 @@ public final class RedisNetworkBackend {
         this.envelopeFactory = new RedisEnvelopeFactory(config, gson);
     }
 
-    public RedisNetworkBackend(Config config) {
+    public RedisNetworkBackend(TomlXcoreConfig config) {
         this(config, createRedisGson(), new RedisStreamRouter(), createStandaloneDependencies(config));
     }
 
-    private RedisNetworkBackend(Config config,
+    private RedisNetworkBackend(TomlXcoreConfig config,
                                 Gson gson,
                                 RedisStreamRouter router,
                                 StandaloneDependencies dependencies) {
@@ -97,7 +97,7 @@ public final class RedisNetworkBackend {
                 dependencies.transportHealth());
     }
 
-    private static StandaloneDependencies createStandaloneDependencies(Config config) {
+    private static StandaloneDependencies createStandaloneDependencies(TomlXcoreConfig config) {
         RedisTransportHealth transportHealth = new RedisTransportHealth();
         return new StandaloneDependencies(new RedisConnectionManager(config, transportHealth), transportHealth);
     }
@@ -143,7 +143,7 @@ public final class RedisNetworkBackend {
         }
 
         try {
-            var route = router.route(event, config.server);
+            var route = router.route(event, config.server.name);
             long now = System.currentTimeMillis();
             String payloadJson = payloadJson(event);
             RedisCommands<String, String> commands = connectionManager.commands();
@@ -167,7 +167,7 @@ public final class RedisNetworkBackend {
             throw new IllegalStateException("Redis backend is unavailable for subscribe");
         }
 
-        List<String> streams = router.subscribeStreamsFor(type, config.server);
+        List<String> streams = router.subscribeStreamsFor(type, config.server.name);
         if (streams.isEmpty()) {
             throw new UnsupportedOperationException("Redis subscribe has no stream mapping for type: " + type.getName());
         }
@@ -180,7 +180,7 @@ public final class RedisNetworkBackend {
                     .start(() -> consumeLoop(stream, type, listener));
             registerSubscriberThread(subscription, thread);
 
-            if (config.redisReclaimEnabled) {
+            if (config.transport.redis.reclaim.enabled) {
                 String group = groupFor(type, stream);
                 Thread reclaimThread = Thread.ofVirtual()
                         .name("redis-reclaim-" + type.getSimpleName() + "-" + stream)
@@ -209,8 +209,8 @@ public final class RedisNetworkBackend {
             return requestHandle;
         }
 
-        var route = router.route(request, config.server);
-        String replyTo = "xcore:rpc:resp:" + config.server;
+        var route = router.route(request, config.server.name);
+        String replyTo = "xcore:rpc:resp:" + config.server.name;
         String correlationId = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         long timeoutMs = 5000L;
@@ -320,7 +320,7 @@ public final class RedisNetworkBackend {
             RedisCommands<String, String> subCommands = subConnection.sync();
             String group = groupFor(type, stream);
             ensureGroup(subCommands, stream, group);
-            Consumer<String> consumer = Consumer.from(group, config.redisConsumerName);
+            Consumer<String> consumer = Consumer.from(group, config.transport.redis.consumerName);
 
             while (!Thread.currentThread().isInterrupted()) {
                 List<StreamMessage<String, String>> messages;
@@ -375,15 +375,15 @@ public final class RedisNetworkBackend {
             RedisCommands<String, String> reclaimCommands = reclaimConnection.sync();
             ensureGroup(reclaimCommands, stream, group);
             String cursor = "0-0";
-            Consumer<String> consumer = Consumer.from(group, config.redisConsumerName);
+            Consumer<String> consumer = Consumer.from(group, config.transport.redis.consumerName);
 
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     var claimed = reclaimCommands.xautoclaim(stream, new XAutoClaimArgs<String>()
                             .consumer(consumer)
-                            .minIdleTime(config.redisReclaimMinIdleMs)
+                            .minIdleTime(config.transport.redis.reclaim.minIdleMs)
                             .startId(cursor)
-                            .count(config.redisReclaimBatch));
+                            .count(config.transport.redis.reclaim.batch));
 
                     if (claimed == null) {
                         Thread.sleep(1000L);
@@ -460,7 +460,7 @@ public final class RedisNetworkBackend {
             String idempotencyKey = message.getBody().getOrDefault("idempotency_key", "");
             if (!idempotencyKey.isBlank()) {
                 long ttlSeconds = envelopeFactory.resolveIdempotencyTtlSeconds(expiresAt);
-                idempotencyRedisKey = "xcore:idmp:consume:" + config.server + ":" + idempotencyKey;
+                idempotencyRedisKey = "xcore:idmp:consume:" + config.server.name + ":" + idempotencyKey;
                 String claimed = consumerCommands.set(
                         idempotencyRedisKey,
                         "1",
@@ -490,7 +490,7 @@ public final class RedisNetworkBackend {
             T event = decodeEvent(payloadJson, type);
             if (router.isRpcRequestType(type)) {
                 String correlationId = message.getBody().getOrDefault("correlation_id", "");
-                String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server);
+                String replyTo = message.getBody().getOrDefault("reply_to", "xcore:rpc:resp:" + config.server.name);
                 String rpcType = message.getBody().getOrDefault("rpc_type", "rpc.unknown");
                 rpcTracker.registerInbound(event, correlationId, replyTo, rpcType, System.currentTimeMillis());
             }
@@ -553,10 +553,10 @@ public final class RedisNetworkBackend {
                                      String reason) {
         String key = failureKey(stream, message.getId());
         int attempt = deliveryFailures.merge(key, 1, Integer::sum);
-        int maxAttempts = Math.max(1, config.redisMaxDeliveryAttempts);
+        int maxAttempts = Math.max(1, config.transport.redis.dlq.maxDeliveryAttempts);
 
         if (attempt >= maxAttempts) {
-            if (config.redisDlqEnabled) {
+            if (config.transport.redis.dlq.enabled) {
                 routeToDlq(commands, stream, group, message, attempt, reason);
             }
             commands.xack(stream, group, message.getId());

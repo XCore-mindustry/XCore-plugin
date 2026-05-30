@@ -7,8 +7,8 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.service.TranslationSafetyService;
 
 import java.io.IOException;
@@ -168,21 +168,21 @@ class OpenAITranslationProviderTest {
     }
 
     private TranslationSafetyService translationSafetyService(boolean structuredOutputRequired) {
-        Config config = new Config();
+        TomlXcoreConfig config = new TomlXcoreConfig();
         config.translation.llm.structuredOutputRequired = structuredOutputRequired;
         return new TranslationSafetyService(config);
     }
 
-    private GlobalConfig.TranslationProviderConfig providerConfig(String baseUrl, String apiMode) {
+    private TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig(String baseUrl, String apiMode) {
         return providerConfig(baseUrl, apiMode, "test-key", 0);
     }
 
-    private GlobalConfig.TranslationProviderConfig providerConfig(String baseUrl, String apiMode, String apiKey) {
+    private TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig(String baseUrl, String apiMode, String apiKey) {
         return providerConfig(baseUrl, apiMode, apiKey, 0);
     }
 
-    private GlobalConfig.TranslationProviderConfig providerConfig(String baseUrl, String apiMode, String apiKey, int maxRetries) {
-        GlobalConfig.TranslationProviderConfig providerConfig = new GlobalConfig.TranslationProviderConfig();
+    private TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig(String baseUrl, String apiMode, String apiKey, int maxRetries) {
+        TomlSecretsConfig.TranslationSection.ProviderConfig providerConfig = new TomlSecretsConfig.TranslationSection.ProviderConfig();
         providerConfig.type = "openai";
         providerConfig.apiKey = apiKey;
         providerConfig.baseUrl = baseUrl;

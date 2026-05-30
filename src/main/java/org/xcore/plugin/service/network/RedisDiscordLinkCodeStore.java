@@ -5,7 +5,7 @@ import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.Locale;
 
@@ -16,10 +16,10 @@ public class RedisDiscordLinkCodeStore {
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public RedisDiscordLinkCodeStore(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public RedisDiscordLinkCodeStore(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
@@ -116,7 +116,7 @@ public class RedisDiscordLinkCodeStore {
     }
 
     private String playerKey(String playerUuid) {
-        return "xcore:discord-link:player:" + config.server + ":" + playerUuid;
+        return "xcore:discord-link:player:" + config.server.name + ":" + playerUuid;
     }
 
     private String normalizeCode(String code) {

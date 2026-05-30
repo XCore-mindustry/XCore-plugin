@@ -84,10 +84,10 @@ public class GlobalConfig {
         var errors = new ArrayList<String>();
 
         if (mongoConnectionString == null || mongoConnectionString.isBlank()) {
-            errors.add("mongo_connection_string");
+            errors.add("database.mongo_connection_string");
         }
         if (databaseName == null || databaseName.isBlank()) {
-            errors.add("database_name");
+            errors.add("database.name");
         }
 
         if (!errors.isEmpty()) {
@@ -96,11 +96,10 @@ public class GlobalConfig {
             err("  Missing or invalid required fields:");
             errors.forEach(key -> err("    - @", key));
             err("");
-            err("  Example configuration:");
-            err("  {");
-            err("    \"mongo_connection_string\": \"mongodb://localhost:27017\",");
-            err("    \"database_name\": \"xcore\"");
-            err("  }");
+            err("  Example secrets.toml:");
+            err("  [database]");
+            err("  mongo_connection_string = \"mongodb://localhost:27017\"");
+            err("  name = \"xcore\"");
             err("");
             err("  Fix @ and restart.", globalConfigFile.name());
             err("===========================================");

@@ -2,7 +2,7 @@ package org.xcore.plugin.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
 
@@ -13,7 +13,7 @@ class TranslationSafetyServiceTest {
     @Test
     @DisplayName("prepare sanitizes control characters and protects formatting tokens")
     void prepare_sanitizesControlCharacters_andProtectsFormattingTokens() {
-        TranslationSafetyService service = new TranslationSafetyService(new Config());
+        TranslationSafetyService service = new TranslationSafetyService(config());
         TranslationProvider.Request request = new TranslationProvider.Request(
                 "Hello \u0000[scarlet]world[] {player} %s",
                 "auto",
@@ -36,7 +36,7 @@ class TranslationSafetyServiceTest {
     @Test
     @DisplayName("validate restores protected tokens from structured output")
     void validate_restoresProtectedTokens_fromStructuredOutput() {
-        TranslationSafetyService service = new TranslationSafetyService(new Config());
+        TranslationSafetyService service = new TranslationSafetyService(config());
         TranslationProvider.Request request = new TranslationProvider.Request(
                 "Hello [scarlet]world[]",
                 "auto",
@@ -60,7 +60,7 @@ class TranslationSafetyServiceTest {
     @Test
     @DisplayName("validate fails when structured output is missing translation field")
     void validate_fails_whenStructuredOutputMissesTranslationField() {
-        TranslationSafetyService service = new TranslationSafetyService(new Config());
+        TranslationSafetyService service = new TranslationSafetyService(config());
         TranslationProvider.Request request = new TranslationProvider.Request("hello", "auto", "ru");
 
         TranslationSafetyService.PreparedRequest preparedRequest = ((TranslationSafetyService.PreparationResult.Success)
@@ -76,7 +76,7 @@ class TranslationSafetyServiceTest {
     @Test
     @DisplayName("validate fails when protected token placement changes")
     void validate_fails_whenProtectedTokenPlacementChanges() {
-        TranslationSafetyService service = new TranslationSafetyService(new Config());
+        TranslationSafetyService service = new TranslationSafetyService(config());
         TranslationProvider.Request request = new TranslationProvider.Request(
                 "Hello [scarlet]world[] and [green]friends[]",
                 "auto",
@@ -95,5 +95,8 @@ class TranslationSafetyServiceTest {
         assertThat(result)
                 .isInstanceOfSatisfying(TranslationResult.Failure.class,
                         failure -> assertThat(failure.failure().reason()).contains("protected token placement"));
+    }
+    private static TomlXcoreConfig config() {
+        return new TomlXcoreConfig();
     }
 }

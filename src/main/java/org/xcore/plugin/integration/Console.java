@@ -16,7 +16,7 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.widget.AutopairWidgets;
 import org.jspecify.annotations.NonNull;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class Console {
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final CloudJLineCompleter cloudJLineCompleter;
 
     private final ServerControl serverControl;
@@ -38,14 +38,14 @@ public class Console {
     private volatile boolean running = false;
 
     @Inject
-    public Console(Config config, CloudJLineCompleter cloudJLineCompleter) { // Внедряем абстракцию
+    public Console(TomlXcoreConfig config, CloudJLineCompleter cloudJLineCompleter) { // Внедряем абстракцию
         this.config = config;
         this.cloudJLineCompleter = cloudJLineCompleter;
         this.serverControl = ServerControl.instance;
     }
     @PostConstruct
     public void init() {
-        if (!config.consoleEnabled) return;
+        if (!config.server.consoleEnabled) return;
 
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {

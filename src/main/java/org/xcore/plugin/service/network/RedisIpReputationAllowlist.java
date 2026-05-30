@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.security.ingress.ipreputation.IpReputationAllowlist;
 
 import java.util.Collections;
@@ -16,17 +16,17 @@ public class RedisIpReputationAllowlist implements IpReputationAllowlist {
     private static final String KEY_PREFIX = "xcore:ip-reputation:allowlist:v1";
 
     private final RedisNetworkBackend backend;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     /**
      * Constructs a Redis-backed IP reputation allowlist scoped to the configured server.
      *
      * @param backend     RedisNetworkBackend used to execute Redis commands for allowlist operations
      * @param redisGson   Gson instance bound to "redis" (accepted for injection; not used directly)
-     * @param config      Configuration whose {@code server} field is used to scope the Redis key
+     * @param config      Configuration whose server-local name is used to scope the Redis key
      */
     @Inject
-    public RedisIpReputationAllowlist(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public RedisIpReputationAllowlist(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.config = config;
     }
@@ -109,7 +109,7 @@ public class RedisIpReputationAllowlist implements IpReputationAllowlist {
      * @return the namespaced Redis key for the allowlist (prefix + ":" + server name)
      */
     private String allowlistKey() {
-        return KEY_PREFIX + ":" + config.server;
+        return KEY_PREFIX + ":" + config.server.name;
     }
 
     /**

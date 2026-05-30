@@ -4,7 +4,7 @@ import io.avaje.inject.AssistFactory;
 import io.avaje.inject.Assisted;
 import jakarta.inject.Inject;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.session.SessionService;
@@ -23,10 +23,10 @@ public class VoteEvent extends VoteSession {
     public VoteEvent(
             @Assisted EventData target, EventDataRepository eventDataRepository,
 
-            GlobalConfig globalConfig,
+            TomlSecretsConfig secretsConfig,
             SessionService sessionService,
             VoteService voteService) {
-        super(globalConfig);
+        super(secretsConfig);
         this.target = target;
         this.eventDataRepository = eventDataRepository;
         this.sessionService = sessionService;

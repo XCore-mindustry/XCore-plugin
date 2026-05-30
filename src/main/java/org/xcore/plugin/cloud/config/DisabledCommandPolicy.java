@@ -5,7 +5,7 @@ import jakarta.inject.Singleton;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.component.CommandComponent;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -13,10 +13,10 @@ import java.util.stream.Collectors;
 @Singleton
 public class DisabledCommandPolicy {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public DisabledCommandPolicy(Config config) {
+    public DisabledCommandPolicy(TomlXcoreConfig config) {
         this.config = config;
     }
 
@@ -66,7 +66,7 @@ public class DisabledCommandPolicy {
             return null;
         }
 
-        for (String disabledCommand : config.disabledCommands) {
+        for (String disabledCommand : config.runtime.disabledCommands) {
             String normalizedDisabled = normalizeCommandName(disabledCommand);
             if (normalizedDisabled == null) {
                 continue;
@@ -80,7 +80,7 @@ public class DisabledCommandPolicy {
     }
 
     public boolean hasDisabledCommands() {
-        return config.disabledCommands != null && !config.disabledCommands.isEmpty();
+        return config.runtime.disabledCommands != null && !config.runtime.disabledCommands.isEmpty();
     }
 
     public String normalizeCommandName(String commandName) {
@@ -100,7 +100,7 @@ public class DisabledCommandPolicy {
             return false;
         }
 
-        for (String disabledCommand : config.disabledCommands) {
+        for (String disabledCommand : config.runtime.disabledCommands) {
             String normalizedDisabled = normalizeCommandName(disabledCommand);
             if (normalizedCommandName.equals(normalizedDisabled)) {
                 return true;

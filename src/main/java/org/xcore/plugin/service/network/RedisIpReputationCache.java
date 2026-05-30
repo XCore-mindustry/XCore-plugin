@@ -5,7 +5,7 @@ import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.security.ingress.ipreputation.IpReputationCache;
 import org.xcore.plugin.security.ingress.ipreputation.IpReputationResult;
 
@@ -16,7 +16,7 @@ public class RedisIpReputationCache implements IpReputationCache {
 
     private final RedisNetworkBackend backend;
     private final Gson redisGson;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     /**
      * Constructs a Redis-backed IP reputation cache using the provided dependencies.
@@ -26,7 +26,7 @@ public class RedisIpReputationCache implements IpReputationCache {
      * @param config    configuration holding cache TTL and server scoping values
      */
     @Inject
-    public RedisIpReputationCache(RedisNetworkBackend backend, @Named("redis") Gson redisGson, Config config) {
+    public RedisIpReputationCache(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
@@ -87,7 +87,7 @@ public class RedisIpReputationCache implements IpReputationCache {
      * @return the Redis key in the form "xcore:ip-reputation:cache:v1:{server}:{normalizedIp}"
      */
     private String cacheKey(String normalizedIp) {
-        return KEY_PREFIX + ":" + config.server + ":" + normalizedIp;
+        return KEY_PREFIX + ":" + config.server.name + ":" + normalizedIp;
     }
 
     /**

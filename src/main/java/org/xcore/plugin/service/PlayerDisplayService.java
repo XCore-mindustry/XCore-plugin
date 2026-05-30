@@ -4,7 +4,7 @@ import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
@@ -17,10 +17,10 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class PlayerDisplayService {
 
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
-    public PlayerDisplayService(Config config) {
+    public PlayerDisplayService(TomlXcoreConfig config) {
         this.config = config;
     }
 
@@ -100,8 +100,12 @@ public class PlayerDisplayService {
     }
 
     public String resolveHexedTag(PlayerData data) {
-        if (data == null || !config.isMiniHexed()) return "";
+        if (data == null || !isMiniHexedServer()) return "";
         return data.hexedRank().tag == null ? "" : data.hexedRank().tag;
+    }
+
+    private boolean isMiniHexedServer() {
+        return "mini-hexed".equals(config.server.name);
     }
 
     public String buildChatBadgePrefix(PlayerData data, Player player) {

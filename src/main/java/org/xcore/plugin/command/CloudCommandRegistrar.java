@@ -8,7 +8,7 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.command.controller.client.EventController;
 import org.xcore.plugin.command.controller.client.HexedController;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.List;
 
@@ -16,13 +16,13 @@ import java.util.List;
 public class CloudCommandRegistrar {
 
     private final CloudService cloud;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final List<CloudClientController> clientControllers;
     private final List<CloudServerController> serverControllers;
 
     @Inject
     public CloudCommandRegistrar(CloudService cloud,
-                                 Config config,
+                                 TomlXcoreConfig config,
                                  List<CloudClientController> clientControllers,
                                  List<CloudServerController> serverControllers) {
         this.cloud = cloud;
@@ -42,13 +42,21 @@ public class CloudCommandRegistrar {
 
     private boolean shouldRegister(CloudClientController controller) {
         if (controller instanceof HexedController) {
-            return config.isMiniHexed();
+            return isMiniHexedServer();
         }
 
         if (controller instanceof EventController) {
-            return config.isEvent();
+            return isEventServer();
         }
 
         return true;
+    }
+
+    private boolean isMiniHexedServer() {
+        return "mini-hexed".equals(config.server.name);
+    }
+
+    private boolean isEventServer() {
+        return "event".equals(config.server.name);
     }
 }

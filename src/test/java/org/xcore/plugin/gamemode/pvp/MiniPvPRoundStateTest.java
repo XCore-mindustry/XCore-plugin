@@ -2,7 +2,7 @@ package org.xcore.plugin.gamemode.pvp;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -20,7 +20,7 @@ class MiniPvPRoundStateTest {
     void clearRoundState_clearsStaleObserverRestoreStateForDefeatedPlayers() {
         ObserverService observerService = mock(ObserverService.class);
         MiniPvP miniPvP = new MiniPvP(
-                mock(Config.class),
+                mock(TomlXcoreConfig.class),
                 mock(SessionService.class),
                 mock(PlayerDataRepository.class),
                 mock(LeaderboardService.class),

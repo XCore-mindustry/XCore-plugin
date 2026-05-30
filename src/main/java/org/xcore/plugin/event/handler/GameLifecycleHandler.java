@@ -16,7 +16,7 @@ import mindustry.io.JsonIO;
 import mindustry.net.Packets;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.service.GameDataService;
@@ -34,7 +34,7 @@ import static mindustry.Vars.*;
 public class GameLifecycleHandler {
 
     private final NetworkService network;
-    private final Config config;
+    private final TomlXcoreConfig config;
     private final Bundle bundle;
     private final SessionService sessionService;
     private final PluginState pluginState;
@@ -42,7 +42,7 @@ public class GameLifecycleHandler {
     private final MapStatsService mapStatsService;
 
     public GameLifecycleHandler(NetworkService network,
-                                Config config,
+                                TomlXcoreConfig config,
                                 Bundle bundle, SessionService sessionService,
                                 PluginState pluginState,
                                 GameDataService gameDataService,
@@ -87,14 +87,14 @@ public class GameLifecycleHandler {
                     "Game over! Reached wave @ with @ players online on map @.",
                     state.wave, Groups.player.size(),
                     Strings.capitalize(Strings.stripColors(state.map.name())));
-        } else if (state.rules.pvp && !config.isMiniHexed()) {
+        } else if (state.rules.pvp && !"mini-hexed".equals(config.server.name)) {
             message = Strings.format(
                     "Game over! Team @ is victorious with @ players online on map @.",
                     event.winner.name, Groups.player.size(),
                     Strings.capitalize(Strings.stripColors(state.map.name())));
         }
 
-        network.post(new ServerActionV1(message, config.server));
+        network.post(new ServerActionV1(message, config.server.name));
 
         if (state.map != null && !state.isMenu()) {
             String fileName = state.map.file == null ? null : state.map.file.name();

@@ -7,7 +7,7 @@ import jakarta.inject.Singleton;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.plugin.config.Config;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -22,13 +22,13 @@ public class ChatTransportHandler {
     private final NetworkService network;
     private final SessionService sessionService;
     private final PrivateMessageService privateMessageService;
-    private final Config config;
+    private final TomlXcoreConfig config;
 
     @Inject
     public ChatTransportHandler(NetworkService network,
                                 SessionService sessionService,
                                 PrivateMessageService privateMessageService,
-                                Config config) {
+                                TomlXcoreConfig config) {
         this.network = network;
         this.sessionService = sessionService;
         this.privateMessageService = privateMessageService;
@@ -46,7 +46,7 @@ public class ChatTransportHandler {
         });
 
         network.subscribe(ChatDiscordIngressCommandV1.class, e -> {
-            if (!config.server.equals(e.server())) {
+            if (!config.server.name.equals(e.server())) {
                 return;
             }
 
@@ -58,7 +58,7 @@ public class ChatTransportHandler {
         });
 
         network.subscribe(ChatPrivateV1.class, e -> {
-            if (config.server.equals(e.server())) {
+            if (config.server.name.equals(e.server())) {
                 return;
             }
 

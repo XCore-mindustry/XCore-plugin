@@ -10,8 +10,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.config.Config;
-import org.xcore.plugin.config.GlobalConfig;
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.EventDataRepository;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.localization.Localization;
@@ -66,8 +66,8 @@ class MapServiceVoteNewWaveTest {
                 mock(EventDataRepository.class),
                 mock(MapDataRepository.class),
                 sessionService,
-                new Config(),
-                new GlobalConfig(),
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
@@ -92,15 +92,15 @@ class MapServiceVoteNewWaveTest {
         when(sessionService.get("player-1")).thenReturn(session);
         when(session.locale()).thenReturn(localization);
 
-        Config config = new Config();
-        config.disabledFeatures.add(Feature.VNW.key());
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.runtime.disabledFeatures.add(Feature.VNW.key());
 
         MapService service = new MapService(
                 mock(EventDataRepository.class),
                 mock(MapDataRepository.class),
                 sessionService,
                 config,
-                new GlobalConfig(),
+                new TomlSecretsConfig(),
                 mock(VoteService.class),
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
@@ -132,8 +132,8 @@ class MapServiceVoteNewWaveTest {
                 mock(EventDataRepository.class),
                 mock(MapDataRepository.class),
                 sessionService,
-                new Config(),
-                new GlobalConfig(),
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
                 voteService,
                 mock(VoteNewWaveFactory.class),
                 mock(VoteRtvFactory.class),
@@ -167,8 +167,8 @@ class MapServiceVoteNewWaveTest {
                 mock(EventDataRepository.class),
                 mock(MapDataRepository.class),
                 sessionService,
-                new Config(),
-                new GlobalConfig(),
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
                 voteService,
                 voteFactory,
                 mock(VoteRtvFactory.class),
