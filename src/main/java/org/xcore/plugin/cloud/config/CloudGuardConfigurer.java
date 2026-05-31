@@ -47,7 +47,7 @@ public class CloudGuardConfigurer {
             String disabledCommand = disabledCommandPolicy.disabledCommandKey(context.commandInput().remainingInput());
             if (disabledCommand != null) {
                 context.commandContext().store(TELEMETRY_COMMAND_NAME, disabledCommand);
-                CommandTelemetryRecorder.record(metricsService, context.commandContext().sender(), disabledCommand, "error", 0.0d);
+                CommandTelemetryRecorder.record(metricsService, context.commandContext().sender(), disabledCommand, "blocked", 0.0d);
                 disabledCommandThrower.accept(disabledCommand);
             }
         });

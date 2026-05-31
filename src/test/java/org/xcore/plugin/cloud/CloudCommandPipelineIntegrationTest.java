@@ -116,7 +116,7 @@ class CloudCommandPipelineIntegrationTest {
         assertThat(handlerCalled).isFalse();
 
         var samples = registry.snapshot();
-        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "test foo", "player", "error").value()).isEqualTo(1.0d);
+        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "test foo", "player", "blocked").value()).isEqualTo(1.0d);
         var duration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "test foo", "player");
         assertThat(duration.count()).isEqualTo(1L);
     }

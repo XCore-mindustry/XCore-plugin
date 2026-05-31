@@ -7,6 +7,7 @@ import org.incendo.cloud.context.CommandInput;
 import org.incendo.cloud.execution.CommandResult;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.metrics.MetricsService;
 
 import java.util.concurrent.CompletableFuture;
@@ -47,7 +48,7 @@ final class CommandTelemetryCoordinator implements ExecutionCoordinator<XCoreSen
         String commandName = command != null
                 ? commandName(command)
                 : commandContext.optional(CloudGuardConfigurer.TELEMETRY_COMMAND_NAME).orElse(null);
-        String result = throwable == null ? "success" : "error";
+        String result = classifyResult(throwable);
         CommandTelemetryRecorder.record(
                 metrics,
                 commandContext.sender(),
@@ -55,6 +56,25 @@ final class CommandTelemetryCoordinator implements ExecutionCoordinator<XCoreSen
                 result,
                 (System.nanoTime() - startedAt) / 1_000_000_000d
         );
+    }
+
+    private static String classifyResult(Throwable throwable) {
+        if (throwable == null) {
+            return "success";
+        }
+
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof XCoreCommandException xcore && xcore.isSilent()) {
+                return "blocked";
+            }
+            Throwable cause = current.getCause();
+            if (cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return "error";
     }
 
     private static String commandName(Command<XCoreSender> command) {
