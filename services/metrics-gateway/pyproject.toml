@@ -1,0 +1,41 @@
+[project]
+name = "xcore-metrics-gateway"
+version = "0.1.0"
+description = "Prometheus-facing telemetry gateway for XCore Mindustry servers"
+readme = "README.md"
+authors = [
+    { name = "osp54", email = "76648940+osp54@users.noreply.github.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.12.0",
+    "prometheus-client>=0.23.0",
+    "pydantic>=2.11.0",
+    "pydantic-settings>=2.10.0",
+    "python-dotenv>=1.1.0",
+    "redis>=5.2.1",
+    "xcore-protocol",
+]
+
+[project.scripts]
+xcore-metrics-gateway = "xcore_metrics_gateway.main:main"
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.31.0",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.2.0",
+    "ruff>=0.11.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "3b227876b645e65e64a66bd0e44786e2596ebad3" }
