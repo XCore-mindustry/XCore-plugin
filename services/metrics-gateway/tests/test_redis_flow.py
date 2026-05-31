@@ -99,6 +99,92 @@ async def test_discovery_and_poller_populate_store_from_redis_snapshot() -> None
 
 
 @pytest.mark.asyncio
+async def test_discovery_and_poller_accept_plugin_shaped_snapshot_contract() -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    settings = _settings()
+    client = RedisMetricsClient(settings, redis=redis)
+    discovery = SnapshotDiscovery(settings, client)
+    store = SeriesStore()
+    self_metrics = GatewaySelfMetrics()
+    poller = SnapshotPoller(settings, client, discovery, store, self_metrics)
+
+    await redis.set(
+        "xcore:metrics:snapshot:mini-pvp",
+        _encode(
+            {
+                "schemaVersion": "metrics.snapshot.v1",
+                "server": "mini-pvp",
+                "nodeId": "mini-pvp-01",
+                "producer": "xcore-plugin/4.1.0-SNAPSHOT",
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
+                "startTimeUnixMs": 1_000,
+                "sequence": 0,
+                "intervalMs": 15000,
+                "samples": [
+                    {
+                        "name": "mindustry_player_joins_total",
+                        "type": "counter",
+                        "labels": {},
+                        "value": 2.0,
+                    },
+                    {
+                        "name": "mindustry_players_online",
+                        "type": "gauge",
+                        "labels": {},
+                        "value": 9.0,
+                    },
+                    {
+                        "name": "xcore_command_duration_seconds",
+                        "type": "histogram",
+                        "labels": {},
+                        "buckets": [0.1, 0.5, 1.0],
+                        "counts": [1, 2, 3],
+                        "count": 3,
+                        "sum": 1.25,
+                    },
+                ],
+            }
+        ),
+        ex=60,
+    )
+
+    assert await discovery.discover_once() is True
+    assert await poller.poll_once() is True
+
+    snapshots, node_states = store.render_snapshot()
+    assert snapshots["mini-pvp"].server == "mini-pvp"
+    assert snapshots["mini-pvp"].sequence == 0
+    assert node_states[0].server == "mini-pvp"
+    assert node_states[0].up is True
+    assert node_states[0].stale is False
+
+    rendered = render_metrics(snapshots, node_states, self_metrics.snapshot())
+    assert 'mindustry_player_joins_total{server="mini-pvp"} 2' in rendered
+    assert 'mindustry_players_online{server="mini-pvp"} 9' in rendered
+    assert (
+        'xcore_command_duration_seconds_bucket{le="0.1",server="mini-pvp"} 1'
+        in rendered
+    )
+    assert (
+        'xcore_command_duration_seconds_bucket{le="0.5",server="mini-pvp"} 2'
+        in rendered
+    )
+    assert (
+        'xcore_command_duration_seconds_bucket{le="1",server="mini-pvp"} 3'
+        in rendered
+    )
+    assert (
+        'xcore_command_duration_seconds_bucket{le="+Inf",server="mini-pvp"} 3'
+        in rendered
+    )
+    assert 'xcore_command_duration_seconds_sum{server="mini-pvp"} 1.25' in rendered
+    assert 'xcore_command_duration_seconds_count{server="mini-pvp"} 3' in rendered
+    assert rendered.count('server="mini-pvp"') >= 8
+
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_poller_marks_missing_when_discovered_key_expires() -> None:
     redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
     settings = _settings()
