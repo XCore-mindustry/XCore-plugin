@@ -1,0 +1,80 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      GATEWAY_HTTP_HOST: 0.0.0.0
+      GATEWAY_HTTP_PORT: 9100
+      REDIS_DISCOVERY_INTERVAL_MS: 30000
+      REDIS_POLL_INTERVAL_MS: 3000
+      REDIS_COMMAND_TIMEOUT_MS: 500
+      STALE_SNAPSHOT_AGE_SECONDS: 45
+      MAX_SERVERS: 200
+      MAX_SERIES_PER_SERVER: 5000
+      MAX_TOTAL_SERIES: 250000
+      MAX_LABELS_PER_METRIC: 8
+      MAX_LABEL_VALUE_LENGTH: 80
+      MAX_COMPRESSED_SNAPSHOT_BYTES: 131072
+      MAX_UNCOMPRESSED_SNAPSHOT_BYTES: 524288
+    ports:
+      - "9100:9100"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+
+volumes:
+  prometheus-data:
+  grafana-data:
