@@ -10,6 +10,7 @@ import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.exception.XCoreCommandException;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.service.SecurityService;
 
@@ -19,21 +20,25 @@ import static com.ospx.flubundle.Bundle.args;
 public class CloudGuardConfigurer {
     private static final CloudKey<Boolean> REQUIRES_MUTE_CHECK_META = CloudKey.of("xcore.requiresMuteCheck", Boolean.class);
     private static final CloudKey<PlayTimeLimit> REQUIRES_PLAY_TIME_META = CloudKey.of("xcore.requiresPlayTime", PlayTimeLimit.class);
+    static final CloudKey<String> TELEMETRY_COMMAND_NAME = CloudKey.of("xcore.telemetryCommandName", String.class);
 
     private final Provider<SecurityService> securityService;
     private final Provider<SessionService> sessionService;
     private final TomlSecretsConfig secretsConfig;
     private final DisabledCommandPolicy disabledCommandPolicy;
+    private final MetricsService metricsService;
 
     @Inject
     public CloudGuardConfigurer(Provider<SecurityService> securityService,
                                 Provider<SessionService> sessionService,
                                 TomlSecretsConfig secretsConfig,
-                                DisabledCommandPolicy disabledCommandPolicy) {
+                                DisabledCommandPolicy disabledCommandPolicy,
+                                MetricsService metricsService) {
         this.securityService = securityService;
         this.sessionService = sessionService;
         this.secretsConfig = secretsConfig;
         this.disabledCommandPolicy = disabledCommandPolicy;
+        this.metricsService = metricsService;
     }
 
     public void configure(MindustryCommandManager<XCoreSender> manager,
@@ -41,6 +46,8 @@ public class CloudGuardConfigurer {
         manager.registerCommandPreProcessor(context -> {
             String disabledCommand = disabledCommandPolicy.disabledCommandKey(context.commandInput().remainingInput());
             if (disabledCommand != null) {
+                context.commandContext().store(TELEMETRY_COMMAND_NAME, disabledCommand);
+                CommandTelemetryRecorder.record(metricsService, context.commandContext().sender(), disabledCommand, "error", 0.0d);
                 disabledCommandThrower.accept(disabledCommand);
             }
         });
@@ -50,6 +57,7 @@ public class CloudGuardConfigurer {
             if (disabledCommand == null) {
                 return;
             }
+            context.commandContext().store(TELEMETRY_COMMAND_NAME, disabledCommand);
             disabledCommandThrower.accept(disabledCommand);
         });
 

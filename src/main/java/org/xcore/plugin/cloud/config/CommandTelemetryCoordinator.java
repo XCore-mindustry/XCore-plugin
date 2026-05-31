@@ -7,11 +7,7 @@ import org.incendo.cloud.context.CommandInput;
 import org.incendo.cloud.execution.CommandResult;
 import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.xcore.plugin.cloud.XCoreSender;
-import org.xcore.plugin.metrics.Counter;
-import org.xcore.plugin.metrics.Histogram;
 import org.xcore.plugin.metrics.MetricsService;
-import org.xcore.plugin.metrics.Tags;
-import org.xcore.plugin.metrics.XcoreMetrics;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -26,11 +22,16 @@ final class CommandTelemetryCoordinator implements ExecutionCoordinator<XCoreSen
 
     @Override
     public CompletableFuture<CommandResult<XCoreSender>> coordinateExecution(CommandTree<XCoreSender> commandTree,
-                                                                              CommandContext<XCoreSender> commandContext,
-                                                                              CommandInput commandInput) {
+                                                                               CommandContext<XCoreSender> commandContext,
+                                                                               CommandInput commandInput) {
         long startedAt = System.nanoTime();
-        return delegate.coordinateExecution(commandTree, commandContext, commandInput)
-                .whenComplete((result, throwable) -> record(commandContext, throwable, startedAt));
+        try {
+            return delegate.coordinateExecution(commandTree, commandContext, commandInput)
+                    .whenComplete((result, throwable) -> record(commandContext, throwable, startedAt));
+        } catch (RuntimeException | Error error) {
+            record(commandContext, error, startedAt);
+            throw error;
+        }
     }
 
     @Override
@@ -43,26 +44,17 @@ final class CommandTelemetryCoordinator implements ExecutionCoordinator<XCoreSen
 
     private void record(CommandContext<XCoreSender> commandContext, Throwable throwable, long startedAt) {
         Command<XCoreSender> command = commandContext.command();
-        if (command == null) {
-            return;
-        }
-
-        String commandName = commandName(command);
-        String source = commandContext.sender().isPlayer() ? "player" : "server";
+        String commandName = command != null
+                ? commandName(command)
+                : commandContext.optional(CloudGuardConfigurer.TELEMETRY_COMMAND_NAME).orElse(null);
         String result = throwable == null ? "success" : "error";
-
-        Counter counter = metrics.counter(XcoreMetrics.COMMANDS_TOTAL, Tags.of(
-                "command", commandName,
-                "source", source,
-                "result", result
-        ));
-        counter.increment();
-
-        Histogram histogram = metrics.histogram(XcoreMetrics.COMMAND_DURATION_SECONDS, Tags.of(
-                "command", commandName,
-                "source", source
-        ));
-        histogram.observe((System.nanoTime() - startedAt) / 1_000_000_000d);
+        CommandTelemetryRecorder.record(
+                metrics,
+                commandContext.sender(),
+                commandName,
+                result,
+                (System.nanoTime() - startedAt) / 1_000_000_000d
+        );
     }
 
     private static String commandName(Command<XCoreSender> command) {

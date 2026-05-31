@@ -38,6 +38,7 @@ class CloudCommandPipelineIntegrationTest {
     private MindustryCommandManager<XCoreSender> manager;
     private AnnotationParser<XCoreSender> parser;
     private XCoreSender sender;
+    private XCoreSender serverSender;
     private LocalMetricRegistry registry;
 
     @BeforeEach
@@ -59,6 +60,7 @@ class CloudCommandPipelineIntegrationTest {
 
         MindustrySender rawSender = new MindustrySender.PlayerSender(player);
         sender = new XCoreSender(rawSender, bundle, () -> sessionService);
+        serverSender = new XCoreSender(new MindustrySender.ConsoleSender(), bundle, () -> sessionService);
 
         CommandHandler handler = new CommandHandler("");
         SenderMapper<MindustrySender, XCoreSender> senderMapper = SenderMapper.create(
@@ -81,7 +83,8 @@ class CloudCommandPipelineIntegrationTest {
                 () -> securityService,
                 () -> sessionService,
                 secretsConfig,
-                policy
+                policy,
+                metricsService
         );
 
         guardConfigurer.configure(manager, commandName -> {
@@ -111,6 +114,11 @@ class CloudCommandPipelineIntegrationTest {
         }
 
         assertThat(handlerCalled).isFalse();
+
+        var samples = registry.snapshot();
+        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "test foo", "player", "error").value()).isEqualTo(1.0d);
+        var duration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "test foo", "player");
+        assertThat(duration.count()).isEqualTo(1L);
     }
 
     @Test
@@ -171,6 +179,25 @@ class CloudCommandPipelineIntegrationTest {
         var failDuration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "metrics-fail", "player");
         assertThat(failDuration.count()).isEqualTo(1L);
         assertThat(failDuration.sum()).isNotNull().isGreaterThanOrEqualTo(0.0d);
+    }
+
+    @Test
+    @DisplayName("command metrics record server source for console commands")
+    void commandMetrics_recordServerSourceForConsoleCommands() throws Exception {
+        parser.parse(new Object() {
+            @Command("server-metrics")
+            public void handle(XCoreSender sender) {
+            }
+        });
+
+        manager.commandExecutor().executeCommand(serverSender, "server-metrics").toCompletableFuture().get();
+
+        var samples = registry.snapshot();
+        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "server-metrics", "server", "success").value()).isEqualTo(1.0d);
+
+        var duration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "server-metrics", "server");
+        assertThat(duration.count()).isEqualTo(1L);
+        assertThat(duration.sum()).isNotNull().isGreaterThanOrEqualTo(0.0d);
     }
 
     private org.xcore.protocol.generated.shared.MetricSampleV1 sample(List<org.xcore.protocol.generated.shared.MetricSampleV1> samples,
