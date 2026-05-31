@@ -1,26 +1,31 @@
 package org.xcore.plugin.security.ingress;
 
-import io.avaje.inject.BeanScope;
-import io.avaje.inject.spi.AvajeModule;
-import io.avaje.inject.spi.Builder;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.protocol.generated.shared.MetricSampleV1;
+import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.metrics.DefaultMetricsService;
+import org.xcore.plugin.metrics.LocalMetricRegistry;
+import org.xcore.plugin.metrics.XcoreMetrics;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class IngressServiceAvajeTest {
 
-    private BeanScope scope;
+    private IngressService service;
+    private LocalMetricRegistry registry;
 
     @AfterEach
     void tearDown() {
-        if (scope != null) {
-            scope.close();
+        if (service != null) {
+            service.shutdown();
+            service = null;
         }
         // Avoid leaking interrupted state between tests.
         Thread.interrupted();
@@ -41,6 +46,10 @@ class IngressServiceAvajeTest {
         assertThat(fastDeny.calls).isEqualTo(1);
         assertThat(fastAllow.calls).isZero();
         assertThat(slowAllow.calls).isZero();
+        assertThat(sample(XcoreMetrics.INGRESS_DENIALS_TOTAL.name(), "check", "fast-deny", "silent", "false"))
+                .get()
+                .extracting(MetricSampleV1::value)
+                .isEqualTo(1d);
     }
 
     @Test
@@ -72,6 +81,10 @@ class IngressServiceAvajeTest {
         assertThat(fastAllow.calls).isEqualTo(1);
         assertThat(slowAllow.calls).isEqualTo(1);
         assertThat(slowDeny.calls).isEqualTo(1);
+        assertThat(sample(XcoreMetrics.INGRESS_DENIALS_TOTAL.name(), "check", "slow-deny", "silent", "false"))
+                .get()
+                .extracting(MetricSampleV1::value)
+                .isEqualTo(1d);
     }
 
     @Test
@@ -86,6 +99,10 @@ class IngressServiceAvajeTest {
         assertThat(result).isSameAs(AccessResult.Allowed.INSTANCE);
         assertThat(fastThrows.calls).isEqualTo(1);
         assertThat(fastAllow.calls).isEqualTo(1);
+        assertThat(sample(XcoreMetrics.INGRESS_CHECK_ERRORS_TOTAL.name(), "check", "fast-throws", "phase", "fast"))
+                .get()
+                .extracting(MetricSampleV1::value)
+                .isEqualTo(1d);
     }
 
     @Test
@@ -104,31 +121,23 @@ class IngressServiceAvajeTest {
     }
 
     private IngressService buildService(IngressCheck... checks) {
-        scope = BeanScope.builder()
-                .modules(new IngressServiceModule(List.of(checks)))
-                .forTesting()
-                .build();
-        return scope.get(IngressService.class);
+        registry = new LocalMetricRegistry();
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.telemetry.enabled = true;
+        service = new IngressService(List.of(checks), new DefaultMetricsService(registry, config));
+        return service;
     }
 
-    private static final class IngressServiceModule implements AvajeModule {
-        private final List<IngressCheck> checks;
-
-        private IngressServiceModule(List<IngressCheck> checks) {
-            this.checks = checks;
-        }
-
-        @Override
-        public Class<?>[] classes() {
-            return new Class<?>[]{IngressService.class};
-        }
-
-        @Override
-        public void build(Builder builder) {
-            if (builder.isBeanAbsent(IngressService.class)) {
-                builder.register(new IngressService(checks));
-            }
-        }
+    private Optional<MetricSampleV1> sample(String metricName,
+                                            String labelName,
+                                            String labelValue,
+                                            String secondLabelName,
+                                            String secondLabelValue) {
+        return registry.snapshot().stream()
+                .filter(sample -> sample.name().equals(metricName))
+                .filter(sample -> labelValue.equals(sample.labels().get(labelName)))
+                .filter(sample -> secondLabelValue.equals(sample.labels().get(secondLabelName)))
+                .findFirst();
     }
 
     private static final class StubIngressCheck implements IngressCheck {

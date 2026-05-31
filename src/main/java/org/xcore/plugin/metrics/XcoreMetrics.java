@@ -43,6 +43,20 @@ public final class XcoreMetrics {
             LabelSchema.empty()
     );
 
+    public static final CounterDef INGRESS_DENIALS_TOTAL = new CounterDef(
+            "xcore_ingress_denials_total",
+            "Total denied ingress validations",
+            "events",
+            LabelSchema.of("check", "silent")
+    );
+
+    public static final CounterDef INGRESS_CHECK_ERRORS_TOTAL = new CounterDef(
+            "xcore_ingress_check_errors_total",
+            "Total ingress check execution errors",
+            "events",
+            LabelSchema.of("check", "phase")
+    );
+
     public static final CounterDef COMMANDS_TOTAL = new CounterDef(
             "xcore_commands_total",
             "Total executed commands",
