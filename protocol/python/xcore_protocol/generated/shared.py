@@ -330,6 +330,93 @@ class MapFileSourceV1:
         payload['fileName'] = self.fileName
         return payload
 
+class MetricSampleV1Type(StrEnum):
+    COUNTER = 'counter'
+    GAUGE = 'gauge'
+    HISTOGRAM = 'histogram'
+    INFO = 'info'
+
+@dataclass(frozen=True, slots=True)
+class MetricSampleV1:
+    name: str
+    type: MetricSampleV1Type
+    labels: dict[str, Any]
+    help: str | None = None
+    unit: str | None = None
+    value: float | None = None
+    buckets: tuple[float, ...] | None = None
+    counts: tuple[int, ...] | None = None
+    count: int | None = None
+    sum: float | None = None
+
+    def __post_init__(self) -> None:
+        _expect_str(self.name, 'name')
+        _expect_instance(self.type, 'type', MetricSampleV1Type)
+        _expect_json_object(self.labels, 'labels', allowed_types=('string',), allow_null=False)
+        if self.help is not None:
+            _expect_str(self.help, 'help')
+        if self.unit is not None:
+            _expect_str(self.unit, 'unit')
+        if self.value is not None:
+            _expect_number(self.value, 'value')
+        if self.buckets is not None:
+            if not isinstance(self.buckets, tuple):
+                raise TypeError("buckets must be a tuple")
+            for item in self.buckets:
+                _expect_number(item, 'buckets[]')
+        if self.counts is not None:
+            if not isinstance(self.counts, tuple):
+                raise TypeError("counts must be a tuple")
+            for item in self.counts:
+                _expect_int(item, 'counts[]')
+        if self.count is not None:
+            _expect_int(self.count, 'count')
+        if self.sum is not None:
+            _expect_number(self.sum, 'sum')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "MetricSampleV1":
+        mapping = _expect_mapping(payload, "MetricSampleV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('name', 'type', 'labels')),
+            allowed=frozenset(('name', 'type', 'labels', 'help', 'unit', 'value', 'buckets', 'counts', 'count', 'sum')),
+            model_name="MetricSampleV1",
+        )
+        return cls(
+            name=_expect_str(mapping['name'], 'name'),
+            type=_expect_enum(mapping['type'], 'type', MetricSampleV1Type),
+            labels=_expect_json_object(mapping['labels'], 'labels', allowed_types=('string',), allow_null=False),
+            help=(_expect_str(mapping['help'], 'help') if 'help' in mapping else None),
+            unit=(_expect_str(mapping['unit'], 'unit') if 'unit' in mapping else None),
+            value=(_expect_number(mapping['value'], 'value') if 'value' in mapping else None),
+            buckets=(tuple(_expect_number(item, 'buckets[]') for item in _expect_list(mapping['buckets'], 'buckets')) if 'buckets' in mapping else None),
+            counts=(tuple(_expect_int(item, 'counts[]') for item in _expect_list(mapping['counts'], 'counts')) if 'counts' in mapping else None),
+            count=(_expect_int(mapping['count'], 'count') if 'count' in mapping else None),
+            sum=(_expect_number(mapping['sum'], 'sum') if 'sum' in mapping else None),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['name'] = self.name
+        payload['type'] = str(self.type)
+        payload['labels'] = dict(self.labels)
+        if self.help is not None:
+            payload['help'] = self.help
+        if self.unit is not None:
+            payload['unit'] = self.unit
+        if self.value is not None:
+            payload['value'] = float(self.value)
+        if self.buckets is not None:
+            payload['buckets'] = [float(item) for item in self.buckets]
+        if self.counts is not None:
+            payload['counts'] = [item for item in self.counts]
+        if self.count is not None:
+            payload['count'] = self.count
+        if self.sum is not None:
+            payload['sum'] = float(self.sum)
+        return payload
+
 @dataclass(frozen=True, slots=True)
 class ModerationTargetRefV1:
     playerUuid: str | None = None
@@ -508,9 +595,11 @@ __all__ = [
     "ExpirationInfoV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "MetricSampleV1",
     "ModerationTargetRefV1",
     "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
+    "MetricSampleV1Type",
 ]

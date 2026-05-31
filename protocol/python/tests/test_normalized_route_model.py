@@ -234,6 +234,24 @@ def test_generation_plan_supports_moderation_family_with_shared_refs() -> None:
     ]
 
 
+def test_load_message_schema_supports_non_routed_message_identity() -> None:
+    schema = load_message_schema(Path("spec/messages/telemetry/metrics.snapshot.v1.json"))
+
+    assert schema.title == "MetricsSnapshotV1"
+    assert schema.kind == "message"
+    assert schema.message_type is None
+    assert schema.message_version is None
+
+
+def test_generation_plan_supports_telemetry_family_without_routes() -> None:
+    plan = load_generation_plan(family="telemetry")
+
+    assert [schema.title for schema in plan.shared_schemas] == ["MetricSampleV1"]
+    assert [schema.title for schema in plan.message_schemas_for("telemetry")] == ["MetricsSnapshotV1"]
+    assert list(plan.routes_for("telemetry")) == []
+    assert list(plan.route_descriptors_for("telemetry")) == []
+
+
 def test_message_type_constant_name_normalizes_hyphenated_identifiers() -> None:
     assert message_type_constant_name("chat.discord-ingress.command", 1) == "CHAT_DISCORD_INGRESS_COMMAND_V1"
     assert message_type_constant_name("player.join-leave", 1) == "PLAYER_JOIN_LEAVE_V1"

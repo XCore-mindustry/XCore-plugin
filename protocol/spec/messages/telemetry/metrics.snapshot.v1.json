@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:telemetry:metrics.snapshot:v1",
+  "title": "MetricsSnapshotV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "server",
+    "nodeId",
+    "producer",
+    "createdAtUnixMs",
+    "startTimeUnixMs",
+    "sequence",
+    "intervalMs",
+    "samples"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "metrics.snapshot.v1"
+    },
+    "server": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAtUnixMs": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "startTimeUnixMs": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "sequence": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "intervalMs": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:xcore:protocol:shared:types:metric-sample:v1"
+      }
+    }
+  }
+}

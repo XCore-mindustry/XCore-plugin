@@ -53,7 +53,7 @@ The normalized schema model should capture:
 - message or subtype kind
 - properties
 - required fields
-- const values for message identity
+- const values for message identity or schema identity
 - array item references
 - object references
 
@@ -173,9 +173,11 @@ Handwritten Python code may wrap generated artifacts for:
 Consumer repositories should keep compatibility parsing outside generated canonical models.
 
 ## Message Identity Strategy
-Generated models should expose canonical message identity as constants instead of requiring application code to pass `messageType` and `messageVersion` manually during construction.
+Generated models should expose canonical identity constants instead of requiring application code to pass identity fields manually during construction.
 
 Serialization helpers may inject canonical identity fields into payload dictionaries. Deserialization helpers may verify them before constructing the generated model.
+
+For routed messages, identity is normally `messageType` and `messageVersion`. For route-less snapshot payloads such as telemetry, identity may instead be a schema-level const like `schemaVersion`.
 
 This keeps application usage ergonomic while preserving the strict canonical wire shape.
 

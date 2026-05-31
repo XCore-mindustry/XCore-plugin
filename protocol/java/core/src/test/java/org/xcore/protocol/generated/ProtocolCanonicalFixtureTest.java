@@ -6,9 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.MetricsSnapshotV1;
 import org.xcore.protocol.generated.shared.ActorRefV1;
 import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
+import org.xcore.protocol.generated.shared.MetricSampleV1;
+import org.xcore.protocol.generated.shared.MetricSampleV1Type;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 
 import java.io.IOException;
@@ -35,6 +38,7 @@ class ProtocolCanonicalFixtureTest {
     private static final String ADMIN_ACCESS_REVOKE_FIXTURE = "spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.revoke.json";
     private static final String UNLINK_FIXTURE = "spec/fixtures/valid/discord/discord.unlink.command.v1.json";
     private static final String HEARTBEAT_FIXTURE = "spec/fixtures/valid/chat/server.heartbeat.v1.json";
+    private static final String TELEMETRY_FIXTURE = "spec/fixtures/valid/telemetry/metrics.snapshot.v1.json";
 
     @Test
     void adminAccessGrantFixtureParsesAndRoundTripsCanonically() throws IOException {
@@ -94,6 +98,43 @@ class ProtocolCanonicalFixtureTest {
 
         var canonicalPayload = model.toPayload();
         assertCanonicalIdentity(canonicalPayload, "server.heartbeat", 1);
+        assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
+    }
+
+    @Test
+    void telemetryFixtureParsesAndRoundTripsCanonically() throws IOException {
+        var fixture = readFixture(TELEMETRY_FIXTURE);
+        assertSchemaIdentity(fixture, "metrics.snapshot.v1");
+        assertNoLegacyKeys(fixture);
+        assertKeySet(fixture, Set.of(
+                "schemaVersion",
+                "server",
+                "nodeId",
+                "producer",
+                "createdAtUnixMs",
+                "startTimeUnixMs",
+                "sequence",
+                "intervalMs",
+                "samples"
+        ));
+
+        @SuppressWarnings("unchecked")
+        var samplePayloads = (List<Map<String, Object>>) fixture.get("samples");
+        assertEquals(3, samplePayloads.size());
+
+        var model = new MetricsSnapshotV1(
+                getString(fixture, "server"),
+                getString(fixture, "nodeId"),
+                getString(fixture, "producer"),
+                getLong(fixture, "createdAtUnixMs"),
+                getLong(fixture, "startTimeUnixMs"),
+                getLong(fixture, "sequence"),
+                getInt(fixture, "intervalMs"),
+                samplePayloads.stream().map(ProtocolCanonicalFixtureTest::parseMetricSample).toList()
+        );
+
+        var canonicalPayload = model.toPayload();
+        assertSchemaIdentity(canonicalPayload, "metrics.snapshot.v1");
         assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
     }
 
@@ -173,6 +214,12 @@ class ProtocolCanonicalFixtureTest {
     private static void assertCanonicalIdentity(Map<String, Object> payload, String expectedType, int expectedVersion) {
         assertEquals(expectedType, getString(payload, "messageType"));
         assertEquals(expectedVersion, getInt(payload, "messageVersion"));
+    }
+
+    private static void assertSchemaIdentity(Map<String, Object> payload, String expectedSchemaVersion) {
+        assertEquals(expectedSchemaVersion, getString(payload, "schemaVersion"));
+        assertFalse(payload.containsKey("messageType"));
+        assertFalse(payload.containsKey("messageVersion"));
     }
 
     private static void assertPlayerRefShape(Map<String, Object> player) {
@@ -258,6 +305,21 @@ class ProtocolCanonicalFixtureTest {
         );
     }
 
+    private static MetricSampleV1 parseMetricSample(Map<String, Object> payload) {
+        return new MetricSampleV1(
+                getString(payload, "name"),
+                MetricSampleV1Type.fromValue(getString(payload, "type")),
+                getMap(payload, "labels"),
+                getOptionalString(payload, "help"),
+                getOptionalString(payload, "unit"),
+                getOptionalDouble(payload, "value"),
+                getOptionalDoubleList(payload, "buckets"),
+                getOptionalIntList(payload, "counts"),
+                getOptionalLong(payload, "count"),
+                getOptionalDouble(payload, "sum")
+        );
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, Object> getMap(Map<String, Object> payload, String key) {
         var value = payload.get(key);
@@ -306,6 +368,54 @@ class ProtocolCanonicalFixtureTest {
         var value = payload.get(key);
         assertInstanceOf(Number.class, value, () -> "Expected numeric value for key '" + key + "'");
         return ((Number) value).longValue();
+    }
+
+    private static Long getOptionalLong(Map<String, Object> payload, String key) {
+        var value = payload.get(key);
+        if (value == null) {
+            return null;
+        }
+        assertInstanceOf(Number.class, value, () -> "Expected numeric value for key '" + key + "'");
+        return ((Number) value).longValue();
+    }
+
+    private static Double getOptionalDouble(Map<String, Object> payload, String key) {
+        var value = payload.get(key);
+        if (value == null) {
+            return null;
+        }
+        assertInstanceOf(Number.class, value, () -> "Expected numeric value for key '" + key + "'");
+        return ((Number) value).doubleValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Double> getOptionalDoubleList(Map<String, Object> payload, String key) {
+        var value = payload.get(key);
+        if (value == null) {
+            return null;
+        }
+        assertInstanceOf(List.class, value, () -> "Expected list value for key '" + key + "'");
+        return ((List<Object>) value).stream()
+                .map(item -> {
+                    assertInstanceOf(Number.class, item, () -> "Expected numeric list item for key '" + key + "'");
+                    return ((Number) item).doubleValue();
+                })
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Integer> getOptionalIntList(Map<String, Object> payload, String key) {
+        var value = payload.get(key);
+        if (value == null) {
+            return null;
+        }
+        assertInstanceOf(List.class, value, () -> "Expected list value for key '" + key + "'");
+        return ((List<Object>) value).stream()
+                .map(item -> {
+                    assertInstanceOf(Number.class, item, () -> "Expected numeric list item for key '" + key + "'");
+                    return ((Number) item).intValue();
+                })
+                .toList();
     }
 
     private static Map<String, Object> normalizeMap(Map<String, Object> payload) {

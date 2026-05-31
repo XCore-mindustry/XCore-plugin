@@ -6,7 +6,7 @@ Canonical specs and schemas define the authoritative protocol surface. For canon
 ## Repository Boundary Rule
 `xcore-protocol` describes only the canonical protocol surface. Temporary compatibility adapters, legacy aliases, and old payload translations belong in consumer/application repositories during migration.
 
-Generated Java/Python protocol artifacts are part of the supported canonical consumption surface for the currently generated families: maps, chat/heartbeat, discord, and moderation. They do not replace canonical specs as the source of truth, and they must stay strict rather than absorb compatibility aliases or tolerant-reader behavior.
+Generated Java/Python protocol artifacts are part of the supported canonical consumption surface for the currently generated families: maps, chat/heartbeat, discord, moderation, and telemetry. They do not replace canonical specs as the source of truth, and they must stay strict rather than absorb compatibility aliases or tolerant-reader behavior.
 
 Compatibility glue must wrap generated canonical artifacts in consumer repos rather than altering canonical specs or generated outputs.
 

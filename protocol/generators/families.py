@@ -71,6 +71,15 @@ FAMILY_CONFIGS: tuple[FamilyConfig, ...] = (
         includes=("moderation",),
         generated_model_test="python/tests/test_generated_moderation_models.py",
     ),
+    FamilyConfig(
+        name="telemetry",
+        python_module="telemetry",
+        java_package="org.xcore.protocol.generated.messages.telemetry",
+        java_messages_class="TelemetryMessages",
+        java_routes_class="TelemetryRoutes",
+        includes=("telemetry",),
+        generated_model_test="python/tests/test_generated_telemetry_models.py",
+    ),
 )
 
 FAMILY_CONFIG_BY_NAME: dict[str, FamilyConfig] = {config.name: config for config in FAMILY_CONFIGS}

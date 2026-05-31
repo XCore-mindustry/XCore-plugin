@@ -332,8 +332,10 @@ def _normalize_schema_from_raw(
                 raise ValueError(f"messageVersion must be an int const: {path}")
             message_version = field.const
 
-    if kind == "message" and (message_type is None or message_version is None):
-        raise ValueError(f"Message schema must define messageType/messageVersion consts: {path}")
+    if kind == "message" and (message_type is None) != (message_version is None):
+        raise ValueError(
+            f"Message schema must define both messageType and messageVersion consts or neither: {path}"
+        )
 
     return NormalizedSchema(
         schema_id=schema_id,

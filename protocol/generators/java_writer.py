@@ -230,19 +230,18 @@ def _render_family_imports(schemas: tuple[NormalizedSchema, ...]) -> str:
 def _render_nested_message_record(schema: NormalizedSchema) -> str:
     components = tuple(field for field in schema.fields if field.const is None)
     declaration = ",\n".join(f"            {_component_declaration(field)}" for field in components)
-    message_type = schema.message_type
-    message_version = schema.message_version
-    if message_type is None or message_version is None:
-        raise ValueError(f"Message schema missing identity: {schema.title}")
+    constants = _render_java_const_fields(schema.fields)
     to_payload = _render_to_payload_method(schema, indent="        ", inject_consts=True)
+    body = (
+        (f"{constants}\n\n" if constants else "")
+        + f"{_render_compact_constructor(schema, indent='        ')}\n\n"
+        + f"{to_payload}\n"
+    )
     return (
         f"    public record {schema.title}(\n"
         f"{declaration}\n"
         "    ) implements ProtocolPayload {\n"
-        f"        public static final String MESSAGE_TYPE = \"{message_type}\";\n"
-        f"        public static final int MESSAGE_VERSION = {message_version};\n\n"
-        f"{_render_compact_constructor(schema, indent='        ')}\n\n"
-        f"{to_payload}\n"
+        f"{body}"
         "    }"
     )
 

@@ -1,7 +1,7 @@
 # Generation Validation
 
 ## Goal
-Define the reusable validation commands for the current generated protocol surface covering maps, chat/heartbeat, discord, and moderation artifacts.
+Define the reusable validation commands for the current generated protocol surface covering maps, chat/heartbeat, discord, moderation, and telemetry artifacts.
 
 ## Current Commands
 
@@ -12,7 +12,7 @@ uv run python scripts/validate-generation.py
 
 This command:
 - regenerates the current generated outputs for all registered entrypoint families
-- currently covers maps, chat/heartbeat, discord, and moderation generated artifacts
+- currently covers maps, chat/heartbeat, discord, moderation, and telemetry generated artifacts
 - fails if generated files are stale after generation
 
 ### Validate generated Python models
@@ -20,7 +20,7 @@ This command:
 uv run python scripts/validate-generated-models.py
 ```
 
-This command runs the generated-model roundtrip tests for the generated maps, chat/heartbeat, discord, and moderation slices, plus the current Java/Python compatibility checks.
+This command runs the generated-model roundtrip tests for the generated maps, chat/heartbeat, discord, moderation, and telemetry slices, plus the current Java/Python compatibility checks.
 
 ### Full Python validation for the current repository state
 ```bash
@@ -29,9 +29,9 @@ uv run pytest
 
 ## CI Intent
 The current CI expectation for the generated protocol surface is:
-1. regenerate maps, chat/heartbeat, discord, and moderation outputs
+1. regenerate maps, chat/heartbeat, discord, moderation, and telemetry outputs
 2. confirm generated files are current
-3. run generated-model tests for maps, chat/heartbeat, discord, and moderation
+3. run generated-model tests for maps, chat/heartbeat, discord, moderation, and telemetry
 4. run the existing Python schema/fixture suite
 
 ## Failure Semantics

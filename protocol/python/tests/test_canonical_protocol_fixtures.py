@@ -11,6 +11,7 @@ from xcore_protocol.generated import (
     ActorRefV1ActorType,
     DiscordAdminAccessChangedCommandV1,
     DiscordUnlinkCommandV1,
+    MetricsSnapshotV1,
     ServerHeartbeatV1,
 )
 from xcore_protocol.paths import fixtures_root, spec_root
@@ -76,6 +77,12 @@ def _assert_heartbeat_semantics(model: ServerHeartbeatV1, payload: dict[str, Any
     assert model.discordChannelId == payload["discordChannelId"]
 
 
+def _assert_telemetry_semantics(model: MetricsSnapshotV1, payload: dict[str, Any]) -> None:
+    assert model.server == payload["server"]
+    assert model.SCHEMA_VERSION == payload["schemaVersion"]
+    assert model.samples[2].count == payload["samples"][2]["count"]
+
+
 CANONICAL_CASES: list[tuple[str, Path, Path, type[Any], CanonicalAssertion]] = [
     (
         "discord_admin_access_grant",
@@ -104,6 +111,13 @@ CANONICAL_CASES: list[tuple[str, Path, Path, type[Any], CanonicalAssertion]] = [
         CANONICAL_FIXTURES_ROOT / "chat" / "server.heartbeat.v1.json",
         ServerHeartbeatV1,
         _assert_heartbeat_semantics,
+    ),
+    (
+        "metrics_snapshot",
+        spec_root() / "messages" / "telemetry" / "metrics.snapshot.v1.json",
+        CANONICAL_FIXTURES_ROOT / "telemetry" / "metrics.snapshot.v1.json",
+        MetricsSnapshotV1,
+        _assert_telemetry_semantics,
     ),
 ]
 

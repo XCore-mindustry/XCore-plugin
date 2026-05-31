@@ -40,6 +40,9 @@ from .moderation import (
     ModerationVoteKickCreatedV1,
     ModerationAuditAppendedV1EntryType,
 )
+from .telemetry import (
+    MetricsSnapshotV1,
+)
 from .envelopes import (
     EnvelopeBaseV1,
     EventEnvelopeV1,
@@ -92,11 +95,13 @@ from .shared import (
     ExpirationInfoV1,
     MapEntryV1,
     MapFileSourceV1,
+    MetricSampleV1,
     ModerationTargetRefV1,
     PlayerCommandTargetV1,
     PlayerRefV1,
     VoteKickParticipantV1,
     ActorRefV1ActorType,
+    MetricSampleV1Type,
 )
 
 __all__ = [
@@ -105,11 +110,13 @@ __all__ = [
     "ExpirationInfoV1",
     "MapEntryV1",
     "MapFileSourceV1",
+    "MetricSampleV1",
     "ModerationTargetRefV1",
     "PlayerCommandTargetV1",
     "PlayerRefV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
+    "MetricSampleV1Type",
     "EnvelopeBaseV1",
     "EventEnvelopeV1",
     "CommandEnvelopeV1",
@@ -148,6 +155,7 @@ __all__ = [
     "ModerationMuteCreatedV1",
     "ModerationPardonCommandV1",
     "ModerationVoteKickCreatedV1",
+    "MetricsSnapshotV1",
     "DiscordLinkStatusChangedV1Action",
     "ModerationAuditAppendedV1EntryType",
     "MAPS_LIST_REQUEST_V1",

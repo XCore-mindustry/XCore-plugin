@@ -16,6 +16,7 @@ Define the official communication model used between XCore components.
 - discord integration
 - maps RPC
 - chat and heartbeat
+- telemetry snapshots
 
 ## Boundary
 Application repositories consume this protocol. They do not independently redefine canonical wire contracts.

@@ -6,6 +6,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1A
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.*;
+import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.*;
 import org.xcore.protocol.generated.shared.*;
 
 import java.util.List;
@@ -156,6 +157,64 @@ class ProtocolPayloadTest {
 
         assertEquals("127.0.0.1", payload.get("host"));
         assertEquals(6567, payload.get("port"));
+    }
+
+    // ── Telemetry messages ───────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void metricsSnapshotPayloadIncludesSchemaIdentityWithoutRouteIdentity() {
+        var samples = List.of(
+                new MetricSampleV1(
+                        "xcore_players_online",
+                        MetricSampleV1Type.GAUGE,
+                        Map.of("mode", "hexed"),
+                        "Current online players.",
+                        null,
+                        16.0,
+                        null,
+                        null,
+                        null,
+                        null
+                ),
+                new MetricSampleV1(
+                        "xcore_command_duration_seconds",
+                        MetricSampleV1Type.HISTOGRAM,
+                        Map.of("command", "stats"),
+                        null,
+                        null,
+                        null,
+                        List.of(0.01, 0.05, 0.1, 0.25, 1.0),
+                        List.of(12, 20, 29, 31, 31),
+                        31L,
+                        2.64
+                )
+        );
+
+        var snapshot = new MetricsSnapshotV1(
+                "mini-hexed",
+                "mini-hexed-01",
+                "xcore-plugin",
+                1790789112000L,
+                1790785512000L,
+                42L,
+                10_000,
+                samples
+        );
+        var payload = snapshot.toPayload();
+
+        assertEquals("metrics.snapshot.v1", payload.get("schemaVersion"));
+        assertFalse(payload.containsKey("messageType"));
+        assertFalse(payload.containsKey("messageVersion"));
+        assertEquals("mini-hexed", payload.get("server"));
+        assertEquals(42L, payload.get("sequence"));
+
+        var samplePayloads = (List<Map<String, Object>>) payload.get("samples");
+        assertEquals(2, samplePayloads.size());
+        assertEquals("gauge", samplePayloads.get(0).get("type"));
+        assertEquals("histogram", samplePayloads.get(1).get("type"));
+        assertEquals(List.of(12, 20, 29, 31, 31), samplePayloads.get(1).get("counts"));
+        assertEquals(31L, samplePayloads.get(1).get("count"));
     }
 
     // ── Moderation messages ──────────────────────────────────────────

@@ -41,6 +41,8 @@ def build_route_descriptors(
     routes: tuple[NormalizedRoute, ...],
     message_schemas: tuple[NormalizedSchema, ...],
 ) -> tuple[RouteDescriptor, ...]:
+    if not routes:
+        return ()
     schema_index = _build_schema_index(message_schemas)
     descriptors: list[RouteDescriptor] = []
     for route in routes:

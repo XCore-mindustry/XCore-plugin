@@ -52,10 +52,11 @@ All planned message families are fully migrated and operational:
 - **Discord** — link-confirm, unlink, link-status, admin-access, link-code
 - **Maps** — list request/response, remove request/response
 - **Chat/Heartbeat** — chat messages, global chat, heartbeat, join/leave, server actions, player state commands
+- **Telemetry** — Redis TTL snapshot payloads for Prometheus/Gateway telemetry aggregation
 
 ## Current Status
 
-All canonical message families are defined with JSON Schema specs and canonical fixtures. Generated Java records (`org.xcore.protocol.generated.*`) and Python frozen dataclasses (`xcore_protocol.generated.*`) cover the full protocol surface. `XCore-plugin` and `XCore-discord-bot` both consume generated artifacts as their sole transport model. Cross-language compatibility checks and full CI validation chain are in place.
+All canonical message families are defined with JSON Schema specs and canonical fixtures. Generated Java records (`org.xcore.protocol.generated.*`) and Python frozen dataclasses (`xcore_protocol.generated.*`) cover the supported generated protocol surface, including route-less telemetry snapshot payloads. `XCore-plugin` and `XCore-discord-bot` both consume generated artifacts as their sole transport model where applicable. Cross-language compatibility checks and full CI validation chain are in place.
 
 ## See Also
 - `docs/adr/ADR-001-protocol-first.md`
