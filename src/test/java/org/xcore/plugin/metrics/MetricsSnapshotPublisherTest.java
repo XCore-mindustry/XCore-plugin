@@ -12,9 +12,10 @@ import org.xcore.plugin.service.network.RedisNetworkBackend;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
@@ -29,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 class MetricsSnapshotPublisherTest {
 
-    @SuppressWarnings("unchecked")
     @Test
     @DisplayName("publishOnce writes gzip telemetry snapshot to redis TTL key")
     void publishOnce_writesGzipTelemetrySnapshotToRedisTtlKey() throws Exception {
@@ -88,45 +88,29 @@ class MetricsSnapshotPublisherTest {
         assertThat(payloadRef.get()).isNotNull();
 
         String json = ungzip(payloadRef.get());
-        Map<?, ?> payload = new Gson().fromJson(json, Map.class);
-        assertThat(payload.get("schemaVersion")).isEqualTo("metrics.snapshot.v1");
-        assertThat(payload.get("server")).isEqualTo("mini-pvp");
-        assertThat(payload.get("nodeId")).isEqualTo("mini-pvp-01");
-        assertThat(payload.get("producer")).isEqualTo("xcore-plugin/4.1.0-SNAPSHOT");
-        assertThat(payload.get("sequence")).isEqualTo(0.0d);
-        assertThat(payload.get("intervalMs")).isEqualTo(15000.0d);
+        Map<String, Object> payload = new Gson().fromJson(json, Map.class);
+        assertThat(payload.get("createdAtUnixMs")).isInstanceOf(Number.class);
+        assertThat(payload.get("startTimeUnixMs")).isInstanceOf(Number.class);
 
-        List<Map<String, Object>> samples = (List<Map<String, Object>>) payload.get("samples");
-        assertThat(samples).hasSize(3);
+        Map<String, Object> expectedPayload = loadExpectedPayloadFixture();
+        expectedPayload.put("createdAtUnixMs", payload.get("createdAtUnixMs"));
+        expectedPayload.put("startTimeUnixMs", payload.get("startTimeUnixMs"));
 
-        Map<String, Object> counterSample = sampleByName(samples, XcoreMetrics.PLAYER_JOINS_TOTAL.name());
-        assertThat(counterSample)
-                .containsEntry("type", "counter")
-                .containsEntry("labels", Map.of())
-                .containsEntry("value", 2.0d);
-
-        Map<String, Object> gaugeSample = sampleByName(samples, XcoreMetrics.PLAYERS_ONLINE.name());
-        assertThat(gaugeSample)
-                .containsEntry("type", "gauge")
-                .containsEntry("labels", Map.of())
-                .containsEntry("value", 9.0d);
-
-        Map<String, Object> histogramSample = sampleByName(samples, "xcore_command_duration_seconds");
-        assertThat(histogramSample)
-                .containsEntry("type", "histogram")
-                .containsEntry("labels", Map.of())
-                .containsEntry("count", 3.0d)
-                .containsEntry("sum", 1.25d);
-        assertThat(histogramSample.get("buckets")).isEqualTo(List.of(0.1d, 0.5d, 1.0d));
-        assertThat(histogramSample.get("counts")).isEqualTo(List.of(1.0d, 2.0d, 3.0d));
+        assertThat(payload).isEqualTo(expectedPayload);
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> sampleByName(List<Map<String, Object>> samples, String name) {
-        return samples.stream()
-                .filter(sample -> name.equals(sample.get("name")))
-                .findFirst()
-                .orElseThrow();
+    private static Map<String, Object> loadExpectedPayloadFixture() {
+        try (InputStreamReader reader = new InputStreamReader(
+                Objects.requireNonNull(
+                        MetricsSnapshotPublisherTest.class.getResourceAsStream("/telemetry/plugin-snapshot-contract.json")
+                ),
+                StandardCharsets.UTF_8
+        )) {
+            return new Gson().fromJson(reader, Map.class);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to load telemetry fixture", exception);
+        }
     }
 
     private static String ungzip(byte[] compressed) throws IOException {
