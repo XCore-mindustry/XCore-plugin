@@ -39,6 +39,14 @@ class TomlXcoreConfigTest {
         assertThat(toml.eventHub.enabled).isFalse();
         assertThat(toml.eventHub.mapId).isEqualTo("");
 
+        assertThat(toml.telemetry.enabled).isFalse();
+        assertThat(toml.telemetry.nodeId).isEqualTo("");
+        assertThat(toml.telemetry.publishIntervalMs).isEqualTo(15000);
+        assertThat(toml.telemetry.sampleIntervalMs).isEqualTo(5000);
+        assertThat(toml.telemetry.ttlSeconds).isEqualTo(60);
+        assertThat(toml.telemetry.maxCompressedSnapshotBytes).isEqualTo(131072);
+        assertThat(toml.telemetry.maxUncompressedSnapshotBytes).isEqualTo(524288);
+
         assertThat(toml.translation.enabled).isTrue();
         assertThat(toml.translation.pipeline).containsExactly("google");
         assertThat(toml.translation.preserveOriginalMessageOnFailure).isTrue();
@@ -72,6 +80,7 @@ class TomlXcoreConfigTest {
         toml.transport = null;
         toml.runtime = null;
         toml.eventHub = null;
+        toml.telemetry = null;
         toml.translation = null;
         toml.ipReputation = null;
 
@@ -83,6 +92,7 @@ class TomlXcoreConfigTest {
         assertThat(toml.transport).isNotNull();
         assertThat(toml.runtime).isNotNull();
         assertThat(toml.eventHub).isNotNull();
+        assertThat(toml.telemetry).isNotNull();
         assertThat(toml.translation).isNotNull();
         assertThat(toml.ipReputation).isNotNull();
 
@@ -111,6 +121,11 @@ class TomlXcoreConfigTest {
         toml.transport.redis.reclaim.minIdleMs = -1;
         toml.transport.redis.reclaim.batch = 0;
         toml.transport.redis.dlq.maxDeliveryAttempts = -5;
+        toml.telemetry.publishIntervalMs = 0;
+        toml.telemetry.sampleIntervalMs = -10;
+        toml.telemetry.ttlSeconds = 0;
+        toml.telemetry.maxCompressedSnapshotBytes = -1;
+        toml.telemetry.maxUncompressedSnapshotBytes = 0;
         toml.translation.cache.ttlSeconds = 0;
         toml.translation.cache.maxTextLength = -1;
         toml.translation.metrics.minuteBucketTtlSeconds = 0;
@@ -123,6 +138,11 @@ class TomlXcoreConfigTest {
         assertThat(toml.transport.redis.reclaim.minIdleMs).isEqualTo(15000L);
         assertThat(toml.transport.redis.reclaim.batch).isEqualTo(50);
         assertThat(toml.transport.redis.dlq.maxDeliveryAttempts).isEqualTo(3);
+        assertThat(toml.telemetry.publishIntervalMs).isEqualTo(15000);
+        assertThat(toml.telemetry.sampleIntervalMs).isEqualTo(5000);
+        assertThat(toml.telemetry.ttlSeconds).isEqualTo(60);
+        assertThat(toml.telemetry.maxCompressedSnapshotBytes).isEqualTo(131072);
+        assertThat(toml.telemetry.maxUncompressedSnapshotBytes).isEqualTo(524288);
         assertThat(toml.translation.cache.ttlSeconds).isEqualTo(1800);
         assertThat(toml.translation.cache.maxTextLength).isEqualTo(500);
         assertThat(toml.translation.metrics.minuteBucketTtlSeconds).isEqualTo(21600);

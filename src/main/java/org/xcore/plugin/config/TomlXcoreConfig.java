@@ -23,6 +23,7 @@ public class TomlXcoreConfig {
     public TransportConfig transport = new TransportConfig();
     public RuntimeConfig runtime = new RuntimeConfig();
     public EventHubConfig eventHub = new EventHubConfig();
+    public TelemetryConfig telemetry = new TelemetryConfig();
     public TranslationConfig translation = new TranslationConfig();
     public IpReputationConfig ipReputation = new IpReputationConfig();
 
@@ -45,6 +46,9 @@ public class TomlXcoreConfig {
         if (eventHub == null) {
             eventHub = new EventHubConfig();
         }
+        if (telemetry == null) {
+            telemetry = new TelemetryConfig();
+        }
         if (translation == null) {
             translation = new TranslationConfig();
         }
@@ -56,6 +60,7 @@ public class TomlXcoreConfig {
         paths.normalize();
         transport.normalize();
         runtime.normalize();
+        telemetry.normalize();
         translation.normalize();
         ipReputation.normalize();
     }
@@ -177,6 +182,37 @@ public class TomlXcoreConfig {
     public static class EventHubConfig {
         public boolean enabled = false;
         public String mapId = "";
+    }
+
+    public static class TelemetryConfig {
+        public boolean enabled = false;
+        public String nodeId = "";
+        public int publishIntervalMs = 15000;
+        public int sampleIntervalMs = 5000;
+        public int ttlSeconds = 60;
+        public int maxCompressedSnapshotBytes = 131072;
+        public int maxUncompressedSnapshotBytes = 524288;
+
+        public void normalize() {
+            if (nodeId != null && nodeId.isBlank()) {
+                nodeId = null;
+            }
+            if (publishIntervalMs <= 0) {
+                publishIntervalMs = 15000;
+            }
+            if (sampleIntervalMs <= 0) {
+                sampleIntervalMs = 5000;
+            }
+            if (ttlSeconds <= 0) {
+                ttlSeconds = 60;
+            }
+            if (maxCompressedSnapshotBytes <= 0) {
+                maxCompressedSnapshotBytes = 131072;
+            }
+            if (maxUncompressedSnapshotBytes <= 0) {
+                maxUncompressedSnapshotBytes = 524288;
+            }
+        }
     }
 
     public static class TranslationConfig {

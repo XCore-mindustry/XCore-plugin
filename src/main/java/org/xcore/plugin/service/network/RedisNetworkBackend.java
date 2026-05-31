@@ -295,6 +295,19 @@ public final class RedisNetworkBackend {
         }
     }
 
+    public <T> T withBinaryCommands(java.util.function.Function<RedisCommands<String, byte[]>, T> operation, T fallback) {
+        if (!ensureConnected()) {
+            return fallback;
+        }
+
+        try {
+            return operation.apply(connectionManager.binaryCommands());
+        } catch (Exception e) {
+            Log.warn("Redis binary command failed: @", e.getMessage());
+            return fallback;
+        }
+    }
+
     public boolean supportsRespond(Object request) {
         return rpcTracker.contains(request);
     }

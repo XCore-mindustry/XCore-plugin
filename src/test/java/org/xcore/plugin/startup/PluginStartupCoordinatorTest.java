@@ -3,6 +3,8 @@ package org.xcore.plugin.startup;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.migration.MigrationService;
+import org.xcore.plugin.metrics.MainThreadMetricSampler;
+import org.xcore.plugin.metrics.MetricsSnapshotPublisher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
@@ -21,13 +23,17 @@ class PluginStartupCoordinatorTest {
         MapDecayScheduler mapDecayScheduler = mock(MapDecayScheduler.class);
         MapSelectorInstaller mapSelectorInstaller = mock(MapSelectorInstaller.class);
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
+        MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
+        MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
                 migrationService,
                 mapDecayScheduler,
                 mapSelectorInstaller,
-                runtimeHookRegistrar
+                runtimeHookRegistrar,
+                mainThreadMetricSampler,
+                metricsSnapshotPublisher
         );
 
         boolean started = coordinator.start();
@@ -47,13 +53,17 @@ class PluginStartupCoordinatorTest {
         MapDecayScheduler mapDecayScheduler = mock(MapDecayScheduler.class);
         MapSelectorInstaller mapSelectorInstaller = mock(MapSelectorInstaller.class);
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
+        MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
+        MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         when(migrationService.run()).thenReturn(false);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
                 migrationService,
                 mapDecayScheduler,
                 mapSelectorInstaller,
-                runtimeHookRegistrar
+                runtimeHookRegistrar,
+                mainThreadMetricSampler,
+                metricsSnapshotPublisher
         );
 
         boolean started = coordinator.start();
@@ -69,13 +79,17 @@ class PluginStartupCoordinatorTest {
         MapDecayScheduler mapDecayScheduler = mock(MapDecayScheduler.class);
         MapSelectorInstaller mapSelectorInstaller = mock(MapSelectorInstaller.class);
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
+        MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
+        MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
                 migrationService,
                 mapDecayScheduler,
                 mapSelectorInstaller,
-                runtimeHookRegistrar
+                runtimeHookRegistrar,
+                mainThreadMetricSampler,
+                metricsSnapshotPublisher
         );
 
         boolean started = coordinator.start();

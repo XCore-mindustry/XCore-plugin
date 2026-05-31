@@ -17,6 +17,8 @@ class ServerLocalConfigTomlRendererTest {
         config.server.name = "alpha";
         config.server.playerLimit = 64;
         config.transport.redis.url = "redis://example:6379";
+        config.telemetry.enabled = true;
+        config.telemetry.publishIntervalMs = 10000;
 
         assertThat(renderer.render(config))
                 .contains("version = 1")
@@ -25,6 +27,9 @@ class ServerLocalConfigTomlRendererTest {
                 .contains("player_limit = 64")
                 .contains("[transport.redis]")
                 .contains("url = \"redis://example:6379\"")
+                .contains("[telemetry]")
+                .contains("enabled = true")
+                .contains("publish_interval_ms = 10000")
                 .doesNotContain("server.name =")
                 .doesNotContain("transport.redis.url =");
     }

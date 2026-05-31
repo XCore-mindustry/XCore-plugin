@@ -4,6 +4,9 @@ import org.xcore.plugin.common.PLog;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.codec.ByteArrayCodec;
+import io.lettuce.core.codec.RedisCodec;
+import io.lettuce.core.codec.StringCodec;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
@@ -17,6 +20,8 @@ public final class RedisConnectionManager {
     private RedisClient client;
     private StatefulRedisConnection<String, String> connection;
     private RedisCommands<String, String> commands;
+    private StatefulRedisConnection<String, byte[]> binaryConnection;
+    private RedisCommands<String, byte[]> binaryCommands;
     private boolean connectionWarningLogged;
 
     public RedisConnectionManager(TomlXcoreConfig config, RedisTransportHealth transportHealth) {
@@ -25,7 +30,7 @@ public final class RedisConnectionManager {
     }
 
     public synchronized void connect() {
-        if (commands != null) {
+        if (commands != null && binaryCommands != null) {
             return;
         }
 
@@ -34,6 +39,8 @@ public final class RedisConnectionManager {
             client = RedisClient.create(config.transport.redis.url);
             connection = client.connect();
             commands = connection.sync();
+            binaryConnection = client.connect(RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
+            binaryCommands = binaryConnection.sync();
             connectionWarningLogged = false;
             transportHealth.markConnected();
             PLog.info("Redis connected: url=@", sanitizeRedisUrl(config.transport.redis.url));
@@ -50,7 +57,7 @@ public final class RedisConnectionManager {
     }
 
     public synchronized boolean ensureConnected() {
-        if (commands != null) {
+        if (commands != null && binaryCommands != null) {
             return true;
         }
 
@@ -73,6 +80,10 @@ public final class RedisConnectionManager {
 
     public synchronized RedisCommands<String, String> commands() {
         return commands;
+    }
+
+    public synchronized RedisCommands<String, byte[]> binaryCommands() {
+        return binaryCommands;
     }
 
     static String sanitizeRedisUrl(String redisUrl) {
@@ -116,6 +127,12 @@ public final class RedisConnectionManager {
 
     private void closeResources() {
         commands = null;
+        binaryCommands = null;
+
+        if (binaryConnection != null) {
+            binaryConnection.close();
+            binaryConnection = null;
+        }
 
         if (connection != null) {
             connection.close();
