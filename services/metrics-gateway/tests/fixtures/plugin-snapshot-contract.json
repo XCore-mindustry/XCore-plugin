@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "metrics.snapshot.v1",
+  "server": "mini-pvp",
+  "nodeId": "mini-pvp-01",
+  "producer": "xcore-plugin/4.1.0-SNAPSHOT",
+  "createdAtUnixMs": 1700000000000,
+  "startTimeUnixMs": 1699999985000,
+  "sequence": 0,
+  "intervalMs": 15000,
+  "samples": [
+    {
+      "name": "mindustry_player_joins_total",
+      "type": "counter",
+      "labels": {},
+      "help": "Total player joins",
+      "unit": "events",
+      "value": 2.0
+    },
+    {
+      "name": "mindustry_players_online",
+      "type": "gauge",
+      "labels": {},
+      "help": "Current online player count",
+      "unit": "players",
+      "value": 9.0
+    },
+    {
+      "name": "xcore_command_duration_seconds",
+      "type": "histogram",
+      "labels": {},
+      "help": "Command duration",
+      "unit": "seconds",
+      "buckets": [0.1, 0.5, 1.0],
+      "counts": [1, 2, 3],
+      "count": 3,
+      "sum": 1.25
+    }
+  ]
+}

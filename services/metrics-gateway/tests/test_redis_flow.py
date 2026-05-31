@@ -4,6 +4,7 @@ import gzip
 import json
 import logging
 import time
+from pathlib import Path
 
 import fakeredis.aioredis
 import pytest
@@ -17,26 +18,35 @@ from xcore_metrics_gateway.self_metrics import GatewaySelfMetrics
 from xcore_metrics_gateway.store import SeriesStore
 
 
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
 def _encode(payload: dict[str, object]) -> bytes:
     return gzip.compress(json.dumps(payload).encode("utf-8"))
 
 
-def _settings() -> Settings:
-    return Settings(
-        redis_discovery_interval_ms=30000,
-        redis_poll_interval_ms=3000,
-        redis_scan_count=100,
-        redis_mget_batch_size=100,
-        redis_command_timeout_ms=500,
-        max_servers=200,
-        max_series_per_server=5000,
-        max_total_series=250000,
-        max_labels_per_metric=8,
-        max_label_value_length=80,
-        stale_snapshot_age_seconds=45,
-        max_compressed_snapshot_bytes=131072,
-        max_uncompressed_snapshot_bytes=524288,
-    )
+def _settings(**overrides: object) -> Settings:
+    values: dict[str, object] = {
+        "redis_discovery_interval_ms": 30000,
+        "redis_poll_interval_ms": 3000,
+        "redis_scan_count": 100,
+        "redis_mget_batch_size": 100,
+        "redis_command_timeout_ms": 500,
+        "max_servers": 200,
+        "max_series_per_server": 5000,
+        "max_total_series": 250000,
+        "max_labels_per_metric": 8,
+        "max_label_value_length": 80,
+        "stale_snapshot_age_seconds": 45,
+        "max_compressed_snapshot_bytes": 131072,
+        "max_uncompressed_snapshot_bytes": 524288,
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def _load_fixture(name: str) -> dict[str, object]:
+    return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
 
 
 def _fresh_created_at_unix_ms() -> int:
@@ -101,50 +111,18 @@ async def test_discovery_and_poller_populate_store_from_redis_snapshot() -> None
 @pytest.mark.asyncio
 async def test_discovery_and_poller_accept_plugin_shaped_snapshot_contract() -> None:
     redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
-    settings = _settings()
+    settings = _settings(stale_snapshot_age_seconds=10_000_000)
     client = RedisMetricsClient(settings, redis=redis)
     discovery = SnapshotDiscovery(settings, client)
     store = SeriesStore()
     self_metrics = GatewaySelfMetrics()
     poller = SnapshotPoller(settings, client, discovery, store, self_metrics)
+    payload = _load_fixture("plugin-snapshot-contract.json")
+    payload["createdAtUnixMs"] = _fresh_created_at_unix_ms()
 
     await redis.set(
         "xcore:metrics:snapshot:mini-pvp",
-        _encode(
-            {
-                "schemaVersion": "metrics.snapshot.v1",
-                "server": "mini-pvp",
-                "nodeId": "mini-pvp-01",
-                "producer": "xcore-plugin/4.1.0-SNAPSHOT",
-                "createdAtUnixMs": _fresh_created_at_unix_ms(),
-                "startTimeUnixMs": 1_000,
-                "sequence": 0,
-                "intervalMs": 15000,
-                "samples": [
-                    {
-                        "name": "mindustry_player_joins_total",
-                        "type": "counter",
-                        "labels": {},
-                        "value": 2.0,
-                    },
-                    {
-                        "name": "mindustry_players_online",
-                        "type": "gauge",
-                        "labels": {},
-                        "value": 9.0,
-                    },
-                    {
-                        "name": "xcore_command_duration_seconds",
-                        "type": "histogram",
-                        "labels": {},
-                        "buckets": [0.1, 0.5, 1.0],
-                        "counts": [1, 2, 3],
-                        "count": 3,
-                        "sum": 1.25,
-                    },
-                ],
-            }
-        ),
+        _encode(payload),
         ex=60,
     )
 
