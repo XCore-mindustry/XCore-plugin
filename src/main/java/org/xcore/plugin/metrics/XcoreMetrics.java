@@ -43,6 +43,21 @@ public final class XcoreMetrics {
             LabelSchema.empty()
     );
 
+    public static final CounterDef COMMANDS_TOTAL = new CounterDef(
+            "xcore_commands_total",
+            "Total executed commands",
+            "commands",
+            LabelSchema.of("command", "source", "result")
+    );
+
+    public static final HistogramDef COMMAND_DURATION_SECONDS = new HistogramDef(
+            "xcore_command_duration_seconds",
+            "Command execution duration",
+            "seconds",
+            LabelSchema.of("command", "source"),
+            new double[]{0.005d, 0.01d, 0.025d, 0.05d, 0.1d, 0.25d, 0.5d, 1.0d, 2.5d, 5.0d}
+    );
+
     private XcoreMetrics() {
     }
 }

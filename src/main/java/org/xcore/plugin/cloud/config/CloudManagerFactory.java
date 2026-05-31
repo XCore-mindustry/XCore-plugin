@@ -11,6 +11,7 @@ import org.xcore.cloud.mindustry.ConflictStrategy;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.session.SessionService;
 
 @Singleton
@@ -18,16 +19,19 @@ public class CloudManagerFactory {
 
     private final Bundle bundle;
     private final Provider<SessionService> sessionService;
+    private final MetricsService metricsService;
     private final CloudPermissionPolicy cloudPermissionPolicy;
     private final CloudCaptionConfigurer cloudCaptionConfigurer;
 
     @Inject
     public CloudManagerFactory(Bundle bundle,
                                Provider<SessionService> sessionService,
+                               MetricsService metricsService,
                                CloudPermissionPolicy cloudPermissionPolicy,
                                CloudCaptionConfigurer cloudCaptionConfigurer) {
         this.bundle = bundle;
         this.sessionService = sessionService;
+        this.metricsService = metricsService;
         this.cloudPermissionPolicy = cloudPermissionPolicy;
         this.cloudCaptionConfigurer = cloudCaptionConfigurer;
     }
@@ -40,7 +44,7 @@ public class CloudManagerFactory {
 
         MindustryCommandManager<XCoreSender> manager = new MindustryCommandManager<>(
                 handler,
-                ExecutionCoordinator.simpleCoordinator(),
+                new CommandTelemetryCoordinator(ExecutionCoordinator.simpleCoordinator(), metricsService),
                 mapper
         );
 

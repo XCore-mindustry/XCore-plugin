@@ -13,12 +13,18 @@ import org.junit.jupiter.api.Test;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.config.CloudGuardConfigurer;
+import org.xcore.plugin.cloud.config.CloudManagerFactory;
+import org.xcore.plugin.cloud.config.CloudPermissionPolicy;
 import org.xcore.plugin.cloud.config.DisabledCommandPolicy;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.metrics.DefaultMetricsService;
+import org.xcore.plugin.metrics.LocalMetricRegistry;
+import org.xcore.plugin.metrics.XcoreMetrics;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,6 +38,7 @@ class CloudCommandPipelineIntegrationTest {
     private MindustryCommandManager<XCoreSender> manager;
     private AnnotationParser<XCoreSender> parser;
     private XCoreSender sender;
+    private LocalMetricRegistry registry;
 
     @BeforeEach
     void setUp() {
@@ -41,6 +48,10 @@ class CloudCommandPipelineIntegrationTest {
         var secretsConfig = new TomlSecretsConfig();
         var config = new TomlXcoreConfig();
         config.runtime.disabledCommands = Set.of("test foo", "root");
+        config.telemetry.enabled = true;
+
+        registry = new LocalMetricRegistry();
+        var metricsService = new DefaultMetricsService(registry, config);
 
         var player = mock(mindustry.gen.Player.class);
         when(player.uuid()).thenReturn("test-uuid");
@@ -55,7 +66,14 @@ class CloudCommandPipelineIntegrationTest {
                 XCoreSender::getHandle
         );
 
-        manager = new MindustryCommandManager<>(handler, ExecutionCoordinator.simpleCoordinator(), senderMapper);
+        CloudManagerFactory factory = new CloudManagerFactory(
+                bundle,
+                () -> sessionService,
+                metricsService,
+                new CloudPermissionPolicy(),
+                mock(org.xcore.plugin.cloud.config.CloudCaptionConfigurer.class)
+        );
+        manager = factory.createManager(handler);
         parser = new AnnotationParser<>(manager, XCoreSender.class);
 
         DisabledCommandPolicy policy = new DisabledCommandPolicy(config);
@@ -117,5 +135,67 @@ class CloudCommandPipelineIntegrationTest {
         }
 
         assertThat(handlerCalled).isFalse();
+    }
+
+    @Test
+    @DisplayName("command metrics are recorded for success and error paths")
+    void commandMetrics_recordSuccessAndErrorPaths() throws Exception {
+        parser.parse(new Object() {
+            @Command("metrics-ok <message>")
+            public void ok(XCoreSender sender, @Argument("message") String message) {
+            }
+
+            @Command("metrics-fail <message>")
+            public void fail(XCoreSender sender, @Argument("message") String message) {
+                throw new IllegalStateException("boom");
+            }
+        });
+
+        manager.commandExecutor().executeCommand(sender, "metrics-ok hello").toCompletableFuture().get();
+
+        try {
+            manager.commandExecutor().executeCommand(sender, "metrics-fail hello").toCompletableFuture().get();
+        } catch (ExecutionException ignored) {
+            // expected exceptional completion from handler failure
+        }
+
+        var samples = registry.snapshot();
+
+        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "metrics-ok", "player", "success").value()).isEqualTo(1.0d);
+        assertThat(sample(samples, XcoreMetrics.COMMANDS_TOTAL.name(), "metrics-fail", "player", "error").value()).isEqualTo(1.0d);
+
+        var okDuration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "metrics-ok", "player");
+        assertThat(okDuration.count()).isEqualTo(1L);
+        assertThat(okDuration.sum()).isNotNull().isGreaterThanOrEqualTo(0.0d);
+
+        var failDuration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "metrics-fail", "player");
+        assertThat(failDuration.count()).isEqualTo(1L);
+        assertThat(failDuration.sum()).isNotNull().isGreaterThanOrEqualTo(0.0d);
+    }
+
+    private org.xcore.protocol.generated.shared.MetricSampleV1 sample(List<org.xcore.protocol.generated.shared.MetricSampleV1> samples,
+                                                                      String name,
+                                                                      String command,
+                                                                      String source) {
+        return samples.stream()
+                .filter(sample -> sample.name().equals(name))
+                .filter(sample -> command.equals(sample.labels().get("command")))
+                .filter(sample -> source.equals(sample.labels().get("source")))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private org.xcore.protocol.generated.shared.MetricSampleV1 sample(List<org.xcore.protocol.generated.shared.MetricSampleV1> samples,
+                                                                      String name,
+                                                                      String command,
+                                                                      String source,
+                                                                      String result) {
+        return samples.stream()
+                .filter(sample -> sample.name().equals(name))
+                .filter(sample -> command.equals(sample.labels().get("command")))
+                .filter(sample -> source.equals(sample.labels().get("source")))
+                .filter(sample -> result.equals(sample.labels().get("result")))
+                .findFirst()
+                .orElseThrow();
     }
 }

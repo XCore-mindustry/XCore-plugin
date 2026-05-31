@@ -23,6 +23,12 @@ public final class Tags {
         return ofPairs(key1, value1, key2, value2);
     }
 
+    public static Tags of(String key1, String value1,
+                          String key2, String value2,
+                          String key3, String value3) {
+        return ofPairs(key1, value1, key2, value2, key3, value3);
+    }
+
     private static Tags ofPairs(String... entries) {
         Objects.requireNonNull(entries, "entries must not be null");
         if ((entries.length & 1) != 0) {
