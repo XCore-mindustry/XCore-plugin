@@ -15,6 +15,7 @@ class GatewaySelfMetricsSnapshot:
     decode_failures_total: int
     validation_failures_total: int
     dropped_series_total: tuple[tuple[str, int], ...]
+    last_discovery_duration_seconds: float
     last_poll_duration_seconds: float
 
 
@@ -30,6 +31,7 @@ class GatewaySelfMetrics:
         self._decode_failures_total = 0
         self._validation_failures_total = 0
         self._dropped_series_total: dict[str, int] = {}
+        self._last_discovery_duration_seconds = 0.0
         self._last_poll_duration_seconds = 0.0
 
     def set_redis_up(self, redis_up: bool) -> None:
@@ -74,6 +76,10 @@ class GatewaySelfMetrics:
         with self._lock:
             self._last_poll_duration_seconds = max(0.0, duration_seconds)
 
+    def set_last_discovery_duration_seconds(self, duration_seconds: float) -> None:
+        with self._lock:
+            self._last_discovery_duration_seconds = max(0.0, duration_seconds)
+
     def snapshot(self) -> GatewaySelfMetricsSnapshot:
         with self._lock:
             return GatewaySelfMetricsSnapshot(
@@ -86,5 +92,6 @@ class GatewaySelfMetrics:
                 decode_failures_total=self._decode_failures_total,
                 validation_failures_total=self._validation_failures_total,
                 dropped_series_total=tuple(sorted(self._dropped_series_total.items())),
+                last_discovery_duration_seconds=self._last_discovery_duration_seconds,
                 last_poll_duration_seconds=self._last_poll_duration_seconds,
             )

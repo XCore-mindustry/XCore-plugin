@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import logging
 import time
 
 import fakeredis.aioredis
@@ -337,5 +338,58 @@ async def test_snapshot_server_mismatch_does_not_replace_valid_snapshot() -> Non
     assert snapshots["mini-hexed"].sequence == 2
     assert node_states[0].up is True
     assert self_metrics.snapshot().validation_failures_total == 1
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_poller_logs_bounded_warning_summary_for_repeated_same_issue(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    settings = _settings()
+    client = RedisMetricsClient(settings, redis=redis)
+    discovery = SnapshotDiscovery(settings, client)
+    store = SeriesStore()
+    self_metrics = GatewaySelfMetrics()
+    poller = SnapshotPoller(settings, client, discovery, store, self_metrics)
+
+    await redis.set(
+        "xcore:metrics:snapshot:mini-hexed",
+        _encode(
+            {
+                "schemaVersion": "metrics.snapshot.v1",
+                "server": "mini-hexed",
+                "nodeId": "mini-hexed-01",
+                "producer": "xcore-plugin",
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
+                "startTimeUnixMs": 0,
+                "sequence": 2,
+                "intervalMs": 15000,
+                "samples": [
+                    {
+                        "name": "mindustry_players_online",
+                        "type": "gauge",
+                        "labels": {"server": "bad"},
+                        "value": 12,
+                    }
+                ],
+            }
+        ),
+        ex=60,
+    )
+
+    await discovery.discover_once()
+    with caplog.at_level(logging.WARNING):
+        assert await poller.poll_once() is True
+        assert await poller.poll_once() is True
+
+    poll_summary_logs = [
+        record.message
+        for record in caplog.records
+        if record.message.startswith("Poll summary:")
+    ]
+    assert len(poll_summary_logs) == 1
+    assert "validation_failures=1" in poll_summary_logs[0]
 
     await client.close()

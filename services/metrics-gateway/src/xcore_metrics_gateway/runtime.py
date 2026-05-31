@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 
 from .discovery import SnapshotDiscovery
 from .poller import SnapshotPoller
@@ -8,6 +10,9 @@ from .redis_client import RedisMetricsClient
 from .settings import Settings
 from .self_metrics import GatewaySelfMetrics, GatewaySelfMetricsSnapshot
 from .store import SeriesStore
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class GatewayRuntime:
@@ -31,27 +36,36 @@ class GatewayRuntime:
         )
         self._tasks: list[asyncio.Task[None]] = []
         self.redis_up = False
+        self._discovery_ready = False
+        self._poll_ready = False
+        self._last_discovery_ok: bool | None = None
+        self._last_poll_ok: bool | None = None
+        self._last_logged_discovery_state: tuple[bool, int] | None = None
 
     def health_snapshot(self, *, tracked_servers: int) -> dict[str, object]:
-        stale_nodes = sum(
-            1 for node_state in self._store.render_snapshot()[1] if node_state.stale
-        )
+        stale_nodes = self._current_stale_nodes()
         self._self_metrics.set_stale_nodes(stale_nodes)
         self_metrics = self.self_metrics_snapshot
-        status = "ok"
         reasons: list[str] = []
-        if not self.redis_up:
-            status = "degraded"
+        if not self._discovery_ready:
+            reasons.append("discovery_pending")
+        if not self._poll_ready:
+            reasons.append("poll_pending")
+        if self._discovery_ready and self._poll_ready and not self.redis_up:
             reasons.append("redis_unavailable")
-        if self_metrics.discovery_failures_total > 0:
-            status = "degraded"
+        if self._last_discovery_ok is False:
             reasons.append("discovery_failures")
-        if self_metrics.poll_failures_total > 0:
-            status = "degraded"
+        if self._last_poll_ok is False:
             reasons.append("poll_failures")
         if self_metrics.stale_nodes > 0:
-            status = "degraded"
             reasons.append("stale_snapshots")
+
+        if not self._discovery_ready or not self._poll_ready:
+            status = "starting"
+        elif reasons:
+            status = "degraded"
+        else:
+            status = "ready"
 
         return {
             "status": status,
@@ -96,33 +110,71 @@ class GatewayRuntime:
 
     async def _discovery_loop(self) -> None:
         while True:
-            self.redis_up = await self._discovery.discover_once()
-            if not self.redis_up:
+            started = time.perf_counter()
+            discovery_ok = await self._discovery.discover_once()
+            self._last_discovery_ok = discovery_ok
+            if discovery_ok:
+                self._discovery_ready = True
+            self._self_metrics.set_last_discovery_duration_seconds(
+                time.perf_counter() - started
+            )
+            if not discovery_ok:
                 self._self_metrics.record_discovery_failure()
+            self._refresh_redis_up()
             self._self_metrics.set_redis_up(self.redis_up)
             self._self_metrics.set_discovered_targets(self.discovered_targets)
-            self._self_metrics.set_stale_nodes(
-                sum(
-                    1
-                    for node_state in self._store.render_snapshot()[1]
-                    if node_state.stale
-                )
+            self._self_metrics.set_stale_nodes(self._current_stale_nodes())
+            self._log_discovery_state(
+                discovery_ok,
+                self.self_metrics_snapshot.last_discovery_duration_seconds,
             )
             await asyncio.sleep(self._settings.redis_discovery_interval_ms / 1000)
 
     async def _poll_loop(self) -> None:
         while True:
             poll_ok = await self._poller.poll_once()
+            self._last_poll_ok = poll_ok
+            if poll_ok:
+                self._poll_ready = True
             if not poll_ok:
                 self._self_metrics.record_poll_failure()
-            self.redis_up = self.redis_up and poll_ok if self._tasks else poll_ok
+            self._refresh_redis_up()
             self._self_metrics.set_redis_up(self.redis_up)
             self._self_metrics.set_discovered_targets(self.discovered_targets)
-            self._self_metrics.set_stale_nodes(
-                sum(
-                    1
-                    for node_state in self._store.render_snapshot()[1]
-                    if node_state.stale
-                )
-            )
+            self._self_metrics.set_stale_nodes(self._current_stale_nodes())
             await asyncio.sleep(self._settings.redis_poll_interval_ms / 1000)
+
+    def _current_stale_nodes(self) -> int:
+        return sum(
+            1 for node_state in self._store.render_snapshot()[1] if node_state.stale
+        )
+
+    def _refresh_redis_up(self) -> None:
+        discovery_component = self._last_discovery_ok is not False
+        poll_component = self._last_poll_ok is not False
+        self.redis_up = discovery_component and poll_component
+
+    def _log_discovery_state(self, discovery_ok: bool, duration_seconds: float) -> None:
+        state = (discovery_ok, self.discovered_targets)
+        if not discovery_ok:
+            if self._last_logged_discovery_state != state:
+                LOGGER.warning(
+                    "Discovery failed: duration_seconds=%s",
+                    format(duration_seconds, "g"),
+                )
+        elif (
+            self._last_logged_discovery_state is None
+            or self._last_logged_discovery_state[0] is False
+        ):
+            LOGGER.info(
+                "Discovery ready: targets=%d duration_seconds=%s",
+                self.discovered_targets,
+                format(duration_seconds, "g"),
+            )
+        elif self._last_logged_discovery_state[1] != self.discovered_targets:
+            LOGGER.info(
+                "Discovery updated: targets=%d duration_seconds=%s",
+                self.discovered_targets,
+                format(duration_seconds, "g"),
+            )
+        self._last_logged_discovery_state = state

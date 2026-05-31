@@ -31,7 +31,9 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - in-memory series store and Prometheus renderer skeleton
 - `aiohttp` app with `/metrics` and `/health`
 - gateway self-metrics such as `xcore_metrics_gateway_*`
-- degraded `/health` status with runtime failure reasons
+- `/health` status with `starting`, `ready`, and `degraded` runtime states
+- explicit Prometheus stale-node visibility via `xcore_node_stale{server=...}`
+- bounded discovery/poll warning summaries for operational debugging without log spam
 
 ## Environment variables
 
@@ -72,7 +74,10 @@ The current MVP starts background discovery and polling loops automatically. `/m
 always renders from the local in-memory store and does not read Redis directly.
 Snapshots older than `STALE_SNAPSHOT_AGE_SECONDS` are treated as stale: they are removed
 from the rendered metrics view, but their node state remains visible through health and
-gateway self-metrics.
+gateway self-metrics. Prometheus also gets explicit stale visibility through
+`xcore_node_stale{server=...}` and loop timing through gateway self-metrics. `/health`
+starts as `starting`, becomes `ready` after the first successful discovery and poll,
+and moves to `degraded` when runtime failures or stale nodes are observed.
 
 ## Tests
 

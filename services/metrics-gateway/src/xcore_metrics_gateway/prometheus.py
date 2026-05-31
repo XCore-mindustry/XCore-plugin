@@ -65,6 +65,12 @@ def render_metrics(
             f'xcore_node_up{{server="{_escape_label_value(node_state.server)}"}} {1 if node_state.up else 0}'
         )
 
+    lines.append("# TYPE xcore_node_stale gauge")
+    for node_state in node_states:
+        lines.append(
+            f'xcore_node_stale{{server="{_escape_label_value(node_state.server)}"}} {1 if node_state.stale else 0}'
+        )
+
     lines.append("# TYPE xcore_node_snapshot_age_seconds gauge")
     for node_state in node_states:
         if node_state.snapshot_age_seconds is None:
@@ -110,6 +116,11 @@ def render_metrics(
             "xcore_metrics_gateway_dropped_series_total"
             f'{{reason="{_escape_label_value(reason)}"}} {count}'
         )
+    lines.append("# TYPE xcore_metrics_gateway_last_discovery_duration_seconds gauge")
+    lines.append(
+        "xcore_metrics_gateway_last_discovery_duration_seconds "
+        f"{_format_number(self_metrics.last_discovery_duration_seconds)}"
+    )
     lines.append("# TYPE xcore_metrics_gateway_last_poll_duration_seconds gauge")
     lines.append(
         "xcore_metrics_gateway_last_poll_duration_seconds "

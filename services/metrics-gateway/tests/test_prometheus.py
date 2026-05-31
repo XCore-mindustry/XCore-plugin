@@ -45,6 +45,12 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
                 stale=False,
                 snapshot_age_seconds=1.5,
             ),
+            NodeState(
+                server="mini-pvp",
+                up=False,
+                stale=True,
+                snapshot_age_seconds=91.0,
+            ),
         ),
         GatewaySelfMetricsSnapshot(
             redis_up=True,
@@ -56,6 +62,7 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
             decode_failures_total=2,
             validation_failures_total=1,
             dropped_series_total=(("label_value_length_limit", 3),),
+            last_discovery_duration_seconds=0.125,
             last_poll_duration_seconds=0.25,
         ),
     )
@@ -73,7 +80,11 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
         in rendered
     )
     assert 'xcore_node_up{server="mini-hexed"} 1' in rendered
+    assert 'xcore_node_up{server="mini-pvp"} 0' in rendered
+    assert 'xcore_node_stale{server="mini-hexed"} 0' in rendered
+    assert 'xcore_node_stale{server="mini-pvp"} 1' in rendered
     assert 'xcore_node_snapshot_age_seconds{server="mini-hexed"} 1.5' in rendered
+    assert 'xcore_node_snapshot_age_seconds{server="mini-pvp"} 91' in rendered
     assert "xcore_metrics_gateway_redis_up 1" in rendered
     assert "xcore_metrics_gateway_discovered_targets 1" in rendered
     assert "xcore_metrics_gateway_stale_nodes 1" in rendered
@@ -86,5 +97,6 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
         'xcore_metrics_gateway_dropped_series_total{reason="label_value_length_limit"} 3'
         in rendered
     )
+    assert "xcore_metrics_gateway_last_discovery_duration_seconds 0.125" in rendered
     assert "xcore_metrics_gateway_last_poll_duration_seconds 0.25" in rendered
     assert " 1790789112000" not in rendered
