@@ -38,10 +38,18 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
 
     rendered = render_metrics(
         {"mini-hexed": snapshot},
-        (NodeState(server="mini-hexed", up=True, snapshot_age_seconds=1.5),),
+        (
+            NodeState(
+                server="mini-hexed",
+                up=True,
+                stale=False,
+                snapshot_age_seconds=1.5,
+            ),
+        ),
         GatewaySelfMetricsSnapshot(
             redis_up=True,
             discovered_targets=1,
+            stale_nodes=1,
             snapshots_total=4,
             discovery_failures_total=1,
             poll_failures_total=2,
@@ -68,6 +76,7 @@ def test_render_metrics_renders_histogram_without_explicit_timestamps() -> None:
     assert 'xcore_node_snapshot_age_seconds{server="mini-hexed"} 1.5' in rendered
     assert "xcore_metrics_gateway_redis_up 1" in rendered
     assert "xcore_metrics_gateway_discovered_targets 1" in rendered
+    assert "xcore_metrics_gateway_stale_nodes 1" in rendered
     assert "xcore_metrics_gateway_snapshots_total 4" in rendered
     assert "xcore_metrics_gateway_discovery_failures_total 1" in rendered
     assert "xcore_metrics_gateway_poll_failures_total 2" in rendered

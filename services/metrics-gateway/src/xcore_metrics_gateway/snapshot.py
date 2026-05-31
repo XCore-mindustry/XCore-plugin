@@ -13,6 +13,10 @@ class SnapshotDecodeError(ValueError):
     pass
 
 
+class SnapshotValidationError(SnapshotDecodeError):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class DecodedSnapshot:
     snapshot: MetricsSnapshotV1
@@ -53,7 +57,7 @@ def decode_snapshot(
 def _validate_snapshot(snapshot: MetricsSnapshotV1) -> None:
     for sample in snapshot.samples:
         if "server" in sample.labels:
-            raise SnapshotDecodeError(
+            raise SnapshotValidationError(
                 "metric labels must not include reserved label 'server'"
             )
 
@@ -63,7 +67,9 @@ def _validate_snapshot(snapshot: MetricsSnapshotV1) -> None:
             MetricSampleV1Type.INFO,
         ):
             if sample.value is None or not math.isfinite(sample.value):
-                raise SnapshotDecodeError(f"sample {sample.name} requires finite value")
+                raise SnapshotValidationError(
+                    f"sample {sample.name} requires finite value"
+                )
 
         if sample.type is MetricSampleV1Type.HISTOGRAM:
             if (
@@ -72,19 +78,19 @@ def _validate_snapshot(snapshot: MetricsSnapshotV1) -> None:
                 or sample.count is None
                 or sample.sum is None
             ):
-                raise SnapshotDecodeError(
+                raise SnapshotValidationError(
                     f"histogram sample {sample.name} is missing required fields"
                 )
             if len(sample.buckets) != len(sample.counts):
-                raise SnapshotDecodeError(
+                raise SnapshotValidationError(
                     f"histogram sample {sample.name} buckets/counts length mismatch"
                 )
             if sample.count < 0:
-                raise SnapshotDecodeError(
+                raise SnapshotValidationError(
                     f"histogram sample {sample.name} count must be >= 0"
                 )
             if not math.isfinite(sample.sum):
-                raise SnapshotDecodeError(
+                raise SnapshotValidationError(
                     f"histogram sample {sample.name} sum must be finite"
                 )
 
@@ -92,21 +98,21 @@ def _validate_snapshot(snapshot: MetricsSnapshotV1) -> None:
             previous_count = -1
             for bucket, count in zip(sample.buckets, sample.counts, strict=True):
                 if not math.isfinite(bucket):
-                    raise SnapshotDecodeError(
+                    raise SnapshotValidationError(
                         f"histogram sample {sample.name} bucket must be finite"
                     )
                 if previous_bucket is not None and bucket <= previous_bucket:
-                    raise SnapshotDecodeError(
+                    raise SnapshotValidationError(
                         f"histogram sample {sample.name} buckets must be strictly increasing"
                     )
                 if count < previous_count:
-                    raise SnapshotDecodeError(
+                    raise SnapshotValidationError(
                         f"histogram sample {sample.name} counts must be cumulative"
                     )
                 previous_bucket = bucket
                 previous_count = count
 
             if sample.counts and sample.counts[-1] > sample.count:
-                raise SnapshotDecodeError(
+                raise SnapshotValidationError(
                     f"histogram sample {sample.name} final bucket count exceeds total count"
                 )

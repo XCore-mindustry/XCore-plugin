@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     max_label_value_length: int = Field(
         default=80, validation_alias="MAX_LABEL_VALUE_LENGTH"
     )
+    stale_snapshot_age_seconds: int = Field(
+        default=45, validation_alias="STALE_SNAPSHOT_AGE_SECONDS"
+    )
     max_compressed_snapshot_bytes: int = Field(
         default=131072, validation_alias="MAX_COMPRESSED_SNAPSHOT_BYTES"
     )
@@ -74,6 +77,7 @@ class Settings(BaseSettings):
             "max_total_series": self.max_total_series,
             "max_labels_per_metric": self.max_labels_per_metric,
             "max_label_value_length": self.max_label_value_length,
+            "stale_snapshot_age_seconds": self.stale_snapshot_age_seconds,
             "max_compressed_snapshot_bytes": self.max_compressed_snapshot_bytes,
             "max_uncompressed_snapshot_bytes": self.max_uncompressed_snapshot_bytes,
         }

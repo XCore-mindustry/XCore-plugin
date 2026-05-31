@@ -50,6 +50,7 @@ Optional:
 - `MAX_TOTAL_SERIES` (default: `250000`)
 - `MAX_LABELS_PER_METRIC` (default: `8`)
 - `MAX_LABEL_VALUE_LENGTH` (default: `80`)
+- `STALE_SNAPSHOT_AGE_SECONDS` (default: `45`)
 - `MAX_COMPRESSED_SNAPSHOT_BYTES` (default: `131072`)
 - `MAX_UNCOMPRESSED_SNAPSHOT_BYTES` (default: `524288`)
 
@@ -69,6 +70,9 @@ uv run xcore-metrics-gateway
 
 The current MVP starts background discovery and polling loops automatically. `/metrics`
 always renders from the local in-memory store and does not read Redis directly.
+Snapshots older than `STALE_SNAPSHOT_AGE_SECONDS` are treated as stale: they are removed
+from the rendered metrics view, but their node state remains visible through health and
+gateway self-metrics.
 
 ## Tests
 

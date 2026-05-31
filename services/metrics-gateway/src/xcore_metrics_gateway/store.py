@@ -10,6 +10,7 @@ from xcore_protocol.generated import MetricsSnapshotV1
 class NodeState:
     server: str
     up: bool
+    stale: bool
     snapshot_age_seconds: float | None
 
 
@@ -39,6 +40,17 @@ class SeriesStore:
             self._node_states[server] = NodeState(
                 server=server,
                 up=True,
+                stale=False,
+                snapshot_age_seconds=snapshot_age_seconds,
+            )
+
+    def mark_stale(self, server: str, *, snapshot_age_seconds: float) -> None:
+        with self._lock:
+            self._snapshots.pop(server, None)
+            self._node_states[server] = NodeState(
+                server=server,
+                up=False,
+                stale=True,
                 snapshot_age_seconds=snapshot_age_seconds,
             )
 
@@ -48,6 +60,7 @@ class SeriesStore:
             self._node_states[server] = NodeState(
                 server=server,
                 up=False,
+                stale=False,
                 snapshot_age_seconds=None,
             )
 

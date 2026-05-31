@@ -12,6 +12,7 @@ def test_settings_defaults_are_valid() -> None:
     assert settings.gateway_http_port == 9100
     assert settings.redis_url == "redis://127.0.0.1:6379"
     assert settings.redis_command_timeout_ms == 500
+    assert settings.stale_snapshot_age_seconds == 45
 
 
 def test_settings_reject_non_positive_limits(monkeypatch: pytest.MonkeyPatch) -> None:

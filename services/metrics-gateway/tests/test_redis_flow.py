@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import time
 
 import fakeredis.aioredis
 import pytest
@@ -31,9 +32,18 @@ def _settings() -> Settings:
         max_total_series=250000,
         max_labels_per_metric=8,
         max_label_value_length=80,
+        stale_snapshot_age_seconds=45,
         max_compressed_snapshot_bytes=131072,
         max_uncompressed_snapshot_bytes=524288,
     )
+
+
+def _fresh_created_at_unix_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _stale_created_at_unix_ms() -> int:
+    return 1_000
 
 
 @pytest.mark.asyncio
@@ -54,7 +64,7 @@ async def test_discovery_and_poller_populate_store_from_redis_snapshot() -> None
                 "server": "mini-hexed",
                 "nodeId": "mini-hexed-01",
                 "producer": "xcore-plugin",
-                "createdAtUnixMs": 1_000,
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
                 "startTimeUnixMs": 0,
                 "sequence": 2,
                 "intervalMs": 15000,
@@ -106,7 +116,7 @@ async def test_poller_marks_missing_when_discovered_key_expires() -> None:
                 "server": "mini-hexed",
                 "nodeId": "mini-hexed-01",
                 "producer": "xcore-plugin",
-                "createdAtUnixMs": 1_000,
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
                 "startTimeUnixMs": 0,
                 "sequence": 2,
                 "intervalMs": 15000,
@@ -154,7 +164,7 @@ async def test_invalid_snapshot_does_not_replace_previous_valid_snapshot() -> No
                 "server": "mini-hexed",
                 "nodeId": "mini-hexed-01",
                 "producer": "xcore-plugin",
-                "createdAtUnixMs": 1_000,
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
                 "startTimeUnixMs": 0,
                 "sequence": 2,
                 "intervalMs": 15000,
@@ -203,6 +213,129 @@ async def test_invalid_snapshot_does_not_replace_previous_valid_snapshot() -> No
     snapshots, node_states = store.render_snapshot()
     assert snapshots["mini-hexed"].sequence == 2
     assert node_states[0].up is True
-    assert self_metrics.snapshot().decode_failures_total == 1
+    assert self_metrics.snapshot().validation_failures_total == 1
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_stale_snapshot_is_removed_from_render_view_but_keeps_node_state() -> (
+    None
+):
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    settings = _settings()
+    client = RedisMetricsClient(settings, redis=redis)
+    discovery = SnapshotDiscovery(settings, client)
+    store = SeriesStore()
+    self_metrics = GatewaySelfMetrics()
+    poller = SnapshotPoller(settings, client, discovery, store, self_metrics)
+
+    await redis.set(
+        "xcore:metrics:snapshot:mini-hexed",
+        _encode(
+            {
+                "schemaVersion": "metrics.snapshot.v1",
+                "server": "mini-hexed",
+                "nodeId": "mini-hexed-01",
+                "producer": "xcore-plugin",
+                "createdAtUnixMs": _stale_created_at_unix_ms(),
+                "startTimeUnixMs": 0,
+                "sequence": 2,
+                "intervalMs": 15000,
+                "samples": [
+                    {
+                        "name": "mindustry_players_online",
+                        "type": "gauge",
+                        "labels": {},
+                        "value": 12,
+                    }
+                ],
+            }
+        ),
+        ex=60,
+    )
+
+    await discovery.discover_once()
+    assert await poller.poll_once() is True
+
+    snapshots, node_states = store.render_snapshot()
+    assert snapshots == {}
+    assert node_states[0].server == "mini-hexed"
+    assert node_states[0].up is False
+    assert node_states[0].stale is True
+    assert node_states[0].snapshot_age_seconds is not None
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_server_mismatch_does_not_replace_valid_snapshot() -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    settings = _settings()
+    client = RedisMetricsClient(settings, redis=redis)
+    discovery = SnapshotDiscovery(settings, client)
+    store = SeriesStore()
+    self_metrics = GatewaySelfMetrics()
+    poller = SnapshotPoller(settings, client, discovery, store, self_metrics)
+
+    key = "xcore:metrics:snapshot:mini-hexed"
+    await redis.set(
+        key,
+        _encode(
+            {
+                "schemaVersion": "metrics.snapshot.v1",
+                "server": "mini-hexed",
+                "nodeId": "mini-hexed-01",
+                "producer": "xcore-plugin",
+                "createdAtUnixMs": _fresh_created_at_unix_ms(),
+                "startTimeUnixMs": 0,
+                "sequence": 2,
+                "intervalMs": 15000,
+                "samples": [
+                    {
+                        "name": "mindustry_players_online",
+                        "type": "gauge",
+                        "labels": {},
+                        "value": 12,
+                    }
+                ],
+            }
+        ),
+        ex=60,
+    )
+
+    await discovery.discover_once()
+    await poller.poll_once()
+
+    await redis.set(
+        key,
+        _encode(
+            {
+                "schemaVersion": "metrics.snapshot.v1",
+                "server": "wrong-server",
+                "nodeId": "mini-hexed-01",
+                "producer": "xcore-plugin",
+                "createdAtUnixMs": 2_000,
+                "startTimeUnixMs": 0,
+                "sequence": 3,
+                "intervalMs": 15000,
+                "samples": [
+                    {
+                        "name": "mindustry_players_online",
+                        "type": "gauge",
+                        "labels": {},
+                        "value": 99,
+                    }
+                ],
+            }
+        ),
+        ex=60,
+    )
+
+    assert await poller.poll_once() is True
+    snapshots, node_states = store.render_snapshot()
+    assert snapshots["mini-hexed"].sequence == 2
+    assert node_states[0].up is True
+    assert self_metrics.snapshot().validation_failures_total == 1
 
     await client.close()

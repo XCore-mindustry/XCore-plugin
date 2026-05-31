@@ -8,6 +8,7 @@ from threading import Lock
 class GatewaySelfMetricsSnapshot:
     redis_up: bool
     discovered_targets: int
+    stale_nodes: int
     snapshots_total: int
     discovery_failures_total: int
     poll_failures_total: int
@@ -22,6 +23,7 @@ class GatewaySelfMetrics:
         self._lock = Lock()
         self._redis_up = False
         self._discovered_targets = 0
+        self._stale_nodes = 0
         self._snapshots_total = 0
         self._discovery_failures_total = 0
         self._poll_failures_total = 0
@@ -41,6 +43,10 @@ class GatewaySelfMetrics:
     def record_snapshot_applied(self) -> None:
         with self._lock:
             self._snapshots_total += 1
+
+    def set_stale_nodes(self, stale_nodes: int) -> None:
+        with self._lock:
+            self._stale_nodes = max(0, stale_nodes)
 
     def record_discovery_failure(self) -> None:
         with self._lock:
@@ -73,6 +79,7 @@ class GatewaySelfMetrics:
             return GatewaySelfMetricsSnapshot(
                 redis_up=self._redis_up,
                 discovered_targets=self._discovered_targets,
+                stale_nodes=self._stale_nodes,
                 snapshots_total=self._snapshots_total,
                 discovery_failures_total=self._discovery_failures_total,
                 poll_failures_total=self._poll_failures_total,

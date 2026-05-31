@@ -7,7 +7,7 @@ from .discovery import SnapshotDiscovery
 from .redis_client import RedisMetricsClient
 from .settings import Settings
 from .self_metrics import GatewaySelfMetrics
-from .snapshot import SnapshotDecodeError, decode_snapshot
+from .snapshot import SnapshotDecodeError, SnapshotValidationError, decode_snapshot
 from .store import SeriesStore
 
 
@@ -51,8 +51,15 @@ class SnapshotPoller:
                             max_compressed_snapshot_bytes=self._settings.max_compressed_snapshot_bytes,
                             max_uncompressed_snapshot_bytes=self._settings.max_uncompressed_snapshot_bytes,
                         )
+                    except SnapshotValidationError:
+                        self._self_metrics.record_validation_failure()
+                        continue
                     except SnapshotDecodeError:
                         self._self_metrics.record_decode_failure()
+                        continue
+
+                    if decoded.snapshot.server != server:
+                        self._self_metrics.record_validation_failure()
                         continue
 
                     guard_result = self._guard.apply(
@@ -70,6 +77,12 @@ class SnapshotPoller:
                         0.0,
                         (now_ms - guard_result.snapshot.createdAtUnixMs) / 1000,
                     )
+                    if snapshot_age_seconds > self._settings.stale_snapshot_age_seconds:
+                        self._store.mark_stale(
+                            server,
+                            snapshot_age_seconds=snapshot_age_seconds,
+                        )
+                        continue
                     self._store.replace_server_snapshot(
                         server,
                         guard_result.snapshot,

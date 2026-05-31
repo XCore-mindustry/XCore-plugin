@@ -80,6 +80,8 @@ def render_metrics(
     lines.append(
         f"xcore_metrics_gateway_discovered_targets {self_metrics.discovered_targets}"
     )
+    lines.append("# TYPE xcore_metrics_gateway_stale_nodes gauge")
+    lines.append(f"xcore_metrics_gateway_stale_nodes {self_metrics.stale_nodes}")
     lines.append("# TYPE xcore_metrics_gateway_snapshots_total counter")
     lines.append(
         f"xcore_metrics_gateway_snapshots_total {self_metrics.snapshots_total}"

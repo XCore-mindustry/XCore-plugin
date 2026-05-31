@@ -5,7 +5,11 @@ import json
 
 import pytest
 
-from xcore_metrics_gateway.snapshot import SnapshotDecodeError, decode_snapshot
+from xcore_metrics_gateway.snapshot import (
+    SnapshotDecodeError,
+    SnapshotValidationError,
+    decode_snapshot,
+)
 
 
 def _encode(payload: dict[str, object]) -> bytes:
@@ -76,7 +80,7 @@ def test_decode_snapshot_rejects_reserved_server_label() -> None:
         }
     )
 
-    with pytest.raises(SnapshotDecodeError, match="reserved label"):
+    with pytest.raises(SnapshotValidationError, match="reserved label"):
         decode_snapshot(
             compressed,
             max_compressed_snapshot_bytes=131072,
@@ -109,7 +113,18 @@ def test_decode_snapshot_rejects_non_cumulative_histogram_counts() -> None:
         }
     )
 
-    with pytest.raises(SnapshotDecodeError, match="counts must be cumulative"):
+    with pytest.raises(SnapshotValidationError, match="counts must be cumulative"):
+        decode_snapshot(
+            compressed,
+            max_compressed_snapshot_bytes=131072,
+            max_uncompressed_snapshot_bytes=524288,
+        )
+
+
+def test_decode_snapshot_rejects_invalid_json_as_decode_failure() -> None:
+    compressed = gzip.compress(b"not-json")
+
+    with pytest.raises(SnapshotDecodeError, match="valid utf-8 json"):
         decode_snapshot(
             compressed,
             max_compressed_snapshot_bytes=131072,

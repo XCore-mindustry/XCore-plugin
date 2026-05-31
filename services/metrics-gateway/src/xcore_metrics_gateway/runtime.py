@@ -18,6 +18,7 @@ class GatewayRuntime:
         redis_client: RedisMetricsClient,
     ) -> None:
         self._settings = settings
+        self._store = store
         self._redis_client = redis_client
         self._self_metrics = GatewaySelfMetrics()
         self._discovery = SnapshotDiscovery(settings, redis_client)
@@ -32,6 +33,10 @@ class GatewayRuntime:
         self.redis_up = False
 
     def health_snapshot(self, *, tracked_servers: int) -> dict[str, object]:
+        stale_nodes = sum(
+            1 for node_state in self._store.render_snapshot()[1] if node_state.stale
+        )
+        self._self_metrics.set_stale_nodes(stale_nodes)
         self_metrics = self.self_metrics_snapshot
         status = "ok"
         reasons: list[str] = []
@@ -44,14 +49,19 @@ class GatewayRuntime:
         if self_metrics.poll_failures_total > 0:
             status = "degraded"
             reasons.append("poll_failures")
+        if self_metrics.stale_nodes > 0:
+            status = "degraded"
+            reasons.append("stale_snapshots")
 
         return {
             "status": status,
             "redis_up": self.redis_up,
             "discovered_targets": self_metrics.discovered_targets,
             "tracked_servers": tracked_servers,
+            "stale_nodes": self_metrics.stale_nodes,
             "reasons": reasons,
             "self_metrics": {
+                "stale_nodes": self_metrics.stale_nodes,
                 "snapshots_total": self_metrics.snapshots_total,
                 "discovery_failures_total": self_metrics.discovery_failures_total,
                 "poll_failures_total": self_metrics.poll_failures_total,
@@ -91,6 +101,13 @@ class GatewayRuntime:
                 self._self_metrics.record_discovery_failure()
             self._self_metrics.set_redis_up(self.redis_up)
             self._self_metrics.set_discovered_targets(self.discovered_targets)
+            self._self_metrics.set_stale_nodes(
+                sum(
+                    1
+                    for node_state in self._store.render_snapshot()[1]
+                    if node_state.stale
+                )
+            )
             await asyncio.sleep(self._settings.redis_discovery_interval_ms / 1000)
 
     async def _poll_loop(self) -> None:
@@ -101,4 +118,11 @@ class GatewayRuntime:
             self.redis_up = self.redis_up and poll_ok if self._tasks else poll_ok
             self._self_metrics.set_redis_up(self.redis_up)
             self._self_metrics.set_discovered_targets(self.discovered_targets)
+            self._self_metrics.set_stale_nodes(
+                sum(
+                    1
+                    for node_state in self._store.render_snapshot()[1]
+                    if node_state.stale
+                )
+            )
             await asyncio.sleep(self._settings.redis_poll_interval_ms / 1000)
