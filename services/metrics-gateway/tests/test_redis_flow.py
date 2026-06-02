@@ -148,8 +148,7 @@ async def test_discovery_and_poller_accept_plugin_shaped_snapshot_contract() -> 
         in rendered
     )
     assert (
-        'xcore_command_duration_seconds_bucket{le="1",server="mini-pvp"} 3'
-        in rendered
+        'xcore_command_duration_seconds_bucket{le="1",server="mini-pvp"} 3' in rendered
     )
     assert (
         'xcore_command_duration_seconds_bucket{le="+Inf",server="mini-pvp"} 3'
