@@ -21,6 +21,12 @@ def create_app(store: SeriesStore, runtime: GatewayRuntime) -> web.Application:
             runtime.health_snapshot(tracked_servers=len(node_states))
         )
 
+    async def readiness_handler(_: web.Request) -> web.Response:
+        _, node_states = store.render_snapshot()
+        health = runtime.health_snapshot(tracked_servers=len(node_states))
+        status = 200 if health["status"] == "ready" else 503
+        return web.json_response(health, status=status)
+
     async def runtime_context(_: web.Application):
         await runtime.start()
         yield
@@ -29,4 +35,5 @@ def create_app(store: SeriesStore, runtime: GatewayRuntime) -> web.Application:
     app.cleanup_ctx.append(runtime_context)
     app.router.add_get("/metrics", metrics_handler)
     app.router.add_get("/health", health_handler)
+    app.router.add_get("/ready", readiness_handler)
     return app

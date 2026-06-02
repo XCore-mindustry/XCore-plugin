@@ -8,6 +8,11 @@ from pathlib import Path
 
 import fakeredis.aioredis
 import pytest
+from xcore_protocol.generated import (
+    MetricSampleV1,
+    MetricSampleV1Type,
+    MetricsSnapshotV1,
+)
 
 from xcore_metrics_gateway.discovery import SnapshotDiscovery
 from xcore_metrics_gateway.poller import SnapshotPoller
@@ -330,6 +335,53 @@ async def test_stale_snapshot_is_removed_from_render_view_but_keeps_node_state()
     assert node_states[0].snapshot_age_seconds is not None
 
     await client.close()
+
+
+@pytest.mark.asyncio
+async def test_poll_failure_marks_previous_snapshot_stale_after_age_limit() -> None:
+    class FailingRedisMetricsClient(RedisMetricsClient):
+        async def mget_bytes(self, keys: object) -> list[bytes | None]:
+            raise TimeoutError("redis unavailable")
+
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=False)
+    settings = _settings(stale_snapshot_age_seconds=1)
+    discovery_client = RedisMetricsClient(settings, redis=redis)
+    failing_client = FailingRedisMetricsClient(settings, redis=redis)
+    discovery = SnapshotDiscovery(settings, discovery_client)
+    store = SeriesStore()
+    self_metrics = GatewaySelfMetrics()
+    poller = SnapshotPoller(settings, failing_client, discovery, store, self_metrics)
+
+    key = "xcore:metrics:snapshot:mini-hexed"
+    snapshot = MetricsSnapshotV1(
+        server="mini-hexed",
+        nodeId="mini-hexed-01",
+        producer="xcore-plugin",
+        createdAtUnixMs=_fresh_created_at_unix_ms() - 2_000,
+        startTimeUnixMs=0,
+        sequence=2,
+        intervalMs=15000,
+        samples=(
+            MetricSampleV1(
+                "mindustry_players_online",
+                MetricSampleV1Type.GAUGE,
+                {},
+                value=12.0,
+            ),
+        ),
+    )
+    store.replace_server_snapshot("mini-hexed", snapshot, snapshot_age_seconds=0.5)
+    await redis.set(key, b"unread because mget fails", ex=60)
+
+    await discovery.discover_once()
+    assert await poller.poll_once() is False
+    snapshots, node_states = store.render_snapshot()
+    assert snapshots == {}
+    assert node_states[0].server == "mini-hexed"
+    assert node_states[0].up is False
+    assert node_states[0].stale is True
+
+    await discovery_client.close()
 
 
 @pytest.mark.asyncio

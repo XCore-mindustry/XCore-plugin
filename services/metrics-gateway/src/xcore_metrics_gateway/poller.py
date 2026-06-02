@@ -34,12 +34,16 @@ class SnapshotPoller:
 
     async def poll_once(self) -> bool:
         keys = self._discovery.current_keys()
+        now_ms = int(time.time() * 1000)
         if not keys:
             self._self_metrics.set_last_poll_duration_seconds(0.0)
+            self._store.mark_expired_snapshots_stale(
+                now_unix_ms=now_ms,
+                stale_snapshot_age_seconds=self._settings.stale_snapshot_age_seconds,
+            )
             return True
 
         started = time.perf_counter()
-        now_ms = int(time.time() * 1000)
         applied_count = 0
         missing_count = 0
         stale_count = 0
@@ -79,6 +83,12 @@ class SnapshotPoller:
 
                     guard_result = self._guard.apply(
                         decoded.snapshot,
+                        server_already_tracked=self._store.has_server(
+                            decoded.snapshot.server
+                        ),
+                        current_server_series=self._store.server_series_count(
+                            decoded.snapshot.server
+                        ),
                         tracked_servers=self._store.tracked_servers(),
                         tracked_total_series=self._store.tracked_total_series(),
                     )
@@ -112,6 +122,10 @@ class SnapshotPoller:
             self._self_metrics.set_last_poll_duration_seconds(
                 time.perf_counter() - started
             )
+            self._store.mark_expired_snapshots_stale(
+                now_unix_ms=int(time.time() * 1000),
+                stale_snapshot_age_seconds=self._settings.stale_snapshot_age_seconds,
+            )
             signature = ("exception", type(error).__name__, str(error))
             if self._last_logged_issue_signature != signature:
                 LOGGER.warning(
@@ -123,10 +137,14 @@ class SnapshotPoller:
             return False
 
         self._self_metrics.set_last_poll_duration_seconds(time.perf_counter() - started)
+        expired_stale_count = self._store.mark_expired_snapshots_stale(
+            now_unix_ms=int(time.time() * 1000),
+            stale_snapshot_age_seconds=self._settings.stale_snapshot_age_seconds,
+        )
         self._log_summary(
             applied_count=applied_count,
             missing_count=missing_count,
-            stale_count=stale_count,
+            stale_count=stale_count + expired_stale_count,
             decode_failures=decode_failures,
             validation_failures=validation_failures,
             dropped=dropped,

@@ -21,19 +21,24 @@ class CardinalityGuard:
         self,
         snapshot: MetricsSnapshotV1,
         *,
+        server_already_tracked: bool,
+        current_server_series: int,
         tracked_servers: int,
         tracked_total_series: int,
     ) -> GuardResult:
         dropped: dict[str, int] = {}
 
-        if tracked_servers >= self._settings.max_servers and snapshot.server != "":
+        if not server_already_tracked and tracked_servers >= self._settings.max_servers:
             dropped["server_limit"] = 1
             return GuardResult(
                 snapshot=None, dropped_reasons=tuple(sorted(dropped.items()))
             )
 
         allowed_remaining = max(
-            self._settings.max_total_series - tracked_total_series, 0
+            self._settings.max_total_series
+            - tracked_total_series
+            + current_server_series,
+            0,
         )
         if allowed_remaining == 0:
             dropped["total_series_limit"] = len(snapshot.samples)

@@ -41,7 +41,13 @@ def test_guard_drops_series_over_per_server_limit() -> None:
         MetricSampleV1("c_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
     )
 
-    result = guard.apply(snapshot, tracked_servers=1, tracked_total_series=0)
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=False,
+        current_server_series=0,
+        tracked_servers=1,
+        tracked_total_series=0,
+    )
 
     assert result.snapshot is not None
     assert len(result.snapshot.samples) == 2
@@ -59,7 +65,13 @@ def test_guard_drops_series_with_too_many_labels() -> None:
         )
     )
 
-    result = guard.apply(snapshot, tracked_servers=1, tracked_total_series=0)
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=False,
+        current_server_series=0,
+        tracked_servers=1,
+        tracked_total_series=0,
+    )
 
     assert result.snapshot is None
     assert result.dropped_reasons == (("labels_per_metric_limit", 1),)
@@ -76,7 +88,13 @@ def test_guard_drops_series_with_long_label_value() -> None:
         )
     )
 
-    result = guard.apply(snapshot, tracked_servers=1, tracked_total_series=0)
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=False,
+        current_server_series=0,
+        tracked_servers=1,
+        tracked_total_series=0,
+    )
 
     assert result.snapshot is None
     assert result.dropped_reasons == (("label_value_length_limit", 1),)
@@ -89,7 +107,70 @@ def test_guard_drops_all_when_total_series_limit_is_exhausted() -> None:
         MetricSampleV1("b_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
     )
 
-    result = guard.apply(snapshot, tracked_servers=1, tracked_total_series=3)
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=False,
+        current_server_series=0,
+        tracked_servers=1,
+        tracked_total_series=3,
+    )
 
     assert result.snapshot is None
     assert result.dropped_reasons == (("total_series_limit", 2),)
+
+
+def test_guard_allows_existing_server_update_at_server_limit() -> None:
+    guard = CardinalityGuard(_settings())
+    snapshot = _snapshot(
+        MetricSampleV1("a_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
+    )
+
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=True,
+        current_server_series=1,
+        tracked_servers=10,
+        tracked_total_series=1,
+    )
+
+    assert result.snapshot is not None
+    assert len(result.snapshot.samples) == 1
+    assert result.dropped_reasons == ()
+
+
+def test_guard_allows_existing_server_replacement_at_total_series_limit() -> None:
+    guard = CardinalityGuard(_settings())
+    snapshot = _snapshot(
+        MetricSampleV1("a_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
+        MetricSampleV1("b_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
+    )
+
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=True,
+        current_server_series=2,
+        tracked_servers=1,
+        tracked_total_series=3,
+    )
+
+    assert result.snapshot is not None
+    assert len(result.snapshot.samples) == 2
+    assert result.dropped_reasons == ()
+
+
+def test_guard_rejects_new_server_at_server_limit() -> None:
+    guard = CardinalityGuard(_settings())
+    snapshot = _snapshot(
+        MetricSampleV1("a_total", MetricSampleV1Type.COUNTER, {}, value=1.0),
+    )
+
+    result = guard.apply(
+        snapshot,
+        server_already_tracked=False,
+        current_server_series=0,
+        tracked_servers=10,
+        tracked_total_series=0,
+    )
+
+    assert result.snapshot is None
+    assert result.dropped_reasons == (("server_limit", 1),)

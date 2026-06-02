@@ -59,3 +59,25 @@ def test_render_snapshot_returns_atomic_read_views_during_replacement() -> None:
         (2, ("mindustry_players_online", "mindustry_player_joins_total")),
     }
     assert (2, ("mindustry_players_online", "mindustry_player_joins_total")) in observed
+
+
+def test_mark_expired_snapshots_stale_removes_stale_samples() -> None:
+    store = SeriesStore()
+    store.replace_server_snapshot(
+        "mini-hexed",
+        _snapshot("mini-hexed", 1, "mindustry_players_online"),
+        snapshot_age_seconds=1.0,
+    )
+
+    expired_count = store.mark_expired_snapshots_stale(
+        now_unix_ms=60_000,
+        stale_snapshot_age_seconds=45,
+    )
+
+    snapshots, node_states = store.render_snapshot()
+    assert expired_count == 1
+    assert snapshots == {}
+    assert node_states[0].server == "mini-hexed"
+    assert node_states[0].up is False
+    assert node_states[0].stale is True
+    assert node_states[0].snapshot_age_seconds == 58.999

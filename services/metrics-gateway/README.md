@@ -18,6 +18,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - keep a bounded in-memory render view
 - expose `GET /metrics`
 - expose `GET /health`
+- expose `GET /ready`
 
 ## Current scaffold
 
@@ -29,7 +30,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - snapshot polling via batched `MGET`
 - cardinality and label guards before snapshots enter the render store
 - in-memory series store and Prometheus renderer skeleton
-- `aiohttp` app with `/metrics` and `/health`
+- `aiohttp` app with `/metrics`, `/health`, and `/ready`
 - gateway self-metrics such as `xcore_metrics_gateway_*`
 - `/health` status with `starting`, `ready`, and `degraded` runtime states
 - explicit Prometheus stale-node visibility via `xcore_node_stale{server=...}`
@@ -82,8 +83,10 @@ Snapshots older than `STALE_SNAPSHOT_AGE_SECONDS` are treated as stale: they are
 from the rendered metrics view, but their node state remains visible through health and
 gateway self-metrics. Prometheus also gets explicit stale visibility through
 `xcore_node_stale{server=...}` and loop timing through gateway self-metrics. `/health`
-starts as `starting`, becomes `ready` after the first successful discovery and poll,
-and moves to `degraded` when runtime failures or stale nodes are observed.
+is informational: it starts as `starting`, becomes `ready` after the first successful
+discovery and poll, and moves to `degraded` when runtime failures or stale nodes are
+observed. `/ready` returns HTTP 200 only when the runtime status is `ready`; Docker
+healthchecks should use `/ready`.
 
 ## Container build
 
@@ -110,6 +113,7 @@ Endpoints:
 
 - gateway metrics: `http://127.0.0.1:9100/metrics`
 - gateway health: `http://127.0.0.1:9100/health`
+- gateway readiness: `http://127.0.0.1:9100/ready`
 - Prometheus: `http://127.0.0.1:9090`
 - Grafana: `http://127.0.0.1:3000` (`admin` / `admin`)
 
@@ -183,6 +187,7 @@ sudo systemctl enable --now xcore-metrics-gateway
 ```bash
 systemctl status xcore-metrics-gateway
 curl http://127.0.0.1:9100/health
+curl http://127.0.0.1:9100/ready
 curl http://127.0.0.1:9100/metrics
 ```
 
@@ -203,7 +208,7 @@ scrape_configs:
 
 - Prefer a dedicated service user such as `xcore`.
 - Keep the gateway bound behind your normal firewall/reverse-proxy policy.
-- Treat `/health` and `/metrics` as internal observability endpoints.
+- Treat `/health`, `/ready`, and `/metrics` as internal observability endpoints.
 - Use the default Grafana dashboard JSON from `ops/grafana/dashboards/xcore-overview.json`
   if you already run Grafana elsewhere.
 

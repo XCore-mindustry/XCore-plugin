@@ -28,14 +28,19 @@ async def run() -> None:
     app = create_app(store, runtime)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, settings.gateway_http_host, settings.gateway_http_port)
-    await site.start()
-    logging.getLogger(__name__).info(
-        "xcore-metrics-gateway listening on %s:%s",
-        settings.gateway_http_host,
-        settings.gateway_http_port,
-    )
-    await asyncio.Event().wait()
+    try:
+        site = web.TCPSite(
+            runner, settings.gateway_http_host, settings.gateway_http_port
+        )
+        await site.start()
+        logging.getLogger(__name__).info(
+            "xcore-metrics-gateway listening on %s:%s",
+            settings.gateway_http_host,
+            settings.gateway_http_port,
+        )
+        await asyncio.Event().wait()
+    finally:
+        await runner.cleanup()
 
 
 def main() -> None:
