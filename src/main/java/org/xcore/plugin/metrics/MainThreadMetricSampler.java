@@ -1,5 +1,6 @@
 package org.xcore.plugin.metrics;
 
+import arc.Core;
 import arc.Events;
 import arc.util.Timer;
 import io.avaje.inject.PostConstruct;
@@ -10,6 +11,7 @@ import mindustry.game.EventType;
 import mindustry.gen.Groups;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
+import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 
 @Singleton
@@ -22,17 +24,25 @@ public final class MainThreadMetricSampler {
     private final Gauge tpsGauge;
     private final Gauge pluginUptimeGauge;
     private final long startTimeUnixMs;
+    private final IntSupplier tpsSupplier;
     private final LongSupplier nowSupplier;
 
     private Timer.Task playersOnlineTask;
 
     public MainThreadMetricSampler(MetricsService metricsService, TomlXcoreConfig config) {
-        this(metricsService, config, System.currentTimeMillis(), System::currentTimeMillis);
+        this(
+                metricsService,
+                config,
+                System.currentTimeMillis(),
+                () -> Core.graphics == null ? 0 : Core.graphics.getFramesPerSecond(),
+                System::currentTimeMillis
+        );
     }
 
     MainThreadMetricSampler(MetricsService metricsService,
                             TomlXcoreConfig config,
                             long startTimeUnixMs,
+                            IntSupplier tpsSupplier,
                             LongSupplier nowSupplier) {
         this.config = config;
         this.playerJoinsCounter = metricsService.counter(XcoreMetrics.PLAYER_JOINS_TOTAL);
@@ -42,6 +52,7 @@ public final class MainThreadMetricSampler {
         this.tpsGauge = metricsService.gauge(XcoreMetrics.TPS);
         this.pluginUptimeGauge = metricsService.gauge(XcoreMetrics.PLUGIN_UPTIME_SECONDS);
         this.startTimeUnixMs = startTimeUnixMs;
+        this.tpsSupplier = tpsSupplier;
         this.nowSupplier = nowSupplier;
     }
 
@@ -90,7 +101,7 @@ public final class MainThreadMetricSampler {
     }
 
     void sampleTps() {
-        tpsGauge.set(Vars.state == null ? 0 : Math.max(0, Vars.state.serverTps));
+        tpsGauge.set(Math.max(0, tpsSupplier.getAsInt()));
     }
 
     void samplePluginUptime() {

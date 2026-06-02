@@ -39,7 +39,6 @@ class MainThreadMetricSamplerTest {
     @DisplayName("samplePeriodicMetrics exports online players, wave, and plugin uptime")
     void samplePeriodicMetrics_exportsOnlinePlayersWaveAndPluginUptime() {
         Vars.state.wave = 17;
-        Vars.state.serverTps = 58;
         Groups.player.add(mock(Player.class));
         Groups.player.add(mock(Player.class));
 
@@ -48,6 +47,7 @@ class MainThreadMetricSamplerTest {
                 enabledMetricsService(registry),
                 enabledConfig(),
                 1_000L,
+                () -> 58,
                 () -> 16_000L
         );
 
@@ -71,6 +71,7 @@ class MainThreadMetricSamplerTest {
                 enabledMetricsService(registry),
                 enabledConfig(),
                 1_000L,
+                () -> 0,
                 () -> 500L
         );
 
