@@ -140,6 +140,14 @@ cd xcore-metrics-gateway
 sudo env REDIS_URL=redis://<redis-host>:6379 ./ops/systemd/install.sh
 ```
 
+If the repository is owned by a non-sudo user such as `xcore`, run the same installer as
+root from that checkout:
+
+```bash
+cd /opt/xcore/xcore-metrics-gateway
+REDIS_URL=redis://<redis-host>:6379 ./ops/systemd/install.sh
+```
+
 The installer:
 
 - syncs the locked `uv` environment
@@ -148,7 +156,8 @@ The installer:
 - enables and starts `xcore-metrics-gateway`
 
 It uses the owner of the cloned repository as the service user by default and writes the
-systemd unit for that checkout. No unit file editing is needed.
+systemd unit for that checkout. The service user does not need sudo, and no unit file
+editing is needed.
 
 Validate the service:
 

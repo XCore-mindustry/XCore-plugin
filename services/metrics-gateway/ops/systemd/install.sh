@@ -4,7 +4,7 @@ set -euo pipefail
 SERVICE_NAME="xcore-metrics-gateway"
 
 if [[ "$(id -u)" -ne 0 ]]; then
-  printf 'Run this installer with sudo.\n' >&2
+  printf 'Run this installer as root or with sudo.\n' >&2
   exit 1
 fi
 
@@ -25,7 +25,11 @@ if [[ -z "${UV_BIN}" && -n "${SUDO_USER:-}" ]]; then
 fi
 
 if [[ -z "${UV_BIN}" ]]; then
-  printf 'uv was not found in PATH. Install uv first, then rerun this installer.\n' >&2
+  UV_BIN="$(runuser -u "${SERVICE_USER}" -- sh -lc 'command -v uv' 2>/dev/null || true)"
+fi
+
+if [[ -z "${UV_BIN}" ]]; then
+  printf 'uv was not found. Install uv for %s or set UV_BIN, then rerun this installer.\n' "${SERVICE_USER}" >&2
   exit 1
 fi
 
