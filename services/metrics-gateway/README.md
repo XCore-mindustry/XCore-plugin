@@ -15,7 +15,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - discover Redis TTL snapshot keys via `SCAN`
 - read compressed snapshots with `MGET`
 - GZIP-decompress and decode `MetricsSnapshotV1`
-- keep a bounded in-memory render view
+- maintain a bounded in-memory render view
 - expose `GET /metrics`
 - expose `GET /health`
 - expose `GET /ready`
@@ -31,7 +31,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - cardinality and label guards before snapshots enter the render store
 - in-memory series store and Prometheus renderer skeleton
 - `aiohttp` app with `/metrics`, `/health`, and `/ready`
-- gateway self-metrics such as `xcore_metrics_gateway_*`
+- gateway self-metrics under `xcore_metrics_gateway_*`
 - `/health` status with `starting`, `ready`, and `degraded` runtime states
 - explicit Prometheus stale-node visibility via `xcore_node_stale{server=...}`
 - bounded discovery/poll warning summaries for operational debugging without log spam
@@ -77,11 +77,11 @@ uv sync
 uv run xcore-metrics-gateway
 ```
 
-The current MVP starts background discovery and polling loops automatically. `/metrics`
+The gateway starts background discovery and polling loops automatically. `/metrics`
 always renders from the local in-memory store and does not read Redis directly.
 Snapshots older than `STALE_SNAPSHOT_AGE_SECONDS` are treated as stale: they are removed
 from the rendered metrics view, but their node state remains visible through health and
-gateway self-metrics. Prometheus also gets explicit stale visibility through
+gateway self-metrics. Prometheus can track stale nodes through
 `xcore_node_stale{server=...}` and loop timing through gateway self-metrics. `/health`
 is informational: it starts as `starting`, becomes `ready` after the first successful
 discovery and poll, and moves to `degraded` when runtime failures or stale nodes are
@@ -96,7 +96,7 @@ docker build -t xcore-metrics-gateway:local .
 
 ## Docker Compose stack
 
-The repository now ships a ready-to-run observability stack:
+The repository includes a local observability stack:
 
 - `redis`
 - `xcore-metrics-gateway`
@@ -124,9 +124,9 @@ Provisioned assets:
 - Grafana dashboard provisioning: `ops/grafana/provisioning/dashboards/default.yml`
 - Default dashboard: `ops/grafana/dashboards/xcore-overview.json`
 
-The compose stack is suitable for local and staging validation. For production, replace the
-default Grafana admin credentials, set persistent volume policies explicitly, and front the
-gateway/Grafana endpoints with your normal network and secret-management controls.
+The compose stack is intended for local and staging validation. For production, replace the
+default Grafana admin credentials, define persistent volume policies explicitly, and put the
+gateway and Grafana behind your normal network and secret-management controls.
 
 ## Non-Docker production deploy
 
