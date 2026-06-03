@@ -128,89 +128,51 @@ The compose stack is intended for local and staging validation. For production, 
 default Grafana admin credentials, define persistent volume policies explicitly, and put the
 gateway and Grafana behind your normal network and secret-management controls.
 
-## Non-Docker production deploy
+## Non-Docker deploy
 
-You can run the gateway directly on a VM or bare-metal host without Docker.
+Prerequisites: Python 3.11+, `uv`, Redis reachable from the host.
 
-### 1. Install the service files
-
-Suggested layout:
-
-```text
-/opt/xcore/xcore-metrics-gateway/
-  pyproject.toml
-  uv.lock
-  src/
-```
-
-Install Python + `uv`, then sync the locked environment:
+Install and start the gateway as a system service:
 
 ```bash
-cd /opt/xcore/xcore-metrics-gateway
-uv sync --locked
+git clone https://github.com/XCore-mindustry/xcore-metrics-gateway.git
+cd xcore-metrics-gateway
+sudo env REDIS_URL=redis://<redis-host>:6379 ./ops/systemd/install.sh
 ```
 
-### 2. Create the environment file
+The installer:
 
-Use `.env.example` as the base and install it as:
+- syncs the locked `uv` environment
+- creates `/etc/xcore/xcore-metrics-gateway.env` if it does not exist
+- installs `/etc/systemd/system/xcore-metrics-gateway.service`
+- enables and starts `xcore-metrics-gateway`
 
-```text
-/etc/xcore/xcore-metrics-gateway.env
-```
+It uses the owner of the cloned repository as the service user by default and writes the
+systemd unit for that checkout. No unit file editing is needed.
 
-Minimum required values in most deployments:
-
-```bash
-GATEWAY_HTTP_HOST=0.0.0.0
-GATEWAY_HTTP_PORT=9100
-REDIS_URL=redis://<redis-host>:6379
-```
-
-### 3. Install the systemd unit
-
-Template unit file:
-
-- `ops/systemd/xcore-metrics-gateway.service`
-
-Typical install flow:
-
-```bash
-sudo cp ops/systemd/xcore-metrics-gateway.service /etc/systemd/system/
-sudo mkdir -p /etc/xcore
-sudo cp .env.example /etc/xcore/xcore-metrics-gateway.env
-sudo systemctl daemon-reload
-sudo systemctl enable --now xcore-metrics-gateway
-```
-
-### 4. Validate the running service
+Validate the service:
 
 ```bash
 systemctl status xcore-metrics-gateway
-curl http://127.0.0.1:9100/health
 curl http://127.0.0.1:9100/ready
 curl http://127.0.0.1:9100/metrics
 ```
 
-### 5. Point Prometheus at the gateway
+Update an existing install:
 
-If Prometheus already exists outside this repository, add a scrape job like this:
+```bash
+git pull --ff-only
+sudo ./ops/systemd/install.sh
+```
+
+To add a scrape job to an existing Prometheus:
 
 ```yaml
 scrape_configs:
   - job_name: xcore-metrics-gateway
-    metrics_path: /metrics
     static_configs:
-      - targets:
-          - <gateway-host>:9100
+      - targets: [<gateway-host>:9100]
 ```
-
-### Operational notes
-
-- Prefer a dedicated service user such as `xcore`.
-- Keep the gateway bound behind your normal firewall/reverse-proxy policy.
-- Treat `/health`, `/ready`, and `/metrics` as internal observability endpoints.
-- Use the default Grafana dashboard JSON from `ops/grafana/dashboards/xcore-overview.json`
-  if you already run Grafana elsewhere.
 
 ## Tests
 
