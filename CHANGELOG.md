@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 No changelog entries were recorded in the Unreleased section.
 
+## [4.2.0] - 2026-06-06
+
+### Added
+- Added telemetry snapshot publishing with a local metric registry, counters, gauges, histograms, and a contract fixture for downstream telemetry consumers.
+- Added runtime gauge sampling for server health metrics, including TPS, FPS, memory, player count, and network state.
+- Added command execution, blocked command, and ingress validation telemetry instrumentation.
+
+### Changed
+- Redesigned the server-local and global configuration system around TOML-backed loading, rendering, and editing flows.
+- Added blocked-command classification so command telemetry distinguishes disabled commands, mute checks, and other guard outcomes.
+
+### Fixed
+- Fixed blocked command telemetry recording so rejected command attempts are counted consistently.
+- Fixed TPS sampling to use the Mindustry graphics FPS source.
+- Rejected blank plain player names during ingress validation.
+
 ## [4.1.0] - 2026-05-24
 
 ### Changed
@@ -262,7 +278,8 @@ No changelog entries were recorded in the Unreleased section.
 ### Security
 - Added ingress-based connection verification to harden request entry points.
 
-[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.1.0...HEAD
+[Unreleased]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2.1...4.0.0
 [3.2.1]: https://github.com/XCore-mindustry/XCore-plugin/compare/3.2...3.2.1
