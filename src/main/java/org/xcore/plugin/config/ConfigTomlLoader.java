@@ -297,11 +297,97 @@ public final class ConfigTomlLoader {
 
     private static <T> T readToml(Fi file, Class<T> type) {
         try {
-            return createTomlMapper().readValue(file.file(), type);
+            TomlMapper mapper = createTomlMapper();
+            if (type == TomlXcoreConfig.class) {
+                String content = Files.readString(file.file().toPath());
+                return mapper.readValue(quoteBareDiscordChannelId(content), type);
+            }
+            return mapper.readValue(file.file(), type);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to read TOML from " + file.absolutePath() + ": " + e.getMessage(), e);
         }
+    }
+
+    private static String quoteBareDiscordChannelId(String content) {
+        StringBuilder output = new StringBuilder(content.length() + 2);
+        boolean discordSection = false;
+        int index = 0;
+        while (index < content.length()) {
+            int lineStart = index;
+            while (index < content.length() && content.charAt(index) != '\n' && content.charAt(index) != '\r') {
+                index++;
+            }
+
+            String line = content.substring(lineStart, index);
+            String trimmed = line.trim();
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                discordSection = "[discord]".equals(trimmed);
+            }
+            output.append(discordSection ? quoteBareChannelIdLine(line) : line);
+
+            if (index < content.length()) {
+                char current = content.charAt(index++);
+                output.append(current);
+                if (current == '\r' && index < content.length() && content.charAt(index) == '\n') {
+                    output.append(content.charAt(index++));
+                }
+            }
+        }
+        return output.toString();
+    }
+
+    private static String quoteBareChannelIdLine(String line) {
+        int keyStart = firstNonWhitespace(line, 0);
+        String key = "channel_id";
+        if (!line.startsWith(key, keyStart)) {
+            return line;
+        }
+
+        int cursor = firstNonWhitespace(line, keyStart + key.length());
+        if (cursor >= line.length() || line.charAt(cursor) != '=') {
+            return line;
+        }
+
+        int valueStart = firstNonWhitespace(line, cursor + 1);
+        if (valueStart >= line.length()) {
+            return line;
+        }
+        char firstValue = line.charAt(valueStart);
+        if (firstValue == '"' || firstValue == '\'') {
+            return line;
+        }
+
+        int valueEnd = valueStart;
+        while (valueEnd < line.length()) {
+            char ch = line.charAt(valueEnd);
+            if (ch < '0' || ch > '9') {
+                break;
+            }
+            valueEnd++;
+        }
+        if (valueEnd == valueStart) {
+            return line;
+        }
+
+        int suffixStart = firstNonWhitespace(line, valueEnd);
+        if (suffixStart < line.length() && line.charAt(suffixStart) != '#') {
+            return line;
+        }
+
+        return line.substring(0, valueStart)
+                + '"'
+                + line.substring(valueStart, valueEnd)
+                + '"'
+                + line.substring(valueEnd);
+    }
+
+    private static int firstNonWhitespace(String value, int start) {
+        int index = start;
+        while (index < value.length() && Character.isWhitespace(value.charAt(index))) {
+            index++;
+        }
+        return index;
     }
 
     private static TomlMapper createTomlMapper() {

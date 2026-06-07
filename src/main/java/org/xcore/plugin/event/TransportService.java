@@ -45,7 +45,7 @@ public class TransportService {
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
                             NetworkService network,
-                             TomlXcoreConfig config) {
+                            TomlXcoreConfig config) {
         this.chatTransportHandler = chatTransportHandler;
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
@@ -66,7 +66,7 @@ public class TransportService {
                 try {
                     network.post(new ServerHeartbeatV1(
                             config.server.name,
-                            config.discord.channelId,
+                            config.discord.channelIdAsLong(),
                             Groups.player.size(),
                             config.server.playerLimit + Groups.player.count(p -> p.admin),
                             Version.buildString(),

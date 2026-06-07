@@ -100,13 +100,20 @@ class ServerLocalConfigPathEditorTest {
     }
 
     @Test
-    @DisplayName("update throws friendly exception for invalid long value")
-    void update_throwsFriendlyExceptionForInvalidLongValue() {
+    @DisplayName("update writes Discord channel id as string snowflake")
+    void update_writesDiscordChannelIdAsStringSnowflake() {
+        TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "discordChannelId", "1099650307396476958");
+
+        assertThat(updated).isNotNull();
+        assertThat(updated.discord.channelId).isEqualTo("1099650307396476958");
+    }
+
+    @Test
+    @DisplayName("update throws friendly exception for invalid Discord snowflake")
+    void update_throwsFriendlyExceptionForInvalidDiscordSnowflake() {
         assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "discordChannelId", "not-a-long"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid value 'not-a-long' for 'channel_id' (expected integer number).")
-                .cause()
-                .isInstanceOf(NumberFormatException.class);
+                .hasMessage("Invalid value 'not-a-long' for 'channel_id' (expected decimal digits).");
     }
 
     @Test

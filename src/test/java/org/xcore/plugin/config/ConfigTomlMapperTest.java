@@ -113,7 +113,7 @@ class ConfigTomlMapperTest {
 
         toml.paths.globalConfigDirectory = "/opt/xcore/global";
 
-        toml.discord.channelId = 123456789L;
+        toml.discord.channelId = "123456789";
 
         toml.transport.redis.url = "redis://redis.example.com:6379";
         toml.transport.redis.groupPrefix = "xcore:prod";
@@ -202,6 +202,28 @@ class ConfigTomlMapperTest {
         assertThat(config.ipReputation.blockTor).isFalse();
         assertThat(config.ipReputation.blockHosting).isTrue();
         assertThat(config.ipReputation.cacheTtlSeconds).isEqualTo(7200);
+    }
+
+    @Test
+    @DisplayName("toConfig preserves 19-digit Discord snowflake from TOML string")
+    void toConfig_preservesDiscordSnowflakeFromTomlString() {
+        TomlXcoreConfig toml = new TomlXcoreConfig();
+        toml.discord.channelId = "1099650307396476958";
+
+        Config config = ConfigTomlMapper.toConfig(toml);
+
+        assertThat(config.discordChannelId).isEqualTo(1099650307396476958L);
+    }
+
+    @Test
+    @DisplayName("toConfig rejects invalid Discord snowflake")
+    void toConfig_rejectsInvalidDiscordSnowflake() {
+        TomlXcoreConfig toml = new TomlXcoreConfig();
+        toml.discord.channelId = "not-a-snowflake";
+
+        assertThatThrownBy(() -> ConfigTomlMapper.toConfig(toml))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("discord.channel_id must contain only decimal digits");
     }
 
     @Test
@@ -476,7 +498,7 @@ class ConfigTomlMapperTest {
         assertThat(toml.server.consoleEnabled).isFalse();
         assertThat(toml.server.gameStartedTimer).isFalse();
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("/srv/xcore/global");
-        assertThat(toml.discord.channelId).isEqualTo(55L);
+        assertThat(toml.discord.channelId).isEqualTo("55");
         assertThat(toml.transport.redis.url).isEqualTo("redis://prod:6379");
         assertThat(toml.transport.redis.groupPrefix).isEqualTo("xcore:prod");
         assertThat(toml.transport.redis.consumerName).isEqualTo("consumer-a");

@@ -90,7 +90,7 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "server.game_started_timer", ValueType.BOOLEAN, "game_started_timer", "gameStartedTimer");
 
         bind(bindings, "paths.global_config_directory", ValueType.STRING, "global_config_directory", "globalConfigDirectory");
-        bind(bindings, "discord.channel_id", ValueType.LONG, "discord_channel_id", "discordChannelId");
+        bind(bindings, "discord.channel_id", ValueType.DISCORD_SNOWFLAKE, "discord_channel_id", "discordChannelId");
 
         bind(bindings, "transport.redis.url", ValueType.STRING, "redis_url", "redisUrl");
         bind(bindings, "transport.redis.group_prefix", ValueType.STRING, "redis_group_prefix", "redisGroupPrefix");
@@ -171,6 +171,28 @@ public final class ServerLocalConfigPathEditor {
                 } catch (NumberFormatException e) {
                     throw invalidValue(key, "integer number", value, e);
                 }
+            }
+        },
+        DISCORD_SNOWFLAKE {
+            @Override
+            void apply(JsonObject parent, String key, String value, Gson gson) {
+                String trimmed = value.trim();
+                if (trimmed.isEmpty()) {
+                    parent.addProperty(key, "0");
+                    return;
+                }
+                for (int i = 0; i < trimmed.length(); i++) {
+                    char ch = trimmed.charAt(i);
+                    if (ch < '0' || ch > '9') {
+                        throw invalidValue(key, "decimal digits", value);
+                    }
+                }
+                try {
+                    Long.parseLong(trimmed);
+                } catch (NumberFormatException e) {
+                    throw invalidValue(key, "signed 64-bit decimal digits", value, e);
+                }
+                parent.addProperty(key, trimmed);
             }
         },
         INT {

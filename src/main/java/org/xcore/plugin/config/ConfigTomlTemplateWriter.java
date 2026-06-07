@@ -61,7 +61,8 @@ public final class ConfigTomlTemplateWriter {
         global_config_directory = ""
 
         [discord]
-        channel_id = 0
+        # Discord snowflakes are identifiers, keep them quoted to avoid TOML integer parser bugs.
+        channel_id = "0"
 
         [transport.redis]
         url = "redis://127.0.0.1:6379"

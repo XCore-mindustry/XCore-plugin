@@ -21,7 +21,7 @@ class TomlXcoreConfigTest {
 
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("");
 
-        assertThat(toml.discord.channelId).isEqualTo(0L);
+        assertThat(toml.discord.channelId).isEqualTo("0");
 
         assertThat(toml.transport.redis.url).isEqualTo("redis://127.0.0.1:6379");
         assertThat(toml.transport.redis.groupPrefix).isEqualTo("xcore:cg");

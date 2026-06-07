@@ -58,6 +58,7 @@ public class TomlXcoreConfig {
 
         server.normalize();
         paths.normalize();
+        discord.normalize();
         transport.normalize();
         runtime.normalize();
         telemetry.normalize();
@@ -93,7 +94,30 @@ public class TomlXcoreConfig {
     }
 
     public static class DiscordConfig {
-        public long channelId = 0L;
+        public String channelId = "0";
+
+        public void normalize() {
+            if (channelId == null || channelId.isBlank()) {
+                channelId = "0";
+            } else {
+                channelId = channelId.trim();
+            }
+        }
+
+        public long channelIdAsLong() {
+            normalize();
+            for (int i = 0; i < channelId.length(); i++) {
+                char ch = channelId.charAt(i);
+                if (ch < '0' || ch > '9') {
+                    throw new IllegalArgumentException("discord.channel_id must contain only decimal digits");
+                }
+            }
+            try {
+                return Long.parseLong(channelId);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("discord.channel_id must fit in signed 64-bit range", e);
+            }
+        }
     }
 
     public static class TransportConfig {

@@ -48,6 +48,24 @@ class ConfigTomlLoaderTest {
     }
 
     @Test
+    @DisplayName("loadXcoreConfig preserves bare numeric Discord snowflake from existing TOML")
+    void loadXcoreConfig_preservesBareNumericDiscordSnowflake() throws IOException {
+        Path tomlPath = tempDir.resolve("xcore.toml");
+        Files.writeString(tomlPath, """
+                version = 1
+
+                [discord]
+                channel_id = 1099650307396476958
+                """);
+
+        Fi dataDir = new Fi(tempDir.toFile());
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+
+        assertThat(result.config.discord.channelId).isEqualTo("1099650307396476958");
+        assertThat(result.config.discord.channelIdAsLong()).isEqualTo(1099650307396476958L);
+    }
+
+    @Test
     @DisplayName("loadXcoreConfig returns LEGACY_JSON source when only xcconfig.json exists")
     void loadXcoreConfig_returnsLegacyJsonSource_whenOnlyJsonExists() throws IOException {
         Path jsonPath = tempDir.resolve("xcconfig.json");

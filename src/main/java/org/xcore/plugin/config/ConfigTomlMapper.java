@@ -51,7 +51,7 @@ public final class ConfigTomlMapper {
         config.globalConfigDirectory = toml.paths.globalConfigDirectory;
 
         // discord
-        config.discordChannelId = toml.discord.channelId;
+        config.discordChannelId = toml.discord.channelIdAsLong();
 
         // transport.redis
         config.redisUrl = toml.transport.redis.url;
@@ -105,7 +105,7 @@ public final class ConfigTomlMapper {
 
         toml.paths.globalConfigDirectory = nullToBlank(config.globalConfigDirectory);
 
-        toml.discord.channelId = config.discordChannelId;
+        toml.discord.channelId = Long.toString(config.discordChannelId);
 
         toml.transport.redis.url = config.redisUrl;
         toml.transport.redis.groupPrefix = config.redisGroupPrefix;
