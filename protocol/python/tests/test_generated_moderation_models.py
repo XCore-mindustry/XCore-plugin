@@ -218,5 +218,6 @@ def test_generated_moderation_route_registry_matches_expected_messages() -> None
     assert MODERATION_KICK_BANNED_COMMAND_V1.payloadType is ModerationKickBannedCommandV1
     assert MODERATION_PARDON_COMMAND_V1.payloadType is ModerationPardonCommandV1
     assert MODERATION_AUDIT_APPENDED_V1.payloadType is ModerationAuditAppendedV1
+    assert ROUTES_BY_MESSAGE[("moderation.kick-banned.command", 1)].bindings == {"server": "payload.server"}
     assert ROUTES_BY_MESSAGE[("moderation.kick-banned.command", 1)].stream == "xcore:cmd:kick-banned:{server}"
     assert ROUTES_BY_MESSAGE[("moderation.audit.appended", 1)].kind == "event"

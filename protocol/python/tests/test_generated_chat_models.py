@@ -248,3 +248,4 @@ def test_generated_route_registry_includes_chat_and_heartbeat_messages() -> None
     assert ROUTES_BY_MESSAGE[("player.password-reset.command", 1)].stream == "xcore:cmd:player-password-reset:{server}"
     assert ROUTES_BY_MESSAGE[("server.heartbeat", 1)].stream == "xcore:evt:server:heartbeat"
     assert MAPS_ROUTES_BY_MESSAGE[("maps.list.request", 1)].stream == "xcore:rpc:req:{server}"
+    assert ROUTES_BY_MESSAGE[("chat.discord-ingress.command", 1)].bindings == {"server": "payload.server"}

@@ -16,8 +16,8 @@ public final class ChatMessages {
             String message,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "chat.discord-ingress.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "chat.discord-ingress.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public ChatDiscordIngressCommandV1 {
             Objects.requireNonNull(authorName, "authorName must not be null");
@@ -51,8 +51,8 @@ public final class ChatMessages {
             String message,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "chat.global";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "chat.global";
+    public static final int MESSAGE_VERSION = 1;
 
         public ChatGlobalV1 {
             Objects.requireNonNull(authorName, "authorName must not be null");
@@ -86,8 +86,8 @@ public final class ChatMessages {
             String message,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "chat.message";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "chat.message";
+    public static final int MESSAGE_VERSION = 1;
 
         public ChatMessageV1 {
             Objects.requireNonNull(authorName, "authorName must not be null");
@@ -125,8 +125,8 @@ public final class ChatMessages {
             String message,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "chat.private";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "chat.private";
+    public static final int MESSAGE_VERSION = 1;
 
         public ChatPrivateV1 {
             Objects.requireNonNull(fromUuid, "fromUuid must not be null");
@@ -176,8 +176,8 @@ public final class ChatMessages {
     public record PlayerDataCacheReloadCommandV1(
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player-data-cache.reload.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player-data-cache.reload.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerDataCacheReloadCommandV1 {
             Objects.requireNonNull(server, "server must not be null");
@@ -201,8 +201,8 @@ public final class ChatMessages {
             String activeBadge,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.active-badge.changed.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.active-badge.changed.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerActiveBadgeChangedCommandV1 {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -234,8 +234,8 @@ public final class ChatMessages {
             List<String> unlockedBadges,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.badge-inventory.changed.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.badge-inventory.changed.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerBadgeInventoryChangedCommandV1 {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -272,8 +272,8 @@ public final class ChatMessages {
             String badgeSymbolColorMode,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.badge-symbol-color-mode.changed.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.badge-symbol-color-mode.changed.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerBadgeSymbolColorModeChangedCommandV1 {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -304,8 +304,8 @@ public final class ChatMessages {
             String customNickname,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.custom-nickname.changed.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.custom-nickname.changed.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerCustomNicknameChangedCommandV1 {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -336,8 +336,8 @@ public final class ChatMessages {
             String server,
             boolean joined
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.join-leave";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.join-leave";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerJoinLeaveV1 {
             Objects.requireNonNull(playerName, "playerName must not be null");
@@ -366,8 +366,8 @@ public final class ChatMessages {
             String playerUuid,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "player.password-reset.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "player.password-reset.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public PlayerPasswordResetCommandV1 {
             Objects.requireNonNull(playerUuid, "playerUuid must not be null");
@@ -396,8 +396,8 @@ public final class ChatMessages {
             List<String> targetServers,
             boolean exclusion
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "server-command.execute.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "server-command.execute.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public ServerCommandExecuteCommandV1 {
             Objects.requireNonNull(command, "command must not be null");
@@ -427,8 +427,8 @@ public final class ChatMessages {
             String message,
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "server.action";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "server.action";
+    public static final int MESSAGE_VERSION = 1;
 
         public ServerActionV1 {
             Objects.requireNonNull(message, "message must not be null");
@@ -461,8 +461,8 @@ public final class ChatMessages {
             String host,
             Integer port
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "server.heartbeat";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "server.heartbeat";
+    public static final int MESSAGE_VERSION = 1;
 
         public ServerHeartbeatV1 {
             Objects.requireNonNull(serverName, "serverName must not be null");

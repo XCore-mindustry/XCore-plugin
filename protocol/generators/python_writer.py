@@ -316,6 +316,7 @@ class RouteResponseDescriptor:
     messageVersion: int
     payloadType: type[Any]
     stream: str
+    bindings: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,6 +328,7 @@ class RouteDescriptor:
     payloadType: type[Any]
     kind: str
     stream: str
+    bindings: dict[str, str]
     targetScope: str
     ttlMs: int
     replayable: bool
@@ -345,6 +347,7 @@ def _render_route_constant(route: RouteDescriptor) -> str:
             f"        messageVersion={route.response.message.message_version},\n"
             f"        payloadType={route.response.message.schema_title},\n"
             f"        stream={route.response.stream!r},\n"
+            f"        bindings={dict(route.response.bindings)!r},\n"
             "    )"
         )
     return (
@@ -356,6 +359,7 @@ def _render_route_constant(route: RouteDescriptor) -> str:
         f"    payloadType={route.message.schema_title},\n"
         f"    kind={route.kind!r},\n"
         f"    stream={route.stream!r},\n"
+        f"    bindings={dict(route.bindings)!r},\n"
         f"    targetScope={route.target_scope!r},\n"
         f"    ttlMs={route.ttl_ms},\n"
         f"    replayable={route.replayable},\n"

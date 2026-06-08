@@ -26,8 +26,8 @@ public final class ModerationMessages {
             String occurredAt,
             Map<String, Object> details
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.audit.appended";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.audit.appended";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationAuditAppendedV1 {
             Objects.requireNonNull(entryType, "entryType must not be null");
@@ -93,8 +93,8 @@ public final class ModerationMessages {
             String server,
             String occurredAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.ban.created";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.ban.created";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationBanCreatedV1 {
             Objects.requireNonNull(target, "target must not be null");
@@ -143,8 +143,8 @@ public final class ModerationMessages {
             String server,
             String requestedAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.kick-banned.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.kick-banned.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationKickBannedCommandV1 {
             Objects.requireNonNull(target, "target must not be null");
@@ -179,8 +179,8 @@ public final class ModerationMessages {
             String server,
             String occurredAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.mute.created";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.mute.created";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationMuteCreatedV1 {
             Objects.requireNonNull(target, "target must not be null");
@@ -229,8 +229,8 @@ public final class ModerationMessages {
             String server,
             String requestedAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.pardon.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.pardon.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationPardonCommandV1 {
             Objects.requireNonNull(target, "target must not be null");
@@ -266,8 +266,8 @@ public final class ModerationMessages {
             String server,
             String occurredAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "moderation.vote-kick.created";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "moderation.vote-kick.created";
+    public static final int MESSAGE_VERSION = 1;
 
         public ModerationVoteKickCreatedV1 {
             Objects.requireNonNull(target, "target must not be null");

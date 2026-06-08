@@ -16,7 +16,8 @@ public final class MapsRoutes {
             String messageType,
             int messageVersion,
             Class<?> payloadType,
-            String stream
+            String stream,
+            Map<String, String> bindings
     ) {}
 
     public record RouteDescriptor(
@@ -27,6 +28,7 @@ public final class MapsRoutes {
             Class<?> payloadType,
             String kind,
             String stream,
+            Map<String, String> bindings,
             String targetScope,
             int ttlMs,
             boolean replayable,
@@ -43,6 +45,7 @@ public final class MapsRoutes {
             MapsMessages.MapsListRequestV1.class,
             "rpc-request",
             "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
             "server",
             10000,
             false,
@@ -52,7 +55,8 @@ public final class MapsRoutes {
                     "maps.list.response",
                     1,
                     MapsMessages.MapsListResponseV1.class,
-                    "xcore:rpc:resp:{requester}"
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
             )
     );
 
@@ -64,6 +68,7 @@ public final class MapsRoutes {
             MapsMessages.MapsRemoveRequestV1.class,
             "rpc-request",
             "xcore:rpc:req:{server}",
+            Map.of("server", "payload.server"),
             "server",
             10000,
             false,
@@ -73,7 +78,8 @@ public final class MapsRoutes {
                     "maps.remove.response",
                     1,
                     MapsMessages.MapsRemoveResponseV1.class,
-                    "xcore:rpc:resp:{requester}"
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
             )
     );
 
@@ -85,6 +91,7 @@ public final class MapsRoutes {
             MapsMessages.MapsLoadCommandV1.class,
             "command",
             "xcore:cmd:maps-load:{server}",
+            Map.of("server", "payload.server"),
             "server",
             300000,
             false,

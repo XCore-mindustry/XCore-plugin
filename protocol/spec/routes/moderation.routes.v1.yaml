@@ -32,6 +32,8 @@ messages:
     messageVersion: 1
     kind: command
     stream: xcore:cmd:kick-banned:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 120000
     replayable: false
@@ -41,6 +43,8 @@ messages:
     messageVersion: 1
     kind: command
     stream: xcore:cmd:pardon-player:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 120000
     replayable: false

@@ -16,7 +16,8 @@ public final class ModerationRoutes {
             String messageType,
             int messageVersion,
             Class<?> payloadType,
-            String stream
+            String stream,
+            Map<String, String> bindings
     ) {}
 
     public record RouteDescriptor(
@@ -27,6 +28,7 @@ public final class ModerationRoutes {
             Class<?> payloadType,
             String kind,
             String stream,
+            Map<String, String> bindings,
             String targetScope,
             int ttlMs,
             boolean replayable,
@@ -43,6 +45,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationBanCreatedV1.class,
             "event",
             "xcore:evt:moderation:ban",
+            Map.of(),
             "broadcast",
             120000,
             true,
@@ -59,6 +62,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationMuteCreatedV1.class,
             "event",
             "xcore:evt:moderation:mute",
+            Map.of(),
             "broadcast",
             120000,
             true,
@@ -75,6 +79,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationVoteKickCreatedV1.class,
             "event",
             "xcore:evt:moderation:votekick",
+            Map.of(),
             "broadcast",
             120000,
             true,
@@ -91,6 +96,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationKickBannedCommandV1.class,
             "command",
             "xcore:cmd:kick-banned:{server}",
+            Map.of("server", "payload.server"),
             "server",
             120000,
             false,
@@ -107,6 +113,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationPardonCommandV1.class,
             "command",
             "xcore:cmd:pardon-player:{server}",
+            Map.of("server", "payload.server"),
             "server",
             120000,
             false,
@@ -123,6 +130,7 @@ public final class ModerationRoutes {
             ModerationMessages.ModerationAuditAppendedV1.class,
             "event",
             "xcore:evt:moderation:audit",
+            Map.of(),
             "broadcast",
             120000,
             true,

@@ -2,25 +2,30 @@ package org.xcore.protocol.generated;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.junit.jupiter.api.Test;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.xcore.protocol.generated.messages.chat.ChatMessages;
+import org.xcore.protocol.generated.messages.discord.DiscordMessages;
+import org.xcore.protocol.generated.messages.maps.MapsMessages;
+import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages;
 import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.MetricsSnapshotV1;
-import org.xcore.protocol.generated.shared.ActorRefV1;
-import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
-import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
-import org.xcore.protocol.generated.shared.MetricSampleV1;
-import org.xcore.protocol.generated.shared.MetricSampleV1Type;
-import org.xcore.protocol.generated.shared.PlayerRefV1;
+import org.xcore.protocol.generated.routes.ProtocolRoutes;
+import org.xcore.protocol.generated.runtime.ProtocolPayload;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,152 +38,57 @@ class ProtocolCanonicalFixtureTest {
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
+    private static final String VALID_FIXTURES_ROOT = "fixtures/valid";
+    private static final Map<MessageKey, Class<? extends ProtocolPayload>> MESSAGE_PAYLOADS_BY_KEY = buildMessagePayloadIndex();
 
-    private static final String ADMIN_ACCESS_GRANT_FIXTURE = "spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.grant.json";
-    private static final String ADMIN_ACCESS_REVOKE_FIXTURE = "spec/fixtures/valid/discord/discord.admin-access.changed.command.v1.revoke.json";
-    private static final String UNLINK_FIXTURE = "spec/fixtures/valid/discord/discord.unlink.command.v1.json";
-    private static final String HEARTBEAT_FIXTURE = "spec/fixtures/valid/chat/server.heartbeat.v1.json";
-    private static final String TELEMETRY_FIXTURE = "spec/fixtures/valid/telemetry/metrics.snapshot.v1.json";
-
-    @Test
-    void adminAccessGrantFixtureParsesAndRoundTripsCanonically() throws IOException {
-        assertAdminAccessFixtureRoundTrip(ADMIN_ACCESS_GRANT_FIXTURE, true);
-    }
-
-    @Test
-    void adminAccessRevokeFixtureParsesAndRoundTripsCanonically() throws IOException {
-        assertAdminAccessFixtureRoundTrip(ADMIN_ACCESS_REVOKE_FIXTURE, false);
-    }
-
-    @Test
-    void unlinkFixtureParsesAndRoundTripsCanonically() throws IOException {
-        var fixture = readFixture(UNLINK_FIXTURE);
-        assertCanonicalIdentity(fixture, "discord.unlink.command", 1);
-        assertNoLegacyKeys(fixture);
-        assertKeySet(fixture, Set.of("messageType", "messageVersion", "player", "discord", "actor", "server", "requestedAt"));
-
-        var player = getMap(fixture, "player");
-        assertPlayerRefShape(player);
-
-        var discord = getMap(fixture, "discord");
-        assertDiscordIdentityShape(discord);
-
-        var actor = getMap(fixture, "actor");
-        assertActorShape(actor, true);
-
-        var model = new DiscordUnlinkCommandV1(
-            parsePlayerRef(player),
-            parseDiscordIdentityRef(discord),
-            parseActorRef(actor),
-            getString(fixture, "server"),
-            getString(fixture, "requestedAt")
-        );
-
-        var canonicalPayload = model.toPayload();
-        assertCanonicalIdentity(canonicalPayload, "discord.unlink.command", 1);
-        assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
-    }
-
-    @Test
-    void heartbeatFixtureParsesAndRoundTripsCanonically() throws IOException {
-        var fixture = readFixture(HEARTBEAT_FIXTURE);
-        assertCanonicalIdentity(fixture, "server.heartbeat", 1);
-        assertNoLegacyKeys(fixture);
-        assertKeySet(fixture, Set.of("messageType", "messageVersion", "serverName", "discordChannelId", "players", "maxPlayers", "version", "host", "port"));
-
-        var model = new ServerHeartbeatV1(
-            getString(fixture, "serverName"),
-            getLong(fixture, "discordChannelId"),
-            getInt(fixture, "players"),
-            getInt(fixture, "maxPlayers"),
-            getString(fixture, "version"),
-            getOptionalString(fixture, "host"),
-            getOptionalInt(fixture, "port")
-        );
-
-        var canonicalPayload = model.toPayload();
-        assertCanonicalIdentity(canonicalPayload, "server.heartbeat", 1);
-        assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
-    }
-
-    @Test
-    void telemetryFixtureParsesAndRoundTripsCanonically() throws IOException {
-        var fixture = readFixture(TELEMETRY_FIXTURE);
-        assertSchemaIdentity(fixture, "metrics.snapshot.v1");
-        assertNoLegacyKeys(fixture);
-        assertKeySet(fixture, Set.of(
-                "schemaVersion",
-                "server",
-                "nodeId",
-                "producer",
-                "createdAtUnixMs",
-                "startTimeUnixMs",
-                "sequence",
-                "intervalMs",
-                "samples"
-        ));
-
-        @SuppressWarnings("unchecked")
-        var samplePayloads = (List<Map<String, Object>>) fixture.get("samples");
-        assertEquals(3, samplePayloads.size());
-
-        var model = new MetricsSnapshotV1(
-                getString(fixture, "server"),
-                getString(fixture, "nodeId"),
-                getString(fixture, "producer"),
-                getLong(fixture, "createdAtUnixMs"),
-                getLong(fixture, "startTimeUnixMs"),
-                getLong(fixture, "sequence"),
-                getInt(fixture, "intervalMs"),
-                samplePayloads.stream().map(ProtocolCanonicalFixtureTest::parseMetricSample).toList()
-        );
-
-        var canonicalPayload = model.toPayload();
-        assertSchemaIdentity(canonicalPayload, "metrics.snapshot.v1");
-        assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
-    }
-
-    private static void assertAdminAccessFixtureRoundTrip(String fixturePath, boolean expectedAdmin) throws IOException {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("allValidFixtures")
+    void validFixtureParsesAndRoundTripsCanonically(Path fixturePath) throws IOException {
         var fixture = readFixture(fixturePath);
-        assertCanonicalIdentity(fixture, "discord.admin-access.changed.command", 1);
         assertNoLegacyKeys(fixture);
-        assertKeySet(fixture, Set.of("messageType", "messageVersion", "player", "discord", "admin", "source", "actor", "reason", "server", "occurredAt"));
-
-        var player = getMap(fixture, "player");
-        assertPlayerRefShape(player);
-
-        var discord = getMap(fixture, "discord");
-        assertDiscordIdentityShape(discord);
-
-        var source = getMap(fixture, "source");
-        assertActorShape(source, false);
-
-        var actor = getMap(fixture, "actor");
-        assertActorShape(actor, true);
-
-        assertEquals(expectedAdmin, getBoolean(fixture, "admin"));
-        assertNotNull(getString(fixture, "reason"));
-        assertNotNull(getString(fixture, "server"));
-        assertNotNull(getString(fixture, "occurredAt"));
-
-        var model = new DiscordAdminAccessChangedCommandV1(
-            parsePlayerRef(player),
-            parseDiscordIdentityRef(discord),
-            getBoolean(fixture, "admin"),
-            parseActorRef(source),
-            parseActorRef(actor),
-            getString(fixture, "reason"),
-            getString(fixture, "server"),
-            getString(fixture, "occurredAt")
-        );
+        var model = materializePayload(fixture);
 
         var canonicalPayload = model.toPayload();
-        assertCanonicalIdentity(canonicalPayload, "discord.admin-access.changed.command", 1);
+        if (fixture.containsKey("schemaVersion")) {
+            assertSchemaIdentity(canonicalPayload, MetricsSnapshotV1.SCHEMA_VERSION);
+        } else {
+            assertCanonicalIdentity(
+                    canonicalPayload,
+                    getString(fixture, "messageType"),
+                    getInt(fixture, "messageVersion")
+            );
+        }
         assertEquals(normalizeMap(fixture), normalizeMap(canonicalPayload));
     }
 
-    private static Map<String, Object> readFixture(String relativePath) throws IOException {
-        var fixturePath = resolveFixturePath(relativePath);
+    private static Stream<Path> allValidFixtures() throws IOException {
+        var root = resolveFixturePath(VALID_FIXTURES_ROOT);
+        return Files.walk(root)
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().endsWith(".json"))
+                .sorted()
+                .map(Path::normalize);
+    }
+
+    private static ProtocolPayload materializePayload(Map<String, Object> payload) {
+        if (payload.containsKey("schemaVersion")) {
+            assertSchemaIdentity(payload, MetricsSnapshotV1.SCHEMA_VERSION);
+            return instantiateRecord(TelemetryMessages.MetricsSnapshotV1.class, payload);
+        }
+
+        var messageType = getString(payload, "messageType");
+        var messageVersion = getInt(payload, "messageVersion");
+        var route = ProtocolRoutes.routeFor(messageType, messageVersion);
+        if (route != null) {
+            return instantiateRecord(route.payloadType(), payload);
+        }
+
+        var payloadType = MESSAGE_PAYLOADS_BY_KEY.get(new MessageKey(messageType, messageVersion));
+        assertNotNull(payloadType, () -> "No generated message payload registered for " + messageType + "@v" + messageVersion);
+        return instantiateRecord(payloadType, payload);
+    }
+
+    private static Map<String, Object> readFixture(Path fixturePath) throws IOException {
         try (var reader = Files.newBufferedReader(fixturePath)) {
             return GSON.fromJson(reader, MAP_TYPE);
         }
@@ -222,26 +132,6 @@ class ProtocolCanonicalFixtureTest {
         assertFalse(payload.containsKey("messageVersion"));
     }
 
-    private static void assertPlayerRefShape(Map<String, Object> player) {
-        assertKeySet(player, Set.of("playerUuid", "playerName", "playerPid", "ip"));
-        assertFalse(player.containsKey("uuid"), "no legacy 'uuid' key");
-        assertFalse(player.containsKey("name"), "no legacy 'name' key");
-        assertFalse(player.containsKey("pid"), "no legacy 'pid' key");
-    }
-
-    private static void assertDiscordIdentityShape(Map<String, Object> discord) {
-        assertKeySet(discord, Set.of("discordId", "discordUsername"));
-    }
-
-    private static void assertActorShape(Map<String, Object> actor, boolean requireDiscordId) {
-        if (requireDiscordId) {
-            assertKeySet(actor, Set.of("actorName", "actorDiscordId", "actorType"));
-        } else {
-            assertKeySet(actor, Set.of("actorName", "actorType"));
-            assertFalse(actor.containsKey("actorDiscordId"), "system source must not include actorDiscordId");
-        }
-    }
-
     private static void assertKeySet(Map<String, Object> payload, Set<String> expectedKeys) {
         assertEquals(expectedKeys, payload.keySet());
     }
@@ -281,43 +171,92 @@ class ProtocolCanonicalFixtureTest {
         }
     }
 
-    private static PlayerRefV1 parsePlayerRef(Map<String, Object> payload) {
-        return new PlayerRefV1(
-            getString(payload, "playerUuid"),
-            getOptionalInt(payload, "playerPid"),
-            getString(payload, "playerName"),
-            getOptionalString(payload, "ip")
-        );
+    @SuppressWarnings("unchecked")
+    private static <T extends ProtocolPayload> T instantiateRecord(Class<T> type, Map<String, Object> payload) {
+        try {
+            var components = type.getRecordComponents();
+            var parameterTypes = new Class<?>[components.length];
+            var arguments = new Object[components.length];
+            for (int index = 0; index < components.length; index++) {
+                RecordComponent component = components[index];
+                parameterTypes[index] = component.getType();
+                arguments[index] = convertValue(
+                        payload.get(component.getName()),
+                        component.getType(),
+                        component.getGenericType(),
+                        component.getName()
+                );
+            }
+            Constructor<T> constructor = type.getDeclaredConstructor(parameterTypes);
+            return constructor.newInstance(arguments);
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException exception) {
+            throw new AssertionError("Unable to instantiate generated payload: " + type.getName(), exception);
+        } catch (InvocationTargetException exception) {
+            throw new AssertionError("Generated payload constructor rejected canonical fixture: " + type.getName(), exception.getCause());
+        }
     }
 
-    private static DiscordIdentityRefV1 parseDiscordIdentityRef(Map<String, Object> payload) {
-        return new DiscordIdentityRefV1(
-            getString(payload, "discordId"),
-            getOptionalString(payload, "discordUsername")
-        );
-    }
+    @SuppressWarnings("unchecked")
+    private static Object convertValue(Object value, Class<?> rawType, Type genericType, String fieldName) {
+        if (value == null) {
+            if (rawType.isPrimitive()) {
+                fail("Missing primitive value for field: " + fieldName);
+            }
+            return null;
+        }
 
-    private static ActorRefV1 parseActorRef(Map<String, Object> payload) {
-        return new ActorRefV1(
-            getString(payload, "actorName"),
-            getOptionalString(payload, "actorDiscordId"),
-            ActorRefV1ActorType.fromValue(getString(payload, "actorType"))
-        );
-    }
+        if (rawType == String.class) {
+            assertInstanceOf(String.class, value, () -> "Expected string value for field '" + fieldName + "'");
+            return value;
+        }
+        if (rawType == int.class || rawType == Integer.class) {
+            assertInstanceOf(Number.class, value, () -> "Expected numeric value for field '" + fieldName + "'");
+            return ((Number) value).intValue();
+        }
+        if (rawType == long.class || rawType == Long.class) {
+            assertInstanceOf(Number.class, value, () -> "Expected numeric value for field '" + fieldName + "'");
+            return ((Number) value).longValue();
+        }
+        if (rawType == double.class || rawType == Double.class) {
+            assertInstanceOf(Number.class, value, () -> "Expected numeric value for field '" + fieldName + "'");
+            return ((Number) value).doubleValue();
+        }
+        if (rawType == boolean.class || rawType == Boolean.class) {
+            assertInstanceOf(Boolean.class, value, () -> "Expected boolean value for field '" + fieldName + "'");
+            return value;
+        }
+        if (Map.class.isAssignableFrom(rawType)) {
+            assertInstanceOf(Map.class, value, () -> "Expected object value for field '" + fieldName + "'");
+            return normalizeMap((Map<String, Object>) value);
+        }
+        if (List.class.isAssignableFrom(rawType)) {
+            assertInstanceOf(List.class, value, () -> "Expected list value for field '" + fieldName + "'");
+            Type itemType = Object.class;
+            if (genericType instanceof ParameterizedType parameterizedType) {
+                itemType = parameterizedType.getActualTypeArguments()[0];
+            }
+            Type resolvedItemType = itemType;
+            Class<?> itemClass = resolvedItemType instanceof Class<?> candidate ? candidate : Object.class;
+            return ((List<Object>) value).stream()
+                    .map(item -> convertValue(item, itemClass, resolvedItemType, fieldName + "[]"))
+                    .toList();
+        }
+        if (rawType.isEnum()) {
+            assertInstanceOf(String.class, value, () -> "Expected enum string value for field '" + fieldName + "'");
+            try {
+                return rawType.getMethod("fromValue", String.class).invoke(null, value);
+            } catch (NoSuchMethodException | IllegalAccessException exception) {
+                throw new AssertionError("Enum does not expose fromValue(String): " + rawType.getName(), exception);
+            } catch (InvocationTargetException exception) {
+                throw new AssertionError("Enum rejected canonical value for field '" + fieldName + "'", exception.getCause());
+            }
+        }
+        if (rawType.isRecord()) {
+            assertInstanceOf(Map.class, value, () -> "Expected object value for field '" + fieldName + "'");
+            return instantiateRecord((Class<? extends ProtocolPayload>) rawType, (Map<String, Object>) value);
+        }
 
-    private static MetricSampleV1 parseMetricSample(Map<String, Object> payload) {
-        return new MetricSampleV1(
-                getString(payload, "name"),
-                MetricSampleV1Type.fromValue(getString(payload, "type")),
-                getMap(payload, "labels"),
-                getOptionalString(payload, "help"),
-                getOptionalString(payload, "unit"),
-                getOptionalDouble(payload, "value"),
-                getOptionalDoubleList(payload, "buckets"),
-                getOptionalIntList(payload, "counts"),
-                getOptionalLong(payload, "count"),
-                getOptionalDouble(payload, "sum")
-        );
+        throw new AssertionError("Unsupported generated field type for canonical fixture materialization: " + rawType.getName());
     }
 
     @SuppressWarnings("unchecked")
@@ -420,5 +359,33 @@ class ProtocolCanonicalFixtureTest {
 
     private static Map<String, Object> normalizeMap(Map<String, Object> payload) {
         return GSON.fromJson(GSON.toJson(payload), MAP_TYPE);
+    }
+
+    private static Map<MessageKey, Class<? extends ProtocolPayload>> buildMessagePayloadIndex() {
+        Map<MessageKey, Class<? extends ProtocolPayload>> index = new LinkedHashMap<>();
+        indexMessagePayloads(index, MapsMessages.class);
+        indexMessagePayloads(index, ChatMessages.class);
+        indexMessagePayloads(index, DiscordMessages.class);
+        indexMessagePayloads(index, ModerationMessages.class);
+        return Map.copyOf(index);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void indexMessagePayloads(Map<MessageKey, Class<? extends ProtocolPayload>> index, Class<?> containerType) {
+        for (Class<?> nestedType : containerType.getDeclaredClasses()) {
+            if (!ProtocolPayload.class.isAssignableFrom(nestedType)) {
+                continue;
+            }
+            try {
+                var messageType = (String) nestedType.getField("MESSAGE_TYPE").get(null);
+                var messageVersion = nestedType.getField("MESSAGE_VERSION").getInt(null);
+                index.put(new MessageKey(messageType, messageVersion), (Class<? extends ProtocolPayload>) nestedType);
+            } catch (NoSuchFieldException | IllegalAccessException exception) {
+                throw new AssertionError("Unable to inspect generated message payload: " + nestedType.getName(), exception);
+            }
+        }
+    }
+
+    private record MessageKey(String messageType, int messageVersion) {
     }
 }

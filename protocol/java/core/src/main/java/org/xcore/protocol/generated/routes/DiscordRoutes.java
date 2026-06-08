@@ -16,7 +16,8 @@ public final class DiscordRoutes {
             String messageType,
             int messageVersion,
             Class<?> payloadType,
-            String stream
+            String stream,
+            Map<String, String> bindings
     ) {}
 
     public record RouteDescriptor(
@@ -27,6 +28,7 @@ public final class DiscordRoutes {
             Class<?> payloadType,
             String kind,
             String stream,
+            Map<String, String> bindings,
             String targetScope,
             int ttlMs,
             boolean replayable,
@@ -43,6 +45,7 @@ public final class DiscordRoutes {
             DiscordMessages.DiscordLinkCodeCreatedV1.class,
             "event",
             "xcore:evt:discord:link-code",
+            Map.of(),
             "broadcast",
             120000,
             true,
@@ -59,6 +62,7 @@ public final class DiscordRoutes {
             DiscordMessages.DiscordLinkConfirmCommandV1.class,
             "command",
             "xcore:cmd:discord-link-confirm:{server}",
+            Map.of("server", "payload.server"),
             "server",
             120000,
             false,
@@ -75,6 +79,7 @@ public final class DiscordRoutes {
             DiscordMessages.DiscordUnlinkCommandV1.class,
             "command",
             "xcore:cmd:discord-unlink:{server}",
+            Map.of("server", "payload.server"),
             "server",
             120000,
             false,
@@ -91,6 +96,7 @@ public final class DiscordRoutes {
             DiscordMessages.DiscordLinkStatusChangedV1.class,
             "event",
             "xcore:evt:discord:link-status",
+            Map.of(),
             "broadcast",
             120000,
             true,
@@ -107,6 +113,7 @@ public final class DiscordRoutes {
             DiscordMessages.DiscordAdminAccessChangedCommandV1.class,
             "command",
             "xcore:cmd:discord-admin-access:{server}",
+            Map.of("server", "payload.server"),
             "server",
             120000,
             false,

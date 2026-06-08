@@ -23,8 +23,8 @@ public final class DiscordMessages {
             String server,
             String occurredAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "discord.admin-access.changed.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "discord.admin-access.changed.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public DiscordAdminAccessChangedCommandV1 {
             Objects.requireNonNull(player, "player must not be null");
@@ -66,8 +66,8 @@ public final class DiscordMessages {
             String createdAt,
             String expiresAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "discord.link-code-created";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "discord.link-code-created";
+    public static final int MESSAGE_VERSION = 1;
 
         public DiscordLinkCodeCreatedV1 {
             Objects.requireNonNull(code, "code must not be null");
@@ -104,8 +104,8 @@ public final class DiscordMessages {
             String server,
             String confirmedAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "discord.link.confirm.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "discord.link.confirm.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public DiscordLinkConfirmCommandV1 {
             Objects.requireNonNull(code, "code must not be null");
@@ -142,8 +142,8 @@ public final class DiscordMessages {
             String server,
             String occurredAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "discord.link.status-changed";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "discord.link.status-changed";
+    public static final int MESSAGE_VERSION = 1;
 
         public DiscordLinkStatusChangedV1 {
             Objects.requireNonNull(player, "player must not be null");
@@ -179,8 +179,8 @@ public final class DiscordMessages {
             String server,
             String requestedAt
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "discord.unlink.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "discord.unlink.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public DiscordUnlinkCommandV1 {
             Objects.requireNonNull(player, "player must not be null");

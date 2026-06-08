@@ -344,7 +344,8 @@ def _render_family_routes(
         "            String messageType,\n"
         "            int messageVersion,\n"
         "            Class<?> payloadType,\n"
-        "            String stream\n"
+        "            String stream,\n"
+        "            Map<String, String> bindings\n"
         "    ) {}\n\n"
         "    public record RouteDescriptor(\n"
         "            String family,\n"
@@ -354,6 +355,7 @@ def _render_family_routes(
         "            Class<?> payloadType,\n"
         "            String kind,\n"
         "            String stream,\n"
+        "            Map<String, String> bindings,\n"
         "            String targetScope,\n"
         "            int ttlMs,\n"
         "            boolean replayable,\n"
@@ -408,7 +410,8 @@ def _render_protocol_routes(
         + "            String messageType,\n"
         + "            int messageVersion,\n"
         + "            Class<? extends ProtocolPayload> payloadType,\n"
-        + "            String stream\n"
+        + "            String stream,\n"
+        + "            Map<String, String> bindings\n"
         + "    ) {}\n\n"
         + "    public record RouteDescriptor(\n"
         + "            String family,\n"
@@ -418,6 +421,7 @@ def _render_protocol_routes(
         + "            Class<? extends ProtocolPayload> payloadType,\n"
         + "            String kind,\n"
         + "            String stream,\n"
+        + "            Map<String, String> bindings,\n"
         + "            String targetScope,\n"
         + "            int ttlMs,\n"
         + "            boolean replayable,\n"
@@ -503,7 +507,8 @@ def _render_route_constant(
             f'                    "{route.response.message.message_type}",\n'
             f"                    {route.response.message.message_version},\n"
             f"                    {_message_payload_type(route.response.message.schema_title, response_family)}.class,\n"
-            f'                    "{route.response.stream}"\n'
+            f'                    "{route.response.stream}",\n'
+            f"                    {_render_java_string_map(route.response.bindings)}\n"
             "            )"
         )
     return (
@@ -515,6 +520,7 @@ def _render_route_constant(
         f"            {_message_payload_type(route.message.schema_title, route.family)}.class,\n"
         f'            "{route.kind}",\n'
         f'            "{route.stream}",\n'
+        f"            {_render_java_string_map(route.bindings)},\n"
         f'            "{route.target_scope}",\n'
         f"            {route.ttl_ms},\n"
         f"            {str(route.replayable).lower()},\n"
@@ -527,6 +533,13 @@ def _render_route_constant(
 
 def _message_payload_type(schema_title: str, family: str) -> str:
     return f"{_family_container_name(family)}.{schema_title}"
+
+
+def _render_java_string_map(bindings: tuple[tuple[str, str], ...]) -> str:
+    if not bindings:
+        return "Map.of()"
+    entries = ", ".join(f'"{key}", "{value}"' for key, value in bindings)
+    return f"Map.of({entries})"
 
 
 def _render_compact_constructor(schema: NormalizedSchema, *, indent: str) -> str:

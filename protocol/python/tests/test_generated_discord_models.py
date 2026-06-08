@@ -120,3 +120,4 @@ def test_generated_discord_route_registry_matches_expected_messages() -> None:
     assert ROUTES_BY_MESSAGE[("discord.link-code-created", 1)].stream == "xcore:evt:discord:link-code"
     assert ROUTES_BY_MESSAGE[("discord.link.confirm.command", 1)].stream == "xcore:cmd:discord-link-confirm:{server}"
     assert ROUTES_BY_MESSAGE[("discord.link.status-changed", 1)].kind == "event"
+    assert ROUTES_BY_MESSAGE[("discord.link.confirm.command", 1)].bindings == {"server": "payload.server"}

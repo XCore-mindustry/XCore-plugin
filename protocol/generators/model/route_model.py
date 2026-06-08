@@ -14,6 +14,7 @@ class RouteResponse:
     message_type: str
     message_version: int
     stream: str
+    bindings: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,7 @@ class NormalizedRoute:
     message_version: int
     kind: str
     stream: str
+    bindings: tuple[tuple[str, str], ...]
     target_scope: str
     ttl_ms: int
     replayable: bool
@@ -49,6 +51,22 @@ def _expect_bool(value: Any, *, field_name: str, path: Path) -> bool:
     return value
 
 
+def _expect_str_dict(value: Any, *, field_name: str, path: Path) -> tuple[tuple[str, str], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, dict):
+        raise ValueError(f"{field_name} must be an object in {path}")
+
+    normalized: list[tuple[str, str]] = []
+    for raw_key, raw_value in value.items():
+        if not isinstance(raw_key, str) or not raw_key:
+            raise ValueError(f"{field_name} keys must be non-empty strings in {path}")
+        if not isinstance(raw_value, str) or not raw_value:
+            raise ValueError(f"{field_name}.{raw_key} must be a non-empty string in {path}")
+        normalized.append((raw_key, raw_value))
+    return tuple(normalized)
+
+
 def _normalize_response(raw: Any, path: Path) -> RouteResponse | None:
     if raw is None:
         return None
@@ -58,6 +76,7 @@ def _normalize_response(raw: Any, path: Path) -> RouteResponse | None:
         message_type=_expect_str(raw.get("messageType"), field_name="response.messageType", path=path),
         message_version=_expect_int(raw.get("messageVersion"), field_name="response.messageVersion", path=path),
         stream=_expect_str(raw.get("stream"), field_name="response.stream", path=path),
+        bindings=_expect_str_dict(raw.get("bindings"), field_name="response.bindings", path=path),
     )
 
 
@@ -88,6 +107,7 @@ def load_routes(path: Path) -> tuple[NormalizedRoute, ...]:
                 message_version=_expect_int(entry.get("messageVersion"), field_name="messageVersion", path=path),
                 kind=_expect_str(entry.get("kind"), field_name="kind", path=path),
                 stream=_expect_str(entry.get("stream"), field_name="stream", path=path),
+                bindings=_expect_str_dict(entry.get("bindings"), field_name="bindings", path=path),
                 target_scope=_expect_str(entry.get("targetScope"), field_name="targetScope", path=path),
                 ttl_ms=_expect_int(entry.get("ttlMs"), field_name="ttlMs", path=path),
                 replayable=_expect_bool(entry.get("replayable"), field_name="replayable", path=path),

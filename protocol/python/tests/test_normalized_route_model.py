@@ -62,8 +62,10 @@ def test_load_routes_normalizes_maps_manifest() -> None:
     assert first.family == "maps"
     assert first.message_type == "maps.list.request"
     assert first.kind == "rpc-request"
+    assert first.bindings == (("server", "payload.server"),)
     assert first.response is not None
     assert first.response.message_type == "maps.list.response"
+    assert first.response.bindings == (("requester", "rpc.requester"),)
 
 
 def test_generation_plan_only_uses_reachable_maps_shared_types() -> None:

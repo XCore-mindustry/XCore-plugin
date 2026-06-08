@@ -5,6 +5,8 @@ messages:
     messageVersion: 1
     kind: rpc-request
     stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 10000
     replayable: false
@@ -14,10 +16,14 @@ messages:
       messageType: maps.list.response
       messageVersion: 1
       stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
   - messageType: maps.remove.request
     messageVersion: 1
     kind: rpc-request
     stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 10000
     replayable: false
@@ -27,10 +33,14 @@ messages:
       messageType: maps.remove.response
       messageVersion: 1
       stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
   - messageType: maps.load.command
     messageVersion: 1
     kind: command
     stream: xcore:cmd:maps-load:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 300000
     replayable: false

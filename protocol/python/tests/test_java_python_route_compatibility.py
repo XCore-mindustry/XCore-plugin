@@ -37,7 +37,17 @@ def _expected_route_surface_by_family() -> dict[str, dict[tuple[str, int], dict[
             "messageVersion": route.messageVersion,
             "kind": route.kind,
             "stream": route.stream,
+            "bindings": route.bindings,
+            "targetScope": route.targetScope,
             "owner": route.owner,
+            "response": None
+            if route.response is None
+            else {
+                "messageType": route.response.messageType,
+                "messageVersion": route.response.messageVersion,
+                "stream": route.response.stream,
+                "bindings": route.response.bindings,
+            },
         }
 
     return expected
@@ -55,6 +65,7 @@ def _parse_java_route_surface(java_file: Path) -> dict[tuple[str, int], dict[str
         r'\s*[^\n]+,\n'
         r'\s*"(?P<kind>[^"]+)",\n'
         r'\s*"(?P<stream>[^"]+)",\n'
+        r'\s*(?P<bindings>Map\.of\([\s\S]*?\)|Map\.of\(\)),\n'
         r'\s*"(?P<target_scope>[^"]+)",\n'
         r'\s*(?P<ttl_ms>\d+),\n'
         r'\s*(?P<replayable>true|false),\n'
@@ -74,7 +85,41 @@ def _parse_java_route_surface(java_file: Path) -> dict[tuple[str, int], dict[str
             "messageVersion": message_version,
             "kind": match.group("kind"),
             "stream": match.group("stream"),
+            "bindings": _parse_java_map(match.group("bindings")),
+            "targetScope": match.group("target_scope"),
             "owner": match.group("owner"),
+            "response": _parse_java_response(match.group("response")),
         }
 
     return parsed
+
+
+def _parse_java_map(value: str) -> dict[str, str]:
+    value = value.strip()
+    if value == "Map.of()":
+        return {}
+    match = re.fullmatch(r"Map\.of\((?P<body>.*)\)", value, re.DOTALL)
+    if match is None:
+        raise AssertionError(f"Unsupported Java map literal: {value}")
+    parts = re.findall(r'"([^"]+)"', match.group("body"))
+    if len(parts) % 2 != 0:
+        raise AssertionError(f"Uneven Java map literal entries: {value}")
+    return {parts[index]: parts[index + 1] for index in range(0, len(parts), 2)}
+
+
+def _parse_java_response(value: str) -> dict[str, object] | None:
+    if value == "null":
+        return None
+    response_pattern = re.compile(
+        r'new RouteResponseDescriptor\(\s*"(?P<message_type>[^"]+)",\s*(?P<message_version>\d+),\s*[^,]+,\s*"(?P<stream>[^"]+)",\s*(?P<bindings>Map\.of\([\s\S]*?\)|Map\.of\(\))\s*\)',
+        re.DOTALL,
+    )
+    match = response_pattern.fullmatch(value.strip())
+    if match is None:
+        raise AssertionError(f"Unsupported Java response literal: {value}")
+    return {
+        "messageType": match.group("message_type"),
+        "messageVersion": int(match.group("message_version")),
+        "stream": match.group("stream"),
+        "bindings": _parse_java_map(match.group("bindings")),
+    }

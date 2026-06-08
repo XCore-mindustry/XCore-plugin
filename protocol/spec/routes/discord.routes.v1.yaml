@@ -14,6 +14,8 @@ messages:
     messageVersion: 1
     kind: command
     stream: xcore:cmd:discord-link-confirm:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 120000
     replayable: false
@@ -23,6 +25,8 @@ messages:
     messageVersion: 1
     kind: command
     stream: xcore:cmd:discord-unlink:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 120000
     replayable: false
@@ -41,6 +45,8 @@ messages:
     messageVersion: 1
     kind: command
     stream: xcore:cmd:discord-admin-access:{server}
+    bindings:
+      server: payload.server
     targetScope: server
     ttlMs: 120000
     replayable: false

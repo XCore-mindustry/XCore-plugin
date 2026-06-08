@@ -19,6 +19,7 @@ class MessageDescriptor:
 class RouteResponseDescriptor:
     message: MessageDescriptor
     stream: str
+    bindings: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +30,7 @@ class RouteDescriptor:
     message: MessageDescriptor
     kind: str
     stream: str
+    bindings: tuple[tuple[str, str], ...]
     target_scope: str
     ttl_ms: int
     replayable: bool
@@ -60,6 +62,7 @@ def build_route_descriptors(
                     message_version=route.response.message_version,
                 ),
                 stream=route.response.stream,
+                bindings=route.response.bindings,
             )
         descriptors.append(
             RouteDescriptor(
@@ -69,6 +72,7 @@ def build_route_descriptors(
                 message=message,
                 kind=route.kind,
                 stream=route.stream,
+                bindings=route.bindings,
                 target_scope=route.target_scope,
                 ttl_ms=route.ttl_ms,
                 replayable=route.replayable,

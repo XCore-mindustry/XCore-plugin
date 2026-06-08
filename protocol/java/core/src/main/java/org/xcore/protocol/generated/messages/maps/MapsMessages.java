@@ -16,8 +16,8 @@ public final class MapsMessages {
     public record MapsListRequestV1(
             String server
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "maps.list.request";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "maps.list.request";
+    public static final int MESSAGE_VERSION = 1;
 
         public MapsListRequestV1 {
             Objects.requireNonNull(server, "server must not be null");
@@ -40,8 +40,8 @@ public final class MapsMessages {
             String server,
             List<MapEntryV1> maps
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "maps.list.response";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "maps.list.response";
+    public static final int MESSAGE_VERSION = 1;
 
         public MapsListResponseV1 {
             Objects.requireNonNull(server, "server must not be null");
@@ -77,8 +77,8 @@ public final class MapsMessages {
             String server,
             List<MapFileSourceV1> files
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "maps.load.command";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "maps.load.command";
+    public static final int MESSAGE_VERSION = 1;
 
         public MapsLoadCommandV1 {
             Objects.requireNonNull(server, "server must not be null");
@@ -117,8 +117,8 @@ public final class MapsMessages {
             String server,
             String fileName
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "maps.remove.request";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "maps.remove.request";
+    public static final int MESSAGE_VERSION = 1;
 
         public MapsRemoveRequestV1 {
             Objects.requireNonNull(server, "server must not be null");
@@ -143,8 +143,8 @@ public final class MapsMessages {
             String server,
             String result
     ) implements ProtocolPayload {
-        public static final String MESSAGE_TYPE = "maps.remove.response";
-        public static final int MESSAGE_VERSION = 1;
+    public static final String MESSAGE_TYPE = "maps.remove.response";
+    public static final int MESSAGE_VERSION = 1;
 
         public MapsRemoveResponseV1 {
             Objects.requireNonNull(server, "server must not be null");
