@@ -224,6 +224,7 @@ class RedisTransportContractsTest {
 
         assertThat(stableDiscordIngressRoute).isNotNull();
         assertThat(stableDiscordIngressRoute.streamPattern()).isEqualTo("xcore:cmd:discord-message:{server}");
+        assertThat(stableDiscordIngressRoute.streamBindings()).containsEntry("server", "payload.server");
         assertThat(stableDiscordIngressRoute.messageType()).isEqualTo("chat.discord-ingress.command");
         assertThat(stableDiscordIngressRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.COMMAND);
         assertThat(stableDiscordIngressRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
@@ -352,21 +353,27 @@ class RedisTransportContractsTest {
 
         assertThat(stableRpcRoute).isNotNull();
         assertThat(stableRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
+        assertThat(stableRpcRoute.streamBindings()).containsEntry("server", "payload.server");
         assertThat(stableRpcRoute.messageType()).isEqualTo("maps.list.request");
         assertThat(stableRpcRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.RPC_REQUEST);
         assertThat(stableRpcRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
         assertThat(stableRpcRoute.readOnly()).isFalse();
         assertThat(stableRpcRoute.rpcRequest()).isTrue();
         assertThat(stableRpcRoute.responseType()).isEqualTo(MapsListResponseV1.class);
+        assertThat(stableRpcRoute.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
+        assertThat(stableRpcRoute.responseStreamBindings()).containsEntry("requester", "rpc.requester");
 
         assertThat(stableRemoveRpcRoute).isNotNull();
         assertThat(stableRemoveRpcRoute.streamPattern()).isEqualTo("xcore:rpc:req:{server}");
+        assertThat(stableRemoveRpcRoute.streamBindings()).containsEntry("server", "payload.server");
         assertThat(stableRemoveRpcRoute.messageType()).isEqualTo("maps.remove.request");
         assertThat(stableRemoveRpcRoute.deliveryMode()).isEqualTo(RedisDeliveryMode.RPC_REQUEST);
         assertThat(stableRemoveRpcRoute.serverScope()).isEqualTo(RedisProtocolRouteCatalog.ServerScope.PAYLOAD_SERVER);
         assertThat(stableRemoveRpcRoute.readOnly()).isFalse();
         assertThat(stableRemoveRpcRoute.rpcRequest()).isTrue();
         assertThat(stableRemoveRpcRoute.responseType()).isEqualTo(MapsRemoveResponseV1.class);
+        assertThat(stableRemoveRpcRoute.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
+        assertThat(stableRemoveRpcRoute.responseStreamBindings()).containsEntry("requester", "rpc.requester");
     }
 
     @Test
@@ -407,9 +414,14 @@ class RedisTransportContractsTest {
         assertThat(rpcDescriptor).isNotNull();
         assertThat(rpcDescriptor.streamPattern()).isEqualTo(rpcSpec.streamPattern());
         assertThat(rpcDescriptor.messageType()).isEqualTo(rpcSpec.messageType());
+        assertThat(rpcDescriptor.streamBindings()).isEqualTo(rpcSpec.streamBindings());
         assertThat(rpcDescriptor.isRpcRequest()).isTrue();
         assertThat(rpcDescriptor.responseType()).isEqualTo(rpcSpec.responseType());
+        assertThat(rpcDescriptor.responseStreamPattern()).isEqualTo(rpcSpec.responseStreamPattern());
+        assertThat(rpcDescriptor.responseStreamBindings()).isEqualTo(rpcSpec.responseStreamBindings());
         assertThat(router.rpcTypeForRequestClass(MapsListRequestV1.class)).isEqualTo("maps.list.request");
+        assertThat(router.responseStreamKeyForRequest(new MapsListRequestV1("survival"), "mini-pvp", "discord-bot"))
+                .isEqualTo("xcore:rpc:resp:discord-bot");
         assertThat(rpcSubscriptions).containsExactly("xcore:rpc:req:mini-pvp");
         assertThat(router.responseTypeForRequest(MapsListRequestV1.class))
                 .isEqualTo(MapsListResponseV1.class);
@@ -431,11 +443,13 @@ class RedisTransportContractsTest {
                     .isNotNull();
 
             assertThat(redisRoute.streamPattern()).isEqualTo(protocolRoute.stream());
+            assertThat(redisRoute.streamBindings()).isEqualTo(protocolRoute.bindings());
             assertThat(redisRoute.messageType()).isEqualTo(protocolRoute.messageType());
             assertThat(redisRoute.ttlMillis()).isEqualTo(protocolRoute.ttlMs());
             assertThat(redisRoute.shouldClaimIdempotency())
                     .isEqualTo(protocolRoute.idempotentConsumerRecommended());
             assertThat(topologyRoute.streamPattern()).isEqualTo(protocolRoute.stream());
+            assertThat(topologyRoute.streamBindings()).isEqualTo(protocolRoute.bindings());
             assertThat(topologyRoute.messageType()).isEqualTo(protocolRoute.messageType());
             assertThat(topologyRoute.idempotentConsumerRecommended())
                     .isEqualTo(protocolRoute.idempotentConsumerRecommended());
@@ -443,9 +457,15 @@ class RedisTransportContractsTest {
             if (protocolRoute.response() == null) {
                 assertThat(redisRoute.responseType()).isNull();
                 assertThat(topologyRoute.responseType()).isNull();
+                assertThat(redisRoute.responseStreamPattern()).isNull();
+                assertThat(topologyRoute.responseStreamPattern()).isNull();
             } else {
                 assertThat(redisRoute.responseType()).isEqualTo(protocolRoute.response().payloadType());
                 assertThat(topologyRoute.responseType()).isEqualTo(protocolRoute.response().payloadType());
+                assertThat(redisRoute.responseStreamPattern()).isEqualTo(protocolRoute.response().stream());
+                assertThat(redisRoute.responseStreamBindings()).isEqualTo(protocolRoute.response().bindings());
+                assertThat(topologyRoute.responseStreamPattern()).isEqualTo(protocolRoute.response().stream());
+                assertThat(topologyRoute.responseStreamBindings()).isEqualTo(protocolRoute.response().bindings());
             }
         }
     }

@@ -370,6 +370,8 @@ class RedisStreamRouterTest {
                 .isEqualTo(MapsListResponseV1.class);
         assertThat(router.responseTypeForRequest(MapsRemoveRequestV1.class))
                 .isEqualTo(MapsRemoveResponseV1.class);
+        assertThat(router.responseStreamKeyForRequest(new MapsListRequestV1("survival"), "mini-pvp", "discord-bot"))
+                .isEqualTo("xcore:rpc:resp:discord-bot");
 
         assertThat(router.rpcTypeForRequestClass(MapsListRequestV1.class))
                 .isEqualTo("maps.list.request");

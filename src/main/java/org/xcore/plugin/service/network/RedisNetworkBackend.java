@@ -210,7 +210,10 @@ public final class RedisNetworkBackend {
         }
 
         var route = router.route(request, config.server.name);
-        String replyTo = "xcore:rpc:resp:" + config.server.name;
+        String derivedReplyTo = router.responseStreamKeyForRequest(request, config.server.name, config.server.name);
+        String replyTo = (derivedReplyTo == null || derivedReplyTo.isBlank())
+                ? "xcore:rpc:resp:" + config.server.name
+                : derivedReplyTo;
         String correlationId = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         long timeoutMs = 5000L;

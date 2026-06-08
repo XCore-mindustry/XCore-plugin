@@ -21,6 +21,7 @@ public final class RedisProtocolRouteCatalog {
     public record RouteSpec(
             Class<?> payloadType,
             String streamPattern,
+            Map<String, String> streamBindings,
             String messageType,
             long ttlMillis,
             RedisDeliveryMode deliveryMode,
@@ -28,7 +29,9 @@ public final class RedisProtocolRouteCatalog {
             boolean readOnly,
             boolean rpcRequest,
             boolean idempotentConsumerRecommended,
-            Class<?> responseType
+            Class<?> responseType,
+            String responseStreamPattern,
+            Map<String, String> responseStreamBindings
     ) {
     }
 
@@ -52,13 +55,18 @@ public final class RedisProtocolRouteCatalog {
 
     private static RouteSpec toRouteSpec(ProtocolRoutes.RouteDescriptor route) {
         RedisDeliveryMode deliveryMode = mapDeliveryMode(route.kind());
-        ServerScope serverScope = mapServerScope(route.stream(), route.targetScope());
+        ServerScope serverScope = mapServerScope(route.bindings(), route.targetScope());
         boolean readOnly = deliveryMode == RedisDeliveryMode.EVENT;
         boolean rpcRequest = deliveryMode == RedisDeliveryMode.RPC_REQUEST;
         Class<?> responseType = route.response() != null ? route.response().payloadType() : null;
+        String responseStreamPattern = route.response() != null ? route.response().stream() : null;
+        Map<String, String> responseStreamBindings = route.response() != null
+                ? Map.copyOf(route.response().bindings())
+                : Map.of();
         return new RouteSpec(
                 route.payloadType(),
                 route.stream(),
+                Map.copyOf(route.bindings()),
                 route.messageType(),
                 route.ttlMs(),
                 deliveryMode,
@@ -66,7 +74,9 @@ public final class RedisProtocolRouteCatalog {
                 readOnly,
                 rpcRequest,
                 route.idempotentConsumerRecommended(),
-                responseType
+                responseType,
+                responseStreamPattern,
+                responseStreamBindings
         );
     }
 
@@ -79,11 +89,12 @@ public final class RedisProtocolRouteCatalog {
         };
     }
 
-    private static ServerScope mapServerScope(String stream, String targetScope) {
-        if (!stream.contains("{server}")) {
+    private static ServerScope mapServerScope(Map<String, String> bindings, String targetScope) {
+        String serverBinding = bindings.get("server");
+        if (serverBinding == null || serverBinding.isBlank()) {
             return ServerScope.BROADCAST;
         }
-        if ("server".equalsIgnoreCase(targetScope) || "PAYLOAD_SERVER".equalsIgnoreCase(targetScope)) {
+        if (serverBinding.startsWith("payload.")) {
             return ServerScope.PAYLOAD_SERVER;
         }
         return ServerScope.DEFAULT_SERVER;

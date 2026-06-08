@@ -110,6 +110,20 @@ class RedisProtocolRouteAdapterTest {
     }
 
     @Test
+    @DisplayName("rpc routes expose protocol response bindings and resolve reply stream")
+    void rpcRoutesExposeResponseBindings() {
+        var payload = new MapsListRequestV1("survival");
+        var descriptor = routeAdapter.routeDescriptorFor(payload);
+
+        assertThat(descriptor).isNotNull();
+        assertThat(descriptor.streamBindings()).containsEntry("server", "payload.server");
+        assertThat(descriptor.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
+        assertThat(descriptor.responseStreamBindings()).containsEntry("requester", "rpc.requester");
+        assertThat(routeAdapter.responseStreamKeyForRequest(payload, "mini-pvp", "discord-bot"))
+                .isEqualTo("xcore:rpc:resp:discord-bot");
+    }
+
+    @Test
     @DisplayName("registry derives representative routes from ProtocolRoutes generated catalog")
     void registryDerivesFromProtocolRoutes() {
         // Broadcast event
@@ -136,5 +150,7 @@ class RedisProtocolRouteAdapterTest {
         assertThat(rpcRoute.isRpcRequest()).isTrue();
         assertThat(rpcRoute.shouldClaimIdempotency()).isFalse();
         assertThat(rpcRoute.responseType()).isEqualTo(MapsListResponseV1.class);
+        assertThat(rpcRoute.streamBindings()).containsEntry("server", "payload.server");
+        assertThat(rpcRoute.responseStreamPattern()).isEqualTo("xcore:rpc:resp:{requester}");
     }
 }

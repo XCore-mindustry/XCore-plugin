@@ -1,27 +1,6 @@
 package org.xcore.plugin.service.network;
 
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerDataCacheReloadCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
-import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordUnlinkCommandV1;
-import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
-import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsLoadCommandV1;
-import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationAuditAppendedV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
-import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationVoteKickCreatedV1;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -36,31 +15,6 @@ import java.util.Map;
  * canonical source of truth.</p>
  */
 public final class RedisProtocolRouteAdapter {
-    private static final RedisServerResolver MODERATION_SERVER_RESOLVER = (payload, defaultServer) -> {
-        String server = moderationServer(payload);
-        return server == null || server.isBlank() ? defaultServer : server;
-    };
-
-    private static final RedisServerResolver PAYLOAD_SERVER_RESOLVER = (payload, defaultServer) -> {
-        String moderationServer = moderationServer(payload);
-        if (moderationServer != null && !moderationServer.isBlank()) {
-            return moderationServer;
-        }
-        String discordServer = discordServer(payload);
-        if (discordServer != null && !discordServer.isBlank()) {
-            return discordServer;
-        }
-        String playerSessionServer = playerSessionServer(payload);
-        if (playerSessionServer != null && !playerSessionServer.isBlank()) {
-            return playerSessionServer;
-        }
-        String mapsServer = mapsServer(payload);
-        if (mapsServer != null && !mapsServer.isBlank()) {
-            return mapsServer;
-        }
-        return defaultServer;
-    };
-
     private final Map<Class<?>, RedisRouteDescriptor> descriptorsByType;
 
     public RedisProtocolRouteAdapter() {
@@ -70,16 +24,19 @@ public final class RedisProtocolRouteAdapter {
             ProtocolRoutes.RouteDescriptor route = entry.getValue();
             RedisDeliveryMode deliveryMode = mapDeliveryMode(route);
             Class<?> responseType = route.response() != null ? route.response().payloadType() : null;
-            RedisServerResolver resolver = resolveServerResolver(route);
+            RedisServerResolver resolver = resolveServerResolver(route.bindings());
             RedisRouteDescriptor descriptor = new RedisRouteDescriptor(
                     payloadType,
                     route.stream(),
+                    Map.copyOf(route.bindings()),
                     route.messageType(),
                     route.ttlMs(),
                     deliveryMode,
                     route.idempotentConsumerRecommended(),
                     resolver,
-                    responseType
+                    responseType,
+                    route.response() != null ? route.response().stream() : null,
+                    route.response() != null ? Map.copyOf(route.response().bindings()) : Map.of()
             );
             descriptorsByType.put(payloadType, descriptor);
         }
@@ -134,9 +91,16 @@ public final class RedisProtocolRouteAdapter {
         return descriptor.messageType();
     }
 
+    public String responseStreamKeyForRequest(Object payload, String defaultServer, String requester) {
+        RedisRouteDescriptor descriptor = routeDescriptorFor(payload);
+        if (descriptor == null || descriptor.responseStreamPattern() == null) {
+            return null;
+        }
+        return resolvePattern(descriptor.responseStreamPattern(), descriptor.responseStreamBindings(), payload, defaultServer, requester);
+    }
+
     public String resolveStreamKey(RedisRouteDescriptor descriptor, Object payload, String defaultServer) {
-        String resolvedServer = descriptor.serverResolver().resolveServer(payload, defaultServer);
-        return resolveStreamKey(descriptor, resolvedServer, defaultServer);
+        return resolvePattern(descriptor.streamPattern(), descriptor.streamBindings(), payload, defaultServer, defaultServer);
     }
 
     private String resolveStreamKey(RedisRouteDescriptor descriptor, String resolvedServer, String defaultServer) {
@@ -160,93 +124,60 @@ public final class RedisProtocolRouteAdapter {
         };
     }
 
-    private static RedisServerResolver resolveServerResolver(ProtocolRoutes.RouteDescriptor route) {
-        String stream = route.stream();
-        if (stream.contains("{server}")) {
-            if ("moderation".equalsIgnoreCase(route.family())) {
-                return MODERATION_SERVER_RESOLVER;
-            }
-            return PAYLOAD_SERVER_RESOLVER;
+    private static RedisServerResolver resolveServerResolver(Map<String, String> bindings) {
+        String serverBinding = bindings.get("server");
+        if (serverBinding == null || serverBinding.isBlank()) {
+            return RedisServerResolver.broadcast();
         }
-        return RedisServerResolver.broadcast();
+        if (serverBinding.startsWith("payload.")) {
+            return RedisServerResolver.payloadField(serverBinding.substring("payload.".length()));
+        }
+        return RedisServerResolver.defaultServer();
     }
 
-    private static String moderationServer(Object payload) {
-        if (payload instanceof ModerationBanCreatedV1 event) {
-            return event.server();
+    private String resolvePattern(String pattern,
+                                  Map<String, String> bindings,
+                                  Object payload,
+                                  String defaultServer,
+                                  String requester) {
+        String resolved = pattern;
+        for (var entry : bindings.entrySet()) {
+            String replacement = resolveBinding(entry.getValue(), payload, defaultServer, requester);
+            resolved = resolved.replace("{" + entry.getKey() + "}", replacement);
         }
-        if (payload instanceof ModerationMuteCreatedV1 event) {
-            return event.server();
+        if (resolved.contains("{server}")) {
+            String fallbackServer = routeServer(payload, defaultServer);
+            resolved = resolved.replace("{server}", fallbackServer);
         }
-        if (payload instanceof ModerationVoteKickCreatedV1 event) {
-            return event.server();
+        if (resolved.contains("{requester}")) {
+            resolved = resolved.replace("{requester}", requester == null || requester.isBlank() ? defaultServer : requester);
         }
-        if (payload instanceof ModerationAuditAppendedV1 event) {
-            return event.server();
-        }
-        if (payload instanceof ModerationKickBannedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof ModerationPardonCommandV1 command) {
-            return command.server();
-        }
-        return null;
+        return resolved;
     }
 
-    private static String discordServer(Object payload) {
-        if (payload instanceof DiscordLinkCodeCreatedV1 event) {
-            return event.server();
+    private String resolveBinding(String binding,
+                                  Object payload,
+                                  String defaultServer,
+                                  String requester) {
+        if (binding == null || binding.isBlank()) {
+            return defaultServer;
         }
-        if (payload instanceof DiscordLinkConfirmCommandV1 command) {
-            return command.server();
+        if (binding.startsWith("payload.")) {
+            return RedisServerResolver.payloadField(binding.substring("payload.".length()))
+                    .resolveServer(payload, defaultServer);
         }
-        if (payload instanceof DiscordLinkStatusChangedV1 event) {
-            return event.server();
+        if ("rpc.requester".equals(binding)) {
+            return requester == null || requester.isBlank() ? defaultServer : requester;
         }
-        if (payload instanceof DiscordUnlinkCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof DiscordAdminAccessChangedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof ChatDiscordIngressCommandV1 command) {
-            return command.server();
-        }
-        return null;
+        return defaultServer;
     }
 
-    private static String mapsServer(Object payload) {
-        if (payload instanceof MapsListRequestV1 request) {
-            return request.server();
+    private String routeServer(Object payload, String defaultServer) {
+        RedisRouteDescriptor descriptor = routeDescriptorFor(payload);
+        if (descriptor == null) {
+            return defaultServer;
         }
-        if (payload instanceof MapsLoadCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof MapsRemoveRequestV1 request) {
-            return request.server();
-        }
-        return null;
-    }
-
-    private static String playerSessionServer(Object payload) {
-        if (payload instanceof PlayerCustomNicknameChangedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof PlayerActiveBadgeChangedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof PlayerBadgeSymbolColorModeChangedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof PlayerBadgeInventoryChangedCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof PlayerPasswordResetCommandV1 command) {
-            return command.server();
-        }
-        if (payload instanceof PlayerDataCacheReloadCommandV1 command) {
-            return command.server();
-        }
-        return null;
+        String resolved = descriptor.serverResolver().resolveServer(payload, defaultServer);
+        return resolved == null || resolved.isBlank() ? defaultServer : resolved;
     }
 }

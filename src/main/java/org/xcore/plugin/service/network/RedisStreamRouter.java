@@ -56,4 +56,8 @@ public final class RedisStreamRouter {
     public String rpcTypeForRequestClass(Class<?> type) {
         return routeAdapter.rpcTypeForRequestClass(type);
     }
+
+    public String responseStreamKeyForRequest(Object request, String defaultServer, String requester) {
+        return routeAdapter.responseStreamKeyForRequest(request, defaultServer, requester);
+    }
 }
