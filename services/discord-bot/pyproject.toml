@@ -39,4 +39,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-xcore-protocol = { path = "xcore-protocol", editable = true }
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "5fa1aecd0737413f5006e8c3e9d5ec9cab91bb14" }

@@ -1283,7 +1283,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", editable = "xcore-protocol" },
+    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?rev=5fa1aecd0737413f5006e8c3e9d5ec9cab91bb14" },
 ]
 
 [package.metadata.requires-dev]
@@ -1297,22 +1297,13 @@ dev = [
 
 [[package]]
 name = "xcore-protocol"
-version = "0.3.0"
-source = { editable = "xcore-protocol" }
+version = "0.5.0"
+source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?rev=5fa1aecd0737413f5006e8c3e9d5ec9cab91bb14#5fa1aecd0737413f5006e8c3e9d5ec9cab91bb14" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "referencing" },
     { name = "rfc3339-validator" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jsonschema", specifier = ">=4.23.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "referencing", specifier = ">=0.35.0" },
-    { name = "rfc3339-validator", specifier = ">=0.1.4" },
 ]
 
 [[package]]
