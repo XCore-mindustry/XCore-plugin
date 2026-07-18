@@ -28,7 +28,7 @@ class ServerLocalConfigTomlStoreTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "test-server";
         config.server.playerLimit = 42;
-        config.server.consoleEnabled = false;
+        config.server.gameStartedTimer = false;
         config.server.publicHostOverride = "192.168.1.1";
         config.runtime.disabledCommands = Set.of("rtv", "maps");
         config.runtime.disabledFeatures = Set.of("chat");
@@ -52,7 +52,7 @@ class ServerLocalConfigTomlStoreTest {
         );
         assertThat(result.config.server.name).isEqualTo("test-server");
         assertThat(result.config.server.playerLimit).isEqualTo(42);
-        assertThat(result.config.server.consoleEnabled).isFalse();
+        assertThat(result.config.server.gameStartedTimer).isFalse();
         assertThat(result.config.server.publicHostOverride).isEqualTo("192.168.1.1");
         assertThat(result.config.runtime.disabledCommands).containsExactlyInAnyOrder("rtv", "maps");
         assertThat(result.config.runtime.disabledFeatures).containsExactly("chat");

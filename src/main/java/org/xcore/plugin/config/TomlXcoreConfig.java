@@ -70,7 +70,6 @@ public class TomlXcoreConfig {
         public String name = "server";
         public String publicHostOverride = "";
         public int playerLimit = 30;
-        public boolean consoleEnabled = true;
         public boolean gameStartedTimer = true;
 
         public void normalize() {

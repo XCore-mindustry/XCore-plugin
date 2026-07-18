@@ -73,7 +73,6 @@ dependencies {
     implementation(libs.jbcrypt)
     implementation(libs.lettuce)
     implementation(variantOf(libs.netty.epoll) { classifier("linux-x86_64") })
-    implementation(libs.bundles.jline)
     implementation(libs.avaje.inject)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

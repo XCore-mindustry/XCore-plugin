@@ -16,7 +16,6 @@ class TomlXcoreConfigTest {
         assertThat(toml.server.name).isEqualTo("server");
         assertThat(toml.server.publicHostOverride).isEqualTo("");
         assertThat(toml.server.playerLimit).isEqualTo(30);
-        assertThat(toml.server.consoleEnabled).isTrue();
         assertThat(toml.server.gameStartedTimer).isTrue();
 
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("");

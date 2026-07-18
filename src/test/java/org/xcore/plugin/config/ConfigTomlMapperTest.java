@@ -55,7 +55,6 @@ class ConfigTomlMapperTest {
         assertThat(config.server).isEqualTo("server");
         assertThat(config.publicHostOverride).isNull();
         assertThat(config.playerLimit).isEqualTo(30);
-        assertThat(config.consoleEnabled).isTrue();
         assertThat(config.gameStartedTimer).isTrue();
 
         assertThat(config.globalConfigDirectory).isNull();
@@ -108,7 +107,6 @@ class ConfigTomlMapperTest {
         toml.server.name = "mini-pvp";
         toml.server.publicHostOverride = "192.168.1.1";
         toml.server.playerLimit = 50;
-        toml.server.consoleEnabled = false;
         toml.server.gameStartedTimer = false;
 
         toml.paths.globalConfigDirectory = "/opt/xcore/global";
@@ -158,7 +156,6 @@ class ConfigTomlMapperTest {
         assertThat(config.server).isEqualTo("mini-pvp");
         assertThat(config.publicHostOverride).isEqualTo("192.168.1.1");
         assertThat(config.playerLimit).isEqualTo(50);
-        assertThat(config.consoleEnabled).isFalse();
         assertThat(config.gameStartedTimer).isFalse();
 
         assertThat(config.globalConfigDirectory).isEqualTo("/opt/xcore/global");
@@ -452,7 +449,6 @@ class ConfigTomlMapperTest {
         config.server = "event";
         config.publicHostOverride = null;
         config.playerLimit = 64;
-        config.consoleEnabled = false;
         config.gameStartedTimer = false;
         config.globalConfigDirectory = "/srv/xcore/global";
         config.discordChannelId = 55L;
@@ -495,7 +491,6 @@ class ConfigTomlMapperTest {
         assertThat(toml.server.name).isEqualTo("event");
         assertThat(toml.server.publicHostOverride).isNull();
         assertThat(toml.server.playerLimit).isEqualTo(64);
-        assertThat(toml.server.consoleEnabled).isFalse();
         assertThat(toml.server.gameStartedTimer).isFalse();
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("/srv/xcore/global");
         assertThat(toml.discord.channelId).isEqualTo("55");

@@ -86,7 +86,6 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "server.name", ValueType.STRING, "server");
         bind(bindings, "server.public_host_override", ValueType.STRING, "public_host_override", "publicHostOverride");
         bind(bindings, "server.player_limit", ValueType.INT, "player_limit", "playerLimit");
-        bind(bindings, "server.console_enabled", ValueType.BOOLEAN, "console_enabled", "consoleEnabled");
         bind(bindings, "server.game_started_timer", ValueType.BOOLEAN, "game_started_timer", "gameStartedTimer");
 
         bind(bindings, "paths.global_config_directory", ValueType.STRING, "global_config_directory", "globalConfigDirectory");

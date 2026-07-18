@@ -44,7 +44,6 @@ public final class ConfigTomlMapper {
         config.server = toml.server.name;
         config.publicHostOverride = toml.server.publicHostOverride;
         config.playerLimit = toml.server.playerLimit;
-        config.consoleEnabled = toml.server.consoleEnabled;
         config.gameStartedTimer = toml.server.gameStartedTimer;
 
         // paths
@@ -100,7 +99,6 @@ public final class ConfigTomlMapper {
         toml.server.name = config.server;
         toml.server.publicHostOverride = nullToBlank(config.publicHostOverride);
         toml.server.playerLimit = config.playerLimit;
-        toml.server.consoleEnabled = config.consoleEnabled;
         toml.server.gameStartedTimer = config.gameStartedTimer;
 
         toml.paths.globalConfigDirectory = nullToBlank(config.globalConfigDirectory);

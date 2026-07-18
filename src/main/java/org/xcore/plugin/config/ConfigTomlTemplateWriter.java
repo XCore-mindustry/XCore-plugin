@@ -53,7 +53,6 @@ public final class ConfigTomlTemplateWriter {
         # Public host/IP override (blank = auto-detect).
         public_host_override = ""
         player_limit = 30
-        console_enabled = true
         game_started_timer = true
 
         [paths]

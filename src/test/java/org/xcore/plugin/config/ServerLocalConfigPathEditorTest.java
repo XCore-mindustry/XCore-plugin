@@ -84,9 +84,9 @@ class ServerLocalConfigPathEditorTest {
     @Test
     @DisplayName("update throws friendly exception for invalid boolean value")
     void update_throwsFriendlyExceptionForInvalidBooleanValue() {
-        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "consoleEnabled", "maybe"))
+        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "gameStartedTimer", "maybe"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid value 'maybe' for 'console_enabled' (expected true or false).");
+                .hasMessage("Invalid value 'maybe' for 'game_started_timer' (expected true or false).");
     }
 
     @Test

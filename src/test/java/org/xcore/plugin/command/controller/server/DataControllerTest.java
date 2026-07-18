@@ -164,10 +164,10 @@ class DataControllerTest {
         var tomlRenderer = new ServerLocalConfigTomlRenderer();
 
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
-        controller.xconfigEdit(sender, "consoleEnabled", "maybe");
+        controller.xconfigEdit(sender, "gameStartedTimer", "maybe");
 
         verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
-        assertThat(config.server.consoleEnabled).isTrue();
+        assertThat(config.server.gameStartedTimer).isTrue();
     }
 
     @Test
