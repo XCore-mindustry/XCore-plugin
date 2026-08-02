@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from xcore_discord_bot.settings import Settings
 
-
 ENV_KEYS = [
     "DISCORD_BOT_TOKEN",
     "DISCORD_ADMIN_ROLE_ID",

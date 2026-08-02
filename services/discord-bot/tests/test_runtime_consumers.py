@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -174,7 +174,7 @@ class _BanBot:
 
     async def now_utc(self) -> datetime:
         self.now_calls += 1
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     @staticmethod
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
@@ -208,7 +208,7 @@ class _MuteBot:
 
     async def now_utc(self) -> datetime:
         self.now_calls += 1
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     @staticmethod
     def _parse_iso_datetime(raw: str | None) -> datetime | None:
@@ -348,7 +348,7 @@ async def test_consume_bans_uses_now_when_expire_date_invalid(
     assert captured["admin_name"] == "Admin"
     assert captured["admin_discord_id"] == "123"
     assert captured["reason"] == "Rule 1"
-    assert captured["expire"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
+    assert captured["expire"] == datetime(2026, 1, 1, tzinfo=UTC)
 
 
 @pytest.mark.asyncio
@@ -420,7 +420,7 @@ async def test_consume_mutes_uses_now_when_expire_date_invalid(
     assert captured["admin_name"] == "Admin"
     assert captured["admin_discord_id"] == "456"
     assert captured["reason"] == "Rule 1"
-    assert captured["expire"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
+    assert captured["expire"] == datetime(2026, 1, 1, tzinfo=UTC)
 
 
 @pytest.mark.asyncio

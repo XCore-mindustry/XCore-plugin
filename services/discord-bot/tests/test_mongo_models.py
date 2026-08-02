@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -52,7 +52,7 @@ def test_ban_doc_accepts_non_datetime_expire_date() -> None:
         {
             "uuid": "u-1",
             "name": "Nick",
-            "expire_date": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "expire_date": datetime(2026, 1, 1, tzinfo=UTC),
         }
     )
     assert isinstance(doc.expire_date, datetime)

@@ -6,9 +6,9 @@ from typing import Any, cast
 
 import pytest
 
+from xcore_discord_bot.cogs.autocomplete import _autocomplete_map_file
 from xcore_discord_bot.dto import PlayerRecord
 from xcore_discord_bot.handlers_misc import get_cached_maps
-from xcore_discord_bot.cogs.autocomplete import _autocomplete_map_file
 
 
 class _MapsBus:

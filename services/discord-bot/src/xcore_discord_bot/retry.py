@@ -14,7 +14,7 @@ from tenacity import (
 try:
     from redis.exceptions import ConnectionError as RedisConnectionError
     from redis.exceptions import TimeoutError as RedisTimeoutError
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
     RedisConnectionError = ConnectionError
     RedisTimeoutError = TimeoutError
 

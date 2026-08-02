@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from discord import Interaction, app_commands
 from discord.ext import commands
-from typing import TYPE_CHECKING
 
 from .. import handlers_badges, handlers_misc, handlers_moderation
 from .autocomplete import _autocomplete_badge_id, _autocomplete_player_id
@@ -56,7 +57,7 @@ class AdminCog(commands.Cog):
         description="Manage player badges",
     )
 
-    def __init__(self, bot: "XCoreDiscordBot") -> None:
+    def __init__(self, bot: XCoreDiscordBot) -> None:
         self.bot = bot
 
     @app_commands.command(name="search", description="Search players by name (admin)")

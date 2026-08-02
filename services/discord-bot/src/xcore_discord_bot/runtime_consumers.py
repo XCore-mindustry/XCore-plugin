@@ -5,6 +5,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
+from redis.exceptions import RedisError
+
 from .contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -35,7 +37,7 @@ def _expiration_value(expiration) -> str | None:
     return expires_at or None
 
 
-def _resolve_vote_kick_starter_pid(event: "ModerationVoteKickCreatedV1") -> int | None:
+def _resolve_vote_kick_starter_pid(event: ModerationVoteKickCreatedV1) -> int | None:
     participants = [*(event.votesFor or ()), *(event.votesAgainst or ())]
     actor_name = event.actor.actorName
     actor_discord_id = str(event.actor.actorDiscordId or "").strip() or None
@@ -63,7 +65,7 @@ async def _player_pid_for_uuid(store: PlayerLookupService, uuid: str | None) -> 
     return player.pid
 
 
-async def consume_game_chat(bot: "XCoreDiscordBot") -> None:
+async def consume_game_chat(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ChatMessageV1) -> None:
         channel_id = bot._channel_id_for_server(event.server, context="game chat")
         if channel_id is None:
@@ -82,7 +84,7 @@ async def consume_game_chat(bot: "XCoreDiscordBot") -> None:
     await run_consumer_forever(bot, "Game chat", bot.consume_game_chat_events, dispatch)
 
 
-async def consume_global_chat(bot: "XCoreDiscordBot") -> None:
+async def consume_global_chat(bot: XCoreDiscordBot) -> None:
     from .bot import strip_mindustry_colors
 
     async def dispatch(event: ChatGlobalV1) -> None:
@@ -106,7 +108,7 @@ async def consume_global_chat(bot: "XCoreDiscordBot") -> None:
     )
 
 
-async def consume_server_heartbeats(bot: "XCoreDiscordBot") -> None:
+async def consume_server_heartbeats(bot: XCoreDiscordBot) -> None:
     async def dispatch(_event: ServerHeartbeatV1) -> None:
         return None
 
@@ -118,7 +120,7 @@ async def consume_server_heartbeats(bot: "XCoreDiscordBot") -> None:
     )
 
 
-async def consume_join_leave(bot: "XCoreDiscordBot") -> None:
+async def consume_join_leave(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: PlayerJoinLeaveV1) -> None:
         channel_id = bot._channel_id_for_server(event.server, context="join/leave")
         if channel_id is None:
@@ -142,7 +144,7 @@ async def consume_join_leave(bot: "XCoreDiscordBot") -> None:
     )
 
 
-async def consume_server_actions(bot: "XCoreDiscordBot") -> None:
+async def consume_server_actions(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ServerActionV1) -> None:
         channel_id = bot._channel_id_for_server(event.server, context="server action")
         if channel_id is None:
@@ -165,7 +167,7 @@ async def consume_server_actions(bot: "XCoreDiscordBot") -> None:
     )
 
 
-async def consume_bans(bot: "XCoreDiscordBot") -> None:
+async def consume_bans(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationBanCreatedV1) -> None:
         if not bot.bans_channel_id:
             return
@@ -191,7 +193,7 @@ async def consume_bans(bot: "XCoreDiscordBot") -> None:
     await run_consumer_forever(bot, "Ban", bot.consume_bans_stream, dispatch)
 
 
-async def consume_mutes(bot: "XCoreDiscordBot") -> None:
+async def consume_mutes(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationMuteCreatedV1) -> None:
         if not bot.mutes_channel_id:
             return
@@ -217,7 +219,7 @@ async def consume_mutes(bot: "XCoreDiscordBot") -> None:
     await run_consumer_forever(bot, "Mute", bot.consume_mutes_stream, dispatch)
 
 
-async def consume_vote_kicks(bot: "XCoreDiscordBot") -> None:
+async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
     async def dispatch(event: ModerationVoteKickCreatedV1) -> None:
         if not bot.votekicks_channel_id:
             return
@@ -250,13 +252,11 @@ async def run_consumer_forever(
             await consume(callback)
         except asyncio.CancelledError:
             raise
-        except Exception as error:
-            logger.exception(
-                "%s consumer crashed; reconnecting in 2s: %s", label, error
-            )
+        except Exception:
+            logger.exception("%s consumer crashed; reconnecting in 2s", label)
             await asyncio.sleep(2)
             try:
                 await retry_reconnect_bus(bot.reconnect_bus)
-            except Exception as connect_error:
+            except (RedisError, OSError) as connect_error:
                 logger.warning("%s consumer reconnect failed: %s", label, connect_error)
                 await asyncio.sleep(2)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -59,7 +59,7 @@ class _Bot:
                 admin_name="Admin",
                 admin_discord_id="123456",
                 reason="griefing",
-                expire_date=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                expire_date=datetime(2026, 1, 2, tzinfo=UTC),
             )
         ]
 

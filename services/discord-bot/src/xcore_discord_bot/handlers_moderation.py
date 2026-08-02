@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
 import discord
@@ -82,7 +82,7 @@ def _format_vote_kick_participant(item: VoteKickParticipantV1) -> str:
 
 
 def _format_reconcile_player_item(item: dict[str, object]) -> str:
-    return f"`{str(item['nickname'])}` (pid={str(item['pid'])}, <@{str(item['discord_id'])}>)"
+    return f"`{item['nickname']!s}` (pid={item['pid']!s}, <@{item['discord_id']!s}>)"
 
 
 def _format_reconcile_skipped_item(item: dict[str, str]) -> str:
@@ -101,7 +101,7 @@ def _normalize_audit_reason(reason: str | None) -> str:
 
 
 async def _append_discord_moderation_audit(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     interaction: Interaction | None,
     action: str,
@@ -137,7 +137,7 @@ async def _append_discord_moderation_audit(
 
 
 async def cmd_ban(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
     period: str,
@@ -176,7 +176,7 @@ async def cmd_ban(
 
 
 async def perform_ban(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     actor_name: str,
     actor_discord_id: str | None,
@@ -237,7 +237,7 @@ async def perform_ban(
 
 
 async def cmd_unban(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -301,7 +301,7 @@ async def cmd_unban(
 
 
 async def cmd_pardon(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -329,7 +329,7 @@ async def cmd_pardon(
 
 
 async def cmd_mute(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
     period: str,
@@ -404,7 +404,7 @@ async def cmd_mute(
 
 
 async def cmd_unmute(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -465,7 +465,7 @@ async def cmd_unmute(
 
 
 async def cmd_remove_admin(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -539,7 +539,7 @@ async def cmd_remove_admin(
 
 
 async def cmd_add_admin(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -614,7 +614,7 @@ async def cmd_add_admin(
     )
 
 
-async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     players = await bot.find_discord_admin_players()
     if not players:
         await interaction.response.send_message(
@@ -672,7 +672,7 @@ async def cmd_list_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
     )
 
 
-async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     result = await bot.reconcile_discord_admin_access()
     applied_count = int(cast(int, result["applied"]))
     revoked_count = int(cast(int, result["revoked"]))
@@ -712,7 +712,7 @@ async def cmd_sync_admins(bot: "XCoreDiscordBot", interaction: Interaction) -> N
 
 
 async def cmd_reset_password(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -746,7 +746,7 @@ async def cmd_reset_password(
 
 
 async def post_ban_log(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     pid: int,
     name: str,
@@ -783,9 +783,7 @@ async def post_ban_log(
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
     )
-    expire_utc = (
-        expire.replace(tzinfo=timezone.utc) if expire.tzinfo is None else expire
-    )
+    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
     unban_value = (
         f"{discord.utils.format_dt(expire_utc, style='f')} "
         f"({discord.utils.format_dt(expire_utc, style='R')})"
@@ -800,7 +798,7 @@ async def post_ban_log(
 
 
 async def post_mute_log(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     pid: int,
     name: str,
@@ -837,9 +835,7 @@ async def post_mute_log(
     violator_value = (
         f"{safe_name} (pid={safe_pid})" if safe_pid is not None else safe_name
     )
-    expire_utc = (
-        expire.replace(tzinfo=timezone.utc) if expire.tzinfo is None else expire
-    )
+    expire_utc = expire.replace(tzinfo=UTC) if expire.tzinfo is None else expire
     unmute_value = (
         f"{discord.utils.format_dt(expire_utc, style='f')} "
         f"({discord.utils.format_dt(expire_utc, style='R')})"
@@ -854,7 +850,7 @@ async def post_mute_log(
 
 
 async def post_vote_kick_log(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     target_name: str,
     target_pid: int | None,

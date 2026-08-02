@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
-from bson.datetime_ms import DatetimeMS
 import discord
+from bson.datetime_ms import DatetimeMS
 
 DISCORD_EMBED_TITLE_MAX = 256
 
@@ -40,7 +40,7 @@ def format_minutes(total_minutes: int) -> str:
 
 def format_epoch_millis(value: object) -> str:
     if isinstance(value, (int, float)) and value > 0:
-        dt = datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
+        dt = datetime.fromtimestamp(float(value) / 1000.0, tz=UTC)
         return dt.strftime("%Y-%m-%d %H:%M UTC")
     return "n/a"
 
@@ -88,7 +88,7 @@ def build_stats_title(nickname: str, custom_nickname: str) -> str:
 def format_ban_expire_date(expire_value: object) -> str:
     if isinstance(expire_value, datetime):
         expire_dt = (
-            expire_value.replace(tzinfo=timezone.utc)
+            expire_value.replace(tzinfo=UTC)
             if expire_value.tzinfo is None
             else expire_value
         )
@@ -104,15 +104,13 @@ def format_ban_expire_date(expire_value: object) -> str:
 
 
 def format_ban_expire_date_from_millis(millis: int) -> str:
-    min_millis = int(datetime(1, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
-    max_millis = int(
-        datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1000
-    )
+    min_millis = int(datetime(1, 1, 1, tzinfo=UTC).timestamp() * 1000)
+    max_millis = int(datetime(9999, 12, 31, 23, 59, 59, tzinfo=UTC).timestamp() * 1000)
     if millis < min_millis:
         return "Before year 1"
     if millis > max_millis:
         return "After year 9999"
-    expire_dt = datetime.fromtimestamp(millis / 1000.0, tz=timezone.utc)
+    expire_dt = datetime.fromtimestamp(millis / 1000.0, tz=UTC)
     return (
         f"{discord.utils.format_dt(expire_dt, style='f')} "
         f"({discord.utils.format_dt(expire_dt, style='R')})"

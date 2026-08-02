@@ -73,10 +73,10 @@ class _Bot:
         assert player_id == 7
         return PlayerRecord(pid=7, uuid="uuid-7", nickname="Target", discord_id="555")
 
-    async def publish_discord_link_confirm(self, **kwargs) -> None:  # noqa: ANN003
+    async def publish_discord_link_confirm(self, **kwargs) -> None:
         self.published.append(kwargs)
 
-    async def publish_discord_unlink(self, **kwargs) -> None:  # noqa: ANN003
+    async def publish_discord_unlink(self, **kwargs) -> None:
         self.published.append(kwargs)
 
     async def find_players_by_discord_id(self, discord_id: str) -> list[PlayerRecord]:

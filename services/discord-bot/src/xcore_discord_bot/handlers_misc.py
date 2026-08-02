@@ -8,8 +8,8 @@ import discord
 from discord import Interaction
 
 from .dto import PlayerRecord
-from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .modal_factories import create_stats_ban_modal, create_stats_mute_modal
+from .moderation_views import MapRemoveConfirmView, StatsActionsView
 from .permissions import admin_role_ids, has_any_role, settings_from_interaction
 from .presentation import (
     build_servers_embed,
@@ -86,7 +86,7 @@ def _sort_maps(maps: list[dict[str, str]], mode: str) -> list[dict[str, str]]:
 
 
 async def cmd_stats(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
 ) -> None:
@@ -204,7 +204,7 @@ def _format_audit_entry_name(action: str, occurred_at: object) -> str:
 
 
 async def cmd_stats_audit(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
     player: dict[str, object],
@@ -281,7 +281,7 @@ async def cmd_stats_audit(
     await bot._send_paginated(interaction, fetch_page, ephemeral=True)
 
 
-async def cmd_servers(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+async def cmd_servers(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     view = ServersView(bot=bot, sort_mode="players")
     servers = bot._sort_live_servers(bot._get_live_servers(), view.sort_mode)
     embed = build_servers_embed(servers, sort_mode=view.sort_mode)
@@ -290,7 +290,7 @@ async def cmd_servers(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
 
 
 async def cmd_search(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     name: str,
 ) -> None:
@@ -353,7 +353,7 @@ def _player_record_as_mapping(player: PlayerRecord) -> dict[str, object]:
 
 
 async def cmd_bans(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     name_filter: str | None,
 ) -> None:
@@ -401,7 +401,7 @@ async def cmd_bans(
 
 
 async def cmd_maps(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     server: str,
 ) -> None:
@@ -480,7 +480,7 @@ async def cmd_maps(
     view.bot_message = sent
 
 
-async def get_cached_maps(bot: "XCoreDiscordBot", server: str) -> list[dict[str, str]]:
+async def get_cached_maps(bot: XCoreDiscordBot, server: str) -> list[dict[str, str]]:
     now = time.monotonic()
     cached = bot._map_cache.get(server)
     if cached is not None:
@@ -499,7 +499,7 @@ async def get_cached_maps(bot: "XCoreDiscordBot", server: str) -> list[dict[str,
 
 
 async def cmd_remove_map(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     server: str,
     file_name: str,
@@ -527,7 +527,7 @@ async def cmd_remove_map(
 
 
 async def perform_remove_map(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     server: str,
     file_name: str,
@@ -550,7 +550,7 @@ async def perform_remove_map(
 
 
 async def cmd_upload_map(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     server: str,
     attachments: list[discord.Attachment | None],

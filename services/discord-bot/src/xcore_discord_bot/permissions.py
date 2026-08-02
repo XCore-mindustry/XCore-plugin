@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+
 from discord import Interaction, app_commands
 
 from .client_protocols import SupportsSettings

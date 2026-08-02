@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
+from xcore_discord_bot.contracts import ChatMessageV1
 from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.settings import Settings
-from xcore_discord_bot.contracts import ChatMessageV1
 
 
 @pytest.fixture

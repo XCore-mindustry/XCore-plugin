@@ -5,7 +5,6 @@ from types import MethodType, SimpleNamespace
 from typing import Any
 
 import pytest
-
 from xcore_protocol.generated.maps import (
     MapsListRequestV1,
     MapsListResponseV1,
@@ -27,7 +26,7 @@ async def test_publish_maps_load_uses_expected_event_metadata() -> None:
     bus = RedisBus(settings)
     captured: dict[str, Any] = {}
 
-    async def fake_publish_event(self, **kwargs):  # noqa: ANN001
+    async def fake_publish_event(self, **kwargs):
         captured.update(kwargs)
 
     bus._publish_event = MethodType(fake_publish_event, bus)
@@ -81,7 +80,7 @@ async def test_rpc_maps_list_parses_canonical_response() -> None:
 
     async def fake_rpc_request(
         self, server: str, rpc_type: str, payload: dict, timeout_ms: int
-    ):  # noqa: ANN001
+    ):
         assert server == "mini-pvp"
         assert rpc_type == MapsListRequestV1.MESSAGE_TYPE
         assert payload["messageType"] == MapsListRequestV1.MESSAGE_TYPE
@@ -136,7 +135,7 @@ async def test_rpc_remove_map_uses_canonical_payload() -> None:
 
     async def fake_rpc_request(
         self, server: str, rpc_type: str, payload: dict, timeout_ms: int
-    ):  # noqa: ANN001
+    ):
         assert server == "mini-pvp"
         assert rpc_type == MapsRemoveRequestV1.MESSAGE_TYPE
         assert payload["messageType"] == MapsRemoveRequestV1.MESSAGE_TYPE

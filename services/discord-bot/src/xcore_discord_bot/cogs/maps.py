@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
-from typing import TYPE_CHECKING
 
 from .. import handlers_misc
+from ..registry import server_registry
 from .autocomplete import _autocomplete_map_file
 from .checks import map_reviewer_check
-from ..registry import server_registry
 
 if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
@@ -35,7 +36,7 @@ class MapsCog(commands.Cog):
         description="Browse and manage server maps",
     )
 
-    def __init__(self, bot: "XCoreDiscordBot") -> None:
+    def __init__(self, bot: XCoreDiscordBot) -> None:
         self.bot = bot
 
     @map_group.command(name="list", description="List maps on a server")

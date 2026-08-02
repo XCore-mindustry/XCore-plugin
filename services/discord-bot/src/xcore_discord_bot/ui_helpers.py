@@ -19,7 +19,7 @@ async def safe_edit_view_message(
         return
     try:
         await message.edit(view=view)
-    except Exception:
+    except (discord.HTTPException, discord.ClientException):
         pass
 
 

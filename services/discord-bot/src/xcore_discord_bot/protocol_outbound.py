@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
@@ -33,7 +33,7 @@ from xcore_protocol.generated.shared import (
 
 
 def utc_now_iso8601() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 def build_moderation_kick_banned_command(

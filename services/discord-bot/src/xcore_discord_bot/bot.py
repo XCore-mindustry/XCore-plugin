@@ -13,7 +13,9 @@ import discord
 from discord import Interaction, app_commands
 from discord.abc import Messageable
 from discord.ext import commands
+from xcore_protocol.generated.shared import ActorRefV1ActorType
 
+from . import runtime_consumers
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog
 from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
@@ -25,11 +27,8 @@ from .moderation_views import (
 )
 from .mongo_store import MongoStore
 from .presentation import build_servers_embed
-from xcore_protocol.generated.shared import ActorRefV1ActorType
-
-from .registry import server_registry
 from .redis_bus import RedisBus
-from . import runtime_consumers
+from .registry import server_registry
 from .server_views import PaginatorView, ServersView
 from .settings import Settings
 
@@ -1083,7 +1082,7 @@ class XCoreDiscordBot(commands.Bot):
         if channel is None:
             try:
                 channel = await self.fetch_channel(channel_id)
-            except Exception as error:
+            except discord.HTTPException as error:
                 logger.warning(
                     "Cannot fetch Discord channel %s for %s: %s",
                     channel_id,
@@ -1158,6 +1157,7 @@ class XCoreDiscordBot(commands.Bot):
                 logger.exception("Failed to update Discord presence")
 
     @staticmethod
+    @staticmethod
     def _disabled_interaction_buttons_view(
         interaction: Interaction,
     ) -> discord.ui.View | None:
@@ -1166,7 +1166,7 @@ class XCoreDiscordBot(commands.Bot):
 
         try:
             view = discord.ui.View.from_message(interaction.message)
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
             return None
 
         changed = False
@@ -1175,7 +1175,7 @@ class XCoreDiscordBot(commands.Bot):
                 item.disabled = True
                 changed = True
 
-        return view if changed else view
+        return view if changed else None
 
     # ── helpers ──────────────────────────────────────────────────────────────
 

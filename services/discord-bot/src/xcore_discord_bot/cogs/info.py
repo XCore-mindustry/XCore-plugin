@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from discord import Interaction, app_commands
 from discord.ext import commands
-from typing import TYPE_CHECKING
 
 from .. import handlers_misc
 from .autocomplete import _autocomplete_player_id
@@ -18,7 +19,7 @@ class InfoCog(commands.Cog):
         description="Inspect player audit history",
     )
 
-    def __init__(self, bot: "XCoreDiscordBot") -> None:
+    def __init__(self, bot: XCoreDiscordBot) -> None:
         self.bot = bot
 
     @app_commands.command(name="stats", description="Show player stats")

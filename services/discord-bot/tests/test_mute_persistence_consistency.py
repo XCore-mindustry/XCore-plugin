@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -23,7 +23,7 @@ class _Store:
         return PlayerRecord(pid=55, uuid="uuid-55", nickname="Target")
 
     def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     async def upsert_mute(
         self,
@@ -54,7 +54,7 @@ class _Store:
 
 
 class _Bus:
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
+    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return True
 
 
@@ -108,7 +108,7 @@ async def test_cmd_mute_persists_pid() -> None:
 
     interaction = _Interaction(id=101, user=_User(id=999, display_name="Moderator"))
 
-    import xcore_discord_bot.handlers_moderation as handlers_moderation
+    from xcore_discord_bot import handlers_moderation
 
     original_post_mute_log = handlers_moderation.post_mute_log
 
@@ -133,7 +133,7 @@ def test_mute_doc_accepts_optional_pid() -> None:
             "name": "Nick",
             "admin_name": "mod",
             "reason": "spam",
-            "expire_date": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            "expire_date": datetime(2026, 3, 1, tzinfo=UTC),
         }
     )
 

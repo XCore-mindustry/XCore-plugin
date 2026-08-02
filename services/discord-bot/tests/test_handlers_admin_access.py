@@ -3,11 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-import pytest
 import discord
+import pytest
+from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_protocol.generated.shared import ActorRefV1ActorType
 from xcore_discord_bot.handlers_moderation import (
     cmd_add_admin,
     cmd_list_admins,

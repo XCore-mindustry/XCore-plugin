@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
 
-async def cmd_link(bot: "XCoreDiscordBot", interaction: Interaction, code: str) -> None:
+async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:
     if not code or not code.strip():
         await interaction.response.send_message(
             "Link code is required.", ephemeral=True
@@ -74,7 +74,7 @@ async def cmd_link(bot: "XCoreDiscordBot", interaction: Interaction, code: str) 
     )
 
 
-async def cmd_link_status(bot: "XCoreDiscordBot", interaction: Interaction) -> None:
+async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     discord_id = str(interaction.user.id)
     players = await bot.find_players_by_discord_id(discord_id)
     if not players:
@@ -94,7 +94,7 @@ async def cmd_link_status(bot: "XCoreDiscordBot", interaction: Interaction) -> N
 
 
 async def cmd_unlink(
-    bot: "XCoreDiscordBot", interaction: Interaction, player_id: int
+    bot: XCoreDiscordBot, interaction: Interaction, player_id: int
 ) -> None:
     player = await bot._get_player_or_reply(interaction, player_id)
     if player is None:

@@ -33,13 +33,13 @@ class PaginatorView(discord.ui.View):
     @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
     async def _prev_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         await self._turn(interaction, self._page - 1)
 
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
     async def _next_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         await self._turn(interaction, self._page + 1)
 
     async def _turn(self, interaction: Interaction, new_page: int) -> None:
@@ -58,7 +58,7 @@ class ServersView(discord.ui.View):
     def __init__(
         self,
         *,
-        bot: "XCoreDiscordBot",
+        bot: XCoreDiscordBot,
         sort_mode: Literal["players", "name"] = "players",
     ) -> None:
         super().__init__(timeout=180)
@@ -74,14 +74,14 @@ class ServersView(discord.ui.View):
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.primary, emoji="🔄")
     async def _refresh_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="Sort: players", style=discord.ButtonStyle.secondary)
     async def _sort_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         self._sort_mode = "name" if self._sort_mode == "players" else "players"
         self._sync_sort_button_label()
         embed = self._bot._build_servers_embed_for_mode(self._sort_mode)
@@ -117,19 +117,19 @@ class MapsListView(discord.ui.View):
     @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
     async def _prev_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         await self._turn(interaction, self._page - 1)
 
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
     async def _next_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         await self._turn(interaction, self._page + 1)
 
     @discord.ui.button(label="Sort: reputation", style=discord.ButtonStyle.secondary)
     async def _sort_btn(
         self, interaction: Interaction, button: discord.ui.Button
-    ) -> None:  # noqa: ARG002
+    ) -> None:
         self._sort_mode = self._next_sort_mode()
         self._sync_sort_button_label()
         embed, has_next = await self._fetch_page(0, self._sort_mode)

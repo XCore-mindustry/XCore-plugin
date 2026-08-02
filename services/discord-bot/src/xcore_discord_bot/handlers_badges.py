@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 async def cmd_badge_grant(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
     badge_id: str,
@@ -26,7 +26,7 @@ async def cmd_badge_grant(
 
 
 async def cmd_badge_revoke(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     player_id: int,
     badge_id: str,
@@ -41,7 +41,7 @@ async def cmd_badge_revoke(
 
 
 async def _cmd_badge_change(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     interaction: Interaction,
     *,
     player_id: int,

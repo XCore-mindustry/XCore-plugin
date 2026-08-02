@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from .moderation_modals import StatsBanModal, StatsMuteModal
 from .handlers_moderation import cmd_ban, cmd_mute
+from .moderation_modals import StatsBanModal, StatsMuteModal
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
 
 
 def create_stats_ban_modal(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     player_id: int,
     player: Mapping[str, object],
@@ -32,7 +32,7 @@ def create_stats_ban_modal(
 
 
 def create_stats_mute_modal(
-    bot: "XCoreDiscordBot",
+    bot: XCoreDiscordBot,
     *,
     player_id: int,
     player: Mapping[str, object],

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import pytest
 from xcore_protocol.generated.discord import DiscordAdminAccessChangedCommandV1
 from xcore_protocol.generated.shared import ActorRefV1ActorType

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -58,7 +58,7 @@ async def test_post_ban_log_shows_admin_mention_when_discord_id_present() -> Non
         admin_name="AdminNick",
         admin_discord_id="123456",
         reason="Rule 1",
-        expire=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
     embed = bot.channel.sent[0]["embed"]
@@ -77,7 +77,7 @@ async def test_post_mute_log_uses_admin_name_without_mention_when_missing() -> N
         admin_name="AdminNick",
         admin_discord_id=None,
         reason="Rule 1",
-        expire=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        expire=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
     embed = bot.channel.sent[0]["embed"]

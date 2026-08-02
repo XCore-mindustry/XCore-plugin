@@ -177,7 +177,7 @@ class Settings(BaseSettings):
         return values
 
     @model_validator(mode="after")
-    def _validate_fields(self) -> "Settings":
+    def _validate_fields(self) -> Settings:
         if not self.discord_token.strip():
             raise ValueError("Missing required environment variable: DISCORD_BOT_TOKEN")
 
@@ -190,7 +190,7 @@ class Settings(BaseSettings):
         return self
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         try:
             return cls()
         except ValidationError as error:

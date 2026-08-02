@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import timedelta
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 
@@ -11,25 +10,25 @@ import pytest
 from bson.datetime_ms import DatetimeMS
 from discord import app_commands
 
+from xcore_discord_bot import handlers_moderation
 from xcore_discord_bot.bot import (
     XCoreDiscordBot,
     parse_duration,
     strip_mindustry_colors,
 )
 from xcore_discord_bot.dto import PlayerRecord
-from xcore_discord_bot import handlers_moderation
 from xcore_discord_bot.handlers_moderation import (
     cmd_pardon,
     cmd_reset_password,
     perform_ban,
 )
-from xcore_discord_bot.runtime_consumers import run_consumer_forever
 from xcore_discord_bot.presentation import (
     build_servers_embed,
     build_stats_title,
     format_ban_expire_date,
 )
 from xcore_discord_bot.registry import ServerInfo, server_registry
+from xcore_discord_bot.runtime_consumers import run_consumer_forever
 
 
 def test_parse_duration() -> None:
@@ -72,7 +71,7 @@ def test_build_stats_title_without_custom_nickname() -> None:
 
 
 def test_format_ban_expire_date_for_datetime() -> None:
-    expire = datetime(2026, 3, 4, 12, 0, tzinfo=timezone.utc)
+    expire = datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
 
     formatted = format_ban_expire_date(expire)
 
@@ -223,7 +222,7 @@ class _FakeInteraction:
             self.replies.append(text)
 
     @property
-    def response(self) -> "_FakeInteraction":
+    def response(self) -> _FakeInteraction:
         return self
 
 
@@ -282,7 +281,7 @@ class _BanStore:
         self.audit_rows: list[dict[str, object]] = []
 
     def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     async def upsert_ban(
         self,
@@ -466,7 +465,7 @@ class _ResetPasswordBus:
         self.password_reset_calls: list[str] = []
         self.pardon_calls: list[str] = []
 
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
+    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return True
 
     async def publish_player_password_reset(self, *, uuid_value: str) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from discord import Interaction, app_commands
 
 from ..badges import badge_choice_label, grantable_badges

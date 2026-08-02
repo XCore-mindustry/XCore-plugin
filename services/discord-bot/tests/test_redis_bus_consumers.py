@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 from xcore_protocol.generated.discord import (
     DiscordLinkStatusChangedV1,
     DiscordLinkStatusChangedV1Action,
@@ -15,8 +16,6 @@ from xcore_protocol.generated.shared import (
     VoteKickParticipantV1,
 )
 
-from xcore_discord_bot.redis_bus import RedisBus
-from xcore_discord_bot.settings import Settings
 from xcore_discord_bot.contracts import (
     ChatGlobalV1,
     ChatMessageV1,
@@ -27,7 +26,9 @@ from xcore_discord_bot.contracts import (
     ServerActionV1,
     ServerHeartbeatV1,
 )
+from xcore_discord_bot.redis_bus import RedisBus
 from xcore_discord_bot.registry import server_registry
+from xcore_discord_bot.settings import Settings
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC
 from typing import Any
 
 import pytest
@@ -77,9 +78,9 @@ class _Store:
         return PlayerRecord(pid=123, uuid="uuid-123", nickname="Vortex")
 
     def now_utc(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     async def upsert_mute(
         self,
@@ -110,7 +111,7 @@ class _Store:
 
 
 class _Bus:
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
+    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return True
 
 

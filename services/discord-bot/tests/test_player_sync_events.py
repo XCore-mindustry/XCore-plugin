@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import MethodType, SimpleNamespace
 
 import pytest
-
 from xcore_protocol.generated.chat import (
     PlayerActiveBadgeChangedCommandV1,
     PlayerBadgeInventoryChangedCommandV1,
@@ -27,7 +26,7 @@ async def test_publish_player_active_badge_changed_canonical_payload() -> None:
     bus = _bus()
     captured: dict[str, object] = {}
 
-    async def fake_publish_for_all_servers(self, **kwargs):  # noqa: ANN001
+    async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
     bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)
@@ -52,7 +51,7 @@ async def test_publish_player_badge_inventory_changed_canonical_payload() -> Non
     bus = _bus()
     captured: dict[str, object] = {}
 
-    async def fake_publish_for_all_servers(self, **kwargs):  # noqa: ANN001
+    async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
     bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)
@@ -79,7 +78,7 @@ async def test_publish_player_password_reset_canonical_payload() -> None:
     bus = _bus()
     captured: dict[str, object] = {}
 
-    async def fake_publish_for_all_servers(self, **kwargs):  # noqa: ANN001
+    async def fake_publish_for_all_servers(self, **kwargs):
         captured.update(kwargs)
 
     bus._publish_for_all_servers = MethodType(fake_publish_for_all_servers, bus)

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import logging
-import hashlib
-import asyncio
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Mapping, cast
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Any, cast
 
 from redis.asyncio import Redis
-from redis.exceptions import ResponseError
-
+from redis.exceptions import RedisError, ResponseError
 from xcore_protocol.generated.maps import (
     MapsListRequestV1,
     MapsListResponseV1,
@@ -19,6 +19,26 @@ from xcore_protocol.generated.maps import (
 )
 from xcore_protocol.generated.shared import ActorRefV1ActorType, MapEntryV1
 
+from .contracts import (
+    ChatGlobalV1,
+    ChatMessageV1,
+    DiscordLinkStatusChangedV1,
+    ModerationBanCreatedV1,
+    ModerationMuteCreatedV1,
+    ModerationVoteKickCreatedV1,
+    PlayerJoinLeaveV1,
+    ServerActionV1,
+    ServerHeartbeatV1,
+    parse_ban_payload,
+    parse_chat_message_payload,
+    parse_discord_link_status_payload,
+    parse_global_chat_payload,
+    parse_mute_payload,
+    parse_player_join_leave_payload,
+    parse_server_action_payload,
+    parse_server_heartbeat_payload,
+    parse_vote_kick_payload,
+)
 from .protocol_outbound import (
     build_chat_discord_ingress_command,
     build_discord_admin_access_changed_command,
@@ -33,30 +53,8 @@ from .protocol_outbound import (
     build_player_badge_inventory_changed_command,
     build_player_password_reset_command,
 )
-
-from .contracts import (
-    ChatGlobalV1,
-    ChatMessageV1,
-    DiscordLinkStatusChangedV1,
-    ModerationBanCreatedV1,
-    ModerationMuteCreatedV1,
-    ModerationVoteKickCreatedV1,
-    parse_ban_payload,
-    parse_chat_message_payload,
-    parse_discord_link_status_payload,
-    parse_global_chat_payload,
-    parse_mute_payload,
-    parse_player_join_leave_payload,
-    parse_server_action_payload,
-    parse_vote_kick_payload,
-    PlayerJoinLeaveV1,
-    ServerActionV1,
-    ServerHeartbeatV1,
-    parse_server_heartbeat_payload,
-)
 from .registry import server_registry
 from .settings import Settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -102,8 +100,8 @@ class RedisBus:
             if old is not None:
                 try:
                     await old.aclose()
-                except Exception:
-                    pass
+                except (RedisError, OSError) as error:
+                    logger.debug("Error closing old Redis connection: %s", error)
 
             redis = Redis.from_url(self._settings.redis_url, decode_responses=True)
             await cast(Any, redis).ping()
@@ -549,9 +547,7 @@ class RedisBus:
 
     @staticmethod
     def _failure_counter_key(*, stream: str, group: str, message_id: str) -> str:
-        digest = hashlib.sha1(
-            f"{stream}|{group}|{message_id}".encode("utf-8")
-        ).hexdigest()
+        digest = hashlib.sha1(f"{stream}|{group}|{message_id}".encode()).hexdigest()
         return f"xcore:retries:{digest}"
 
     @staticmethod
@@ -1001,7 +997,7 @@ class RedisBus:
         window_ms = max(60_000, min(ttl_ms, 600_000))
         window = now_ms // window_ms
         digest = hashlib.sha256(
-            f"{prefix}|{server}|{payload_json}|{window}".encode("utf-8")
+            f"{prefix}|{server}|{payload_json}|{window}".encode()
         ).hexdigest()[:24]
         return f"{prefix}:{digest}"
 

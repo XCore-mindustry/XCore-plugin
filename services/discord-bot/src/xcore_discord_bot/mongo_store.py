@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bson.errors import InvalidBSON
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo.errors import PyMongoError
 from pydantic import BaseModel, ConfigDict
 from pymongo import DESCENDING
+from pymongo.errors import PyMongoError
 
 from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
 from .settings import Settings
@@ -531,9 +531,9 @@ class MongoStore:
         normalized_target_uuid = str(target_uuid or "").strip()
         actor_id = str(actor_discord_id or normalized_actor_name).strip()
         occurred = (
-            occurred_at.replace(tzinfo=timezone.utc)
+            occurred_at.replace(tzinfo=UTC)
             if occurred_at.tzinfo is None
-            else occurred_at.astimezone(timezone.utc)
+            else occurred_at.astimezone(UTC)
         )
         created_at_epoch_ms = int(occurred.timestamp() * 1000)
 
@@ -638,7 +638,7 @@ class MongoStore:
 
     @staticmethod
     def now_utc() -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def _db_required(self) -> AsyncIOMotorDatabase:
         if self._db is None:

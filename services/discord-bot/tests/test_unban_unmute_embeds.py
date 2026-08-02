@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -47,7 +47,7 @@ class _Bus:
     def __init__(self) -> None:
         self.pardon_calls: list[str] = []
 
-    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:  # noqa: ARG002
+    async def claim_idempotency(self, key: str, ttl_seconds: int = 600) -> bool:
         return True
 
     async def publish_pardon_player(self, uuid_value: str) -> None:
@@ -59,26 +59,26 @@ class _Store:
         self.audit_rows: list[dict[str, Any]] = []
 
     def now_utc(self) -> datetime:
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
 
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         if pid != 123:
             return None
         return PlayerRecord(pid=123, uuid="uuid-123", ip="1.2.3.4", nickname="Vortex")
 
-    async def find_ban(self, *, uuid: str, ip: str | None) -> BanRecord | None:  # noqa: ARG002
+    async def find_ban(self, *, uuid: str, ip: str | None) -> BanRecord | None:
         return BanRecord(
             name="Vortex",
             admin_name="mod-1",
             admin_discord_id="111",
             reason="griefing",
-            expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=timezone.utc),
+            expire_date=datetime(2026, 12, 31, 15, 0, tzinfo=UTC),
         )
 
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:  # noqa: ARG002
+    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
         return 1
 
-    async def find_mute(self, *, uuid: str) -> MuteRecord | None:  # noqa: ARG002
+    async def find_mute(self, *, uuid: str) -> MuteRecord | None:
         return MuteRecord(
             uuid=uuid,
             pid=123,
@@ -86,10 +86,10 @@ class _Store:
             admin_name="mod-2",
             admin_discord_id="222",
             reason="spam",
-            expire_date=datetime(2026, 12, 31, 16, 0, tzinfo=timezone.utc),
+            expire_date=datetime(2026, 12, 31, 16, 0, tzinfo=UTC),
         )
 
-    async def delete_mute(self, *, uuid: str) -> int:  # noqa: ARG002
+    async def delete_mute(self, *, uuid: str) -> int:
         return 1
 
     async def append_moderation_audit(self, **kwargs: Any) -> str:
@@ -98,10 +98,10 @@ class _Store:
 
 
 class _NoActiveStore(_Store):
-    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:  # noqa: ARG002
+    async def delete_ban(self, *, uuid: str, ip: str | None) -> int:
         return 0
 
-    async def delete_mute(self, *, uuid: str) -> int:  # noqa: ARG002
+    async def delete_mute(self, *, uuid: str) -> int:
         return 0
 
 
