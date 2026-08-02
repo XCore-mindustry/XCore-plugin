@@ -64,7 +64,7 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def _validate_fields(self) -> "Settings":
+    def _validate_fields(self) -> Settings:
         positive_fields = {
             "gateway_http_port": self.gateway_http_port,
             "redis_discovery_interval_ms": self.redis_discovery_interval_ms,
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
         return self
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         try:
             return cls()
         except ValidationError as error:

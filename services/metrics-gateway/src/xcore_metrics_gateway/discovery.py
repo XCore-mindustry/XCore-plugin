@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from redis.exceptions import RedisError
+
 from .redis_client import RedisMetricsClient
 from .settings import Settings
 
@@ -31,7 +33,7 @@ class SnapshotDiscovery:
                         return True
                 if cursor == 0:
                     break
-        except Exception:
+        except (RedisError, OSError):
             return False
 
         self._keys = tuple(sorted(discovered))

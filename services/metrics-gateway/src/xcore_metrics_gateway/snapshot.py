@@ -65,11 +65,8 @@ def _validate_snapshot(snapshot: MetricsSnapshotV1) -> None:
             MetricSampleV1Type.COUNTER,
             MetricSampleV1Type.GAUGE,
             MetricSampleV1Type.INFO,
-        ):
-            if sample.value is None or not math.isfinite(sample.value):
-                raise SnapshotValidationError(
-                    f"sample {sample.name} requires finite value"
-                )
+        ) and (sample.value is None or not math.isfinite(sample.value)):
+            raise SnapshotValidationError(f"sample {sample.name} requires finite value")
 
         if sample.type is MetricSampleV1Type.HISTOGRAM:
             if (

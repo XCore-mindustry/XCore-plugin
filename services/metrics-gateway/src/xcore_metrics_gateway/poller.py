@@ -3,14 +3,13 @@ from __future__ import annotations
 import logging
 import time
 
-from .guard import CardinalityGuard
 from .discovery import SnapshotDiscovery
+from .guard import CardinalityGuard
 from .redis_client import RedisMetricsClient
-from .settings import Settings
 from .self_metrics import GatewaySelfMetrics
+from .settings import Settings
 from .snapshot import SnapshotDecodeError, SnapshotValidationError, decode_snapshot
 from .store import SeriesStore
-
 
 LOGGER = logging.getLogger(__name__)
 

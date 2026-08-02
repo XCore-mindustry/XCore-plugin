@@ -7,10 +7,9 @@ import time
 from .discovery import SnapshotDiscovery
 from .poller import SnapshotPoller
 from .redis_client import RedisMetricsClient
-from .settings import Settings
 from .self_metrics import GatewaySelfMetrics, GatewaySelfMetricsSnapshot
+from .settings import Settings
 from .store import SeriesStore
-
 
 LOGGER = logging.getLogger(__name__)
 

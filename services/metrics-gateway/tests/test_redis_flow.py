@@ -18,10 +18,9 @@ from xcore_metrics_gateway.discovery import SnapshotDiscovery
 from xcore_metrics_gateway.poller import SnapshotPoller
 from xcore_metrics_gateway.prometheus import render_metrics
 from xcore_metrics_gateway.redis_client import RedisMetricsClient
-from xcore_metrics_gateway.settings import Settings
 from xcore_metrics_gateway.self_metrics import GatewaySelfMetrics
+from xcore_metrics_gateway.settings import Settings
 from xcore_metrics_gateway.store import SeriesStore
-
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
