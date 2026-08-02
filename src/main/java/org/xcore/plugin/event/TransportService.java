@@ -21,6 +21,7 @@ import org.xcore.plugin.service.NetworkService;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
@@ -128,7 +129,7 @@ public class TransportService {
     }
 
     protected HttpURLConnection openPublicHostConnection() throws Exception {
-        return (HttpURLConnection) new URL(PUBLIC_HOST_RESOLVER_URL).openConnection();
+        return (HttpURLConnection) URI.create(PUBLIC_HOST_RESOLVER_URL).toURL().openConnection();
     }
 
     protected long currentTimeMillis() {

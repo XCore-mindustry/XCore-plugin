@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -176,7 +177,7 @@ class TransportServiceTest {
 
         private static URL createUrl() {
             try {
-                return new URL("https://example.invalid");
+                return URI.create("https://example.invalid").toURL();
             } catch (Exception ex) {
                 throw new IllegalStateException(ex);
             }
