@@ -8,6 +8,7 @@ import io.lettuce.core.StreamMessage;
 import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +25,7 @@ final class RedisRpcTracker {
     private final Gson gson;
     private final Map<Object, RpcInboundContext> inboundRpcContexts = Collections.synchronizedMap(new IdentityHashMap<>());
 
-    RedisRpcTracker(Gson gson) {
+    RedisRpcTracker(@Named("redis") Gson gson) {
         this.gson = gson;
     }
 
