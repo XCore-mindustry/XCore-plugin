@@ -58,7 +58,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Install Python dependencies
-        run: uv sync --all-groups
+        run: uv sync --extra dev
 
       - name: Validate and build release
         run: |
