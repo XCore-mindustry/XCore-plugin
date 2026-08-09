@@ -15,7 +15,7 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol",
+    "xcore-protocol==0.5.1",
 ]
 
 [project.scripts]
@@ -43,6 +43,3 @@ ignore = ["BLE001"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.uv.sources]
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "5fa1aecd0737413f5006e8c3e9d5ec9cab91bb14" }
