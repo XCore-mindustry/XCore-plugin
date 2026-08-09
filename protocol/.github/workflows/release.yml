@@ -1,0 +1,92 @@
+name: Publish Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag in vX.Y.Z format
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Resolve release version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG_NAME="${INPUT_TAG:-$REF_NAME}"
+          if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Expected release tag in vX.Y.Z format, got: $TAG_NAME" >&2
+            exit 1
+          fi
+          echo "RELEASE_TAG=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "XCORE_PUBLISH_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+
+      - name: Verify tag matches package version
+        run: |
+          VERSION=$(sed -nE 's/^version = "([^"]+)"/\1/p' pyproject.toml)
+          test "$VERSION" = "$XCORE_PUBLISH_VERSION"
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install Python dependencies
+        run: uv sync --all-groups
+
+      - name: Validate and build release
+        run: |
+          uv run python scripts/validate-generation.py
+          uv run python scripts/validate-generated-models.py
+          uv run pytest
+          uv build
+          ./gradlew validateRelease -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+
+      - name: Verify built wheel installs
+        working-directory: /tmp
+        run: uv run --isolated --with "$GITHUB_WORKSPACE"/dist/*.whl python -c 'import xcore_protocol'
+
+      - name: Publish Java package
+        run: ./gradlew publishMavenJavaPublicationToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Publish Python package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.XCORE_PUBLISH_VERSION }}
+          generate_release_notes: true
+          files: |
+            dist/*
+            build/libs/*.jar

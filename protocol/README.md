@@ -58,6 +58,20 @@ All planned message families are fully migrated and operational:
 
 All canonical message families are defined with JSON Schema specs and canonical fixtures. Generated Java records (`org.xcore.protocol.generated.*`) and Python frozen dataclasses (`xcore_protocol.generated.*`) cover the supported generated protocol surface, including route-less telemetry snapshot payloads. `XCore-plugin` and `XCore-discord-bot` both consume generated artifacts as their sole transport model where applicable. Cross-language compatibility checks and full CI validation chain are in place.
 
+## Releases
+
+Each `vX.Y.Z` tag publishes the same version of both supported artifacts:
+
+- Java: `org.xcore:xcore-protocol-java:X.Y.Z` from `https://maven.x-core.org/releases`
+- Python: `xcore-protocol==X.Y.Z` from PyPI
+
+Production consumers must use an exact released version. Git revisions and `-SNAPSHOT`
+versions are only acceptable while developing the protocol itself. The release workflow validates
+schemas, generated output, Java tests, Python tests, and distributable packages before publishing.
+
+Before the first PyPI release, configure the `pypi` GitHub environment as a PyPI Trusted Publisher
+for this repository's `Publish Release` workflow. No Python package registry is self-hosted.
+
 ## See Also
 - `docs/adr/ADR-001-protocol-first.md`
 - `docs/architecture/protocol-overview.md`

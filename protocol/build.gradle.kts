@@ -106,3 +106,15 @@ tasks.register("getBaseVersion") {
         println(baseVersion)
     }
 }
+
+val verifyReleaseVersion by tasks.registering {
+    doLast {
+        check(project.version.toString() == baseVersion) {
+            "Release version ${project.version} must match pyproject.toml version $baseVersion"
+        }
+    }
+}
+
+tasks.register("validateRelease") {
+    dependsOn(tasks.test, verifyReleaseVersion)
+}
