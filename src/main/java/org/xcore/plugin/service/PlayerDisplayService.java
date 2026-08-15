@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.integration.PlayerDisplayRegistry;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
@@ -18,10 +19,16 @@ import static mindustry.Vars.netServer;
 public class PlayerDisplayService {
 
     private final TomlXcoreConfig config;
+    private final PlayerDisplayRegistry displayRegistry;
 
     @Inject
-    public PlayerDisplayService(TomlXcoreConfig config) {
+    public PlayerDisplayService(TomlXcoreConfig config, PlayerDisplayRegistry displayRegistry) {
         this.config = config;
+        this.displayRegistry = displayRegistry;
+    }
+
+    public PlayerDisplayService(TomlXcoreConfig config) {
+        this(config, new PlayerDisplayRegistry());
     }
 
     public String buildDisplayName(PlayerData data, Player player) {
@@ -42,12 +49,18 @@ public class PlayerDisplayService {
             parts.add(hexedTag);
         }
 
+        parts.addAll(resolveExternalTags(data, player));
+
         String baseName = resolveBaseName(data, player);
         if (!baseName.isEmpty()) {
             parts.add(baseName);
         }
 
         return String.join(" ", parts).trim();
+    }
+
+    public List<String> resolveExternalTags(PlayerData data, Player player) {
+        return displayRegistry.resolve(data, player);
     }
 
     public String resolveBaseName(PlayerData data) {
