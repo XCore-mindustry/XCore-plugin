@@ -31,7 +31,7 @@ import static com.ospx.flubundle.Bundle.args;
 public class TopMenu extends Menu {
 
     private static final int PLAYERS_PER_PAGE = 10;
-    private static final LeaderboardCursor FIRST_PAGE_MARKER = new LeaderboardCursor(0, 0, -2);
+    private static final LeaderboardCursor FIRST_PAGE_MARKER = new LeaderboardCursor(0, 0, Integer.MIN_VALUE);
 
     private static final String ROUTE_TOP_LIST = "top.list";
     private static final String ROUTE_TOP_CATEGORIES = "top.categories";

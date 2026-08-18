@@ -125,7 +125,7 @@ class TopMenuTest {
 
         TopMenu.TopMenuState state = session.getDraft(TopMenu.TopMenuState.class);
         assertThat(state.backStack).hasSize(1);
-        assertThat(state.backStack.getLast().pid()).isEqualTo(-2);
+        assertThat(state.backStack.getLast().pid()).isEqualTo(Integer.MIN_VALUE);
 
         ActiveMenuScreen secondScreen = session.activeScreen();
         int previousIndex = optionIndexOf(secondScreen, "previous");
