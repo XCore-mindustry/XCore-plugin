@@ -18,24 +18,19 @@ public class PlayerActivityService {
     private final SessionService sessionService;
     private final FindService findService;
     private final TomlSecretsConfig secretsConfig;
-    private final ServerDiscoveryService discoveryService;
 
     @Inject
     public PlayerActivityService(SessionService sessionService,
                                  FindService findService,
-                                 TomlSecretsConfig secretsConfig,
-                                 ServerDiscoveryService discoveryService) {
+                                 TomlSecretsConfig secretsConfig) {
         this.sessionService = sessionService;
         this.findService = findService;
         this.secretsConfig = secretsConfig;
-        this.discoveryService = discoveryService;
     }
 
     @PostConstruct
     public void start() {
         Timer.schedule(() -> {
-            discoveryService.updateFooter();
-
             for (Session session : sessionService.getAllCachedSnapshot()) {
                 if (session == null || session.data == null) continue;
                 var player = findService.playerByUuid(session.data.uuid);

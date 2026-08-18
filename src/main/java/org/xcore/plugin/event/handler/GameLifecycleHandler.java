@@ -2,7 +2,6 @@ package org.xcore.plugin.event.handler;
 
 import arc.util.Log;
 import arc.util.Strings;
-import arc.util.Time;
 import arc.util.Timer;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Singleton;
@@ -57,8 +56,6 @@ public class GameLifecycleHandler {
     }
 
     public void onPlayEvent(PlayEvent event) {
-        pluginState.gameStartTime = Time.millis();
-
         String mapName = state.map == null ? "<null>" : state.map.plainName();
         String mapFile = state.map == null || state.map.file == null ? "<null>" : state.map.file.name();
         String rawRules = state.map == null ? null : state.map.tags.get("rules");

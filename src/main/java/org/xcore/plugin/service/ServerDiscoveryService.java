@@ -1,17 +1,14 @@
 package org.xcore.plugin.service;
 
 import arc.Core;
-import arc.util.Time;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.core.Version;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
-import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 
 import static mindustry.Vars.state;
 import static org.xcore.plugin.common.PacketUtils.writeString;
@@ -20,27 +17,17 @@ import static org.xcore.plugin.common.PacketUtils.writeString;
 public class ServerDiscoveryService {
 
     private final TomlXcoreConfig config;
-    private final PluginState pluginState;
-
-    private String footer = "";
 
     @Inject
-    public ServerDiscoveryService(TomlXcoreConfig config, PluginState pluginState) {
+    public ServerDiscoveryService(TomlXcoreConfig config) {
         this.config = config;
-        this.pluginState = pluginState;
-    }
-
-    public void updateFooter() {
-        this.footer = config.server.gameStartedTimer
-                ? "\n[green]Game started [accent]" + Duration.ofMillis(Time.millis() - pluginState.gameStartTime).toMinutes() + "[] minutes ago."
-                : "";
     }
 
     public void handleDiscovery(ByteBuffer buffer) {
         String name = Administration.Config.serverName.string();
         String description = Administration.Config.desc.string().equals("off")
-                ? footer
-                : Administration.Config.desc.string() + footer;
+                ? ""
+                : Administration.Config.desc.string();
         String map = state.map.name();
 
         writeString(buffer, name, 100);

@@ -2,7 +2,6 @@ package org.xcore.plugin.service;
 
 import arc.Core;
 import arc.Settings;
-import arc.util.Time;
 import mindustry.Vars;
 import mindustry.core.GameState;
 import mindustry.core.Version;
@@ -15,8 +14,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
@@ -24,7 +21,6 @@ import java.nio.ByteBuffer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class ServerDiscoveryServiceTest {
@@ -69,37 +65,21 @@ class ServerDiscoveryServiceTest {
     }
 
     @Test
-    @DisplayName("updateFooter uses game started timer setting")
-    void updateFooterUsesGameStartedTimerSetting() {
-        var pluginState = new PluginState();
-        pluginState.gameStartTime = 60_000L;
+    @DisplayName("handleDiscovery writes configured description")
+    void handleDiscoveryWritesConfiguredDescription() {
+        var service = new ServerDiscoveryService(config(10));
 
-        try (MockedStatic<Time> time = mockStatic(Time.class)) {
-            time.when(Time::millis).thenReturn(180_000L);
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        service.handleDiscovery(buffer);
 
-            var enabledService = new ServerDiscoveryService(config(true, 10), pluginState);
-            enabledService.updateFooter();
-
-            var buffer = ByteBuffer.allocate(512);
-            enabledService.handleDiscovery(buffer);
-            DiscoveryPacket packet = readPacket(buffer);
-            assertThat(packet.description()).contains("Game started [accent]2[] minutes ago.");
-
-            var disabledService = new ServerDiscoveryService(config(false, 10), pluginState);
-            disabledService.updateFooter();
-
-            var disabledBuffer = ByteBuffer.allocate(512);
-            disabledService.handleDiscovery(disabledBuffer);
-            DiscoveryPacket disabledPacket = readPacket(disabledBuffer);
-            assertThat(disabledPacket.description()).isEqualTo("Server description");
-        }
+        DiscoveryPacket packet = readPacket(buffer);
+        assertThat(packet.description()).isEqualTo("Server description");
     }
 
     @Test
     @DisplayName("handleDiscovery writes zero player limit when disabled")
     void handleDiscoveryWritesZeroPlayerLimitWhenDisabled() {
-        var service = new ServerDiscoveryService(config(true, 0), new PluginState());
-        service.updateFooter();
+        var service = new ServerDiscoveryService(config(0));
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
         service.handleDiscovery(buffer);
@@ -121,8 +101,7 @@ class ServerDiscoveryServiceTest {
         Groups.player.add(player(false));
         Groups.player.add(player(false));
 
-        var service = new ServerDiscoveryService(config(true, 3), new PluginState());
-        service.updateFooter();
+        var service = new ServerDiscoveryService(config(3));
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
         service.handleDiscovery(buffer);
@@ -132,30 +111,21 @@ class ServerDiscoveryServiceTest {
     }
 
     @Test
-    @DisplayName("handleDiscovery uses footer as description when administration description is off")
-    void handleDiscoveryUsesFooterWhenAdministrationDescriptionOff() {
+    @DisplayName("handleDiscovery uses empty description when administration description is off")
+    void handleDiscoveryUsesEmptyDescriptionWhenAdministrationDescriptionOff() {
         configuredDescription = "off";
 
-        var pluginState = new PluginState();
-        pluginState.gameStartTime = 0L;
+        var service = new ServerDiscoveryService(config(10));
 
-        try (MockedStatic<Time> time = mockStatic(Time.class)) {
-            time.when(Time::millis).thenReturn(120_000L);
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        service.handleDiscovery(buffer);
 
-            var service = new ServerDiscoveryService(config(true, 10), pluginState);
-            service.updateFooter();
-
-            ByteBuffer buffer = ByteBuffer.allocate(512);
-            service.handleDiscovery(buffer);
-
-            DiscoveryPacket packet = readPacket(buffer);
-            assertThat(packet.description()).isEqualTo("\n[green]Game started [accent]2[] minutes ago.");
-        }
+        DiscoveryPacket packet = readPacket(buffer);
+        assertThat(packet.description()).isEmpty();
     }
 
-    private static TomlXcoreConfig config(boolean gameStartedTimer, int playerLimit) {
+    private static TomlXcoreConfig config(int playerLimit) {
         TomlXcoreConfig config = new TomlXcoreConfig();
-        config.server.gameStartedTimer = gameStartedTimer;
         config.server.playerLimit = playerLimit;
         return config;
     }
