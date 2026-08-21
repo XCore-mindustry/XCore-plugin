@@ -25,7 +25,6 @@ public class TomlXcoreConfig {
     public EventHubConfig eventHub = new EventHubConfig();
     public TelemetryConfig telemetry = new TelemetryConfig();
     public TranslationConfig translation = new TranslationConfig();
-    public IpReputationConfig ipReputation = new IpReputationConfig();
 
     public void normalize() {
         if (server == null) {
@@ -52,9 +51,6 @@ public class TomlXcoreConfig {
         if (translation == null) {
             translation = new TranslationConfig();
         }
-        if (ipReputation == null) {
-            ipReputation = new IpReputationConfig();
-        }
 
         server.normalize();
         paths.normalize();
@@ -63,7 +59,6 @@ public class TomlXcoreConfig {
         runtime.normalize();
         telemetry.normalize();
         translation.normalize();
-        ipReputation.normalize();
     }
 
     public static class ServerConfig {
@@ -305,21 +300,6 @@ public class TomlXcoreConfig {
             }
             if (maxOutputChars <= 0) {
                 maxOutputChars = 1200;
-            }
-        }
-    }
-
-    public static class IpReputationConfig {
-        public boolean enabled = false;
-        public boolean blockProxy = true;
-        public boolean blockVpn = true;
-        public boolean blockTor = true;
-        public boolean blockHosting = false;
-        public int cacheTtlSeconds = 3600;
-
-        public void normalize() {
-            if (cacheTtlSeconds <= 0) {
-                cacheTtlSeconds = 3600;
             }
         }
     }

@@ -119,13 +119,6 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "translation.llm.max_output_chars", ValueType.INT);
         bind(bindings, "translation.llm.strip_control_characters", ValueType.BOOLEAN);
 
-        bind(bindings, "ip_reputation.enabled", ValueType.BOOLEAN);
-        bind(bindings, "ip_reputation.block_proxy", ValueType.BOOLEAN);
-        bind(bindings, "ip_reputation.block_vpn", ValueType.BOOLEAN);
-        bind(bindings, "ip_reputation.block_tor", ValueType.BOOLEAN);
-        bind(bindings, "ip_reputation.block_hosting", ValueType.BOOLEAN);
-        bind(bindings, "ip_reputation.cache_ttl_seconds", ValueType.INT);
-
         return bindings;
     }
 

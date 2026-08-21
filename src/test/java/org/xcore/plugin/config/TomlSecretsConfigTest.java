@@ -61,11 +61,6 @@ class TomlSecretsConfigTest {
         assertThat(google.maxRetries).isEqualTo(1);
         assertThat(google.temperature).isEqualTo(0.0);
         assertThat(google.supportedLanguages).isNotNull().isEmpty();
-
-        assertThat(toml.ipReputation.provider.baseUrl).isEqualTo("http://ip-api.com/json");
-        assertThat(toml.ipReputation.provider.timeoutSeconds).isEqualTo(10);
-        assertThat(toml.ipReputation.provider.maxRetries).isEqualTo(2);
-        assertThat(toml.ipReputation.provider.rateLimitPerMinute).isEqualTo(45);
     }
 
     @Test
@@ -80,7 +75,6 @@ class TomlSecretsConfigTest {
         toml.pagination = null;
         toml.messages = null;
         toml.translation = null;
-        toml.ipReputation = null;
 
         toml.normalize();
 
@@ -92,7 +86,6 @@ class TomlSecretsConfigTest {
         assertThat(toml.pagination).isNotNull();
         assertThat(toml.messages).isNotNull();
         assertThat(toml.translation).isNotNull();
-        assertThat(toml.ipReputation).isNotNull();
 
         assertThat(toml.moderation.votekick).isNotNull();
         assertThat(toml.chat.global).isNotNull();
@@ -100,7 +93,6 @@ class TomlSecretsConfigTest {
         assertThat(toml.messages.history).isNotNull();
         assertThat(toml.messages.privateMessages).isNotNull();
         assertThat(toml.translation.providers).containsOnlyKeys("google");
-        assertThat(toml.ipReputation.provider).isNotNull();
     }
 
     @Test
@@ -155,22 +147,5 @@ class TomlSecretsConfigTest {
         assertThat(provider.apiMode).isEqualTo("   ");
         assertThat(provider.organization).isEqualTo("\t");
         assertThat(provider.project).isEqualTo("");
-    }
-
-    @Test
-    @DisplayName("normalize repairs invalid ip reputation provider fields")
-    void normalize_repairsInvalidIpReputationProviderFields() {
-        TomlSecretsConfig toml = new TomlSecretsConfig();
-        toml.ipReputation.provider.baseUrl = "";
-        toml.ipReputation.provider.timeoutSeconds = 0;
-        toml.ipReputation.provider.maxRetries = -1;
-        toml.ipReputation.provider.rateLimitPerMinute = -5;
-
-        toml.normalize();
-
-        assertThat(toml.ipReputation.provider.baseUrl).isEqualTo("http://ip-api.com/json");
-        assertThat(toml.ipReputation.provider.timeoutSeconds).isEqualTo(10);
-        assertThat(toml.ipReputation.provider.maxRetries).isEqualTo(2);
-        assertThat(toml.ipReputation.provider.rateLimitPerMinute).isEqualTo(45);
     }
 }

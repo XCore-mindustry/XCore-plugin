@@ -234,17 +234,6 @@ If legacy `xcconfig.json` or `secrets.json` files are present, XCore migrates th
 | `translation.llm.max_output_chars` | `1200` | Maximum output characters for LLM translation responses. |
 | `translation.llm.strip_control_characters` | `true` | Whether control characters are stripped before translation. |
 
-#### IP reputation settings (`[ip_reputation]`)
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `ip_reputation.enabled` | `false` | Master switch for IP reputation checks. |
-| `ip_reputation.block_proxy` | `true` | Whether proxy connections are blocked. |
-| `ip_reputation.block_vpn` | `true` | Whether VPN connections are blocked. |
-| `ip_reputation.block_tor` | `true` | Whether Tor exit nodes are blocked. |
-| `ip_reputation.block_hosting` | `false` | Whether hosting-provider IP ranges are blocked. |
-| `ip_reputation.cache_ttl_seconds` | `3600` | Cache lifetime for IP reputation lookups. |
-
 ### `secrets.toml` (global/shared)
 
 This file contains sensitive and shared settings. **It is created automatically** with defaults. The required database settings are `database.mongo_connection_string` and `database.name` under the `[database]` section.
@@ -292,15 +281,6 @@ This file contains sensitive and shared settings. **It is created automatically*
 | `translation.providers.<id>.max_retries` | `1` | Number of retries on transient failure. |
 | `translation.providers.<id>.temperature` | `0.0` | Temperature passed to LLM-style providers when applicable. |
 | `translation.providers.<id>.supported_languages` | `[]` | Set/list of language codes this provider supports. |
-
-#### IP reputation provider config (`[ip_reputation.provider]`)
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `ip_reputation.provider.base_url` | `http://ip-api.com/json` | Base URL for the IP reputation provider. |
-| `ip_reputation.provider.timeout_seconds` | `10` | Request timeout for IP reputation lookups. |
-| `ip_reputation.provider.max_retries` | `2` | Number of retries on transient IP reputation failures. |
-| `ip_reputation.provider.rate_limit_per_minute` | `45` | Soft per-minute rate limit for provider calls. |
 
 ## Localization
 Bundles are stored in `src/main/resources/bundles/` and distributed via FluBundle. Supported languages include English, Russian, Ukrainian, and Belarusian. Locale resolution follows player preference with automatic fallback.

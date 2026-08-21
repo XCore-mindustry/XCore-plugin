@@ -259,21 +259,11 @@ kick-pirated-game = { "[" }accent]Обнаружен неавторизован�
 kick-recently-kicked =
     { "[" }accent]Вы недавно были кикнуты с этого сервера.
     Подождите [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] перед повторным входом.
-kick-bot-protection = Возможно вы бот. Если нет, попробуйте перезайти.
 kick-admintools-outdated =
     { "[" }green]Требуемая версия AdminTools: [grey]{ $requiredVersion }[]
     { "" }[scarlet]Ваша версия AdminTools: [grey]{ $version }[]
     { "" }
     { "" }[cyan]Пожалуйста, обновите AdminTools для входа на сервер.
-ip-reputation-denied =
-    { "[" }scarlet]⚠ Доступ запрещён[]
-    { "" }[lightgray]Ваше соединение определено как VPN/прокси/Tor и заблокировано политикой сервера.
-    { "" }[lightgray]Если это ошибка, подайте апелляцию в Discord:
-    { "" }[cyan]{ $discordUrl }
-notification-admin-ip-reputation-denied = [scarlet]IP reputation заблокировал [white]{ $nickname }[lightgray] с [accent]{ $ip }[]
-commands-ipreputation-lookup-result = [accent]{ $ip }[] → proxy=[accent]{ $proxy }[] hosting=[accent]{ $hosting }[] mobile=[accent]{ $mobile }[]
-commands-ipreputation-allowlist-add-success = [green]Добавлен [accent]{ $ip }[] в allowlist IP reputation.
-commands-ipreputation-allowlist-remove-success = [green]Удалён [accent]{ $ip }[] из allowlist IP reputation.
 support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)

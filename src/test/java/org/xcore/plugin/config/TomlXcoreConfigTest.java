@@ -60,13 +60,6 @@ class TomlXcoreConfigTest {
         assertThat(toml.translation.llm.maxInputChars).isEqualTo(500);
         assertThat(toml.translation.llm.maxOutputChars).isEqualTo(1200);
         assertThat(toml.translation.llm.stripControlCharacters).isTrue();
-
-        assertThat(toml.ipReputation.enabled).isFalse();
-        assertThat(toml.ipReputation.blockProxy).isTrue();
-        assertThat(toml.ipReputation.blockVpn).isTrue();
-        assertThat(toml.ipReputation.blockTor).isTrue();
-        assertThat(toml.ipReputation.blockHosting).isFalse();
-        assertThat(toml.ipReputation.cacheTtlSeconds).isEqualTo(3600);
     }
 
     @Test
@@ -81,7 +74,6 @@ class TomlXcoreConfigTest {
         toml.eventHub = null;
         toml.telemetry = null;
         toml.translation = null;
-        toml.ipReputation = null;
 
         toml.normalize();
 
@@ -93,7 +85,6 @@ class TomlXcoreConfigTest {
         assertThat(toml.eventHub).isNotNull();
         assertThat(toml.telemetry).isNotNull();
         assertThat(toml.translation).isNotNull();
-        assertThat(toml.ipReputation).isNotNull();
 
         assertThat(toml.server.name).isEqualTo("server");
         assertThat(toml.transport.redis.url).isEqualTo("redis://127.0.0.1:6379");
@@ -130,7 +121,6 @@ class TomlXcoreConfigTest {
         toml.translation.metrics.minuteBucketTtlSeconds = 0;
         toml.translation.llm.maxInputChars = -10;
         toml.translation.llm.maxOutputChars = 0;
-        toml.ipReputation.cacheTtlSeconds = -1;
 
         toml.normalize();
 
@@ -147,7 +137,6 @@ class TomlXcoreConfigTest {
         assertThat(toml.translation.metrics.minuteBucketTtlSeconds).isEqualTo(21600);
         assertThat(toml.translation.llm.maxInputChars).isEqualTo(500);
         assertThat(toml.translation.llm.maxOutputChars).isEqualTo(1200);
-        assertThat(toml.ipReputation.cacheTtlSeconds).isEqualTo(3600);
     }
 
     @Test

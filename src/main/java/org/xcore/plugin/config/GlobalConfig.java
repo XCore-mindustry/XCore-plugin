@@ -41,13 +41,12 @@ public class GlobalConfig {
     public boolean isDataBaseReadOnly = false;
     public boolean isDataBaseMigration = false;
     public Map<String, TranslationProviderConfig> translationProviders = defaultTranslationProviders();
-    public IpReputationProviderConfig ipReputationProvider = new IpReputationProviderConfig();
 
     /**
-     * Normalizes and populates missing global configuration for translation and IP reputation providers.
+     * Normalizes and populates missing global configuration for translation providers.
      *
-     * Ensures the translation provider map is present (using defaults when absent), normalizes every
-     * TranslationProviderConfig entry, ensures an IpReputationProviderConfig exists, and normalizes it.
+     * Ensures the translation provider map is present (using defaults when absent) and normalizes
+     * every TranslationProviderConfig entry.
      */
     public void normalize() {
         if (translationProviders == null || translationProviders.isEmpty()) {
@@ -61,12 +60,6 @@ public class GlobalConfig {
             normalized.normalize();
             return normalized;
         });
-
-        if (ipReputationProvider == null) {
-            ipReputationProvider = new IpReputationProviderConfig();
-        }
-
-        ipReputationProvider.normalize();
     }
 
     /**
@@ -172,39 +165,4 @@ public class GlobalConfig {
         }
     }
 
-    public static class IpReputationProviderConfig {
-        public String baseUrl = "http://ip-api.com/json";
-        public int timeoutSeconds = 10;
-        public int maxRetries = 2;
-        public int rateLimitPerMinute = 45;
-
-        /**
-         * Ensures configuration fields have valid values, replacing missing or invalid entries with defaults.
-         *
-         * <p>Defaults applied:
-         * <ul>
-         *   <li>{@code baseUrl} → {@code "http://ip-api.com/json"} when null or blank</li>
-         *   <li>{@code timeoutSeconds} → {@code 10} when ≤ 0</li>
-         *   <li>{@code maxRetries} → {@code 2} when < 0</li>
-         *   <li>{@code rateLimitPerMinute} → {@code 45} when ≤ 0</li>
-         * </ul>
-         */
-        public void normalize() {
-            if (baseUrl == null || baseUrl.isBlank()) {
-                baseUrl = "http://ip-api.com/json";
-            }
-
-            if (timeoutSeconds <= 0) {
-                timeoutSeconds = 10;
-            }
-
-            if (maxRetries < 0) {
-                maxRetries = 2;
-            }
-
-            if (rateLimitPerMinute <= 0) {
-                rateLimitPerMinute = 45;
-            }
-        }
-    }
 }

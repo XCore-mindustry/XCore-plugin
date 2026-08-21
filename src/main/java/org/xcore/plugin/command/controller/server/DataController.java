@@ -178,6 +178,5 @@ public class DataController implements CloudServerController {
         config.runtime = updated.runtime;
         config.eventHub = updated.eventHub;
         config.translation = updated.translation;
-        config.ipReputation = updated.ipReputation;
     }
 }

@@ -259,21 +259,11 @@ kick-pirated-game = { "[" }accent]Unauthorized client detected. [scarlet]Access 
 kick-recently-kicked =
     { "[" }accent]You were recently kicked from this server.
     Wait [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] before joining again.
-kick-bot-protection = Maybe you are a bot. If not, try to reconnect.
 kick-admintools-outdated =
     { "[" }green]The required AdminTools version: [grey]{ $requiredVersion }[]
     { "" }[scarlet]Your AdminTools version: [grey]{ $version }[]
     { "" }
     { "" }[cyan]Please update your AdminTools to join this server.
-ip-reputation-denied =
-    { "[" }scarlet]⚠ Access denied[]
-    { "" }[lightgray]Your connection was flagged as VPN/proxy/Tor and blocked by server policy.
-    { "" }[lightgray]If this is a mistake, appeal in Discord:
-    { "" }[cyan]{ $discordUrl }
-notification-admin-ip-reputation-denied = [scarlet]IP reputation blocked [white]{ $nickname }[lightgray] from [accent]{ $ip }[]
-commands-ipreputation-lookup-result = [accent]{ $ip }[] → proxy=[accent]{ $proxy }[] hosting=[accent]{ $hosting }[] mobile=[accent]{ $mobile }[]
-commands-ipreputation-allowlist-add-success = [green]Added [accent]{ $ip }[] to the IP reputation allowlist.
-commands-ipreputation-allowlist-remove-success = [green]Removed [accent]{ $ip }[] from the IP reputation allowlist.
 support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)

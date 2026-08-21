@@ -74,9 +74,6 @@ public final class ConfigTomlMapper {
         // translation
         config.translation = mapTranslation(toml.translation);
 
-        // ip reputation
-        config.ipReputation = mapIpReputation(toml.ipReputation);
-
         return config;
     }
 
@@ -122,7 +119,6 @@ public final class ConfigTomlMapper {
         toml.eventHub.mapId = nullToBlank(config.eventHubMapID);
 
         toml.translation = mapTomlTranslation(config.translation);
-        toml.ipReputation = mapTomlIpReputation(config.ipReputation);
         toml.normalize();
         return toml;
     }
@@ -188,11 +184,6 @@ public final class ConfigTomlMapper {
                 requireNonNull(toml.translation, "translation").providers
         );
 
-        // ip reputation provider
-        global.ipReputationProvider = mapIpReputationProvider(
-                requireNonNull(toml.ipReputation, "ipReputation").provider
-        );
-
         return global;
     }
 
@@ -242,11 +233,6 @@ public final class ConfigTomlMapper {
         toml.messages.privateMessages.blockedLimit = global.privateMessageBlockedLimit;
 
         toml.translation.providers = mapTomlTranslationProviders(global.translationProviders);
-
-        toml.ipReputation.provider.baseUrl = global.ipReputationProvider.baseUrl;
-        toml.ipReputation.provider.timeoutSeconds = global.ipReputationProvider.timeoutSeconds;
-        toml.ipReputation.provider.maxRetries = global.ipReputationProvider.maxRetries;
-        toml.ipReputation.provider.rateLimitPerMinute = global.ipReputationProvider.rateLimitPerMinute;
 
         toml.normalize();
         return toml;
@@ -321,20 +307,6 @@ public final class ConfigTomlMapper {
         return dst;
     }
 
-    private static Config.IpReputationConfig mapIpReputation(TomlXcoreConfig.IpReputationConfig src) {
-        if (src == null) {
-            return new Config.IpReputationConfig();
-        }
-        Config.IpReputationConfig dst = new Config.IpReputationConfig();
-        dst.enabled = src.enabled;
-        dst.blockProxy = src.blockProxy;
-        dst.blockVpn = src.blockVpn;
-        dst.blockTor = src.blockTor;
-        dst.blockHosting = src.blockHosting;
-        dst.cacheTtlSeconds = src.cacheTtlSeconds;
-        return dst;
-    }
-
     private static TomlXcoreConfig.CacheConfig mapTomlTranslationCache(Config.TranslationCacheConfig src) {
         if (src == null) {
             return new TomlXcoreConfig.CacheConfig();
@@ -367,20 +339,6 @@ public final class ConfigTomlMapper {
         dst.maxInputChars = src.maxInputChars;
         dst.maxOutputChars = src.maxOutputChars;
         dst.stripControlCharacters = src.stripControlCharacters;
-        return dst;
-    }
-
-    private static TomlXcoreConfig.IpReputationConfig mapTomlIpReputation(Config.IpReputationConfig src) {
-        if (src == null) {
-            return new TomlXcoreConfig.IpReputationConfig();
-        }
-        TomlXcoreConfig.IpReputationConfig dst = new TomlXcoreConfig.IpReputationConfig();
-        dst.enabled = src.enabled;
-        dst.blockProxy = src.blockProxy;
-        dst.blockVpn = src.blockVpn;
-        dst.blockTor = src.blockTor;
-        dst.blockHosting = src.blockHosting;
-        dst.cacheTtlSeconds = src.cacheTtlSeconds;
         return dst;
     }
 
@@ -422,21 +380,6 @@ public final class ConfigTomlMapper {
         dst.maxRetries = src.maxRetries;
         dst.temperature = src.temperature;
         dst.supportedLanguages = copySet(src.supportedLanguages);
-        return dst;
-    }
-
-    private static GlobalConfig.IpReputationProviderConfig mapIpReputationProvider(
-            TomlSecretsConfig.IpReputationSection.ProviderConfig src
-    ) {
-        if (src == null) {
-            return new GlobalConfig.IpReputationProviderConfig();
-        }
-
-        GlobalConfig.IpReputationProviderConfig dst = new GlobalConfig.IpReputationProviderConfig();
-        dst.baseUrl = src.baseUrl;
-        dst.timeoutSeconds = src.timeoutSeconds;
-        dst.maxRetries = src.maxRetries;
-        dst.rateLimitPerMinute = src.rateLimitPerMinute;
         return dst;
     }
 

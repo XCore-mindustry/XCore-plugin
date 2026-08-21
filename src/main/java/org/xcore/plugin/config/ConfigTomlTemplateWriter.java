@@ -107,14 +107,6 @@ public final class ConfigTomlTemplateWriter {
         max_input_chars = 500
         max_output_chars = 1200
         strip_control_characters = true
-
-        [ip_reputation]
-        enabled = false
-        block_proxy = true
-        block_vpn = true
-        block_tor = true
-        block_hosting = false
-        cache_ttl_seconds = 3600
         """;
     }
 
@@ -184,12 +176,6 @@ public final class ConfigTomlTemplateWriter {
         max_retries = 1
         temperature = 0.0
         supported_languages = []
-
-        [ip_reputation.provider]
-        base_url = "http://ip-api.com/json"
-        timeout_seconds = 10
-        max_retries = 2
-        rate_limit_per_minute = 45
         """;
     }
 }

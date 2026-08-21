@@ -13,36 +13,56 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Orchestrates all ingress security checks for incoming connections.
+ * <p>
+ * Built-in checks are injected via DI; companion plugins may attach their own
+ * checks at runtime through {@link #register(IngressCheck)}.
  */
 @Singleton
 public class IngressService {
 
-    private final List<IngressCheck> fastChecks;
-    private final List<IngressCheck> slowChecks;
+    private final List<IngressCheck> fastChecks = new CopyOnWriteArrayList<>();
+    private final List<IngressCheck> slowChecks = new CopyOnWriteArrayList<>();
     private final ExecutorService virtualExecutor;
     private final MetricsService metricsService;
 
     public IngressService(List<IngressCheck> checks, MetricsService metricsService) {
-        List<IngressCheck> sorted = checks.stream()
-                .sorted(Comparator.comparingInt(IngressCheck::priority))
-                .toList();
-
-        this.fastChecks = sorted.stream()
-                .filter(c -> c.priority() < 0)
-                .toList();
-
-        this.slowChecks = sorted.stream()
-                .filter(c -> c.priority() >= 0)
-                .toList();
-
         this.virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.metricsService = metricsService;
 
+        checks.forEach(this::attach);
+
         PLog.infoTag("Ingress", "Ready: @ fast checks, @ slow checks",
                 fastChecks.size(), slowChecks.size());
+    }
+
+    /**
+     * Registers an externally provided check (e.g., from a companion plugin).
+     * Thread-safe; affects subsequent validations only.
+     */
+    public synchronized void register(IngressCheck check) {
+        attach(check);
+        PLog.infoTag("Ingress", "Registered external check '@' (@)",
+                check.name(), check.priority() < 0 ? "fast" : "slow");
+    }
+
+    /**
+     * Unregisters a previously registered check.
+     * Thread-safe; no-op if the check was never registered.
+     */
+    public synchronized void unregister(IngressCheck check) {
+        if (fastChecks.remove(check) | slowChecks.remove(check)) {
+            PLog.infoTag("Ingress", "Unregistered check '@'", check.name());
+        }
+    }
+
+    private void attach(IngressCheck check) {
+        (check.priority() < 0 ? fastChecks : slowChecks).add(check);
+        fastChecks.sort(Comparator.comparingInt(IngressCheck::priority));
+        slowChecks.sort(Comparator.comparingInt(IngressCheck::priority));
     }
 
     @PreDestroy
@@ -75,10 +95,11 @@ public class IngressService {
 
     private AccessResult runParallelChecks(NetConnection con, ConnectPacket packet) {
         CompletionService<CheckOutcome> completionService = new ExecutorCompletionService<>(virtualExecutor);
-        List<Future<CheckOutcome>> futures = new ArrayList<>(slowChecks.size());
+        List<IngressCheck> checks = List.copyOf(slowChecks);
+        List<Future<CheckOutcome>> futures = new ArrayList<>(checks.size());
         CheckOutcome deniedResult = null;
 
-        for (IngressCheck check : slowChecks) {
+        for (IngressCheck check : checks) {
             futures.add(completionService.submit(() -> {
                 try {
                     return new CheckOutcome(check, check.check(con, packet));
@@ -92,7 +113,7 @@ public class IngressService {
         }
 
         try {
-            for (int i = 0; i < slowChecks.size(); i++) {
+            for (int i = 0; i < checks.size(); i++) {
                 Future<CheckOutcome> completedFuture = completionService.poll(5, TimeUnit.SECONDS);
 
                 if (completedFuture != null) {

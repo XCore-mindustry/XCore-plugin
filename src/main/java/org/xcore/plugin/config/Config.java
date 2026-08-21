@@ -56,16 +56,14 @@ public class Config {
     public boolean isEventHubMap = false;
     public String eventHubMapID = "";
     public TranslationConfig translation = new TranslationConfig();
-    public IpReputationConfig ipReputation = new IpReputationConfig();
 
     /**
      * Ensures configuration sub-objects and collections are initialized and normalized.
      *
      * If any of the mutable sub-fields are null, replaces them with default instances and
      * then invokes their normalize methods to enforce sane defaults. Specifically initializes
-     * {@code disabledCommands}, {@code disabledFeatures}, {@code translation}, and
-     * {@code ipReputation} when null and calls {@code translation.normalize()} and
-     * {@code ipReputation.normalize()}.
+     * {@code disabledCommands}, {@code disabledFeatures}, and {@code translation} when null
+     * and calls {@code translation.normalize()}.
      */
     public void normalize() {
         if (disabledCommands == null) {
@@ -80,12 +78,7 @@ public class Config {
             translation = new TranslationConfig();
         }
 
-        if (ipReputation == null) {
-            ipReputation = new IpReputationConfig();
-        }
-
         translation.normalize();
-        ipReputation.normalize();
     }
 
     public static class TranslationConfig {
@@ -166,26 +159,6 @@ public class Config {
 
             if (maxOutputChars <= 0) {
                 maxOutputChars = 1200;
-            }
-        }
-    }
-
-    public static class IpReputationConfig {
-        public boolean enabled = false;
-        public boolean blockProxy = true;
-        public boolean blockVpn = true;
-        public boolean blockTor = true;
-        public boolean blockHosting = false;
-        public int cacheTtlSeconds = 3600;
-
-        /**
-         * Ensure configuration fields have valid values and apply defaults where necessary.
-         *
-         * <p>Sets {@code cacheTtlSeconds} to 3600 if its value is less than or equal to zero.</p>
-         */
-        public void normalize() {
-            if (cacheTtlSeconds <= 0) {
-                cacheTtlSeconds = 3600;
             }
         }
     }

@@ -91,13 +91,6 @@ class ConfigTomlMapperTest {
         assertThat(config.translation.llm.maxInputChars).isEqualTo(500);
         assertThat(config.translation.llm.maxOutputChars).isEqualTo(1200);
         assertThat(config.translation.llm.stripControlCharacters).isTrue();
-
-        assertThat(config.ipReputation.enabled).isFalse();
-        assertThat(config.ipReputation.blockProxy).isTrue();
-        assertThat(config.ipReputation.blockVpn).isTrue();
-        assertThat(config.ipReputation.blockTor).isTrue();
-        assertThat(config.ipReputation.blockHosting).isFalse();
-        assertThat(config.ipReputation.cacheTtlSeconds).isEqualTo(3600);
     }
 
     @Test
@@ -144,13 +137,6 @@ class ConfigTomlMapperTest {
         toml.translation.llm.maxOutputChars = 2000;
         toml.translation.llm.stripControlCharacters = false;
 
-        toml.ipReputation.enabled = true;
-        toml.ipReputation.blockProxy = false;
-        toml.ipReputation.blockVpn = false;
-        toml.ipReputation.blockTor = false;
-        toml.ipReputation.blockHosting = true;
-        toml.ipReputation.cacheTtlSeconds = 7200;
-
         Config config = ConfigTomlMapper.toConfig(toml);
 
         assertThat(config.server).isEqualTo("mini-pvp");
@@ -192,13 +178,6 @@ class ConfigTomlMapperTest {
         assertThat(config.translation.llm.maxInputChars).isEqualTo(1000);
         assertThat(config.translation.llm.maxOutputChars).isEqualTo(2000);
         assertThat(config.translation.llm.stripControlCharacters).isFalse();
-
-        assertThat(config.ipReputation.enabled).isTrue();
-        assertThat(config.ipReputation.blockProxy).isFalse();
-        assertThat(config.ipReputation.blockVpn).isFalse();
-        assertThat(config.ipReputation.blockTor).isFalse();
-        assertThat(config.ipReputation.blockHosting).isTrue();
-        assertThat(config.ipReputation.cacheTtlSeconds).isEqualTo(7200);
     }
 
     @Test
@@ -272,11 +251,6 @@ class ConfigTomlMapperTest {
         assertThat(google.maxRetries).isEqualTo(1);
         assertThat(google.temperature).isEqualTo(0.0);
         assertThat(google.supportedLanguages).isNotNull().isEmpty();
-
-        assertThat(global.ipReputationProvider.baseUrl).isEqualTo("http://ip-api.com/json");
-        assertThat(global.ipReputationProvider.timeoutSeconds).isEqualTo(10);
-        assertThat(global.ipReputationProvider.maxRetries).isEqualTo(2);
-        assertThat(global.ipReputationProvider.rateLimitPerMinute).isEqualTo(45);
     }
 
     @Test
@@ -328,11 +302,6 @@ class ConfigTomlMapperTest {
         customProvider.supportedLanguages = Set.of("en", "ru");
         toml.translation.providers = new LinkedHashMap<>(Map.of("custom", customProvider));
 
-        toml.ipReputation.provider.baseUrl = "https://ip-api.example.com/json";
-        toml.ipReputation.provider.timeoutSeconds = 20;
-        toml.ipReputation.provider.maxRetries = 5;
-        toml.ipReputation.provider.rateLimitPerMinute = 60;
-
         GlobalConfig global = ConfigTomlMapper.toGlobalConfig(toml);
 
         assertThat(global.mongoConnectionString).isEqualTo("mongodb://localhost:27017");
@@ -377,11 +346,6 @@ class ConfigTomlMapperTest {
         assertThat(custom.maxRetries).isEqualTo(3);
         assertThat(custom.temperature).isEqualTo(0.5);
         assertThat(custom.supportedLanguages).containsExactlyInAnyOrder("en", "ru");
-
-        assertThat(global.ipReputationProvider.baseUrl).isEqualTo("https://ip-api.example.com/json");
-        assertThat(global.ipReputationProvider.timeoutSeconds).isEqualTo(20);
-        assertThat(global.ipReputationProvider.maxRetries).isEqualTo(5);
-        assertThat(global.ipReputationProvider.rateLimitPerMinute).isEqualTo(60);
     }
 
     @Test
@@ -415,15 +379,12 @@ class ConfigTomlMapperTest {
         TomlXcoreConfig toml = new TomlXcoreConfig();
         toml.server = null;
         toml.translation = null;
-        toml.ipReputation = null;
 
         Config config = ConfigTomlMapper.toConfig(toml);
 
         assertThat(config.server).isEqualTo("server");
         assertThat(config.translation).isNotNull();
         assertThat(config.translation.pipeline).containsExactly("google");
-        assertThat(config.ipReputation).isNotNull();
-        assertThat(config.ipReputation.enabled).isFalse();
     }
 
     @Test
@@ -432,14 +393,11 @@ class ConfigTomlMapperTest {
         TomlSecretsConfig toml = new TomlSecretsConfig();
         toml.moderation = null;
         toml.translation = null;
-        toml.ipReputation = null;
 
         GlobalConfig global = ConfigTomlMapper.toGlobalConfig(toml);
 
         assertThat(global.minPlayTimeForVotekick).isEqualTo(60);
         assertThat(global.translationProviders).containsOnlyKeys("google");
-        assertThat(global.ipReputationProvider).isNotNull();
-        assertThat(global.ipReputationProvider.baseUrl).isEqualTo("http://ip-api.com/json");
     }
 
     @Test
@@ -479,12 +437,6 @@ class ConfigTomlMapperTest {
         config.translation.llm.maxInputChars = 111;
         config.translation.llm.maxOutputChars = 222;
         config.translation.llm.stripControlCharacters = false;
-        config.ipReputation.enabled = true;
-        config.ipReputation.blockProxy = false;
-        config.ipReputation.blockVpn = false;
-        config.ipReputation.blockTor = false;
-        config.ipReputation.blockHosting = true;
-        config.ipReputation.cacheTtlSeconds = 9999;
 
         TomlXcoreConfig toml = ConfigTomlMapper.toTomlXcoreConfig(config);
 
@@ -509,9 +461,6 @@ class ConfigTomlMapperTest {
         assertThat(toml.eventHub.mapId).isEqualTo("hub-map");
         assertThat(toml.translation.pipeline).containsExactly("google", "llm");
         assertThat(toml.translation.llm.maxOutputChars).isEqualTo(222);
-        assertThat(toml.ipReputation.enabled).isTrue();
-        assertThat(toml.ipReputation.blockHosting).isTrue();
-        assertThat(toml.ipReputation.cacheTtlSeconds).isEqualTo(9999);
     }
 
     @Test
@@ -557,11 +506,6 @@ class ConfigTomlMapperTest {
         provider.supportedLanguages = Set.of("en", "ru");
         global.translationProviders = new LinkedHashMap<>(Map.of("ai", provider));
 
-        global.ipReputationProvider.baseUrl = "https://ip.example/json";
-        global.ipReputationProvider.timeoutSeconds = 20;
-        global.ipReputationProvider.maxRetries = 21;
-        global.ipReputationProvider.rateLimitPerMinute = 22;
-
         TomlSecretsConfig toml = ConfigTomlMapper.toTomlSecretsConfig(global);
 
         assertThat(toml.database.mongoConnectionString).isEmpty();
@@ -602,9 +546,5 @@ class ConfigTomlMapperTest {
         assertThat(mappedProvider.maxRetries).isEqualTo(16);
         assertThat(mappedProvider.temperature).isEqualTo(0.7);
         assertThat(mappedProvider.supportedLanguages).containsExactlyInAnyOrder("en", "ru");
-        assertThat(toml.ipReputation.provider.baseUrl).isEqualTo("https://ip.example/json");
-        assertThat(toml.ipReputation.provider.timeoutSeconds).isEqualTo(20);
-        assertThat(toml.ipReputation.provider.maxRetries).isEqualTo(21);
-        assertThat(toml.ipReputation.provider.rateLimitPerMinute).isEqualTo(22);
     }
 }

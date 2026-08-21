@@ -1,7 +1,6 @@
 package org.xcore.plugin.event.handler;
 
 import arc.util.Log;
-import arc.util.Time;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.EventType.PlayerJoin;
@@ -80,15 +79,6 @@ public class ConnectionHandler {
 
         PlayerData data = session.data;
         Localization locale = session.locale();
-
-        Time.runTask(120, () -> {
-            if (player != null && player.con != null && player.con.isConnected()) {
-                if (player.con.lastReceivedClientSnapshot == -1) {
-                    String kickMsg = locale.format("kick-bot-protection", args());
-                    player.kick(kickMsg);
-                }
-            }
-        });
 
         locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
 

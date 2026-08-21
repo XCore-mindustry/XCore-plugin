@@ -17,7 +17,6 @@ public class TomlSecretsConfig {
     public PaginationConfig pagination = new PaginationConfig();
     public MessagesConfig messages = new MessagesConfig();
     public TranslationSection translation = new TranslationSection();
-    public IpReputationSection ipReputation = new IpReputationSection();
 
     public void normalize() {
         if (database == null) {
@@ -49,10 +48,6 @@ public class TomlSecretsConfig {
             translation = new TranslationSection();
         }
         translation.normalize();
-        if (ipReputation == null) {
-            ipReputation = new IpReputationSection();
-        }
-        ipReputation.normalize();
     }
 
     public static class DatabaseConfig {
@@ -206,40 +201,6 @@ public class TomlSecretsConfig {
                 }
                 if (supportedLanguages == null) {
                     supportedLanguages = new LinkedHashSet<>();
-                }
-            }
-        }
-    }
-
-    public static class IpReputationSection {
-        public ProviderConfig provider = new ProviderConfig();
-
-        public void normalize() {
-            if (provider == null) {
-                provider = new ProviderConfig();
-            } else {
-                provider.normalize();
-            }
-        }
-
-        public static class ProviderConfig {
-            public String baseUrl = "http://ip-api.com/json";
-            public int timeoutSeconds = 10;
-            public int maxRetries = 2;
-            public int rateLimitPerMinute = 45;
-
-            public void normalize() {
-                if (baseUrl == null || baseUrl.isBlank()) {
-                    baseUrl = "http://ip-api.com/json";
-                }
-                if (timeoutSeconds <= 0) {
-                    timeoutSeconds = 10;
-                }
-                if (maxRetries < 0) {
-                    maxRetries = 2;
-                }
-                if (rateLimitPerMinute <= 0) {
-                    rateLimitPerMinute = 45;
                 }
             }
         }
