@@ -2,7 +2,9 @@ package org.xcore.plugin.config;
 
 import arc.files.Fi;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.google.gson.Gson;
 
@@ -298,11 +300,17 @@ public final class ConfigTomlLoader {
     private static <T> T readToml(Fi file, Class<T> type) {
         try {
             TomlMapper mapper = createTomlMapper();
+            String content = Files.readString(file.file().toPath());
             if (type == TomlXcoreConfig.class) {
-                String content = Files.readString(file.file().toPath());
-                return mapper.readValue(quoteBareDiscordChannelId(content), type);
+                content = quoteBareDiscordChannelId(content);
             }
-            return mapper.readValue(file.file(), type);
+            // Since v4.4.0 the [ip_reputation] section lives in the private xcore-sentinel
+            // plugin; drop stale sections from existing files instead of failing to load.
+            JsonNode tree = mapper.readTree(content);
+            if (tree instanceof ObjectNode object) {
+                object.remove("ip_reputation");
+            }
+            return mapper.treeToValue(tree, type);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to read TOML from " + file.absolutePath() + ": " + e.getMessage(), e);

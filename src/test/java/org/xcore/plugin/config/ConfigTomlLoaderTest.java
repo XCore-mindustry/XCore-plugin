@@ -175,6 +175,45 @@ class ConfigTomlLoaderTest {
     }
 
     @Test
+    @DisplayName("loaders ignore the legacy [ip_reputation] section removed in v4.4.0")
+    void loaders_ignoreLegacyIpReputationSection() throws IOException {
+        Files.writeString(tempDir.resolve("xcore.toml"), """
+                version = 1
+
+                [ip_reputation]
+                enabled = true
+                block_proxy = false
+                cache_ttl_seconds = 7200
+
+                [server]
+                name = "legacy-ip-rep"
+                """);
+        Files.writeString(tempDir.resolve("secrets.toml"), """
+                version = 1
+
+                [ip_reputation.provider]
+                base_url = "http://ip-api.example.com/json"
+                timeout_seconds = 20
+                max_retries = 5
+                rate_limit_per_minute = 60
+
+                [database]
+                mongo_connection_string = "mongodb://toml:27017"
+                name = "toml-db"
+                """);
+
+        Fi dataDir = new Fi(tempDir.toFile());
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> xcore = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> secrets =
+                ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(xcore.source).isEqualTo(ConfigTomlLoader.Source.TOML);
+        assertThat(xcore.config.server.name).isEqualTo("legacy-ip-rep");
+        assertThat(secrets.source).isEqualTo(ConfigTomlLoader.Source.TOML);
+        assertThat(secrets.config.database.mongoConnectionString).isEqualTo("mongodb://toml:27017");
+    }
+
+    @Test
     @DisplayName("loadGlobalConfig returns LEGACY_JSON source when only secrets.json exists")
     void loadGlobalConfig_returnsLegacyJsonSource_whenOnlyJsonExists() throws IOException {
         Path jsonPath = tempDir.resolve("secrets.json");
