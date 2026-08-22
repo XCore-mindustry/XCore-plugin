@@ -1,8 +1,6 @@
 package org.xcore.plugin.config;
 
 import arc.files.Fi;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.google.gson.Gson;
 
@@ -390,17 +388,7 @@ public final class ConfigTomlLoader {
         return index;
     }
 
-    /**
-     * Lenient by design: unknown TOML keys (stale/legacy sections, plugin-owned
-     * extras) are ignored instead of failing the load; missing keys keep their
-     * Java field defaults. Servers must boot on any config file revision.
-     */
     private static TomlMapper createTomlMapper() {
-        return TomlMapper.builder()
-                // FAIL_ON_UNKNOWN_PROPERTIES is on by default; stale or future
-                // sections must never prevent a server from booting.
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .build();
+        return PluginConfigLoader.lenientTomlMapper();
     }
 }
