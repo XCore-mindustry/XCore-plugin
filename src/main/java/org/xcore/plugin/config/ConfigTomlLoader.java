@@ -2,9 +2,7 @@ package org.xcore.plugin.config;
 
 import arc.files.Fi;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.toml.TomlMapper;
 import com.google.gson.Gson;
 
@@ -304,13 +302,7 @@ public final class ConfigTomlLoader {
             if (type == TomlXcoreConfig.class) {
                 content = quoteBareDiscordChannelId(content);
             }
-            // Since v4.4.0 the [ip_reputation] section lives in the private xcore-sentinel
-            // plugin; drop stale sections from existing files instead of failing to load.
-            JsonNode tree = mapper.readTree(content);
-            if (tree instanceof ObjectNode object) {
-                object.remove("ip_reputation");
-            }
-            return mapper.treeToValue(tree, type);
+            return mapper.readValue(content, type);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to read TOML from " + file.absolutePath() + ": " + e.getMessage(), e);
@@ -398,9 +390,16 @@ public final class ConfigTomlLoader {
         return index;
     }
 
+    /**
+     * Lenient by design: unknown TOML keys (stale/legacy sections, plugin-owned
+     * extras) are ignored instead of failing the load; missing keys keep their
+     * Java field defaults. Servers must boot on any config file revision.
+     */
     private static TomlMapper createTomlMapper() {
         return TomlMapper.builder()
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                // FAIL_ON_UNKNOWN_PROPERTIES is on by default; stale or future
+                // sections must never prevent a server from booting.
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
                 .build();
     }

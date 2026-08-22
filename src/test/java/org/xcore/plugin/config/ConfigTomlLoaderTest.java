@@ -214,6 +214,36 @@ class ConfigTomlLoaderTest {
     }
 
     @Test
+    @DisplayName("loaders tolerate unknown sections and default missing ones")
+    void loaders_tolerateUnknownSectionsAndMissingFields() throws IOException {
+        Files.writeString(tempDir.resolve("xcore.toml"), """
+                version = 1
+
+                [some_future_section]
+                yet_unknown_key = "value"
+
+                [server]
+                name = "lenient-load"
+                """);
+        Files.writeString(tempDir.resolve("secrets.toml"), """
+                version = 1
+
+                [brand_new_section]
+                mystery = true
+                """);
+
+        Fi dataDir = new Fi(tempDir.toFile());
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> xcore = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+        ConfigTomlLoader.LoadResult<TomlSecretsConfig> secrets =
+                ConfigTomlLoader.loadTomlSecretsConfig(tempDir.toString(), gson);
+
+        assertThat(xcore.config.server.name).isEqualTo("lenient-load");
+        // absent sections fall back to Java field defaults instead of failing the load
+        assertThat(xcore.config.translation.enabled).isTrue();
+        assertThat(secrets.config.externalLinks.discordUrl).isEqualTo("https://discord.gg/RUMCCa9QAC");
+    }
+
+    @Test
     @DisplayName("loadGlobalConfig returns LEGACY_JSON source when only secrets.json exists")
     void loadGlobalConfig_returnsLegacyJsonSource_whenOnlyJsonExists() throws IOException {
         Path jsonPath = tempDir.resolve("secrets.json");
