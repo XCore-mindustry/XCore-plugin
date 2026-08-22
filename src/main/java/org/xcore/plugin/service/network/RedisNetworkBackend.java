@@ -322,7 +322,12 @@ public final class RedisNetworkBackend {
         return gson.toJson(event);
     }
 
-    private boolean ensureConnected() {
+    /**
+     * Ensures an active connection, attempting to (re)connect when needed.
+     * Public so callers can degrade gracefully (deferred subscriptions)
+     * instead of failing hard while the backend is down.
+     */
+    public boolean ensureConnected() {
         return connectionManager.ensureConnected();
     }
 

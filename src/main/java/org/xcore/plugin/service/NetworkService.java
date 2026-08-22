@@ -16,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class NetworkService {
     private final RedisNetworkBackend backend;
     private final List<Runnable> reconnectHooks = new CopyOnWriteArrayList<>();
+    private volatile boolean deferredNoticeLogged;
 
     public NetworkService(RedisNetworkBackend backend) {
         this.backend = backend;
@@ -29,6 +30,7 @@ public class NetworkService {
     public void safeConnect() {
         try {
             backend.connect();
+            deferredNoticeLogged = false;
         } catch (Exception e) {
             PLog.err("Failed to connect transport backend", e);
         }
@@ -38,6 +40,7 @@ public class NetworkService {
         backend.disconnect();
         try {
             backend.connect();
+            deferredNoticeLogged = false;
             replayReconnectHooks();
             return true;
         } catch (Exception e) {
@@ -63,11 +66,55 @@ public class NetworkService {
     }
 
     public <T> Subscription<T> subscribe(Class<T> type, Cons<T> listener) {
+        if (!backend.ensureConnected()) {
+            logDeferred("subscription", type.getSimpleName());
+            return new Subscription<>() {
+                @Override
+                public void call(T object) {
+                    // no-op: backend unavailable, listener deferred until reconnect
+                }
+
+                @Override
+                public boolean unsubscribe() {
+                    return false;
+                }
+            };
+        }
         return backend.subscribe(type, listener);
     }
 
     public <REQ, RES> RequestSubscription<RES> request(REQ request, Cons<RES> listener, Runnable timeout) {
+        if (!backend.ensureConnected()) {
+            logDeferred("request listener", request.getClass().getSimpleName());
+            return new RequestSubscription<>() {
+                @Override
+                public void cancel() {
+                    // no-op: backend unavailable, listener deferred until reconnect
+                }
+            };
+        }
         return backend.request(request, listener, timeout);
+    }
+
+    /**
+     * Logs the first degraded subscription loudly (operators must know which
+     * systems stop functioning without Redis) and stays quiet afterwards —
+     * every handler would otherwise repeat the same wall of warnings at boot.
+     * The flag resets on any successful (re)connect.
+     */
+    private void logDeferred(String kind, String typeName) {
+        if (deferredNoticeLogged) {
+            PLog.debugTag("Transport", "Redis still unavailable: @ for '@' stays deferred", kind, typeName);
+            return;
+        }
+        deferredNoticeLogged = true;
+        PLog.errTag(
+                "Transport",
+                "Redis transport unavailable: @ for '@' is skipped. "
+                        + "Cross-server chat, Discord moderation/badge sync and map sync are DISABLED "
+                        + "until the backend is restored. Start Redis and run 'transport-reload'.",
+                kind,
+                typeName);
     }
 
     public void respond(Object request, Object response) {
