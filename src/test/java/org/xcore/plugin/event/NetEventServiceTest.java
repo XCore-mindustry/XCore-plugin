@@ -1,9 +1,7 @@
 package org.xcore.plugin.event;
 
-import com.google.gson.Gson;
 import mindustry.gen.Player;
-import mindustry.net.NetConnection;
-import mindustry.net.Packets;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
@@ -11,12 +9,7 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
 import org.xcore.plugin.event.net.chat.VoteChatInterceptor;
-import org.xcore.plugin.event.net.connect.ConnectionAccessHandler;
-import org.xcore.plugin.event.net.connect.ConnectPacketHandler;
 import org.xcore.plugin.event.net.connect.ConnectionFilterService;
-import org.xcore.plugin.event.net.connect.PlayerConnectionBootstrap;
-import org.xcore.plugin.security.ingress.AccessResult;
-import org.xcore.plugin.security.ingress.IngressService;
 import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
@@ -24,34 +17,39 @@ import org.xcore.plugin.service.TranslatorService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteService;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class NetEventServiceTest {
 
-    @Test
-    @DisplayName("chat muted player does not translate or publish message")
-    void chatMutedPlayer_doesNotTranslateOrPublish() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
+    private SessionService sessionService;
+    private TomlXcoreConfig config;
+    private TranslatorService translatorService;
+    private NetworkService network;
+    private VoteService voteService;
+    private SecurityService securityService;
+    private ChatFormatService chatFormatService;
+    private AdminRequestHandler adminRequestHandler;
+    private ConnectionFilterService connectionFilterService;
+    private NetEventService service;
+
+    @BeforeEach
+    void setUp() {
+        sessionService = mock(SessionService.class);
+        config = new TomlXcoreConfig();
+        translatorService = mock(TranslatorService.class);
+        network = mock(NetworkService.class);
+        voteService = mock(VoteService.class);
+        securityService = mock(SecurityService.class);
+        chatFormatService = mock(ChatFormatService.class);
+        adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
+        connectionFilterService = new ConnectionFilterService();
+
         ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
                 config,
                 translatorService,
@@ -60,13 +58,17 @@ class NetEventServiceTest {
                 chatFormatService,
                 voteChatInterceptor
         );
-        NetEventService service = new NetEventService(
+
+        service = new NetEventService(
                 chatMessageHandler,
                 adminRequestHandler,
-                connectPacketHandler,
                 connectionFilterService
         );
+    }
 
+    @Test
+    @DisplayName("chat muted player does not translate or publish message")
+    void chatMutedPlayer_doesNotTranslateOrPublish() {
         Player author = mock(Player.class);
 
         when(voteService.isVoting()).thenReturn(false);
@@ -82,37 +84,7 @@ class NetEventServiceTest {
     @Test
     @DisplayName("chat happy path formats translates and publishes message")
     void chatHappyPath_formatsTranslatesAndPublishes() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "main";
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-        NetEventService service = new NetEventService(
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService
-        );
-
         Player author = mock(Player.class);
         when(author.plainName()).thenReturn("Tester");
         when(chatFormatService.formatChat(author, "he`llo")).thenReturn("formatted");
@@ -128,175 +100,26 @@ class NetEventServiceTest {
     }
 
     @Test
-    @DisplayName("connect packet ignores already kicked connection")
-    void connectPacket_ignoresAlreadyKickedConnection() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-
-        NetEventService service = new NetEventService(
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService
-        );
-
-        NetConnection con = mock(NetConnection.class);
-        con.kicked = true;
-        Packets.ConnectPacket packet = new Packets.ConnectPacket();
-
-        service.connectPacket(con, packet);
-
-        verifyNoInteractions(ingressService);
-    }
-
-    @Test
-    @DisplayName("connect packet closes connection on silent deny")
-    void connectPacket_closesOnSilentDeny() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-
-        NetEventService service = new NetEventService(
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService
-        );
-
-        NetConnection con = mock(NetConnection.class);
-        Packets.ConnectPacket packet = new Packets.ConnectPacket();
-        when(ingressService.validate(con, packet)).thenReturn(new AccessResult.Denied("blocked", true, 0));
-
-        service.connectPacket(con, packet);
-
-        verify(con).close();
-    }
-
-    @Test
     @DisplayName("connect filter accepts allowed ip without changing counters")
     void connectFilter_acceptsAllowedIp() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-
-        NetEventService service = new NetEventService(
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService
-        );
-
         service.setIpAcceptor(ip -> true);
 
         boolean allowed = service.connectFilter("1.2.3.4");
 
-        org.assertj.core.api.Assertions.assertThat(allowed).isTrue();
-        org.assertj.core.api.Assertions.assertThat(service.blockedIPs).isZero();
-        org.assertj.core.api.Assertions.assertThat(service.blockedIPsPerMinute).isZero();
+        assertThat(allowed).isTrue();
+        assertThat(service.blockedIPs).isZero();
+        assertThat(service.blockedIPsPerMinute).isZero();
     }
 
     @Test
     @DisplayName("connect filter rejects blocked ip and increments counters")
     void connectFilter_rejectsBlockedIpAndIncrementsCounters() {
-        SessionService sessionService = mock(SessionService.class);
-        TomlXcoreConfig config = new TomlXcoreConfig();
-        TranslatorService translatorService = mock(TranslatorService.class);
-        NetworkService network = mock(NetworkService.class);
-        VoteService voteService = mock(VoteService.class);
-        SecurityService securityService = mock(SecurityService.class);
-        IngressService ingressService = mock(IngressService.class);
-        ChatFormatService chatFormatService = mock(ChatFormatService.class);
-        AdminRequestHandler adminRequestHandler = mock(AdminRequestHandler.class);
-        VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        ConnectPacketHandler connectPacketHandler = new ConnectPacketHandler(
-                new ConnectionAccessHandler(ingressService),
-                new PlayerConnectionBootstrap()
-        );
-        ConnectionFilterService connectionFilterService = new ConnectionFilterService();
-        ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
-                config,
-                translatorService,
-                network,
-                securityService,
-                chatFormatService,
-                voteChatInterceptor
-        );
-
-        NetEventService service = new NetEventService(
-                chatMessageHandler,
-                adminRequestHandler,
-                connectPacketHandler,
-                connectionFilterService
-        );
-
         service.setIpAcceptor(ip -> false);
 
         boolean allowed = service.connectFilter("5.6.7.8");
 
-        org.assertj.core.api.Assertions.assertThat(allowed).isFalse();
-        org.assertj.core.api.Assertions.assertThat(service.blockedIPs).isEqualTo(1);
-        org.assertj.core.api.Assertions.assertThat(service.blockedIPsPerMinute).isEqualTo(1);
+        assertThat(allowed).isFalse();
+        assertThat(service.blockedIPs).isEqualTo(1);
+        assertThat(service.blockedIPsPerMinute).isEqualTo(1);
     }
-
 }

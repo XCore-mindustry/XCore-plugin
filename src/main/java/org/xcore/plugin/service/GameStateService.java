@@ -11,33 +11,38 @@ import mindustry.net.WorldReloader;
 
 @Singleton
 public class GameStateService {
+
     public void reloadWorld(Runnable loadAction) {
         reloadWorld(loadAction, null);
     }
 
     public void reloadWorld(Runnable loadAction, Runnable afterLoadAction) {
         try {
-            var reloader = new WorldReloader();
+            WorldReloader reloader = new WorldReloader();
             reloader.begin();
 
             loadAction.run();
 
-            Vars.state.rules = Vars.state.map.applyRules(
-                    Gamemode.valueOf(Core.settings.getString("lastServerMode"))
-            );
             Vars.logic.play();
+
             if (afterLoadAction != null) {
                 afterLoadAction.run();
             }
+
             reloader.end();
         } catch (MapException e) {
-            Log.err("@: @", e.map.name(), e.getMessage());
+            Log.err("Error loading map @: @", e.map == null ? "unknown" : e.map.name(), e.getMessage());
+        } catch (Throwable t) {
+            Log.err("Unexpected error during world reload", t);
         }
     }
 
     public void loadMap(Map map) {
+        loadMap(map, Gamemode.valueOf(Core.settings.getString("lastServerMode", "survival")));
+    }
+
+    public void loadMap(Map map, Gamemode mode) {
         reloadWorld(() -> {
-            Gamemode mode = Gamemode.valueOf(Core.settings.getString("lastServerMode"));
             Vars.world.loadMap(map, map.applyRules(mode));
         });
     }

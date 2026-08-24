@@ -76,16 +76,18 @@ public class SmartMapSelector implements MapProvider {
             }
         }
 
-        Seq<Map> candidates = Vars.maps.customMaps().select(m -> !recentMaps.contains(m));
+        Seq<Map> allMaps = Vars.maps.customMaps().isEmpty() ? Vars.maps.defaultMaps() : Vars.maps.customMaps();
+        Seq<Map> candidates = allMaps.select(m -> !recentMaps.contains(m));
 
-        if (candidates.isEmpty()) candidates = Vars.maps.customMaps();
+        if (candidates.isEmpty()) candidates = allMaps;
         if (candidates.isEmpty()) return null;
 
         ObjectMap<String, MapData> statsMap = mapDataRepository.findAllAsMap();
 
         arc.func.Func<Map, MapData> getStat = map -> {
             String key = MapDataRepository.genKey(map.plainName(), map.author(), mode.name());
-            return statsMap.get(key, new MapData(map.plainName(), map.file.name(), map.author(), mode.name()));
+            String fileName = map.file != null ? map.file.name() : map.plainName() + ".msav";
+            return statsMap.get(key, new MapData(map.plainName(), fileName, map.author(), mode.name()));
         };
 
         Seq<Map> poolA = candidates.copy().sort(m -> {

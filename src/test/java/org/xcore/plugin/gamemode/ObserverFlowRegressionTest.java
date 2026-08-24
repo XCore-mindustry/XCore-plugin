@@ -2,23 +2,18 @@ package org.xcore.plugin.gamemode;
 
 import arc.Core;
 import arc.Settings;
-import arc.graphics.Color;
 import mindustry.Vars;
 import mindustry.core.GameState;
 import mindustry.core.NetServer;
 import mindustry.game.Rules;
 import mindustry.game.Team;
 import mindustry.gen.Player;
-import mindustry.net.Administration;
-import mindustry.net.NetConnection;
-import mindustry.net.Packets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.event.net.connect.PlayerConnectionBootstrap;
 import org.xcore.plugin.gamemode.hexed.MiniHexedService;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.LeaderboardService;
@@ -65,40 +60,26 @@ class ObserverFlowRegressionTest {
     }
 
     @Test
-    @DisplayName("bootstrap restore keeps observer off derelict team")
-    void bootstrapRestore_keepsObserverOffDerelictTeam() {
-        Administration admins = mock(Administration.class);
-        NetServer netServer = mock(NetServer.class);
-        netServer.admins = admins;
-        Vars.netServer = netServer;
-
-        Administration.PlayerInfo info = new Administration.PlayerInfo();
-        when(admins.getInfo("uuid-1")).thenReturn(info);
-        when(admins.isAdmin("uuid-1", "usid-1")).thenReturn(false);
-        when(netServer.assignTeam(org.mockito.ArgumentMatchers.any(Player.class))).thenReturn(Team.sharded);
-
-        SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+    @DisplayName("restore keeps observer off derelict team and assigns observer team")
+    void restore_keepsObserverOffDerelictTeam() {
+        SessionService sessionService = mock(SessionService.class);
         RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
+
         when(observerStateStore.get("uuid-1")).thenReturn(
                 new RedisObserverStateStore.CachedObserverState(Team.crux.id, System.currentTimeMillis())
         );
+        when(observerStateStore.resolveReturnTeam(org.mockito.ArgumentMatchers.any())).thenReturn(Team.crux);
+
         ObserverService observerService = new ObserverService(sessionService, observerStateStore);
-        PlayerConnectionBootstrap bootstrap = new PlayerConnectionBootstrap(observerService);
 
-        Packets.ConnectPacket packet = new Packets.ConnectPacket();
-        packet.uuid = "uuid-1";
-        packet.usid = "usid-1";
-        packet.name = "Tester";
-        packet.color = Color.white.rgba();
-        packet.locale = "en";
+        Player player = Player.create();
+        player.con = mock(mindustry.net.NetConnection.class);
+        player.con.uuid = "uuid-1";
 
-        DummyNetConnection connection = new DummyNetConnection("1.2.3.4");
+        observerService.restore(player);
 
-        bootstrap.bootstrap(connection, packet);
-
-        assertThat(connection.player).isNotNull();
-        assertThat(connection.player.team()).isNotEqualTo(Team.derelict);
-        assertThat(connection.player.team().id).isEqualTo(255);
+        assertThat(player.team()).isNotEqualTo(Team.derelict);
+        assertThat(player.team().id).isEqualTo(255);
     }
 
     @Test
@@ -131,26 +112,5 @@ class ObserverFlowRegressionTest {
 
         verify(sessionService).broadcast(eq("hexed-eliminated"), anyMap());
         verify(observerService).enter(player);
-    }
-
-    private static final class DummyNetConnection extends NetConnection {
-
-        private DummyNetConnection(String address) {
-            super(address);
-            this.lastReceivedClientSnapshot = 0;
-        }
-
-        @Override
-        public void send(Object object, boolean reliable) {
-        }
-
-        @Override
-        public void close() {
-        }
-
-        @Override
-        public boolean isConnected() {
-            return true;
-        }
     }
 }

@@ -6,14 +6,11 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.Getter;
 import lombok.Setter;
-import mindustry.game.EventType;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
-import mindustry.net.Packets;
 import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
-import org.xcore.plugin.event.net.connect.ConnectPacketHandler;
 import org.xcore.plugin.event.net.connect.ConnectionFilterService;
 
 @Singleton
@@ -26,17 +23,14 @@ public class NetEventService {
 
     private final ChatMessageHandler chatMessageHandler;
     private final AdminRequestHandler adminRequestHandler;
-    private final ConnectPacketHandler connectPacketHandler;
     private final ConnectionFilterService connectionFilterService;
 
     @Inject
     public NetEventService(ChatMessageHandler chatMessageHandler,
                            AdminRequestHandler adminRequestHandler,
-                           ConnectPacketHandler connectPacketHandler,
                            ConnectionFilterService connectionFilterService) {
         this.chatMessageHandler = chatMessageHandler;
         this.adminRequestHandler = adminRequestHandler;
-        this.connectPacketHandler = connectPacketHandler;
         this.connectionFilterService = connectionFilterService;
     }
 
@@ -52,15 +46,7 @@ public class NetEventService {
         return result.allowed();
     }
 
-    public void connect(NetConnection con, Packets.Connect packet) {
-        Events.fire(new EventType.ConnectionEvent(con));
-    }
-
     public void adminRequest(NetConnection con, AdminRequestCallPacket packet) {
         adminRequestHandler.handle(con, packet);
-    }
-
-    public void connectPacket(NetConnection con, Packets.ConnectPacket packet) {
-        connectPacketHandler.handle(con, packet);
     }
 }

@@ -7,7 +7,6 @@ import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.net.ArcNetProvider;
-import mindustry.net.Packets;
 import org.xcore.plugin.event.NetEventService;
 import org.xcore.plugin.service.ServerDiscoveryService;
 
@@ -39,8 +38,6 @@ public class RuntimeHookRegistrar {
         });
 
         netServer.admins.addChatFilter(netEvents::chat);
-        Vars.net.handleServer(Packets.Connect.class, netEvents::connect);
-        Vars.net.handleServer(Packets.ConnectPacket.class, netEvents::connectPacket);
         Vars.net.handleServer(AdminRequestCallPacket.class, netEvents::adminRequest);
     }
 }
