@@ -67,18 +67,15 @@ class BasicValidationCheckTest {
     }
 
     @Test
-    @DisplayName("shouldAllowAndInitializeConnectionFields_whenPacketIsValid")
-    void shouldAllowAndInitializeConnectionFields_whenPacketIsValid() {
+    @DisplayName("shouldAllowAndNormalizeLocale_whenPacketIsValid")
+    void shouldAllowAndNormalizeLocale_whenPacketIsValid() {
         var con = new IngressChecksTestSupport.DummyConnection("1.1.1.1");
         var packet = IngressChecksTestSupport.newPacket();
-        packet.mobile = true;
         packet.locale = null;
 
         var result = check.check(con, packet);
 
         assertThat(result).isSameAs(AccessResult.Allowed.INSTANCE);
-        assertThat(con.hasBegunConnecting).isTrue();
-        assertThat(con.mobile).isTrue();
         assertThat(packet.locale).isEqualTo("en");
     }
 }

@@ -1,4 +1,3 @@
-// src/main/java/org/xcore/plugin/security/ingress/checks/BasicValidationCheck.java
 package org.xcore.plugin.security.ingress.checks;
 
 import jakarta.inject.Singleton;
@@ -28,9 +27,6 @@ public class BasicValidationCheck implements IngressCheck {
         if (con.hasBegunConnecting) {
             return new AccessResult.Denied(Packets.KickReason.idInUse.name(), false, 0);
         }
-
-        con.hasBegunConnecting = true;
-        con.mobile = packet.mobile;
 
         if (packet.locale == null) {
             packet.locale = "en";
