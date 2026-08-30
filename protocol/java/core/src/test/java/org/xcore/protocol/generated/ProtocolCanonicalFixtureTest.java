@@ -8,6 +8,7 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages;
 import org.xcore.protocol.generated.messages.maps.MapsMessages;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.sentinel.SentinelMessages;
 import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages;
 import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.MetricsSnapshotV1;
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
@@ -367,6 +368,7 @@ class ProtocolCanonicalFixtureTest {
         indexMessagePayloads(index, ChatMessages.class);
         indexMessagePayloads(index, DiscordMessages.class);
         indexMessagePayloads(index, ModerationMessages.class);
+        indexMessagePayloads(index, SentinelMessages.class);
         return Map.copyOf(index);
     }
 

@@ -8,6 +8,7 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages;
 import org.xcore.protocol.generated.messages.maps.MapsMessages;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.sentinel.SentinelMessages;
 
 public final class ProtocolRoutes {
     private ProtocolRoutes() {
@@ -529,6 +530,40 @@ public final class ProtocolRoutes {
             null
     );
 
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_INVALIDATED_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesInvalidatedV1Route",
+            "sentinel.subnet-rules.invalidated",
+            1,
+            SentinelMessages.SentinelSubnetRulesInvalidatedV1.class,
+            "event",
+            "xcore:evt:sentinel:subnet:invalidated",
+            Map.of(),
+            "broadcast",
+            60000,
+            true,
+            true,
+            "sentinel",
+            null
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_SWEEP_COMMAND_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetSweepCommandV1Route",
+            "sentinel.subnet-sweep.command",
+            1,
+            SentinelMessages.SentinelSubnetSweepCommandV1.class,
+            "command",
+            "xcore:cmd:sentinel:subnet:sweep:broadcast",
+            Map.of(),
+            "broadcast",
+            60000,
+            false,
+            true,
+            "sentinel",
+            null
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
@@ -557,7 +592,9 @@ public final class ProtocolRoutes {
             entry(key("moderation.vote-kick.created", 1), MODERATION_VOTE_KICK_CREATED_V1),
             entry(key("moderation.kick-banned.command", 1), MODERATION_KICK_BANNED_COMMAND_V1),
             entry(key("moderation.pardon.command", 1), MODERATION_PARDON_COMMAND_V1),
-            entry(key("moderation.audit.appended", 1), MODERATION_AUDIT_APPENDED_V1)
+            entry(key("moderation.audit.appended", 1), MODERATION_AUDIT_APPENDED_V1),
+            entry(key("sentinel.subnet-rules.invalidated", 1), SENTINEL_SUBNET_RULES_INVALIDATED_V1),
+            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1)
     );
 
     @SuppressWarnings("unchecked")
@@ -589,7 +626,9 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationVoteKickCreatedV1.class, MODERATION_VOTE_KICK_CREATED_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationKickBannedCommandV1.class, MODERATION_KICK_BANNED_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationPardonCommandV1.class, MODERATION_PARDON_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationAuditAppendedV1.class, MODERATION_AUDIT_APPENDED_V1)
+            entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationAuditAppendedV1.class, MODERATION_AUDIT_APPENDED_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesInvalidatedV1.class, SENTINEL_SUBNET_RULES_INVALIDATED_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetSweepCommandV1.class, SENTINEL_SUBNET_SWEEP_COMMAND_V1)
     );
 
     public static RouteDescriptor routeFor(String messageType, int messageVersion) {

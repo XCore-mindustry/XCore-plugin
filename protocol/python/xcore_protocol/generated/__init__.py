@@ -43,6 +43,10 @@ from .moderation import (
 from .telemetry import (
     MetricsSnapshotV1,
 )
+from .sentinel import (
+    SentinelSubnetRulesInvalidatedV1,
+    SentinelSubnetSweepCommandV1,
+)
 from .envelopes import (
     EnvelopeBaseV1,
     EventEnvelopeV1,
@@ -82,6 +86,8 @@ from .routes import (
     MODERATION_KICK_BANNED_COMMAND_V1,
     MODERATION_PARDON_COMMAND_V1,
     MODERATION_AUDIT_APPENDED_V1,
+    SENTINEL_SUBNET_RULES_INVALIDATED_V1,
+    SENTINEL_SUBNET_SWEEP_COMMAND_V1,
     RouteDescriptor,
     RouteResponseDescriptor,
     ROUTES_BY_MESSAGE,
@@ -156,6 +162,8 @@ __all__ = [
     "ModerationPardonCommandV1",
     "ModerationVoteKickCreatedV1",
     "MetricsSnapshotV1",
+    "SentinelSubnetRulesInvalidatedV1",
+    "SentinelSubnetSweepCommandV1",
     "DiscordLinkStatusChangedV1Action",
     "ModerationAuditAppendedV1EntryType",
     "MAPS_LIST_REQUEST_V1",
@@ -186,6 +194,8 @@ __all__ = [
     "MODERATION_KICK_BANNED_COMMAND_V1",
     "MODERATION_PARDON_COMMAND_V1",
     "MODERATION_AUDIT_APPENDED_V1",
+    "SENTINEL_SUBNET_RULES_INVALIDATED_V1",
+    "SENTINEL_SUBNET_SWEEP_COMMAND_V1",
     "RouteDescriptor",
     "RouteResponseDescriptor",
     "ROUTES_BY_MESSAGE",

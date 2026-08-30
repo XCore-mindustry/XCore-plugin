@@ -323,7 +323,7 @@ wheels = [
 
 [[package]]
 name = "xcore-protocol"
-version = "0.5.1"
+version = "0.5.2"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },

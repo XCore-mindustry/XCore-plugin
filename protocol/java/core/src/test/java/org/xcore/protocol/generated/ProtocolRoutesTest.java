@@ -6,6 +6,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1A
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.*;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
+import org.xcore.protocol.generated.messages.sentinel.SentinelMessages.*;
 import org.xcore.protocol.generated.routes.MapsRoutes;
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
 import org.xcore.protocol.generated.shared.*;
@@ -16,11 +17,13 @@ class ProtocolRoutesTest {
 
     @Test
     void aggregateCatalogIncludesAllRoutes() {
-        assertEquals(28, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 28 total routes");
+        assertEquals(30, ProtocolRoutes.ROUTES_BY_MESSAGE.size(), "expected 30 total routes");
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("chat.message", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("maps.list.request", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("discord.link.status-changed", 1)));
         assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("moderation.ban.created", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-rules.invalidated", 1)));
+        assertNotNull(ProtocolRoutes.ROUTES_BY_MESSAGE.get(new ProtocolRoutes.MessageKey("sentinel.subnet-sweep.command", 1)));
     }
 
     @Test
@@ -29,6 +32,8 @@ class ProtocolRoutesTest {
         assertEquals("maps.list.request", ProtocolRoutes.routeFor("maps.list.request", 1).messageType());
         assertEquals("discord.link.status-changed", ProtocolRoutes.routeFor("discord.link.status-changed", 1).messageType());
         assertEquals("moderation.ban.created", ProtocolRoutes.routeFor("moderation.ban.created", 1).messageType());
+        assertEquals("sentinel.subnet-rules.invalidated", ProtocolRoutes.routeFor("sentinel.subnet-rules.invalidated", 1).messageType());
+        assertEquals("sentinel.subnet-sweep.command", ProtocolRoutes.routeFor("sentinel.subnet-sweep.command", 1).messageType());
     }
 
     @Test
@@ -65,6 +70,11 @@ class ProtocolRoutesTest {
         var moderationRoute = ProtocolRoutes.routeFor(moderationPayload);
         assertNotNull(moderationRoute);
         assertEquals("moderation.ban.created", moderationRoute.messageType());
+
+        var sentinelPayload = new SentinelSubnetRulesInvalidatedV1("add:1.2.3.0/24", "alpha", "2026-01-01T00:00:00Z");
+        var sentinelRoute = ProtocolRoutes.routeFor(sentinelPayload);
+        assertNotNull(sentinelRoute);
+        assertEquals("sentinel.subnet-rules.invalidated", sentinelRoute.messageType());
     }
 
     @Test

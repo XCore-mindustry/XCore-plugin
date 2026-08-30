@@ -80,6 +80,15 @@ FAMILY_CONFIGS: tuple[FamilyConfig, ...] = (
         includes=("telemetry",),
         generated_model_test="python/tests/test_generated_telemetry_models.py",
     ),
+    FamilyConfig(
+        name="sentinel",
+        python_module="sentinel",
+        java_package="org.xcore.protocol.generated.messages.sentinel",
+        java_messages_class="SentinelMessages",
+        java_routes_class="SentinelRoutes",
+        includes=("sentinel",),
+        generated_model_test="python/tests/test_generated_sentinel_models.py",
+    ),
 )
 
 FAMILY_CONFIG_BY_NAME: dict[str, FamilyConfig] = {config.name: config for config in FAMILY_CONFIGS}

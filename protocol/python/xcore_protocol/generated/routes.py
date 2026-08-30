@@ -47,6 +47,11 @@ from .moderation import (
     ModerationAuditAppendedV1,
 )
 
+from .sentinel import (
+    SentinelSubnetRulesInvalidatedV1,
+    SentinelSubnetSweepCommandV1,
+)
+
 @dataclass(frozen=True, slots=True)
 class RouteResponseDescriptor:
     messageType: str
@@ -561,6 +566,40 @@ MODERATION_AUDIT_APPENDED_V1 = RouteDescriptor(
     response=None,
 )
 
+SENTINEL_SUBNET_RULES_INVALIDATED_V1 = RouteDescriptor(
+    family='sentinel',
+    methodName='sentinelSubnetRulesInvalidatedV1Route',
+    messageType='sentinel.subnet-rules.invalidated',
+    messageVersion=1,
+    payloadType=SentinelSubnetRulesInvalidatedV1,
+    kind='event',
+    stream='xcore:evt:sentinel:subnet:invalidated',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=60000,
+    replayable=True,
+    idempotentConsumerRecommended=True,
+    owner='sentinel',
+    response=None,
+)
+
+SENTINEL_SUBNET_SWEEP_COMMAND_V1 = RouteDescriptor(
+    family='sentinel',
+    methodName='sentinelSubnetSweepCommandV1Route',
+    messageType='sentinel.subnet-sweep.command',
+    messageVersion=1,
+    payloadType=SentinelSubnetSweepCommandV1,
+    kind='command',
+    stream='xcore:cmd:sentinel:subnet:sweep:broadcast',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=60000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='sentinel',
+    response=None,
+)
+
 ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('maps.list.request', 1): MAPS_LIST_REQUEST_V1,
     ('maps.remove.request', 1): MAPS_REMOVE_REQUEST_V1,
@@ -590,6 +629,8 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('moderation.kick-banned.command', 1): MODERATION_KICK_BANNED_COMMAND_V1,
     ('moderation.pardon.command', 1): MODERATION_PARDON_COMMAND_V1,
     ('moderation.audit.appended', 1): MODERATION_AUDIT_APPENDED_V1,
+    ('sentinel.subnet-rules.invalidated', 1): SENTINEL_SUBNET_RULES_INVALIDATED_V1,
+    ('sentinel.subnet-sweep.command', 1): SENTINEL_SUBNET_SWEEP_COMMAND_V1,
 }
 
 MapsRouteResponseDescriptor = RouteResponseDescriptor
@@ -625,6 +666,8 @@ __all__ = [
     "MODERATION_KICK_BANNED_COMMAND_V1",
     "MODERATION_PARDON_COMMAND_V1",
     "MODERATION_AUDIT_APPENDED_V1",
+    "SENTINEL_SUBNET_RULES_INVALIDATED_V1",
+    "SENTINEL_SUBNET_SWEEP_COMMAND_V1",
     "RouteDescriptor",
     "RouteResponseDescriptor",
     "ROUTES_BY_MESSAGE",
