@@ -810,6 +810,7 @@ class RedisBus:
         source: str | None = None,
         reason: str | None = None,
         discord_username: str | None = None,
+        expires_at: int | None = None,
         timeout_ms: int,
     ) -> SentinelSubnetRulesResponseV1:
         payload = build_sentinel_subnet_rules_command(
@@ -820,6 +821,7 @@ class RedisBus:
             source=source,
             reason=reason,
             discord_username=discord_username,
+            expires_at=expires_at,
         ).to_payload()
         body = await self._rpc_request(
             server=target_server,

@@ -54,6 +54,7 @@ def build_sentinel_subnet_rules_command(
     reason: str | None = None,
     discord_username: str | None = None,
     actor_name: str | None = None,
+    expires_at: int | None = None,
 ) -> SentinelSubnetRulesCommandV1:
     return SentinelSubnetRulesCommandV1(
         request=request or str(uuid4()),
@@ -72,6 +73,7 @@ def build_sentinel_subnet_rules_command(
         rules=tuple(rules),
         source=source,
         reason=reason,
+        expiresAt=expires_at,
     )
 
 

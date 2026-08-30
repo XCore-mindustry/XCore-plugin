@@ -76,7 +76,9 @@ def test_parse_import_normalizes_and_deduplicates() -> None:
 async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
     bot = _Bot()
     interaction = _Interaction()
-    await cmd_subnet_import(cast(Any, bot), cast(Any, interaction), "prod", "10.0.0.1/8,10.0.0.0/8")
+    from xcore_discord_bot.registry import server_registry
+    server_registry.update_server("prod", 1, 0, 10, "test")
+    await cmd_subnet_import(cast(Any, bot), cast(Any, interaction), "10.0.0.1/8,10.0.0.0/8")
     assert len(bot.calls) == 1
     assert bot.calls[0]["operation"] == "IMPORT"
     assert bot.calls[0]["rules"] == ["10.0.0.0/8"]
@@ -87,6 +89,8 @@ async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
 async def test_list_is_compact_and_ephemeral() -> None:
     bot = _Bot()
     interaction = _Interaction()
-    await cmd_subnet_list(cast(Any, bot), cast(Any, interaction), "prod")
+    from xcore_discord_bot.registry import server_registry
+    server_registry.update_server("prod", 1, 0, 10, "test")
+    await cmd_subnet_list(cast(Any, bot), cast(Any, interaction))
     assert interaction.followups[0][1] is True
     assert "10.0.0.0/8" in interaction.followups[0][0]

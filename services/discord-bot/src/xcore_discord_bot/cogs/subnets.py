@@ -13,16 +13,10 @@ if TYPE_CHECKING:
     from ..bot import XCoreDiscordBot
 
 
-async def _autocomplete_server(
-    interaction: Interaction, current: str
-) -> list[app_commands.Choice[str]]:
+async def _autocomplete_server(interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
     del interaction
     needle = current.strip().lower()
-    return [
-        app_commands.Choice(name=server, value=server)
-        for server in sorted(s.name for s in server_registry.get_all_servers())
-        if not needle or needle in server.lower()
-    ][:25]
+    return [app_commands.Choice(name=server, value=server) for server in sorted(s.name for s in server_registry.get_all_servers()) if not needle or needle in server.lower()][:25]
 
 
 class SubnetCog(commands.Cog):
@@ -32,11 +26,9 @@ class SubnetCog(commands.Cog):
         self.bot = bot
 
     @subnet_group.command(name="list", description="List subnet rules")
-    @app_commands.describe(server="Target server")
-    @app_commands.autocomplete(server=_autocomplete_server)
     @general_admin_check()
-    async def cmd_list(self, interaction: Interaction, server: str) -> None:
-        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_list, self.bot, interaction, server)
+    async def cmd_list(self, interaction: Interaction) -> None:
+        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_list, self.bot, interaction)
 
     @subnet_group.command(name="check", description="Check an IP against subnet rules")
     @app_commands.describe(server="Target server", ip="IP address")
@@ -46,25 +38,22 @@ class SubnetCog(commands.Cog):
         await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_check, self.bot, interaction, server, ip)
 
     @subnet_group.command(name="allow", description="Allow a CIDR network")
-    @app_commands.describe(server="Target server", cidr="CIDR network", reason="Optional reason")
-    @app_commands.autocomplete(server=_autocomplete_server)
+    @app_commands.describe(cidr="CIDR network", reason="Optional reason", expires="Optional duration (30m, 2h, 7d, never)")
     @general_admin_check()
-    async def cmd_allow(self, interaction: Interaction, server: str, cidr: str, reason: str | None = None) -> None:
-        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_allow, self.bot, interaction, server, cidr, reason)
+    async def cmd_allow(self, interaction: Interaction, cidr: str, reason: str | None = None, expires: str | None = None) -> None:
+        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_allow, self.bot, interaction, cidr, reason, expires)
 
     @subnet_group.command(name="deny", description="Deny a CIDR network")
-    @app_commands.describe(server="Target server", cidr="CIDR network", reason="Optional reason")
-    @app_commands.autocomplete(server=_autocomplete_server)
+    @app_commands.describe(cidr="CIDR network", reason="Optional reason", expires="Optional duration (30m, 2h, 7d, never)")
     @general_admin_check()
-    async def cmd_deny(self, interaction: Interaction, server: str, cidr: str, reason: str | None = None) -> None:
-        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_deny, self.bot, interaction, server, cidr, reason)
+    async def cmd_deny(self, interaction: Interaction, cidr: str, reason: str | None = None, expires: str | None = None) -> None:
+        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_deny, self.bot, interaction, cidr, reason, expires)
 
     @subnet_group.command(name="remove", description="Remove a CIDR network")
-    @app_commands.describe(server="Target server", cidr="CIDR network")
-    @app_commands.autocomplete(server=_autocomplete_server)
+    @app_commands.describe(cidr="CIDR network")
     @general_admin_check()
-    async def cmd_remove(self, interaction: Interaction, server: str, cidr: str) -> None:
-        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_remove, self.bot, interaction, server, cidr)
+    async def cmd_remove(self, interaction: Interaction, cidr: str) -> None:
+        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_remove, self.bot, interaction, cidr)
 
     @subnet_group.command(name="reload", description="Reload subnet rules")
     @app_commands.describe(server="Target server")
@@ -74,11 +63,10 @@ class SubnetCog(commands.Cog):
         await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_reload, self.bot, interaction, server)
 
     @subnet_group.command(name="import", description="Import CIDR networks")
-    @app_commands.describe(server="Target server", text="CIDR networks separated by commas or lines")
-    @app_commands.autocomplete(server=_autocomplete_server)
+    @app_commands.describe(text="CIDR networks separated by commas or lines", expires="Optional duration (30m, 2h, 7d, never)")
     @general_admin_check()
-    async def cmd_import(self, interaction: Interaction, server: str, text: str) -> None:
-        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_import, self.bot, interaction, server, text)
+    async def cmd_import(self, interaction: Interaction, text: str, expires: str | None = None) -> None:
+        await handlers_subnets.safe_handler(handlers_subnets.cmd_subnet_import, self.bot, interaction, text, expires)
 
     @subnet_group.command(name="sweep", description="Sweep subnet rules")
     @app_commands.describe(server="Target server", cluster="Sweep the cluster")

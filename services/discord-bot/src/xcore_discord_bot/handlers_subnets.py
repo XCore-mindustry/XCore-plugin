@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import ipaddress
+import re
+import time
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from discord import Interaction
+
+from .registry import server_registry
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -80,15 +84,34 @@ def _actor(interaction: Interaction) -> tuple[str, str]:
     return str(user.id), str(getattr(user, "display_name", user))
 
 
+def _control_server(bot: XCoreDiscordBot) -> str:
+    del bot
+    servers = sorted(s.name for s in server_registry.get_all_servers())
+    if not servers:
+        raise ValueError("No online server is available as subnet control server.")
+    return servers[0]
+
+
+def parse_expiration(value: str | None) -> int | None:
+    if value is None or not value.strip() or value.strip().lower() in {"never", "0"}:
+        return None
+    match = re.fullmatch(r"(\d+)([smhdwy])", value.strip().lower())
+    if match is None or int(match.group(1)) <= 0:
+        raise ValueError("Invalid expiration. Use 30m, 2h, 7d, 1w, 1y or never.")
+    seconds = int(match.group(1)) * {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800, "y": 31536000}[match.group(2)]
+    return int(time.time() * 1000) + seconds * 1000
+
+
 async def _command(
     bot: XCoreDiscordBot,
     interaction: Interaction,
     operation: str,
-    server: str,
+    server: str | None,
     rules: Iterable[str] = (),
     reason: str | None = None,
+    expires_at: int | None = None,
 ) -> None:
-    target = _target(server)
+    target = _target(server) if server is not None else _control_server(bot)
     normalized_rules = [_cidr(rule) for rule in rules]
     discord_id, username = _actor(interaction)
     await _defer(interaction)
@@ -101,6 +124,7 @@ async def _command(
         source="discord",
         reason=reason.strip() if reason and reason.strip() else None,
         timeout_ms=_timeout(bot),
+        expires_at=expires_at,
     )
     if not _value(response, "success", False):
         await _send(interaction, f"Subnet `{operation.lower()}` failed: {_value(response, 'error', 'unknown error')}")
@@ -108,8 +132,8 @@ async def _command(
     await _send(interaction, f"Subnet `{operation.lower()}` completed for `{target}`.")
 
 
-async def cmd_subnet_list(bot: XCoreDiscordBot, interaction: Interaction, server: str) -> None:
-    target = _target(server)
+async def cmd_subnet_list(bot: XCoreDiscordBot, interaction: Interaction) -> None:
+    target = _control_server(bot)
     await _defer(interaction)
     response = await bot.rpc_subnet_rules_list(target, _timeout(bot))
     rules = tuple(_value(response, "rules", ()) or ())
@@ -140,24 +164,24 @@ async def cmd_subnet_check(bot: XCoreDiscordBot, interaction: Interaction, serve
     await _send(interaction, f"`{address}` is **{'allowed' if allowed else 'denied'}** on `{target}`{suffix}.")
 
 
-async def cmd_subnet_allow(bot: XCoreDiscordBot, interaction: Interaction, server: str, cidr: str, reason: str | None = None) -> None:
-    await _command(bot, interaction, "ALLOW", server, [cidr], reason)
+async def cmd_subnet_allow(bot: XCoreDiscordBot, interaction: Interaction, cidr: str, reason: str | None = None, expires: str | None = None) -> None:
+    await _command(bot, interaction, "ALLOW", None, [cidr], reason, parse_expiration(expires))
 
 
-async def cmd_subnet_deny(bot: XCoreDiscordBot, interaction: Interaction, server: str, cidr: str, reason: str | None = None) -> None:
-    await _command(bot, interaction, "DENY", server, [cidr], reason)
+async def cmd_subnet_deny(bot: XCoreDiscordBot, interaction: Interaction, cidr: str, reason: str | None = None, expires: str | None = None) -> None:
+    await _command(bot, interaction, "DENY", None, [cidr], reason, parse_expiration(expires))
 
 
-async def cmd_subnet_remove(bot: XCoreDiscordBot, interaction: Interaction, server: str, cidr: str) -> None:
-    await _command(bot, interaction, "REMOVE", server, [cidr])
+async def cmd_subnet_remove(bot: XCoreDiscordBot, interaction: Interaction, cidr: str) -> None:
+    await _command(bot, interaction, "REMOVE", None, [cidr])
 
 
 async def cmd_subnet_reload(bot: XCoreDiscordBot, interaction: Interaction, server: str) -> None:
     await _command(bot, interaction, "RELOAD", server)
 
 
-async def cmd_subnet_import(bot: XCoreDiscordBot, interaction: Interaction, server: str, text: str) -> None:
-    await _command(bot, interaction, "IMPORT", server, parse_import(text))
+async def cmd_subnet_import(bot: XCoreDiscordBot, interaction: Interaction, text: str, expires: str | None = None) -> None:
+    await _command(bot, interaction, "IMPORT", None, parse_import(text), expires_at=parse_expiration(expires))
 
 
 async def cmd_subnet_sweep(bot: XCoreDiscordBot, interaction: Interaction, server: str, cluster: bool = False) -> None:
