@@ -9,7 +9,6 @@ import mindustry.Vars;
 import mindustry.gen.Player;
 import mindustry.game.EventType;
 import mindustry.world.blocks.power.PowerNode.PowerNodeBuild;
-import org.xcore.plugin.event.NetEventService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteKick;
 import tilelogger.PlayerConfig;
@@ -25,17 +24,14 @@ import static com.ospx.flubundle.Bundle.args;
 public class TileLoggerEventHandler {
 
     private final TileLoggerService service;
-    private final NetEventService netEventService;
     private final Bundle bundle;
     private final SessionService sessionService;
 
     @Inject
     public TileLoggerEventHandler(TileLoggerService service,
-                                  NetEventService netEventService,
                                   Bundle bundle,
                                   SessionService sessionService) {
         this.service = service;
-        this.netEventService = netEventService;
         this.bundle = bundle;
         this.sessionService = sessionService;
     }
@@ -43,8 +39,6 @@ public class TileLoggerEventHandler {
 
     @PostConstruct
     public void init() {
-        netEventService.setIpAcceptor(service::checkSubnetAccepted);
-
         VoteKick.setOnKick(player -> {
             var target = service.findPlayerUuid(player.uuid());
             if (target != null) {

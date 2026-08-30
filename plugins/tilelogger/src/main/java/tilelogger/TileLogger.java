@@ -35,8 +35,6 @@ public class TileLogger {
     public static native void onAction2(short x, short y, String uuid, short team, short block, short rotation, short config_type, byte[] config);
     public static native TileState[] getHistory(short x1, short y1, short x2, short y2, String uuid, int teams, int time, long size);
     public static native TileState[] rollback(short x1, short y1, short x2, short y2, String uuid, int teams, int time, int flags);
-    public static native boolean subnetAccepted(String subnet);
-    public static native void reloadSubnets();
     public static native long memoryUsage(long id);
     public static native String getBuildString();
 }

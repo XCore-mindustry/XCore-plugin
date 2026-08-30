@@ -137,25 +137,6 @@ JNIEXPORT jobjectArray JNICALL Java_tilelogger_TileLogger_rollback (JNIEnv* env,
     }
 }
 
-JNIEXPORT jboolean JNICALL Java_tilelogger_TileLogger_subnetAccepted (JNIEnv* env, jclass, jstring subnet) {
-    try {
-        return g_map_history.SubnetAccepted(env->GetStringUTFChars(subnet, NULL));
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-        return {};
-    }
-}
-
-JNIEXPORT void JNICALL Java_tilelogger_TileLogger_reloadSubnets(JNIEnv*, jclass) {
-    try {
-        g_map_history.ReloadSubnets();
-    }
-    catch (const std::exception& e) {
-        HandleException(e);
-    }
-}
-
 JNIEXPORT jlong JNICALL Java_tilelogger_TileLogger_memoryUsage (JNIEnv*, jclass, jlong id) {
     try {
         return g_map_history.MemoryUsage(id);

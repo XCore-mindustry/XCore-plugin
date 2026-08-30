@@ -222,14 +222,6 @@ public class TileLoggerService {
                         target.uuid, -1, 0, 100));
     }
 
-
-    public boolean checkSubnetAccepted(String subnet) {
-        return TileLogger.subnetAccepted(subnet);
-    }
-    public void reloadSubnets() {
-        TileLogger.reloadSubnets();
-    }
-
     public String getMemoryUsage(@Nullable Player viewer) {
         var locale = resolveLocale(viewer);
 

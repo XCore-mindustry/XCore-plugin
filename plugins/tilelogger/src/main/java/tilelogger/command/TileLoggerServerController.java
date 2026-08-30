@@ -1,6 +1,5 @@
 package tilelogger.command;
 
-import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.incendo.cloud.annotations.Argument;
@@ -20,30 +19,6 @@ public class TileLoggerServerController {
     @Inject
     public TileLoggerServerController(TileLoggerService service) {
         this.service = service;
-    }
-
-    @Command("tl subnet <subnet>")
-    @Permission("admin")
-    public void subnet(XCoreSender sender, @Argument("subnet") String subnet) {
-        if (sender.isPlayer()) {
-            sender.send("error-not-allowed-from-player", args());
-            return;
-        }
-
-        boolean accepted = service.checkSubnetAccepted(subnet);
-        sender.send(accepted ? "tilelogger-subnet-accept" : "tilelogger-subnet-deny", args("subnet", subnet));
-    }
-
-    @Command("tl subnet reload")
-    @Permission("admin")
-    public void reloadSubnets(XCoreSender sender) {
-        if (sender.isPlayer()) {
-            sender.send("error-not-allowed-from-player", args());
-            return;
-        }
-
-        service.reloadSubnets();
-        Log.info("Subnet lists reloaded");
     }
 
     @Command("tl file <path> [mode]")
