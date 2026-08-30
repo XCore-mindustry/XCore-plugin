@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.command:v1",
+  "title": "SentinelSubnetRulesCommandV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "request", "idempotency", "actor", "operation", "rules"],
+  "properties": {
+    "messageType": { "const": "sentinel.subnet-rules.command" },
+    "messageVersion": { "const": 1 },
+    "request": { "type": "string", "minLength": 1 },
+    "idempotency": { "type": "string", "minLength": 1 },
+    "actor": { "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1" },
+    "operation": { "type": "string", "enum": ["ALLOW", "DENY", "REMOVE", "IMPORT", "RELOAD"] },
+    "targetServer": { "type": "string", "minLength": 1 },
+    "rules": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "source": { "type": "string", "minLength": 1 },
+    "reason": { "type": "string", "minLength": 1 }
+  }
+}

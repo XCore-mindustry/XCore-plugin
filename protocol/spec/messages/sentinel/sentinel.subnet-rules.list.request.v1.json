@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:messages:sentinel:sentinel.subnet-rules.list.request:v1",
+  "title": "SentinelSubnetRulesListRequestV1",
+  "type": "object", "additionalProperties": false,
+  "required": ["messageType", "messageVersion", "request", "targetServer"],
+  "properties": {
+    "messageType": { "const": "sentinel.subnet-rules.list.request" },
+    "messageVersion": { "const": 1 },
+    "request": { "type": "string", "minLength": 1 },
+    "targetServer": { "type": "string", "minLength": 1 }
+  }
+}

@@ -19,3 +19,54 @@ messages:
     replayable: false
     idempotentConsumerRecommended: true
     owner: sentinel
+  - messageType: sentinel.subnet-rules.command
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{targetServer}
+    bindings:
+      targetServer: payload.targetServer
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: sentinel
+    response:
+      messageType: sentinel.subnet-rules.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
+  - messageType: sentinel.subnet-rules.list.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{targetServer}
+    bindings:
+      targetServer: payload.targetServer
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: false
+    owner: sentinel
+    response:
+      messageType: sentinel.subnet-rules.list.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
+  - messageType: sentinel.subnet-rules.check.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{targetServer}
+    bindings:
+      targetServer: payload.targetServer
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: false
+    owner: sentinel
+    response:
+      messageType: sentinel.subnet-rules.check.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester

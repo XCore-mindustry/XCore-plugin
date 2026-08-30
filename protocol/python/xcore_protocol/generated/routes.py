@@ -50,6 +50,12 @@ from .moderation import (
 from .sentinel import (
     SentinelSubnetRulesInvalidatedV1,
     SentinelSubnetSweepCommandV1,
+    SentinelSubnetRulesCommandV1,
+    SentinelSubnetRulesResponseV1,
+    SentinelSubnetRulesListRequestV1,
+    SentinelSubnetRulesListResponseV1,
+    SentinelSubnetRulesCheckRequestV1,
+    SentinelSubnetRulesCheckResponseV1,
 )
 
 @dataclass(frozen=True, slots=True)
@@ -600,6 +606,75 @@ SENTINEL_SUBNET_SWEEP_COMMAND_V1 = RouteDescriptor(
     response=None,
 )
 
+SENTINEL_SUBNET_RULES_COMMAND_V1 = RouteDescriptor(
+    family='sentinel',
+    methodName='sentinelSubnetRulesCommandV1Route',
+    messageType='sentinel.subnet-rules.command',
+    messageVersion=1,
+    payloadType=SentinelSubnetRulesCommandV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{targetServer}',
+    bindings={'targetServer': 'payload.targetServer'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='sentinel',
+    response=RouteResponseDescriptor(
+        messageType='sentinel.subnet-rules.response',
+        messageVersion=1,
+        payloadType=SentinelSubnetRulesResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+SENTINEL_SUBNET_RULES_LIST_REQUEST_V1 = RouteDescriptor(
+    family='sentinel',
+    methodName='sentinelSubnetRulesListRequestV1Route',
+    messageType='sentinel.subnet-rules.list.request',
+    messageVersion=1,
+    payloadType=SentinelSubnetRulesListRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{targetServer}',
+    bindings={'targetServer': 'payload.targetServer'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=False,
+    owner='sentinel',
+    response=RouteResponseDescriptor(
+        messageType='sentinel.subnet-rules.list.response',
+        messageVersion=1,
+        payloadType=SentinelSubnetRulesListResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
+SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1 = RouteDescriptor(
+    family='sentinel',
+    methodName='sentinelSubnetRulesCheckRequestV1Route',
+    messageType='sentinel.subnet-rules.check.request',
+    messageVersion=1,
+    payloadType=SentinelSubnetRulesCheckRequestV1,
+    kind='rpc-request',
+    stream='xcore:rpc:req:{targetServer}',
+    bindings={'targetServer': 'payload.targetServer'},
+    targetScope='server',
+    ttlMs=10000,
+    replayable=False,
+    idempotentConsumerRecommended=False,
+    owner='sentinel',
+    response=RouteResponseDescriptor(
+        messageType='sentinel.subnet-rules.check.response',
+        messageVersion=1,
+        payloadType=SentinelSubnetRulesCheckResponseV1,
+        stream='xcore:rpc:resp:{requester}',
+        bindings={'requester': 'rpc.requester'},
+    ),
+)
+
 ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('maps.list.request', 1): MAPS_LIST_REQUEST_V1,
     ('maps.remove.request', 1): MAPS_REMOVE_REQUEST_V1,
@@ -631,6 +706,9 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('moderation.audit.appended', 1): MODERATION_AUDIT_APPENDED_V1,
     ('sentinel.subnet-rules.invalidated', 1): SENTINEL_SUBNET_RULES_INVALIDATED_V1,
     ('sentinel.subnet-sweep.command', 1): SENTINEL_SUBNET_SWEEP_COMMAND_V1,
+    ('sentinel.subnet-rules.command', 1): SENTINEL_SUBNET_RULES_COMMAND_V1,
+    ('sentinel.subnet-rules.list.request', 1): SENTINEL_SUBNET_RULES_LIST_REQUEST_V1,
+    ('sentinel.subnet-rules.check.request', 1): SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1,
 }
 
 MapsRouteResponseDescriptor = RouteResponseDescriptor
@@ -668,6 +746,9 @@ __all__ = [
     "MODERATION_AUDIT_APPENDED_V1",
     "SENTINEL_SUBNET_RULES_INVALIDATED_V1",
     "SENTINEL_SUBNET_SWEEP_COMMAND_V1",
+    "SENTINEL_SUBNET_RULES_COMMAND_V1",
+    "SENTINEL_SUBNET_RULES_LIST_REQUEST_V1",
+    "SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1",
     "RouteDescriptor",
     "RouteResponseDescriptor",
     "ROUTES_BY_MESSAGE",

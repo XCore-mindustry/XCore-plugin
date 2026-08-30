@@ -71,9 +71,81 @@ public final class SentinelRoutes {
             null
     );
 
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_COMMAND_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCommandV1Route",
+            "sentinel.subnet-rules.command",
+            1,
+            SentinelMessages.SentinelSubnetRulesCommandV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            true,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_LIST_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesListRequestV1Route",
+            "sentinel.subnet-rules.list.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesListRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.list.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesListResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCheckRequestV1Route",
+            "sentinel.subnet-rules.check.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesCheckRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.check.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesCheckResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("sentinel.subnet-rules.invalidated", 1), SENTINEL_SUBNET_RULES_INVALIDATED_V1),
-            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1)
+            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.command", 1), SENTINEL_SUBNET_RULES_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.list.request", 1), SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
+            entry(key("sentinel.subnet-rules.check.request", 1), SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1)
     );
 
     private static MessageKey key(String messageType, int messageVersion) {

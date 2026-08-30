@@ -564,6 +564,75 @@ public final class ProtocolRoutes {
             null
     );
 
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_COMMAND_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCommandV1Route",
+            "sentinel.subnet-rules.command",
+            1,
+            SentinelMessages.SentinelSubnetRulesCommandV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            true,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_LIST_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesListRequestV1Route",
+            "sentinel.subnet-rules.list.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesListRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.list.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesListResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
+    public static final RouteDescriptor SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1 = new RouteDescriptor(
+            "sentinel",
+            "sentinelSubnetRulesCheckRequestV1Route",
+            "sentinel.subnet-rules.check.request",
+            1,
+            SentinelMessages.SentinelSubnetRulesCheckRequestV1.class,
+            "rpc-request",
+            "xcore:rpc:req:{targetServer}",
+            Map.of("targetServer", "payload.targetServer"),
+            "server",
+            10000,
+            false,
+            false,
+            "sentinel",
+            new RouteResponseDescriptor(
+                    "sentinel.subnet-rules.check.response",
+                    1,
+                    SentinelMessages.SentinelSubnetRulesCheckResponseV1.class,
+                    "xcore:rpc:resp:{requester}",
+                    Map.of("requester", "rpc.requester")
+            )
+    );
+
     public static final Map<MessageKey, RouteDescriptor> ROUTES_BY_MESSAGE = Map.ofEntries(
             entry(key("maps.list.request", 1), MAPS_LIST_REQUEST_V1),
             entry(key("maps.remove.request", 1), MAPS_REMOVE_REQUEST_V1),
@@ -594,7 +663,10 @@ public final class ProtocolRoutes {
             entry(key("moderation.pardon.command", 1), MODERATION_PARDON_COMMAND_V1),
             entry(key("moderation.audit.appended", 1), MODERATION_AUDIT_APPENDED_V1),
             entry(key("sentinel.subnet-rules.invalidated", 1), SENTINEL_SUBNET_RULES_INVALIDATED_V1),
-            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1)
+            entry(key("sentinel.subnet-sweep.command", 1), SENTINEL_SUBNET_SWEEP_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.command", 1), SENTINEL_SUBNET_RULES_COMMAND_V1),
+            entry(key("sentinel.subnet-rules.list.request", 1), SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
+            entry(key("sentinel.subnet-rules.check.request", 1), SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1)
     );
 
     @SuppressWarnings("unchecked")
@@ -628,7 +700,10 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationPardonCommandV1.class, MODERATION_PARDON_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ModerationMessages.ModerationAuditAppendedV1.class, MODERATION_AUDIT_APPENDED_V1),
             entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesInvalidatedV1.class, SENTINEL_SUBNET_RULES_INVALIDATED_V1),
-            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetSweepCommandV1.class, SENTINEL_SUBNET_SWEEP_COMMAND_V1)
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetSweepCommandV1.class, SENTINEL_SUBNET_SWEEP_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCommandV1.class, SENTINEL_SUBNET_RULES_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesListRequestV1.class, SENTINEL_SUBNET_RULES_LIST_REQUEST_V1),
+            entry((Class<? extends ProtocolPayload>) SentinelMessages.SentinelSubnetRulesCheckRequestV1.class, SENTINEL_SUBNET_RULES_CHECK_REQUEST_V1)
     );
 
     public static RouteDescriptor routeFor(String messageType, int messageVersion) {
