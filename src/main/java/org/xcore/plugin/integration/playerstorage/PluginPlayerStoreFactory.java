@@ -23,6 +23,7 @@ import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gt;
 import static com.mongodb.client.model.Filters.lt;
+import static com.mongodb.client.model.Filters.not;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Indexes.ascending;
 import static com.mongodb.client.model.Indexes.descending;
@@ -163,6 +164,42 @@ public class PluginPlayerStoreFactory {
                     updatePlan(u, "data." + n, null, Boolean.TRUE),
                     new com.mongodb.client.model.UpdateOptions()
             );
+            return changed(result);
+        }
+
+        public boolean applyOnce(String operationId, String u, Map<String, Number> increments,
+                                 Map<String, Object> values) {
+            writable();
+            if (operationId == null || operationId.isBlank()) throw new IllegalArgumentException("Operation ID must not be blank");
+            uuid(u);
+            if (increments == null || values == null) throw new IllegalArgumentException("Mutation maps must not be null");
+
+            List<Document> set = new ArrayList<>();
+            Document fields = new Document("player_uuid", literal(u))
+                    .append("schema_version", new Document("$ifNull", List.of("$schema_version", schema.version())))
+                    .append("revision", new Document("$add", List.of(new Document("$ifNull", List.of("$revision", 0)), 1)))
+                    .append("updated_at", "$$NOW");
+            for (var entry : increments.entrySet()) {
+                var field = field(entry.getKey());
+                Number delta = entry.getValue();
+                if (delta == null || field.type() == FieldType.BOOLEAN || field.type() == FieldType.STRING
+                        || (field.type() == FieldType.INT && !(delta instanceof Integer))
+                        || (field.type() == FieldType.LONG && !(delta instanceof Long))
+                        || (field.type() == FieldType.DOUBLE && !(delta instanceof Double || delta instanceof Float))) {
+                    throw new IllegalArgumentException("Invalid increment");
+                }
+                fields.append("data." + entry.getKey(), new Document("$add",
+                        List.of(new Document("$ifNull", List.of("$data." + entry.getKey(), 0)), valueNumber(field.type(), delta))));
+            }
+            for (var entry : values.entrySet()) {
+                field(entry.getKey());
+                Object value = value(entry.getKey(), entry.getValue());
+                fields.append("data." + entry.getKey(), value instanceof String ? literal(value) : value);
+            }
+            fields.append("applied_operations", new Document("$concatArrays", List.of(
+                    new Document("$ifNull", List.of("$applied_operations", List.of())), List.of(operationId))));
+            var result = c.updateOne(and(eq("player_uuid", u), not(eq("applied_operations", operationId))),
+                    List.of(new Document("$set", fields)));
             return changed(result);
         }
 

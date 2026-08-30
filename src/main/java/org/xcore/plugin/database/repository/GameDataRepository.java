@@ -4,6 +4,7 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -34,6 +35,26 @@ public class GameDataRepository extends DataRepository<GameData> {
         collection.createIndex(new Document("server_name", 1));
         collection.createIndex(new Document("created_at", -1));
         collection.createIndex(new Document("player_stats.uuid", 1));
+        collection.createIndex(new Document("match_id", 1),
+                new com.mongodb.client.model.IndexOptions().unique(true).sparse(true));
+    }
+
+    /** Saves a match once, returning false when the match ID was already stored. */
+    public boolean saveOnce(GameData game) {
+        if (game == null || game.matchId == null || game.matchId.isBlank()) return false;
+        if (isReadOnly()) return false;
+        try {
+            collection.insertOne(game);
+            return true;
+        } catch (MongoWriteException duplicate) {
+            // Only a duplicate-key race means that the match was already stored;
+            // network, validation, and write-concern failures must remain visible.
+            var error = duplicate.getError();
+            if (error != null && (error.getCode() == 11000 || error.getCode() == 11001)) {
+                return false;
+            }
+            throw duplicate;
+        }
     }
 
     public AggregatedPlayerStats aggregatePlayerStats(String uuid) {

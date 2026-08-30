@@ -10,6 +10,7 @@ import org.xcore.plugin.model.enums.GameStatsCategory;
 import org.xcore.plugin.model.enums.VictoryType;
 
 import java.util.ArrayList;
+import java.util.UUID;
 import java.util.List;
 
 @Data
@@ -24,6 +25,10 @@ public class GameData extends ModelData {
     public ObjectId map;
     @BsonProperty("game_mode")
     @Builder.Default public String gameMode = "Unknown";
+
+    /** Stable identity used to correlate lifecycle and settlement operations. */
+    @BsonProperty("match_id")
+    @Builder.Default public String matchId = UUID.randomUUID().toString();
 
     public ObjectId event;
     @BsonProperty("is_event")

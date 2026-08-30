@@ -39,6 +39,26 @@ class PluginPlayerStoreFactoryTest {
     }
 
     @Test
+    void applyOnceBuildsAnOperationGuardAndMutationPipeline() {
+        MongoCollection<Document> collection = mock(MongoCollection.class);
+        var store = store(collection);
+        UpdateResult result = mock(UpdateResult.class);
+        when(result.wasAcknowledged()).thenReturn(true);
+        when(result.getMatchedCount()).thenReturn(1L);
+        when(collection.updateOne(any(Bson.class), any(List.class))).thenReturn(result);
+
+        assertThat(store.applyOnce("match-1", "player-1",
+                java.util.Map.of("score", 2), java.util.Map.of("name", "Alice"))).isTrue();
+
+        ArgumentCaptor<List> plan = ArgumentCaptor.forClass(List.class);
+        verify(collection).updateOne(any(Bson.class), plan.capture());
+        Document fields = ((List<Document>) plan.getValue()).get(0).get("$set", Document.class);
+        assertThat(fields).containsKeys("player_uuid", "revision", "applied_operations");
+        assertThat(fields.get("data.score", Document.class)).containsKey("$add");
+        assertThat(fields.get("data.name", Document.class)).containsKey("$literal");
+    }
+
+    @Test
     void writesCapturePlayerIdentityRevisionAndRequestedPaths() {
         MongoCollection<Document> collection = mock(MongoCollection.class);
         var store = store(collection);

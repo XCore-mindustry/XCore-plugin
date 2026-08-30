@@ -8,6 +8,7 @@ import mindustry.gen.Player;
 import mindustry.net.Administration;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
+import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
 import org.xcore.plugin.model.*;
 import org.xcore.plugin.model.enums.FinishReason;
 import org.xcore.plugin.model.enums.GameStatsCategory;
@@ -15,6 +16,7 @@ import org.xcore.plugin.model.enums.VictoryType;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static mindustry.Vars.state;
 
@@ -97,9 +99,18 @@ public class GameDataService {
     }
 
     public void finishGame(Team winner, FinishReason finishReason) {
+        finishGameResult(winner, finishReason);
+    }
+
+    /**
+     * Finishes the current game and returns the persisted snapshot to integrations
+     * that need to correlate a match with an external settlement operation.
+     * The legacy void method above intentionally remains for compatibility.
+     */
+    public Optional<GameData> finishGameResult(Team winner, FinishReason finishReason) {
         var now = System.currentTimeMillis();
 
-        if (currentBag == null) return;
+        if (currentBag == null) return Optional.empty();
 
         syncFinalTeams();
         currentBag.setEndGameTime(now);
@@ -111,9 +122,11 @@ public class GameDataService {
         markWinners(winner);
         markPlayersPlayedToEnd();
 
-        gameDataRepository.save(currentBag);
+        GameData finished = currentBag;
+        gameDataRepository.save(finished);
         currentBag = null;
         playerStatsCache.clear();
+        return Optional.of(finished);
     }
 
     private void syncFinalTeams() {
@@ -234,6 +247,45 @@ public class GameDataService {
 
         for (var stats : currentBag.getPlayerStats()) {
             stats.setPlacement(placements.get(stats.getUuid()));
+        }
+    }
+
+    /** Records a plugin-owned match without taking over the legacy current-game lifecycle. */
+    public boolean recordMatch(MatchHistoryRecord record) {
+        if (record == null || currentBag != null) return false;
+        GameData game = GameData.builder()
+                .gameMode(record.mode())
+                .matchId(record.matchId())
+                .serverName(resolveServerName())
+                .statsCategory(GameStatsCategory.HEXED)
+                .ranked(record.ranked())
+                .countedInStats(record.ranked() && "NATURAL".equals(record.finishReason())
+                        && record.winnerUuid() != null)
+                .startGameTime(record.startedAt())
+                .endGameTime(record.endedAt())
+                .winningTeam(record.winnerUuid())
+                .finishReason(resolveFinishReason(record.finishReason()))
+                .victoryType(record.winnerUuid() == null ? VictoryType.INTERRUPTED : VictoryType.PVP_WIN)
+                .build();
+        for (var participant : record.participants()) {
+            game.playerStats.add(PlayerGameStats.builder()
+                    .uuid(participant.uuid())
+                    .nickname(participant.nickname() == null ? "Unknown" : participant.nickname())
+                    .placement(participant.placement())
+                    .isWinner(participant.winner())
+                    .playedToEnd(participant.playedToEnd())
+                    .joinTime(record.startedAt())
+                    .leaveTime(record.endedAt())
+                    .build());
+        }
+        return gameDataRepository.saveOnce(game);
+    }
+
+    private FinishReason resolveFinishReason(String value) {
+        try {
+            return FinishReason.valueOf(value);
+        } catch (Exception ignored) {
+            return FinishReason.SCRIPT;
         }
     }
 
