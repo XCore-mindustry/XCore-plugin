@@ -4,6 +4,7 @@ mindustry = "v159"
 avaje = "12.5"
 cloud = "0.2.0-SNAPSHOT"
 shadow = "9.3.0"
+toxopid = "4.2.0"
 xcore-plugin = "4.0.0"
 flubundle = "1.3"
 
@@ -21,3 +22,4 @@ avaje-inject-gen  = { module = "io.avaje:avaje-inject-generator", version.ref = 
 [plugins]
 avaje-inject = { id = "io.avaje.inject", version.ref = "avaje" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+toxopid = { id = "com.xpdustry.toxopid", version.ref = "toxopid" }
