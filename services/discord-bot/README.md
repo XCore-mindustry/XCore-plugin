@@ -18,6 +18,7 @@ Standalone Discord bot for XCore transport migration.
   - `/map list <server>` → `maps.list`
   - `/map remove <server> <map>` → `maps.remove`
   - `/map upload <server> <file1> [file2] [file3]` (+ `.msav` attachments) → `maps.load`
+  - `/subnet list|check|allow|deny|remove|reload|import|sweep <server>` (general admin; protocol 0.6.0)
 - Moderation/admin slash commands (Mongo-backed):
   - `/stats`, `/search`, `/bans`
   - `/ban`, `/unban`, `/mute`, `/unmute`

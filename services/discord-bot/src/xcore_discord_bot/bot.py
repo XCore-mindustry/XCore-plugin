@@ -16,7 +16,7 @@ from discord.ext import commands
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from . import runtime_consumers
-from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog
+from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SubnetCog
 from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
@@ -912,6 +912,7 @@ class XCoreDiscordBot(commands.Bot):
         await self.add_cog(AdminCog(self))
         await self.add_cog(LinkingCog(self))
         await self.add_cog(MapsCog(self))
+        await self.add_cog(SubnetCog(self))
 
         @self.tree.error
         async def _on_app_command_error(
