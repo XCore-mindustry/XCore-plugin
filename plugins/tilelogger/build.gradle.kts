@@ -1,4 +1,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.xpdustry.toxopid.extension.anukeXpdustry
+import com.xpdustry.toxopid.spec.ModPlatform
+import com.xpdustry.toxopid.Toxopid
 import java.util.Locale
 import org.gradle.nativeplatform.tasks.LinkSharedLibrary
 
@@ -6,15 +9,30 @@ plugins {
     java
     alias(libs.plugins.avaje.inject)
     alias(libs.plugins.shadow)
+    alias(libs.plugins.toxopid)
 }
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get().toInt()))
 }
 
+toxopid {
+    compileVersion.set(libs.versions.mindustry.get())
+    runtimeVersion.set(libs.versions.mindustry.get())
+    platforms = setOf(ModPlatform.SERVER)
+}
+
+repositories {
+    anukeXpdustry()
+    mavenCentral()
+    maven("https://maven.x-core.org/releases")
+    maven("https://maven.x-core.org/snapshots")
+}
+
 dependencies {
-    compileOnly(libs.arc.core)
-    compileOnly(libs.mindustry.core)
+    compileOnly(toxopid.dependencies.arcCore)
+    compileOnly(toxopid.dependencies.mindustryCore)
+    compileOnly(toxopid.dependencies.mindustryHeadless)
 
     compileOnly(libs.xcore.plugin)
     compileOnly(libs.flubundle)
