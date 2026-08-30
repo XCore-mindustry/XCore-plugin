@@ -219,6 +219,7 @@ class SentinelSubnetRulesCommandV1:
     targetServer: str | None = None
     source: str | None = None
     reason: str | None = None
+    expiresAt: int | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'sentinel.subnet-rules.command'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -237,6 +238,8 @@ class SentinelSubnetRulesCommandV1:
             _expect_str(self.source, 'source')
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
+        if self.expiresAt is not None:
+            _expect_int(self.expiresAt, 'expiresAt')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "SentinelSubnetRulesCommandV1":
@@ -244,7 +247,7 @@ class SentinelSubnetRulesCommandV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'request', 'idempotency', 'actor', 'operation', 'rules')),
-            allowed=frozenset(('messageType', 'messageVersion', 'request', 'idempotency', 'actor', 'operation', 'targetServer', 'rules', 'source', 'reason')),
+            allowed=frozenset(('messageType', 'messageVersion', 'request', 'idempotency', 'actor', 'operation', 'targetServer', 'rules', 'source', 'reason', 'expiresAt')),
             model_name="SentinelSubnetRulesCommandV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -260,6 +263,7 @@ class SentinelSubnetRulesCommandV1:
             rules=tuple(_expect_str(item, 'rules[]') for item in _expect_list(mapping['rules'], 'rules')),
             source=(_expect_str(mapping['source'], 'source') if 'source' in mapping else None),
             reason=(_expect_str(mapping['reason'], 'reason') if 'reason' in mapping else None),
+            expiresAt=(_expect_int(mapping['expiresAt'], 'expiresAt') if 'expiresAt' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -278,6 +282,8 @@ class SentinelSubnetRulesCommandV1:
             payload['source'] = self.source
         if self.reason is not None:
             payload['reason'] = self.reason
+        if self.expiresAt is not None:
+            payload['expiresAt'] = self.expiresAt
         return payload
 
 @dataclass(frozen=True, slots=True)

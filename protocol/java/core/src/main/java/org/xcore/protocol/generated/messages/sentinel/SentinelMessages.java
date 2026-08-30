@@ -93,7 +93,8 @@ public final class SentinelMessages {
             String targetServer,
             List<String> rules,
             String source,
-            String reason
+            String reason,
+            Integer expiresAt
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "sentinel.subnet-rules.command";
     public static final int MESSAGE_VERSION = 1;
@@ -132,6 +133,11 @@ public final class SentinelMessages {
                     throw new IllegalArgumentException("reason must be at least 1 characters");
                 }
             }
+            if (expiresAt != null) {
+                if (expiresAt < 0) {
+                    throw new IllegalArgumentException("expiresAt must be >= 0");
+                }
+            }
         }
 
         @Override
@@ -154,6 +160,9 @@ public final class SentinelMessages {
             }
             if (reason != null) {
                 payload.put("reason", reason);
+            }
+            if (expiresAt != null) {
+                payload.put("expiresAt", expiresAt);
             }
             return payload;
         }
