@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
@@ -22,6 +23,12 @@ from xcore_protocol.generated.moderation import (
     ModerationKickBannedCommandV1,
     ModerationPardonCommandV1,
 )
+from xcore_protocol.generated.sentinel import (
+    SentinelSubnetRulesCheckRequestV1,
+    SentinelSubnetRulesCommandV1,
+    SentinelSubnetRulesCommandV1Operation,
+    SentinelSubnetRulesListRequestV1,
+)
 from xcore_protocol.generated.shared import (
     ActorRefV1,
     ActorRefV1ActorType,
@@ -34,6 +41,54 @@ from xcore_protocol.generated.shared import (
 
 def utc_now_iso8601() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds")
+
+
+def build_sentinel_subnet_rules_command(
+    operation: SentinelSubnetRulesCommandV1Operation | str,
+    rules: list[str] | tuple[str, ...],
+    discord_id: str,
+    request: str | None = None,
+    idempotency: str | None = None,
+    target_server: str | None = None,
+    source: str | None = None,
+    reason: str | None = None,
+    discord_username: str | None = None,
+    actor_name: str | None = None,
+) -> SentinelSubnetRulesCommandV1:
+    return SentinelSubnetRulesCommandV1(
+        request=request or str(uuid4()),
+        idempotency=idempotency or str(uuid4()),
+        actor=ActorRefV1(
+            actorName=actor_name or discord_username or str(discord_id),
+            actorDiscordId=str(discord_id),
+            actorType=ActorRefV1ActorType.DISCORD,
+        ),
+        operation=(
+            operation
+            if isinstance(operation, SentinelSubnetRulesCommandV1Operation)
+            else SentinelSubnetRulesCommandV1Operation(operation)
+        ),
+        targetServer=target_server,
+        rules=tuple(rules),
+        source=source,
+        reason=reason,
+    )
+
+
+def build_sentinel_subnet_rules_list_request(
+    target_server: str, request: str | None = None
+) -> SentinelSubnetRulesListRequestV1:
+    return SentinelSubnetRulesListRequestV1(
+        request=request or str(uuid4()), targetServer=target_server
+    )
+
+
+def build_sentinel_subnet_rules_check_request(
+    target_server: str, ip: str, request: str | None = None
+) -> SentinelSubnetRulesCheckRequestV1:
+    return SentinelSubnetRulesCheckRequestV1(
+        request=request or str(uuid4()), targetServer=target_server, ip=ip
+    )
 
 
 def build_moderation_kick_banned_command(

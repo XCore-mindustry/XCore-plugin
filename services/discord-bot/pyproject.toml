@@ -15,7 +15,7 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol==0.5.1",
+    "xcore-protocol==0.6.0",
 ]
 
 [project.scripts]

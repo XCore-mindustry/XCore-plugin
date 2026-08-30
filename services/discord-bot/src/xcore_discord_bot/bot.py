@@ -298,6 +298,19 @@ class XCoreDiscordBot(commands.Bot):
             name_filter=name_filter, limit=limit, page=page
         )
 
+    async def rpc_subnet_rules_command(self, **kwargs):
+        return await self._bus.rpc_subnet_rules_command(**kwargs)
+
+    async def rpc_subnet_rules_list(
+        self, target_server: str, timeout_ms: int
+    ):
+        return await self._bus.rpc_subnet_rules_list(target_server, timeout_ms)
+
+    async def rpc_subnet_rules_check(
+        self, target_server: str, ip: str, timeout_ms: int
+    ):
+        return await self._bus.rpc_subnet_rules_check(target_server, ip, timeout_ms)
+
     async def rpc_maps_list(
         self, *, server: str, timeout_ms: int
     ) -> list[dict[str, str]]:
