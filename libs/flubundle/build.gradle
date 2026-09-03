@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'ospx'
-def baseVersion = '1.3'
+def baseVersion = '1.4'
 version = findProperty('xcorePublishVersion') ?: baseVersion
 ext {
     mindustryVersion = "v159"
