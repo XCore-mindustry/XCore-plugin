@@ -121,7 +121,7 @@ commands-info-title = [orange]{ -xcore } — { $server-name }
 commands-info-text =
     [accent]XCore[white] гэта [cyan]бязмежны[white] сервер для гульні ў [accent]Mindustry[white].
     { "" }
-    { "" } Версія XCore — [accent]{ $version }[white]
+    Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Сінхранізуйце гульню з серверам. Выканайце гэта для выпраўлення памылак (напрыклад прывідныя юніты).
 commands-discord-description = Адкрывае меню Discord.
 discord-menu-title = [orange]{ -xcore } — Discord
