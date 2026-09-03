@@ -10,6 +10,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
+        mavenLocal()
         mavenCentral()
         maven("https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository")
         maven("https://www.jitpack.io")

@@ -23,6 +23,7 @@ toxopid {
 }
 
 repositories {
+    mavenLocal()
     anukeXpdustry()
     mavenCentral()
     maven("https://maven.x-core.org/releases")
