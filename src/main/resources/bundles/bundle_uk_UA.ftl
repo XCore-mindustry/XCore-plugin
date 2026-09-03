@@ -8,78 +8,78 @@
 # General & Help
 # ==============================================================================
 commands-help-description = Відкрийте інтерактивне меню довідки.
-help-menu-title = { "[" }orange]{ -xcore } — Команди
+help-menu-title = [orange]{ -xcore } — Команди
 help-menu-content =
-    { "[" }gray]Сторінка [white]{ $page }[gray]/[white]{ $total }
-    { "" }[lightgray]Оберіть команду для детальної інформації:
-help-menu-button = { "[" }accent]/{ $command } [gray]» Опис: [white]{ $description }
+    [gray]Сторінка [white]{ $page }[gray]/[white]{ $total }
+    [lightgray]Оберіть команду для детальної інформації:
+help-menu-button = [accent]/{ $command } [gray]» Опис: [white]{ $description }
 help-command-with-overload-count = { $name } В ({ $count })
-help-command-title = { "[" }orange]» Назва: [white]/{ $name }
+help-command-title = [orange]» Назва: [white]/{ $name }
 help-command-header =
-    { "[" }orange]» [accent]Синтаксис: [white]{ $syntax }
-    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
-help-aliases = { "[" }orange]» [accent]Псевдоніми: [white]{ $aliases }
-help-args-title = { "[" }orange]» [accent]Аргументи:
-help-usages-title = { "[" }orange]» [accent]Використання:
-help-usage-entry = { "[" }gray]• [white]{ $syntax }
-help-usage-args-title = { "[" }orange]» [accent]Для [white]{ $syntax }[accent]:
-help-arg-entry = { "[" }gray]• [white]{ $arg } [lightgray]- { $description }
-help-no-arguments = { "[" }gray]Додаткові аргументи не потрібні.
+    [orange]» [accent]Синтаксис: [white]{ $syntax }
+    [orange]» [accent]Опис: [lightgray]{ $description }
+help-aliases = [orange]» [accent]Псевдоніми: [white]{ $aliases }
+help-args-title = [orange]» [accent]Аргументи:
+help-usages-title = [orange]» [accent]Використання:
+help-usage-entry = [gray]• [white]{ $syntax }
+help-usage-args-title = [orange]» [accent]Для [white]{ $syntax }[accent]:
+help-arg-entry = [gray]• [white]{ $arg } [lightgray]- { $description }
+help-no-arguments = [gray]Додаткові аргументи не потрібні.
 help-no-arg-description = Немає опису.
 help-no-description = Опис для цієї команди не надано.
 help-legacy-command-content =
-    { "[" }orange]» [accent]Команда: [white]/{ $name }
-    { "" }[orange]» [accent]Параметри: [white]{ $params }
-    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
+    [orange]» [accent]Команда: [white]/{ $name }
+    [orange]» [accent]Параметри: [white]{ $params }
+    [orange]» [accent]Опис: [lightgray]{ $description }
     { "" }
-    { "" }[gray](Це застаріла команда з обмеженою інформацією)
+    [gray](Це застаріла команда з обмеженою інформацією)
 help-legacy-command-content-no-params =
-    { "[" }orange]» [accent]Команда: [white]/{ $name }
-    { "" }[orange]» [accent]Опис: [lightgray]{ $description }
+    [orange]» [accent]Команда: [white]/{ $name }
+    [orange]» [accent]Опис: [lightgray]{ $description }
     { "" }
-    { "" }[gray](Це застаріла команда з обмеженою інформацією)
-help-back = { "[" }lightgray]« Назад
+    [gray](Це застаріла команда з обмеженою інформацією)
+help-back = [lightgray]« Назад
 commands-information-description = Показати інформацію про сервер.
-commands-info-title = { "[" }orange]{ -xcore } — Назва сервера: [orange]{ $server-name }
+commands-info-title = [orange]{ -xcore } — Назва сервера: [orange]{ $server-name }
 commands-info-text =
-    { "[" }accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
+    [accent]XCore[white] це [cyan]безкоштовний[white] сервер для гри у [accent]Mindustry[white].
     { "" }
-    { "" }Версія XCore — [accent]{ $version }[white]
+    Версія XCore — [accent]{ $version }[white]
 commands-sync-description = Синхронізувати гру з сервером. Використовуйте це для виправлення помилок (наприклад, фантомних одиниць).
 commands-discord-description = Перенаправляє вас на наш Discord сервер.
-discord-menu-title = { "[" }orange]{ -xcore } — Discord
+discord-menu-title = [orange]{ -xcore } — Discord
 discord-menu-content =
-    { "" }[white]Керуйте привʼязкою Discord тут.
+    [white]Керуйте привʼязкою Discord тут.
     { "" }
-    { "" }[white]Статус: { $status }
-    { "" }[white]Сервер: [accent]{ $discordUrl }[]
+    [white]Статус: { $status }
+    [white]Сервер: [accent]{ $discordUrl }[]
 discord-menu-open = Відкрити Discord
 discord-menu-link = Привʼязати акаунт
 discord-menu-status = Оновити статус
 discord-menu-unlink = Відвʼязати акаунт
 discord-menu-status-not-linked = [lightgray]не привʼязаний[]
 discord-menu-status-linked = [green]{ $discordUsername }[] [gray]({ $discordId })[]
-discord-link-menu-title = { "[" }orange]{ -xcore } — Привʼязка Discord акаунта
+discord-link-menu-title = [orange]{ -xcore } — Привʼязка Discord акаунта
 discord-link-menu-content =
-    { "" }[white]На нашому Discord сервері викличте slash-команду бота:
+    [white]На нашому Discord сервері викличте slash-команду бота:
     { "" }
-    { "" }[accent]/link { $code }[]
+    [accent]/link { $code }[]
     { "" }
-    { "" }[white]Спливає через: [accent]{ $expireMinutes }[] хв
-    { "" }[white]Discord: [accent]{ $discordUrl }[]
+    [white]Спливає через: [accent]{ $expireMinutes }[] хв
+    [white]Discord: [accent]{ $discordUrl }[]
 discord-link-menu-refresh = Оновити код
 discord-link-menu-copy = Скопіювати код
 discord-link-menu-regenerate = Згенерувати новий код
 discord-link-menu-status = Назад до меню Discord
 welcome =
-    { "[" }accent]Ласкаво просимо на { $serverName }!
-    { "" }[lightgray]Напишіть [accent]/help[lightgray], щоб побачити список команд
-    { "" }[lightgray]Напишіть [accent]/vote [gray]<y/n>[lightgray], щоб проголосувати за вигнання гравця
-    { "" }[lightgray]Напишіть [accent]/votekick [gray]<ID/ім'я> <причина...>[lightgray], щоб почати голосування за вигнання
-    { "" }[lightgray]Напишіть [accent]/t [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення союзникам
-    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
-    { "" }[lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
-    { "" }[lightgray]Напишіть [accent]/discord[lightgray], щоб відкрити меню Discord і привʼязати акаунт
+    [accent]Ласкаво просимо на { $serverName }!
+    [lightgray]Напишіть [accent]/help[lightgray], щоб побачити список команд
+    [lightgray]Напишіть [accent]/vote [gray]<y/n>[lightgray], щоб проголосувати за вигнання гравця
+    [lightgray]Напишіть [accent]/votekick [gray]<ID/ім'я> <причина...>[lightgray], щоб почати голосування за вигнання
+    [lightgray]Напишіть [accent]/t [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення союзникам
+    [lightgray]Напишіть [accent]/g [gray]<повідомлення...>[lightgray], щоб надіслати повідомлення на всі сервери
+    [lightgray]Напишіть [accent]/tr [gray]<мова/auto>[lightgray], щоб увімкнути перекладач
+    [lightgray]Напишіть [accent]/discord[lightgray], щоб відкрити меню Discord і привʼязати акаунт
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
@@ -112,7 +112,7 @@ commands-events-page-description = Номер сторінки.
 # Chat & Social
 # ==============================================================================
 commands-t-description = Надіслати повідомлення тільки своїм союзникам по команді.
-commands-t-chat = { "[" }{ "#" }{ $color }][Команді] [coral]> { $badge }[accent]{ $name }[lightgray]: [white]{ $message }
+commands-t-chat = [{ "#" }{ $color }][Команді] [coral]> { $badge }[accent]{ $name }[lightgray]: [white]{ $message }
 commands-g-description = Надіслати повідомлення на всі сервери.
 commands-a-description = Надіслати повідомлення тільки адміністраторам.
 commands-msg-description = Надіслати гравцю приватне повідомлення.
@@ -124,41 +124,41 @@ commands-inbox-description = Відкрити меню приватних пов
 commands-inbox-id-description = ID гравця.
 commands-tr-description = Встановити мову перекладача.
 commands-badge-description = Відкрити меню відзнак і керувати активною відзнакою.
-commands-tr-success = { "[" }accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
-commands-tr-off = { "[" }accent]Перекладач [scarlet]вимкнено[]!
-commands-tr-not-found = { "[" }scarlet]⚠ Такої мови не існує.
-discord-chat-format = { "[" }#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
-global-chat-format = { "[" }royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
-private-message-received = { "[" }sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
-private-message-sent = { "[" }sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
-private-message-unread-count = { "[" }accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень.
-private-message-join-notification = { "[" }accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень. Використайте [white]/inbox[accent], щоб відкрити їх.
-private-message-block-success = { "[" }accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] тепер заблоковані.
-private-message-block-already = { "[" }lightgray]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[lightgray] вже заблоковані.
-private-message-unblock-success = { "[" }accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] знову дозволені.
-private-message-unblock-missing = { "[" }lightgray]Гравця [white]{ $target } [gray]#{ $pid }[lightgray] немає у списку заблокованих.
-private-message-menu-title = { "[" }orange]{ -xcore } — Приватні повідомлення
+commands-tr-success = [accent]Мову перекладача успішно змінено на [grey]{ $translatorLanguage }[]!
+commands-tr-off = [accent]Перекладач [scarlet]вимкнено[]!
+commands-tr-not-found = [scarlet]⚠ Такої мови не існує.
+discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[lightgray] >> [white]{ $message }
+global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
+private-message-received = [sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-sent = [sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
+private-message-unread-count = [accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень.
+private-message-join-notification = [accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень. Використайте [white]/inbox[accent], щоб відкрити їх.
+private-message-block-success = [accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] тепер заблоковані.
+private-message-block-already = [lightgray]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[lightgray] вже заблоковані.
+private-message-unblock-success = [accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] знову дозволені.
+private-message-unblock-missing = [lightgray]Гравця [white]{ $target } [gray]#{ $pid }[lightgray] немає у списку заблокованих.
+private-message-menu-title = [orange]{ -xcore } — Приватні повідомлення
 private-message-menu-content =
-    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
-    { "" }[white]Непрочитано: [accent]{ $unread }[]
-private-message-menu-empty = { "" }[lightgray]У вас поки немає приватних повідомлень.
-private-message-menu-entry-unread = { "[" }accent]Непрочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
-private-message-menu-entry-read = { "[" }gray]Прочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
-private-message-details-title = { "[" }orange]{ -xcore } — Повідомлення
+    [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+    [white]Непрочитано: [accent]{ $unread }[]
+private-message-menu-empty = [lightgray]У вас поки немає приватних повідомлень.
+private-message-menu-entry-unread = [accent]Непрочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-menu-entry-read = [gray]Прочитано[] [white]{ $author } [gray]#{ $pid }[] [lightgray]({ $time })[]: [white]{ $message }
+private-message-details-title = [orange]{ -xcore } — Повідомлення
 private-message-details-content =
-    { "" }[white]Від: [accent]{ $author } [gray]#{ $pid }[]
-    { "" }[white]Час: [accent]{ $time }[]
-    { "" }[white]Статус: [accent]{ $status }[]
+    [white]Від: [accent]{ $author } [gray]#{ $pid }[]
+    [white]Час: [accent]{ $time }[]
+    [white]Статус: [accent]{ $status }[]
     { "" }
-    { "" }[white]{ $message }
+    [white]{ $message }
 private-message-status-unread = непрочитано
 private-message-status-read = прочитано
-private-message-blocked-title = { "[" }orange]{ -xcore } — Заблоковані гравці
+private-message-blocked-title = [orange]{ -xcore } — Заблоковані гравці
 private-message-blocked-content =
-    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
-    { "" }[white]Заблоковано: [accent]{ $count }[]
-private-message-blocked-empty = { "" }[lightgray]У вас немає заблокованих гравців.
-private-message-blocked-entry = { "[" }white]{ $target } [gray]#{ $pid }[]
+    [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+    [white]Заблоковано: [accent]{ $count }[]
+private-message-blocked-empty = [lightgray]У вас немає заблокованих гравців.
+private-message-blocked-entry = [white]{ $target } [gray]#{ $pid }[]
 private-message-compose = Написати
 private-message-blocked = Заблоковані
 private-message-block = Заблокувати відправника
@@ -173,26 +173,26 @@ private-message-compose-body-message = Введіть приватне пові�
 # Authentication & Admin Access
 # ==============================================================================
 commands-login-description = Активувати права адміністратора, якщо ваш прив’язаний Discord акаунт вже має доступ.
-commands-login-incorrect-password = { "[" }scarlet]⚠ Невірний пароль!
-commands-login-success = { "[" }green]Права адміністратора отримано.
-commands-login-confirmed = { "[" }green]Discord-доступ адміністратора підтверджено.
+commands-login-incorrect-password = [scarlet]⚠ Невірний пароль!
+commands-login-success = [green]Права адміністратора отримано.
+commands-login-confirmed = [green]Discord-доступ адміністратора підтверджено.
 commands-login-admin-password-created =
-    { "[" }green]Пароль адміністратора створено.
-    { "" }[red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
-commands-login-request-approval-discord = { "[" }accent]Ваш акаунт не має Discord-доступу адміністратора. Отримайте admin role у Discord і спробуйте знову.
+    [green]Пароль адміністратора створено.
+    [red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
+commands-login-request-approval-discord = [accent]Ваш акаунт не має Discord-доступу адміністратора. Отримайте admin role у Discord і спробуйте знову.
 commands-discord-link-created =
-    { "[" }green]Код привʼязки Discord створено: [accent]{ $code }[]
-    { "" }[lightgray]На нашому Discord сервері викличте slash-команду бота [accent]/link { $code }[] протягом [accent]{ $expireMinutes }[] хв.
-    { "" }[cyan]{ $discordUrl }
-commands-discord-link-confirmed = { "[" }green]Discord акаунт привʼязано: [accent]{ $discordUsername }[]
-commands-discord-link-already-linked = { "[" }lightgray]Цей акаунт Mindustry уже привʼязаний. Використайте [accent]/discord status[] або [accent]/discord unlink[].
-commands-discord-link-error = { "[" }scarlet]Не вдалося створити код привʼязки Discord. Спробуйте пізніше.
-commands-discord-status-not-linked = { "[" }lightgray]Ваш акаунт не привʼязаний до Discord.
-commands-discord-status-linked = { "[" }green]Привʼязаний Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
-commands-discord-unlink-not-linked = { "[" }lightgray]Ваш акаунт не привʼязаний до Discord.
-commands-discord-unlink-success = { "[" }green]Привʼязку Discord видалено.
+    [green]Код привʼязки Discord створено: [accent]{ $code }[]
+    [lightgray]На нашому Discord сервері викличте slash-команду бота [accent]/link { $code }[] протягом [accent]{ $expireMinutes }[] хв.
+    [cyan]{ $discordUrl }
+commands-discord-link-confirmed = [green]Discord акаунт привʼязано: [accent]{ $discordUsername }[]
+commands-discord-link-already-linked = [lightgray]Цей акаунт Mindustry уже привʼязаний. Використайте [accent]/discord status[] або [accent]/discord unlink[].
+commands-discord-link-error = [scarlet]Не вдалося створити код привʼязки Discord. Спробуйте пізніше.
+commands-discord-status-not-linked = [lightgray]Ваш акаунт не привʼязаний до Discord.
+commands-discord-status-linked = [green]Привʼязаний Discord: [accent]{ $discordUsername }[] [gray]({ $discordId })[]
+commands-discord-unlink-not-linked = [lightgray]Ваш акаунт не привʼязаний до Discord.
+commands-discord-unlink-success = [green]Привʼязку Discord видалено.
 commands-logout-description = Вийти з адмін-панелі. Це [scarlet]відкличе ваші активні права адміністратора.
-commands-logout-successful = { "[" }green]Права адміністратора відкликано.
+commands-logout-successful = [green]Права адміністратора відкликано.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
@@ -201,59 +201,58 @@ commands-ban-success = { $nickname } [scarlet]заблокований
 commands-unban-description = Розблокувати гравця. [scarlet]Тільки для адміністраторів.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]успішно розблокований.
 commands-mute-description = Заглушити гравця. [scarlet]Тільки для адміністраторів.
-commands-mute-success = { "[" }accent]Успішно заглушено гравця { $nickname }
+commands-mute-success = [accent]Успішно заглушено гравця { $nickname }
 commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
-commands-unmute-success = { "[" }green]Успішно знято заглушення з гравця []{ $nickname }
-ban-content = { "[" }scarlet]⚠ Доступ заборонено[]
-    { "[" }accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
-    { "[" }lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
-    { "" }[cyan]{ $discordUrl }
-ban-cancelled = { "[" }accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
-tempban-content = { "[" }scarlet]⚠ Доступ заборонено[]
-    { "[" }accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
+commands-unmute-success = [green]Успішно знято заглушення з гравця []{ $nickname }
+ban-content = [scarlet]⚠ Доступ заборонено[]
+    [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
+    [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [cyan]{ $discordUrl }
+ban-cancelled = [accent]Блокування гравця [scarlet]{ $nickname }[accent] було скасовано
+tempban-content = [scarlet]⚠ Доступ заборонено[]
+    [accent]{ $nickname }[white] — вас тимчасово заблоковано на цьому сервері.
     { "" }
-    { "" }[orange]» [accent]Адміністратор: [white]{ $adminName }
-    { "" }[orange]» [accent]Причина: [gold]{ $reason }
-    { "" }[orange]» [accent]До розблокування: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв
-    { "" }
-    { "[" }lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
-    { "" }[cyan]{ $discordUrl }
-tempban-player-banned = { "[" }scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
+    [orange]» [accent]Адміністратор: [white]{ $adminName }
+    [orange]» [accent]Причина: [gold]{ $reason }
+    [orange]» [accent]До розблокування: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв
+    [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
+    [cyan]{ $discordUrl }
+tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
 you-are-muted-by =
-    { "[" }orange]⚠ Чат обмежено[]
-    { "" }[lightgray]Адміністратор [accent]{ $adminName }[lightgray] видав вам мут.
-    { "" }[orange]» [accent]Причина: [gold]{ $reason }
-    { "" }[orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
+    [orange]⚠ Чат обмежено[]
+    [lightgray]Адміністратор [accent]{ $adminName }[lightgray] видав вам мут.
+    [orange]» [accent]Причина: [gold]{ $reason }
+    [orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
 you-are-muted =
-    { "[" }orange]⚠ Чат обмежено[]
-    { "" }[lightgray]Ви не можете надсилати повідомлення, доки діє мут.
-    { "" }[orange]» [accent]Адміністратор: [white]{ $adminName }
-    { "" }[orange]» [accent]Причина: [gold]{ $reason }
-    { "" }[orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
-kick-pirated-game = { "[" }accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
+    [orange]⚠ Чат обмежено[]
+    [lightgray]Ви не можете надсилати повідомлення, доки діє мут.
+    [orange]» [accent]Адміністратор: [white]{ $adminName }
+    [orange]» [accent]Причина: [gold]{ $reason }
+    [orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
+kick-pirated-game = [accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked =
-    { "[" }accent]Ви були нещодавно вигнані з цього сервера.
+    [accent]Ви були нещодавно вигнані з цього сервера.
     Зачекайте [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] перед повторним входом.
 kick-admintools-outdated =
-    { "[" }green]Необхідна версія AdminTools: [grey]{ $requiredVersion }[]
-    { "" }[scarlet]Ваша версія AdminTools: [grey]{ $version }[]
+    [green]Необхідна версія AdminTools: [grey]{ $requiredVersion }[]
+    [scarlet]Ваша версія AdminTools: [grey]{ $version }[]
     { "" }
-    { "" }[cyan]Будь ласка, оновіть AdminTools для входу на сервер.
+    [cyan]Будь ласка, оновіть AdminTools для входу на сервер.
 support-channel = #reports-appeals
 # ==============================================================================
 # Voting (VoteKick)
 # ==============================================================================
 commands-votekick-description = Голосування за вигнання гравця з сервера.
 commands-vote-description = Проголосувати в поточному активному голосуванні.
-commands-vote-vote-with = { "[" }scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
+commands-vote-vote-with = [scarlet]⚠ Голосуйте за допомогою [orange]/vote <y/n/c>
 votekick-vote =
     { $starter } [grey]#[white]{ $starterId }[lightgray] хоче вигнати { $target } [grey]#[white]{ $targetId }[lightgray]. Причина: [orange]{ $reason }[lightgray]. ([accent]{ $votes }[]/[accent]{ $required }[])
-    { "" }[lightgray]Напишіть [orange]/vote <y/n>[], щоб проголосувати.
+    [lightgray]Напишіть [orange]/vote <y/n>[], щоб проголосувати.
 votekick-left = { $player }[lightgray] покинув гру. Голос анульовано. ([accent]{ $votes }[]/[accent]{ $required }[])
-votekick-fail = { "[" }lightgray]Голосування не відбулося. Недостатньо голосів для вигнання { $target }[lightgray].
-votekick-cancelled = { "[" }scarlet]Голосування за вигнання { $target }[scarlet] скасовано адміністратором { $admin }.
+votekick-fail = [lightgray]Голосування не відбулося. Недостатньо голосів для вигнання { $target }[lightgray].
+votekick-cancelled = [scarlet]Голосування за вигнання { $target }[scarlet] скасовано адміністратором { $admin }.
 votekick-success =
-    { "[" }orange]Голосування успішне. { $target }[orange] вигнаний на [scarlet]{ $minutes }[] { $minutes ->
+    [orange]Голосування успішне. { $target }[orange] вигнаний на [scarlet]{ $minutes }[] { $minutes ->
         [one] хвилину
         [few] хвилини
        *[many] хвилин
@@ -262,33 +261,33 @@ votekick-success =
 # Maps & RTV
 # ==============================================================================
 commands-map-description = Статистика конкретної мапи та швидкі дії.
-commands-map-title = { "[" }orange]{ -xcore } — Мапа
+commands-map-title = [orange]{ -xcore } — Мапа
 commands-map-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $name }[] [gray]від [sky]{ $author }[]
-    { "" }[lightgray]{ $description }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $name }[] [gray]від [sky]{ $author }[]
+    [lightgray]{ $description }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Загальне[]
-    { "" }[gray]Розмір: [white]{ $width }x{ $height } [darkgray]|[gray] Голоси: [lime]+{ $like } [darkgray]/[scarlet] -{ $dislike }[]
+    [accent]■ Загальне[]
+    [gray]Розмір: [white]{ $width }x{ $height } [darkgray]|[gray] Голоси: [lime]+{ $like } [darkgray]/[scarlet] -{ $dislike }[]
     { "" }
-    { "" }[accent]■ Активність[]
-    { "" }[gray]Зіграно всього: [white]{ $played } [darkgray]|[gray] За рік: [white]{ $playedYear }[]
-    { "" }[gray]Остання гра: [white]{ $lastPlayed }[]
-    { "" }[gray]Популярність: [white]{ $popularity } [darkgray]|[gray] Інтерес: [white]{ $interest } [darkgray]|[gray] Репутація: [white]{ $reputation }[]
+    [accent]■ Активність[]
+    [gray]Зіграно всього: [white]{ $played } [darkgray]|[gray] За рік: [white]{ $playedYear }[]
+    [gray]Остання гра: [white]{ $lastPlayed }[]
+    [gray]Популярність: [white]{ $popularity } [darkgray]|[gray] Інтерес: [white]{ $interest } [darkgray]|[gray] Репутація: [white]{ $reputation }[]
     { "" }
-    { "" }[accent]■ Тривалість партій[]
-    { "" }[gray]Мін: [white]{ $min } [darkgray]|[gray] Сер: [white]{ $avg } [darkgray]|[gray] Макс: [white]{ $max }[]
+    [accent]■ Тривалість партій[]
+    [gray]Мін: [white]{ $min } [darkgray]|[gray] Сер: [white]{ $avg } [darkgray]|[gray] Макс: [white]{ $max }[]
 commands-maps-description = Список усіх мап на цьому сервері.
-commands-maps-title = { "[" }orange]{ -xcore } — Мапи
+commands-maps-title = [orange]{ -xcore } — Мапи
 commands-maps-content =
-    { "" }[gray]Поточна мапа: [accent]{ $current }[]
-    { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+    [gray]Поточна мапа: [accent]{ $current }[]
+    [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
 commands-maps-current-row = { $name } ★
 commands-maps-text-description = Список усіх мап на цьому сервері.
 commands-maps-text-start-content =
-    { "[" }accent]Поточна мапа: []{ $name }[white]
-    { "" }[orange][gold]Список мап [lightgray]{ $page }[gray]/[lightgray]{ $total }
+    [accent]Поточна мапа: []{ $name }[white]
+    [orange][gold]Список мап [lightgray]{ $page }[gray]/[lightgray]{ $total }
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | Від: [sky]{ $author }
@@ -300,70 +299,70 @@ commands-vnw-description = Голосування за достроковий з
 commands-avnw-description = Примусово достроково запустити наступну хвилю. [scarlet]Тільки для адміністраторів.
 commands-like-description = Проголосувати за мапу (підвищує репутацію).
 commands-dislike-description = Проголосувати проти мапи.
-map-vote-title = { "[" }orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
+map-vote-title = [orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content =
     { "" }
-    { "" }Наступна мапа: [accent]{ $mapName }[] від [accent]{ $author }[white].
-    { "" }Нова гра почнеться через [accent]{ $seconds }[white] секунд.
+    Наступна мапа: [accent]{ $mapName }[] від [accent]{ $author }[white].
+    Нова гра почнеться через [accent]{ $seconds }[white] секунд.
     { "" }
-    { "" }[cyan]Чи сподобалась ця мапа?
-map-vote-like = { "[" }green]👍 Подобається
-map-vote-dislike = { "[" }red]👎 Не подобається
-map-vote-like-selected = { "[" }gray]Вам вже подобається
-map-vote-dislike-selected = { "[" }gray]Вам вже не подобається
-map-rtv = { "[" }orange]Голосування
-map-artv = { "[" }red]Миттєва зміна
+    [cyan]Чи сподобалась ця мапа?
+map-vote-like = [green]👍 Подобається
+map-vote-dislike = [red]👎 Не подобається
+map-vote-like-selected = [gray]Вам вже подобається
+map-vote-dislike-selected = [gray]Вам вже не подобається
+map-rtv = [orange]Голосування
+map-artv = [red]Миттєва зміна
 map-maps = Мапи
 map-maps-back = ← До списку мап
 rtv-vote =
     { $nickname }[lightgray] проголосував за зміну поточної мапи на [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
 rtv-left = { $nickname }[lightgray] вийшов. Його голос за зміну мапи скасовано. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
-rtv-fail = { "[" }lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{ $mapName }[].
-rtv-success = { "[" }orange]Голосування пройшло. Мапа [accent]{ $mapName }[] буде завантажена через [accent]{ $mapLoadDelay }[] секунд…
-rtv-cancelled = { "[" }lightgray]Голосування за зміну мапи на [orange]{ $mapName }[lightgray] було скасовано адміністратором { $admin }.
+rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{ $mapName }[].
+rtv-success = [orange]Голосування пройшло. Мапа [accent]{ $mapName }[] буде завантажена через [accent]{ $mapLoadDelay }[] секунд…
+rtv-cancelled = [lightgray]Голосування за зміну мапи на [orange]{ $mapName }[lightgray] було скасовано адміністратором { $admin }.
 vnw-vote =
     { $nickname }[lightgray] проголосував за достроковий запуск хвилі [orange]{ $wave }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
 vnw-left = { $nickname }[lightgray] вийшов. Його голос за достроковий запуск хвилі [orange]{ $wave }[lightgray] скасовано. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
-vnw-fail = { "[" }lightgray]Голосування не пройшло. Недостатньо голосів для дострокового запуску хвилі [orange]{ $wave }[].
-vnw-success = { "[" }orange]Голосування пройшло. Хвиля [accent]{ $wave }[] запускається просто зараз.
-vnw-cancelled = { "[" }lightgray]Голосування за достроковий запуск хвилі [orange]{ $wave }[lightgray] було скасовано адміністратором { $admin }.
-vnw-obsolete = { "[" }lightgray]Хвиля [orange]{ $wave }[lightgray] вже почалась, тому результат голосування більше не потрібний.
+vnw-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для дострокового запуску хвилі [orange]{ $wave }[].
+vnw-success = [orange]Голосування пройшло. Хвиля [accent]{ $wave }[] запускається просто зараз.
+vnw-cancelled = [lightgray]Голосування за достроковий запуск хвилі [orange]{ $wave }[lightgray] було скасовано адміністратором { $admin }.
+vnw-obsolete = [lightgray]Хвиля [orange]{ $wave }[lightgray] вже почалась, тому результат голосування більше не потрібний.
 # ==============================================================================
 # Statistics & Ranks
 # ==============================================================================
 commands-player-description = Переглянути статистику гравця.
 commands-settings-description = Відкрити налаштування гравця.
 player-menu-player-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $customNickname }[] [gray]#{ $pid }[]
-    { "" }[lightgray]{ $description }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $customNickname }[] [gray]#{ $pid }[]
+    [lightgray]{ $description }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Профіль[]
-    { "" }[gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Адмін: [lime]{ $admin }[]
-    { "" }[gray]Відзнака: [white]{ $activeBadge } [darkgray]|[gray] Системна: [coral]{ $systemBadge }[]
-    { "" }[gray]Реєстрація: [white]{ $accountCreated }[]
+    [accent]■ Профіль[]
+    [gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Адмін: [lime]{ $admin }[]
+    [gray]Відзнака: [white]{ $activeBadge } [darkgray]|[gray] Системна: [coral]{ $systemBadge }[]
+    [gray]Реєстрація: [white]{ $accountCreated }[]
     { "" }
-    { "" }[accent]■ Ігрові рейтинги[]
-    { "" }[gray]Час у грі: [white]{ $totalPlayTime }[]
-    { "" }[gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
-    { "" }[lightgray]{ $hexedProgress }[]
+    [accent]■ Ігрові рейтинги[]
+    [gray]Час у грі: [white]{ $totalPlayTime }[]
+    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
+    [lightgray]{ $hexedProgress }[]
     { "" }
-    { "" }[accent]■ Матчі: [white]{ $gamesPlayed } [gray]ігор [darkgray]|[lime] { $gamesWon } [gray]перемог [darkgray]|[sky] { $winRate }% [gray]вінрейт[]
-    { "" }[gray]• [white]PvP: { $pvpSummary }[]
-    { "" }[gray]• [white]Surv: { $survivalSummary }[]
-    { "" }[gray]• [white]Hexed: { $hexedSummary }[]
+    [accent]■ Матчі: [white]{ $gamesPlayed } [gray]ігор [darkgray]|[lime] { $gamesWon } [gray]перемог [darkgray]|[sky] { $winRate }% [gray]вінрейт[]
+    [gray]• [white]PvP: { $pvpSummary }[]
+    [gray]• [white]Surv: { $survivalSummary }[]
+    [gray]• [white]Hexed: { $hexedSummary }[]
     { "" }
-    { "" }[accent]■ Бойова ефективність[]
-    { "" }[gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+    [accent]■ Бойова ефективність[]
+    [gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
 player-menu-player-max-rank = Досягнуто максимального рангу
-player-menu-player-hexed-progress = { "[" }gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
-player-menu-player-no-mode-stats = { "[" }gray]немає даних[]
-player-menu-player-pvp-summary = { "[" }gray]ігор [white]{ $gamesPlayed }[], перемог [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
-player-menu-player-survival-summary = { "[" }gray]хвилі: макс [lime]{ $bestWave }[], сер [white]{ $averageWave }[] [gray](забігів: { $gamesPlayed })[]
-player-menu-player-hexed-summary = { "[" }gray]матчів [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], краще місце [accent]#{ $bestPlacement }[]
+player-menu-player-hexed-progress = [gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
+player-menu-player-no-mode-stats = [gray]немає даних[]
+player-menu-player-pvp-summary = [gray]ігор [white]{ $gamesPlayed }[], перемог [lime]{ $gamesWon }[], [sky]{ $winRate }%[]
+player-menu-player-survival-summary = [gray]хвилі: макс [lime]{ $bestWave }[], сер [white]{ $averageWave }[] [gray](забігів: { $gamesPlayed })[]
+player-menu-player-hexed-summary = [gray]матчів [white]{ $gamesPlayed }[], топ-1 [lime]{ $gamesWon }[], краще місце [accent]#{ $bestPlacement }[]
 player-menu-time-days = { $value }д
 player-menu-time-hours = { $value }г
 player-menu-time-minutes = { $value }хв
@@ -371,36 +370,36 @@ settings-translator-label = Перекладач: [green]{ $lang }[]
 commands-lb-description = Увімкнути/вимкнути таблицю лідерів.
 commands-lb-success =
     { $leaderboardEnabled ->
-        [true] { "[" }accent]Таблиця лідерів [green]увімкнена.
-       *[other] { "[" }accent]Таблиця лідерів [scarlet]вимкнена.
+        [true] [accent]Таблиця лідерів [green]увімкнена.
+       *[other] [accent]Таблиця лідерів [scarlet]вимкнена.
     }
-leaderboard = { "[" }blue]Таблиця лідерів
+leaderboard = [blue]Таблиця лідерів
 commands-observer-description = Перейти в режим спостерігача. Це знищить вашу поточну одиницю та переведе вас до команди спостерігачів.
 commands-rank-description = Показати ваш ранг або ранг іншого гравця.
 commands-rank-content =
     { $nickname }
     { $rankTag } [accent]{ $rankName }
-    { "" }[gold]Перемог: { $points }/{ $requiredPoints }
+    [gold]Перемог: { $points }/{ $requiredPoints }
 commands-ranks-description = Показує інформацію про систему рангів.
 commands-ranks-content =
     { $rankTag } [accent]{ $rankName }
-    { "" }[gold]Вимоги: [grey]{ $requiredPoints } [accent]перемог[]
+    [gold]Вимоги: [grey]{ $requiredPoints } [accent]перемог[]
 commands-ranks-footer = Кількість перемог збільшується лише при перемозі над гравцем вашого рангу або вище.
 commands-top-description = Топ гравців.
-commands-top-hexed-content = { "[" }orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перемог
-commands-top-pvp-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
-top-menu-title = { "[" }orange]{ -xcore } — Топ гравців: [accent]{ $category }
+commands-top-hexed-content = [orange]{ $index }. { $nickname }[accent]: [blue]{ $rankName } [cyan]{ $points } []перемог
+commands-top-pvp-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $rating }
+top-menu-title = [orange]{ -xcore } — Топ гравців: [accent]{ $category }
 top-menu-content =
-    { "" }[lightgray]Натисніть на гравця, щоб відкрити його профіль.[]
-    { "" }[lightgray]Сторінка [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Гравців: [green]{ $totalEntries }[]
-    { "" }{ $selfRankLine }
+    [lightgray]Натисніть на гравця, щоб відкрити його профіль.[]
+    [lightgray]Сторінка [green]{ $page }[]/[green]{ $totalPages }[] [gold]•[] [lightgray]Гравців: [green]{ $totalEntries }[]
+    { $selfRankLine }
 top-menu-empty =
-    { "" }[accent]Категорія: [green]{ $category }[]
-    { "" }[gray]Гравців поки немає.
-top-menu-categories-title = { "[" }orange]{ -xcore } — Категорія топу
+    [accent]Категорія: [green]{ $category }[]
+    [gray]Гравців поки немає.
+top-menu-categories-title = [orange]{ -xcore } — Категорія топу
 top-menu-categories-content =
-    { "" }[lightgray]Виберіть параметр рейтингу.[]
-    { "" }[lightgray]Поточна: [green]{ $category }[]
+    [lightgray]Виберіть параметр рейтингу.[]
+    [lightgray]Поточна: [green]{ $category }[]
 top-menu-category-button = [accent]Категорія: [green]{ $category }[]
 top-menu-category-mini-pvp = MiniPvP
 top-menu-category-playtime = Час гри
@@ -414,14 +413,14 @@ top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [viole
 # Game Modes (Hexed, PvP, Surrender, AI)
 # ==============================================================================
 commands-surrender-description = Здатися в Hexed. Це знищить вашу поточну команду, прибере вашу одиницю та переведе вас до команди спостерігачів.
-commands-surrender-success = { "[" }green]Ви здалися і тепер спостерігаєте за грою
-commands-observer-success = { "[" }green]Тепер ви спостерігаєте за грою
-commands-observer-exit-success = { "[" }green]Ви більше не спостерігаєте за грою
+commands-surrender-success = [green]Ви здалися і тепер спостерігаєте за грою
+commands-observer-success = [green]Тепер ви спостерігаєте за грою
+commands-observer-exit-success = [green]Ви більше не спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
-commands-ai-usage = { "[" }red]attack(i) []або [accent]idle(i)
-hexed-popup = { "[" }blue]{ $minutes }:{ $seconds }[] до кінця гри.
+commands-ai-usage = [red]attack(i) []або [accent]idle(i)
+hexed-popup = [blue]{ $minutes }:{ $seconds }[] до кінця гри.
 hexed-eliminated = { $nickname } [gold]був [scarlet]знищений[]!
-hexed-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]гексів
+hexed-leaderboard-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]гексів
 hexed-ranks-newbie = Новачок
 hexed-ranks-regular = Звичайний
 hexed-ranks-advanced = Досвідчений
@@ -430,7 +429,7 @@ hexed-ranks-davastator = Руйнівник
 hexed-ranks-the_legend = Легенда
 hexed-game-over-header = Гру закінчено. Переможці:
 hexed-game-over-winner-row =
-    { "[" }orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
+    [orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
         [one] гекс
         [few] гекси
        *[many] гексів
@@ -439,28 +438,28 @@ hexed-game-over-no-winners = Гру закінчено. На жаль, пере�
 hexed-game-over-restart = Нова гра через 10 секунд…
 pvp-team-won = Ваша команда перемогла. Ваш рейтинг зріс на { $increased }
 pvp-team-lose = Ваша команда програла. Ваш рейтинг знизився на { $reduced }
-pvp-leaderboard-content = { "[" }orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рейтинг
-pvp-you-spectator = { "[" }scarlet]Ви програли. Будь ласка, зачекайте наступної гри.
+pvp-leaderboard-content = [orange]{ $index }. { $nickname }[accent]:[cyan] { $rating } [accent]рейтинг
+pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зачекайте наступної гри.
 # ==============================================================================
 # Events & Notifications
 # ==============================================================================
 player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
-notification-votekick-playtime = { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] хвилин і тепер можете почати голосування за вигнання.
+notification-votekick-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] хвилин і тепер можете почати голосування за вигнання.
 notification-global-chat-playtime =
-    { "[" }accent]Вітаємо! Ви відіграли [lightgray]{ $globalChatPlayTime }[] хвилин і тепер можете писати в глобальний чат.
-    { "" }[lightgray]Напишіть [accent]/g [gray]<повідомлення…>[lightgray], щоб надіслати повідомлення.
+    [accent]Вітаємо! Ви відіграли [lightgray]{ $globalChatPlayTime }[] хвилин і тепер можете писати в глобальний чат.
+    [lightgray]Напишіть [accent]/g [gray]<повідомлення…>[lightgray], щоб надіслати повідомлення.
 notification-admin-kick = { $admin }[accent] вигнав(ла) { $target }[].
 notification-admin-wave-skip = { $admin }[accent] пропустив(ла) хвилю.
 server-restart-countdown = Перезавантаження через { $seconds }
-like-map-success = { "[" }green]Ви вподобали цю мапу!
-like-map-changed = { "[" }green]Ви змінили свою думку на Вподобайку!
-dislike-map-success = { "[" }orange]Ви поставили "Не подобається" цій мапі.
-dislike-map-changed = { "[" }orange]Ви змінили свою думку на "Не подобається".
-like-event-success = { "[" }green]Ви вподобали цю подію!
-like-event-changed = { "[" }green]Ви змінили свою думку на Вподобайку!
-dislike-event-success = { "[" }orange]Ви поставили "Не подобається" цій події.
-dislike-event-changed = { "[" }orange]Ви змінили свою думку на "Не подобається".
+like-map-success = [green]Ви вподобали цю мапу!
+like-map-changed = [green]Ви змінили свою думку на Вподобайку!
+dislike-map-success = [orange]Ви поставили "Не подобається" цій мапі.
+dislike-map-changed = [orange]Ви змінили свою думку на "Не подобається".
+like-event-success = [green]Ви вподобали цю подію!
+like-event-changed = [green]Ви змінили свою думку на Вподобайку!
+dislike-event-success = [orange]Ви поставили "Не подобається" цій події.
+dislike-event-changed = [orange]Ви змінили свою думку на "Не подобається".
 
 # ==============================================================================
 # Events (Server)
@@ -469,127 +468,127 @@ dislike-event-changed = { "[" }orange]Ви змінили свою думку н
 commands-event-description = Меню керуванням подій.
 commands-events-description = Список усіх подій на серверах.
 event-menu-main = Головних подій
-event-menu-main-title = { "[" }orange]{ -xcore } — Події
+event-menu-main-title = [orange]{ -xcore } — Події
 event-menu-main-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]Центр подій[]
-    { "" }[lightgray]Тут можна переглядати активні та заплановані події сервера.[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]Центр подій[]
+    [lightgray]Тут можна переглядати активні та заплановані події сервера.[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Поточна подія[]
-    { "" }[gray]Статус: [white]{ $currentEventState }[]
-    { "" }[gray]Вибрано: [white]{ $currentEventName }[]
+    [accent]■ Поточна подія[]
+    [gray]Статус: [white]{ $currentEventState }[]
+    [gray]Вибрано: [white]{ $currentEventName }[]
     { "" }
-    { "" }[accent]■ Голосування[]
-    { "" }[gray]Сесія голосування: [white]{ $voteStatus }[]
+    [accent]■ Голосування[]
+    [gray]Сесія голосування: [white]{ $voteStatus }[]
     { "" }
-    { "" }[accent]■ Дії[]
-    { "" }[gray]Відкрийте каталог подій, теперішню картку або підготуйте нову подію.[]
+    [accent]■ Дії[]
+    [gray]Відкрийте каталог подій, теперішню картку або підготуйте нову подію.[]
 event-menu-event = Подія
-event-menu-event-title = { "[" }orange]{ -xcore } — Подія
+event-menu-event-title = [orange]{ -xcore } — Подія
 event-menu-event-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $name }[]
-    { "" }[lightgray]{ $description }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $name }[]
+    [lightgray]{ $description }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Огляд[]
-    { "" }[gray]Автор: [white]{ $author }[]
-    { "" }[gray]Мапа: [white]{ $mapName }[]
-    { "" }[gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Стан: [white]{ $eventState }[]
-    { "" }[gray]Тимчасова: [white]{ $isTemporary }[]
+    [accent]■ Огляд[]
+    [gray]Автор: [white]{ $author }[]
+    [gray]Мапа: [white]{ $mapName }[]
+    [gray]Тип: [white]{ $eventType }[] [darkgray]|[gray] Стан: [white]{ $eventState }[]
+    [gray]Тимчасова: [white]{ $isTemporary }[]
     { "" }
-    { "" }[accent]■ Розклад[]
-    { "" }[gray]Створено: [white]{ $createdEventTime }[]
-    { "" }[gray]Запланований старт: [white]{ $plannedStartTime }[]
-    { "" }[gray]Запланований кінець: [white]{ $plannedEndTime }[]
+    [accent]■ Розклад[]
+    [gray]Створено: [white]{ $createdEventTime }[]
+    [gray]Запланований старт: [white]{ $plannedStartTime }[]
+    [gray]Запланований кінець: [white]{ $plannedEndTime }[]
     { "" }
-    { "" }[accent]■ Репутація[]
-    { "" }[gray]Вподобайки: [white]{ $like }[] [darkgray]|[gray] Не подобається: [white]{ $dislike }[]
+    [accent]■ Репутація[]
+    [gray]Вподобайки: [white]{ $like }[] [darkgray]|[gray] Не подобається: [white]{ $dislike }[]
 event-menu-event-map = Подивитися мапу
 event-menu-events = Список подій
-event-menu-events-title = { "[" }orange]{ -xcore } — Список Подій
+event-menu-events-title = [orange]{ -xcore } — Список Подій
 event-menu-events-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]Каталог подій[]
-    { "" }[lightgray]Сторінка [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Подій: [green]{ $count }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]Каталог подій[]
+    [lightgray]Сторінка [green]{ $page }[]/[green]{ $total }[] [gold]•[] [lightgray]Подій: [green]{ $count }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Фільтри[]
-    { "" }[gray]Завершено: [white]{ $finished }[]
-    { "" }[gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
+    [accent]■ Фільтри[]
+    [gray]Завершено: [white]{ $finished }[]
+    [gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
     { "" }
-    { "" }[accent]■ Список[]
-    { "" }[gray]Виберіть подію нижче, щоб відкрити її картку.[]
+    [accent]■ Список[]
+    [gray]Виберіть подію нижче, щоб відкрити її картку.[]
 event-menu-events-empty =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]Каталог подій[]
-    { "" }[lightgray]Зараз немає подій, що відповідають вибраним фільтрам.[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]Каталог подій[]
+    [lightgray]Зараз немає подій, що відповідають вибраним фільтрам.[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Фільтри[]
-    { "" }[gray]Завершено: [white]{ $finished }[]
-    { "" }[gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
+    [accent]■ Фільтри[]
+    [gray]Завершено: [white]{ $finished }[]
+    [gray]Масштабна: [white]{ $major }[] [darkgray]|[gray] Активна: [white]{ $active }[]
 event-menu-events-row = [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
 event-menu-events-selected = [green]●[] [accent]{ $state }[] [darkgray]•[] [white]{ $type }[] [darkgray]—[] { $name }
 event-menu-create-start = Створити
-event-menu-create-start-title = { "[" }orange]{ -xcore } — Створення подій
+event-menu-create-start-title = [orange]{ -xcore } — Створення подій
 event-menu-create-start-message = Ведіть назву майбутьної події
 event-menu-create-start-default = { $playerName } Подія
 event-menu-edit = Редагувати
-event-menu-edit-title = { "[" }orange]{ -xcore } — Редагування подій
+event-menu-edit-title = [orange]{ -xcore } — Редагування подій
 event-menu-edit-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $name }[]
-    { "" }[lightgray]{ $description }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $name }[]
+    [lightgray]{ $description }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Ідентичність[]
-    { "" }[gray]Автор: [white]{ $author }[]
-    { "" }[gray]Тип: [white]{ $eventType }[]
+    [accent]■ Ідентичність[]
+    [gray]Автор: [white]{ $author }[]
+    [gray]Тип: [white]{ $eventType }[]
     { "" }
-    { "" }[accent]■ Мапа[]
-    { "" }[gray]Обрана мапа: [white]{ $mapName }[]
+    [accent]■ Мапа[]
+    [gray]Обрана мапа: [white]{ $mapName }[]
     { "" }
-    { "" }[accent]■ Розклад[]
-    { "" }[gray]Запланований старт: [white]{ $plannedStartTime }[]
-    { "" }[gray]Запланований кінець: [white]{ $plannedEndTime }[]
+    [accent]■ Розклад[]
+    [gray]Запланований старт: [white]{ $plannedStartTime }[]
+    [gray]Запланований кінець: [white]{ $plannedEndTime }[]
     { "" }
-    { "" }[accent]■ Прапорці[]
-    { "" }[gray]Тимчасова: [white]{ $isTemporary }[]
+    [accent]■ Прапорці[]
+    [gray]Тимчасова: [white]{ $isTemporary }[]
 event-menu-edit-name = Назва
 event-menu-edit-name-reset = [scarlet]Скинути назву
-event-menu-edit-name-title = { "[" }orange]{ -xcore } — Редагування події
+event-menu-edit-name-title = [orange]{ -xcore } — Редагування події
 event-menu-edit-name-message = Редагування назви:
 event-menu-edit-description = Опис
-event-menu-edit-description-title = { "[" }orange]{ -xcore } — Редагування події
+event-menu-edit-description-title = [orange]{ -xcore } — Редагування події
 event-menu-edit-description-message = Редагування опису:
 event-menu-edit-map = Редагувати мапу
-event-menu-edit-temporary-active = { "[" }green]Тимчасова
-event-menu-edit-temporary-inactive = { "[" }gray]Тимчасова
-event-menu-edit-major-active = { "[" }green]Масштабна
-event-menu-edit-major-inactive = { "[" }gray]Масштабна
+event-menu-edit-temporary-active = [green]Тимчасова
+event-menu-edit-temporary-inactive = [gray]Тимчасова
+event-menu-edit-major-active = [green]Масштабна
+event-menu-edit-major-inactive = [gray]Масштабна
 event-menu-edit-planned-start = Початок події
-event-menu-edit-planned-start-title = { "[" }orange]{ -xcore } — Редагування події
+event-menu-edit-planned-start-title = [orange]{ -xcore } — Редагування події
 event-menu-edit-planned-start-message = Напишіть початковий час у мс або з використанням m/h/d:
 event-menu-edit-planned-end = Кінець події
-event-menu-edit-planned-end-title = { "[" }orange]{ -xcore } — Редагування події
+event-menu-edit-planned-end-title = [orange]{ -xcore } — Редагування події
 event-menu-edit-planned-end-message = Напишіть кінцевий час у мс або з використанням m/h/d:
 event-menu-maps = Мапи
-event-menu-maps-title = { "[" }orange]{ -xcore } — Вибір мапи
-event-menu-maps-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+event-menu-maps-title = [orange]{ -xcore } — Вибір мапи
+event-menu-maps-content = [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
 vote-event-vote =
     { $nickname }[lightgray] проголосував за зміну поточної події на [orange]{ $name }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
 vote-event-left = { $nickname }[lightgray] вийшов. Його голос за зміну події скасовано. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
-vote-event-fail = { "[" }lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{ $name }[].
-vote-event-success = { "[" }orange]Голосування пройшло. Подія [accent]{ $name }[] буде завантажена при наступній зміни мапи.
-vote-event-cancelled = { "[" }lightgray]Голосування за зміну події на [orange]{ $name }[lightgray] було скасовано адміністратором { $admin }.
-event-vote = { "[" }orange]Голосувати
-event-avote = { "[" }red]Миттєва зміна
+vote-event-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни події на [orange]{ $name }[].
+vote-event-success = [orange]Голосування пройшло. Подія [accent]{ $name }[] буде завантажена при наступній зміни мапи.
+vote-event-cancelled = [lightgray]Голосування за зміну події на [orange]{ $name }[lightgray] було скасовано адміністратором { $admin }.
+event-vote = [orange]Голосувати
+event-avote = [red]Миттєва зміна
 event-menu-vote-stop = Зупинити голосування
 event-menu-stop = Зупинити подію
-event-menu-this-event = { "[" }orange]Теперішна подія
+event-menu-this-event = [orange]Теперішна подія
 event-menu-type-major = Масштабна подія
 event-menu-type-regular = Звичайна подія
 event-menu-state-none = Немає активної події
@@ -601,133 +600,133 @@ event-menu-vote-status-idle = Не триває
 # ==============================================================================
 # Errors
 # ==============================================================================
-error-access-denied = { "[" }scarlet]⚠ Доступ заборонено.
-error-ip-changed = { "[" }scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
-error-not-enough-params = { "[" }scarlet]⚠ Недостатньо параметрів.
-error-player-not-found = { "[" }scarlet]⚠ Гравця не знайдено.
-error-player-not-teammate = { "[" }scarlet]⚠ Цей гравець не у вашій команді.
-error-player-admin = { "[" }scarlet]⚠ Не намагайтеся вигнати адміністратора. ⚠
-error-already-voted = { "[" }scarlet]⚠ Ви вже проголосували. Заспокойтесь.
-error-globalchat-total-playtime = { "[" }scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
-error-votekick-total-playtime = { "[" }scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } хвилин.
-error-vote-yourself = { "[" }scarlet]⚠ Ви не можете голосувати у власному голосуванні.
-error-vote-in-progress = { "[" }scarlet]⚠ Голосування вже триває.
-error-no-voting = { "[" }scarlet]⚠ На даний момент голосування не проводиться.
-error-wave-vote-unavailable = { "[" }scarlet]⚠ Достроковий запуск нової хвилі доступний лише в режимах із хвилями.
-error-no-map = { "[" }scarlet]⚠ Мапу не задано.
-error-map-not-event = { "[" }scarlet]⚠ Мапа не входить у теперішню подію.
-error-map-not-found = { "[" }scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
-error-maps-empty = { "[" }scarlet]⚠ Список мап порожній.
-error-event-not-found = { "[" }scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
-error-page-between = { "[" }scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{ $totalPages }[].
-error-page-number = { "[" }scarlet]'сторінка' має бути числом.
-error-wrong-number = { "[" }scarlet]⚠ Неправильний формат числа.
-error-wrong-period-format = { "[" }scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
-error-invalid-id = { "[" }scarlet]⚠ Невірний ID гравця.
-error-spectator = { "[" }scarlet]⚠ Ви спостерігач і не можете використовувати цю команду.
-error-admin-password-too-short = { "[" }scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи.
-error-wrong-admin-password = { "[" }scarlet]⚠ Невірний пароль адміністратора.
-error-internal = { "[" }scarlet]Внутрішня помилка сервера.
-error-processing-request = { "[" }scarlet]Виникла помилка під час обробки запиту.
-error-playtime-requirement = { "[" }scarlet]⚠ Вам потрібно відіграти мінімум { $time } хвилин для використання цієї функції.
-error-invalid-syntax = { "[" }scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
-error-invalid-sender = { "[" }scarlet]⚠ Невірний відправник команди. Потрібно: '[lightgray]{ $type }[]'.
-error-argument-parse-generic = { "[" }scarlet]⚠ Помилка аргументу: '{ $error }'.
-exception-unexpected = { "[" }scarlet]⚠ Внутрішня помилка під час виконання команди.
-exception-invalid-argument = { "[" }scarlet]⚠ Невірний аргумент команди: '{ $cause }'.
-exception-no-such-command = { "[" }scarlet]⚠ Невідома команда.
-exception-no-permission = { "[" }scarlet]⚠ Доступ заборонено.
-exception-invalid-sender = { "[" }scarlet]⚠ '{ $actual }' не може виконати цю команду. Потрібно: [lightgray]{ $expected }[].
-exception-invalid-sender-list = { "[" }scarlet]⚠ '{ $actual }' не може виконати цю команду. Дозволені відправники: [lightgray]{ $expected }[].
-exception-invalid-syntax = { "[" }scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
-argument-parse-failure-boolean = { "[" }scarlet]⚠ Не вдалося розпізнати '{ $input }' як логічне значення (true/false).
-argument-parse-failure-number = { "[" }scarlet]⚠ Число '{ $input }' поза допустимим діапазоном [{ $min }, { $max }].
-argument-parse-failure-char = { "[" }scarlet]⚠ '{ $input }' не є допустимим символом.
-argument-parse-failure-enum = { "[" }scarlet]⚠ '{ $input }' недопустима опція. Доступно: [lightgray]{ $acceptableValues }
-argument-parse-failure-string = { "[" }scarlet]⚠ Невірний формат рядка: '{ $input }'.
-argument-parse-failure-uuid = { "[" }scarlet]⚠ Невірний формат UUID: '{ $input }'.
-argument-parse-failure-regex = { "[" }scarlet]⚠ Введення '{ $input }' не відповідає шаблону '{ $pattern }'.
-argument-parse-failure-color = { "[" }scarlet]⚠ '{ $input }' не є допустимим кольором.
-argument-parse-failure-duration = { "[" }scarlet]⚠ '{ $input }' не є допустимим форматом тривалості.
-argument-parse-failure-aggregate-missing = { "[" }scarlet]⚠ Відсутній компонент '{ $component }'.
-argument-parse-failure-aggregate-failure = { "[" }scarlet]⚠ Некоректний компонент '{ $component }': '{ $failure }'.
-argument-parse-failure-either = { "[" }scarlet]⚠ Не вдалося визначити { $primary } або { $fallback } з '{ $input }'.
-argument-parse-failure-flag-unknown = { "[" }scarlet]⚠ Невідомий прапорець: '{ $flag }'.
-argument-parse-failure-flag-duplicate = { "[" }scarlet]⚠ Прапорець, що повторюється: '{ $flag }'.
-argument-parse-failure-flag-duplicate-flag = { "[" }scarlet]⚠ Прапорець, що повторюється: '{ $flag }'.
-argument-parse-failure-flag-no-flag-started = { "[" }scarlet]⚠ Прапорець не було розпочато. Незрозуміло, що робити з '{ $input }'.
-argument-parse-failure-flag-missing-argument = { "[" }scarlet]⚠ Відсутній аргумент для прапорця: '{ $flag }'.
-argument-parse-failure-flag-no-permission = { "[" }scarlet]⚠ У вас немає прав на використання прапорця '{ $flag }'.
+error-access-denied = [scarlet]⚠ Доступ заборонено.
+error-ip-changed = [scarlet]⚠ Ваша IP-адреса змінилася. Права адміністратора було відкликано.
+error-not-enough-params = [scarlet]⚠ Недостатньо параметрів.
+error-player-not-found = [scarlet]⚠ Гравця не знайдено.
+error-player-not-teammate = [scarlet]⚠ Цей гравець не у вашій команді.
+error-player-admin = [scarlet]⚠ Не намагайтеся вигнати адміністратора. ⚠
+error-already-voted = [scarlet]⚠ Ви вже проголосували. Заспокойтесь.
+error-globalchat-total-playtime = [scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
+error-votekick-total-playtime = [scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } хвилин.
+error-vote-yourself = [scarlet]⚠ Ви не можете голосувати у власному голосуванні.
+error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
+error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
+error-wave-vote-unavailable = [scarlet]⚠ Достроковий запуск нової хвилі доступний лише в режимах із хвилями.
+error-no-map = [scarlet]⚠ Мапу не задано.
+error-map-not-event = [scarlet]⚠ Мапа не входить у теперішню подію.
+error-map-not-found = [scarlet]⚠ Мапу не знайдено! [accent]Використовуйте [cyan]/maps[], щоб побачити список доступних мап.
+error-maps-empty = [scarlet]⚠ Список мап порожній.
+error-event-not-found = [scarlet]⚠ Подію не знайдено! [accent]Використовуйте [cyan]/events[], щоб побачити список доступних подій.
+error-page-between = [scarlet]⚠ 'сторінка' має бути числом від[orange] 1[] до [orange]{ $totalPages }[].
+error-page-number = [scarlet]'сторінка' має бути числом.
+error-wrong-number = [scarlet]⚠ Неправильний формат числа.
+error-wrong-period-format = [scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
+error-invalid-id = [scarlet]⚠ Невірний ID гравця.
+error-spectator = [scarlet]⚠ Ви спостерігач і не можете використовувати цю команду.
+error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи.
+error-wrong-admin-password = [scarlet]⚠ Невірний пароль адміністратора.
+error-internal = [scarlet]Внутрішня помилка сервера.
+error-processing-request = [scarlet]Виникла помилка під час обробки запиту.
+error-playtime-requirement = [scarlet]⚠ Вам потрібно відіграти мінімум { $time } хвилин для використання цієї функції.
+error-invalid-syntax = [scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
+error-invalid-sender = [scarlet]⚠ Невірний відправник команди. Потрібно: '[lightgray]{ $type }[]'.
+error-argument-parse-generic = [scarlet]⚠ Помилка аргументу: '{ $error }'.
+exception-unexpected = [scarlet]⚠ Внутрішня помилка під час виконання команди.
+exception-invalid-argument = [scarlet]⚠ Невірний аргумент команди: '{ $cause }'.
+exception-no-such-command = [scarlet]⚠ Невідома команда.
+exception-no-permission = [scarlet]⚠ Доступ заборонено.
+exception-invalid-sender = [scarlet]⚠ '{ $actual }' не може виконати цю команду. Потрібно: [lightgray]{ $expected }[].
+exception-invalid-sender-list = [scarlet]⚠ '{ $actual }' не може виконати цю команду. Дозволені відправники: [lightgray]{ $expected }[].
+exception-invalid-syntax = [scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
+argument-parse-failure-boolean = [scarlet]⚠ Не вдалося розпізнати '{ $input }' як логічне значення (true/false).
+argument-parse-failure-number = [scarlet]⚠ Число '{ $input }' поза допустимим діапазоном [{ $min }, { $max }].
+argument-parse-failure-char = [scarlet]⚠ '{ $input }' не є допустимим символом.
+argument-parse-failure-enum = [scarlet]⚠ '{ $input }' недопустима опція. Доступно: [lightgray]{ $acceptableValues }
+argument-parse-failure-string = [scarlet]⚠ Невірний формат рядка: '{ $input }'.
+argument-parse-failure-uuid = [scarlet]⚠ Невірний формат UUID: '{ $input }'.
+argument-parse-failure-regex = [scarlet]⚠ Введення '{ $input }' не відповідає шаблону '{ $pattern }'.
+argument-parse-failure-color = [scarlet]⚠ '{ $input }' не є допустимим кольором.
+argument-parse-failure-duration = [scarlet]⚠ '{ $input }' не є допустимим форматом тривалості.
+argument-parse-failure-aggregate-missing = [scarlet]⚠ Відсутній компонент '{ $component }'.
+argument-parse-failure-aggregate-failure = [scarlet]⚠ Некоректний компонент '{ $component }': '{ $failure }'.
+argument-parse-failure-either = [scarlet]⚠ Не вдалося визначити { $primary } або { $fallback } з '{ $input }'.
+argument-parse-failure-flag-unknown = [scarlet]⚠ Невідомий прапорець: '{ $flag }'.
+argument-parse-failure-flag-duplicate = [scarlet]⚠ Прапорець, що повторюється: '{ $flag }'.
+argument-parse-failure-flag-duplicate-flag = [scarlet]⚠ Прапорець, що повторюється: '{ $flag }'.
+argument-parse-failure-flag-no-flag-started = [scarlet]⚠ Прапорець не було розпочато. Незрозуміло, що робити з '{ $input }'.
+argument-parse-failure-flag-missing-argument = [scarlet]⚠ Відсутній аргумент для прапорця: '{ $flag }'.
+argument-parse-failure-flag-no-permission = [scarlet]⚠ У вас немає прав на використання прапорця '{ $flag }'.
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
 hours = годин
 days = днів
-success = { "[" }green]Успішно[]
-empty = { "[" }accent]Порожньо[]
+success = [green]Успішно[]
+empty = [accent]Порожньо[]
 never = Ніколи
 save = Зберегти
-close = { "[" }scarlet]Закрити
-previous = { "[" }accent]« Попередня
-next = { "[" }accent]Наступна »
+close = [scarlet]Закрити
+previous = [accent]« Попередня
+next = [accent]Наступна »
 yes = Так
 no = Ні
 event-events = Події
 test = Тест
 menu-main = Головне меню
 commands-main-description = Відкрийте інтерактивне головне меню.
-menu-main-title = { "[" }orange]{ -xcore } — Головне меню
+menu-main-title = [orange]{ -xcore } — Головне меню
 menu-main-content = Головне меню сервера
 help-menu = Меню довідки
 commands-info = Інформація
 current-map = Поточна мапа
 next-map = Наступна мапа
 player-menu-player = Гравець
-player-menu-player-title = { "[" }orange]{ -xcore } — Статистика гравця
+player-menu-player-title = [orange]{ -xcore } — Статистика гравця
 player-menu-players = Онлайн гравці
-player-menu-players-title = { "[" }orange]{ -xcore } — Онлайн гравці
-player-menu-players-content = { "" }[white]Сторінка [green]{ $page }[] з [green]{ $total }[]
+player-menu-players-title = [orange]{ -xcore } — Онлайн гравці
+player-menu-players-content = [white]Сторінка [green]{ $page }[] з [green]{ $total }[]
 player-menu-players-empty = Онлайн гравців не знайдено
 player-menu-players-row = [white]{ $nickname } [gray](PID: { $pid })[]
 player-menu-settings = Налаштування
-player-menu-settings-title = { "[" }orange]{ -xcore } — Налаштування гравця
+player-menu-settings-title = [orange]{ -xcore } — Налаштування гравця
 player-menu-settings-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $displayNickname }[] [gray]#{ $pid }[]
-    { "" }[lightgray]{ $description }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $displayNickname }[] [gray]#{ $pid }[]
+    [lightgray]{ $description }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Профіль[]
-    { "" }[gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Відображення: [lime]{ $customNickname }[]
-    { "" }[gray]Бейдж: [white]{ $activeBadge } [darkgray]|[gray] Системний: [coral]{ $systemBadge }[]
+    [accent]■ Профіль[]
+    [gray]Ім'я: [white]{ $nickname } [darkgray]|[gray] Відображення: [lime]{ $customNickname }[]
+    [gray]Бейдж: [white]{ $activeBadge } [darkgray]|[gray] Системний: [coral]{ $systemBadge }[]
     { "" }
-    { "" }[accent]■ Видимість[]
-    { "" }[gray]Лідерборд: [white]{ $leaderboard }[]
+    [accent]■ Видимість[]
+    [gray]Лідерборд: [white]{ $leaderboard }[]
     { "" }
-    { "" }[accent]■ Чат[]
-    { "" }[gray]Global: [white]{ $globalChat } [darkgray]|[gray] Discord: [white]{ $discordRelay }[]
-    { "" }[gray]Перекладач: [white]{ $translatorLanguage }[]
+    [accent]■ Чат[]
+    [gray]Global: [white]{ $globalChat } [darkgray]|[gray] Discord: [white]{ $discordRelay }[]
+    [gray]Перекладач: [white]{ $translatorLanguage }[]
     { "" }
-    { "" }[accent]■ Локалізація[]
-    { "" }[gray]Мова: [white]{ $language }[]
+    [accent]■ Локалізація[]
+    [gray]Мова: [white]{ $language }[]
 player-menu-settings-chat = Налаштування чату
-player-menu-settings-chat-title = { "[" }orange]{ -xcore } — Налаштування чату
+player-menu-settings-chat-title = [orange]{ -xcore } — Налаштування чату
 player-menu-settings-chat-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[accent]■ Видимість чату[]
-    { "" }[gray]Global чат: [white]{ $globalChat }[]
-    { "" }[gray]Discord relay: [white]{ $discordRelay }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [accent]■ Видимість чату[]
+    [gray]Global чат: [white]{ $globalChat }[]
+    [gray]Discord relay: [white]{ $discordRelay }[]
     { "" }
-    { "" }[accent]■ Переклад[]
-    { "" }[gray]Мова перекладача: [white]{ $translatorLanguage }[]
-player-menu-settings-translator-title = { "[" }orange]{ -xcore } — Вибір мови перекладача
-player-menu-settings-language-title = { "[" }orange]{ -xcore } — Вибір мови
+    [accent]■ Переклад[]
+    [gray]Мова перекладача: [white]{ $translatorLanguage }[]
+player-menu-settings-translator-title = [orange]{ -xcore } — Вибір мови перекладача
+player-menu-settings-language-title = [orange]{ -xcore } — Вибір мови
 player-menu-settings-customNickname = Редагувати ім'я
-player-menu-settings-customNickname-title = { "[" }orange]{ -xcore } — Редагувати ім'я
-player-menu-settings-customNickname-message = { "[" }lightgray]Залиште пустим для скидання
+player-menu-settings-customNickname-title = [orange]{ -xcore } — Редагувати ім'я
+player-menu-settings-customNickname-message = [lightgray]Залиште пустим для скидання
 player-menu-settings-customNickname-reset = [scarlet]Скинути ім'я
 player-menu-settings-description = Редагувати опис
-player-menu-settings-description-title = { "[" }orange]{ -xcore } — Редагувати опис
+player-menu-settings-description-title = [orange]{ -xcore } — Редагувати опис
 player-menu-settings-badges = Відзнаки
 player-menu-settings-global-chat-on = [green]Global чат
 player-menu-settings-global-chat-off = [red]Global чат
@@ -735,47 +734,47 @@ player-menu-settings-discord-relay-on = [green]Discord relay
 player-menu-settings-discord-relay-off = [red]Discord relay
 audit-menu-open = Історія аудиту
 audit-menu-actions-open = Дії
-audit-menu-history-title = { "[" }orange]{ -xcore } — Історія аудиту
+audit-menu-history-title = [orange]{ -xcore } — Історія аудиту
 audit-menu-history-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $player }[] [gray]#{ $pid }[]
-    { "" }[gray]Показано записів: [accent]{ $entriesShown }[]
-    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
-    { "" }[lightgray]{ $hint }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $player }[] [gray]#{ $pid }[]
+    [gray]Показано записів: [accent]{ $entriesShown }[]
+    [gray]{ $pageState } [darkgray]|[] { $nextState }
+    [lightgray]{ $hint }[]
 audit-menu-history-page-first = Новіші записи
 audit-menu-history-page-older = Старіші записи
 audit-menu-history-more = Є ще записи
 audit-menu-history-end = Кінець історії
 audit-menu-history-empty = Для цього гравця ще немає записів аудиту.
 audit-menu-history-hint = Виберіть запис нижче, щоб переглянути деталі.
-audit-menu-actions-title = { "[" }orange]{ -xcore } — Дії аудиту
+audit-menu-actions-title = [orange]{ -xcore } — Дії аудиту
 audit-menu-actions-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $player }[] [gray]#{ $pid }[]
-    { "" }[gray]Показано записів: [accent]{ $entriesShown }[]
-    { "" }[gray]{ $pageState } [darkgray]|[] { $nextState }
-    { "" }[lightgray]{ $hint }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $player }[] [gray]#{ $pid }[]
+    [gray]Показано записів: [accent]{ $entriesShown }[]
+    [gray]{ $pageState } [darkgray]|[] { $nextState }
+    [lightgray]{ $hint }[]
 audit-menu-actions-empty = Для цього гравця ще немає дій аудиту.
 audit-menu-actions-hint = Виберіть запис нижче, щоб переглянути, що робив цей гравець.
 audit-menu-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $actor }[] [gray]— { $reason }
 audit-menu-action-summary-row = [accent]{ $action }[] [darkgray]•[] [white]{ $target }[] [gray]— { $reason }
-audit-menu-details-title = { "[" }orange]{ -xcore } — Деталі аудиту
+audit-menu-details-title = [orange]{ -xcore } — Деталі аудиту
 audit-menu-details-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $player }[] [gray]#{ $pid }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $player }[] [gray]#{ $pid }[]
     { "" }
-    { "" }[accent]■ Подія аудиту[]
-    { "" }[gray]Дія: [white]{ $action }[]
-    { "" }[gray]Хто виконав: [white]{ $actor }[]
-    { "" }[gray]Причина: [white]{ $reason }[]
+    [accent]■ Подія аудиту[]
+    [gray]Дія: [white]{ $action }[]
+    [gray]Хто виконав: [white]{ $actor }[]
+    [gray]Причина: [white]{ $reason }[]
     { "" }
-    { "" }[accent]■ Час[]
-    { "" }[gray]Коли: [white]{ $occurredAt }[]
-    { "" }[gray]Тривалість: [white]{ $duration }[]
-    { "" }[gray]Закінчується: [white]{ $expiresAt }[]
+    [accent]■ Час[]
+    [gray]Коли: [white]{ $occurredAt }[]
+    [gray]Тривалість: [white]{ $duration }[]
+    [gray]Закінчується: [white]{ $expiresAt }[]
     { "" }
-    { "" }[accent]■ Метадані[]
-    { "" }[gray]Audit ID: [white]{ $auditId }[]
+    [accent]■ Метадані[]
+    [gray]Audit ID: [white]{ $auditId }[]
 audit-menu-unknown-actor = Невідомо
 audit-menu-unknown-target = Невідомо
 audit-menu-reason-unspecified = Не вказано
@@ -791,21 +790,21 @@ audit-menu-action-quarantine = Карантин
 audit-menu-action-unquarantine = Зняття карантину
 settings-language-label = Мова: [green]{ $lang }[]
 event-menu-create-start-map = Створити подію для цієї карти
-date-time-picker-title = { "[" }orange]{ -xcore } — Дата й час
+date-time-picker-title = [orange]{ -xcore } — Дата й час
 date-time-picker-content =
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
-    { "" }[white]{ $field }[]
-    { "" }[lightgray]Поточне значення: [white]{ $value }[]
-    { "" }[gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
+    [white]{ $field }[]
+    [lightgray]Поточне значення: [white]{ $value }[]
+    [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     { "" }
-    { "" }[accent]■ Дата[]
-    { "" }[gray]Спочатку виберіть день, а потім уточніть час нижче.[]
+    [accent]■ Дата[]
+    [gray]Спочатку виберіть день, а потім уточніть час нижче.[]
     { "" }
-    { "" }[accent]■ Час[]
-    { "" }[gray]Скористайтеся пресетами або точними коригуваннями для зручного планування.[]
+    [accent]■ Час[]
+    [gray]Скористайтеся пресетами або точними коригуваннями для зручного планування.[]
     { "" }
-    { "" }[accent]■ Ручне введення[]
-    { "" }[gray]Використовуйте його лише коли потрібні точні мілісекунди або відносне значення формату +m/+h/+d.[]
+    [accent]■ Ручне введення[]
+    [gray]Використовуйте його лише коли потрібні точні мілісекунди або відносне значення формату +m/+h/+d.[]
 date-time-picker-field-generic = Запланований час
 date-time-picker-today = Сьогодні
 date-time-picker-tomorrow = Завтра
@@ -824,48 +823,48 @@ date-time-picker-minus-15m = -15хв
 date-time-picker-plus-15m = +15хв
 date-time-picker-reset = Скинути
 date-time-picker-manual = Ручне введення
-date-time-picker-manual-title = { "[" }orange]{ -xcore } — Ручне введення часу
+date-time-picker-manual-title = [orange]{ -xcore } — Ручне введення часу
 date-time-picker-manual-message = Введіть абсолютні мілісекунди або відносний час на кшталт +30m, +2h, +1d.
 event-end = Подія [green]{ $name }[] завершилася!
-error-team-not-found = { "[" }scarlet]⚠ Команду не знайдено.
-error-no-access = { "[" }scarlet]⚠ Немає доступу.
-error-nickname-too-long = { "[" }scarlet]⚠ Ім'я користувача надто довге. Максимум { $max } видимих символів.
-error-private-message-invalid-pid = { "[" }scarlet]⚠ Невірний ID гравця. Використовуйте формат [lightgray]#123[].
-error-private-message-self = { "[" }scarlet]⚠ Не можна надсилати приватне повідомлення самому собі.
-error-private-message-empty = { "[" }scarlet]⚠ Повідомлення не може бути порожнім.
-error-private-message-too-long = { "[" }scarlet]⚠ Повідомлення надто довге. Максимум { $max } символів.
-error-private-message-cooldown = { "[" }scarlet]⚠ Зачекайте { $seconds }с перед надсиланням наступного приватного повідомлення.
-error-private-message-target-unavailable = { "[" }scarlet]⚠ Цей гравець зараз недоступний для приватних повідомлень.
-error-private-message-no-reply-target = { "[" }scarlet]⚠ Немає кому відповісти в приватних повідомленнях.
-error-private-message-not-found = { "[" }scarlet]⚠ Повідомлення не знайдено.
-error-private-message-block-self = { "[" }scarlet]⚠ Не можна заблокувати самого себе.
-error-private-message-block-limit = { "[" }scarlet]⚠ Досягнуто ліміту списку блокувань ({ $limit }).
-ban-menu-duration-title = { "[" }orange]{ -xcore } — Тривалість блокування
+error-team-not-found = [scarlet]⚠ Команду не знайдено.
+error-no-access = [scarlet]⚠ Немає доступу.
+error-nickname-too-long = [scarlet]⚠ Ім'я користувача надто довге. Максимум { $max } видимих символів.
+error-private-message-invalid-pid = [scarlet]⚠ Невірний ID гравця. Використовуйте формат [lightgray]#123[].
+error-private-message-self = [scarlet]⚠ Не можна надсилати приватне повідомлення самому собі.
+error-private-message-empty = [scarlet]⚠ Повідомлення не може бути порожнім.
+error-private-message-too-long = [scarlet]⚠ Повідомлення надто довге. Максимум { $max } символів.
+error-private-message-cooldown = [scarlet]⚠ Зачекайте { $seconds }с перед надсиланням наступного приватного повідомлення.
+error-private-message-target-unavailable = [scarlet]⚠ Цей гравець зараз недоступний для приватних повідомлень.
+error-private-message-no-reply-target = [scarlet]⚠ Немає кому відповісти в приватних повідомленнях.
+error-private-message-not-found = [scarlet]⚠ Повідомлення не знайдено.
+error-private-message-block-self = [scarlet]⚠ Не можна заблокувати самого себе.
+error-private-message-block-limit = [scarlet]⚠ Досягнуто ліміту списку блокувань ({ $limit }).
+ban-menu-duration-title = [orange]{ -xcore } — Тривалість блокування
 ban-menu-duration-message = Введіть тривалість блокування для { $nickname }. Наприклад: 1d, 12h, 30m
-ban-menu-reason-title = { "[" }orange]{ -xcore } — Причина блокування
+ban-menu-reason-title = [orange]{ -xcore } — Причина блокування
 ban-menu-reason-message = Введіть причину блокування для { $nickname }. Залиште порожнім для причини за замовчуванням.
-ban-menu-confirm-title = { "[" }orange]{ -xcore } — Підтвердження блокування
+ban-menu-confirm-title = [orange]{ -xcore } — Підтвердження блокування
 ban-menu-confirm-content =
-    { "" }[white]Гравець: { $nickname }[]
-    { "" }[white]Тривалість: [accent]{ $duration }[]
-    { "" }[white]Причина: [accent]{ $reason }[]
-ban-menu-confirm-action = { "[" }scarlet]Заблокувати гравця
+    [white]Гравець: { $nickname }[]
+    [white]Тривалість: [accent]{ $duration }[]
+    [white]Причина: [accent]{ $reason }[]
+ban-menu-confirm-action = [scarlet]Заблокувати гравця
 finished = завершено
-finished-neutral = { "[" }orange]Завершено
-finished-active = { "[" }green]Завершено
-finished-inactive = { "[" }red]Завершено
+finished-neutral = [orange]Завершено
+finished-active = [green]Завершено
+finished-inactive = [red]Завершено
 major = Масштабна
-major-neutral = { "[" }orange]Масштабна
-major-active = { "[" }green]Масштабна
-major-inactive = { "[" }red]Масштабна
+major-neutral = [orange]Масштабна
+major-active = [green]Масштабна
+major-inactive = [red]Масштабна
 active = Активна
-active-neutral = { "[" }orange]Активна
-active-active = { "[" }green]Активна
-active-inactive = { "[" }red]Активна
+active-neutral = [orange]Активна
+active-active = [green]Активна
+active-inactive = [red]Активна
 admin = Адмін
-admin-neutral = { "[" }orange]Адмін
-admin-active = { "[" }green]Адмін
-admin-inactive = { "[" }red]Адмін
+admin-neutral = [orange]Адмін
+admin-active = [green]Адмін
+admin-inactive = [red]Адмін
 cancel = Скасувати
 back = Назад
 no-description = Без опису
@@ -877,44 +876,44 @@ discord-red-vs-blue = RedVSBlue
 auto = Авто
 on = Увімкнено
 off = Вимкнено
-error-command-disabled = { "[" }scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
-error-feature-disabled = { "[" }scarlet]⚠ Цю функцію вимкнено на цьому сервері.
-error-nickname-badge-glyph = { "[" }scarlet]⚠ Користувацький нік не може містити зарезервовані іконки відзнак.
+error-command-disabled = [scarlet]⚠ Команда [accent]/{ $command }[scarlet] вимкнена на цьому сервері.
+error-feature-disabled = [scarlet]⚠ Цю функцію вимкнено на цьому сервері.
+error-nickname-badge-glyph = [scarlet]⚠ Користувацький нік не може містити зарезервовані іконки відзнак.
 player-leaderboard-active = [green]Лідерборд: увімкнено[]
 player-leaderboard-inactive = [red]Лідерборд: вимкнено[]
-badge-menu-title = { "[" }orange]{ -xcore } — Відзнаки
+badge-menu-title = [orange]{ -xcore } — Відзнаки
 badge-menu-content =
-    { "" }[white]Системна відзнака: [green]{ $systemBadge }[]
-    { "" }[white]Активна відзнака: [green]{ $activeBadge }[]
-    { "" }[white]Колір символу: [green]{ $symbolColorMode }[]
-badge-menu-empty = { "[" }lightgray]У вас поки що немає відкритих відзнак.
-badge-menu-row = { "[" }white]{ $badge }[] [gray]-[] { $description }
+    [white]Системна відзнака: [green]{ $systemBadge }[]
+    [white]Активна відзнака: [green]{ $activeBadge }[]
+    [white]Колір символу: [green]{ $symbolColorMode }[]
+badge-menu-empty = [lightgray]У вас поки що немає відкритих відзнак.
+badge-menu-row = [white]{ $badge }[] [gray]-[] { $description }
 badge-menu-symbol-color-button = Колір символу: [green]{ $mode }[]
-badge-menu-symbol-color-title = { "[" }orange]{ -xcore } — Колір символу відзнаки
+badge-menu-symbol-color-title = [orange]{ -xcore } — Колір символу відзнаки
 badge-menu-symbol-color-content =
-    { "" }[white]Поточний режим: [green]{ $mode }[]
-    { "" }[lightgray]Виберіть, як має зафарбовуватися символ відзнаки.
+    [white]Поточний режим: [green]{ $mode }[]
+    [lightgray]Виберіть, як має зафарбовуватися символ відзнаки.
 badge-menu-symbol-color-default = Стандартний колір відзнаки
 badge-menu-symbol-color-player-color = Колір гравця
 badge-menu-view-all = Усі відзнаки
-badge-menu-all-title = { "[" }orange]{ -xcore } — Усі відзнаки
-badge-menu-all-content = { "[" }lightgray]Перегляд усіх відзнак, їхнього статусу та опису.
-badge-menu-all-row = { "[" }white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
+badge-menu-all-title = [orange]{ -xcore } — Усі відзнаки
+badge-menu-all-content = [lightgray]Перегляд усіх відзнак, їхнього статусу та опису.
+badge-menu-all-row = [white]{ $badge }[] [gray]-[] [accent]{ $state }[] [gray]-[] { $description }
 badge-clear-button = Прибрати активну відзнаку
 badge-state-system = Системна
 badge-state-system-active = Системна активна
 badge-state-active = Активна
 badge-state-unlocked = Відкрита
 badge-state-locked = Закрита
-badge-set-success = { "[" }accent]Активну відзнаку встановлено: [green]{ $badge }[].
-badge-clear-success = { "[" }accent]Активну відзнаку прибрано.
-badge-grant-success = { "[" }accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].
-badge-revoke-success = { "[" }accent]Відзнаку [green]{ $badge }[] знято з гравця [green]{ $nickname }[][gray]#{ $pid }[].
-badge-already-unlocked = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] уже відкрито.
-badge-not-owned = { "[" }scarlet]⚠ Гравець не має відзнаки [accent]{ $badge }[scarlet].
-error-badge-not-found = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не знайдено.
-error-badge-not-unlocked = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не відкрито.
-error-badge-not-selectable = { "[" }scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не можна вибрати вручну.
+badge-set-success = [accent]Активну відзнаку встановлено: [green]{ $badge }[].
+badge-clear-success = [accent]Активну відзнаку прибрано.
+badge-grant-success = [accent]Відзнаку [green]{ $badge }[] видано гравцеві [green]{ $nickname }[][gray]#{ $pid }[].
+badge-revoke-success = [accent]Відзнаку [green]{ $badge }[] знято з гравця [green]{ $nickname }[][gray]#{ $pid }[].
+badge-already-unlocked = [scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] уже відкрито.
+badge-not-owned = [scarlet]⚠ Гравець не має відзнаки [accent]{ $badge }[scarlet].
+error-badge-not-found = [scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не знайдено.
+error-badge-not-unlocked = [scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не відкрито.
+error-badge-not-selectable = [scarlet]⚠ Відзнаку [accent]{ $badge }[scarlet] не можна вибрати вручну.
 badge-admin-name = Адміністратор
 badge-admin-description = Автоматична відзнака для адміністраторів.
 badge-developer-name = Розробник
