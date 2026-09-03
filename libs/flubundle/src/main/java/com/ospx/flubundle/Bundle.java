@@ -6,10 +6,11 @@ import arc.struct.Seq;
 import arc.util.Log;
 
 import fluent.bundle.FluentBundle;
+import fluent.bundle.FluentFunctionCache;
+import fluent.bundle.FluentFunctionRegistry;
 import fluent.bundle.FluentResource;
-import fluent.functions.icu.ICUFunctionFactory;
+import fluent.bundle.LRUFunctionCache;
 import fluent.syntax.parser.FTLParser;
-import fluent.syntax.parser.FTLStream;
 
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
@@ -33,6 +34,8 @@ public class Bundle {
 
     private final ObjectMap<Locale, FluentBundle> sources = new ObjectMap<>();
     private final Map<String, Locale> localeAliases = new HashMap<>();
+    private final FluentFunctionRegistry functionRegistry = FluentFunctionRegistry.builder().build();
+    private final FluentFunctionCache functionCache = LRUFunctionCache.of();
 
     public void addSource(Class<? extends Mod> main) {
         addSource(mods.getMod(main).root.child("bundles"));
@@ -65,7 +68,7 @@ public class Bundle {
 
     public void addSource(Fi file, Locale locale) {
         locale = normalizeLocale(locale);
-        FluentResource resource = FTLParser.parse(FTLStream.of(file.readString()));
+        FluentResource resource = FTLParser.parse(file.readString());
 
         if (resource.hasErrors()) {
             Log.err("Error parsing " + file.name() + ": ");
@@ -77,14 +80,13 @@ public class Bundle {
         var source = sources.get(locale);
 
         if (source == null) {
-            sources.put(locale, FluentBundle.builder(locale, ICUFunctionFactory.INSTANCE)
+            sources.put(locale, FluentBundle.builder(locale, functionRegistry, functionCache)
                     .addResource(resource)
                     .build());
             return;
         }
 
-        sources.put(locale, FluentBundle.builderFrom(source)
-                .withFunctionFactory(ICUFunctionFactory.INSTANCE)
+        sources.put(locale, FluentBundle.builderFrom(source, functionCache)
                 .addResourceOverriding(resource)
                 .build());
     }
@@ -200,7 +202,7 @@ public class Bundle {
                 continue;
             }
 
-            if (bundle.getMessage(id).isPresent()) {
+            if (bundle.message(id).isPresent()) {
                 return bundle.format(id, safeArgs);
             }
         }
@@ -221,7 +223,7 @@ public class Bundle {
         }
 
         Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
-        if (bundle.getMessage(id).isPresent()) {
+        if (bundle.message(id).isPresent()) {
             return bundle.format(id, safeArgs);
         }
 
