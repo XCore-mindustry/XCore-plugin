@@ -20,7 +20,10 @@ java {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven { url "https://maven.x-core.org/releases" }
+    maven { url "https://maven.x-core.org/snapshots" }
     maven { url "https://maven.xpdustry.com/mindustry" }
     maven { url "https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository" }
     maven { url 'https://www.jitpack.io' }
@@ -60,7 +63,7 @@ dependencies {
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
 
-    implementation "net.xyzsd.fluent:fluent-base:2.0"
+    implementation "net.xyzsd.fluent:fluent-base:2.0.0-xcore"
 
     testImplementation platform('org.junit:junit-bom:6.1.3')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

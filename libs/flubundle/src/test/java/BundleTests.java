@@ -75,6 +75,12 @@ public class BundleTests {
     }
 
     @Test
+    void supportsMultilineLeadingColorBracketsWithoutEscaping() {
+        assertEquals("[accent]Accent line[]\n[green]Green line[]",
+                bundle.format(Locale.of("en"), "color-multiline", Map.of()));
+    }
+
+    @Test
     void localizerCanBeSnapshotOrDynamic() {
         Localizer snapshot = bundle.localizer(Locale.of("en", "US"));
         assertEquals("American English message", snapshot.format("shared-message", Map.of()));
