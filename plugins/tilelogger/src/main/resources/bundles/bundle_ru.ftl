@@ -27,17 +27,17 @@ error-not-allowed-from-player = [#ff8a8a]✖ Недоступно для игр�
 error-block-not-found = [#ff8a8a]✖ Блок не найден[]
 error-too-many-params = [#ff8a8a]✖ Слишком много параметров[]
 
-tilelogger-info = {""}
-    {""}[#a4b8ff]TileLogger[]
-        {""}[#b0b5c8]Автор:[]  [#ffd37f] (Gorynych)[]
-        {""}[#b0b5c8]Сборка:[] [#a4b8ff]{$build}[]
+tilelogger-info =
+    [#a4b8ff]TileLogger[]
+        [#b0b5c8]Автор:[]  [#ffd37f] (Gorynych)[]
+        [#b0b5c8]Сборка:[] [#a4b8ff]{$build}[]
 
-tilelogger-memory = {""}
-    {""}[#a4b8ff]▬▬▬ Память (MB) ▬▬▬[]
-        {""}[#b0b5c8]JVM:[]     [#ffd37f]{$jvmUsed}[] [#6e7080]/[] [#b0b5c8]{$jvmMax}[]
-        {""}[#b0b5c8]История:[] [#ffd37f]{$historyUsed}[] [#6e7080]/[] [#b0b5c8]{$historyCap}[]
-        {""}[#b0b5c8]Игроки:[]  [#ffd37f]{$playersUsed}[] [#6e7080]/[] [#b0b5c8]{$playersCap}[]
-        {""}[#b0b5c8]Конфиги:[] [#ffd37f]{$configsUsed}[] [#6e7080]/[] [#b0b5c8]{$configsCap}[]
+tilelogger-memory =
+    [#a4b8ff]▬▬▬ Память (MB) ▬▬▬[]
+        [#b0b5c8]JVM:[]     [#ffd37f]{$jvmUsed}[] [#6e7080]/[] [#b0b5c8]{$jvmMax}[]
+        [#b0b5c8]История:[] [#ffd37f]{$historyUsed}[] [#6e7080]/[] [#b0b5c8]{$historyCap}[]
+        [#b0b5c8]Игроки:[]  [#ffd37f]{$playersUsed}[] [#6e7080]/[] [#b0b5c8]{$playersCap}[]
+        [#b0b5c8]Конфиги:[] [#ffd37f]{$configsUsed}[] [#6e7080]/[] [#b0b5c8]{$configsCap}[]
 
 tilelogger-select-start = [#a4b8ff] Выделение:[] [#b0b5c8]Нажмите на левый верхний угол.[]
 tilelogger-select-pos1 = [#a4b8ff] Точка 1 задана.[] [#b0b5c8]Нажмите на правый нижний угол.[]
@@ -52,6 +52,6 @@ tilelogger-history-player = [#a4b8ff]📜 История:[] [#ffd37f]{$player}[]
 tilelogger-history-tile = [#a4b8ff]📜 История тайла:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
 
 tilelogger-rollback-broadcast = [#a4b8ff]Откат:[] [#ffd37f]{$caller}[] [#b0b5c8]отменил действия[] [#ffd37f]{$target}[]
-    {""}[#b0b5c8]Изменено тайлов:[] [#ff8a8a]{$count}[]
+    [#b0b5c8]Изменено тайлов:[] [#ff8a8a]{$count}[]
 
 tilelogger-server = Сервер
