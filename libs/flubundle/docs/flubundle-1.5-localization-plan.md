@@ -47,15 +47,21 @@ Upgrade `flubundle` (1.4 -> 1.5) and `fluent-base` (2.0.0-xcore -> 2.0.1-xcore) 
    - Wraps text in `[{color}]{text}[]`.
    - Validates `color` option has no brackets `[` or `]`.
    - Defaults to `accent`.
-3. **`DURATION($time, style: "compact"|"timer", unit: "seconds"|"millis")`**:
+3. **`DURATION($time, style: "compact"|"timer"|"full", colored: "true"|false, maxUnits: 0|2, unit: "seconds"|"millis")`**:
    - Numeric input (or parseable number string).
    - `unit`: `"seconds"` (default), `"millis"` (floored/truncated).
-   - Preserves negative signs (`-00:05`, `-5s`).
+   - Preserves negative signs (`-00:05`, `-5s`, `-[white]1[lightgray] день`).
    - `style: "timer"`: `mm:ss` or `hh:mm:ss` or `d:hh:mm:ss`.
    - `style: "compact"`:
      - `en`: `1d 2h 3m 4s`
      - `ru`: `1д 2ч 3м 4с`
      - `uk` / `be`: `1д 2г 3хв 4с`
+   - `style: "full"`:
+     - Full words with full Slavic pluralization (`ru`: 1 день / 2 дня / 5 дней; `uk`: 1 день / 2 дні / 5 днів; `en`: 1 day / 2 days).
+   - `colored: "true"`:
+     - Embeds Mindustry colors: numbers in `[white]`, unit labels in `[lightgray]`.
+   - `maxUnits`:
+     - Limits output to top N significant non-zero units (e.g. `maxUnits: 2` yields `1 день 14 часов` instead of showing seconds).
    - **Crucial Rule**: Use `DURATION` for standalone durations and timers. Do NOT use `DURATION` for inflected grammatical prose (e.g., "через 1 секунду" / "через 5 секунд"). Inflected prose must use Fluent select expressions.
 
 ### D. Built-in Implicit Formatters

@@ -105,6 +105,34 @@ public class LocalizationFeaturesTest {
     }
 
     @Test
+    void testDurationFunctionFullStyle() {
+        String ftl = """
+                full = { DURATION($time, style: "full") }
+                full-max2 = { DURATION($time, style: "full", maxUnits: 2) }
+                full-colored = { DURATION($time, style: "full", colored: "true", maxUnits: 2) }
+                """;
+
+        Bundle bundleRu = createBundleWithFtl(ftl, Locale.of("ru"));
+        assertEquals("1 день 1 час", bundleRu.format(Locale.of("ru"), "full-max2", Map.of("time", 90000)));
+        assertEquals("[white]1[lightgray] день [white]1[lightgray] час", bundleRu.format(Locale.of("ru"), "full-colored", Map.of("time", 90000)));
+        assertEquals("1 час 1 минута 5 секунд", bundleRu.format(Locale.of("ru"), "full", Map.of("time", 3665)));
+        assertEquals("21 день", bundleRu.format(Locale.of("ru"), "full", Map.of("time", 21 * 86400)));
+        assertEquals("22 дня", bundleRu.format(Locale.of("ru"), "full", Map.of("time", 22 * 86400)));
+        assertEquals("25 дней", bundleRu.format(Locale.of("ru"), "full", Map.of("time", 25 * 86400)));
+
+        Bundle bundleEn = createBundleWithFtl(ftl, Locale.ENGLISH);
+        assertEquals("1 day 1 hour", bundleEn.format(Locale.ENGLISH, "full-max2", Map.of("time", 90000)));
+        assertEquals("[white]1[lightgray] day [white]1[lightgray] hour", bundleEn.format(Locale.ENGLISH, "full-colored", Map.of("time", 90000)));
+        assertEquals("2 days", bundleEn.format(Locale.ENGLISH, "full", Map.of("time", 2 * 86400)));
+
+        Bundle bundleUk = createBundleWithFtl(ftl, Locale.of("uk"));
+        assertEquals("1 день 1 година", bundleUk.format(Locale.of("uk"), "full-max2", Map.of("time", 90000)));
+        assertEquals("[white]1[lightgray] день [white]1[lightgray] година", bundleUk.format(Locale.of("uk"), "full-colored", Map.of("time", 90000)));
+        assertEquals("2 дні", bundleUk.format(Locale.of("uk"), "full", Map.of("time", 2 * 86400)));
+        assertEquals("5 днів", bundleUk.format(Locale.of("uk"), "full", Map.of("time", 5 * 86400)));
+    }
+
+    @Test
     void testDurationUnits() {
         String ftl = """
                 from-millis = { DURATION($time, unit: "millis") }
