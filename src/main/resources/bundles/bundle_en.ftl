@@ -156,8 +156,19 @@ discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[ligh
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](from [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][PM][] [lightgray]from [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][PM][] [lightgray]to [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
-private-message-unread-count = [accent]You have [white]{ $count }[accent] unread private messages.
-private-message-join-notification = [accent]You have [white]{ $count }[accent] unread private messages. Use [white]/inbox[accent] to open them.
+private-message-unread-count =
+    [accent]You have [white]{ $count }[accent] unread private { $count ->
+        [one] message
+       *[other] messages
+    }.
+private-message-join-notification =
+    [accent]You have [white]{ $count }[accent] unread private { $count ->
+        [one] message
+       *[other] messages
+    }. Use [white]/inbox[accent] to open { $count ->
+        [one] it
+       *[other] them
+    }.
 private-message-block-success = [accent]Private messages from [white]{ $target } [gray]#{ $pid }[accent] are now blocked.
 private-message-block-already = [lightgray]Private messages from [white]{ $target } [gray]#{ $pid }[lightgray] are already blocked.
 private-message-unblock-success = [accent]Private messages from [white]{ $target } [gray]#{ $pid }[accent] are no longer blocked.
@@ -327,7 +338,10 @@ map-vote-title = [orange]{ -xcore } — [scarlet]GAME OVER!
 map-vote-content =
     { "" }
     Next map: [accent]{ $mapName }[] by [accent]{ $author }[white].
-    New game starts in [accent]{ $seconds }[white] seconds.
+    New game starts in [accent]{ $seconds }[white] { $seconds ->
+        [one] second
+       *[other] seconds
+    }.
     { "" }
     [cyan]Did you like this map?
 map-vote-like = [green]👍 Like

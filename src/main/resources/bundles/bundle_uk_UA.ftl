@@ -131,8 +131,23 @@ discord-chat-format = [#5865F2][DISCORD][] [lightgray]| [accent]{ $author }[ligh
 global-chat-format = [royal][[[orange]GLOBAL [lightgray](з [accent]{ $server }[])[] { $author }[]]: [white]{ $message }
 private-message-received = [sky][ПП][] [lightgray]від [accent]{ $author } [gray]#{ $pid }[lightgray]: [white]{ $message }
 private-message-sent = [sky][ПП][] [lightgray]для [accent]{ $target } [gray]#{ $pid }[lightgray]: [white]{ $message }
-private-message-unread-count = [accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень.
-private-message-join-notification = [accent]У вас [white]{ $count }[accent] непрочитаних приватних повідомлень. Використайте [white]/inbox[accent], щоб відкрити їх.
+private-message-unread-count =
+    [accent]У вас [white]{ $count }[accent] { $count ->
+        [one] непрочитане приватне повідомлення
+        [few] непрочитаних приватних повідомлення
+        [many] непрочитаних приватних повідомлень
+       *[other] непрочитаних приватних повідомлень
+    }.
+private-message-join-notification =
+    [accent]У вас [white]{ $count }[accent] { $count ->
+        [one] непрочитане приватне повідомлення
+        [few] непрочитаних приватних повідомлення
+        [many] непрочитаних приватних повідомлень
+       *[other] непрочитаних приватних повідомлень
+    }. Використайте [white]/inbox[accent], щоб відкрити { $count ->
+        [one] його
+       *[other] їх
+    }.
 private-message-block-success = [accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] тепер заблоковані.
 private-message-block-already = [lightgray]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[lightgray] вже заблоковані.
 private-message-unblock-success = [accent]Приватні повідомлення від [white]{ $target } [gray]#{ $pid }[accent] знову дозволені.
@@ -255,7 +270,8 @@ votekick-success =
     [orange]Голосування успішне. { $target }[orange] вигнаний на [scarlet]{ $minutes }[] { $minutes ->
         [one] хвилину
         [few] хвилини
-       *[many] хвилин
+        [many] хвилин
+       *[other] хвилини
     }.
 # ==============================================================================
 # Maps & RTV
@@ -303,7 +319,12 @@ map-vote-title = [orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!
 map-vote-content =
     { "" }
     Наступна мапа: [accent]{ $mapName }[] від [accent]{ $author }[white].
-    Нова гра почнеться через [accent]{ $seconds }[white] секунд.
+    Нова гра почнеться через [accent]{ $seconds }[white] { $seconds ->
+        [one] секунду
+        [few] секунди
+        [many] секунд
+       *[other] секунди
+    }.
     { "" }
     [cyan]Чи сподобалась ця мапа?
 map-vote-like = [green]👍 Подобається
@@ -432,7 +453,8 @@ hexed-game-over-winner-row =
     [orange]{ $index }. { $name }[][accent]: [cyan]{ $cores } { $cores ->
         [one] гекс
         [few] гекси
-       *[many] гексів
+        [many] гексів
+       *[other] гекса
     }
 hexed-game-over-no-winners = Гру закінчено. На жаль, переможців не знайдено.
 hexed-game-over-restart = Нова гра через 10 секунд…
