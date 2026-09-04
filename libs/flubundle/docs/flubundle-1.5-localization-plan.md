@@ -105,3 +105,23 @@ Upgrade `flubundle` (1.4 -> 1.5) and `fluent-base` (2.0.0-xcore -> 2.0.1-xcore) 
 4. **Phase 4 (Consumers - Ecosystem)**:
    - Apply updates to `TileLogger`, `aethercore-plugin`, `xcore-sentinel`, `xcore-plugin-template`.
    - Verify all tests and CI builds.
+
+## 6. Build/Test-Time FTL Compiler & Linter (`flubundle:1.7`)
+- **`FtlCompiler`**:
+  - Validates `.ftl` bundle files at build/test time.
+  - Detects syntax errors and unparsed `Junk` nodes with file and line numbers.
+  - Verifies function calls against declarative `FunctionCatalog` (`FunctionSpec`).
+  - Verifies positional arguments counts and option names/values (e.g. `style: "full"`).
+  - Offers Levenshtein-based typo suggestions for unknown functions (e.g. `DURATON` -> `DURATION`) and invalid option names (e.g. `styl` -> `style`).
+  - Validates select expressions for default fallback variants (`*[other]`).
+  - Usage in tests:
+    ```java
+    @Test
+    void validateBundles() {
+        FtlCompiler.check(Path.of("src/main/resources/bundles"));
+    }
+    ```
+  - CLI usage:
+    ```bash
+    java -cp <classpath> com.ospx.flubundle.compiler.FtlCompiler src/main/resources/bundles
+    ```
