@@ -41,7 +41,12 @@ tilelogger-memory =
 
 tilelogger-select-start = [#a4b8ff] Выделение:[] [#b0b5c8]Нажмите на левый верхний угол.[]
 tilelogger-select-pos1 = [#a4b8ff] Точка 1 задана.[] [#b0b5c8]Нажмите на правый нижний угол.[]
-tilelogger-select-done = [#98ff98]✔ Область выбрана.[] [#b0b5c8]Тайлов:[] [#ffd37f]{$area}[]
+tilelogger-select-done = [#98ff98]✔ Область выбрана.[] [#b0b5c8]Тайлов:[] [#ffd37f]{$area}[] { $area ->
+    [one] тайл
+    [few] тайла
+    [many] тайлов
+   *[other] тайла
+}
 
 tilelogger-subnet-accept = [#98ff98]✔ РАЗРЕШЕНО[] [#b0b5c8]Подсеть:[] [#ffd37f]{$subnet}[]
 tilelogger-subnet-deny = [#ff8a8a]✖ ЗАПРЕЩЕНО[] [#b0b5c8]Подсеть:[] [#ffd37f]{$subnet}[]

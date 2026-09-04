@@ -36,7 +36,10 @@ tilelogger-memory =
 
 tilelogger-select-start = [#a4b8ff] Selection Mode:[] [#b0b5c8]Tap top-left corner.[]
 tilelogger-select-pos1 = [#a4b8ff] Position 1 set.[] [#b0b5c8]Tap bottom-right corner.[]
-tilelogger-select-done = [#98ff98]✔ Area selected.[] [#b0b5c8]Tiles:[] [#ffd37f]{$area}[]
+tilelogger-select-done = [#98ff98]✔ Area selected.[] [#b0b5c8]Tiles:[] [#ffd37f]{$area}[] { $area ->
+    [one] tile
+   *[other] tiles
+}
 
 tilelogger-subnet-accept = [#98ff98]✔ ACCEPTED[] [#b0b5c8]Subnet:[] [#ffd37f]{$subnet}[]
 tilelogger-subnet-deny = [#ff8a8a]✖ DENIED[] [#b0b5c8]Subnet:[] [#ffd37f]{$subnet}[]
