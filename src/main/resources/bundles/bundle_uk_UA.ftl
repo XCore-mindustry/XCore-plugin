@@ -229,7 +229,9 @@ tempban-content = [scarlet]⚠ Доступ заборонено[]
     { "" }
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До розблокування: [white]{ DURATION($duration) }
+    [orange]» [accent]До розблокування: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [orange]» [accent]Спливає: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { "" }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
@@ -237,13 +239,13 @@ you-are-muted-by =
     [orange]⚠ Чат обмежено[]
     [lightgray]Адміністратор [accent]{ $adminName }[lightgray] видав вам мут.
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До зняття: [white]{ DURATION($duration) }
+    [orange]» [accent]До зняття: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
 you-are-muted =
     [orange]⚠ Чат обмежено[]
     [lightgray]Ви не можете надсилати повідомлення, доки діє мут.
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До зняття: [white]{ DURATION($duration) }
+    [orange]» [accent]До зняття: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
 kick-pirated-game = [accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked =
     [accent]Ви були нещодавно вигнані з цього сервера.

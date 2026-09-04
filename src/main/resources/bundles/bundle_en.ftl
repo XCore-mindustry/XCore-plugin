@@ -250,7 +250,9 @@ tempban-content = [scarlet]⚠ Banned[]
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ DURATION($duration) }
+    [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
+    [orange]» [accent]Expires: [white]{ DATETIME($expireDate, dateStyle: "medium", timeStyle: "short") }
+    { "" }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
@@ -258,13 +260,13 @@ you-are-muted-by =
     [orange]⚠ Chat restricted[]
     [lightgray]You were muted by administrator [accent]{ $adminName }[lightgray].
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ DURATION($duration) }
+    [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
 you-are-muted =
     [orange]⚠ Chat restricted[]
     [lightgray]You cannot send messages while this mute is active.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ DURATION($duration) }
+    [orange]» [accent]Time left: { DURATION($duration, style: "full", colored: "true", maxUnits: 2) }
 kick-pirated-game = [accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
 kick-recently-kicked =
     [accent]You were recently kicked from this server.
