@@ -47,6 +47,9 @@ tilelogger-history-player = [#a4b8ff]📜 History:[] [#ffd37f]{$player}[] [#6e70
 tilelogger-history-tile = [#a4b8ff]📜 Tile History:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
 
 tilelogger-rollback-broadcast = [#a4b8ff]Rollback:[] [#ffd37f]{$caller}[] [#b0b5c8]reverted actions of[] [#ffd37f]{$target}[]
-    [#b0b5c8]Affected tiles:[] [#ff8a8a]{$count}[]
+    [#b0b5c8]Affected:[] [#ff8a8a]{$count}[] { $count ->
+        [one] tile
+       *[other] tiles
+    }
 
 tilelogger-server = Server

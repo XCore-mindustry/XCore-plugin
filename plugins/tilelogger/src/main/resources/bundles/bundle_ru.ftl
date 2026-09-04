@@ -52,6 +52,11 @@ tilelogger-history-player = [#a4b8ff]📜 История:[] [#ffd37f]{$player}[]
 tilelogger-history-tile = [#a4b8ff]📜 История тайла:[] [#ffd37f]({$x}, {$y})[] [#6e7080]|[] [#b0b5c8]{$time}[]
 
 tilelogger-rollback-broadcast = [#a4b8ff]Откат:[] [#ffd37f]{$caller}[] [#b0b5c8]отменил действия[] [#ffd37f]{$target}[]
-    [#b0b5c8]Изменено тайлов:[] [#ff8a8a]{$count}[]
+    [#b0b5c8]Изменено:[] [#ff8a8a]{$count}[] { $count ->
+        [one] тайл
+        [few] тайла
+        [many] тайлов
+       *[other] тайла
+    }
 
 tilelogger-server = Сервер
