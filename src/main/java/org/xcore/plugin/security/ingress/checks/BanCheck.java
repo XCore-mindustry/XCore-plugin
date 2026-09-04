@@ -58,9 +58,7 @@ public class BanCheck implements IngressCheck {
                     "nickname", stripColors(ban.name == null ? "" : ban.name),
                     "adminName", stripColors(ban.adminName == null ? "" : ban.adminName),
                     "reason", ban.reason == null ? "" : ban.reason,
-                    "days", duration.toDays(),
-                    "hours", duration.toHoursPart(),
-                    "minutes", duration.toMinutesPart(),
+                    "duration", Math.max(0, duration.toSeconds()),
                     "discordUrl", secretsConfig.externalLinks.discordUrl
             ));
 

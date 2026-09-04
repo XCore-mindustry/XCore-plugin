@@ -250,7 +250,7 @@ tempban-content = [scarlet]⚠ Banned[]
     { "" }
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m
+    [orange]» [accent]Time left: [white]{ DURATION($duration) }
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Admin { $adminName }[scarlet] banned player [gray]'[]{ $playerName }[gray]'
@@ -258,17 +258,17 @@ you-are-muted-by =
     [orange]⚠ Chat restricted[]
     [lightgray]You were muted by administrator [accent]{ $adminName }[lightgray].
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m [white]{ $seconds }[lightgray]s
+    [orange]» [accent]Time left: [white]{ DURATION($duration) }
 you-are-muted =
     [orange]⚠ Chat restricted[]
     [lightgray]You cannot send messages while this mute is active.
     [orange]» [accent]Admin: [white]{ $adminName }
     [orange]» [accent]Reason: [gold]{ $reason }
-    [orange]» [accent]Time left: [white]{ $days }[lightgray]d [white]{ $hours }[lightgray]h [white]{ $minutes }[lightgray]m [white]{ $seconds }[lightgray]s
+    [orange]» [accent]Time left: [white]{ DURATION($duration) }
 kick-pirated-game = [accent]Unauthorized client detected. [scarlet]Access denied[]. Please play using the [lime]official[] version from [blue]Steam[], [blue]Google Play[], or [blue]itch.io[].
 kick-recently-kicked =
     [accent]You were recently kicked from this server.
-    Wait [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] before joining again.
+    Wait [cyan]{ DURATION($remaining, style: "timer") }[accent] before joining again.
 kick-admintools-outdated =
     [green]The required AdminTools version: [grey]{ $requiredVersion }[]
     [scarlet]Your AdminTools version: [grey]{ $version }[]
@@ -359,7 +359,10 @@ rtv-vote =
     Type [orange]y[] or [orange]n[] to vote.
 rtv-left = { $nickname }[lightgray] left. Their vote to change the current map was cancelled. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
 rtv-fail = [lightgray]Vote failed. Not enough votes to change the current map to [orange]{ $mapName }[].
-rtv-success = [orange]Vote passed. Map [accent]{ $mapName }[] will be loaded in [accent]{ $mapLoadDelay }[] seconds…
+rtv-success = [orange]Vote passed. Map [accent]{ $mapName }[] will be loaded in [accent]{ $mapLoadDelay }[] { $mapLoadDelay ->
+    [one] second
+   *[other] seconds
+}…
 rtv-cancelled = [lightgray]Vote to change the current map to [orange]{ $mapName }[lightgray] was cancelled by { $admin }.
 vnw-vote =
     { $nickname }[lightgray] voted to start wave [orange]{ $wave }[lightgray] early. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
@@ -615,7 +618,7 @@ commands-observer-success = [green]You are now spectating
 commands-observer-exit-success = [green]You are no longer spectating
 commands-ai-description = Control AI.
 commands-ai-usage = [red]attack(i) []or [accent]idle(i)
-hexed-popup = [blue]{ $minutes }:{ $seconds }[] until the game ends.
+hexed-popup = [blue]{ DURATION($remaining, style: "timer") }[] until the game ends.
 hexed-eliminated = { $nickname } [gold]has been [scarlet]eliminated[]!
 hexed-leaderboard-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]hexes
 hexed-ranks-newbie = Newbie
@@ -641,13 +644,24 @@ pvp-you-spectator = [scarlet]You have been eliminated. Please wait for the next 
 # ==============================================================================
 player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has joined.
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]has left.
-notification-votekick-playtime = [accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] minutes and can now start a vote-kick.
+notification-votekick-playtime =
+    [accent]Congratulations! You have played for [lightgray]{ $votekickPlayTime }[] { $votekickPlayTime ->
+        [one] minute
+       *[other] minutes
+    } and can now start a vote-kick.
 notification-global-chat-playtime =
-    [accent]Congratulations! You have played for [lightgray]{ $globalChatPlayTime }[] minutes and can now send messages to global chat.
+    [accent]Congratulations! You have played for [lightgray]{ $globalChatPlayTime }[] { $globalChatPlayTime ->
+        [one] minute
+       *[other] minutes
+    } and can now send messages to global chat.
     [lightgray]Type [accent]/g [gray]<message…>[lightgray] to send a message.
 notification-admin-kick = { $admin }[accent] kicked { $target }[].
 notification-admin-wave-skip = { $admin }[accent] has skipped the wave.
-server-restart-countdown = Restart in { $seconds }
+server-restart-countdown =
+    Restart in { $seconds ->
+        [one] { $seconds } second
+       *[other] { $seconds } seconds
+    }
 like-map-success = [green]You liked this map!
 like-map-changed = [green]You changed your mind to a Like!
 dislike-map-success = [orange]You disliked this map.
@@ -841,9 +855,21 @@ error-player-not-found = [scarlet]Player not found.
 error-player-not-teammate = [scarlet]⚠ Target player is not in your team.
 error-player-admin = [scarlet]⚠ Don't try to kick an admin. ⚠
 error-already-voted = [scarlet]⚠ You have already voted. Calm down.
-error-playtime-requirement = [scarlet]⚠ You need to play for at least { $time } minutes to use this feature.
-error-globalchat-total-playtime = [scarlet]⚠ In order to send message to global chat you need to play for { $globalChatPlayTime } minutes.
-error-votekick-total-playtime = [scarlet]⚠ In order to start a vote-kick you need to play for { $votekickPlayTime } minutes.
+error-playtime-requirement =
+    [scarlet]⚠ You need to play for at least { $time } { $time ->
+        [one] minute
+       *[other] minutes
+    } to use this feature.
+error-globalchat-total-playtime =
+    [scarlet]⚠ In order to send message to global chat you need to play for { $globalChatPlayTime } { $globalChatPlayTime ->
+        [one] minute
+       *[other] minutes
+    }.
+error-votekick-total-playtime =
+    [scarlet]⚠ In order to start a vote-kick you need to play for { $votekickPlayTime } { $votekickPlayTime ->
+        [one] minute
+       *[other] minutes
+    }.
 error-vote-yourself = [scarlet]⚠ You cannot vote on your own vote session.
 error-vote-in-progress = [scarlet]⚠ A vote session is already in progress.
 error-no-voting = [scarlet]⚠ There is no vote session at the moment.
@@ -870,7 +896,7 @@ error-private-message-invalid-pid = [scarlet]⚠ Invalid private-message pid. Us
 error-private-message-self = [scarlet]⚠ You cannot send a private message to yourself.
 error-private-message-empty = [scarlet]⚠ Message cannot be empty.
 error-private-message-too-long = [scarlet]⚠ Message is too long. Max { $max } characters.
-error-private-message-cooldown = [scarlet]⚠ Wait { $seconds }s before sending another private message.
+error-private-message-cooldown = [scarlet]⚠ Wait { DURATION($seconds) } before sending another private message.
 error-private-message-target-unavailable = [scarlet]⚠ This player is unavailable for private messages right now.
 error-private-message-no-reply-target = [scarlet]⚠ No recent private-message contact to reply to.
 error-private-message-not-found = [scarlet]⚠ Message not found.

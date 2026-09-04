@@ -229,7 +229,7 @@ tempban-content = [scarlet]⚠ Доступ заборонено[]
     { "" }
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До розблокування: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв
+    [orange]» [accent]До розблокування: [white]{ DURATION($duration) }
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:
     [cyan]{ $discordUrl }
 tempban-player-banned = [scarlet] Адміністратор { $adminName }[scarlet] заблокував гравця [gray]'[]{ $playerName }[gray]'
@@ -237,17 +237,17 @@ you-are-muted-by =
     [orange]⚠ Чат обмежено[]
     [lightgray]Адміністратор [accent]{ $adminName }[lightgray] видав вам мут.
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
+    [orange]» [accent]До зняття: [white]{ DURATION($duration) }
 you-are-muted =
     [orange]⚠ Чат обмежено[]
     [lightgray]Ви не можете надсилати повідомлення, доки діє мут.
     [orange]» [accent]Адміністратор: [white]{ $adminName }
     [orange]» [accent]Причина: [gold]{ $reason }
-    [orange]» [accent]До зняття: [white]{ $days }[lightgray]д [white]{ $hours }[lightgray]г [white]{ $minutes }[lightgray]хв [white]{ $seconds }[lightgray]с
+    [orange]» [accent]До зняття: [white]{ DURATION($duration) }
 kick-pirated-game = [accent]Вхід з неофіційних клієнтів [scarlet]заборонено[]. Будь ласка, використовуйте [lime]офіційну[] версію гри (Steam, Google Play, itch.io).
 kick-recently-kicked =
     [accent]Ви були нещодавно вигнані з цього сервера.
-    Зачекайте [cyan]{ $remainMinutes }:{ $remainSeconds }[accent] перед повторним входом.
+    Зачекайте [cyan]{ DURATION($remaining, style: "timer") }[accent] перед повторним входом.
 kick-admintools-outdated =
     [green]Необхідна версія AdminTools: [grey]{ $requiredVersion }[]
     [scarlet]Ваша версія AdminTools: [grey]{ $version }[]
@@ -340,7 +340,12 @@ rtv-vote =
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.
 rtv-left = { $nickname }[lightgray] вийшов. Його голос за зміну мапи скасовано. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
 rtv-fail = [lightgray]Голосування не пройшло. Недостатньо голосів для зміни мапи на [orange]{ $mapName }[].
-rtv-success = [orange]Голосування пройшло. Мапа [accent]{ $mapName }[] буде завантажена через [accent]{ $mapLoadDelay }[] секунд…
+rtv-success = [orange]Голосування пройшло. Мапа [accent]{ $mapName }[] буде завантажена через [accent]{ $mapLoadDelay }[] { $mapLoadDelay ->
+    [one] секунду
+    [few] секунди
+    [many] секунд
+   *[other] секунди
+}…
 rtv-cancelled = [lightgray]Голосування за зміну мапи на [orange]{ $mapName }[lightgray] було скасовано адміністратором { $admin }.
 vnw-vote =
     { $nickname }[lightgray] проголосував за достроковий запуск хвилі [orange]{ $wave }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
@@ -439,7 +444,7 @@ commands-observer-success = [green]Тепер ви спостерігаєте з
 commands-observer-exit-success = [green]Ви більше не спостерігаєте за грою
 commands-ai-description = Керування ШІ (AI).
 commands-ai-usage = [red]attack(i) []або [accent]idle(i)
-hexed-popup = [blue]{ $minutes }:{ $seconds }[] до кінця гри.
+hexed-popup = [blue]{ DURATION($remaining, style: "timer") }[] до кінця гри.
 hexed-eliminated = { $nickname } [gold]був [scarlet]знищений[]!
 hexed-leaderboard-content = [orange]{ $index }. { $nickname }[accent]: [cyan]{ $hexes } [accent]гексів
 hexed-ranks-newbie = Новачок
@@ -467,13 +472,30 @@ pvp-you-spectator = [scarlet]Ви програли. Будь ласка, зач�
 # ==============================================================================
 player-joined = { $nickname } [grey]#[white]{ $pid }[grey] [accent]приєднався.
 player-left = { $nickname } [grey]#[white]{ $pid }[grey] [accent]вийшов.
-notification-votekick-playtime = [accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] хвилин і тепер можете почати голосування за вигнання.
+notification-votekick-playtime =
+    [accent]Вітаємо! Ви відіграли [lightgray]{ $votekickPlayTime }[] { $votekickPlayTime ->
+        [one] хвилину
+        [few] хвилини
+        [many] хвилин
+       *[other] хвилини
+    } і тепер можете почати голосування за вигнання.
 notification-global-chat-playtime =
-    [accent]Вітаємо! Ви відіграли [lightgray]{ $globalChatPlayTime }[] хвилин і тепер можете писати в глобальний чат.
+    [accent]Вітаємо! Ви відіграли [lightgray]{ $globalChatPlayTime }[] { $globalChatPlayTime ->
+        [one] хвилину
+        [few] хвилини
+        [many] хвилин
+       *[other] хвилини
+    } і тепер можете писати в глобальний чат.
     [lightgray]Напишіть [accent]/g [gray]<повідомлення…>[lightgray], щоб надіслати повідомлення.
 notification-admin-kick = { $admin }[accent] вигнав(ла) { $target }[].
 notification-admin-wave-skip = { $admin }[accent] пропустив(ла) хвилю.
-server-restart-countdown = Перезавантаження через { $seconds }
+server-restart-countdown =
+    Перезавантаження через { $seconds ->
+        [one] { $seconds } секунду
+        [few] { $seconds } секунди
+        [many] { $seconds } секунд
+       *[other] { $seconds } секунди
+    }
 like-map-success = [green]Ви вподобали цю мапу!
 like-map-changed = [green]Ви змінили свою думку на Вподобайку!
 dislike-map-success = [orange]Ви поставили "Не подобається" цій мапі.
@@ -629,8 +651,20 @@ error-player-not-found = [scarlet]⚠ Гравця не знайдено.
 error-player-not-teammate = [scarlet]⚠ Цей гравець не у вашій команді.
 error-player-admin = [scarlet]⚠ Не намагайтеся вигнати адміністратора. ⚠
 error-already-voted = [scarlet]⚠ Ви вже проголосували. Заспокойтесь.
-error-globalchat-total-playtime = [scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } хвилин.
-error-votekick-total-playtime = [scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } хвилин.
+error-globalchat-total-playtime =
+    [scarlet]⚠ Щоб писати в глобальний чат, вам потрібно відіграти { $globalChatPlayTime } { $globalChatPlayTime ->
+        [one] хвилину
+        [few] хвилини
+        [many] хвилин
+       *[other] хвилини
+    }.
+error-votekick-total-playtime =
+    [scarlet]⚠ Щоб почати голосування за вигнання, вам потрібно відіграти { $votekickPlayTime } { $votekickPlayTime ->
+        [one] хвилину
+        [few] хвилини
+        [many] хвилин
+       *[other] хвилини
+    }.
 error-vote-yourself = [scarlet]⚠ Ви не можете голосувати у власному голосуванні.
 error-vote-in-progress = [scarlet]⚠ Голосування вже триває.
 error-no-voting = [scarlet]⚠ На даний момент голосування не проводиться.
@@ -650,7 +684,13 @@ error-admin-password-too-short = [scarlet]⚠ Пароль адміністра�
 error-wrong-admin-password = [scarlet]⚠ Невірний пароль адміністратора.
 error-internal = [scarlet]Внутрішня помилка сервера.
 error-processing-request = [scarlet]Виникла помилка під час обробки запиту.
-error-playtime-requirement = [scarlet]⚠ Вам потрібно відіграти мінімум { $time } хвилин для використання цієї функції.
+error-playtime-requirement =
+    [scarlet]⚠ Вам потрібно відіграти мінімум { $time } { $time ->
+        [one] хвилину
+        [few] хвилини
+        [many] хвилин
+       *[other] хвилини
+    } для використання цієї функції.
 error-invalid-syntax = [scarlet]⚠ Невірний синтаксис команди. Використання: [lightgray]/'{ $syntax }'.
 error-invalid-sender = [scarlet]⚠ Невірний відправник команди. Потрібно: '[lightgray]{ $type }[]'.
 error-argument-parse-generic = [scarlet]⚠ Помилка аргументу: '{ $error }'.
@@ -855,7 +895,7 @@ error-private-message-invalid-pid = [scarlet]⚠ Невірний ID гравц�
 error-private-message-self = [scarlet]⚠ Не можна надсилати приватне повідомлення самому собі.
 error-private-message-empty = [scarlet]⚠ Повідомлення не може бути порожнім.
 error-private-message-too-long = [scarlet]⚠ Повідомлення надто довге. Максимум { $max } символів.
-error-private-message-cooldown = [scarlet]⚠ Зачекайте { $seconds }с перед надсиланням наступного приватного повідомлення.
+error-private-message-cooldown = [scarlet]⚠ Зачекайте { DURATION($seconds) } перед надсиланням наступного приватного повідомлення.
 error-private-message-target-unavailable = [scarlet]⚠ Цей гравець зараз недоступний для приватних повідомлень.
 error-private-message-no-reply-target = [scarlet]⚠ Немає кому відповісти в приватних повідомленнях.
 error-private-message-not-found = [scarlet]⚠ Повідомлення не знайдено.

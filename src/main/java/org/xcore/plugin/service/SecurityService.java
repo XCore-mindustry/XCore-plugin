@@ -56,22 +56,11 @@ public class SecurityService {
         return true;
     }
 
-    public static Map<String, Object> durationParts(Duration duration) {
-        Duration safeDuration = duration.isNegative() ? Duration.ZERO : duration;
-
-        return Map.of(
-                "days", safeDuration.toDays(),
-                "hours", safeDuration.toHoursPart(),
-                "minutes", safeDuration.toMinutesPart(),
-                "seconds", safeDuration.toSecondsPart()
-        );
-    }
-
     public static Map<String, Object> muteMessageArgs(String adminName, String reason, Duration duration) {
-        var args = new LinkedHashMap<String, Object>();
-        args.put("adminName", adminName);
-        args.put("reason", reason);
-        args.putAll(durationParts(duration));
-        return args;
+        return Map.of(
+                "adminName", adminName,
+                "reason", reason,
+                "duration", Math.max(0, duration.toSeconds())
+        );
     }
 }

@@ -207,10 +207,7 @@ class SecurityServiceTest {
     private static boolean hasMuteMessageArgs(Map<String, Object> args, String adminName, String reason) {
         return adminName.equals(args.get("adminName"))
                 && reason.equals(args.get("reason"))
-                && args.get("days") instanceof Long
-                && args.get("hours") instanceof Integer
-                && args.get("minutes") instanceof Integer
-                && args.get("seconds") instanceof Integer;
+                && args.get("duration") instanceof Long;
     }
 
     private static final class SecurityServiceModule implements AvajeModule {

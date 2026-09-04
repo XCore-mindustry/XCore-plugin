@@ -169,15 +169,11 @@ public class MiniHexedService {
             if (!Groups.player.isEmpty() && !Vars.state.gameOver && !gameover) {
                 winScore -= 1;
             }
-            int sec = winScore % 60;
-            int min = (winScore / 60) % 60;
-
             Groups.player.each(p -> {
                 var session = sessionService.get(p);
                 if (session == null) return;
                 var message = session.locale().format("hexed-popup", args(
-                        "minutes", min,
-                        "seconds", sec));
+                        "remaining", winScore));
                 Call.infoPopup(p.con(), message, 1, Align.bottom, 0, 0, 0, 0);
             });
 

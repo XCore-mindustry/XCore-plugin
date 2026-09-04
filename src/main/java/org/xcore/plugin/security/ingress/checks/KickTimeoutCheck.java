@@ -38,8 +38,7 @@ public class KickTimeoutCheck implements IngressCheck {
 
             String reason = local.format(
                     "kick-recently-kicked", args(
-                            "remainMinutes", remain.toMinutes(),
-                            "remainSeconds", remain.toSecondsPart()
+                            "remaining", Math.max(0, remain.toSeconds())
                     ));
 
             return new AccessResult.Denied(reason, false, 0);
