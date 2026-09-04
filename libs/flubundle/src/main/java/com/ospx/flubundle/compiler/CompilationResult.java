@@ -1,15 +1,37 @@
 package com.ospx.flubundle.compiler;
 
+import java.nio.file.Path;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public record CompilationResult(
         List<Diagnostic> diagnostics,
         int filesCount,
-        int messagesCount
+        int messagesCount,
+        Map<Path, Set<String>> messageKeysByFile
 ) {
     public CompilationResult {
         diagnostics = Collections.unmodifiableList(diagnostics);
+        messageKeysByFile = Collections.unmodifiableMap(new LinkedHashMap<>(messageKeysByFile));
+    }
+
+    public CompilationResult(List<Diagnostic> diagnostics, int filesCount, int messagesCount) {
+        this(diagnostics, filesCount, messagesCount, Collections.emptyMap());
+    }
+
+    public Set<String> messageKeysForFile(Path file) {
+        if (messageKeysByFile.containsKey(file)) {
+            return messageKeysByFile.get(file);
+        }
+        for (Map.Entry<Path, Set<String>> entry : messageKeysByFile.entrySet()) {
+            if (entry.getKey().getFileName().equals(file.getFileName())) {
+                return entry.getValue();
+            }
+        }
+        return Collections.emptySet();
     }
 
     public boolean hasErrors() {

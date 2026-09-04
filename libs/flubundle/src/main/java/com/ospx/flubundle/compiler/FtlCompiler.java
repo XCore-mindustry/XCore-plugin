@@ -26,6 +26,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,16 +85,19 @@ public class FtlCompiler {
         }
 
         List<Diagnostic> diagnostics = new ArrayList<>();
+        Map<Path, Set<String>> messageKeysByFile = new LinkedHashMap<>();
         int totalMessages = 0;
 
         for (Path file : allFtlFiles) {
-            totalMessages += compileFile(file, diagnostics);
+            Set<String> keys = new LinkedHashSet<>();
+            totalMessages += compileFile(file, diagnostics, keys);
+            messageKeysByFile.put(file, keys);
         }
 
-        return new CompilationResult(diagnostics, allFtlFiles.size(), totalMessages);
+        return new CompilationResult(diagnostics, allFtlFiles.size(), totalMessages, messageKeysByFile);
     }
 
-    private int compileFile(Path file, List<Diagnostic> diagnostics) {
+    private int compileFile(Path file, List<Diagnostic> diagnostics, Set<String> collectedKeys) {
         String content;
         try {
             content = Files.readString(file, StandardCharsets.UTF_8);
@@ -119,6 +124,7 @@ public class FtlCompiler {
             if (entry instanceof Message msg) {
                 messageCount++;
                 String msgId = msg.identifier().name();
+                collectedKeys.add(msgId);
                 int line = lineByMessageId.getOrDefault(msgId, 0);
 
                 if (msg.pattern() != null) {
