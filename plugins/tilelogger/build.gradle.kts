@@ -41,6 +41,15 @@ dependencies {
 
     compileOnly(libs.avaje.inject)
     annotationProcessor(libs.avaje.inject.gen)
+
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.flubundle)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
 
 tasks.named<JavaCompile>("compileJava") {

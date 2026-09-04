@@ -6,7 +6,7 @@ cloud = "0.2.0-SNAPSHOT"
 shadow = "9.3.0"
 toxopid = "4.2.0"
 xcore-plugin = "4.0.0"
-flubundle = "1.6"
+flubundle = "1.7.1"
 
 [libraries]
 arc-core          = { module = "com.github.Anuken.Arc:arc-core", version.ref = "mindustry" }
