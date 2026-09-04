@@ -5,23 +5,33 @@ import arc.struct.ObjectMap;
 import arc.struct.Seq;
 import arc.util.Log;
 
+import com.ospx.flubundle.functions.ColorFunction;
+import com.ospx.flubundle.functions.DurationFunction;
+import com.ospx.flubundle.functions.StripFunction;
+
 import fluent.bundle.FluentBundle;
 import fluent.bundle.FluentFunctionCache;
 import fluent.bundle.FluentFunctionRegistry;
 import fluent.bundle.FluentResource;
 import fluent.bundle.LRUFunctionCache;
+import fluent.bundle.resolver.Scope;
+import fluent.function.FluentFunctionFactory;
+import fluent.function.functions.DefaultFunctionFactories;
 import fluent.syntax.parser.FTLParser;
 
+import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.mod.Mod;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static mindustry.Vars.mods;
 
@@ -34,8 +44,10 @@ public class Bundle {
 
     private final ObjectMap<Locale, FluentBundle> sources = new ObjectMap<>();
     private final Map<String, Locale> localeAliases = new HashMap<>();
-    private final FluentFunctionRegistry functionRegistry = FluentFunctionRegistry.builder().build();
+    private final FluentFunctionRegistry.Builder registryBuilder = FluentFunctionRegistry.builder();
     private final FluentFunctionCache functionCache = LRUFunctionCache.of();
+    private FluentFunctionRegistry functionRegistry;
+    private boolean frozen = false;
 
     public void addSource(Class<? extends Mod> main) {
         addSource(mods.getMod(main).root.child("bundles"));
@@ -80,7 +92,7 @@ public class Bundle {
         var source = sources.get(locale);
 
         if (source == null) {
-            sources.put(locale, FluentBundle.builder(locale, functionRegistry, functionCache)
+            sources.put(locale, FluentBundle.builder(locale, ensureRegistry(), functionCache)
                     .addResource(resource)
                     .build());
             return;
@@ -193,6 +205,7 @@ public class Bundle {
     }
 
     public String format(Locale locale, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
+        ensureRegistry();
         Map<String, Object> safeArgs = args == null ? Collections.emptyMap() : args;
         var requestedLocale = locale == null ? defaultLocale : locale;
 
@@ -215,6 +228,7 @@ public class Bundle {
     }
 
     public String formatStrict(Locale locale, String id, Map<String, Object> args, DefaultValueFactory defaultValue) {
+        ensureRegistry();
         var requestedLocale = applyAlias(normalizeLocale(locale));
         var bundle = sources.get(requestedLocale);
 
@@ -400,10 +414,59 @@ public class Bundle {
         this.defaultLocale = normalizeLocale(defaultLocale);
     }
 
+    private void initDefaults() {
+        registryBuilder.addFactories(DefaultFunctionFactories.allNonImplicits());
+        registryBuilder.addFactory(StripFunction.STRIP);
+        registryBuilder.addFactory(ColorFunction.COLOR);
+        registryBuilder.addFactory(DurationFunction.DURATION);
+        registryBuilder.addDefaultFormatterExact(Player.class, (player, scope) -> player.name);
+        registryBuilder.addDefaultFormatterExact(Team.class, (team, scope) -> team.name);
+    }
+
+    private synchronized FluentFunctionRegistry ensureRegistry() {
+        if (functionRegistry == null) {
+            frozen = true;
+            functionRegistry = registryBuilder.build();
+        }
+        return functionRegistry;
+    }
+
+    private synchronized void checkNotFrozen() {
+        if (frozen) {
+            throw new IllegalStateException("Functions and formatters must be registered before adding bundle sources or formatting.");
+        }
+    }
+
+    public synchronized Bundle registerFunction(FluentFunctionFactory<?> factory) {
+        checkNotFrozen();
+        registryBuilder.addFactory(factory);
+        return this;
+    }
+
+    public synchronized Bundle registerFunctions(Collection<FluentFunctionFactory<?>> factories) {
+        checkNotFrozen();
+        registryBuilder.addFactories(factories);
+        return this;
+    }
+
+    public synchronized <T> Bundle registerFormatterExact(Class<T> type, BiFunction<T, Scope, String> formatter) {
+        checkNotFrozen();
+        registryBuilder.addDefaultFormatterExact(type, formatter);
+        return this;
+    }
+
+    public synchronized <T> Bundle registerFormatter(Class<T> supertype, BiFunction<T, Scope, String> formatter) {
+        checkNotFrozen();
+        registryBuilder.addDefaultFormatter(supertype, formatter);
+        return this;
+    }
+
     public Bundle() {
+        initDefaults();
     }
 
     public Bundle(Locale defaultLocale) {
+        this();
         setDefaultLocale(defaultLocale);
     }
 

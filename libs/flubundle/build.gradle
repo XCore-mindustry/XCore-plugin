@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'ospx'
-def baseVersion = '1.4'
+def baseVersion = '1.5'
 version = findProperty('xcorePublishVersion') ?: baseVersion
 ext {
     mindustryVersion = "v159"
@@ -63,7 +63,7 @@ dependencies {
     compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
 
-    implementation "net.xyzsd.fluent:fluent-base:2.0.0-xcore"
+    implementation "net.xyzsd.fluent:fluent-base:2.0.1-xcore"
 
     testImplementation platform('org.junit:junit-bom:6.1.3')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
