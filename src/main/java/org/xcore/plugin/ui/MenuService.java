@@ -29,9 +29,15 @@ public class MenuService {
     private final Provider<SessionService> sessionService;
     private final MindustryMenuGateway gateway;
     private final Map<String, RoutedMenuFlow<?>> routedFlows = new HashMap<>();
+    private final List<MenuLifecycleListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private int globalMenuId;
     private int globalTextId;
+
+    public interface MenuLifecycleListener {
+        default void onMenuOpened(Session session) {}
+        default void onMenuClosed(Session session) {}
+    }
 
     public MenuService(Provider<SessionService> sessionService, MindustryMenuGateway gateway) {
         this.sessionService = sessionService;
@@ -61,6 +67,42 @@ public class MenuService {
         return globalTextId;
     }
 
+    public void addListener(MenuLifecycleListener listener) {
+        if (listener != null) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(MenuLifecycleListener listener) {
+        if (listener != null) {
+            listeners.remove(listener);
+        }
+    }
+
+    public boolean isMenuOpen(Session session) {
+        return session != null && session.hasActiveMenu();
+    }
+
+    private void notifyMenuOpened(Session session) {
+        if (session == null) return;
+        for (MenuLifecycleListener listener : listeners) {
+            try {
+                listener.onMenuOpened(session);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private void notifyMenuClosed(Session session) {
+        if (session == null) return;
+        for (MenuLifecycleListener listener : listeners) {
+            try {
+                listener.onMenuClosed(session);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     public MenuBuilder builder(String uuid) {
         return new MenuBuilder(this, sessionService.get().get(uuid));
     }
@@ -79,6 +121,7 @@ public class MenuService {
         long version = session.nextUiVersion();
         var screen = ActiveMenuScreen.create(version, mode, actions);
         session.setActiveScreen(screen);
+        notifyMenuOpened(session);
 
         String[][] buttons = convertListToArray(rows);
         if (mode == MenuMode.FOLLOW_UP) {
@@ -102,6 +145,7 @@ public class MenuService {
                 .toList();
         var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds, route);
         session.setActiveScreen(active);
+        notifyMenuOpened(session);
 
         String[][] buttons = convertListToArray(screen.toTextRows());
         if (screen.mode() == MenuMode.FOLLOW_UP) {
@@ -192,6 +236,7 @@ public class MenuService {
         if (session.activeScreen() == screen) {
             session.clearActiveScreen();
         }
+        notifyMenuClosed(session);
     }
 
     public void close(Session session) {
@@ -213,6 +258,7 @@ public class MenuService {
         if (session.activeScreen() == screen) {
             session.clearActiveScreen();
         }
+        notifyMenuClosed(session);
     }
 
     public void openUri(Session session, String uri) {
@@ -236,6 +282,7 @@ public class MenuService {
         long version = session.nextUiVersion();
         var prompt = ActiveMenuPrompt.create(version, globalTextId, onSubmit, onCancel);
         session.setActivePrompt(prompt);
+        notifyMenuOpened(session);
 
         gateway.textInput(session.player, globalTextId, title, content, length, def, numeric);
     }
@@ -251,6 +298,7 @@ public class MenuService {
         MenuRoute route = session.activeScreen() != null ? session.activeScreen().route() : null;
         var active = ActiveMenuPrompt.create(version, globalTextId, null, null, flow, state, prompt.promptId(), route);
         session.setActivePrompt(active);
+        notifyMenuOpened(session);
 
         gateway.textInput(session.player, globalTextId, prompt.title(), prompt.content(), prompt.length(), prompt.defaultValue(), prompt.numeric());
     }
@@ -275,6 +323,7 @@ public class MenuService {
                 if (session.activeScreen() == screen) {
                     session.clearActiveScreen();
                 }
+                notifyMenuClosed(session);
                 return;
             }
             if (option >= 0 && option < screen.actionCount()) {
@@ -282,6 +331,10 @@ public class MenuService {
                     dispatchFlowAction(screen, session, option);
                 } else {
                     screen.runAction(option);
+                }
+                if (session.activeScreen() == screen && screen.mode() != MenuMode.FOLLOW_UP) {
+                    session.clearActiveScreen();
+                    notifyMenuClosed(session);
                 }
             }
             return;
@@ -299,6 +352,7 @@ public class MenuService {
         var prompt = session.activePrompt();
         if (prompt != null) {
             session.clearActivePrompt();
+            notifyMenuClosed(session);
             if (prompt.hasFlow()) {
                 dispatchFlowPrompt(prompt, session, text);
             } else {

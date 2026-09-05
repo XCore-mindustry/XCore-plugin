@@ -117,6 +117,10 @@ public class Session {
         this.activePrompt = null;
     }
 
+    public boolean hasActiveMenu() {
+        return activeScreen != null || activePrompt != null || !actions.isEmpty() || textHandler != null;
+    }
+
     public void clearUiState() {
         clearActiveScreen();
         clearActivePrompt();

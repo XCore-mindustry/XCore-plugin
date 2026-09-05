@@ -181,6 +181,43 @@ class MenuServiceTest {
         verify(gateway).menu(eq(session.player), eq(42), eq("Builder Title"), eq("Builder Content"), any());
     }
 
+    @Test
+    @DisplayName("hasActiveMenu and isMenuOpen track menu lifecycle and listeners fire")
+    void menuLifecycleTrackingAndListeners() {
+        boolean[] opened = {false};
+        boolean[] closed = {false};
+        MenuService.MenuLifecycleListener listener = new MenuService.MenuLifecycleListener() {
+            @Override
+            public void onMenuOpened(Session s) {
+                opened[0] = true;
+            }
+
+            @Override
+            public void onMenuClosed(Session s) {
+                closed[0] = true;
+            }
+        };
+        menuService.addListener(listener);
+
+        assertThat(session.hasActiveMenu()).isFalse();
+        assertThat(menuService.isMenuOpen(session)).isFalse();
+
+        // 1. Show a menu
+        menuService.show(session, "Title", "Content", List.of(), List.of(), MenuMode.NORMAL);
+        assertThat(session.hasActiveMenu()).isTrue();
+        assertThat(menuService.isMenuOpen(session)).isTrue();
+        assertThat(opened[0]).isTrue();
+
+        // 2. Close the menu
+        menuService.close(session);
+        assertThat(session.hasActiveMenu()).isFalse();
+        assertThat(menuService.isMenuOpen(session)).isFalse();
+        assertThat(closed[0]).isTrue();
+
+        // 3. Clean up listener
+        menuService.removeListener(listener);
+    }
+
     private Session session() {
         Player player = Player.create();
         player.con = mock(NetConnection.class);
