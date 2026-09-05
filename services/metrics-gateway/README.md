@@ -36,7 +36,7 @@ Standalone Prometheus-facing telemetry gateway for XCore Mindustry servers.
 - explicit Prometheus stale-node visibility via `xcore_node_stale{server=...}`
 - bounded discovery/poll warning summaries for operational debugging without log spam
 - containerized deployment surface via `Dockerfile` and `compose.yaml`
-- provisioned Prometheus scrape config and Grafana datasource/dashboard bundle
+- provisioned Prometheus scrape config, recording/alerting rules, and Grafana dashboard bundle
 
 ## Environment variables
 
@@ -123,6 +123,46 @@ Provisioned assets:
 - Grafana datasource provisioning: `ops/grafana/provisioning/datasources/prometheus.yml`
 - Grafana dashboard provisioning: `ops/grafana/provisioning/dashboards/default.yml`
 - Default dashboard: `ops/grafana/dashboards/xcore-overview.json`
+- Prometheus recording/alerting rules: `ops/prometheus/xcore.rules.yml`
+
+### Metrics contract
+
+The gateway does not maintain a second allowlist of server metrics: it forwards the
+`MetricsSnapshotV1` samples produced by XCore-plugin and adds only the `server` label.
+Sentinel metrics therefore appear when XCore-plugin telemetry is enabled and the relevant
+event has occurred:
+
+- `sentinel_nickname_denials_total{server,rule}` — nickname-rule denials
+- `sentinel_admission_attempts_total{server,outcome}` — `confirmed`/`expired` attempts
+- `sentinel_admission_waves_total{server,action}` — `observe`/`throttle` waves
+- `sentinel_admission_closes_total{server}` — connections closed during throttling
+- `sentinel_subnet_denials_total{server,origin}` — `local`/`global` subnet denials
+
+The base XCore-plugin contract is also displayed: `mindustry_players_online`, `mindustry_wave`,
+`mindustry_tps`, `mindustry_player_joins_total`, `mindustry_player_leaves_total`,
+`xcore_plugin_uptime_seconds`, `xcore_commands_total`, `xcore_command_duration_seconds`,
+`xcore_ingress_denials_total`, and `xcore_ingress_check_errors_total`. Gateway health metrics
+are shown in the platform and gateway sections, including discovery/poll durations and all
+poll/decode/validation/drop counters.
+
+`xcore_ingress_denials_total` is the authoritative total ingress result from the XCore
+pipeline; it is not added to the Sentinel-specific counters, because Sentinel denials are
+already included there. The Sentinel rate panel shows the layer-specific counters separately.
+
+Counters are intentionally visualized with `rate()`; the nickname rule panel is limited
+to the top 10 series. Raw rule values can be high-cardinality, so they must not be used
+as a dashboard variable. Sparse metrics are left as no data rather than being turned into
+zero.
+
+To validate the local assets:
+
+```bash
+uv run pytest -q
+uv run ruff check
+```
+
+The asset test fails if a Sentinel metric is added without updating this dashboard/rules
+contract.
 
 The compose stack is intended for local and staging validation. For production, replace the
 default Grafana admin credentials, define persistent volume policies explicitly, and put the

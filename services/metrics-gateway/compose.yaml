@@ -51,6 +51,7 @@ services:
       - --web.enable-lifecycle
     volumes:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/xcore.rules.yml:/etc/prometheus/rules/xcore.rules.yml:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"

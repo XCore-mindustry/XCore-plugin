@@ -1182,7 +1182,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.10.0" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
-    { name = "xcore-protocol", specifier = "==0.5.1" },
+    { name = "xcore-protocol", specifier = "==0.6.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -1196,7 +1196,7 @@ dev = [
 
 [[package]]
 name = "xcore-protocol"
-version = "0.5.1"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonschema" },
@@ -1204,9 +1204,9 @@ dependencies = [
     { name = "referencing" },
     { name = "rfc3339-validator" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/bf/276f13cbc78c610311cceff8acd9dee1ced8b0a02719cfeddcd1e5e30e13/xcore_protocol-0.5.1.tar.gz", hash = "sha256:1d170381d96e2e63c30cbd6c4414be299af0461c4e1cccaf9d6618fb881ee884", size = 35126, upload-time = "2026-08-09T10:01:00.281Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/5f/08bf94d888032f87725cc0c204ef43d2f619e725e1c4e57c1fd585496e95/xcore_protocol-0.6.1.tar.gz", hash = "sha256:9c512783008fa472a1e3f180a21383f6264eefc1015d9a54b2258070b1861055", size = 37661, upload-time = "2026-08-30T11:41:03.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/46/56c5ce18a536306a99a1816a11761bb12c73517ea0e0a0a5591828cdd238/xcore_protocol-0.5.1-py3-none-any.whl", hash = "sha256:c91609ea9bd3a55fc0542447e9abde9568ad03ef7159921e1b5595aaf34ed7c6", size = 48295, upload-time = "2026-08-09T10:00:59.037Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/fe/d4ff076582707146b3887afde79afa056c7d5a9952b49c86da7821297b42/xcore_protocol-0.6.1-py3-none-any.whl", hash = "sha256:8537c0aa08d9492ef2bd3335c834eeab04749684f7dddbca4fb2f502af4911ac", size = 52586, upload-time = "2026-08-30T11:41:02.094Z" },
 ]
 
 [[package]]

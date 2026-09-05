@@ -1,0 +1,71 @@
+groups:
+  - name: xcore-recording
+    interval: 15s
+    rules:
+      - record: xcore:sentinel_denials:rate5m
+        expr: |
+          sum by (server) (
+            rate({__name__=~"sentinel_nickname_denials_total|sentinel_subnet_denials_total|sentinel_admission_closes_total"}[5m])
+          )
+      - record: xcore:sentinel_admission_waves:rate5m
+        expr: sum by (server, action) (rate(sentinel_admission_waves_total[5m]))
+      - record: xcore:sentinel_admission_attempts:rate5m
+        expr: sum by (server, outcome) (rate(sentinel_admission_attempts_total[5m]))
+      - record: xcore:commands:rate5m
+        expr: sum by (server, result) (rate(xcore_commands_total[5m]))
+      - record: xcore:command_duration_seconds:p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (server, le) (rate(xcore_command_duration_seconds_bucket[5m]))
+          )
+
+  - name: xcore-alerts
+    rules:
+      - alert: XCoreGatewayRedisDown
+        expr: xcore_metrics_gateway_redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: XCore metrics gateway cannot reach Redis
+          description: The gateway has reported Redis unavailable for more than 2 minutes.
+
+      - alert: XCoreNodeStale
+        expr: xcore_node_stale == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: XCore node telemetry is stale
+          description: 'Telemetry from {{ $labels.server }} is stale or unavailable.'
+
+      - alert: XCoreSentinelDenialsBurst
+        expr: xcore:sentinel_denials:rate5m > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sentinel is denying connections
+          description: '{{ $labels.server }} has sustained ingress denials above 1 event/s.'
+
+      - alert: XCoreSentinelAdmissionThrottle
+        expr: sum by (server) (rate(sentinel_admission_waves_total{action="throttle"}[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sentinel admission throttling is active
+          description: 'Admission wave throttling is being engaged on {{ $labels.server }}.'
+
+      - alert: XCoreGatewayScrapeErrors
+        expr: increase(xcore_metrics_gateway_poll_failures_total[5m]) > 0
+          or increase(xcore_metrics_gateway_decode_failures_total[5m]) > 0
+          or increase(xcore_metrics_gateway_validation_failures_total[5m]) > 0
+          or increase(xcore_metrics_gateway_discovery_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: XCore gateway is dropping telemetry
+          description: The gateway has poll, decode, or validation failures in the last 5 minutes.
