@@ -174,6 +174,29 @@ class PlayerDisplayServiceTest {
         assertThat(service.resolveSelectedBadgeTag(data)).isEmpty();
     }
 
+    @Test
+    @DisplayName("buildDisplayName and buildChatBadgePrefix include external display tags")
+    void externalDisplayTagsIncluded() {
+        var registry = new org.xcore.plugin.integration.PlayerDisplayRegistry();
+        registry.register(new org.xcore.plugin.integration.PlayerDisplayProvider() {
+            @Override
+            public String id() {
+                return "test-provider";
+            }
+
+            @Override
+            public String resolve(PlayerData data, Player player) {
+                return ":lead:";
+            }
+        });
+
+        var service = new PlayerDisplayService(config("mini-hexed"), registry);
+        var data = basePlayer();
+
+        assertThat(service.buildDisplayName(data, null)).isEqualTo(":lead: PlayerOne");
+        assertThat(service.buildChatBadgePrefix(data, null)).isEqualTo(":lead:");
+    }
+
     private static PlayerData basePlayer() {
         var data = new PlayerData("uuid-test", true);
         data.nickname = "PlayerOne";

@@ -134,6 +134,7 @@ public class PlayerDisplayService {
             parts.add(selectedBadge);
         }
 
+        parts.addAll(resolveExternalTags(data, player));
         return String.join(" ", parts).trim();
     }
 
