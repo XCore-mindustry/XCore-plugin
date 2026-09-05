@@ -404,13 +404,12 @@ player-menu-player-content =
     { "" }
     [accent]■ Игровые рейтинги[]
     [gray]Время в игре: [white]{ $totalPlayTime }[]
-    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
-    [lightgray]{ $hexedProgress }[]
+    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Бывший MiniHexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.) [darkgray]|[gray] Топ: [accent]{ $hexedTopRank }[]
     { "" }
     [accent]■ Матчи: [white]{ $gamesPlayed } [gray]игр [darkgray]|[lime] { $gamesWon } [gray]побед [darkgray]|[sky] { $winRate }% [gray]винрейт[]
     [gray]• [white]PvP: { $pvpSummary }[]
     [gray]• [white]Surv: { $survivalSummary }[]
-    [gray]• [white]Hexed: { $hexedSummary }[]
+    [gray]• [white]Бывший MiniHexed: { $hexedSummary }[]
     { "" }
     [accent]■ Боевая эффективность[]
     [gray]Блоки (Стр/Разб/Уничт): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]

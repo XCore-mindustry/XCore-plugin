@@ -44,11 +44,6 @@ public class PlayerDisplayService {
             parts.add(selectedBadge);
         }
 
-        String hexedTag = resolveHexedTag(data);
-        if (!hexedTag.isEmpty()) {
-            parts.add(hexedTag);
-        }
-
         parts.addAll(resolveExternalTags(data, player));
 
         String baseName = resolveBaseName(data, player);
@@ -110,15 +105,6 @@ public class PlayerDisplayService {
         if (badge == null || !badge.selectable() || badge.system()) return "";
         if (data.unlockedBadges == null || !data.unlockedBadges.contains(badge.id())) return "";
         return renderBadgeTag(badge, data, player);
-    }
-
-    public String resolveHexedTag(PlayerData data) {
-        if (data == null || !isMiniHexedServer()) return "";
-        return data.hexedRank().tag == null ? "" : data.hexedRank().tag;
-    }
-
-    private boolean isMiniHexedServer() {
-        return "mini-hexed".equals(config.server.name);
     }
 
     public String buildChatBadgePrefix(PlayerData data, Player player) {

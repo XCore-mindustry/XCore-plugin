@@ -394,13 +394,12 @@ player-menu-player-content =
     { "" }
     [accent]■ Game Ratings[]
     [gray]Play time: [white]{ $totalPlayTime }[]
-    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } pts)[]
-    [lightgray]{ $hexedProgress }[]
+    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Legacy Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } pts) [darkgray]|[gray] Top: [accent]{ $hexedTopRank }[]
     { "" }
     [accent]■ Matches: [white]{ $gamesPlayed } [gray]games [darkgray]|[lime] { $gamesWon } [gray]wins [darkgray]|[sky] { $winRate }% [gray]win rate[]
     [gray]• [white]PvP: { $pvpSummary }[]
     [gray]• [white]Surv: { $survivalSummary }[]
-    [gray]• [white]Hexed: { $hexedSummary }[]
+    [gray]• [white]Legacy Hexed: { $hexedSummary }[]
     { "" }
     [accent]■ Combat Efficiency[]
     [gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]

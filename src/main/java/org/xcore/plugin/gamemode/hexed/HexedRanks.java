@@ -1,13 +1,6 @@
 package org.xcore.plugin.gamemode.hexed;
 
-import mindustry.gen.Player;
-import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.model.PlayerData;
-
 public class HexedRanks {
-    public static void updateRank(Player player, PlayerData data, TomlXcoreConfig config) {
-        if (!"mini-hexed".equals(config.server.name) || player == null || data == null) return;
-    }
 
     public enum HexedRank {
         newbie() {},

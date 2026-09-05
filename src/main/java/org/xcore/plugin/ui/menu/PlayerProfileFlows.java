@@ -83,9 +83,13 @@ final class PlayerProfileFlows {
             String playTime = menu.formatPlayTime(targetData.totalPlayTime, local);
             String rankName = local.t("hexed-ranks-" + targetData.hexedRank().name());
             String hexedProgress = formatHexedProgress(local, targetData);
+            NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
+            Integer hexedTop = session.playerDataRepository != null
+                    ? session.playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
+                    : null;
+            String hexedTopRank = hexedTop != null ? "#" + numberFormat.format(hexedTop) : "-";
             PlayerStatsOverview statsOverview = gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid);
             var overallStats = statsOverview.overall();
-            NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
 
             var grid = new MenuGrid();
             List<MenuButton> actions = new ArrayList<>();
@@ -116,6 +120,7 @@ final class PlayerProfileFlows {
                             "hexedRankTag", targetData.hexedRank().tag,
                             "hexedRankName", rankName,
                             "hexedProgress", hexedProgress,
+                            "hexedTopRank", hexedTopRank,
                             "pvpRating", numberFormat.format(targetData.pvpRating),
                             "gamesPlayed", numberFormat.format(overallStats.gamesPlayed()),
                             "gamesWon", numberFormat.format(overallStats.gamesWon()),

@@ -14,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.gamemode.hexed.MiniHexedService;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.MapStatsService;
@@ -80,37 +79,5 @@ class ObserverFlowRegressionTest {
 
         assertThat(player.team()).isNotEqualTo(Team.derelict);
         assertThat(player.team().id).isEqualTo(255);
-    }
-
-    @Test
-    @DisplayName("hexed killTeam routes eliminated players through observer service")
-    void hexedKillTeam_routesEliminatedPlayersThroughObserverService() {
-        Vars.state.rules.waves = true;
-        Vars.state.rules.waveTeam = Team.sharded;
-
-        SessionService sessionService = mock(SessionService.class);
-        ObserverService observerService = mock(ObserverService.class);
-        MiniHexedService service = new MiniHexedService(
-                mock(TomlXcoreConfig.class),
-                sessionService,
-                mock(PlayerDataRepository.class),
-                mock(NetworkService.class),
-                mock(com.ospx.flubundle.Bundle.class),
-                mock(LeaderboardService.class),
-                mock(PlayerDisplayService.class),
-                mock(GameDataService.class),
-                mock(MapStatsService.class),
-                mock(TopMenuCacheService.class),
-                observerService
-        );
-
-        Player player = mock(Player.class);
-        when(player.coloredName()).thenReturn("[green]ObserverTarget[]");
-        Team.sharded.data().players.add(player);
-
-        service.killTeam(Team.sharded);
-
-        verify(sessionService).broadcast(eq("hexed-eliminated"), anyMap());
-        verify(observerService).enter(player);
     }
 }

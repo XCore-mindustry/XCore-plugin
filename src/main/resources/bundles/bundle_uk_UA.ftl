@@ -375,13 +375,12 @@ player-menu-player-content =
     { "" }
     [accent]■ Ігрові рейтинги[]
     [gray]Час у грі: [white]{ $totalPlayTime }[]
-    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Hexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.)[]
-    [lightgray]{ $hexedProgress }[]
+    [gray]MiniPvP: [sky]{ $pvpRating } [darkgray]|[gray] Колишній MiniHexed: [sky]{ $hexedRankName } [gray]({ $hexedPoints } очк.) [darkgray]|[gray] Топ: [accent]{ $hexedTopRank }[]
     { "" }
     [accent]■ Матчі: [white]{ $gamesPlayed } [gray]ігор [darkgray]|[lime] { $gamesWon } [gray]перемог [darkgray]|[sky] { $winRate }% [gray]вінрейт[]
     [gray]• [white]PvP: { $pvpSummary }[]
     [gray]• [white]Surv: { $survivalSummary }[]
-    [gray]• [white]Hexed: { $hexedSummary }[]
+    [gray]• [white]Колишній MiniHexed: { $hexedSummary }[]
     { "" }
     [accent]■ Бойова ефективність[]
     [gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]

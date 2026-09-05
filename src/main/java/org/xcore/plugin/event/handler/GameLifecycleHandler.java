@@ -84,7 +84,7 @@ public class GameLifecycleHandler {
                     "Game over! Reached wave @ with @ players online on map @.",
                     state.wave, Groups.player.size(),
                     Strings.capitalize(Strings.stripColors(state.map.name())));
-        } else if (state.rules.pvp && !"mini-hexed".equals(config.server.name)) {
+        } else if (state.rules.pvp) {
             message = Strings.format(
                     "Game over! Team @ is victorious with @ players online on map @.",
                     event.winner.name, Groups.player.size(),
@@ -120,7 +120,7 @@ public class GameLifecycleHandler {
             return;
         }
 
-        if ((event.equals("rvsb_world-reload") || event.equals("rvsb-world-reload") || event.equals("hexed_world-reload")) && pluginState.restartOnGameOver) {
+        if ((event.equals("rvsb_world-reload") || event.equals("rvsb-world-reload")) && pluginState.restartOnGameOver) {
             restart();
         }
     }

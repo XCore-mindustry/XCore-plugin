@@ -108,14 +108,13 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("chat badge prefix excludes hexed rank and base nickname")
+    @DisplayName("chat badge prefix excludes base nickname")
     void chatBadgePrefixOnlyUsesBadges() {
-        var service = new PlayerDisplayService(config("mini-hexed"));
+        var service = new PlayerDisplayService(config("mini-pvp"));
         var data = basePlayer();
         data.admin = true;
         data.unlockedBadges.add("translator");
         data.activeBadge = "translator";
-        data.hexedRank(HexedRanks.HexedRank.regular);
 
         assertThat(service.buildChatBadgePrefix(data, null))
                 .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#79d7ff]<[white]" + Iconc.bookOpen + "[]>[]");
@@ -139,28 +138,17 @@ class PlayerDisplayServiceTest {
     }
 
     @Test
-    @DisplayName("buildDisplayName includes hexed rank on mini-hexed server")
-    void hexedRankIncluded() {
-        var service = new PlayerDisplayService(config("mini-hexed"));
-        var data = basePlayer();
-        data.hexedRank(HexedRanks.HexedRank.regular);
-
-        assertThat(service.buildDisplayName(data, null)).isEqualTo("[cyan]<[accent]\uF7E7[cyan]>[] PlayerOne");
-    }
-
-    @Test
-    @DisplayName("buildDisplayName composes admin badge manual badge and hexed rank together")
+    @DisplayName("buildDisplayName composes admin badge manual badge and nickname together")
     void fullComposition() {
-        var service = new PlayerDisplayService(config("mini-hexed"));
+        var service = new PlayerDisplayService(config("mini-pvp"));
         var data = basePlayer();
         data.admin = true;
         data.unlockedBadges.add("developer");
         data.activeBadge = "developer";
-        data.hexedRank(HexedRanks.HexedRank.regular);
         data.customNickname = "[gold]Hero[]";
 
         assertThat(service.buildDisplayName(data, null))
-                .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#86dca2]<[white]" + Iconc.wrench + "[]>[] [cyan]<[accent]\uF7E7[cyan]>[] [gold]Hero[]");
+                .isEqualTo("[scarlet]<" + Iconc.hammer + ">[] [#86dca2]<[white]" + Iconc.wrench + "[]>[] [gold]Hero[]");
     }
 
     @Test

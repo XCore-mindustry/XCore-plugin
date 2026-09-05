@@ -11,7 +11,6 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
-import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;

@@ -128,6 +128,18 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("player queries legacy hexed top rank for profile rendering")
+    void player_rendersLegacyHexedRankAndTopRank() {
+        targetData.hexedRank(org.xcore.plugin.gamemode.hexed.HexedRanks.HexedRank.veteran);
+        targetData.hexedPoints = 23;
+        when(playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)).thenReturn(5);
+
+        playerMenu.player("viewer-1", targetData);
+
+        verify(playerDataRepository).findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData);
+    }
+
+    @Test
     @DisplayName("player settings navigation opens routed settings via route history")
     void player_settingsNavigation_opensRoutedSettingsViaRouteHistory() {
         playerMenu.player("viewer-1", targetData);
