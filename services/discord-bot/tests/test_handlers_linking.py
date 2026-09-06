@@ -110,6 +110,40 @@ async def test_cmd_link_publishes_confirm_event() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
+    bot = _Bot()
+    bot.admin_calls = []
+    bot.access_changed_calls = []
+
+    async def _get_admin_ids():
+        return {"555"}
+
+    async def _set_admin_access(**kwargs):
+        bot.admin_calls.append(kwargs)
+        return True, True
+
+    async def _publish_admin_access(**kwargs):
+        bot.access_changed_calls.append(kwargs)
+
+    bot.get_discord_admin_member_ids = _get_admin_ids
+    bot.set_admin_access = _set_admin_access
+    bot.publish_discord_admin_access_changed = _publish_admin_access
+
+    interaction = _Interaction()
+    await cmd_link(cast(Any, bot), cast(Any, interaction), "abc123")
+
+    assert len(bot.admin_calls) == 1
+    assert bot.admin_calls[0] == {
+        "uuid": "uuid-7",
+        "is_admin": True,
+        "admin_source": "DISCORD_ROLE",
+    }
+    assert len(bot.access_changed_calls) == 1
+    assert bot.access_changed_calls[0]["admin"] is True
+    assert "Права администратора выданы моментально" in interaction.response.sent[0][0]
+
+
+@pytest.mark.asyncio
 async def test_cmd_unlink_publishes_with_display_name() -> None:
     bot = _Bot()
     interaction = _Interaction()

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import discord
 from discord import Interaction
 
+from xcore_protocol.generated.shared import ActorRefV1ActorType
+
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
+
+logger = logging.getLogger(__name__)
 
 
 async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:
@@ -68,8 +73,43 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
         discord_id=discord_id,
         discord_username=discord_username,
     )
+
+    is_admin = False
+    try:
+        if hasattr(bot, "get_discord_admin_member_ids"):
+            discord_admin_ids = await bot.get_discord_admin_member_ids()
+            if discord_id in discord_admin_ids:
+                is_admin = True
+                await bot.set_admin_access(
+                    uuid=player.uuid,
+                    is_admin=True,
+                    admin_source="DISCORD_ROLE",
+                )
+                await bot.publish_discord_admin_access_changed(
+                    player_uuid=player.uuid,
+                    player_pid=player.pid,
+                    player_name=player.nickname,
+                    discord_id=discord_id,
+                    discord_username=discord_username,
+                    admin=True,
+                    source_name="DISCORD_ROLE",
+                    source_type=ActorRefV1ActorType.DISCORD,
+                    actor_name=discord_username,
+                    actor_discord_id=discord_id,
+                    actor_type=ActorRefV1ActorType.DISCORD,
+                    reason="discord admin linked account",
+                )
+    except Exception as e:
+        logger.exception("Failed to grant instant admin access after link: %s", e)
+
+    msg = f"Link request sent for `{player.nickname}` (`pid={player.pid}`)."
+    if is_admin:
+        msg += " Права администратора выданы моментально!"
+    else:
+        msg += " Return in-game in a moment."
+
     await interaction.response.send_message(
-        f"Link request sent for `{player.nickname}` (`pid={player.pid}`). Return in-game in a moment.",
+        msg,
         ephemeral=True,
     )
 
