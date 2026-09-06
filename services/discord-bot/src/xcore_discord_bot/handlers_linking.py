@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import discord
 from discord import Interaction
-
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 if TYPE_CHECKING:
@@ -99,8 +98,8 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
                     actor_type=ActorRefV1ActorType.DISCORD,
                     reason="discord admin linked account",
                 )
-    except Exception as e:
-        logger.exception("Failed to grant instant admin access after link: %s", e)
+    except Exception:
+        logger.exception("Failed to grant instant admin access after link")
 
     msg = f"Link request sent for `{player.nickname}` (`pid={player.pid}`)."
     if is_admin:
