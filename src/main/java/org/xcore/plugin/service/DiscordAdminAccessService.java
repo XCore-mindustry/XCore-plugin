@@ -19,14 +19,17 @@ public class DiscordAdminAccessService {
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final PlayerDisplayService playerDisplayService;
+    private final AuthStatusBroadcaster authStatusBroadcaster;
 
     @Inject
     public DiscordAdminAccessService(PlayerDataRepository playerDataRepository,
                                      SessionService sessionService,
-                                     PlayerDisplayService playerDisplayService) {
+                                     PlayerDisplayService playerDisplayService,
+                                     AuthStatusBroadcaster authStatusBroadcaster) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.playerDisplayService = playerDisplayService;
+        this.authStatusBroadcaster = authStatusBroadcaster;
     }
 
     public boolean hasDiscordAdminAccess(PlayerData data) {
@@ -57,6 +60,17 @@ public class DiscordAdminAccessService {
             session.data.adminSource = SOURCE_DISCORD_ROLE;
             syncLinkedDiscordState(session.data, discordId, discordUsername);
             playerDisplayService.refresh(session);
+
+            if (session.player != null) {
+                authStatusBroadcaster.pushStatus(
+                        session.player,
+                        true,
+                        discordUsername,
+                        true,
+                        session.data.password != null && !session.data.password.isEmpty(),
+                        session.player.admin
+                );
+            }
         }
         return true;
     }
@@ -77,13 +91,28 @@ public class DiscordAdminAccessService {
 
         data.admin = false;
         data.adminSource = SOURCE_NONE;
+        data.clearDeviceTokens();
+        playerDataRepository.save(data);
 
         Session session = sessionService.get(playerUuid);
         if (session != null && session.data != null) {
             session.data.admin = false;
             session.data.adminSource = SOURCE_NONE;
+            session.data.clearDeviceTokens();
             deactivateRuntimeAdmin(session.player, playerUuid);
             playerDisplayService.refresh(session);
+
+            if (session.player != null) {
+                boolean isLinked = session.data.discordId != null && !session.data.discordId.isBlank();
+                authStatusBroadcaster.pushStatus(
+                        session.player,
+                        isLinked,
+                        session.data.discordUsername,
+                        false,
+                        session.data.password != null && !session.data.password.isEmpty(),
+                        false
+                );
+            }
         } else {
             deactivateRuntimeAdmin(null, playerUuid);
         }

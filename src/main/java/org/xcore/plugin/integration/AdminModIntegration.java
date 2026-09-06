@@ -8,7 +8,15 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
+import org.xcore.plugin.model.AuthLoginPacket;
+import org.xcore.plugin.model.AuthLogoutPacket;
+import org.xcore.plugin.model.AuthResultPacket;
+import org.xcore.plugin.model.AuthTokenLoginPacket;
+import org.xcore.plugin.model.DiscordLinkInfoPacket;
+import org.xcore.plugin.service.AdminAuthService;
+import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.ui.menu.DiscordMenu;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.common.VersionComparator;
@@ -25,6 +33,9 @@ public class AdminModIntegration {
     private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final ModerationService moderationService;
+    private final AdminAuthService adminAuthService;
+    private final DiscordLinkService discordLinkService;
+    private final DiscordMenu discordMenu;
     private final Gson rawGson;
     private final ObjectSet<String> pendingVanillaBanUuids = new ObjectSet<>();
 
@@ -32,10 +43,16 @@ public class AdminModIntegration {
     public AdminModIntegration(PlayerDataRepository playerDataRepository,
                                SessionService sessionService,
                                ModerationService moderationService,
+                               AdminAuthService adminAuthService,
+                               DiscordLinkService discordLinkService,
+                               DiscordMenu discordMenu,
                                @Named("raw") Gson rawGson) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.moderationService = moderationService;
+        this.adminAuthService = adminAuthService;
+        this.discordLinkService = discordLinkService;
+        this.discordMenu = discordMenu;
         this.rawGson = rawGson;
     }
 
@@ -51,6 +68,11 @@ public class AdminModIntegration {
                 req = rawGson.fromJson(content, BanRequestData.class);
             } catch (Exception e) {
                 PLog.err("Failed to process ban request from '@': @", player.name, e.getMessage());
+                session.locale().send("error-processing-request", args());
+                return;
+            }
+
+            if (req == null) {
                 session.locale().send("error-processing-request", args());
                 return;
             }
@@ -102,6 +124,10 @@ public class AdminModIntegration {
                 return;
             }
 
+            if (req == null) {
+                return;
+            }
+
             var targetData = playerDataRepository.findByPid(req.pid);
             if (targetData != null) {
                 clearPendingVanillaBan(targetData.uuid);
@@ -129,6 +155,122 @@ public class AdminModIntegration {
                 return;
             }
             data.adminModVersion = content;
+
+            // Push updated auth & discord link status to AdminTools client
+            adminAuthService.pushStatus(player);
+        });
+
+        netServer.addPacketHandler("adm_auth_status_req", (player, content) -> {
+            adminAuthService.pushStatus(player);
+        });
+
+        netServer.addPacketHandler("adm_discord_link_req", (player, content) -> {
+            if (player == null) return;
+            var session = sessionService.get(player);
+            boolean hasMod = session != null && session.data != null && session.data.adminModVersion != null;
+            if (session != null && player.con != null) {
+                var res = discordLinkService.getOrCreateActiveCode(session);
+                if (res.success()) {
+                    var packet = new DiscordLinkInfoPacket(true, res.code(), res.expiresAt(), null);
+                    Call.clientPacketReliable(player.con, "adm_discord_link_info", rawGson.toJson(packet));
+                } else {
+                    var packet = new DiscordLinkInfoPacket(false, "", 0L, res.errorKey());
+                    Call.clientPacketReliable(player.con, "adm_discord_link_info", rawGson.toJson(packet));
+                }
+            }
+            // Only show intrusive server dialog for vanilla/mobile players without the modern mod UI
+            if (!hasMod) {
+                discordMenu.linking(player.uuid(), false);
+            }
+        });
+
+        netServer.addPacketHandler("adm_auth_login", (player, content) -> {
+            if (player == null || player.con == null) return;
+            AuthLoginPacket req;
+            try {
+                req = rawGson.fromJson(content, AuthLoginPacket.class);
+            } catch (Exception e) {
+                PLog.err("Failed to process auth request from '@': @", player.name, e.getMessage());
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(-1, "SESSION_NOT_FOUND", "error-processing-request");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+                return;
+            }
+
+            if (req == null) {
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(-1, "SESSION_NOT_FOUND", "error-processing-request");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+                return;
+            }
+
+            try {
+                var result = adminAuthService.authenticate(player, req.password, req.rememberDevice);
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(req.requestId, result.status().name(), result.messageKey(), result.token());
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+
+                    adminAuthService.pushStatus(player);
+                }
+            } catch (Exception e) {
+                PLog.err("Error during authentication for '@': @", player.name, e.getMessage());
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(req.requestId, "SESSION_NOT_FOUND", "error-processing-request");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+            }
+        });
+
+        netServer.addPacketHandler("adm_auth_token_login", (player, content) -> {
+            if (player == null || player.con == null) return;
+            AuthTokenLoginPacket req;
+            try {
+                req = rawGson.fromJson(content, AuthTokenLoginPacket.class);
+            } catch (Exception e) {
+                PLog.err("Failed to process token auth request from '@': @", player.name, e.getMessage());
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(-1, "TOKEN_INVALID", "error-token-invalid");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+                return;
+            }
+
+            if (req == null) {
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(-1, "TOKEN_INVALID", "error-token-invalid");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+                return;
+            }
+
+            try {
+                var result = adminAuthService.authenticateToken(player, req.token);
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(req.requestId, result.status().name(), result.messageKey(), result.token());
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+
+                    adminAuthService.pushStatus(player);
+                }
+            } catch (Exception e) {
+                PLog.err("Error during token authentication for '@': @", player.name, e.getMessage());
+                if (player.con != null) {
+                    var resp = new AuthResultPacket(req.requestId, "TOKEN_INVALID", "error-token-invalid");
+                    Call.clientPacketReliable(player.con, "adm_auth_result", rawGson.toJson(resp));
+                }
+            }
+        });
+
+        netServer.addPacketHandler("adm_auth_logout", (player, content) -> {
+            if (player == null) return;
+            AuthLogoutPacket req = null;
+            if (content != null && !content.isBlank()) {
+                try {
+                    req = rawGson.fromJson(content, AuthLogoutPacket.class);
+                } catch (Exception ignored) {}
+            }
+            adminAuthService.logout(player, req != null ? req.token : null);
         });
     }
 

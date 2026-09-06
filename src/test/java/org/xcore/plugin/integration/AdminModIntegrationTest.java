@@ -9,7 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.service.AdminAuthService;
+import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.ui.menu.DiscordMenu;
 import org.xcore.plugin.session.SessionService;
 
 import static org.mockito.Mockito.mock;
@@ -42,6 +45,9 @@ class AdminModIntegrationTest {
                 mock(PlayerDataRepository.class),
                 mock(SessionService.class),
                 mock(ModerationService.class),
+                mock(AdminAuthService.class),
+                mock(DiscordLinkService.class),
+                mock(DiscordMenu.class),
                 new Gson()
         );
 

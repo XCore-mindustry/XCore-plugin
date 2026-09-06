@@ -42,7 +42,8 @@ class DiscordAdminAccessServiceTest {
         DiscordAdminAccessService service = new DiscordAdminAccessService(
                 mock(PlayerDataRepository.class),
                 mock(SessionService.class),
-                mock(PlayerDisplayService.class)
+                mock(PlayerDisplayService.class),
+                mock(AuthStatusBroadcaster.class)
         );
 
         assertThat(service.hasDiscordAdminAccess(PlayerData.builder().admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build())).isTrue();
@@ -56,7 +57,7 @@ class DiscordAdminAccessServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService);
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
 
         PlayerData stored = PlayerData.builder().uuid("uuid-1").admin(false).adminSource(DiscordAdminAccessService.SOURCE_NONE).build();
         Session session = mock(Session.class);
@@ -84,7 +85,7 @@ class DiscordAdminAccessServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService);
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
 
         Player player = Player.create();
         player.admin = true;
@@ -116,7 +117,7 @@ class DiscordAdminAccessServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService);
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
 
         PlayerData stored = PlayerData.builder().uuid("uuid-1").admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build();
 

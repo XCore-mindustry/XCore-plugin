@@ -41,6 +41,17 @@ public class ChatMessageHandler {
             return null;
         }
 
+        // Anti-leak guard: Prevent accidental password leakage into public chat, logs, and Discord relay
+        String trimmed = text.trim();
+        String lower = trimmed.toLowerCase();
+        if (lower.startsWith("/t ") || lower.startsWith("/a ")) {
+            lower = lower.substring(3).trim();
+        }
+        if (lower.startsWith("login ") || lower.startsWith("/login") || lower.startsWith("xl ") || lower.startsWith("/xl")) {
+            author.sendMessage("[scarlet]⚠ Отправка пароля в общий чат заблокирована.");
+            return null;
+        }
+
         Log.info("&fi@: @", "&lc" + author.plainName(), "&lw" + text);
 
         if (securityService.checkAndNotifyMuted(author)) {

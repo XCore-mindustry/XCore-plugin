@@ -39,6 +39,12 @@ public class PlayerData extends ModelData {
     @BsonProperty("password_hash")
     @Builder.Default public String password = "";
 
+    @BsonProperty("device_token_hashes")
+    @Builder.Default public Set<String> deviceTokenHashes = new HashSet<>();
+
+    @BsonProperty("device_tokens")
+    @Builder.Default public Map<String, Long> deviceTokens = new HashMap<>();
+
     @BsonProperty("local_language")
     @Builder.Default public String language = "auto";
     @BsonProperty("translator_language")
@@ -119,5 +125,86 @@ public class PlayerData extends ModelData {
 
     public boolean verifyPassword(String password) {
         return BCrypt.checkpw(password, this.password);
+    }
+
+    public void addDeviceToken(String hash, long expiresAt) {
+        if (deviceTokens == null) {
+            deviceTokens = new HashMap<>();
+        }
+        if (deviceTokenHashes == null) {
+            deviceTokenHashes = new HashSet<>();
+        }
+
+        long now = System.currentTimeMillis();
+        deviceTokens.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue() <= now);
+
+        // Cap at 5 active tokens per account
+        if (deviceTokens.size() >= 5) {
+            String oldestKey = null;
+            long oldestExpiry = Long.MAX_VALUE;
+            for (var entry : deviceTokens.entrySet()) {
+                if (entry.getValue() < oldestExpiry) {
+                    oldestExpiry = entry.getValue();
+                    oldestKey = entry.getKey();
+                }
+            }
+            if (oldestKey != null) {
+                deviceTokens.remove(oldestKey);
+                deviceTokenHashes.remove(oldestKey);
+            }
+        }
+
+        deviceTokens.put(hash, expiresAt);
+        deviceTokenHashes.add(hash);
+    }
+
+    public boolean hasDeviceToken(String hash) {
+        long now = System.currentTimeMillis();
+        if (deviceTokens != null && deviceTokens.containsKey(hash)) {
+            Long exp = deviceTokens.get(hash);
+            if (exp != null && exp > now) {
+                return true;
+            }
+            deviceTokens.remove(hash);
+            if (deviceTokenHashes != null) {
+                deviceTokenHashes.remove(hash);
+            }
+            return false;
+        }
+        return deviceTokenHashes != null && deviceTokenHashes.contains(hash);
+    }
+
+    public void removeDeviceToken(String hash) {
+        if (deviceTokens != null) {
+            deviceTokens.remove(hash);
+        }
+        if (deviceTokenHashes != null) {
+            deviceTokenHashes.remove(hash);
+        }
+    }
+
+    public void clearDeviceTokens() {
+        if (deviceTokens != null) {
+            deviceTokens.clear();
+        }
+        if (deviceTokenHashes != null) {
+            deviceTokenHashes.clear();
+        }
+    }
+
+    public void addDeviceTokenHash(String hash) {
+        addDeviceToken(hash, System.currentTimeMillis() + 60L * 24 * 3600 * 1000L);
+    }
+
+    public boolean hasDeviceTokenHash(String hash) {
+        return hasDeviceToken(hash);
+    }
+
+    public void removeDeviceTokenHash(String hash) {
+        removeDeviceToken(hash);
+    }
+
+    public void clearDeviceTokenHashes() {
+        clearDeviceTokens();
     }
 }

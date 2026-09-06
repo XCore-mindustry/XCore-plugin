@@ -6,13 +6,11 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
-import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
-import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.service.AdminAuthService;
+import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.service.DiscordAdminAccessService;
-import org.xcore.plugin.service.PlayerDisplayService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.netServer;
@@ -20,56 +18,33 @@ import static mindustry.Vars.netServer;
 @Singleton
 public class AuthController implements CloudClientController {
 
-    private final AdminDataRepository adminDataRepository;
+    private final AdminAuthService adminAuthService;
     private final SessionService sessionService;
     private final PlayerDisplayService playerDisplayService;
-    private final DiscordAdminAccessService discordAdminAccessService;
 
     @Inject
-    public AuthController(AdminDataRepository adminDataRepository,
+    public AuthController(AdminAuthService adminAuthService,
                           SessionService sessionService,
-                          PlayerDisplayService playerDisplayService,
-                          DiscordAdminAccessService discordAdminAccessService) {
-        this.adminDataRepository = adminDataRepository;
+                          PlayerDisplayService playerDisplayService) {
+        this.adminAuthService = adminAuthService;
         this.sessionService = sessionService;
         this.playerDisplayService = playerDisplayService;
-        this.discordAdminAccessService = discordAdminAccessService;
     }
 
     @Command("login <password>")
     public void login(XCoreSender sender, @Argument("password") String password) {
+        if (!sender.isPlayer() || sender.player() == null) return;
         Session session = sessionService.get(sender.player().uuid());
-        if (session == null || session.data == null) return;
-        PlayerData data = session.data;
+        if (session == null) return;
         Localization local = session.locale();
 
-        if (password.length() < 4) {
-            local.send("error-admin-password-too-short", args());
-            return;
-        }
-
-        if (data.password.isEmpty()) {
-            data.hashPassword(password);
-            adminDataRepository.save(data);
-            local.send("commands-login-admin-password-created", args());
-        }
-
-        if (data.verifyPassword(password)) {
-            if (discordAdminAccessService.hasDiscordAdminAccess(data)) {
-                sender.player().admin(true);
-                netServer.admins.adminPlayer(sender.player().uuid(), sender.player().getInfo().adminUsid);
-                playerDisplayService.refresh(session);
-                local.send("commands-login-success", args());
-            } else {
-                local.send("commands-login-request-approval-discord", args());
-            }
-        } else {
-            local.send("error-wrong-admin-password", args());
-        }
+        AdminAuthService.AuthResult result = adminAuthService.authenticate(sender.player(), password);
+        local.send(result.messageKey(), args());
     }
 
     @Command("logout")
     public void logout(XCoreSender sender) {
+        if (!sender.isPlayer() || sender.player() == null) return;
         Session session = sessionService.get(sender.player().uuid());
         if (session == null || session.data == null) return;
         Localization local = session.locale();
