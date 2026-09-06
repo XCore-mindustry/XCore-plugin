@@ -270,8 +270,9 @@ public class TileLoggerService {
     }
 
     public boolean useAdminTools(Player player) {
-        PlayerData data = playerSessionService.get(player.uuid()).getData();
-        return data != null && data.adminModVersion != null && !player.con.mobile;
+        var session = playerSessionService.get(player.uuid());
+        if (session == null || session.getData() == null) return false;
+        return session.getData().adminModVersion != null;
     }
 
     private String getCurrentTimeFormatted() {
