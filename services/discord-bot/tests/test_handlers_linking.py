@@ -105,7 +105,7 @@ async def test_cmd_link_publishes_confirm_event() -> None:
         }
     ]
     assert interaction.response.sent == [
-        ("Link request sent for `Target` (`pid=7`). Return in-game in a moment.", True)
+        ("Account linked to `Target` (`pid=7`). Return in-game in a moment.", True)
     ]
 
 
@@ -140,7 +140,10 @@ async def test_cmd_link_instantly_grants_admin_if_user_has_role() -> None:
     }
     assert len(bot.access_changed_calls) == 1
     assert bot.access_changed_calls[0]["admin"] is True
-    assert "Права администратора выданы моментально" in interaction.response.sent[0][0]
+    assert (
+        interaction.response.sent[0][0]
+        == "Account linked to `Target` (`pid=7`). Admin access granted!"
+    )
 
 
 @pytest.mark.asyncio

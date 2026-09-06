@@ -13,6 +13,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _clean_player_name(name: str | None) -> str:
+    from .bot import strip_mindustry_colors
+
+    if not name:
+        return "Unknown"
+    cleaned = strip_mindustry_colors(name).replace("`", "").strip()
+    return cleaned or name
+
+
 async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) -> None:
     if not code or not code.strip():
         await interaction.response.send_message(
@@ -101,11 +110,11 @@ async def cmd_link(bot: XCoreDiscordBot, interaction: Interaction, code: str) ->
     except Exception:
         logger.exception("Failed to grant instant admin access after link")
 
-    msg = f"Link request sent for `{player.nickname}` (`pid={player.pid}`)."
+    clean_name = _clean_player_name(player.nickname)
     if is_admin:
-        msg += " Права администратора выданы моментально!"
+        msg = f"Account linked to `{clean_name}` (`pid={player.pid}`). Admin access granted!"
     else:
-        msg += " Return in-game in a moment."
+        msg = f"Account linked to `{clean_name}` (`pid={player.pid}`). Return in-game in a moment."
 
     await interaction.response.send_message(
         msg,
@@ -123,7 +132,10 @@ async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         )
         return
 
-    lines = [f"`{player.pid}` — {player.nickname}" for player in players]
+    lines = [
+        f"`{player.pid}` — {_clean_player_name(player.nickname)}"
+        for player in players
+    ]
     embed = discord.Embed(
         title="Linked Mindustry accounts",
         description="\n".join(lines),
@@ -170,7 +182,8 @@ async def cmd_unlink(
         actor_name=interaction.user.display_name,
         actor_discord_id=str(interaction.user.id),
     )
+    clean_name = _clean_player_name(player.nickname)
     await interaction.response.send_message(
-        f"Unlink request sent for `{player.nickname}`.",
+        f"Unlink request sent for `{clean_name}`.",
         ephemeral=True,
     )
