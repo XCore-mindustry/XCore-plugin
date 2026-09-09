@@ -141,20 +141,17 @@
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 25, "type": "timeseries", "title": "Gateway ingestion errors / min", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 39},
+      "id": 26, "type": "timeseries", "title": "Proxy leak drops & autobans / min", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 39},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
-        {"refId": "A", "expr": "rate(xcore_metrics_gateway_poll_failures_total[5m])", "legendFormat": "poll"},
-        {"refId": "B", "expr": "rate(xcore_metrics_gateway_decode_failures_total[5m])", "legendFormat": "decode"},
-        {"refId": "C", "expr": "rate(xcore_metrics_gateway_validation_failures_total[5m])", "legendFormat": "validation"},
-        {"refId": "D", "expr": "rate(xcore_metrics_gateway_discovery_failures_total[5m])", "legendFormat": "discovery"},
-        {"refId": "E", "expr": "rate(xcore_metrics_gateway_dropped_series_total[5m])", "legendFormat": "dropped/{{reason}}"}
+        {"refId": "A", "expr": "sum by (server) (rate(sentinel_proxy_leak_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} drops"},
+        {"refId": "B", "expr": "sum by (server) (rate(sentinel_proxy_leak_autobans_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} autobans"}
       ],
       "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 30, "type": "row", "title": "Gateway internals", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 47}, "collapsed": true, "panels": []
+      "id": 30, "type": "row", "title": "Gateway internals", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 47}, "collapsed": false, "panels": []
     },
     {
       "id": 31, "type": "timeseries", "title": "Gateway throughput and discovery", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48},
@@ -177,6 +174,19 @@
         {"refId": "B", "expr": "mindustry_wave{server=~\"$server\"}", "legendFormat": "{{server}} wave"}
       ],
       "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 25, "type": "timeseries", "title": "Gateway ingestion errors / min", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 56},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [
+        {"refId": "A", "expr": "rate(xcore_metrics_gateway_poll_failures_total[5m])", "legendFormat": "poll"},
+        {"refId": "B", "expr": "rate(xcore_metrics_gateway_decode_failures_total[5m])", "legendFormat": "decode"},
+        {"refId": "C", "expr": "rate(xcore_metrics_gateway_validation_failures_total[5m])", "legendFormat": "validation"},
+        {"refId": "D", "expr": "rate(xcore_metrics_gateway_discovery_failures_total[5m])", "legendFormat": "discovery"},
+        {"refId": "E", "expr": "rate(xcore_metrics_gateway_dropped_series_total[5m])", "legendFormat": "dropped/{{reason}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     }
   ],
