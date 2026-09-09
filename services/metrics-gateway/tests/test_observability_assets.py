@@ -17,6 +17,8 @@ SENTINEL_METRICS = {
     "sentinel_admission_waves_total",
     "sentinel_admission_closes_total",
     "sentinel_subnet_denials_total",
+    "sentinel_proxy_leak_denials_total",
+    "sentinel_proxy_leak_autobans_total",
 }
 
 XCORE_METRICS = {

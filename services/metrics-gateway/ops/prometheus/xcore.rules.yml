@@ -5,8 +5,10 @@ groups:
       - record: xcore:sentinel_denials:rate5m
         expr: |
           sum by (server) (
-            rate({__name__=~"sentinel_nickname_denials_total|sentinel_subnet_denials_total|sentinel_admission_closes_total"}[5m])
+            rate({__name__=~"sentinel_nickname_denials_total|sentinel_subnet_denials_total|sentinel_admission_closes_total|sentinel_proxy_leak_denials_total"}[5m])
           )
+      - record: xcore:sentinel_proxy_leak_autobans:rate5m
+        expr: sum by (server) (rate(sentinel_proxy_leak_autobans_total[5m]))
       - record: xcore:sentinel_admission_waves:rate5m
         expr: sum by (server, action) (rate(sentinel_admission_waves_total[5m]))
       - record: xcore:sentinel_admission_attempts:rate5m
@@ -57,6 +59,15 @@ groups:
         annotations:
           summary: Sentinel admission throttling is active
           description: 'Admission wave throttling is being engaged on {{ $labels.server }}.'
+
+      - alert: XCoreSentinelProxyLeakBurst
+        expr: sum by (server) (rate(sentinel_proxy_leak_denials_total[5m])) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sentinel detected bot TCP/UDP proxy leaks
+          description: '{{ $labels.server }} is rejecting bots with mismatched TCP/UDP addresses.'
 
       - alert: XCoreGatewayScrapeErrors
         expr: increase(xcore_metrics_gateway_poll_failures_total[5m]) > 0

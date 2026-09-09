@@ -22,7 +22,7 @@
     {
       "id": 3, "type": "stat", "title": "Sentinel denials (1h)", "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-      "targets": [{"refId": "A", "expr": "sum(increase(sentinel_nickname_denials_total{server=~\"$server\"}[1h])) + sum(increase(sentinel_subnet_denials_total{server=~\"$server\"}[1h])) + sum(increase(sentinel_admission_closes_total{server=~\"$server\"}[1h]))"}],
+      "targets": [{"refId": "A", "expr": "sum(increase(sentinel_nickname_denials_total{server=~\"$server\"}[1h])) + sum(increase(sentinel_subnet_denials_total{server=~\"$server\"}[1h])) + sum(increase(sentinel_admission_closes_total{server=~\"$server\"}[1h])) + sum(increase(sentinel_proxy_leak_denials_total{server=~\"$server\"}[1h]))"}],
       "fieldConfig": {"defaults": {"unit": "short", "decimals": 0, "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 10}, {"color": "red", "value": 100}]}}, "overrides": []},
       "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"}
     },
@@ -112,7 +112,9 @@
         {"refId": "A", "expr": "sum by (server, check) (rate(xcore_ingress_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} xcore/{{check}}"},
         {"refId": "B", "expr": "sum by (server) (rate(sentinel_nickname_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} nickname"},
         {"refId": "C", "expr": "sum by (server, origin) (rate(sentinel_subnet_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} subnet/{{origin}}"},
-        {"refId": "D", "expr": "sum by (server) (rate(sentinel_admission_closes_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} admission closes"}
+        {"refId": "D", "expr": "sum by (server) (rate(sentinel_admission_closes_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} admission closes"},
+        {"refId": "E", "expr": "sum by (server) (rate(sentinel_proxy_leak_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} proxy leak"},
+        {"refId": "F", "expr": "sum by (server) (rate(sentinel_proxy_leak_autobans_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} proxy leak autobans"}
       ],
       "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
