@@ -14,7 +14,7 @@ The objective is to eliminate all blocking database (MongoDB) and cache/transpor
          v                                                 |
 +------------------------------------+          +------------------------------------+
 |       ASYNC STORAGE LAYER          |          |          UI / GAME FEEDBACK        |
-|  - StorageExecutor (Virtual Thr.)  |--------->|  - Menu rendering                  |
+|  - Reactive Mongo / Lettuce Async  |--------->|  - Menu rendering                  |
 |  - Lettuce Async (Netty EventLoop) |          |  - Chat confirmation messages      |
 +------------------------------------+          +------------------------------------+
          |                      |
@@ -32,8 +32,9 @@ The objective is to eliminate all blocking database (MongoDB) and cache/transpor
 
 ### 2.1 `StorageExecutor`
 A dedicated virtual-thread-based executor managed by Avaje Inject:
-- Backed by `Executors.newVirtualThreadPerTaskExecutor()`.
-- Uses a `Semaphore` (default permit count: 64) to prevent unbounded memory amplification if MongoDB latency degrades.
+- Backed by `Executors.newVirtualThreadPerTaskExecutor()` for legacy blocking adapters and non-driver work.
+- Uses a `Semaphore` (default permit count: 64) to prevent unbounded memory amplification when a legacy blocking dependency degrades.
+- Native MongoDB and Redis operations must not be submitted here just to hide synchronous driver calls.
 - Exposes clean submission methods:
   ```java
   public void run(Runnable task);
@@ -92,7 +93,8 @@ In `RedisConnectionManager`:
 
 ### 4.1 Write-Behind Mutations
 In `PlayerDataRepository` and other repositories:
-- Existing mutating methods (`save`, `updatePvpRating`, `updateSettings`, `updateLanguage`, `addBan`, `addMute`) execute inside `StorageExecutor.run(...)`.
+- New mutating methods use native MongoDB Reactive Streams and return `CompletionStage`.
+- Legacy mutating methods may temporarily execute inside `StorageExecutor.run(...)` during migration, but must not block the game main thread.
 - The caller on the game main thread passes either:
   1. An immutable DTO / snapshot (e.g. `PlayerDataSnapshot`).
   2. Primitive immutable parameters (`String uuid, int newRating`).

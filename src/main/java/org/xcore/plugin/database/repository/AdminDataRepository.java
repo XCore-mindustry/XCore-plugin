@@ -4,14 +4,15 @@ import com.mongodb.client.MongoDatabase;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.PlayerData;
 
 @Singleton
 public class AdminDataRepository extends PlayerDataRepository {
 
     @Inject
-    public AdminDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, secretsConfig);
+    public AdminDataRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, secretsConfig);
     }
 
     public void delete(String uuid) {

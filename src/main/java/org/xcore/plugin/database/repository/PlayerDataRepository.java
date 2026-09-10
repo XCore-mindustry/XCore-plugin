@@ -3,6 +3,8 @@ package org.xcore.plugin.database.repository;
 import arc.struct.Seq;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import org.xcore.plugin.database.MongoAsync;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexOptions;
@@ -38,12 +40,17 @@ import static com.mongodb.client.model.Sorts.orderBy;
 @Singleton
 public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
+    private final com.mongodb.reactivestreams.client.MongoCollection<PlayerData> reactiveCollection;
 
     @Inject
-    public PlayerDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+    public PlayerDataRepository(
+            MongoDatabase database,
+            ReactiveMongoStore reactiveMongoStore,
+            TomlSecretsConfig secretsConfig) {
 
         super(database, "players", PlayerData.class, secretsConfig);
         this.counters = database.getCollection("counters");
+        this.reactiveCollection = reactiveMongoStore.collection("players", PlayerData.class);
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
@@ -222,6 +229,25 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public boolean updatePvpRating(String uuid, int rating) {
         return updateByUuid(uuid, Updates.set("pvp_rating", rating));
+    }
+
+    /**
+     * Native Reactive Streams variant for game-event persistence. The MongoDB
+     * driver owns the I/O callback thread; no virtual-thread wrapper or
+     * blocking wait is used here.
+     */
+    public java.util.concurrent.CompletionStage<Boolean> updatePvpRatingAsync(String uuid, int rating) {
+        if (uuid == null || uuid.isBlank() || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+
+        return MongoAsync.first(reactiveCollection.updateOne(
+                eq("uuid", uuid),
+                Updates.combine(
+                        Updates.set("pvp_rating", rating),
+                        Updates.set("updated_at", System.currentTimeMillis())
+                )
+        )).thenApply(result -> result != null && result.getMatchedCount() > 0);
     }
 
     public boolean updateHexedProgress(String uuid, int rank, int points) {

@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.flubundle)
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)
+    implementation(libs.mongodb.reactive)
     implementation(libs.gson)
     implementation(libs.jackson.dataformat.toml)
     implementation(libs.jbcrypt)

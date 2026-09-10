@@ -3,6 +3,7 @@ package org.xcore.plugin.gamemode.pvp;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -25,7 +26,8 @@ class MiniPvPRoundStateTest {
                 mock(PlayerDataRepository.class),
                 mock(LeaderboardService.class),
                 mock(TopMenuCacheService.class),
-                observerService
+                observerService,
+                mock(Async.class)
         );
 
         miniPvP.defeatedPlayers.add("uuid-1");
@@ -52,7 +54,8 @@ class MiniPvPRoundStateTest {
                 mock(PlayerDataRepository.class),
                 mock(LeaderboardService.class),
                 mock(TopMenuCacheService.class),
-                mock(ObserverService.class)
+                mock(ObserverService.class),
+                mock(Async.class)
         );
 
         // roundHadMultipleTeams is false
@@ -76,7 +79,8 @@ class MiniPvPRoundStateTest {
                 mock(PlayerDataRepository.class),
                 mock(LeaderboardService.class),
                 mock(TopMenuCacheService.class),
-                observerService
+                observerService,
+                mock(Async.class)
         );
 
         assertThat(miniPvP.countActivePlayers(null)).isEqualTo(0);

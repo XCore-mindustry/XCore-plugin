@@ -36,10 +36,11 @@
   - Verify unit tests `TopMenuCacheServiceTest`.
 
 ## Phase 3: High-Impact Game Write-Behind (PvP & Sessions)
-- [ ] **Task 3.1: Decouple PvP Rating Persistence in `MiniPvP`**
+- [x] **Task 3.1: Decouple PvP Rating Persistence in `MiniPvP`**
   - In `MiniPvP.java`: ensure `playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)` runs in `StorageExecutor` without blocking the main tick.
   - In `MiniPvP.java`: ensure `defeatedPlayers` observer state caching runs without blocking.
   - Verify `MiniPvPRoundStateTest`.
+  - Uses native `PlayerDataRepository.updatePvpRatingAsync(...)` backed by the Reactive Streams driver.
 
 - [ ] **Task 3.2: Make `SessionService.persistPlayer` Asynchronous**
   - Offload database write in `SessionService.persistPlayer(session)` to `StorageExecutor`.
@@ -47,11 +48,12 @@
   - Invalidate leaderboard cache asynchronously.
 
 ## Phase 4: MongoDB Repositories Asynchronous Wrapping
-- [ ] **Task 4.1: Wrap Mutating Repository Calls in Background Workers**
-  - `BanDataRepository`: `addBan`, `removeBan`, `updateDuration` offloaded to `StorageExecutor`.
-  - `MuteDataRepository`: `addMute`, `removeMute` offloaded to `StorageExecutor`.
-  - `MapStatsService` & `GameDataService`: game completion recording offloaded to background threads.
-  - `AuditRecordRepository`: audit log insertion offloaded to background threads.
+- [ ] **Task 4.1: Migrate Mutating Repository Calls to Native Reactive Mongo**
+  - Add reactive collection access for `BanDataRepository`: `addBan`, `removeBan`, `updateDuration`.
+  - Add reactive collection access for `MuteDataRepository`: `addMute`, `removeMute`.
+  - Migrate `MapStatsService` & `GameDataService` game completion recording to native async writes.
+  - Migrate `AuditRecordRepository` insertion to native async writes.
+  - Keep `StorageExecutor` only for temporary legacy sync callers.
 
 - [ ] **Task 4.2: Audit Read Repository Queries**
   - `PlayerDataRepository.findByPid`, `findByUuid`

@@ -24,10 +24,11 @@ Lettuce is built on Netty and is inherently non-blocking. We shift all gameplay 
 - Calls are guarded with strict timeouts (e.g. `orTimeout(500, TimeUnit.MILLISECONDS)`).
 - Timeouts or Redis disconnections degrade gracefully to local in-memory fallbacks rather than blocking or crashing.
 
-### 2. MongoDB: Java 21 Virtual Threads
-Rather than introducing heavy reactive frameworks (such as Project Reactor or RxJava), which create invasive context-propagation overhead in a game engine, MongoDB calls are offloaded to **Java 21 Virtual Threads** (`Executors.newVirtualThreadPerTaskExecutor()`).
-- Virtual threads provide non-blocking concurrency for blocking I/O with zero cognitive overhead.
-- A bounded semaphore/rate-limiter guards the executor against resource exhaustion during database outages.
+### 2. MongoDB: Native Reactive Streams Driver
+Gameplay-facing MongoDB operations use the official `mongodb-driver-reactivestreams` API and are converted to `CompletionStage` at the repository boundary. The driver owns the network I/O and completion callbacks; no virtual thread or blocking wait is involved.
+- The existing sync driver remains temporarily available for boot-time migrations and legacy repositories during the incremental migration.
+- `StorageExecutor` is reserved for unavoidable legacy blocking calls and CPU-heavy work; it is not used to disguise MongoDB sync calls as native async.
+- New async repositories must not call `.get()` or `.join()` from the Mindustry main thread.
 
 ### 3. Dual-Track Operation Model (Write-Behind vs. Read-Forward)
 To avoid polluting the codebase with nested callbacks and boilerplate `Core.app.post()` calls, storage operations are split into two clean categories:
@@ -35,7 +36,7 @@ To avoid polluting the codebase with nested callbacks and boilerplate `Core.app.
 #### Track A: Write-Behind (Fire-and-Forget Mutations — 90% of operations)
 Mutations (e.g., updating PvP rating, persisting session state, recording audit logs, invalidating Redis top cache, setting spectator state in Redis) **do not require immediate database confirmation on the main thread**.
 - The authoritative in-memory state (`PlayerData`, `Session`) is updated immediately on the game tick.
-- The persistence operation is dispatched asynchronously to background virtual threads / Lettuce async.
+- The persistence operation is dispatched asynchronously through native MongoDB Reactive Streams or Lettuce async APIs.
 - Caller code in game listeners (`MiniPvP`, `ConnectionHandler`, etc.) remains 100% clean: no callbacks, no `CompletableFuture`, no `Core.app.post()`.
 
 #### Track B: Read-Forward via Fluent Dispatcher (`Async` helper — 10% of operations)

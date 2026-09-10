@@ -16,6 +16,7 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.session.ObserverService;
@@ -38,6 +39,7 @@ public class MiniPvP {
     private final LeaderboardService leaderboardService;
     private final TopMenuCacheService topMenuCacheService;
     private final ObserverService observerService;
+    private final Async async;
 
     @Inject
     public MiniPvP(TomlXcoreConfig config,
@@ -45,13 +47,15 @@ public class MiniPvP {
                    PlayerDataRepository playerDataRepository,
                    LeaderboardService leaderboardService,
                    TopMenuCacheService topMenuCacheService,
-                   ObserverService observerService) {
+                   ObserverService observerService,
+                   Async async) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
         this.leaderboardService = leaderboardService;
         this.topMenuCacheService = topMenuCacheService;
         this.observerService = observerService;
+        this.async = async;
     }
 
     @PostConstruct
@@ -129,9 +133,7 @@ public class MiniPvP {
                 session.locale().send("pvp-team-won", args("increased", increased + ""));
                 Log.info("@ rating increased by @", p.plainName(), increased);
 
-                if (playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)) {
-                    topMenuCacheService.invalidateAll();
-                }
+                persistRatingAsync(data);
             });
         });
 
@@ -167,9 +169,7 @@ public class MiniPvP {
 
                         Log.info("@ rating reduced by @", p.plainName(), reduced);
 
-                        if (playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)) {
-                            topMenuCacheService.invalidateAll();
-                        }
+                        persistRatingAsync(data);
                     });
                 }
 
@@ -182,6 +182,19 @@ public class MiniPvP {
         });
 
         info("MiniPvP loaded.");
+    }
+
+    private void persistRatingAsync(PlayerData data) {
+        String uuid = data.uuid;
+        int rating = data.pvpRating;
+
+        async.observe(playerDataRepository.updatePvpRatingAsync(uuid, rating), (persisted, error) -> {
+            if (error != null) {
+                Log.warn("Failed to persist PvP rating for @: @", uuid, error.getMessage());
+            } else if (Boolean.TRUE.equals(persisted)) {
+                async.run(topMenuCacheService::invalidateAll);
+            }
+        });
     }
 
     public int countActivePlayers(Team team) {
