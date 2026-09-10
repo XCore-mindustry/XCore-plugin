@@ -30,11 +30,56 @@ class MiniPvPRoundStateTest {
 
         miniPvP.defeatedPlayers.add("uuid-1");
         miniPvP.defeatedPlayers.add("uuid-2");
+        miniPvP.roundHadMultipleTeams = true;
 
         miniPvP.clearRoundState();
 
         verify(observerService).resetObserverState("uuid-1");
         verify(observerService).resetObserverState("uuid-2");
         assertThat(miniPvP.defeatedPlayers).isEmpty();
+        assertThat(miniPvP.roundHadMultipleTeams).isFalse();
+    }
+
+    @Test
+    @DisplayName("checkPvPGameOver ignores non-mini-pvp or when roundHadMultipleTeams is false")
+    void checkPvPGameOver_ignoresWhenNotReady() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+
+        MiniPvP miniPvP = new MiniPvP(
+                config,
+                mock(SessionService.class),
+                mock(PlayerDataRepository.class),
+                mock(LeaderboardService.class),
+                mock(TopMenuCacheService.class),
+                mock(ObserverService.class)
+        );
+
+        // roundHadMultipleTeams is false
+        miniPvP.checkPvPGameOver();
+        assertThat(miniPvP.roundHadMultipleTeams).isFalse();
+
+        // different server
+        config.server.name = "attack";
+        miniPvP.roundHadMultipleTeams = true;
+        miniPvP.checkPvPGameOver();
+        assertThat(config.server.name).isEqualTo("attack");
+    }
+
+    @Test
+    @DisplayName("countActivePlayers ignores null, derelict, and observer team")
+    void countActivePlayers_ignoresInvalidTeams() {
+        ObserverService observerService = mock(ObserverService.class);
+        MiniPvP miniPvP = new MiniPvP(
+                mock(TomlXcoreConfig.class),
+                mock(SessionService.class),
+                mock(PlayerDataRepository.class),
+                mock(LeaderboardService.class),
+                mock(TopMenuCacheService.class),
+                observerService
+        );
+
+        assertThat(miniPvP.countActivePlayers(null)).isEqualTo(0);
+        assertThat(miniPvP.countActivePlayers(mindustry.game.Team.derelict)).isEqualTo(0);
     }
 }
