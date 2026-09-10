@@ -1,19 +1,21 @@
 # Implementation Tasks: Asynchronous Storage Architecture
 
 ## Phase 1: Core Foundation & Async Utilities
-- [ ] **Task 1.1: Implement `StorageExecutor`**
+- [x] **Task 1.1: Implement `StorageExecutor`**
   - Create `org.xcore.plugin.concurrent.StorageExecutor` managed as an Avaje Inject `@Singleton`.
   - Use Java 21 `Executors.newVirtualThreadPerTaskExecutor()`.
   - Add bounded semaphore / task limit (default 64 concurrent storage tasks).
   - Implement `@PreDestroy` graceful shutdown flush.
   - Unit test `StorageExecutorTest`.
+  - Implemented in `src/main/java/org/xcore/plugin/concurrent/StorageExecutor.java`.
 
-- [ ] **Task 1.2: Implement `Async` Helper**
-  - Create `org.xcore.plugin.concurrent.Async` with static convenience methods.
+- [x] **Task 1.2: Implement `Async` Helper**
+  - Create DI-managed `org.xcore.plugin.concurrent.Async` with convenience methods.
   - Implement `Async.run(Runnable)` for fire-and-forget.
   - Implement `Async.supply(Callable)` returning fluent `AsyncStage<T>` with `thenMain(Consumer<T>)`.
   - Implement `Async.forPlayer(Player, Callable<T>, BiConsumer<Player, T>)` with online/connection guard.
   - Unit test `AsyncTest`.
+  - Implemented in `src/main/java/org/xcore/plugin/concurrent/Async.java`, `AsyncStage.java`, and `MainThreadDispatcher.java`.
 
 ## Phase 2: Redis Layer Async Migration
 - [ ] **Task 2.1: Add Async Commands to `RedisConnectionManager`**

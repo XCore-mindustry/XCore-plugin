@@ -42,17 +42,17 @@ A dedicated virtual-thread-based executor managed by Avaje Inject:
 - Implements `@PreDestroy` with a bounded shutdown grace period (default: 3 seconds) to flush pending write-behind operations on server stop.
 
 ### 2.2 `Async` Fluent Dispatcher
-A static utility class that hides `CompletableFuture` mechanics and `Core.app.post` marshaling:
+A DI-managed service that hides `CompletableFuture` mechanics and `Core.app.post` marshaling. It shares the application-owned `StorageExecutor` lifecycle instead of creating a second global executor:
 ```java
 public final class Async {
     // Fire-and-forget execution in StorageExecutor
-    public static void run(Runnable task);
+    public void run(Runnable task);
 
     // Read queries with main-thread callback
-    public static <T> AsyncStage<T> supply(Callable<T> task);
+    public <T> AsyncStage<T> supply(Callable<T> task);
 
     // Player-scoped read query with automatic online-validation guard
-    public static <T> void forPlayer(Player player, Callable<T> task, BiConsumer<Player, T> consumer);
+    public <T> void forPlayer(Player player, Callable<T> task, BiConsumer<Player, T> consumer);
 }
 ```
 
