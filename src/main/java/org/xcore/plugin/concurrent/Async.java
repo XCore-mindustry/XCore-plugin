@@ -68,6 +68,30 @@ public class Async {
     }
 
     /**
+     * Marshals an already-native async operation to the main thread with an online
+     * player guard. If the player disconnected during the async query, the continuation
+     * is safely skipped.
+     */
+    public <T> void onMainForPlayer(Player player, CompletionStage<T> stage, BiConsumer<Player, T> continuation) {
+        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(stage, "stage");
+        Objects.requireNonNull(continuation, "continuation");
+
+        stage.whenComplete((value, error) -> {
+            if (error != null) {
+                return;
+            }
+
+            mainThread.execute(() -> {
+                if (player.con == null || !player.con.isConnected() || !Groups.player.contains(candidate -> candidate == player)) {
+                    return;
+                }
+                continuation.accept(player, value);
+            });
+        });
+    }
+
+    /**
      * Starts a player-scoped query. The callback is dispatched to the main
      * thread only while the same player is still connected and in Groups.player.
      */
