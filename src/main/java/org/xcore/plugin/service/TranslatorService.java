@@ -13,6 +13,8 @@ import org.xcore.plugin.localization.TranslationResult;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.concurrent.CompletionException;
+
 @Singleton
 public class TranslatorService {
     private final TomlXcoreConfig config;
@@ -51,22 +53,27 @@ public class TranslatorService {
         }
 
         String pipelineSignature = translationFallbackService.pipelineSignature();
-        TranslationCacheService.CachedTranslation cachedTranslation = translationCacheService.get(from, to, text, pipelineSignature);
-        if (cachedTranslation != null && cachedTranslation.translatedText() != null && !cachedTranslation.translatedText().isBlank()) {
-            translationMetricsService.incrementGlobal("cache_hits_total");
-            Log.debug("[Translation] Cache hit for '@' -> '@' via provider '@'",
-                    from, to, cachedTranslation.providerId());
-            result.get(cachedTranslation.translatedText());
-            return;
-        }
+        translationCacheService.getAsync(from, to, text, pipelineSignature)
+                .exceptionally(cacheError -> {
+                    Log.debug("[Translation] Cache lookup failed: @", unwrap(cacheError).getMessage());
+                    return null;
+                })
+                .thenAccept(cachedTranslation -> {
+                    if (cachedTranslation != null && cachedTranslation.translatedText() != null && !cachedTranslation.translatedText().isBlank()) {
+                        translationMetricsService.incrementGlobal("cache_hits_total");
+                        Log.debug("[Translation] Cache hit for '@' -> '@' via provider '@'",
+                                from, to, cachedTranslation.providerId());
+                        result.get(cachedTranslation.translatedText());
+                        return;
+                    }
 
-        translationMetricsService.incrementGlobal("cache_misses_total");
-        Log.debug("[Translation] Cache miss for '@' -> '@'; pipeline='@'",
-                from, to, pipelineSignature);
-        TranslationProvider.Request request = new TranslationProvider.Request(text, from, to);
-        translationFallbackService.translate(request, translationResult -> {
+                    translationMetricsService.incrementGlobal("cache_misses_total");
+                    Log.debug("[Translation] Cache miss for '@' -> '@'; pipeline='@'",
+                            from, to, pipelineSignature);
+                    TranslationProvider.Request request = new TranslationProvider.Request(text, from, to);
+                    translationFallbackService.translate(request, translationResult -> {
             if (translationResult instanceof TranslationResult.Success(var translatedText)) {
-                translationCacheService.put(from, to, text, pipelineSignature, translatedText, "pipeline");
+                translationCacheService.putAsync(from, to, text, pipelineSignature, translatedText, "pipeline");
                 Log.debug("[Translation] Pipeline translation succeeded for '@' -> '@'", from, to);
                 result.get(translatedText);
                 return;
@@ -79,7 +86,12 @@ public class TranslatorService {
                 PLog.err("Translation pipeline failed for '@' -> '@' with unknown reason", from, to);
             }
             error.run();
-        });
+                    });
+                });
+    }
+
+    private Throwable unwrap(Throwable error) {
+        return error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
     }
 
     public void translate(Player author, String text) {

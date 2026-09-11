@@ -101,7 +101,7 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public boolean isReadOnly() {
-        return secretsConfig.database.readOnly;
+        return secretsConfig != null && secretsConfig.database != null && secretsConfig.database.readOnly;
     }
 
     public long count() {

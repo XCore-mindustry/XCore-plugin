@@ -23,6 +23,9 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 
 @Singleton
 public class GameDataRepository extends DataRepository<GameData> {
@@ -63,6 +66,31 @@ public class GameDataRepository extends DataRepository<GameData> {
         }
     }
 
+    public CompletionStage<Boolean> saveOnceAsync(GameData game) {
+        if (game == null || game.matchId == null || game.matchId.isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (isReadOnly()) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (reactiveCollection == null) {
+            return CompletableFuture.completedFuture(saveOnce(game));
+        }
+
+        return MongoAsync.first(reactiveCollection.insertOne(game))
+                .thenApply(ignored -> true)
+                .exceptionally(error -> {
+                    Throwable cause = unwrap(error);
+                    if (cause instanceof MongoWriteException duplicate) {
+                        var writeError = duplicate.getError();
+                        if (writeError != null && (writeError.getCode() == 11000 || writeError.getCode() == 11001)) {
+                            return false;
+                        }
+                    }
+                    throw new CompletionException(cause);
+                });
+    }
+
     public AggregatedPlayerStats aggregatePlayerStats(String uuid) {
         if (uuid == null || uuid.isBlank()) {
             return AggregatedPlayerStats.EMPTY;
@@ -99,6 +127,10 @@ public class GameDataRepository extends DataRepository<GameData> {
                 doc.getInteger("unitsProduced", 0),
                 doc.getInteger("unitsDestroyed", 0)
         );
+    }
+
+    private Throwable unwrap(Throwable error) {
+        return error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
     }
 
     public PlayerStatsOverview aggregatePlayerStatsOverview(String uuid) {

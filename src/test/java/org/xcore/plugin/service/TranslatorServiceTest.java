@@ -158,8 +158,9 @@ class TranslatorServiceTest {
 
         when(translationFallbackService.supports("ru")).thenReturn(true);
         when(translationFallbackService.pipelineSignature()).thenReturn("nvidia:openai,google:google");
-        when(translationCacheService.get("auto", "ru", "hello", "nvidia:openai,google:google"))
-                .thenReturn(new TranslationCacheService.CachedTranslation("привет", "pipeline", System.currentTimeMillis()));
+        when(translationCacheService.getAsync("auto", "ru", "hello", "nvidia:openai,google:google"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                        new TranslationCacheService.CachedTranslation("привет", "pipeline", System.currentTimeMillis())));
 
         service.translate("hello", "auto", "ru", translated::set, () -> translated.set("error"));
 

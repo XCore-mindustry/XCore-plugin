@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class TranslationMetricsService {
@@ -32,10 +33,13 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withCommands(commands -> {
-            commands.hincrby(globalTotalsKey(), field, 1);
-            incrementMinuteBucket(commands, globalMinuteKey(), field);
-            return true;
+        backend.withAsyncCommands(commands -> {
+            var first = commands.hincrby(globalTotalsKey(), field, 1);
+            var bucket = commands.hincrby(globalMinuteKey(), field, 1);
+            return bucket.toCompletableFuture()
+                    .thenCompose(value -> commands.expire(globalMinuteKey(), config.translation.metrics.minuteBucketTtlSeconds).toCompletableFuture())
+                    .orTimeout(500, TimeUnit.MILLISECONDS)
+                    .thenApply(ignored -> true);
         }, false);
     }
 
@@ -44,10 +48,14 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withCommands(commands -> {
+        backend.withAsyncCommands(commands -> {
+            String bucketKey = providerMinuteKey(providerId);
             commands.hincrby(providerTotalsKey(providerId), field, 1);
-            incrementMinuteBucket(commands, providerMinuteKey(providerId), field);
-            return true;
+            commands.hincrby(bucketKey, field, 1);
+            return commands.expire(bucketKey, config.translation.metrics.minuteBucketTtlSeconds)
+                    .toCompletableFuture()
+                    .orTimeout(500, TimeUnit.MILLISECONDS)
+                    .thenApply(ignored -> true);
         }, false);
     }
 
@@ -56,12 +64,14 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withCommands(commands -> {
+        backend.withAsyncCommands(commands -> {
             String totalsKey = providerTotalsKey(providerId);
             commands.hincrby(totalsKey, "latency_sum_ms", latencyMs);
             commands.hincrby(totalsKey, "latency_count", 1);
-            commands.hset(totalsKey, "last_latency_ms", Long.toString(latencyMs));
-            return true;
+            return commands.hset(totalsKey, "last_latency_ms", Long.toString(latencyMs))
+                    .toCompletableFuture()
+                    .orTimeout(500, TimeUnit.MILLISECONDS)
+                    .thenApply(ignored -> true);
         }, false);
     }
 
@@ -70,10 +80,11 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withCommands(commands -> {
-            commands.hset(providerTotalsKey(providerId), "last_success_at", Long.toString(System.currentTimeMillis()));
-            return true;
-        }, false);
+        backend.withAsyncCommands(commands -> commands
+                .hset(providerTotalsKey(providerId), "last_success_at", Long.toString(System.currentTimeMillis()))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(ignored -> true), false);
     }
 
     public void markProviderFailure(String providerId, String reason) {
@@ -81,13 +92,16 @@ public class TranslationMetricsService {
             return;
         }
 
-        backend.withCommands(commands -> {
+        backend.withAsyncCommands(commands -> {
             String totalsKey = providerTotalsKey(providerId);
             commands.hset(totalsKey, "last_failure_at", Long.toString(System.currentTimeMillis()));
             if (reason != null && !reason.isBlank()) {
                 commands.hset(totalsKey, "last_failure_reason", reason);
             }
-            return true;
+            return commands.hset(totalsKey, "last_failure_reason", reason == null ? "" : reason)
+                    .toCompletableFuture()
+                    .orTimeout(500, TimeUnit.MILLISECONDS)
+                    .thenApply(ignored -> true);
         }, false);
     }
 

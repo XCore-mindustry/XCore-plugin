@@ -17,6 +17,7 @@ import org.xcore.plugin.model.enums.VictoryType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 
 import static mindustry.Vars.state;
 
@@ -253,6 +254,17 @@ public class GameDataService {
     /** Records a plugin-owned match without taking over the legacy current-game lifecycle. */
     public boolean recordMatch(MatchHistoryRecord record) {
         if (record == null || currentBag != null) return false;
+        return gameDataRepository.saveOnce(buildGameData(record));
+    }
+
+    public CompletionStage<Boolean> recordMatchAsync(MatchHistoryRecord record) {
+        if (record == null || currentBag != null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+        return gameDataRepository.saveOnceAsync(buildGameData(record));
+    }
+
+    private GameData buildGameData(MatchHistoryRecord record) {
         GameData game = GameData.builder()
                 .gameMode(record.mode())
                 .matchId(record.matchId())
@@ -278,7 +290,7 @@ public class GameDataService {
                     .leaveTime(record.endedAt())
                     .build());
         }
-        return gameDataRepository.saveOnce(game);
+        return game;
     }
 
     private FinishReason resolveFinishReason(String value) {

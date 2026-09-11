@@ -72,16 +72,27 @@ class DataRepositoryAsyncTest {
     }
 
     @Test
-    @DisplayName("updateByUuidAsync ignores null or blank uuid")
-    void updateByUuidAsync_ignoresNullOrBlank() throws Exception {
+    @DisplayName("saveOnceAsync returns false when match id is missing or database is read only")
+    void saveOnceAsync_validatesMatchIdAndReadOnly() throws Exception {
         MongoDatabase database = mock(MongoDatabase.class);
         MongoCollection collection = mock(MongoCollection.class);
         when(database.getCollection(anyString(), any())).thenReturn(collection);
 
-        PlayerDataRepository repository = new PlayerDataRepository(database, new TomlSecretsConfig());
+        GameDataRepository repository = new GameDataRepository(database, new TomlSecretsConfig());
 
-        assertThat(repository.updatePvpRatingAsync(null, 100).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
-        assertThat(repository.updatePvpRatingAsync("", 100).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
-        assertThat(repository.updatePvpRatingAsync("   ", 100).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
+        assertThat(repository.saveOnceAsync(null).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
+
+        org.xcore.plugin.model.GameData noMatchId = org.xcore.plugin.model.GameData.builder().matchId(null).build();
+        assertThat(repository.saveOnceAsync(noMatchId).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
+
+        org.xcore.plugin.model.GameData blankMatchId = org.xcore.plugin.model.GameData.builder().matchId("   ").build();
+        assertThat(repository.saveOnceAsync(blankMatchId).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
+
+        TomlSecretsConfig readOnlyConfig = new TomlSecretsConfig();
+        readOnlyConfig.database.readOnly = true;
+        GameDataRepository readOnlyRepository = new GameDataRepository(database, readOnlyConfig);
+
+        org.xcore.plugin.model.GameData validMatch = org.xcore.plugin.model.GameData.builder().matchId("match-1").build();
+        assertThat(readOnlyRepository.saveOnceAsync(validMatch).toCompletableFuture().get(1, TimeUnit.SECONDS)).isFalse();
     }
 }

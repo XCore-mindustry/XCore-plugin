@@ -13,6 +13,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class TranslationCacheService {
@@ -26,6 +29,26 @@ public class TranslationCacheService {
         this.backend = backend;
         this.redisGson = redisGson;
         this.config = config;
+    }
+
+    public CompletionStage<CachedTranslation> getAsync(String sourceLanguage,
+                                                        String targetLanguage,
+                                                        String inputText,
+                                                        String pipelineSignature) {
+        if (!isEnabled() || !isCacheable(inputText)) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        return backend.withAsyncCommands(commands -> commands
+                .get(cacheKey(sourceLanguage, targetLanguage, inputText, pipelineSignature))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(payloadJson -> {
+                    if (payloadJson == null || payloadJson.isBlank()) {
+                        return null;
+                    }
+                    return redisGson.fromJson(payloadJson, CachedTranslation.class);
+                }), null);
     }
 
     public CachedTranslation get(String sourceLanguage,
@@ -44,6 +67,33 @@ public class TranslationCacheService {
 
             return redisGson.fromJson(payloadJson, CachedTranslation.class);
         }, null);
+    }
+
+    public CompletionStage<Boolean> putAsync(String sourceLanguage,
+                                             String targetLanguage,
+                                             String inputText,
+                                             String pipelineSignature,
+                                             String translatedText,
+                                             String providerId) {
+        if (!isEnabled() || !isCacheable(inputText) || translatedText == null || translatedText.isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        CachedTranslation payload = new CachedTranslation(
+                translatedText,
+                providerId,
+                System.currentTimeMillis()
+        );
+
+        return backend.withAsyncCommands(commands -> commands
+                .set(
+                        cacheKey(sourceLanguage, targetLanguage, inputText, pipelineSignature),
+                        redisGson.toJson(payload),
+                        SetArgs.Builder.ex(config.translation.cache.ttlSeconds)
+                )
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply("OK"::equals), false);
     }
 
     public boolean put(String sourceLanguage,
