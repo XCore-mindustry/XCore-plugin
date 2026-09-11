@@ -192,7 +192,7 @@ public class MiniPvP {
             if (error != null) {
                 Log.warn("Failed to persist PvP rating for @: @", uuid, error.getMessage());
             } else if (Boolean.TRUE.equals(persisted)) {
-                async.run(topMenuCacheService::invalidateAll);
+                topMenuCacheService.invalidateAllAsync();
             }
         });
     }

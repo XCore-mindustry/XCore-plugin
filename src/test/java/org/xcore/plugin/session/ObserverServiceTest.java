@@ -72,7 +72,7 @@ class ObserverServiceTest {
 
         assertThat(changed).isTrue();
         verify(session).beginObserving(Team.sharded);
-        verify(observerStateStore).put("uuid-1", Team.sharded);
+        verify(observerStateStore).putAsync("uuid-1", Team.sharded);
         verify(player).clearUnit();
         verify(player).team(ObserverService.OBSERVER_TEAM);
     }
@@ -94,7 +94,7 @@ class ObserverServiceTest {
 
         assertThat(changed).isFalse();
         verify(session, never()).beginObserving(any());
-        verify(observerStateStore).put("uuid-1", Team.crux);
+        verify(observerStateStore).putAsync("uuid-1", Team.crux);
         verify(player).clearUnit();
         verify(player).team(ObserverService.OBSERVER_TEAM);
     }
@@ -116,7 +116,7 @@ class ObserverServiceTest {
 
         assertThat(changed).isTrue();
         verify(session).beginObserving(null);
-        verify(observerStateStore).put("uuid-1", null);
+        verify(observerStateStore).putAsync("uuid-1", null);
         verify(player).clearUnit();
         verify(player).team(ObserverService.OBSERVER_TEAM);
     }
@@ -137,7 +137,7 @@ class ObserverServiceTest {
         Team restored = observerService.exit(session);
 
         assertThat(restored).isEqualTo(Team.crux);
-        verify(observerStateStore).delete("uuid-1");
+        verify(observerStateStore).deleteAsync("uuid-1");
         verify(player).team(Team.crux);
     }
 
@@ -242,7 +242,7 @@ class ObserverServiceTest {
         observerService.resetObserverState("uuid-1");
 
         verify(session).endObserving();
-        verify(observerStateStore).delete("uuid-1");
+        verify(observerStateStore).deleteAsync("uuid-1");
     }
 
     @Test
@@ -254,6 +254,6 @@ class ObserverServiceTest {
 
         observerService.resetObserverState("uuid-1");
 
-        verify(observerStateStore).delete("uuid-1");
+        verify(observerStateStore).deleteAsync("uuid-1");
     }
 }

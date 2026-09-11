@@ -11,6 +11,8 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.MongoAsync;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.GameData;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerStatsOverview;
@@ -27,8 +29,8 @@ public class GameDataRepository extends DataRepository<GameData> {
     private static final String COLLECTION_NAME = "games_v2";
 
     @Inject
-    public GameDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, COLLECTION_NAME, GameData.class, secretsConfig);
+    public GameDataRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, COLLECTION_NAME, GameData.class, secretsConfig);
 
         collection.createIndex(new Document("map", 1));
         collection.createIndex(new Document("event", 1));
@@ -37,6 +39,10 @@ public class GameDataRepository extends DataRepository<GameData> {
         collection.createIndex(new Document("player_stats.uuid", 1));
         collection.createIndex(new Document("match_id", 1),
                 new com.mongodb.client.model.IndexOptions().unique(true).sparse(true));
+    }
+
+    public GameDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        this(database, null, secretsConfig);
     }
 
     /** Saves a match once, returning false when the match ID was already stored. */

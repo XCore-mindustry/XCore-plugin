@@ -40,7 +40,6 @@ import static com.mongodb.client.model.Sorts.orderBy;
 @Singleton
 public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
-    private final com.mongodb.reactivestreams.client.MongoCollection<PlayerData> reactiveCollection;
 
     @Inject
     public PlayerDataRepository(
@@ -48,9 +47,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             ReactiveMongoStore reactiveMongoStore,
             TomlSecretsConfig secretsConfig) {
 
-        super(database, "players", PlayerData.class, secretsConfig);
+        super(database, reactiveMongoStore, "players", PlayerData.class, secretsConfig);
         this.counters = database.getCollection("counters");
-        this.reactiveCollection = reactiveMongoStore.collection("players", PlayerData.class);
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
@@ -59,6 +57,10 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         collection.createIndex(new Document("total_play_time", -1).append("pid", 1));
         collection.createIndex(new Document("pvp_rating", -1).append("pid", 1));
         collection.createIndex(new Document("hexed_rank", -1).append("hexed_points", -1).append("pid", 1));
+    }
+
+    public PlayerDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        this(database, null, secretsConfig);
     }
 
     @Override
@@ -75,6 +77,27 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         }
 
         return super.save(data);
+    }
+
+    @Override
+    public java.util.concurrent.CompletionStage<Boolean> saveAsync(PlayerData data) {
+        if (data == null) return java.util.concurrent.CompletableFuture.completedFuture(false);
+        if (isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
+
+        if (data.pid == -1) {
+            data.pid = generatePid();
+        }
+
+        if (data.id == null && data.uuid != null && !data.uuid.isBlank()) {
+            return findByUuidAsync(data.uuid).thenCompose(existing -> {
+                if (existing != null && existing.id != null) {
+                    data.id = existing.id;
+                }
+                return super.saveAsync(data);
+            });
+        }
+
+        return super.saveAsync(data);
     }
 
     private int generatePid() {
@@ -94,8 +117,25 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return collection.find(eq("uuid", uuid)).first();
     }
 
+    public java.util.concurrent.CompletionStage<PlayerData> findByUuidAsync(String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(findByUuid(uuid));
+        }
+        return MongoAsync.first(reactiveCollection.find(eq("uuid", uuid)));
+    }
+
     public PlayerData findByPid(int id) {
         return collection.find(eq("pid", id)).first();
+    }
+
+    public java.util.concurrent.CompletionStage<PlayerData> findByPidAsync(int id) {
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(findByPid(id));
+        }
+        return MongoAsync.first(reactiveCollection.find(eq("pid", id)));
     }
 
     public List<PlayerData> findByDiscordId(String discordId) {
@@ -149,12 +189,27 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuid(uuid, Updates.inc("total_play_time", delta));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> incrementPlayTimeAsync(String uuid, int delta) {
+        return updateByUuidAsync(uuid, Updates.inc("total_play_time", delta));
+    }
+
     public boolean updateIp(String uuid, String ip) {
         return updateByUuid(uuid, Updates.set("last_ip", ip));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateIpAsync(String uuid, String ip) {
+        return updateByUuidAsync(uuid, Updates.set("last_ip", ip));
+    }
+
     public boolean updateConnectionData(String uuid, String ip, String nickname) {
         return updateByUuid(uuid, Updates.combine(
+                Updates.set("last_ip", ip),
+                Updates.set("nickname", nickname)
+        ));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateConnectionDataAsync(String uuid, String ip, String nickname) {
+        return updateByUuidAsync(uuid, Updates.combine(
                 Updates.set("last_ip", ip),
                 Updates.set("nickname", nickname)
         ));
@@ -167,8 +222,19 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         ));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateAdminStatusAsync(String uuid, boolean admin, String adminSource) {
+        return updateByUuidAsync(uuid, Updates.combine(
+                Updates.set("is_admin", admin),
+                Updates.set("admin_source", normalizeAdminSource(adminSource))
+        ));
+    }
+
     public boolean clearAdminAccess(String uuid) {
         return updateAdminStatus(uuid, false, "NONE");
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> clearAdminAccessAsync(String uuid) {
+        return updateAdminStatusAsync(uuid, false, "NONE");
     }
 
     private String normalizeAdminSource(String adminSource) {
@@ -179,75 +245,112 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuid(uuid, Updates.set("local_language", language));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateLanguageAsync(String uuid, String language) {
+        return updateByUuidAsync(uuid, Updates.set("local_language", language));
+    }
+
     public boolean updateTranslatorLanguage(String uuid, String language) {
         return updateByUuid(uuid, Updates.set("translator_language", language));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateTranslatorLanguageAsync(String uuid, String language) {
+        return updateByUuidAsync(uuid, Updates.set("translator_language", language));
     }
 
     public boolean updateGlobalChatVisible(String uuid, boolean visible) {
         return updateByUuid(uuid, Updates.set("show_global_chat", visible));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateGlobalChatVisibleAsync(String uuid, boolean visible) {
+        return updateByUuidAsync(uuid, Updates.set("show_global_chat", visible));
+    }
+
     public boolean updateDiscordRelayVisible(String uuid, boolean visible) {
         return updateByUuid(uuid, Updates.set("show_discord_relay", visible));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateDiscordRelayVisibleAsync(String uuid, boolean visible) {
+        return updateByUuidAsync(uuid, Updates.set("show_discord_relay", visible));
     }
 
     public boolean updateLeaderboard(String uuid, boolean leaderboard) {
         return updateByUuid(uuid, Updates.set("leaderboard", leaderboard));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateLeaderboardAsync(String uuid, boolean leaderboard) {
+        return updateByUuidAsync(uuid, Updates.set("leaderboard", leaderboard));
+    }
+
     public boolean updateCustomNickname(String uuid, String customNickname) {
         return updateByUuid(uuid, Updates.set("custom_nickname", customNickname));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateCustomNicknameAsync(String uuid, String customNickname) {
+        return updateByUuidAsync(uuid, Updates.set("custom_nickname", customNickname));
     }
 
     public boolean updateDescription(String uuid, String description) {
         return updateByUuid(uuid, Updates.set("description", description));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateDescriptionAsync(String uuid, String description) {
+        return updateByUuidAsync(uuid, Updates.set("description", description));
+    }
+
     public boolean setActiveBadge(String uuid, String badgeId) {
         return updateByUuid(uuid, Updates.set("active_badge", badgeId));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> setActiveBadgeAsync(String uuid, String badgeId) {
+        return updateByUuidAsync(uuid, Updates.set("active_badge", badgeId));
     }
 
     public boolean updateBadgeSymbolColorMode(String uuid, String mode) {
         return updateByUuid(uuid, Updates.set("badge_symbol_color_mode", mode));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> updateBadgeSymbolColorModeAsync(String uuid, String mode) {
+        return updateByUuidAsync(uuid, Updates.set("badge_symbol_color_mode", mode));
+    }
+
     public boolean addUnlockedBadge(String uuid, String badgeId) {
         return updateByUuid(uuid, Updates.addToSet("unlocked_badges", badgeId));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> addUnlockedBadgeAsync(String uuid, String badgeId) {
+        return updateByUuidAsync(uuid, Updates.addToSet("unlocked_badges", badgeId));
     }
 
     public boolean removeUnlockedBadge(String uuid, String badgeId) {
         return updateByUuid(uuid, Updates.pull("unlocked_badges", badgeId));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> removeUnlockedBadgeAsync(String uuid, String badgeId) {
+        return updateByUuidAsync(uuid, Updates.pull("unlocked_badges", badgeId));
+    }
+
     public boolean addBlockedPrivateUuid(String uuid, String blockedUuid) {
         return updateByUuid(uuid, Updates.addToSet("blocked_private_uuids", blockedUuid));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> addBlockedPrivateUuidAsync(String uuid, String blockedUuid) {
+        return updateByUuidAsync(uuid, Updates.addToSet("blocked_private_uuids", blockedUuid));
     }
 
     public boolean removeBlockedPrivateUuid(String uuid, String blockedUuid) {
         return updateByUuid(uuid, Updates.pull("blocked_private_uuids", blockedUuid));
     }
 
+    public java.util.concurrent.CompletionStage<Boolean> removeBlockedPrivateUuidAsync(String uuid, String blockedUuid) {
+        return updateByUuidAsync(uuid, Updates.pull("blocked_private_uuids", blockedUuid));
+    }
+
     public boolean updatePvpRating(String uuid, int rating) {
         return updateByUuid(uuid, Updates.set("pvp_rating", rating));
     }
 
-    /**
-     * Native Reactive Streams variant for game-event persistence. The MongoDB
-     * driver owns the I/O callback thread; no virtual-thread wrapper or
-     * blocking wait is used here.
-     */
     public java.util.concurrent.CompletionStage<Boolean> updatePvpRatingAsync(String uuid, int rating) {
-        if (uuid == null || uuid.isBlank() || isReadOnly()) {
-            return java.util.concurrent.CompletableFuture.completedFuture(false);
-        }
-
-        return MongoAsync.first(reactiveCollection.updateOne(
-                eq("uuid", uuid),
-                Updates.combine(
-                        Updates.set("pvp_rating", rating),
-                        Updates.set("updated_at", System.currentTimeMillis())
-                )
-        )).thenApply(result -> result != null && result.getMatchedCount() > 0);
+        return updateByUuidAsync(uuid, Updates.set("pvp_rating", rating));
     }
 
     public boolean updateHexedProgress(String uuid, int rank, int points) {
@@ -267,6 +370,24 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public boolean replaceUnlockedBadges(String uuid, Set<String> unlockedBadges) {
         return updateByUuid(uuid, Updates.set("unlocked_badges", unlockedBadges));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateByUuidAsync(String uuid, Bson update) {
+        if (uuid == null || uuid.isBlank() || update == null || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(updateByUuid(uuid, update));
+        }
+
+        return MongoAsync.first(reactiveCollection.updateOne(
+                eq("uuid", uuid),
+                Updates.combine(
+                        update,
+                        Updates.set("updated_at", System.currentTimeMillis())
+                )
+        )).thenApply(result -> result != null && result.getMatchedCount() > 0);
     }
 
     private boolean updateByUuid(String uuid, Bson update) {

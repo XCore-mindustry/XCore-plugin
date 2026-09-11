@@ -9,6 +9,7 @@ import io.lettuce.core.StreamMessage;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.XAutoClaimArgs;
 import io.lettuce.core.XReadArgs;
+import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.inject.Inject;
@@ -27,6 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 
 
@@ -295,6 +298,27 @@ public final class RedisNetworkBackend {
         } catch (Exception e) {
             Log.warn("Redis direct command failed: @", e.getMessage());
             return fallback;
+        }
+    }
+
+    /**
+     * Executes a native Lettuce async operation without blocking the caller.
+     * Availability failures are represented as the supplied fallback value;
+     * command failures remain visible on the returned stage.
+     */
+    public <T> CompletionStage<T> withAsyncCommands(
+            java.util.function.Function<RedisAsyncCommands<String, String>, CompletionStage<T>> operation,
+            T fallback) {
+        if (!connectionManager.hasAsyncCommands()) {
+            return CompletableFuture.completedFuture(fallback);
+        }
+
+        try {
+            CompletionStage<T> stage = operation.apply(connectionManager.asyncCommands());
+            return stage == null ? CompletableFuture.completedFuture(fallback) : stage;
+        } catch (Exception e) {
+            Log.warn("Redis async command failed before dispatch: @", e.getMessage());
+            return CompletableFuture.failedFuture(e);
         }
     }
 

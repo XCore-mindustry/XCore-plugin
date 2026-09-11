@@ -18,42 +18,45 @@
   - Implemented in `src/main/java/org/xcore/plugin/concurrent/Async.java`, `AsyncStage.java`, and `MainThreadDispatcher.java`.
 
 ## Phase 2: Redis Layer Async Migration
-- [ ] **Task 2.1: Add Async Commands to `RedisConnectionManager`**
+- [x] **Task 2.1: Add Async Commands to `RedisConnectionManager`**
   - Expose `asyncCommands()` (`RedisAsyncCommands<String, String>`) in `RedisConnectionManager`.
   - Expose `asyncBinaryCommands()` (`RedisAsyncCommands<String, byte[]>`).
-  - Add non-blocking connection verification.
+  - Add non-blocking connection verification (`hasAsyncCommands()`).
+  - Add non-blocking `withAsyncCommands` runner in `RedisNetworkBackend`.
 
-- [ ] **Task 2.2: Make `RedisObserverStateStore` Non-Blocking**
-  - Update `put(playerUuid, returnTeam)` to use `asyncCommands.set(...)` with 500ms timeout.
-  - Update `delete(playerUuid)` to use `asyncCommands.del(...)`.
-  - Keep `get(playerUuid)` non-blocking or guarded with fallback.
-  - Verify unit tests `SessionObserverStateTest` and `ObserverServiceTest`.
+- [x] **Task 2.2: Make `RedisObserverStateStore` Non-Blocking**
+  - Add `putAsync(playerUuid, returnTeam)` using `asyncCommands.set(...)` with 500ms timeout.
+  - Add `deleteAsync(playerUuid)` using `asyncCommands.del(...)` with 500ms timeout.
+  - Migrated `ObserverService` to use async write/delete without blocking the main tick.
+  - Verified unit tests in `ObserverServiceTest` and `RedisAsyncWriteTest`.
 
-- [ ] **Task 2.3: Make `TopMenuCacheService` Non-Blocking**
-  - Update `invalidateAll()` to fire-and-forget `asyncCommands.incr(versionKey)`.
-  - Update `putTotalEntries(...)` to fire-and-forget `asyncCommands.set(...)`.
-  - Update `getTotalEntries(...)` to handle timeout fallback gracefully without stalling.
-  - Verify unit tests `TopMenuCacheServiceTest`.
+- [x] **Task 2.3: Make `TopMenuCacheService` Non-Blocking**
+  - Add `invalidateAllAsync()` with `asyncCommands.incr(versionKey)` and 500ms timeout.
+  - Add `putTotalEntriesAsync(...)` and `putTopSliceAsync(...)` with 500ms timeout.
+  - Migrated callers across `TopMenuService`, `SessionService`, and controllers.
+  - Verified unit tests in `TopMenuCacheServiceTest` and `RedisAsyncWriteTest`.
 
 ## Phase 3: High-Impact Game Write-Behind (PvP & Sessions)
 - [x] **Task 3.1: Decouple PvP Rating Persistence in `MiniPvP`**
-  - In `MiniPvP.java`: ensure `playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)` runs in `StorageExecutor` without blocking the main tick.
+  - In `MiniPvP.java`: ensure `playerDataRepository.updatePvpRating(data.uuid, data.pvpRating)` runs asynchronously without blocking the main tick.
   - In `MiniPvP.java`: ensure `defeatedPlayers` observer state caching runs without blocking.
   - Verify `MiniPvPRoundStateTest`.
   - Uses native `PlayerDataRepository.updatePvpRatingAsync(...)` backed by the Reactive Streams driver.
 
-- [ ] **Task 3.2: Make `SessionService.persistPlayer` Asynchronous**
-  - Offload database write in `SessionService.persistPlayer(session)` to `StorageExecutor`.
-  - Pass an immutable copy of `PlayerData` to prevent concurrent modification during write.
-  - Invalidate leaderboard cache asynchronously.
+- [x] **Task 3.2: Make `SessionService.persistPlayer` Asynchronous**
+  - Implemented `saveAsync` on `DataRepository` and `PlayerDataRepository` backed by native Reactive Streams.
+  - Invalidate leaderboard cache asynchronously via `invalidateAllAsync()`.
 
 ## Phase 4: MongoDB Repositories Asynchronous Wrapping
-- [ ] **Task 4.1: Migrate Mutating Repository Calls to Native Reactive Mongo**
-  - Add reactive collection access for `BanDataRepository`: `addBan`, `removeBan`, `updateDuration`.
-  - Add reactive collection access for `MuteDataRepository`: `addMute`, `removeMute`.
-  - Migrate `MapStatsService` & `GameDataService` game completion recording to native async writes.
-  - Migrate `AuditRecordRepository` insertion to native async writes.
-  - Keep `StorageExecutor` only for temporary legacy sync callers.
+- [x] **Task 4.1: Migrate Mutating Repository Calls to Native Reactive Mongo**
+  - Added reactive collection access across `DataRepository` base class for all repositories.
+  - Added `saveAsync`, `findByIdAsync`, `countAsync` to base `DataRepository`.
+  - Added `findAsync`, `saveAsync`, `deleteAsync` to `BanDataRepository`.
+  - Added `findByUuidAsync`, `saveAsync`, `deleteAsync` to `MuteDataRepository`.
+  - Added `findByAuditIdAsync` and inherited `saveAsync` to `AuditRecordRepository`.
+  - Added atomic async updates and `findByUuidAsync`, `findByPidAsync` to `PlayerDataRepository`.
+  - Added `MongoAsync.list(...)` publisher collection utility.
+  - Verified with `DataRepositoryAsyncTest` and `MongoAsyncTest`.
 
 - [ ] **Task 4.2: Audit Read Repository Queries**
   - `PlayerDataRepository.findByPid`, `findByUuid`

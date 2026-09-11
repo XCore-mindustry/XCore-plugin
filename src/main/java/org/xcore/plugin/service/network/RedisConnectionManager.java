@@ -3,6 +3,7 @@ package org.xcore.plugin.service.network;
 import org.xcore.plugin.common.PLog;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
@@ -20,8 +21,10 @@ public final class RedisConnectionManager {
     private RedisClient client;
     private StatefulRedisConnection<String, String> connection;
     private RedisCommands<String, String> commands;
+    private RedisAsyncCommands<String, String> asyncCommands;
     private StatefulRedisConnection<String, byte[]> binaryConnection;
     private RedisCommands<String, byte[]> binaryCommands;
+    private RedisAsyncCommands<String, byte[]> asyncBinaryCommands;
     private boolean connectionWarningLogged;
 
     public RedisConnectionManager(TomlXcoreConfig config, RedisTransportHealth transportHealth) {
@@ -39,8 +42,10 @@ public final class RedisConnectionManager {
             client = RedisClient.create(config.transport.redis.url);
             connection = client.connect();
             commands = connection.sync();
+            asyncCommands = connection.async();
             binaryConnection = client.connect(RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
             binaryCommands = binaryConnection.sync();
+            asyncBinaryCommands = binaryConnection.async();
             connectionWarningLogged = false;
             transportHealth.markConnected();
             PLog.info("Redis connected: url=@", sanitizeRedisUrl(config.transport.redis.url));
@@ -86,6 +91,19 @@ public final class RedisConnectionManager {
         return binaryCommands;
     }
 
+    public synchronized RedisAsyncCommands<String, String> asyncCommands() {
+        return asyncCommands;
+    }
+
+    public synchronized RedisAsyncCommands<String, byte[]> asyncBinaryCommands() {
+        return asyncBinaryCommands;
+    }
+
+    /** Returns whether the async command connection is already established. */
+    public synchronized boolean hasAsyncCommands() {
+        return asyncCommands != null;
+    }
+
     static String sanitizeRedisUrl(String redisUrl) {
         if (redisUrl == null || redisUrl.isBlank()) {
             return "(empty)";
@@ -127,7 +145,9 @@ public final class RedisConnectionManager {
 
     private void closeResources() {
         commands = null;
+        asyncCommands = null;
         binaryCommands = null;
+        asyncBinaryCommands = null;
 
         if (binaryConnection != null) {
             binaryConnection.close();

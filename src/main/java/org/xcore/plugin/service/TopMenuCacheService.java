@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import arc.util.Log;
 import com.google.gson.Gson;
 import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
@@ -14,6 +15,9 @@ import org.xcore.plugin.service.network.RedisNetworkBackend;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class TopMenuCacheService {
@@ -54,6 +58,15 @@ public class TopMenuCacheService {
         }, false);
     }
 
+    /** Native Lettuce async invalidation for gameplay and persistence callbacks. */
+    public CompletionStage<Boolean> invalidateAllAsync() {
+        return observeWrite(backend.withAsyncCommands(commands -> commands
+                .incr(versionKey())
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(value -> value != null), false));
+    }
+
     public Long getTotalEntries(long version) {
         return backend.withCommands(commands -> {
             String payloadJson = commands.get(countKey(version));
@@ -72,6 +85,16 @@ public class TopMenuCacheService {
             commands.set(countKey(version), redisGson.toJson(payload), SetArgs.Builder.ex(COUNT_TTL_SECONDS));
             return true;
         }, false);
+    }
+
+    /** Native Lettuce async count write for cache misses on the main thread. */
+    public CompletionStage<Boolean> putTotalEntriesAsync(long version, long totalEntries) {
+        CachedCount payload = new CachedCount(totalEntries, System.currentTimeMillis());
+        return observeWrite(backend.withAsyncCommands(commands -> commands
+                .set(countKey(version), redisGson.toJson(payload), SetArgs.Builder.ex(COUNT_TTL_SECONDS))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply("OK"::equals), false));
     }
 
     public LeaderboardSlice<PlayerData> getTopSlice(long version,
@@ -93,6 +116,27 @@ public class TopMenuCacheService {
         }, null);
     }
 
+    public CompletionStage<Boolean> putTopSliceAsync(long version,
+                                                     TopCategory category,
+                                                     int pageSize,
+                                                     LeaderboardCursor cursor,
+                                                     LeaderboardSlice<PlayerData> slice) {
+        if (slice == null || slice.items() == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        CachedTopSlice payload = new CachedTopSlice(slice.items(), slice.hasNext(), slice.nextCursor(), System.currentTimeMillis());
+        return observeWrite(backend.withAsyncCommands(commands -> commands
+                .set(
+                        sliceKey(version, category, pageSize, cursor),
+                        redisGson.toJson(payload),
+                        SetArgs.Builder.ex(PAGE_TTL_SECONDS)
+                )
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply("OK"::equals), false));
+    }
+
     public boolean putTopSlice(long version,
                                TopCategory category,
                                int pageSize,
@@ -111,6 +155,14 @@ public class TopMenuCacheService {
             );
             return true;
         }, false);
+    }
+
+    private CompletionStage<Boolean> observeWrite(CompletionStage<Boolean> stage) {
+        return stage.whenComplete((success, error) -> {
+            if (error != null) {
+                Log.warn("Redis top cache write failed: @", error.getMessage());
+            }
+        });
     }
 
     private String versionKey() {

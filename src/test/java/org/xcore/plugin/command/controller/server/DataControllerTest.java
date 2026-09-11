@@ -262,7 +262,7 @@ class DataControllerTest {
         assertThat(saved.id).isEqualTo(player.id);
         assertThat(saved.pvpRating).isEqualTo(0);
         assertThat(saved.uuid).isEqualTo("u-1");
-        verify(topMenuCacheService).invalidateAll();
+        verify(topMenuCacheService).invalidateAllAsync();
     }
 
     @Test

@@ -52,6 +52,20 @@ class MongoAsyncTest {
                 .withMessageContaining("mongo unavailable");
     }
 
+    @Test
+    void listCollectsAllItemsAndRequestsMax() throws Exception {
+        TrackingPublisher<String> publisher = new TrackingPublisher<>();
+
+        CompletionStage<java.util.List<String>> result = MongoAsync.list(publisher);
+        publisher.emit("first");
+        publisher.emit("second");
+        publisher.complete();
+
+        assertThat(result.toCompletableFuture().get(1, TimeUnit.SECONDS))
+                .containsExactly("first", "second");
+        assertThat(publisher.requested).isEqualTo(Long.MAX_VALUE);
+    }
+
     private static final class TrackingPublisher<T> implements Publisher<T> {
         private Subscriber<? super T> subscriber;
         private long requested;

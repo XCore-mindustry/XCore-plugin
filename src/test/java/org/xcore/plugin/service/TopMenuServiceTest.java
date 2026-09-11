@@ -88,9 +88,9 @@ class TopMenuServiceTest {
         assertThat(page.players()).containsExactly(player);
         assertThat(page.nextCursor()).isEqualTo(nextCursor);
         verify(repository, times(1)).countTopEntries();
-        verify(cacheService, times(1)).putTotalEntries(5L, 15L);
+        verify(cacheService, times(1)).putTotalEntriesAsync(5L, 15L);
         verify(repository, times(1)).findTopSlice(TopCategory.PLAYTIME, null, 10);
-        verify(cacheService, times(1)).putTopSlice(5L, TopCategory.PLAYTIME, 10, null, slice);
+        verify(cacheService, times(1)).putTopSliceAsync(5L, TopCategory.PLAYTIME, 10, null, slice);
     }
 
     @Test
@@ -128,7 +128,7 @@ class TopMenuServiceTest {
 
         service.invalidateLeaderboardCache();
 
-        verify(cacheService, times(1)).invalidateAll();
+        verify(cacheService, times(1)).invalidateAllAsync();
     }
 
     private static TomlXcoreConfig config(String server) {

@@ -99,7 +99,7 @@ class PlayerControllerObserverTest {
         controller.observer(sender);
 
         verify(session).endObserving();
-        verify(observerStateStore).delete("uuid-1");
+        verify(observerStateStore).deleteAsync("uuid-1");
         verify(localization).send("commands-observer-exit-success");
         assertThat(player.team()).isEqualTo(Team.sharded);
     }
@@ -134,7 +134,7 @@ class PlayerControllerObserverTest {
         controller.setTeam(sender, Team.crux.id, -1);
 
         verify(session).endObserving();
-        verify(observerStateStore).delete("uuid-1");
+        verify(observerStateStore).deleteAsync("uuid-1");
         verify(player).clearUnit();
         verify(player).team(Team.crux);
     }

@@ -261,7 +261,7 @@ class MaintainControllerTest {
         controller.deleteBots(sender);
 
         verify(repository).deleteBots();
-        verify(topMenuCacheService).invalidateAll();
+        verify(topMenuCacheService).invalidateAllAsync();
         var captor = ArgumentCaptor.forClass(PlayerDataCacheReloadCommandV1.class);
         verify(network).post(captor.capture());
         assertThat(captor.getValue().server()).isEqualTo("alpha");

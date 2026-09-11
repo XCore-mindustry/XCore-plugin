@@ -141,13 +141,13 @@ public class ObserverService {
 
     private void cacheObserverState(String playerUuid, Team returnTeam) {
         if (observerStateStore != null) {
-            observerStateStore.put(playerUuid, returnTeam);
+            observerStateStore.putAsync(playerUuid, returnTeam);
         }
     }
 
     private void clearObserverState(String playerUuid) {
         if (observerStateStore != null) {
-            observerStateStore.delete(playerUuid);
+            observerStateStore.deleteAsync(playerUuid);
         }
     }
 

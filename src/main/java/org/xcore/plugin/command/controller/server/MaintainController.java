@@ -162,7 +162,7 @@ public class MaintainController implements CloudServerController {
     public void deleteBots(XCoreSender sender) {
         long deleted = playerDataRepository.deleteBots();
         if (deleted > 0 && topMenuCacheService != null) {
-            topMenuCacheService.invalidateAll();
+            topMenuCacheService.invalidateAllAsync();
         }
         network.post(new PlayerDataCacheReloadCommandV1(serverLocalConfig.server.name));
         PLog.info("Deleted @ bots from database.", deleted);

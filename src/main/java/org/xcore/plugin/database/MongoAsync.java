@@ -4,10 +4,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-/** Bridges a single-result Reactive Streams publisher to a CompletionStage. */
+/** Bridges a Reactive Streams publisher to a CompletionStage. */
 public final class MongoAsync {
     private MongoAsync() {
     }
@@ -44,6 +46,35 @@ public final class MongoAsync {
                 if (!received) {
                     result.complete(null);
                 }
+            }
+        });
+
+        return result;
+    }
+
+    public static <T> CompletionStage<List<T>> list(Publisher<T> publisher) {
+        CompletableFuture<List<T>> result = new CompletableFuture<>();
+        List<T> items = new ArrayList<>();
+
+        publisher.subscribe(new Subscriber<>() {
+            @Override
+            public void onSubscribe(Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(T value) {
+                items.add(value);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                result.completeExceptionally(error);
+            }
+
+            @Override
+            public void onComplete() {
+                result.complete(List.copyOf(items));
             }
         });
 

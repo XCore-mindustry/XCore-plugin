@@ -13,6 +13,8 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.MongoAsync;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.MapData;
 
 import java.util.Optional;
@@ -25,8 +27,8 @@ import static com.mongodb.client.model.Filters.*;
 public class MapDataRepository extends DataRepository<MapData> {
 
     @Inject
-    public MapDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, "maps", MapData.class, secretsConfig);
+    public MapDataRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, "maps", MapData.class, secretsConfig);
 
         collection.createIndex(new Document("name", -1));
         collection.createIndex(new Document("author", -1));
@@ -36,6 +38,10 @@ public class MapDataRepository extends DataRepository<MapData> {
         collection.createIndex(new Document("reputation", -1));
         collection.createIndex(new Document("interest", -1));
         collection.createIndex(new Document("played_times_year", 1));
+    }
+
+    public MapDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        this(database, null, secretsConfig);
     }
 
     public Optional<MapData> find(String name, String author, String gameMode) {

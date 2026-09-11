@@ -131,7 +131,7 @@ public class TopMenuService {
     }
 
     public void invalidateLeaderboardCache() {
-        topMenuCacheService.invalidateAll();
+        topMenuCacheService.invalidateAllAsync();
     }
 
     public TopCursorPage loadCursorPage(TopCategory category,
@@ -159,7 +159,7 @@ public class TopMenuService {
         }
 
         long loaded = playerDataRepository.countTopEntries();
-        topMenuCacheService.putTotalEntries(version, loaded);
+        topMenuCacheService.putTotalEntriesAsync(version, loaded);
         return loaded;
     }
 
@@ -204,7 +204,7 @@ public class TopMenuService {
         }
 
         LeaderboardSlice<PlayerData> loaded = playerDataRepository.findTopSlice(category, cursor, pageSize);
-        topMenuCacheService.putTopSlice(version, category, pageSize, cursor, loaded);
+        topMenuCacheService.putTopSliceAsync(version, category, pageSize, cursor, loaded);
         return loaded;
     }
 

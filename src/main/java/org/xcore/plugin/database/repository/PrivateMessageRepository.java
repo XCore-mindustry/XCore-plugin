@@ -9,6 +9,8 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.MongoAsync;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.PrivateMessage;
 
 import java.util.ArrayList;
@@ -20,8 +22,8 @@ import static com.mongodb.client.model.Filters.eq;
 public class PrivateMessageRepository extends DataRepository<PrivateMessage> {
 
     @Inject
-    public PrivateMessageRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, "private_messages", PrivateMessage.class, secretsConfig);
+    public PrivateMessageRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, "private_messages", PrivateMessage.class, secretsConfig);
 
         collection.createIndex(
                 new Document("to_uuid", 1)
@@ -36,6 +38,10 @@ public class PrivateMessageRepository extends DataRepository<PrivateMessage> {
         );
         collection.createIndex(new Document("from_uuid", 1).append("created_at", -1));
         collection.createIndex(new Document("to_uuid", 1).append("from_uuid", 1).append("created_at", -1), new IndexOptions());
+    }
+
+    public PrivateMessageRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        this(database, null, secretsConfig);
     }
 
     public List<PrivateMessage> findInbox(String uuid, int skip, int limit) {

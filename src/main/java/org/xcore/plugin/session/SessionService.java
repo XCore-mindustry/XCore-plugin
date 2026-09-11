@@ -413,7 +413,7 @@ public class SessionService {
 
     private void invalidateLeaderboardCache() {
         if (topMenuCacheService != null) {
-            topMenuCacheService.invalidateAll();
+            topMenuCacheService.invalidateAllAsync();
         }
     }
 }

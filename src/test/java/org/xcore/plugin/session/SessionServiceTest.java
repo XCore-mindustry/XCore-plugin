@@ -156,7 +156,7 @@ class SessionServiceTest {
         assertThat(result).isTrue();
         assertThat(session.data.totalPlayTime).isEqualTo(5);
         verify(playerDataRepository).incrementPlayTime("uuid-1", 5);
-        verify(topMenuCacheService).invalidateAll();
+        verify(topMenuCacheService).invalidateAllAsync();
     }
 
     @Test
@@ -179,7 +179,7 @@ class SessionServiceTest {
 
         assertThat(result).isTrue();
         verify(playerDataRepository).save(session.data);
-        verify(topMenuCacheService).invalidateAll();
+        verify(topMenuCacheService).invalidateAllAsync();
     }
 
     @Test

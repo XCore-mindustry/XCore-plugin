@@ -6,10 +6,15 @@ import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.MongoAsync;
 import org.xcore.plugin.database.MongoUtils;
 import org.xcore.plugin.database.PagedDataResult;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.BanData;
 import org.bson.conversions.Bson;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.or;
@@ -18,8 +23,12 @@ import static com.mongodb.client.model.Filters.or;
 public class BanDataRepository extends DataRepository<BanData> {
 
     @Inject
+    public BanDataRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, "bans", BanData.class, secretsConfig);
+    }
+
     public BanDataRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, "bans", BanData.class, secretsConfig);
+        this(database, null, secretsConfig);
     }
 
     public BanData find(String uuid, String ip) {
@@ -28,6 +37,17 @@ public class BanDataRepository extends DataRepository<BanData> {
             return null;
         }
         return collection.find(filter).first();
+    }
+
+    public CompletionStage<BanData> findAsync(String uuid, String ip) {
+        var filter = identifierFilter(uuid, ip);
+        if (filter == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (reactiveCollection == null) {
+            return CompletableFuture.completedFuture(find(uuid, ip));
+        }
+        return MongoAsync.first(reactiveCollection.find(filter));
     }
 
     @Override
@@ -49,12 +69,47 @@ public class BanDataRepository extends DataRepository<BanData> {
         return true;
     }
 
+    @Override
+    public CompletionStage<Boolean> saveAsync(BanData data) {
+        if (data == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (isReadOnly()) {
+            Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
+            return CompletableFuture.completedFuture(false);
+        }
+
+        var filter = identifierFilter(data.uuid, data.ip);
+        if (filter == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        if (reactiveCollection == null) {
+            return CompletableFuture.completedFuture(save(data));
+        }
+
+        return MongoAsync.first(reactiveCollection.replaceOne(filter, data, new ReplaceOptions().upsert(true)))
+                .thenApply(res -> true);
+    }
+
     public boolean delete(String uuid, String ip) {
         var filter = identifierFilter(uuid, ip);
         if (filter == null) {
             return false;
         }
         return collection.deleteMany(filter).getDeletedCount() > 0;
+    }
+
+    public CompletionStage<Boolean> deleteAsync(String uuid, String ip) {
+        var filter = identifierFilter(uuid, ip);
+        if (filter == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (reactiveCollection == null) {
+            return CompletableFuture.completedFuture(delete(uuid, ip));
+        }
+        return MongoAsync.first(reactiveCollection.deleteMany(filter))
+                .thenApply(res -> res != null && res.getDeletedCount() > 0);
     }
 
     public PagedDataResult<BanData> search(String value, int limit, int page) {

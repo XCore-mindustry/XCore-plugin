@@ -1,5 +1,6 @@
 package org.xcore.plugin.service.network;
 
+import arc.util.Log;
 import com.google.gson.Gson;
 import io.lettuce.core.SetArgs;
 import jakarta.inject.Inject;
@@ -7,6 +8,10 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import org.xcore.plugin.config.TomlXcoreConfig;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class RedisObserverStateStore {
@@ -36,6 +41,20 @@ public class RedisObserverStateStore {
         }, false);
     }
 
+    /** Native Lettuce async write used by gameplay event handlers. */
+    public CompletionStage<Boolean> putAsync(String playerUuid, Team returnTeam) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        CachedObserverState payload = new CachedObserverState(resolveReturnTeamId(returnTeam), System.currentTimeMillis());
+        return observeWrite(backend.withAsyncCommands(commands -> commands
+                .set(key(playerUuid), redisGson.toJson(payload), SetArgs.Builder.ex(OBSERVER_TTL_SECONDS))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply("OK"::equals), false));
+    }
+
     public CachedObserverState get(String playerUuid) {
         if (playerUuid == null || playerUuid.isBlank()) {
             return null;
@@ -50,6 +69,19 @@ public class RedisObserverStateStore {
         }, null);
     }
 
+    /** Native Lettuce async delete used by gameplay event handlers. */
+    public CompletionStage<Boolean> deleteAsync(String playerUuid) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        return observeWrite(backend.withAsyncCommands(commands -> commands
+                .del(key(playerUuid))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(deleted -> deleted != null && deleted > 0), false));
+    }
+
     public boolean delete(String playerUuid) {
         if (playerUuid == null || playerUuid.isBlank()) {
             return false;
@@ -59,6 +91,14 @@ public class RedisObserverStateStore {
             commands.del(key(playerUuid));
             return true;
         }, false);
+    }
+
+    private CompletionStage<Boolean> observeWrite(CompletionStage<Boolean> stage) {
+        return stage.whenComplete((success, error) -> {
+            if (error != null) {
+                Log.warn("Redis observer state write failed: @", error.getMessage());
+            }
+        });
     }
 
     public Team resolveReturnTeam(CachedObserverState state) {

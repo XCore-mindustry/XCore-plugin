@@ -8,6 +8,8 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.MongoAsync;
+import org.xcore.plugin.database.ReactiveMongoStore;
 import org.xcore.plugin.model.AuditAction;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.model.AuditCursor;
@@ -31,8 +33,8 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
     private static final int DEFAULT_LIMIT = 20;
 
     @Inject
-    public AuditRecordRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
-        super(database, "moderation_audit", AuditRecord.class, secretsConfig);
+    public AuditRecordRepository(MongoDatabase database, ReactiveMongoStore reactiveMongoStore, TomlSecretsConfig secretsConfig) {
+        super(database, reactiveMongoStore, "moderation_audit", AuditRecord.class, secretsConfig);
 
         collection.createIndex(new Document("target.uuid", 1)
                 .append("created_at_epoch_ms", -1)
@@ -55,11 +57,26 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
         collection.createIndex(new Document("integrity.dedupe_key", 1));
     }
 
+    public AuditRecordRepository(MongoDatabase database, TomlSecretsConfig secretsConfig) {
+        this(database, null, secretsConfig);
+    }
+
     public Optional<AuditRecord> findByAuditId(String auditId) {
         if (auditId == null || auditId.isBlank()) {
             return Optional.empty();
         }
         return Optional.ofNullable(collection.find(eq("audit_id", auditId)).first());
+    }
+
+    public java.util.concurrent.CompletionStage<Optional<AuditRecord>> findByAuditIdAsync(String auditId) {
+        if (auditId == null || auditId.isBlank()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(Optional.empty());
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(findByAuditId(auditId));
+        }
+        return MongoAsync.first(reactiveCollection.find(eq("audit_id", auditId)))
+                .thenApply(Optional::ofNullable);
     }
 
     public Slice<AuditRecord> findByTargetUuid(String targetUuid, AuditCursor cursor, int limit) {

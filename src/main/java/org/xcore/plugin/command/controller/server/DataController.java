@@ -130,7 +130,7 @@ public class DataController implements CloudServerController {
         PlayerData result = prettyGson.fromJson(root.toJson(JsonWriter.OutputType.json), PlayerData.class);
         result.id = data.id;
         if (playerDataRepository.save(result) && topMenuCacheService != null) {
-            topMenuCacheService.invalidateAll();
+            topMenuCacheService.invalidateAllAsync();
         }
         Log.info("PlayerData for @ updated. Field '@' -> '@'.", data.nickname, field, value);
     }
