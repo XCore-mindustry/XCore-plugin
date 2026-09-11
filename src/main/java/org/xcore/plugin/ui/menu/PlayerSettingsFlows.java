@@ -38,6 +38,18 @@ final class PlayerSettingsFlows {
     private PlayerSettingsFlows() {
     }
 
+    static PlayerData resolveTarget(Session session, String targetUuid) {
+        if (targetUuid == null || targetUuid.isBlank()) {
+            return null;
+        }
+        if (session != null && session.data != null && targetUuid.equals(session.data.uuid)) {
+            return session.data;
+        }
+        return session != null && session.playerDataRepository != null
+                ? session.playerDataRepository.findByUuid(targetUuid)
+                : null;
+    }
+
     static final class SettingsFlow extends BaseMenuFlow<SettingsState> {
         private final PlayerProfileSettingsService profileSettings;
 
@@ -129,7 +141,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<SettingsState> context) {
             Session session = context.session();
             SettingsState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -193,7 +205,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<SettingsState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 
@@ -234,7 +246,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<ChatSettingsState> context) {
             Session session = context.session();
             ChatSettingsState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -272,7 +284,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<ChatSettingsState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 
@@ -323,7 +335,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<LanguageSelectionState> context) {
             Session session = context.session();
             LanguageSelectionState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             String titleKey = state.isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title";
 
@@ -357,7 +369,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<LanguageSelectionState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 
@@ -395,7 +407,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<BadgeSymbolColorModeState> context) {
             Session session = context.session();
             BadgeSymbolColorModeState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -422,7 +434,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<BadgeSymbolColorModeState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 
@@ -465,7 +477,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<BadgesState> context) {
             Session session = context.session();
             BadgesState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -514,7 +526,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<BadgesState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 
@@ -551,7 +563,7 @@ final class PlayerSettingsFlows {
         public MenuScreen render(MenuRenderContext<AllBadgesState> context) {
             Session session = context.session();
             AllBadgesState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -586,7 +598,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<AllBadgesState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            return resolveTarget(context.session(), context.state().targetUuid);
         }
     }
 

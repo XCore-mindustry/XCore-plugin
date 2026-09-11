@@ -192,6 +192,55 @@ class SecurityServiceTest {
         assertThat(result).isTrue();
     }
 
+    @Test
+    @DisplayName("checkMute uses in-memory cache on subsequent checks")
+    void checkMute_usesInMemoryCache_onSubsequentChecks() {
+        var player = mockPlayer("uuid-cached");
+        when(muteDataRepository.findByUuid("uuid-cached")).thenReturn(null);
+
+        var first = securityService.checkMute(player);
+        var second = securityService.checkMute(player);
+
+        assertThat(first.muted()).isFalse();
+        assertThat(second.muted()).isFalse();
+        verify(muteDataRepository, org.mockito.Mockito.times(1)).findByUuid("uuid-cached");
+    }
+
+    @Test
+    @DisplayName("setMuted populates in-memory cache without hitting database")
+    void setMuted_populatesCache_skippingRepository() {
+        var player = mockPlayer("uuid-set");
+        var mute = MuteData.builder()
+                .expireDate(Instant.now().plusSeconds(60))
+                .adminName("admin")
+                .reason("test")
+                .build();
+
+        securityService.setMuted("uuid-set", mute);
+
+        var result = securityService.checkMute(player);
+        assertThat(result.muted()).isTrue();
+        verify(muteDataRepository, never()).findByUuid("uuid-set");
+    }
+
+    @Test
+    @DisplayName("clearMute clears cached mute immediately")
+    void clearMute_clearsCachedMute() {
+        var player = mockPlayer("uuid-clear");
+        var mute = MuteData.builder()
+                .expireDate(Instant.now().plusSeconds(60))
+                .adminName("admin")
+                .reason("test")
+                .build();
+
+        securityService.setMuted("uuid-clear", mute);
+        assertThat(securityService.isMuted(player)).isTrue();
+
+        securityService.clearMute("uuid-clear");
+        assertThat(securityService.isMuted(player)).isFalse();
+        verify(muteDataRepository, never()).findByUuid("uuid-clear");
+    }
+
     private static Player mockPlayer(String uuid) {
         var player = mock(Player.class);
         when(player.uuid()).thenReturn(uuid);

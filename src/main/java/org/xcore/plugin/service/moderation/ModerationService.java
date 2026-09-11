@@ -22,6 +22,7 @@ import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.ModerationProtocolMapper;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.TimeService;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationPardonCommandV1;
 
@@ -56,6 +57,7 @@ public class ModerationService {
     private final TimeService time;
     private final AuditService auditService;
     private final TomlXcoreConfig config;
+    private final jakarta.inject.Provider<SecurityService> securityService;
 
     @Inject
     public ModerationService(PlayerDataRepository playerDataRepository,
@@ -66,7 +68,8 @@ public class ModerationService {
                              FindService find,
                              TimeService timeService,
                              AuditService auditService,
-                             TomlXcoreConfig config) {
+                             TomlXcoreConfig config,
+                             jakarta.inject.Provider<SecurityService> securityService) {
         this.playerDataRepository = playerDataRepository;
         this.banDataRepository = banDataRepository;
         this.muteDataRepository = muteDataRepository;
@@ -76,6 +79,19 @@ public class ModerationService {
         this.time = timeService;
         this.auditService = auditService;
         this.config = config;
+        this.securityService = securityService;
+    }
+
+    public ModerationService(PlayerDataRepository playerDataRepository,
+                             BanDataRepository banDataRepository,
+                             MuteDataRepository muteDataRepository,
+                             SessionService sessionService,
+                             NetworkService network,
+                             FindService find,
+                             TimeService timeService,
+                             AuditService auditService,
+                             TomlXcoreConfig config) {
+        this(playerDataRepository, banDataRepository, muteDataRepository, sessionService, network, find, timeService, auditService, config, () -> null);
     }
 
     /**
@@ -214,6 +230,10 @@ public class ModerationService {
         network.post(ModerationProtocolMapper.toMuteCreated(mute, config.server.name, eventOccurredAt(audit)));
         postAuditEvent(audit);
 
+        if (securityService != null && securityService.get() != null) {
+            securityService.get().setMuted(target.uuid, mute);
+        }
+
         return ModerationResult.success("Player '" + target.nickname + "' muted successfully", mute);
     }
 
@@ -245,6 +265,10 @@ public class ModerationService {
 
         postAuditEvent(audit);
         network.post(toPardonCommand(target.uuid, target.pid, target.nickname, null, audit));
+
+        if (securityService != null && securityService.get() != null) {
+            securityService.get().clearMute(target.uuid);
+        }
 
         return ModerationResult.success("Player '" + target.nickname + "' unmuted successfully", target);
     }

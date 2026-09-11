@@ -63,7 +63,7 @@ final class PlayerProfileFlows {
         public MenuScreen render(MenuRenderContext<PlayerState> context) {
             Session session = context.session();
             PlayerState state = context.state();
-            PlayerData targetData = session.playerDataRepository.findByUuid(state.targetUuid);
+            PlayerData targetData = resolveTargetData(context);
 
             if (targetData == null) {
                 session.locale().send("error-player-not-found");
@@ -139,7 +139,23 @@ final class PlayerProfileFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<PlayerState> context) {
-            return context.session().playerDataRepository.findByUuid(context.state().targetUuid);
+            String targetUuid = context.state().targetUuid;
+            if (targetUuid == null || targetUuid.isBlank()) {
+                return null;
+            }
+            Session session = context.session();
+            if (session != null && session.data != null && targetUuid.equals(session.data.uuid)) {
+                return session.data;
+            }
+            if (menu.sessionService != null) {
+                Session onlineSession = menu.sessionService.get(targetUuid);
+                if (onlineSession != null && onlineSession.data != null) {
+                    return onlineSession.data;
+                }
+            }
+            return session != null && session.playerDataRepository != null
+                    ? session.playerDataRepository.findByUuid(targetUuid)
+                    : null;
         }
     }
 

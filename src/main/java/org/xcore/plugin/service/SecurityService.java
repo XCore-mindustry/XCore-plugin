@@ -12,14 +12,19 @@ import org.xcore.plugin.session.SessionService;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 public class SecurityService {
 
+    static final long UNMUTED_CACHE_TTL_MS = 30_000L;
+
     private final MuteDataRepository muteDataRepository;
     private final Provider<SessionService> sessionService;
+    private final Map<String, CachedMute> muteCache = new ConcurrentHashMap<>();
 
     @Inject
     public SecurityService(MuteDataRepository muteDataRepository, Provider<SessionService> sessionService) {
@@ -30,16 +35,102 @@ public class SecurityService {
     public record MuteCheckResult(boolean muted, @Nullable MuteData muteData, Duration remaining) {}
 
     public MuteCheckResult checkMute(Player player) {
-        MuteData mute = muteDataRepository.findByUuid(player.uuid());
+        if (player == null || player.uuid() == null || player.uuid().isBlank()) {
+            return new MuteCheckResult(false, null, Duration.ZERO);
+        }
+
+        String uuid = player.uuid();
+        CachedMute cached = muteCache.get(uuid);
+        if (cached != null) {
+            if (cached.data == null) {
+                if (System.currentTimeMillis() - cached.cachedAt < UNMUTED_CACHE_TTL_MS) {
+                    return new MuteCheckResult(false, null, Duration.ZERO);
+                }
+            } else {
+                if (!cached.data.expired()) {
+                    Duration remaining = Duration.between(Instant.now(), cached.data.expireDate);
+                    return new MuteCheckResult(true, cached.data, remaining);
+                } else {
+                    muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+                    muteDataRepository.delete(uuid);
+                    return new MuteCheckResult(false, null, Duration.ZERO);
+                }
+            }
+        }
+
+        MuteData mute = muteDataRepository.findByUuid(uuid);
         if (mute == null) {
+            muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
             return new MuteCheckResult(false, null, Duration.ZERO);
         }
         if (mute.expired()) {
-            muteDataRepository.delete(player.uuid());
+            muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+            muteDataRepository.delete(uuid);
             return new MuteCheckResult(false, null, Duration.ZERO);
         }
+
+        muteCache.put(uuid, new CachedMute(mute, System.currentTimeMillis()));
         Duration remaining = Duration.between(Instant.now(), mute.expireDate);
         return new MuteCheckResult(true, mute, remaining);
+    }
+
+    public CompletionStage<MuteCheckResult> checkMuteAsync(Player player) {
+        if (player == null || player.uuid() == null || player.uuid().isBlank()) {
+            return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
+        }
+
+        String uuid = player.uuid();
+        CachedMute cached = muteCache.get(uuid);
+        if (cached != null) {
+            if (cached.data == null) {
+                if (System.currentTimeMillis() - cached.cachedAt < UNMUTED_CACHE_TTL_MS) {
+                    return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
+                }
+            } else {
+                if (!cached.data.expired()) {
+                    Duration remaining = Duration.between(Instant.now(), cached.data.expireDate);
+                    return CompletableFuture.completedFuture(new MuteCheckResult(true, cached.data, remaining));
+                } else {
+                    muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+                    muteDataRepository.deleteAsync(uuid);
+                    return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
+                }
+            }
+        }
+
+        return muteDataRepository.findByUuidAsync(uuid).thenApply(mute -> {
+            if (mute == null) {
+                muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+                return new MuteCheckResult(false, null, Duration.ZERO);
+            }
+            if (mute.expired()) {
+                muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+                muteDataRepository.deleteAsync(uuid);
+                return new MuteCheckResult(false, null, Duration.ZERO);
+            }
+
+            muteCache.put(uuid, new CachedMute(mute, System.currentTimeMillis()));
+            Duration remaining = Duration.between(Instant.now(), mute.expireDate);
+            return new MuteCheckResult(true, mute, remaining);
+        });
+    }
+
+    public void setMuted(String uuid, MuteData muteData) {
+        if (uuid != null && !uuid.isBlank()) {
+            muteCache.put(uuid, new CachedMute(muteData, System.currentTimeMillis()));
+        }
+    }
+
+    public void clearMute(String uuid) {
+        if (uuid != null && !uuid.isBlank()) {
+            muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+        }
+    }
+
+    public void invalidateMute(String uuid) {
+        if (uuid != null && !uuid.isBlank()) {
+            muteCache.remove(uuid);
+        }
     }
 
     public boolean isMuted(Player player) {
@@ -63,4 +154,6 @@ public class SecurityService {
                 "duration", Math.max(0, duration.toSeconds())
         );
     }
+
+    record CachedMute(@Nullable MuteData data, long cachedAt) {}
 }
