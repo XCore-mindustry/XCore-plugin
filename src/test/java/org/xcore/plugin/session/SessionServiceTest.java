@@ -320,6 +320,61 @@ class SessionServiceTest {
         verify(disabled.locale(), never()).send("global-chat-format", args("message", "hello"));
     }
 
+    @Test
+    @DisplayName("findOnlineByPid returns matching online session and null when offline or negative")
+    void findOnlineByPid_returnsMatchingOnlineSessionAndNullWhenOfflineOrNegative() {
+        SessionService service = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+
+        Session online = session("uuid-42", Team.sharded);
+        online.data.pid = 42;
+        service.update(online);
+
+        assertThat(service.findOnlineByPid(42)).isSameAs(online);
+        assertThat(service.findOnlineByPid(999)).isNull();
+        assertThat(service.findOnlineByPid(-1)).isNull();
+    }
+
+    @Test
+    @DisplayName("getOrLoadFromDbAsync resolves from cache first and falls back to async repository")
+    void getOrLoadFromDbAsync_resolvesFromCacheFirstAndFallsBackToRepository() throws Exception {
+        PlayerDataRepository repository = mock(PlayerDataRepository.class);
+        PlayerData offlineUuidPlayer = new PlayerData("uuid-offline", true);
+        PlayerData offlinePidPlayer = new PlayerData("uuid-offline-pid", true);
+        offlinePidPlayer.pid = 77;
+
+        when(repository.findByUuidAsync("uuid-offline"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(offlineUuidPlayer));
+        when(repository.findByPidAsync(77))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(offlinePidPlayer));
+
+        SessionService service = new SessionService(mock(SessionFactory.class), repository);
+
+        Session online = session("uuid-online", Team.sharded);
+        online.data.pid = 10;
+        service.update(online);
+
+        // Cached online lookups
+        assertThat(service.getOrLoadFromDbAsync("uuid-online").toCompletableFuture().get())
+                .isSameAs(online.data);
+        assertThat(service.getOrLoadFromDbAsync(10).toCompletableFuture().get())
+                .isSameAs(online.data);
+        verify(repository, never()).findByUuidAsync("uuid-online");
+        verify(repository, never()).findByPidAsync(10);
+
+        // Offline lookups
+        assertThat(service.getOrLoadFromDbAsync("uuid-offline").toCompletableFuture().get())
+                .isSameAs(offlineUuidPlayer);
+        assertThat(service.getOrLoadFromDbAsync(77).toCompletableFuture().get())
+                .isSameAs(offlinePidPlayer);
+        verify(repository).findByUuidAsync("uuid-offline");
+        verify(repository).findByPidAsync(77);
+
+        // Invalid inputs
+        assertThat(service.getOrLoadFromDbAsync((String) null).toCompletableFuture().get()).isNull();
+        assertThat(service.getOrLoadFromDbAsync("   ").toCompletableFuture().get()).isNull();
+        assertThat(service.getOrLoadFromDbAsync(-1).toCompletableFuture().get()).isNull();
+    }
+
     private Session session(String uuid, Team team) {
         Session session = mock(Session.class);
         Player player = mock(Player.class);

@@ -17,6 +17,7 @@ import org.xcore.plugin.ui.menu.PlayerMenu;
 import org.xcore.plugin.ui.menu.TopMenu;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
@@ -172,5 +173,93 @@ class PlayerControllerObserverTest {
         verify(observerStateStore, never()).delete("uuid-1");
         verify(player).clearUnit();
         verify(player).team(Team.get(255));
+    }
+
+    @Test
+    @DisplayName("player command fast-path serves self and online players without database")
+    void player_servesSelfAndOnlinePlayersWithoutDatabase() {
+        PlayerDataRepository repository = mock(PlayerDataRepository.class);
+        SessionService sessionService = new SessionService(mock(SessionFactory.class), repository);
+        ObserverService observerService = new ObserverService(sessionService, mock(RedisObserverStateStore.class));
+        PlayerMenu menu = mock(PlayerMenu.class);
+        PlayerController controller = new PlayerController(
+                repository,
+                sessionService,
+                observerService,
+                menu,
+                mock(TopMenu.class)
+        );
+
+        Player selfPlayer = mock(Player.class);
+        when(selfPlayer.uuid()).thenReturn("uuid-self");
+
+        Session selfSession = mock(Session.class);
+        selfSession.player = selfPlayer;
+        selfSession.data = new PlayerData("uuid-self", true);
+        selfSession.data.pid = 1;
+        sessionService.update(selfSession);
+
+        Player otherPlayer = mock(Player.class);
+        when(otherPlayer.uuid()).thenReturn("uuid-other");
+        Session otherSession = mock(Session.class);
+        otherSession.player = otherPlayer;
+        otherSession.data = new PlayerData("uuid-other", true);
+        otherSession.data.pid = 2;
+        sessionService.update(otherSession);
+
+        XCoreSender sender = mock(XCoreSender.class);
+        when(sender.player()).thenReturn(selfPlayer);
+
+        // Self lookup (-1)
+        controller.player(sender, -1);
+        verify(menu).player("uuid-self", selfSession.data);
+
+        // Online lookup by PID (2)
+        controller.player(sender, 2);
+        verify(menu).player("uuid-self", otherSession.data);
+
+        // No database calls performed
+        verify(repository, never()).findByPid(anyInt());
+        verify(repository, never()).findByPidAsync(anyInt());
+    }
+
+    @Test
+    @DisplayName("player command offline target queries async repository and opens menu")
+    void player_offlineTargetQueriesAsyncRepositoryAndOpensMenu() {
+        PlayerDataRepository repository = mock(PlayerDataRepository.class);
+        PlayerData offlineData = new PlayerData("uuid-offline", true);
+        offlineData.pid = 99;
+
+        when(repository.findByPidAsync(99))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(offlineData));
+
+        SessionService sessionService = new SessionService(mock(SessionFactory.class), repository);
+        ObserverService observerService = new ObserverService(sessionService, mock(RedisObserverStateStore.class));
+        PlayerMenu menu = mock(PlayerMenu.class);
+        PlayerController controller = new PlayerController(
+                repository,
+                sessionService,
+                observerService,
+                menu,
+                mock(TopMenu.class)
+        );
+
+        Player selfPlayer = mock(Player.class);
+        when(selfPlayer.uuid()).thenReturn("uuid-self");
+
+        Session selfSession = mock(Session.class);
+        selfSession.player = selfPlayer;
+        selfSession.data = new PlayerData("uuid-self", true);
+        selfSession.data.pid = 1;
+        sessionService.update(selfSession);
+
+        XCoreSender sender = mock(XCoreSender.class);
+        when(sender.player()).thenReturn(selfPlayer);
+
+        controller.player(sender, 99);
+
+        verify(repository).findByPidAsync(99);
+        verify(repository, never()).findByPid(99);
+        verify(menu).player("uuid-self", offlineData);
     }
 }

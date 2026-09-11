@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -94,6 +96,37 @@ public class SessionService {
     }
 
     /**
+     * Asynchronously gets player data by UUID with in-memory cache check.
+     */
+    public CompletionStage<PlayerData> getOrLoadFromDbAsync(String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        var cached = sessionCache.get(uuid);
+        if (cached != null && cached.data != null) {
+            return CompletableFuture.completedFuture(cached.data);
+        }
+        return playerDataRepository.findByUuidAsync(uuid);
+    }
+
+    /**
+     * Finds an active online session by player internal ID (pid).
+     * Strictly in-memory; returns null if the player is not currently online.
+     *
+     * @param pid internal player ID
+     * @return active Session, or null if not online
+     */
+    public Session findOnlineByPid(int pid) {
+        if (pid < 0) return null;
+        for (var session : getAllCachedSnapshot()) {
+            if (session.data != null && session.data.pid == pid) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Gets cached player data by internal player ID.
      * <p>
      * Note: This performs a linear search through the cache.
@@ -103,13 +136,27 @@ public class SessionService {
      * @return PlayerData from cache or database, or null if not found
      */
     public PlayerData getOrLoadFromDb(int pid) {
-        for (var data : getAllCachedSnapshot()) {
-            if (data.data.pid == pid) {
-                return data.data;
-            }
+        if (pid < 0) return null;
+        Session online = findOnlineByPid(pid);
+        if (online != null && online.data != null) {
+            return online.data;
         }
 
         return playerDataRepository.findByPid(pid);
+    }
+
+    /**
+     * Asynchronously gets player data by internal player ID with in-memory cache check.
+     */
+    public CompletionStage<PlayerData> getOrLoadFromDbAsync(int pid) {
+        if (pid < 0) {
+            return CompletableFuture.completedFuture(null);
+        }
+        Session online = findOnlineByPid(pid);
+        if (online != null && online.data != null) {
+            return CompletableFuture.completedFuture(online.data);
+        }
+        return playerDataRepository.findByPidAsync(pid);
     }
 
     /**

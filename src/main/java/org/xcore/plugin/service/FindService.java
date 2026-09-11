@@ -10,6 +10,9 @@ import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
 import static arc.util.Strings.parseInt;
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.NullSafe.orElse;
@@ -54,6 +57,15 @@ public class FindService {
         return uuidOrPid.startsWith("#")
                 ? sessionService.getOrLoadFromDb(Strings.parseInt(uuidOrPid.substring(1)))
                 : sessionService.getOrLoadFromDb(uuidOrPid);
+    }
+
+    public CompletionStage<PlayerData> playerDataAsync(String uuidOrPid) {
+        if (uuidOrPid == null || uuidOrPid.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return uuidOrPid.startsWith("#")
+                ? sessionService.getOrLoadFromDbAsync(Strings.parseInt(uuidOrPid.substring(1)))
+                : sessionService.getOrLoadFromDbAsync(uuidOrPid);
     }
 
     public Administration.PlayerInfo playerInfo(String name) {

@@ -4,6 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.top.LeaderboardEntry;
 import org.xcore.plugin.integration.top.LeaderboardPage;
 import org.xcore.plugin.integration.top.LeaderboardPageRequest;
@@ -258,15 +259,36 @@ public class TopMenu extends Menu {
                         .withParam("category", state.categoryId != null ? state.categoryId : (state.category != null ? state.category.name() : "")));
             });
             actionPrefix("profile:", (ctx, targetUuid) -> {
-                PlayerData target = ctx.session().playerDataRepository.findByUuid(targetUuid);
+                Session session = ctx.session();
+                if (session == null) return;
+
+                PlayerData target = resolveProfileTarget(session, targetUuid);
                 if (target != null) {
                     if (ctx.route() != null) {
-                        ctx.session().pushRouteHistory(ctx.route());
+                        session.pushRouteHistory(ctx.route());
                     }
-                    ctx.session().menuService.hideFollowUp(ctx.session());
-                    playerMenu.player(ctx.session().data.uuid, target);
+                    session.menuService.hideFollowUp(session);
+                    playerMenu.player(session.data.uuid, target);
                 }
             });
+        }
+
+        private PlayerData resolveProfileTarget(Session session, String targetUuid) {
+            if (targetUuid == null || targetUuid.isBlank()) {
+                return null;
+            }
+            if (session.data != null && targetUuid.equals(session.data.uuid)) {
+                return session.data;
+            }
+            if (sessionService != null) {
+                Session online = sessionService.get(targetUuid);
+                if (online != null && online.data != null) {
+                    return online.data;
+                }
+            }
+            return session.playerDataRepository != null
+                    ? session.playerDataRepository.findByUuid(targetUuid)
+                    : null;
         }
 
         @Override

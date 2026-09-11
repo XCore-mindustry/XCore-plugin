@@ -3,12 +3,14 @@ package org.xcore.plugin.command.controller.client;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
+import mindustry.gen.Player;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.ObserverService;
@@ -16,6 +18,9 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
 import org.xcore.plugin.ui.menu.TopMenu;
+
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -27,46 +32,80 @@ public class PlayerController implements CloudClientController {
     private final ObserverService observerService;
     private final PlayerMenu menu;
     private final TopMenu topMenu;
+    private final Async async;
 
     @Inject
     public PlayerController(PlayerDataRepository playerDataRepository,
                             SessionService sessionService,
                             ObserverService observerService,
                             PlayerMenu menu,
-                            TopMenu topMenu) {
+                            TopMenu topMenu,
+                            Async async) {
         this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.observerService = observerService;
         this.menu = menu;
         this.topMenu = topMenu;
+        this.async = async;
+    }
+
+    public PlayerController(PlayerDataRepository playerDataRepository,
+                            SessionService sessionService,
+                            ObserverService observerService,
+                            PlayerMenu menu,
+                            TopMenu topMenu) {
+        this(playerDataRepository, sessionService, observerService, menu, topMenu, null);
     }
 
     @Command("player|stats|player-statistics [id]")
     public void player(XCoreSender sender, @Argument("id") @Default("-1") int id) {
-        var session = sessionService.get(sender.player().uuid());
-        PlayerData data = id == -1
-                ? (session != null ? session.data : sessionService.getOrLoadFromDb(sender.player().uuid()))
-                : sessionService.getOrLoadFromDb(id);
-
-        if (data == null) {
-            return;
-        }
-
-        menu.player(menu.getUuid(sender), data);
+        openForTarget(sender.player(), id, (p, data) -> menu.player(p.uuid(), data));
     }
 
     @Command("settings [id]")
     public void settings(XCoreSender sender, @Argument("id") @Default("-1") int id) {
-        var session = sessionService.get(sender.player().uuid());
-        PlayerData data = id == -1
-                ? (session != null ? session.data : sessionService.getOrLoadFromDb(sender.player().uuid()))
-                : sessionService.getOrLoadFromDb(id);
+        openForTarget(sender.player(), id, (p, data) -> menu.settings(p.uuid(), data));
+    }
 
-        if (data == null) {
+    private void openForTarget(Player player, int id, BiConsumer<Player, PlayerData> openAction) {
+        if (player == null) return;
+
+        if (id == -1) {
+            Session session = sessionService.get(player.uuid());
+            if (session != null && session.data != null) {
+                openAction.accept(player, session.data);
+                return;
+            }
+            fetchAndOpen(player, sessionService.getOrLoadFromDbAsync(player.uuid()), openAction);
             return;
         }
 
-        menu.settings(menu.getUuid(sender), data);
+        Session targetOnline = sessionService.findOnlineByPid(id);
+        if (targetOnline != null && targetOnline.data != null) {
+            openAction.accept(player, targetOnline.data);
+            return;
+        }
+
+        fetchAndOpen(player, sessionService.getOrLoadFromDbAsync(id), openAction);
+    }
+
+    private void fetchAndOpen(Player player, CompletionStage<PlayerData> stage, BiConsumer<Player, PlayerData> openAction) {
+        if (player == null || stage == null) return;
+
+        if (async != null) {
+            async.onMainForPlayer(player, stage, (p, data) -> {
+                if (data != null) {
+                    openAction.accept(p, data);
+                }
+            });
+            return;
+        }
+
+        stage.whenComplete((data, error) -> {
+            if (error == null && data != null) {
+                openAction.accept(player, data);
+            }
+        });
     }
 
     @Command("observer")
@@ -99,8 +138,7 @@ public class PlayerController implements CloudClientController {
         if (pid == -1) {
             targetSession = sessionService.get(sender.player().uuid());
         } else {
-            var dbPlayer = sessionService.getOrLoadFromDb(pid);
-            targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
+            targetSession = sessionService.findOnlineByPid(pid);
         }
 
         if (targetSession == null || targetSession.player == null) {

@@ -96,9 +96,7 @@ public class MaintainController implements CloudServerController {
     public void setTeam(XCoreSender sender, @Argument("id") int id, @Argument("pid") int pid) {
         Team team = Team.get(id);
 
-
-        var dbPlayer = sessionService.getOrLoadFromDb(pid);
-        Session targetSession = (dbPlayer != null) ? sessionService.get(dbPlayer.uuid) : null;
+        Session targetSession = sessionService.findOnlineByPid(pid);
 
         if (targetSession == null || targetSession.player == null) {
             PLog.err("&lrPlayer not found.");

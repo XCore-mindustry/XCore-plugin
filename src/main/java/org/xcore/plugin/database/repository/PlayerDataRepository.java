@@ -40,6 +40,7 @@ import static com.mongodb.client.model.Sorts.orderBy;
 @Singleton
 public class PlayerDataRepository extends DataRepository<PlayerData> {
     private final MongoCollection<Document> counters;
+    private final com.mongodb.reactivestreams.client.MongoCollection<Document> reactiveCounters;
 
     @Inject
     public PlayerDataRepository(
@@ -49,6 +50,7 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
         super(database, reactiveMongoStore, "players", PlayerData.class, secretsConfig);
         this.counters = database.getCollection("counters");
+        this.reactiveCounters = reactiveMongoStore != null ? reactiveMongoStore.collection("counters", Document.class) : null;
 
         collection.createIndex(new Document("uuid", 1), new IndexOptions().unique(true));
         collection.createIndex(new Document("pid", 1));
@@ -84,20 +86,36 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         if (data == null) return java.util.concurrent.CompletableFuture.completedFuture(false);
         if (isReadOnly()) return java.util.concurrent.CompletableFuture.completedFuture(false);
 
-        if (data.pid == -1) {
-            data.pid = generatePid();
-        }
+        java.util.concurrent.CompletionStage<PlayerData> pidStage = (data.pid == -1)
+                ? generatePidAsync().thenApply(pid -> {
+                    data.pid = pid;
+                    return data;
+                })
+                : java.util.concurrent.CompletableFuture.completedFuture(data);
 
-        if (data.id == null && data.uuid != null && !data.uuid.isBlank()) {
-            return findByUuidAsync(data.uuid).thenCompose(existing -> {
-                if (existing != null && existing.id != null) {
-                    data.id = existing.id;
-                }
-                return super.saveAsync(data);
-            });
-        }
+        return pidStage.thenCompose(target -> {
+            if (target.id == null && target.uuid != null && !target.uuid.isBlank()) {
+                return findByUuidAsync(target.uuid).thenCompose(existing -> {
+                    if (existing != null && existing.id != null) {
+                        target.id = existing.id;
+                    }
+                    return super.saveAsync(target);
+                });
+            }
+            return super.saveAsync(target);
+        });
+    }
 
-        return super.saveAsync(data);
+    public java.util.concurrent.CompletionStage<Integer> generatePidAsync() {
+        if (reactiveCounters == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(generatePid());
+        }
+        Document find = new Document("_id", "player_id");
+        Document update = new Document("$inc", new Document("seq", 1));
+        var options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER);
+
+        return MongoAsync.first(reactiveCounters.findOneAndUpdate(find, update, options))
+                .thenApply(doc -> doc != null ? doc.getInteger("seq", 1) : 1);
     }
 
     private int generatePid() {

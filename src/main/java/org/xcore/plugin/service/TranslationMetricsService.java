@@ -95,10 +95,7 @@ public class TranslationMetricsService {
         backend.withAsyncCommands(commands -> {
             String totalsKey = providerTotalsKey(providerId);
             commands.hset(totalsKey, "last_failure_at", Long.toString(System.currentTimeMillis()));
-            if (reason != null && !reason.isBlank()) {
-                commands.hset(totalsKey, "last_failure_reason", reason);
-            }
-            return commands.hset(totalsKey, "last_failure_reason", reason == null ? "" : reason)
+            return commands.hset(totalsKey, "last_failure_reason", (reason == null || reason.isBlank()) ? "" : reason)
                     .toCompletableFuture()
                     .orTimeout(500, TimeUnit.MILLISECONDS)
                     .thenApply(ignored -> true);

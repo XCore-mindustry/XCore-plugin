@@ -79,15 +79,24 @@ public class Async {
 
         stage.whenComplete((value, error) -> {
             if (error != null) {
+                arc.util.Log.err("Async operation for player @ failed", player.plainName(), error);
                 return;
             }
 
-            mainThread.execute(() -> {
-                if (player.con == null || !player.con.isConnected() || !Groups.player.contains(candidate -> candidate == player)) {
-                    return;
-                }
-                continuation.accept(player, value);
-            });
+            try {
+                mainThread.execute(() -> {
+                    if (!isPlayerOnline(player)) {
+                        return;
+                    }
+                    try {
+                        continuation.accept(player, value);
+                    } catch (Throwable callbackError) {
+                        arc.util.Log.err("Error executing continuation for player @", player.plainName(), callbackError);
+                    }
+                });
+            } catch (Throwable dispatchError) {
+                arc.util.Log.err("Failed to dispatch async result to main thread for player @", player.plainName(), dispatchError);
+            }
         });
     }
 
@@ -102,15 +111,31 @@ public class Async {
 
         storageExecutor.supply(task).whenComplete((value, error) -> {
             if (error != null) {
+                arc.util.Log.err("Storage task for player @ failed", player.plainName(), error);
                 return;
             }
 
-            mainThread.execute(() -> {
-                if (player.con == null || !player.con.isConnected() || !Groups.player.contains(candidate -> candidate == player)) {
-                    return;
-                }
-                continuation.accept(player, value);
-            });
+            try {
+                mainThread.execute(() -> {
+                    if (!isPlayerOnline(player)) {
+                        return;
+                    }
+                    try {
+                        continuation.accept(player, value);
+                    } catch (Throwable callbackError) {
+                        arc.util.Log.err("Error executing continuation for player @", player.plainName(), callbackError);
+                    }
+                });
+            } catch (Throwable dispatchError) {
+                arc.util.Log.err("Failed to dispatch storage result to main thread for player @", player.plainName(), dispatchError);
+            }
         });
+    }
+
+    public static boolean isPlayerOnline(Player player) {
+        if (player == null || player.con == null || !player.con.isConnected()) {
+            return false;
+        }
+        return player.isAdded() || (Groups.player != null && Groups.player.contains(candidate -> candidate == player));
     }
 }
