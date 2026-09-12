@@ -11,6 +11,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
@@ -103,35 +105,79 @@ public class TranslationMetricsService {
     }
 
     public Map<String, String> readGlobalTotals() {
+        return readGlobalTotalsAsync().toCompletableFuture().join();
+    }
+
+    public CompletionStage<Map<String, String>> readGlobalTotalsAsync() {
         if (!isEnabled()) {
-            return Map.of();
+            return CompletableFuture.completedFuture(Map.of());
         }
 
-        return backend.withCommands(commands -> new LinkedHashMap<>(commands.hgetall(globalTotalsKey())), Map.of());
+        return backend.withAsyncCommands(commands ->
+                commands.hgetall(globalTotalsKey())
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenApply(map -> (Map<String, String>) new LinkedHashMap<>(map))
+                        .exceptionally(err -> Map.of()),
+                Map.of()
+        );
     }
 
     public Map<String, String> readProviderTotals(String providerId) {
+        return readProviderTotalsAsync(providerId).toCompletableFuture().join();
+    }
+
+    public CompletionStage<Map<String, String>> readProviderTotalsAsync(String providerId) {
         if (!isEnabled() || providerId == null || providerId.isBlank()) {
-            return Map.of();
+            return CompletableFuture.completedFuture(Map.of());
         }
 
-        return backend.withCommands(commands -> new LinkedHashMap<>(commands.hgetall(providerTotalsKey(providerId))), Map.of());
+        return backend.withAsyncCommands(commands ->
+                commands.hgetall(providerTotalsKey(providerId))
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenApply(map -> (Map<String, String>) new LinkedHashMap<>(map))
+                        .exceptionally(err -> Map.of()),
+                Map.of()
+        );
     }
 
     public Map<String, String> readCurrentMinuteGlobal() {
+        return readCurrentMinuteGlobalAsync().toCompletableFuture().join();
+    }
+
+    public CompletionStage<Map<String, String>> readCurrentMinuteGlobalAsync() {
         if (!isEnabled()) {
-            return Map.of();
+            return CompletableFuture.completedFuture(Map.of());
         }
 
-        return backend.withCommands(commands -> new LinkedHashMap<>(commands.hgetall(globalMinuteKey())), Map.of());
+        return backend.withAsyncCommands(commands ->
+                commands.hgetall(globalMinuteKey())
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenApply(map -> (Map<String, String>) new LinkedHashMap<>(map))
+                        .exceptionally(err -> Map.of()),
+                Map.of()
+        );
     }
 
     public Map<String, String> readCurrentMinuteProvider(String providerId) {
+        return readCurrentMinuteProviderAsync(providerId).toCompletableFuture().join();
+    }
+
+    public CompletionStage<Map<String, String>> readCurrentMinuteProviderAsync(String providerId) {
         if (!isEnabled() || providerId == null || providerId.isBlank()) {
-            return Map.of();
+            return CompletableFuture.completedFuture(Map.of());
         }
 
-        return backend.withCommands(commands -> new LinkedHashMap<>(commands.hgetall(providerMinuteKey(providerId))), Map.of());
+        return backend.withAsyncCommands(commands ->
+                commands.hgetall(providerMinuteKey(providerId))
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenApply(map -> (Map<String, String>) new LinkedHashMap<>(map))
+                        .exceptionally(err -> Map.of()),
+                Map.of()
+        );
     }
 
     private boolean isEnabled() {

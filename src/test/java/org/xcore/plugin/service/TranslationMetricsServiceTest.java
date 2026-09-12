@@ -120,6 +120,9 @@ class TranslationMetricsServiceTest {
     void backendFailure_returnsReadFallbacks() {
         RedisNetworkBackend backend = mock(RedisNetworkBackend.class);
         when(backend.withCommands(any(Function.class), any())).thenAnswer(invocation -> invocation.getArgument(1));
+        when(backend.withAsyncCommands(any(Function.class), any())).thenAnswer(invocation ->
+                java.util.concurrent.CompletableFuture.completedFuture(invocation.getArgument(1))
+        );
         TranslationMetricsService service = new TranslationMetricsService(backend, config("mini-pvp"));
 
         assertThat(service.readGlobalTotals()).isEmpty();

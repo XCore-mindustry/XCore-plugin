@@ -141,7 +141,7 @@ public final class RedisNetworkBackend {
     }
 
     public void send(Object event) {
-        if (!ensureConnected()) {
+        if (!connectionManager.hasAsyncCommands()) {
             return;
         }
 
@@ -149,10 +149,24 @@ public final class RedisNetworkBackend {
             var route = router.route(event, config.server.name);
             long now = System.currentTimeMillis();
             String payloadJson = payloadJson(event);
-            RedisCommands<String, String> commands = connectionManager.commands();
-            streamSupport.xaddWithTrim(commands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now));
-            publishedEvents.incrementAndGet();
-            publishWarningLogged = false;
+            RedisAsyncCommands<String, String> asyncCommands = connectionManager.asyncCommands();
+            if (asyncCommands == null) {
+                return;
+            }
+
+            streamSupport.xaddWithTrimAsync(asyncCommands, route.streamKey(), envelopeFactory.eventFields(route, payloadJson, now))
+                    .whenComplete((messageId, error) -> {
+                        if (error != null) {
+                            publishFailures.incrementAndGet();
+                            if (!publishWarningLogged) {
+                                publishWarningLogged = true;
+                                Log.warn("Redis publish failed: @", error.getMessage());
+                            }
+                        } else {
+                            publishedEvents.incrementAndGet();
+                            publishWarningLogged = false;
+                        }
+                    });
         } catch (Exception e) {
             publishFailures.incrementAndGet();
             if (!publishWarningLogged) {
@@ -259,17 +273,27 @@ public final class RedisNetworkBackend {
             Log.warn("Redis respond context is missing for request: @", request.getClass().getName());
             return;
         }
-        if (!ensureConnected()) {
+        if (!connectionManager.hasAsyncCommands()) {
             return;
         }
 
-        rpcResponses.incrementAndGet();
         try {
-            RedisCommands<String, String> commands = connectionManager.commands();
-            streamSupport.xaddWithTrim(commands, context.replyTo(),
-                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()));
+            RedisAsyncCommands<String, String> asyncCommands = connectionManager.asyncCommands();
+            if (asyncCommands == null) {
+                return;
+            }
+
+            streamSupport.xaddWithTrimAsync(asyncCommands, context.replyTo(),
+                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()))
+                    .whenComplete((messageId, error) -> {
+                        if (error == null) {
+                            rpcResponses.incrementAndGet();
+                        } else {
+                            Log.warn("Redis RPC response send failed: @", error.getMessage());
+                        }
+                    });
         } catch (RuntimeException e) {
-            rpcResponses.decrementAndGet();
+            Log.warn("Redis RPC response failed before dispatch: @", e.getMessage());
             throw e;
         }
     }

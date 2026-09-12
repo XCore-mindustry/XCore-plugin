@@ -52,6 +52,14 @@ final class RedisStreamSupport {
         );
     }
 
+    io.lettuce.core.RedisFuture<String> xaddWithTrimAsync(io.lettuce.core.api.async.RedisAsyncCommands<String, String> commands, String stream, Map<String, String> fields) {
+        return commands.xadd(
+                stream,
+                XAddArgs.Builder.maxlen(streamMaxLen(stream)).approximateTrimming(true),
+                fields
+        );
+    }
+
     long streamMaxLen(String stream) {
         if (stream.startsWith("xcore:evt:")) {
             return MAXLEN_EVT;

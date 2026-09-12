@@ -8,6 +8,9 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 public class RedisDiscordLinkCodeStore {
@@ -30,13 +33,29 @@ public class RedisDiscordLinkCodeStore {
             return false;
         }
 
-        return backend.withCommands(commands -> {
-            deleteKeys(commands, payload.playerUuid());
-            String code = normalizeCode(payload.code());
-            commands.set(codeKey(code), redisGson.toJson(payload), SetArgs.Builder.ex(CODE_TTL_SECONDS));
-            commands.set(playerKey(payload.playerUuid()), code, SetArgs.Builder.ex(CODE_TTL_SECONDS));
-            return true;
-        }, false);
+        return storeAsync(payload).toCompletableFuture().join();
+    }
+
+    public CompletionStage<Boolean> storeAsync(LinkCodePayload payload) {
+        if (payload == null || payload.code() == null || payload.code().isBlank() || payload.playerUuid() == null || payload.playerUuid().isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        String code = normalizeCode(payload.code());
+        String playerKey = playerKey(payload.playerUuid());
+        String codeKey = codeKey(code);
+        String json = redisGson.toJson(payload);
+
+        return backend.withAsyncCommands(commands ->
+                deleteKeysAsync(commands, payload.playerUuid())
+                        .thenCompose(ignored -> commands.set(codeKey, json, SetArgs.Builder.ex(CODE_TTL_SECONDS)).toCompletableFuture())
+                        .thenCompose(ignored -> commands.set(playerKey, code, SetArgs.Builder.ex(CODE_TTL_SECONDS)).toCompletableFuture())
+                        .thenApply("OK"::equals)
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .exceptionally(err -> false),
+                false
+        );
     }
 
     public LinkCodePayload findByCode(String code) {
@@ -44,13 +63,28 @@ public class RedisDiscordLinkCodeStore {
             return null;
         }
 
-        return backend.withCommands(commands -> {
-            String payloadJson = commands.get(codeKey(code));
-            if (payloadJson == null || payloadJson.isBlank()) {
-                return null;
-            }
-            return redisGson.fromJson(payloadJson, LinkCodePayload.class);
-        }, null);
+        return findByCodeAsync(code).toCompletableFuture().join();
+    }
+
+    public CompletionStage<LinkCodePayload> findByCodeAsync(String code) {
+        if (code == null || code.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        String codeKey = codeKey(code);
+        return backend.withAsyncCommands(commands ->
+                commands.get(codeKey)
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenApply(payloadJson -> {
+                            if (payloadJson == null || payloadJson.isBlank()) {
+                                return null;
+                            }
+                            return redisGson.fromJson(payloadJson, LinkCodePayload.class);
+                        })
+                        .exceptionally(err -> null),
+                null
+        );
     }
 
     public LinkCodePayload findPendingByPlayerUuid(String playerUuid) {
@@ -58,18 +92,36 @@ public class RedisDiscordLinkCodeStore {
             return null;
         }
 
-        return backend.withCommands(commands -> {
-            String code = commands.get(playerKey(playerUuid));
-            if (code == null || code.isBlank()) {
-                return null;
-            }
-            String payloadJson = commands.get(codeKey(code));
-            if (payloadJson == null || payloadJson.isBlank()) {
-                commands.del(playerKey(playerUuid));
-                return null;
-            }
-            return redisGson.fromJson(payloadJson, LinkCodePayload.class);
-        }, null);
+        return findPendingByPlayerUuidAsync(playerUuid).toCompletableFuture().join();
+    }
+
+    public CompletionStage<LinkCodePayload> findPendingByPlayerUuidAsync(String playerUuid) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        String playerKey = playerKey(playerUuid);
+        return backend.withAsyncCommands(commands ->
+                commands.get(playerKey)
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenCompose(code -> {
+                            if (code == null || code.isBlank()) {
+                                return CompletableFuture.completedFuture(null);
+                            }
+                            return commands.get(codeKey(code))
+                                    .toCompletableFuture()
+                                    .orTimeout(500, TimeUnit.MILLISECONDS)
+                                    .thenCompose(payloadJson -> {
+                                        if (payloadJson == null || payloadJson.isBlank()) {
+                                            return commands.del(playerKey).toCompletableFuture().thenApply(ignored -> null);
+                                        }
+                                        return CompletableFuture.completedFuture(redisGson.fromJson(payloadJson, LinkCodePayload.class));
+                                    });
+                        })
+                        .exceptionally(err -> null),
+                null
+        );
     }
 
     public boolean invalidatePendingByPlayerUuid(String playerUuid) {
@@ -77,10 +129,22 @@ public class RedisDiscordLinkCodeStore {
             return false;
         }
 
-        return backend.withCommands(commands -> {
-            deleteKeys(commands, playerUuid);
-            return true;
-        }, false);
+        return invalidatePendingByPlayerUuidAsync(playerUuid).toCompletableFuture().join();
+    }
+
+    public CompletionStage<Boolean> invalidatePendingByPlayerUuidAsync(String playerUuid) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        return backend.withAsyncCommands(commands ->
+                deleteKeysAsync(commands, playerUuid)
+                        .thenApply(ignored -> true)
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .exceptionally(err -> false),
+                false
+        );
     }
 
     public boolean consumeCode(String code) {
@@ -88,27 +152,50 @@ public class RedisDiscordLinkCodeStore {
             return false;
         }
 
-        return backend.withCommands(commands -> {
-            String payloadJson = commands.get(codeKey(code));
-            if (payloadJson == null || payloadJson.isBlank()) {
-                return false;
-            }
-            LinkCodePayload payload = redisGson.fromJson(payloadJson, LinkCodePayload.class);
-            commands.del(codeKey(code));
-            if (payload != null && payload.playerUuid() != null && !payload.playerUuid().isBlank()) {
-                commands.del(playerKey(payload.playerUuid()));
-            }
-            return true;
-        }, false);
+        return consumeCodeAsync(code).toCompletableFuture().join();
     }
 
-    private void deleteKeys(io.lettuce.core.api.sync.RedisCommands<String, String> commands, String playerUuid) {
-        String playerKey = playerKey(playerUuid);
-        String existingCode = commands.get(playerKey);
-        if (existingCode != null && !existingCode.isBlank()) {
-            commands.del(codeKey(existingCode));
+    public CompletionStage<Boolean> consumeCodeAsync(String code) {
+        if (code == null || code.isBlank()) {
+            return CompletableFuture.completedFuture(false);
         }
-        commands.del(playerKey);
+
+        String codeKey = codeKey(code);
+        return backend.withAsyncCommands(commands ->
+                commands.get(codeKey)
+                        .toCompletableFuture()
+                        .orTimeout(500, TimeUnit.MILLISECONDS)
+                        .thenCompose(payloadJson -> {
+                            if (payloadJson == null || payloadJson.isBlank()) {
+                                return CompletableFuture.completedFuture(false);
+                            }
+                            LinkCodePayload payload = redisGson.fromJson(payloadJson, LinkCodePayload.class);
+                            var delCodeFuture = commands.del(codeKey).toCompletableFuture();
+                            if (payload != null && payload.playerUuid() != null && !payload.playerUuid().isBlank()) {
+                                return delCodeFuture.thenCompose(ignored ->
+                                        commands.del(playerKey(payload.playerUuid())).toCompletableFuture().thenApply(res -> true)
+                                );
+                            }
+                            return delCodeFuture.thenApply(res -> true);
+                        })
+                        .exceptionally(err -> false),
+                false
+        );
+    }
+
+    private CompletionStage<Void> deleteKeysAsync(io.lettuce.core.api.async.RedisAsyncCommands<String, String> commands, String playerUuid) {
+        String playerKey = playerKey(playerUuid);
+        return commands.get(playerKey)
+                .toCompletableFuture()
+                .thenCompose(existingCode -> {
+                    if (existingCode != null && !existingCode.isBlank()) {
+                        return commands.del(codeKey(existingCode))
+                                .toCompletableFuture()
+                                .thenCompose(ignored -> commands.del(playerKey).toCompletableFuture())
+                                .thenApply(ignored -> null);
+                    }
+                    return commands.del(playerKey).toCompletableFuture().thenApply(ignored -> null);
+                });
     }
 
     private String codeKey(String code) {
