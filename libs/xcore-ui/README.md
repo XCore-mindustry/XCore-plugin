@@ -2,7 +2,7 @@
 
 > A type-safe, reactive, server-driven UI framework for Mindustry v160 servers running on Java 25.
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)]()
 [![Mindustry](https://img.shields.io/badge/Mindustry-v160-green.svg)]()
 
@@ -77,4 +77,4 @@ public class PlayerSettingsScreen implements UiController<SettingsModel, Setting
 
 ## License
 
-Licensed under the Apache License, Version 2.0.
+Licensed under the [MIT License](LICENSE).
