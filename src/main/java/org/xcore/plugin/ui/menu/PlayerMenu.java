@@ -59,6 +59,7 @@ public class PlayerMenu extends Menu {
             return;
         }
 
+        session.setDraft(PlayerProfileFlows.PlayerState.class, new PlayerProfileFlows.PlayerState(targetData.uuid, targetData));
         session.menuService.renderRoute(session, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
     }
 
@@ -83,6 +84,7 @@ public class PlayerMenu extends Menu {
             return;
         }
 
+        session.setDraft(PlayerSettingsFlows.SettingsState.class, new PlayerSettingsFlows.SettingsState(targetData.uuid, targetData));
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", targetData.uuid));
     }
 

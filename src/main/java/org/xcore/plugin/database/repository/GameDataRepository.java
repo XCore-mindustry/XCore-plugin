@@ -74,7 +74,8 @@ public class GameDataRepository extends DataRepository<GameData> {
             return CompletableFuture.completedFuture(false);
         }
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(saveOnce(game));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for saveOnceAsync"));
         }
 
         return MongoAsync.first(reactiveCollection.insertOne(game))

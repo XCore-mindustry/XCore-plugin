@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.LeaderboardCursor;
 import org.xcore.plugin.model.PlayerData;
@@ -25,6 +26,8 @@ import org.xcore.plugin.ui.route.MenuRoute;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -272,13 +275,25 @@ class TopMenuTest {
         SessionService sessionService = mock(SessionService.class);
         TopMenuService topMenuService = mock(TopMenuService.class);
         PlayerMenu playerMenu = mock(PlayerMenu.class);
-        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu);
+        Async async = mock(Async.class);
+        TopMenu menu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, null, async);
         menu.init();
 
         Session session = session("viewer-1");
         PlayerData target = player("target-1", 14);
         when(session.playerDataRepository.findByUuid("target-1")).thenReturn(target);
         when(sessionService.get("viewer-1")).thenReturn(session);
+        when(sessionService.get("target-1")).thenReturn(null);
+        when(sessionService.getOrLoadFromDbAsync("target-1")).thenReturn(CompletableFuture.completedFuture(target));
+        doAnswer(invocation -> {
+            Player player = invocation.getArgument(0);
+            var stage = invocation.<java.util.concurrent.CompletionStage<PlayerData>>getArgument(1);
+            BiConsumer<Player, PlayerData> callback = invocation.getArgument(2);
+            stage.whenComplete((value, error) -> {
+                if (error == null) callback.accept(player, value);
+            });
+            return null;
+        }).when(async).onMainForPlayer(any(), any(), any());
 
         LeaderboardCursor currentCursor = new LeaderboardCursor(1500, 0, 14);
         TopMenuService.TopCursorPage topPage = new TopMenuService.TopCursorPage(

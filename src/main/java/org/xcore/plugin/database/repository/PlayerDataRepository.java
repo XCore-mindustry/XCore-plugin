@@ -108,7 +108,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public java.util.concurrent.CompletionStage<Integer> generatePidAsync() {
         if (reactiveCounters == null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(generatePid());
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for generatePidAsync"));
         }
         Document find = new Document("_id", "player_id");
         Document update = new Document("$inc", new Document("seq", 1));
@@ -140,7 +141,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
         if (reactiveCollection == null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(findByUuid(uuid));
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByUuidAsync"));
         }
         return MongoAsync.first(reactiveCollection.find(eq("uuid", uuid)));
     }
@@ -151,7 +153,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public java.util.concurrent.CompletionStage<PlayerData> findByPidAsync(int id) {
         if (reactiveCollection == null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(findByPid(id));
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByPidAsync"));
         }
         return MongoAsync.first(reactiveCollection.find(eq("pid", id)));
     }
@@ -396,7 +399,8 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         }
 
         if (reactiveCollection == null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(updateByUuid(uuid, update));
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for updateByUuidAsync"));
         }
 
         return MongoAsync.first(reactiveCollection.updateOne(
@@ -446,6 +450,18 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     public long deleteBots() {
         return collection.deleteMany(lt("total_play_time", 2)).getDeletedCount();
+    }
+
+    public java.util.concurrent.CompletionStage<Long> deleteBotsAsync() {
+        if (isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(0L);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for deleteBotsAsync"));
+        }
+        return MongoAsync.first(reactiveCollection.deleteMany(lt("total_play_time", 2)))
+                .thenApply(result -> result == null ? 0L : result.getDeletedCount());
     }
 
     public PagedDataResult<PlayerData> search(String value, int limit, int page) {

@@ -17,6 +17,8 @@ import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -244,7 +246,7 @@ class MaintainControllerTest {
         var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        when(repository.deleteBots()).thenReturn(3L);
+        when(repository.deleteBotsAsync()).thenReturn(CompletableFuture.completedFuture(3L));
 
         var controller = new MaintainController(
                 network,
@@ -260,7 +262,7 @@ class MaintainControllerTest {
 
         controller.deleteBots(sender);
 
-        verify(repository).deleteBots();
+        verify(repository).deleteBotsAsync();
         verify(topMenuCacheService).invalidateAllAsync();
         var captor = ArgumentCaptor.forClass(PlayerDataCacheReloadCommandV1.class);
         verify(network).post(captor.capture());

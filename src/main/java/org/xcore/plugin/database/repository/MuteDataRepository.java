@@ -33,7 +33,10 @@ public class MuteDataRepository extends DataRepository<MuteData> {
 
     public CompletionStage<MuteData> findByUuidAsync(String uuid) {
         if (uuid == null) return CompletableFuture.completedFuture(null);
-        if (reactiveCollection == null) return CompletableFuture.completedFuture(findByUuid(uuid));
+        if (reactiveCollection == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByUuidAsync"));
+        }
         return MongoAsync.first(reactiveCollection.find(eq("uuid", uuid)));
     }
 
@@ -60,7 +63,8 @@ public class MuteDataRepository extends DataRepository<MuteData> {
             return CompletableFuture.completedFuture(false);
         }
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(save(data));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for saveAsync"));
         }
         return MongoAsync.first(reactiveCollection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true)))
                 .thenApply(res -> true);
@@ -78,7 +82,8 @@ public class MuteDataRepository extends DataRepository<MuteData> {
             return CompletableFuture.completedFuture(false);
         }
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(delete(uuid));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for deleteAsync"));
         }
         return MongoAsync.first(reactiveCollection.deleteOne(eq("uuid", uuid)))
                 .thenApply(res -> res != null && res.getDeletedCount() > 0);

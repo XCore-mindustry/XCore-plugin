@@ -205,7 +205,8 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<SettingsState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            SettingsState state = context.state();
+            return state.targetData != null ? state.targetData : resolveTarget(context.session(), state.targetUuid);
         }
     }
 
@@ -662,11 +663,18 @@ final class PlayerSettingsFlows {
     static final class SettingsState {
         public String targetUuid;
 
+        public PlayerData targetData;
+
         SettingsState() {
         }
 
         SettingsState(String targetUuid) {
             this.targetUuid = targetUuid;
+        }
+
+        SettingsState(String targetUuid, PlayerData targetData) {
+            this.targetUuid = targetUuid;
+            this.targetData = targetData;
         }
     }
 

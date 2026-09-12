@@ -56,7 +56,7 @@ final class PlayerProfileFlows {
             if (currentState != null && Objects.equals(currentState.targetUuid, targetUuid)) {
                 return currentState;
             }
-            return new PlayerState(targetUuid);
+            return new PlayerState(targetUuid, null);
         }
 
         @Override
@@ -140,6 +140,9 @@ final class PlayerProfileFlows {
 
         private PlayerData resolveTargetData(MenuRenderContext<PlayerState> context) {
             String targetUuid = context.state().targetUuid;
+            if (context.state().targetData != null) {
+                return context.state().targetData;
+            }
             if (targetUuid == null || targetUuid.isBlank()) {
                 return null;
             }
@@ -283,12 +286,14 @@ final class PlayerProfileFlows {
 
     static final class PlayerState {
         public String targetUuid;
+        public PlayerData targetData;
 
         public PlayerState() {
         }
 
-        public PlayerState(String targetUuid) {
+        public PlayerState(String targetUuid, PlayerData targetData) {
             this.targetUuid = targetUuid;
+            this.targetData = targetData;
         }
     }
 

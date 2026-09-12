@@ -4,7 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.config.TomlSecretsConfig;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.integration.top.LeaderboardEntry;
 import org.xcore.plugin.integration.top.LeaderboardPage;
 import org.xcore.plugin.integration.top.LeaderboardPageRequest;
@@ -53,6 +53,7 @@ public class TopMenu extends Menu {
     private final PlayerMenu playerMenu;
     private final MenuService menuService;
     private final TopCategoryRegistry categoryRegistry;
+    private final Async async;
 
     @Inject
     public TopMenu(TomlSecretsConfig secretsConfig,
@@ -60,11 +61,13 @@ public class TopMenu extends Menu {
                    MenuService menuService,
                    TopMenuService topMenuService,
                    PlayerMenu playerMenu,
-                   TopCategoryRegistry categoryRegistry) {
+                   TopCategoryRegistry categoryRegistry,
+                   Async async) {
         super(secretsConfig, sessionService);
         this.menuService = menuService;
         this.topMenuService = topMenuService;
         this.playerMenu = playerMenu;
+        this.async = async;
         this.categoryRegistry = initRegistry(categoryRegistry, topMenuService);
     }
 
@@ -72,8 +75,17 @@ public class TopMenu extends Menu {
                    SessionService sessionService,
                    MenuService menuService,
                    TopMenuService topMenuService,
+                   PlayerMenu playerMenu,
+                   TopCategoryRegistry categoryRegistry) {
+        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, categoryRegistry, null);
+    }
+
+    public TopMenu(TomlSecretsConfig secretsConfig,
+                   SessionService sessionService,
+                   MenuService menuService,
+                   TopMenuService topMenuService,
                    PlayerMenu playerMenu) {
-        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, null);
+        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, null, null);
     }
 
     private static TopCategoryRegistry initRegistry(TopCategoryRegistry registry, TopMenuService topMenuService) {
@@ -260,35 +272,50 @@ public class TopMenu extends Menu {
             });
             actionPrefix("profile:", (ctx, targetUuid) -> {
                 Session session = ctx.session();
-                if (session == null) return;
+                if (session == null || session.data == null || targetUuid == null || targetUuid.isBlank()) return;
 
-                PlayerData target = resolveProfileTarget(session, targetUuid);
+                PlayerData target = resolveOnlineProfileTarget(session, targetUuid);
                 if (target != null) {
-                    if (ctx.route() != null) {
-                        session.pushRouteHistory(ctx.route());
-                    }
-                    session.menuService.hideFollowUp(session);
-                    playerMenu.player(session.data.uuid, target);
+                    openProfile(ctx, session, target);
+                    return;
                 }
+
+                if (async == null || session.player == null) return;
+
+                var sourceRoute = ctx.route();
+                var sourceScreen = session.activeScreen();
+                long sourceVersion = sourceScreen == null ? -1L : sourceScreen.version();
+                async.onMainForPlayer(session.player,
+                        sessionService.getOrLoadFromDbAsync(targetUuid),
+                        (player, loaded) -> {
+                            if (loaded != null && isCurrentScreen(session, sourceRoute, sourceVersion)) {
+                                openProfile(ctx, session, loaded);
+                            }
+                        });
             });
         }
 
-        private PlayerData resolveProfileTarget(Session session, String targetUuid) {
-            if (targetUuid == null || targetUuid.isBlank()) {
-                return null;
-            }
-            if (session.data != null && targetUuid.equals(session.data.uuid)) {
+        private PlayerData resolveOnlineProfileTarget(Session session, String targetUuid) {
+            if (targetUuid.equals(session.data.uuid)) {
                 return session.data;
             }
-            if (sessionService != null) {
-                Session online = sessionService.get(targetUuid);
-                if (online != null && online.data != null) {
-                    return online.data;
-                }
+            Session online = sessionService != null ? sessionService.get(targetUuid) : null;
+            return online != null ? online.data : null;
+        }
+
+        private boolean isCurrentScreen(Session session, MenuRoute sourceRoute, long sourceVersion) {
+            var current = session.activeScreen();
+            return current != null
+                    && current.version() == sourceVersion
+                    && Objects.equals(current.route(), sourceRoute);
+        }
+
+        private void openProfile(MenuRenderContext<?> ctx, Session session, PlayerData target) {
+            if (ctx.route() != null) {
+                session.pushRouteHistory(ctx.route());
             }
-            return session.playerDataRepository != null
-                    ? session.playerDataRepository.findByUuid(targetUuid)
-                    : null;
+            session.menuService.hideFollowUp(session);
+            playerMenu.player(session.data.uuid, target);
         }
 
         @Override

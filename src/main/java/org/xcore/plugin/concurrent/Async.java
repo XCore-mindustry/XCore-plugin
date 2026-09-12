@@ -2,7 +2,6 @@ package org.xcore.plugin.concurrent;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import mindustry.gen.Groups;
 import mindustry.gen.Player;
 
 import java.util.Objects;
@@ -133,9 +132,9 @@ public class Async {
     }
 
     public static boolean isPlayerOnline(Player player) {
-        if (player == null || player.con == null || !player.con.isConnected()) {
-            return false;
-        }
-        return player.isAdded() || (Groups.player != null && Groups.player.contains(candidate -> candidate == player));
+        return player != null
+                && player.isAdded()
+                && player.con != null
+                && player.con.isConnected();
     }
 }

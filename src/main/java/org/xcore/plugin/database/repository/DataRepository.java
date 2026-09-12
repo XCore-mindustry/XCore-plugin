@@ -78,7 +78,8 @@ public abstract class DataRepository<T extends ModelData> {
         data.editModelTime = System.currentTimeMillis();
 
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(save(data));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for saveAsync"));
         }
 
         if (data.id == null) {
@@ -96,7 +97,10 @@ public abstract class DataRepository<T extends ModelData> {
 
     public CompletionStage<T> findByIdAsync(ObjectId id) {
         if (id == null) return CompletableFuture.completedFuture(null);
-        if (reactiveCollection == null) return CompletableFuture.completedFuture(findById(id));
+        if (reactiveCollection == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByIdAsync"));
+        }
         return MongoAsync.first(reactiveCollection.find(eq("_id", id)));
     }
 
@@ -109,7 +113,10 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public CompletionStage<Long> countAsync() {
-        if (reactiveCollection == null) return CompletableFuture.completedFuture(count());
+        if (reactiveCollection == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for countAsync"));
+        }
         return MongoAsync.first(reactiveCollection.countDocuments());
     }
 
@@ -118,7 +125,10 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public CompletionStage<Long> countAsync(Bson filter) {
-        if (reactiveCollection == null) return CompletableFuture.completedFuture(count(filter));
+        if (reactiveCollection == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for countAsync"));
+        }
         return MongoAsync.first(reactiveCollection.countDocuments(filter));
     }
 }

@@ -73,7 +73,8 @@ public class AuditRecordRepository extends DataRepository<AuditRecord> {
             return java.util.concurrent.CompletableFuture.completedFuture(Optional.empty());
         }
         if (reactiveCollection == null) {
-            return java.util.concurrent.CompletableFuture.completedFuture(findByAuditId(auditId));
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findByAuditIdAsync"));
         }
         return MongoAsync.first(reactiveCollection.find(eq("audit_id", auditId)))
                 .thenApply(Optional::ofNullable);

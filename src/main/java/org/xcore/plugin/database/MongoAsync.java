@@ -17,7 +17,8 @@ public final class MongoAsync {
     public static <T> CompletionStage<T> first(Publisher<T> publisher) {
         CompletableFuture<T> result = new CompletableFuture<>();
 
-        publisher.subscribe(new Subscriber<>() {
+        try {
+            publisher.subscribe(new Subscriber<>() {
             private Subscription subscription;
             private boolean received;
 
@@ -47,7 +48,10 @@ public final class MongoAsync {
                     result.complete(null);
                 }
             }
-        });
+            });
+        } catch (Throwable error) {
+            result.completeExceptionally(error);
+        }
 
         return result;
     }
@@ -56,7 +60,8 @@ public final class MongoAsync {
         CompletableFuture<List<T>> result = new CompletableFuture<>();
         List<T> items = new ArrayList<>();
 
-        publisher.subscribe(new Subscriber<>() {
+        try {
+            publisher.subscribe(new Subscriber<>() {
             @Override
             public void onSubscribe(Subscription subscription) {
                 subscription.request(Long.MAX_VALUE);
@@ -76,7 +81,10 @@ public final class MongoAsync {
             public void onComplete() {
                 result.complete(List.copyOf(items));
             }
-        });
+            });
+        } catch (Throwable error) {
+            result.completeExceptionally(error);
+        }
 
         return result;
     }

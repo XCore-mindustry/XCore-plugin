@@ -17,6 +17,7 @@ import org.incendo.cloud.annotations.*;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PluginState;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.ServerLocalConfigTomlStore;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
@@ -52,6 +53,7 @@ public class MaintainController implements CloudServerController {
     private final RuntimeToggleConfigService toggleConfigService;
     private final MapIdentityAuditService mapIdentityAuditService;
     private final TopMenuCacheService topMenuCacheService;
+    private final Async async;
 
     @Inject
     public MaintainController(NetworkService network,
@@ -62,7 +64,8 @@ public class MaintainController implements CloudServerController {
                               TopMenuCacheService topMenuCacheService,
                               TomlXcoreConfig serverLocalConfig,
                               ServerLocalConfigTomlStore tomlStore,
-                              @Named("pretty") Gson prettyGson) {
+                              @Named("pretty") Gson prettyGson,
+                              Async async) {
         this.network = network;
         this.playerDataRepository = playerDataRepository;
         this.pluginState = pluginState;
@@ -70,7 +73,20 @@ public class MaintainController implements CloudServerController {
         this.serverLocalConfig = serverLocalConfig;
         this.mapIdentityAuditService = mapIdentityAuditService;
         this.topMenuCacheService = topMenuCacheService;
+        this.async = async;
         this.toggleConfigService = new RuntimeToggleConfigService(serverLocalConfig, tomlStore);
+    }
+
+    public MaintainController(NetworkService network,
+                              PlayerDataRepository playerDataRepository,
+                              PluginState pluginState,
+                              SessionService sessionService,
+                              MapIdentityAuditService mapIdentityAuditService,
+                              TopMenuCacheService topMenuCacheService,
+                              TomlXcoreConfig serverLocalConfig,
+                              ServerLocalConfigTomlStore tomlStore,
+                              Gson prettyGson) {
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, topMenuCacheService, serverLocalConfig, tomlStore, prettyGson, null);
     }
 
     public MaintainController(NetworkService network,
@@ -81,7 +97,7 @@ public class MaintainController implements CloudServerController {
                               TomlXcoreConfig serverLocalConfig,
                               ServerLocalConfigTomlStore tomlStore,
                               Gson prettyGson) {
-        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, serverLocalConfig, tomlStore, prettyGson);
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, serverLocalConfig, tomlStore, prettyGson, null);
     }
 
     @Command("exit")
@@ -158,12 +174,27 @@ public class MaintainController implements CloudServerController {
     @Command("db-delete-bots")
     @CommandDescription("Deletes players with less than 2 minutes of playtime from the database.")
     public void deleteBots(XCoreSender sender) {
-        long deleted = playerDataRepository.deleteBots();
-        if (deleted > 0 && topMenuCacheService != null) {
-            topMenuCacheService.invalidateAllAsync();
-        }
-        network.post(new PlayerDataCacheReloadCommandV1(serverLocalConfig.server.name));
-        PLog.info("Deleted @ bots from database.", deleted);
+        playerDataRepository.deleteBotsAsync().whenComplete((deleted, error) -> {
+            if (error != null) {
+                PLog.err("Failed to delete bots: @", error);
+                return;
+            }
+
+            // network.post performs a blocking Redis XADD; keep it off the reactive Mongo pool.
+            Runnable finish = () -> {
+                if (deleted > 0 && topMenuCacheService != null) {
+                    topMenuCacheService.invalidateAllAsync();
+                }
+                network.post(new PlayerDataCacheReloadCommandV1(serverLocalConfig.server.name));
+                PLog.info("Deleted @ bots from database.", deleted);
+            };
+
+            if (async != null) {
+                async.run(finish);
+            } else {
+                finish.run();
+            }
+        });
     }
 
     @Command("audit-map-votes")

@@ -128,6 +128,17 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("preloaded target data is reused without a duplicate Mongo lookup")
+    void player_preloadedTargetDataSkipsRepositoryLookup() {
+        playerMenu.player("viewer-1", targetData);
+
+        // The async caller (TopMenu/PlayerController) already loaded the target data;
+        // route rendering must not issue a second findByUuid on the main thread.
+        verify(playerDataRepository, never()).findByUuid(targetData.uuid);
+        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
+    }
+
+    @Test
     @DisplayName("player queries legacy hexed top rank for profile rendering")
     void player_rendersLegacyHexedRankAndTopRank() {
         targetData.hexedRank(org.xcore.plugin.gamemode.hexed.HexedRanks.HexedRank.veteran);

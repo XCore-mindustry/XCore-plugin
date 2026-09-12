@@ -45,7 +45,8 @@ public class BanDataRepository extends DataRepository<BanData> {
             return CompletableFuture.completedFuture(null);
         }
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(find(uuid, ip));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for findAsync"));
         }
         return MongoAsync.first(reactiveCollection.find(filter));
     }
@@ -85,7 +86,8 @@ public class BanDataRepository extends DataRepository<BanData> {
         }
 
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(save(data));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for saveAsync"));
         }
 
         return MongoAsync.first(reactiveCollection.replaceOne(filter, data, new ReplaceOptions().upsert(true)))
@@ -106,7 +108,8 @@ public class BanDataRepository extends DataRepository<BanData> {
             return CompletableFuture.completedFuture(false);
         }
         if (reactiveCollection == null) {
-            return CompletableFuture.completedFuture(delete(uuid, ip));
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for deleteAsync"));
         }
         return MongoAsync.first(reactiveCollection.deleteMany(filter))
                 .thenApply(res -> res != null && res.getDeletedCount() > 0);
