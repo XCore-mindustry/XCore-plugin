@@ -32,6 +32,9 @@ XCORE_METRICS = {
     "xcore_ingress_check_errors_total",
     "xcore_commands_total",
     "xcore_command_duration_seconds",
+    "xcore_storage_tasks_active",
+    "xcore_storage_tasks_rejected_total",
+    "xcore_storage_task_duration_seconds",
 }
 
 GATEWAY_METRICS = {

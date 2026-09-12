@@ -21,6 +21,12 @@ groups:
             0.95,
             sum by (server, le) (rate(xcore_command_duration_seconds_bucket[5m]))
           )
+      - record: xcore:storage_task_duration_seconds:p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (server, le) (rate(xcore_storage_task_duration_seconds_bucket[5m]))
+          )
 
   - name: xcore-alerts
     rules:
@@ -68,6 +74,15 @@ groups:
         annotations:
           summary: Sentinel detected bot TCP/UDP proxy leaks
           description: '{{ $labels.server }} is rejecting bots with mismatched TCP/UDP addresses.'
+
+      - alert: XCoreStorageSaturated
+        expr: sum by (server) (rate(xcore_storage_tasks_rejected_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: XCore storage executor is rejecting tasks
+          description: '{{ $labels.server }} is dropping async storage writes because the bounded executor is saturated; persistence may be incomplete.'
 
       - alert: XCoreGatewayScrapeErrors
         expr: increase(xcore_metrics_gateway_poll_failures_total[5m]) > 0

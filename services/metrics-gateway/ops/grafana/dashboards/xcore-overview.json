@@ -103,10 +103,31 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 20, "type": "row", "title": "Sentinel security", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 30}, "collapsed": false, "panels": []
+      "id": 18, "type": "timeseries", "title": "Storage tasks active by server", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 30},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "xcore_storage_tasks_active{server=~\"$server\"}", "legendFormat": "{{server}} active"}],
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 32}, {"color": "red", "value": 56}]}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 21, "type": "timeseries", "title": "Ingress denials / min by layer", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 31},
+      "id": 19, "type": "timeseries", "title": "Storage task duration p95", "gridPos": {"h": 8, "w": 8, "x": 8, "y": 30},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (server, le) (rate(xcore_storage_task_duration_seconds_bucket{server=~\"$server\"}[5m])))", "legendFormat": "{{server}} p95"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 27, "type": "timeseries", "title": "Storage tasks rejected / min", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 30},
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "targets": [{"refId": "A", "expr": "sum by (server) (rate(xcore_storage_tasks_rejected_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} rejected"}],
+      "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
+      "id": 20, "type": "row", "title": "Sentinel security", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 38}, "collapsed": false, "panels": []
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "Ingress denials / min by layer", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 39},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
         {"refId": "A", "expr": "sum by (server, check) (rate(xcore_ingress_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} xcore/{{check}}"},
@@ -120,28 +141,28 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 22, "type": "timeseries", "title": "Admission waves / min", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 31},
+      "id": 22, "type": "timeseries", "title": "Admission waves / min", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 39},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [{"refId": "A", "expr": "sum by (server, action) (rate(sentinel_admission_waves_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} {{action}}"}],
       "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 23, "type": "timeseries", "title": "Admission attempts / min by outcome", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 39},
+      "id": 23, "type": "timeseries", "title": "Admission attempts / min by outcome", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 47},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [{"refId": "A", "expr": "sum by (server, outcome) (rate(sentinel_admission_attempts_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} {{outcome}}"}],
       "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 24, "type": "timeseries", "title": "Nickname denials / min by rule", "gridPos": {"h": 8, "w": 8, "x": 8, "y": 39},
+      "id": 24, "type": "timeseries", "title": "Nickname denials / min by rule", "gridPos": {"h": 8, "w": 8, "x": 8, "y": 47},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [{"refId": "A", "expr": "topk(10, sum by (server, rule) (rate(sentinel_nickname_denials_total{server=~\"$server\"}[15m]) * 60))", "legendFormat": "{{server}} {{rule}}"}],
       "fieldConfig": {"defaults": {"unit": "ops", "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 26, "type": "timeseries", "title": "Proxy leak drops & autobans / min", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 39},
+      "id": 26, "type": "timeseries", "title": "Proxy leak drops & autobans / min", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 47},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
         {"refId": "A", "expr": "sum by (server) (rate(sentinel_proxy_leak_denials_total{server=~\"$server\"}[5m]) * 60)", "legendFormat": "{{server}} drops"},
@@ -151,10 +172,10 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 30, "type": "row", "title": "Gateway internals", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 47}, "collapsed": false, "panels": []
+      "id": 30, "type": "row", "title": "Gateway internals", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 55}, "collapsed": false, "panels": []
     },
     {
-      "id": 31, "type": "timeseries", "title": "Gateway throughput and discovery", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48},
+      "id": 31, "type": "timeseries", "title": "Gateway throughput and discovery", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 56},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
         {"refId": "A", "expr": "rate(xcore_metrics_gateway_snapshots_total[5m])", "legendFormat": "snapshots/s"},
@@ -167,7 +188,7 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 32, "type": "timeseries", "title": "Plugin lifecycle", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48},
+      "id": 32, "type": "timeseries", "title": "Plugin lifecycle", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 56},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
         {"refId": "A", "expr": "xcore_plugin_uptime_seconds{server=~\"$server\"}", "legendFormat": "{{server}} uptime"},
@@ -177,7 +198,7 @@
       "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },
     {
-      "id": 25, "type": "timeseries", "title": "Gateway ingestion errors / min", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 56},
+      "id": 25, "type": "timeseries", "title": "Gateway ingestion errors / min", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 64},
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "targets": [
         {"refId": "A", "expr": "rate(xcore_metrics_gateway_poll_failures_total[5m])", "legendFormat": "poll"},
@@ -203,6 +224,6 @@
   "timezone": "browser",
   "title": "XCore Operations & Sentinel",
   "uid": "xcore-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
