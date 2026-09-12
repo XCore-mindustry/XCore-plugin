@@ -43,6 +43,7 @@ public class TileLoggerService {
     private final Bundle bundle;
 
     private final ObjectMap<String, PlayerConfig> playerConfigs = new ObjectMap<>();
+    private final java.util.concurrent.ConcurrentMap<String, PlayerDescriptor> descriptorCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Inject
     public TileLoggerService(PlayerDataRepository playerDataRepository,
@@ -239,32 +240,68 @@ public class TileLoggerService {
     }
 
     public @Nullable PlayerDescriptor findPlayer(String str) {
+        if (str == null || str.isBlank()) return null;
         if (str.equals("all")) return new PlayerDescriptor("all", "", -1);
 
-        if (arc.util.Strings.canParseInt(str)) {
-            PlayerData data = playerDataRepository.findByPid(Integer.parseInt(str));
-            if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
-        }
-
-        PlayerData data = playerDataRepository.findByUuid(str);
-        if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
-
+        // 1. Online player by name (instant RAM check)
         Player player = findService.playerByName(str);
         if (player != null) {
-            data = playerSessionService.get(player.uuid()).getData();
+            var session = playerSessionService.get(player.uuid());
+            PlayerData data = session != null ? session.getData() : null;
             if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
             return new PlayerDescriptor(player.name, player.uuid(), -1);
         }
+
+        // 2. Numeric PID: check session cache / DB
+        if (arc.util.Strings.canParseInt(str)) {
+            int pid = Integer.parseInt(str);
+            PlayerData data = playerSessionService.getOrLoadFromDb(pid);
+            if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+        }
+
+        // 3. Online player by UUID (instant RAM check)
+        var onlineByUuid = playerSessionService.get(str);
+        if (onlineByUuid != null && onlineByUuid.getData() != null) {
+            return new PlayerDescriptor(onlineByUuid.getData().nickname, onlineByUuid.getData().uuid, onlineByUuid.getData().pid);
+        }
+
+        // 4. Mindustry native PlayerInfo (instant RAM check)
+        var info = Vars.netServer.admins.getInfoOptional(str);
+        if (info != null) return new PlayerDescriptor(info.lastName, str, -1);
+
+        // 5. Fallback to DB query
+        PlayerData data = playerDataRepository.findByUuid(str);
+        if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
 
         return null;
     }
 
     public @Nullable PlayerDescriptor findPlayerUuid(String uuid) {
-        PlayerData data = playerSessionService.getOrLoadFromDb(uuid);
-        if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+        if (uuid == null || uuid.isBlank()) return null;
+
+        PlayerDescriptor cached = descriptorCache.get(uuid);
+        if (cached != null) return cached;
+
+        var session = playerSessionService.get(uuid);
+        if (session != null && session.getData() != null) {
+            PlayerDescriptor desc = new PlayerDescriptor(session.getData().nickname, session.getData().uuid, session.getData().pid);
+            descriptorCache.put(uuid, desc);
+            return desc;
+        }
 
         var info = Vars.netServer.admins.getInfoOptional(uuid);
-        if (info != null) return new PlayerDescriptor(info.lastName, uuid, -1);
+        if (info != null) {
+            PlayerDescriptor desc = new PlayerDescriptor(info.lastName, uuid, -1);
+            descriptorCache.put(uuid, desc);
+            return desc;
+        }
+
+        PlayerData data = playerSessionService.getOrLoadFromDb(uuid);
+        if (data != null) {
+            PlayerDescriptor desc = new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+            descriptorCache.put(uuid, desc);
+            return desc;
+        }
 
         return null;
     }
