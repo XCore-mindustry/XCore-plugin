@@ -72,6 +72,28 @@ public final class XcoreMetrics {
             new double[]{0.005d, 0.01d, 0.025d, 0.05d, 0.1d, 0.25d, 0.5d, 1.0d, 2.5d, 5.0d}
     );
 
+    public static final GaugeDef STORAGE_TASKS_ACTIVE = new GaugeDef(
+            "xcore_storage_tasks_active",
+            "Storage executor tasks currently holding permits",
+            "tasks",
+            LabelSchema.empty()
+    );
+
+    public static final CounterDef STORAGE_TASKS_REJECTED_TOTAL = new CounterDef(
+            "xcore_storage_tasks_rejected_total",
+            "Total storage executor tasks rejected at capacity",
+            "tasks",
+            LabelSchema.empty()
+    );
+
+    public static final HistogramDef STORAGE_TASK_DURATION_SECONDS = new HistogramDef(
+            "xcore_storage_task_duration_seconds",
+            "Storage executor task duration",
+            "seconds",
+            LabelSchema.empty(),
+            new double[]{0.001d, 0.005d, 0.01d, 0.025d, 0.05d, 0.1d, 0.25d, 0.5d, 1.0d, 2.5d, 5.0d, 10.0d}
+    );
+
     private XcoreMetrics() {
     }
 }

@@ -1,5 +1,7 @@
 package org.xcore.plugin.concurrent;
 
+import mindustry.gen.Player;
+import mindustry.net.NetConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AsyncTest {
     private StorageExecutor executor;
@@ -91,5 +95,96 @@ class AsyncTest {
 
         assertThat(dispatched.await(1, TimeUnit.SECONDS)).isTrue();
         assertThat(result.get()).isEqualTo("dispatched");
+    }
+
+    @Test
+    void onMainForPlayerDispatchesWhenPlayerOnline() throws Exception {
+        executor = new StorageExecutor(1);
+        CountDownLatch dispatched = new CountDownLatch(1);
+        Async async = new Async(executor, task -> {
+            dispatched.countDown();
+            task.run();
+        });
+
+        Player player = onlinePlayer();
+        AtomicReference<String> result = new AtomicReference<>();
+        async.onMainForPlayer(player, CompletableFuture.completedFuture("loaded"), (p, value) -> result.set(value));
+
+        assertThat(dispatched.await(1, TimeUnit.SECONDS)).isTrue();
+        assertThat(result.get()).isEqualTo("loaded");
+    }
+
+    @Test
+    void onMainForPlayerSkipsContinuationWhenPlayerDisconnected() throws Exception {
+        // Chaos guard: if the player disconnects while a slow storage/Mongo query
+        // is in flight, the main-thread continuation must be dropped.
+        executor = new StorageExecutor(1);
+        CountDownLatch dispatched = new CountDownLatch(1);
+        Async async = new Async(executor, task -> {
+            dispatched.countDown();
+            task.run();
+        });
+
+        Player player = mock(Player.class);
+        when(player.isAdded()).thenReturn(true);
+        NetConnection connection = mock(NetConnection.class);
+        when(connection.isConnected()).thenReturn(false);
+        player.con = connection;
+
+        AtomicBoolean called = new AtomicBoolean();
+        async.onMainForPlayer(player, CompletableFuture.completedFuture("loaded"), (p, value) -> called.set(true));
+
+        assertThat(dispatched.await(1, TimeUnit.SECONDS)).isTrue();
+        assertThat(called).isFalse();
+    }
+
+    @Test
+    void onMainForPlayerSkipsContinuationWhenStageFails() throws Exception {
+        executor = new StorageExecutor(1);
+        CountDownLatch dispatched = new CountDownLatch(1);
+        Async async = new Async(executor, task -> {
+            dispatched.countDown();
+            task.run();
+        });
+
+        Player player = onlinePlayer();
+        AtomicBoolean called = new AtomicBoolean();
+        CompletableFuture<String> failed = CompletableFuture.failedFuture(new IllegalStateException("mongo timeout"));
+
+        async.onMainForPlayer(player, failed, (p, value) -> called.set(true));
+
+        assertThat(dispatched.await(200, TimeUnit.MILLISECONDS)).isFalse();
+        assertThat(called).isFalse();
+    }
+
+    @Test
+    void forPlayerSkipsContinuationWhenPlayerDisconnected() throws Exception {
+        executor = new StorageExecutor(1);
+        CountDownLatch dispatched = new CountDownLatch(1);
+        Async async = new Async(executor, task -> {
+            dispatched.countDown();
+            task.run();
+        });
+
+        Player player = mock(Player.class);
+        when(player.isAdded()).thenReturn(false);
+        NetConnection connection = mock(NetConnection.class);
+        when(connection.isConnected()).thenReturn(true);
+        player.con = connection;
+
+        AtomicBoolean called = new AtomicBoolean();
+        async.forPlayer(player, () -> "value", (p, value) -> called.set(true));
+
+        assertThat(dispatched.await(1, TimeUnit.SECONDS)).isTrue();
+        assertThat(called).isFalse();
+    }
+
+    private static Player onlinePlayer() {
+        Player player = mock(Player.class);
+        when(player.isAdded()).thenReturn(true);
+        NetConnection connection = mock(NetConnection.class);
+        when(connection.isConnected()).thenReturn(true);
+        player.con = connection;
+        return player;
     }
 }

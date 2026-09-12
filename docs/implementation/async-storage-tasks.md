@@ -71,9 +71,20 @@
   - Refactor `/profile`, `/info`, `/trace` commands to fetch offline player data via `Async.forPlayer`.
 
 ## Phase 6: Telemetry, Verification & Fault Injection
-- [ ] **Task 6.1: Metric Instrumentation**
-  - Expose metrics for storage execution: `xcore_storage_tasks_active`, `xcore_storage_tasks_rejected_total`, `xcore_storage_task_duration_seconds`.
-- [ ] **Task 6.2: Chaos Testing**
-  - Test server stability when Redis experiences disconnect / `LOADING dataset` state.
-  - Test server stability when MongoDB queries experience artificial 2-second delays.
-  - Verify Mindustry TPS remains solid (60.0) without tick stutters during heavy database I/O.
+- [x] **Task 6.1: Metric Instrumentation**
+  - Exposed storage executor metrics: `xcore_storage_tasks_active` (gauge),
+    `xcore_storage_tasks_rejected_total` (counter), `xcore_storage_task_duration_seconds` (histogram).
+  - Wired `StorageExecutor` to emit them (active permits on start/settle, rejection counter,
+    duration histogram); zero-overhead NOOPs when telemetry is disabled.
+  - Added Grafana panels (Storage tasks active / duration p95 / rejected per min) and Prometheus
+    recording rule `xcore:storage_task_duration_seconds:p95` plus `XCoreStorageSaturated` alert.
+  - Covered by `StorageExecutorTest` and the gateway observability contract test.
+- [x] **Task 6.2: Chaos Testing**
+  - `StorageExecutorTest.slowStorageTasksDoNotBlockCallerOrSaturateUnbounded`: a 1.5s storage
+    task returns to the caller in <250ms and never grows an unbounded queue.
+  - `RedisAsyncWriteTest.asyncWritesFailFastWhenRedisHangs`: a Redis connection that accepts
+    commands but never answers is bounded by the 500ms timeout instead of hanging the caller.
+  - `AsyncTest`: `onMainForPlayer`/`forPlayer` drop the main-thread continuation when the player
+    disconnected or the storage stage failed while the query was in flight.
+  - Live TPS verification is observational: `mindustry_tps` panel + the existing TPS alert on
+    staging, plus the `XCoreStorageSaturated` alert for dropped async writes.

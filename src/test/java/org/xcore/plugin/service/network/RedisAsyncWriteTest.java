@@ -11,6 +11,7 @@ import org.xcore.plugin.service.TopMenuCacheService;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +69,25 @@ class RedisAsyncWriteTest {
         verify(backend, never()).withCommands(any(Function.class), any());
     }
 
+    @Test
+    void asyncWritesFailFastWhenRedisHangs() {
+        // Chaos guard: a Redis connection that accepts commands but never answers
+        // must not hang the caller; the 500ms orTimeout bounds the wait.
+        RedisAsyncCommands<String, String> commands = mock(RedisAsyncCommands.class);
+        RedisFuture<Long> hanging = hangingFuture();
+        when(commands.incr(anyString())).thenReturn(hanging);
+
+        RedisNetworkBackend backend = backend(commands);
+        TopMenuCacheService cache = new TopMenuCacheService(backend, new Gson(), config("mini-pvp"));
+
+        long startedAt = System.nanoTime();
+        CompletionStage<Boolean> stage = cache.invalidateAllAsync();
+
+        assertThat(stage.toCompletableFuture()).failsWithin(2, TimeUnit.SECONDS);
+        long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+        assertThat(elapsedMillis).isLessThan(2_000);
+    }
+
     @SuppressWarnings("unchecked")
     private static RedisNetworkBackend backend(RedisAsyncCommands<String, String> commands) {
         RedisNetworkBackend backend = mock(RedisNetworkBackend.class);
@@ -82,6 +102,13 @@ class RedisAsyncWriteTest {
     private static <T> RedisFuture<T> redisFuture(T value) {
         RedisFuture<T> future = mock(RedisFuture.class);
         when(future.toCompletableFuture()).thenReturn(CompletableFuture.completedFuture(value));
+        return future;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> RedisFuture<T> hangingFuture() {
+        RedisFuture<T> future = mock(RedisFuture.class);
+        when(future.toCompletableFuture()).thenReturn(new CompletableFuture<>());
         return future;
     }
 

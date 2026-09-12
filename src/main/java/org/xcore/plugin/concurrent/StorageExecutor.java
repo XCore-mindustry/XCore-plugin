@@ -3,6 +3,12 @@ package org.xcore.plugin.concurrent;
 import io.avaje.inject.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.jspecify.annotations.Nullable;
+import org.xcore.plugin.metrics.Counter;
+import org.xcore.plugin.metrics.Gauge;
+import org.xcore.plugin.metrics.Histogram;
+import org.xcore.plugin.metrics.MetricsService;
+import org.xcore.plugin.metrics.XcoreMetrics;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -28,12 +34,23 @@ public class StorageExecutor {
     private final Semaphore permits;
     private final int maxConcurrentTasks;
 
+    @Nullable
+    private final Gauge activeTasksGauge;
+    @Nullable
+    private final Counter rejectedTasksCounter;
+    @Nullable
+    private final Histogram taskDurationHistogram;
+
     @Inject
-    public StorageExecutor() {
-        this(DEFAULT_MAX_CONCURRENT_TASKS);
+    public StorageExecutor(@Nullable MetricsService metricsService) {
+        this(DEFAULT_MAX_CONCURRENT_TASKS, metricsService);
     }
 
     public StorageExecutor(int maxConcurrentTasks) {
+        this(maxConcurrentTasks, null);
+    }
+
+    public StorageExecutor(int maxConcurrentTasks, @Nullable MetricsService metricsService) {
         if (maxConcurrentTasks < 1) {
             throw new IllegalArgumentException("maxConcurrentTasks must be positive");
         }
@@ -41,6 +58,16 @@ public class StorageExecutor {
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
         this.permits = new Semaphore(maxConcurrentTasks);
         this.maxConcurrentTasks = maxConcurrentTasks;
+
+        if (metricsService != null) {
+            this.activeTasksGauge = metricsService.gauge(XcoreMetrics.STORAGE_TASKS_ACTIVE);
+            this.rejectedTasksCounter = metricsService.counter(XcoreMetrics.STORAGE_TASKS_REJECTED_TOTAL);
+            this.taskDurationHistogram = metricsService.histogram(XcoreMetrics.STORAGE_TASK_DURATION_SECONDS);
+        } else {
+            this.activeTasksGauge = null;
+            this.rejectedTasksCounter = null;
+            this.taskDurationHistogram = null;
+        }
     }
 
     /**
@@ -50,19 +77,25 @@ public class StorageExecutor {
     public void execute(Runnable task) {
         Objects.requireNonNull(task, "task");
         if (!permits.tryAcquire()) {
+            incrementRejected();
             throw new RejectedExecutionException("Storage executor is at capacity");
         }
 
+        reportActive();
         try {
             executor.execute(() -> {
+                long startedAt = System.nanoTime();
                 try {
                     task.run();
                 } finally {
                     permits.release();
+                    reportActive();
+                    observeDuration(startedAt);
                 }
             });
         } catch (RuntimeException error) {
             permits.release();
+            reportActive();
             throw error;
         }
     }
@@ -98,6 +131,24 @@ public class StorageExecutor {
     /** Number of task slots currently available. */
     public int availableSlots() {
         return permits.availablePermits();
+    }
+
+    private void reportActive() {
+        if (activeTasksGauge != null) {
+            activeTasksGauge.set(activeTasks());
+        }
+    }
+
+    private void incrementRejected() {
+        if (rejectedTasksCounter != null) {
+            rejectedTasksCounter.increment();
+        }
+    }
+
+    private void observeDuration(long startedAtNanos) {
+        if (taskDurationHistogram != null) {
+            taskDurationHistogram.observe((System.nanoTime() - startedAtNanos) / 1_000_000_000d);
+        }
     }
 
     @PreDestroy
