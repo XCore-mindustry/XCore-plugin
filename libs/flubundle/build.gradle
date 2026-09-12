@@ -7,7 +7,7 @@ group = 'ospx'
 def baseVersion = '1.7.1'
 version = findProperty('xcorePublishVersion') ?: baseVersion
 ext {
-    mindustryVersion = "v159"
+    mindustryVersion = "v160"
 }
 
 def xcoreSnapshotsRepositoryUrl = findProperty('xcoreMavenSnapshotsUrl') ?: 'https://maven.x-core.org/snapshots'
