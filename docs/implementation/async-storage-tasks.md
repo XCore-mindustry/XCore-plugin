@@ -67,8 +67,9 @@
   - Refactor `TopMenu.java` / `TopMenuService.java` to fetch pages via `Async.forPlayer(...)`.
   - Ensure loading indicators or smooth transitions are presented to the user.
 
-- [ ] **Task 5.2: Admin & Information Menus**
-  - Refactor `/profile`, `/info`, `/trace` commands to fetch offline player data via `Async.forPlayer`.
+- [x] **Task 5.2: Admin & Information Menus**
+  - Refactored `PlayerController` (`/player`, `/settings`) with `openForTarget` fast-path (self, online in-memory, and async DB query via `Async.onMainForPlayer`).
+  - Audited server console commands (`players`, `info`). Server console commands operate synchronously on admin demand; `players` uses online `session.data` first, falling back only when unregistered.
 
 ## Phase 6: Telemetry, Verification & Fault Injection
 - [x] **Task 6.1: Metric Instrumentation**
