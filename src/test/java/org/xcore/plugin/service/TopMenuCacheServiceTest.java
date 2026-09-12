@@ -83,6 +83,32 @@ class TopMenuCacheServiceTest {
         assertThat(restored.nextCursor()).isEqualTo(nextCursor);
     }
 
+    @Test
+    @DisplayName("l1 in-memory cache serves slice without redis roundtrip and invalidates on invalidateAll")
+    void l1Cache_servesSliceWithoutRedisRoundtripAndInvalidatesOnInvalidateAll() {
+        RedisCommands<String, String> commands = mock(RedisCommands.class);
+        RedisNetworkBackend backend = backend(commands);
+        TopMenuCacheService service = new TopMenuCacheService(backend, new Gson(), config("mini-pvp"));
+
+        PlayerData player = new PlayerData("uuid-5", true);
+        LeaderboardSlice<PlayerData> slice = new LeaderboardSlice<>(List.of(player), false, null);
+
+        // Put populates L1 cache
+        service.putTopSlice(0L, TopCategory.HEXED, 10, null, slice);
+
+        // Immediate subsequent get should return from L1 cache without calling Redis get!
+        LeaderboardSlice<PlayerData> cached = service.getTopSlice(0L, TopCategory.HEXED, 10, null);
+        assertThat(cached).isNotNull();
+        assertThat(cached.items()).hasSize(1);
+        org.mockito.Mockito.verify(commands, org.mockito.Mockito.never()).get(anyString());
+
+        // Invalidation clears L1
+        service.invalidateAll();
+        // Now it must query backend (which returns null on mock)
+        service.getTopSlice(0L, TopCategory.HEXED, 10, null);
+        org.mockito.Mockito.verify(commands, org.mockito.Mockito.atLeastOnce()).get(anyString());
+    }
+
     @SuppressWarnings("unchecked")
     private static RedisNetworkBackend backend(RedisCommands<String, String> commands) {
         RedisNetworkBackend backend = mock(RedisNetworkBackend.class);

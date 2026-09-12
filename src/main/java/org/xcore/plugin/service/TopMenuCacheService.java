@@ -29,6 +29,12 @@ public class TopMenuCacheService {
     private final Gson redisGson;
     private final TomlXcoreConfig config;
 
+    private final java.util.concurrent.ConcurrentMap<String, CachedL1Slice> l1Slices = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentMap<Long, CachedL1Count> l1Counts = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedL1Slice(LeaderboardSlice<PlayerData> slice, long cachedAt) {}
+    private record CachedL1Count(long totalEntries, long cachedAt) {}
+
     @Inject
     public TopMenuCacheService(RedisNetworkBackend backend, @Named("redis") Gson redisGson, TomlXcoreConfig config) {
         this.backend = backend;
@@ -52,6 +58,8 @@ public class TopMenuCacheService {
     }
 
     public void invalidateAll() {
+        l1Slices.clear();
+        l1Counts.clear();
         backend.withCommands(commands -> {
             commands.incr(versionKey());
             return true;
@@ -60,6 +68,8 @@ public class TopMenuCacheService {
 
     /** Native Lettuce async invalidation for gameplay and persistence callbacks. */
     public CompletionStage<Boolean> invalidateAllAsync() {
+        l1Slices.clear();
+        l1Counts.clear();
         return observeWrite(backend.withAsyncCommands(commands -> commands
                 .incr(versionKey())
                 .toCompletableFuture()
@@ -68,6 +78,11 @@ public class TopMenuCacheService {
     }
 
     public Long getTotalEntries(long version) {
+        CachedL1Count l1 = l1Counts.get(version);
+        if (l1 != null && System.currentTimeMillis() - l1.cachedAt() < (COUNT_TTL_SECONDS * 1000L)) {
+            return l1.totalEntries();
+        }
+
         return backend.withCommands(commands -> {
             String payloadJson = commands.get(countKey(version));
             if (payloadJson == null || payloadJson.isBlank()) {
@@ -75,11 +90,16 @@ public class TopMenuCacheService {
             }
 
             CachedCount cached = redisGson.fromJson(payloadJson, CachedCount.class);
-            return cached == null ? null : cached.totalEntries();
+            if (cached != null) {
+                l1Counts.put(version, new CachedL1Count(cached.totalEntries(), System.currentTimeMillis()));
+                return cached.totalEntries();
+            }
+            return null;
         }, null);
     }
 
     public boolean putTotalEntries(long version, long totalEntries) {
+        l1Counts.put(version, new CachedL1Count(totalEntries, System.currentTimeMillis()));
         CachedCount payload = new CachedCount(totalEntries, System.currentTimeMillis());
         return backend.withCommands(commands -> {
             commands.set(countKey(version), redisGson.toJson(payload), SetArgs.Builder.ex(COUNT_TTL_SECONDS));
@@ -89,6 +109,7 @@ public class TopMenuCacheService {
 
     /** Native Lettuce async count write for cache misses on the main thread. */
     public CompletionStage<Boolean> putTotalEntriesAsync(long version, long totalEntries) {
+        l1Counts.put(version, new CachedL1Count(totalEntries, System.currentTimeMillis()));
         CachedCount payload = new CachedCount(totalEntries, System.currentTimeMillis());
         return observeWrite(backend.withAsyncCommands(commands -> commands
                 .set(countKey(version), redisGson.toJson(payload), SetArgs.Builder.ex(COUNT_TTL_SECONDS))
@@ -101,8 +122,14 @@ public class TopMenuCacheService {
                                                     TopCategory category,
                                                     int pageSize,
                                                     LeaderboardCursor cursor) {
+        String key = sliceKey(version, category, pageSize, cursor);
+        CachedL1Slice l1 = l1Slices.get(key);
+        if (l1 != null && System.currentTimeMillis() - l1.cachedAt() < (PAGE_TTL_SECONDS * 1000L)) {
+            return l1.slice();
+        }
+
         return backend.withCommands(commands -> {
-            String payloadJson = commands.get(sliceKey(version, category, pageSize, cursor));
+            String payloadJson = commands.get(key);
             if (payloadJson == null || payloadJson.isBlank()) {
                 return null;
             }
@@ -112,7 +139,9 @@ public class TopMenuCacheService {
                 return null;
             }
 
-            return new LeaderboardSlice<>(cached.players(), cached.hasNext(), cached.nextCursor());
+            var slice = new LeaderboardSlice<>(cached.players(), cached.hasNext(), cached.nextCursor());
+            l1Slices.put(key, new CachedL1Slice(slice, System.currentTimeMillis()));
+            return slice;
         }, null);
     }
 
@@ -125,10 +154,12 @@ public class TopMenuCacheService {
             return CompletableFuture.completedFuture(false);
         }
 
+        String key = sliceKey(version, category, pageSize, cursor);
+        l1Slices.put(key, new CachedL1Slice(slice, System.currentTimeMillis()));
         CachedTopSlice payload = new CachedTopSlice(slice.items(), slice.hasNext(), slice.nextCursor(), System.currentTimeMillis());
         return observeWrite(backend.withAsyncCommands(commands -> commands
                 .set(
-                        sliceKey(version, category, pageSize, cursor),
+                        key,
                         redisGson.toJson(payload),
                         SetArgs.Builder.ex(PAGE_TTL_SECONDS)
                 )
@@ -146,10 +177,12 @@ public class TopMenuCacheService {
             return false;
         }
 
+        String key = sliceKey(version, category, pageSize, cursor);
+        l1Slices.put(key, new CachedL1Slice(slice, System.currentTimeMillis()));
         CachedTopSlice payload = new CachedTopSlice(slice.items(), slice.hasNext(), slice.nextCursor(), System.currentTimeMillis());
         return backend.withCommands(commands -> {
             commands.set(
-                    sliceKey(version, category, pageSize, cursor),
+                    key,
                     redisGson.toJson(payload),
                     SetArgs.Builder.ex(PAGE_TTL_SECONDS)
             );
