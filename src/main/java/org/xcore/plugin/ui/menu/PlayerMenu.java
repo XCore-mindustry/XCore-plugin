@@ -4,9 +4,12 @@ import com.ospx.flubundle.Bundle;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.PlayerStatsOverview;
+import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
@@ -20,6 +23,8 @@ public class PlayerMenu extends Menu {
     private final Bundle bundle;
     private final PlayerProfileSettingsService profileSettings;
     private final MenuService menuService;
+    private final GameDataRepository gameDataRepository;
+    private final Async async;
 
     @Inject
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -29,14 +34,28 @@ public class PlayerMenu extends Menu {
                       PlayerDisplayService playerDisplayService,
                       PlayerProfileSettingsService profileSettings,
                       AuditHistoryMenu auditHistoryMenu,
-                      MenuService menuService) {
+                      MenuService menuService,
+                      Async async) {
         super(secretsConfig, sessionService);
         this.bundle = bundle;
         this.profileSettings = profileSettings;
         this.menuService = menuService;
+        this.gameDataRepository = gameDataRepository;
+        this.async = async;
 
         menuService.registerRoute(new PlayerProfileFlows.PlayerFlow(this, gameDataRepository, auditHistoryMenu));
         menuService.registerRoute(new PlayerProfileFlows.PlayersFlow(this, sessionService, playerDisplayService));
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService) {
+        this(secretsConfig, sessionService, gameDataRepository, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, null);
     }
 
     @PostConstruct
@@ -59,9 +78,30 @@ public class PlayerMenu extends Menu {
             return;
         }
 
+        if (async != null && session.player != null) {
+            async.forPlayer(session.player, () -> {
+                Integer hexedTop = session.playerDataRepository != null
+                        ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
+                        : null;
+                PlayerStatsOverview stats = gameDataRepository != null
+                        ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
+                        : null;
+                return new ProfileDataBundle(stats, hexedTop);
+            }, (player, bundle) -> {
+                Session current = sessionService.get(uuid);
+                if (current == null) return;
+                current.setDraft(PlayerProfileFlows.PlayerState.class,
+                        new PlayerProfileFlows.PlayerState(targetData.uuid, targetData, bundle.stats(), bundle.hexedTop()));
+                current.menuService.renderRoute(current, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
+            });
+            return;
+        }
+
         session.setDraft(PlayerProfileFlows.PlayerState.class, new PlayerProfileFlows.PlayerState(targetData.uuid, targetData));
         session.menuService.renderRoute(session, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
     }
+
+    private record ProfileDataBundle(PlayerStatsOverview stats, Integer hexedTop) {}
 
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid);

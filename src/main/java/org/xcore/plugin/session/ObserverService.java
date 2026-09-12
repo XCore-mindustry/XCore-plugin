@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Player;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.service.network.RedisObserverStateStore;
 
 @Singleton
@@ -13,11 +14,19 @@ public class ObserverService {
 
     private final SessionService sessionService;
     private final RedisObserverStateStore observerStateStore;
+    private final Async async;
 
     @Inject
-    public ObserverService(SessionService sessionService, RedisObserverStateStore observerStateStore) {
+    public ObserverService(SessionService sessionService,
+                           RedisObserverStateStore observerStateStore,
+                           Async async) {
         this.sessionService = sessionService;
         this.observerStateStore = observerStateStore;
+        this.async = async;
+    }
+
+    public ObserverService(SessionService sessionService, RedisObserverStateStore observerStateStore) {
+        this(sessionService, observerStateStore, null);
     }
 
     ObserverService(SessionService sessionService) {
@@ -90,7 +99,7 @@ public class ObserverService {
     }
 
     public void restore(Player player) {
-        if (player == null) {
+        if (player == null || observerStateStore == null) {
             return;
         }
 
@@ -101,7 +110,22 @@ public class ObserverService {
             return;
         }
 
-        RedisObserverStateStore.CachedObserverState cachedState = cachedObserverState(player.uuid());
+        if (async != null) {
+            async.onMainForPlayer(player, observerStateStore.getAsync(player.uuid()), (p, cachedState) -> {
+                if (cachedState == null) {
+                    return;
+                }
+                Session currentSession = sessionService.get(p);
+                if (currentSession != null) {
+                    currentSession.beginObserving(observerStateStore.resolveReturnTeam(cachedState));
+                }
+                p.clearUnit();
+                p.team(OBSERVER_TEAM);
+            });
+            return;
+        }
+
+        RedisObserverStateStore.CachedObserverState cachedState = observerStateStore.get(player.uuid());
         if (cachedState == null) {
             return;
         }
@@ -149,12 +173,5 @@ public class ObserverService {
         if (observerStateStore != null) {
             observerStateStore.deleteAsync(playerUuid);
         }
-    }
-
-    private RedisObserverStateStore.CachedObserverState cachedObserverState(String playerUuid) {
-        if (observerStateStore == null) {
-            return null;
-        }
-        return observerStateStore.get(playerUuid);
     }
 }

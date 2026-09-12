@@ -139,6 +139,39 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("player with Async prefetches stats and rank off main thread")
+    void player_withAsync_prefetchesStatsAndRankOffMainThread() {
+        Provider<SessionService> sessionProvider = mock(Provider.class);
+        when(sessionProvider.get()).thenReturn(sessionService);
+        MenuService freshMenuService = new MenuService(sessionProvider, gateway);
+
+        org.xcore.plugin.concurrent.Async async = mock(org.xcore.plugin.concurrent.Async.class);
+        PlayerMenu asyncMenu = new PlayerMenu(
+                new TomlSecretsConfig(), sessionService,
+                gameDataRepository,
+                bundle,
+                playerDisplayService, profileSettings,
+                auditHistoryMenu,
+                freshMenuService,
+                async);
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Player p = invocation.getArgument(0);
+            java.util.concurrent.Callable<?> task = invocation.getArgument(1);
+            java.util.function.BiConsumer<Player, Object> cb = invocation.getArgument(2);
+            Object result = task.call();
+            cb.accept(p, result);
+            return null;
+        }).when(async).forPlayer(any(), any(), any());
+
+        asyncMenu.player("viewer-1", targetData);
+
+        // Pre-fetched via async task
+        verify(async).forPlayer(eq(session.player), any(), any());
+        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
+    }
+
+    @Test
     @DisplayName("player queries legacy hexed top rank for profile rendering")
     void player_rendersLegacyHexedRankAndTopRank() {
         targetData.hexedRank(org.xcore.plugin.gamemode.hexed.HexedRanks.HexedRank.veteran);

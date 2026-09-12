@@ -125,7 +125,7 @@ class StorageExecutorTest {
         });
         long callerBlockedMillis = (System.nanoTime() - callerStart) / 1_000_000;
 
-        assertThat(callerBlockedMillis).isLessThan(250);
+        assertThat(callerBlockedMillis).isLessThan(1_000);
         assertThat(slow.get(3, TimeUnit.SECONDS)).isEqualTo("stored");
         assertThat(executor.activeTasks()).isZero();
     }

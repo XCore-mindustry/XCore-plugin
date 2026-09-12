@@ -84,11 +84,15 @@ final class PlayerProfileFlows {
             String rankName = local.t("hexed-ranks-" + targetData.hexedRank().name());
             String hexedProgress = formatHexedProgress(local, targetData);
             NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
-            Integer hexedTop = session.playerDataRepository != null
-                    ? session.playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
-                    : null;
+            Integer hexedTop = context.state().hexedTopRank != null
+                    ? context.state().hexedTopRank
+                    : (session.playerDataRepository != null
+                            ? session.playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
+                            : null);
             String hexedTopRank = hexedTop != null ? "#" + numberFormat.format(hexedTop) : "-";
-            PlayerStatsOverview statsOverview = gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid);
+            PlayerStatsOverview statsOverview = context.state().statsOverview != null
+                    ? context.state().statsOverview
+                    : gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid);
             var overallStats = statsOverview.overall();
 
             var grid = new MenuGrid();
@@ -287,13 +291,21 @@ final class PlayerProfileFlows {
     static final class PlayerState {
         public String targetUuid;
         public PlayerData targetData;
+        public PlayerStatsOverview statsOverview;
+        public Integer hexedTopRank;
 
         public PlayerState() {
         }
 
         public PlayerState(String targetUuid, PlayerData targetData) {
+            this(targetUuid, targetData, null, null);
+        }
+
+        public PlayerState(String targetUuid, PlayerData targetData, PlayerStatsOverview statsOverview, Integer hexedTopRank) {
             this.targetUuid = targetUuid;
             this.targetData = targetData;
+            this.statsOverview = statsOverview;
+            this.hexedTopRank = hexedTopRank;
         }
     }
 

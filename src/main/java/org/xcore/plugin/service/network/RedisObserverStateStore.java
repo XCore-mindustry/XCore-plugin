@@ -60,13 +60,27 @@ public class RedisObserverStateStore {
             return null;
         }
 
-        return backend.withCommands(commands -> {
-            String payloadJson = commands.get(key(playerUuid));
-            if (payloadJson == null || payloadJson.isBlank()) {
-                return null;
-            }
-            return redisGson.fromJson(payloadJson, CachedObserverState.class);
-        }, null);
+        return getAsync(playerUuid).toCompletableFuture().join();
+    }
+
+    public CompletionStage<CachedObserverState> getAsync(String playerUuid) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        return backend.withAsyncCommands(commands -> commands
+                .get(key(playerUuid))
+                .toCompletableFuture()
+                .orTimeout(500, TimeUnit.MILLISECONDS)
+                .thenApply(payloadJson -> {
+                    if (payloadJson == null || payloadJson.isBlank()) {
+                        return null;
+                    }
+                    return redisGson.fromJson(payloadJson, CachedObserverState.class);
+                })
+                .exceptionally(err -> null),
+                null
+        );
     }
 
     /** Native Lettuce async delete used by gameplay event handlers. */

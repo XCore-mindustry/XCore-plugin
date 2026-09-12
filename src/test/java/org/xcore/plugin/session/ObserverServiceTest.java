@@ -228,6 +228,43 @@ class ObserverServiceTest {
     }
 
     @Test
+    @DisplayName("restore uses async get without blocking when Async is present")
+    void restore_usesAsyncGetWithoutBlockingWhenAsyncPresent() {
+        SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
+        org.xcore.plugin.concurrent.Async async = mock(org.xcore.plugin.concurrent.Async.class);
+        ObserverService observerService = new ObserverService(sessionService, observerStateStore, async);
+        Session session = mock(Session.class);
+        session.data = new org.xcore.plugin.model.PlayerData("uuid-1", true);
+        Player player = mock(Player.class);
+
+        when(player.uuid()).thenReturn("uuid-1");
+        when(session.observing()).thenReturn(false);
+        var cachedState = new RedisObserverStateStore.CachedObserverState(Team.crux.id, System.currentTimeMillis());
+        when(observerStateStore.getAsync("uuid-1")).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(cachedState));
+        when(observerStateStore.resolveReturnTeam(any())).thenReturn(Team.crux);
+        sessionService.update(session);
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Player p = invocation.getArgument(0);
+            var stage = invocation.<java.util.concurrent.CompletionStage<RedisObserverStateStore.CachedObserverState>>getArgument(1);
+            java.util.function.BiConsumer<Player, RedisObserverStateStore.CachedObserverState> cb = invocation.getArgument(2);
+            stage.whenComplete((val, err) -> {
+                if (err == null) cb.accept(p, val);
+            });
+            return null;
+        }).when(async).onMainForPlayer(any(), any(), any());
+
+        observerService.restore(player);
+
+        verify(observerStateStore).getAsync("uuid-1");
+        verify(observerStateStore, never()).get(any());
+        verify(session).beginObserving(Team.crux);
+        verify(player).clearUnit();
+        verify(player).team(ObserverService.OBSERVER_TEAM);
+    }
+
+    @Test
     @DisplayName("resetObserverState clears session observer flag and cached restore state")
     void resetObserverState_clearsSessionObserverFlagAndCachedRestoreState() {
         SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));

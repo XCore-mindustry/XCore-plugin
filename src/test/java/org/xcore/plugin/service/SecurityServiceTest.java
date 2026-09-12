@@ -83,7 +83,7 @@ class SecurityServiceTest {
 
         assertThat(result.muted()).isFalse();
         assertThat(result.muteData()).isNull();
-        verify(muteDataRepository).delete("uuid-2");
+        verify(muteDataRepository).deleteAsync("uuid-2");
     }
 
     @Test

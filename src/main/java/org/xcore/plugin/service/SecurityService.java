@@ -52,7 +52,7 @@ public class SecurityService {
                     return new MuteCheckResult(true, cached.data, remaining);
                 } else {
                     muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-                    muteDataRepository.delete(uuid);
+                    muteDataRepository.deleteAsync(uuid);
                     return new MuteCheckResult(false, null, Duration.ZERO);
                 }
             }
@@ -65,7 +65,7 @@ public class SecurityService {
         }
         if (mute.expired()) {
             muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-            muteDataRepository.delete(uuid);
+            muteDataRepository.deleteAsync(uuid);
             return new MuteCheckResult(false, null, Duration.ZERO);
         }
 
