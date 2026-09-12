@@ -1,6 +1,6 @@
 [versions]
 java = "25"
-mindustry = "v159"
+mindustry = "v160"
 avaje = "12.5"
 cloud = "0.2.0-SNAPSHOT"
 shadow = "9.3.0"
