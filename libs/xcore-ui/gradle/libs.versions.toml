@@ -1,0 +1,13 @@
+[versions]
+java = "25"
+mindustry = "v160"
+flubundle = "1.7.1"
+junit = "5.12.1"
+assertj = "3.27.3"
+
+[libraries]
+mindustry-core = { module = "com.github.Anuken.Mindustry:core", version.ref = "mindustry" }
+arc-core = { module = "com.github.Anuken.Arc:arc-core", version.ref = "mindustry" }
+flubundle = { module = "com.ospx:flubundle", version.ref = "flubundle" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
