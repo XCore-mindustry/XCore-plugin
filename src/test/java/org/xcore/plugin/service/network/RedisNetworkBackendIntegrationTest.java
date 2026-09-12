@@ -95,7 +95,7 @@ class RedisNetworkBackendIntegrationTest {
 
         requesterBackend.send(new ChatMessageV1("tester", "hello", "alpha"));
 
-        assertThat(requesterBackend.metricsSnapshot().getOrDefault("published_events", 0L)).isGreaterThanOrEqualTo(1L);
+        waitForMetricAtLeast("published_events", 1L, requesterBackend, 5);
 
         try (RedisClient client = RedisClient.create(config.transport.redis.url);
              StatefulRedisConnection<String, String> connection = client.connect()) {
@@ -220,6 +220,7 @@ class RedisNetworkBackendIntegrationTest {
                 Instant.parse("2026-04-26T00:00:00Z")
         ));
 
+        waitForMetricAtLeast("published_events", 1L, requesterBackend, 5);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
         try (RedisClient client = RedisClient.create(config.transport.redis.url);
@@ -259,6 +260,7 @@ class RedisNetworkBackendIntegrationTest {
         );
         requesterBackend.send(canonicalEvent);
 
+        waitForMetricAtLeast("published_events", 1L, requesterBackend, 5);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
         try (RedisClient client = RedisClient.create(config.transport.redis.url);
@@ -340,6 +342,7 @@ class RedisNetworkBackendIntegrationTest {
                 Instant.parse("2026-04-26T00:00:00Z")
         ));
 
+        waitForMetricAtLeast("published_events", 1L, requesterBackend, 5);
         assertThat(requesterBackend.metricsSnapshot().getOrDefault("publish_failures", 0L)).isEqualTo(0L);
 
         try (RedisClient client = RedisClient.create(config.transport.redis.url);
@@ -382,7 +385,7 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(received.get()).isNotNull();
         assertThat(received.get().message()).isEqualTo("bridge");
-        assertThat(requesterBackend.metricsSnapshot().getOrDefault("consumed_events", 0L)).isGreaterThanOrEqualTo(1L);
+        waitForMetricAtLeast("consumed_events", 1L, requesterBackend, 5);
 
         subscription.unsubscribe();
     }
@@ -463,8 +466,8 @@ class RedisNetworkBackendIntegrationTest {
         assertThat(responseRef.get().maps()).extracting(MapEntryV1::like).containsExactly(3, null);
         assertThat(responseRef.get().maps()).extracting(MapEntryV1::reputation).containsExactly(2, null);
         assertThat(responseRef.get().maps()).extracting(MapEntryV1::gameMode).containsExactly("pvp", null);
-        assertThat(requesterBackend.metricsSnapshot().getOrDefault("rpc_requests", 0L)).isGreaterThanOrEqualTo(1L);
-        assertThat(serverBackend.metricsSnapshot().getOrDefault("rpc_responses", 0L)).isGreaterThanOrEqualTo(1L);
+        waitForMetricAtLeast("rpc_requests", 1L, requesterBackend, 5);
+        waitForMetricAtLeast("rpc_responses", 1L, serverBackend, 5);
 
         serverSubscription.unsubscribe();
     }
@@ -649,7 +652,7 @@ class RedisNetworkBackendIntegrationTest {
             assertThat(dlqFound).isTrue();
         }
 
-        assertThat(requesterBackend.metricsSnapshot().getOrDefault("dlq_routed", 0L)).isGreaterThanOrEqualTo(1L);
+        waitForMetricAtLeast("dlq_routed", 1L, requesterBackend, 5);
 
         subscription.unsubscribe();
     }
@@ -706,7 +709,7 @@ class RedisNetworkBackendIntegrationTest {
             }
 
             try {
-                Thread.sleep(100L);
+                Thread.sleep(50L);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -714,6 +717,24 @@ class RedisNetworkBackendIntegrationTest {
         }
 
         assertThat(backend.metricsSnapshot().getOrDefault(key, -1L)).isEqualTo(expectedValue);
+    }
+
+    private static void waitForMetricAtLeast(String key, long minimumValue, RedisNetworkBackend backend, int timeoutSeconds) {
+        long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
+        while (System.currentTimeMillis() < deadline) {
+            if (backend.metricsSnapshot().getOrDefault(key, -1L) >= minimumValue) {
+                return;
+            }
+
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        assertThat(backend.metricsSnapshot().getOrDefault(key, -1L)).isGreaterThanOrEqualTo(minimumValue);
     }
 
     private TomlXcoreConfig baseConfig(String server) {
