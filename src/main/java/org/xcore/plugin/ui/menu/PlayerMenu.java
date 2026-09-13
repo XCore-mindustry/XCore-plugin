@@ -126,8 +126,22 @@ public class PlayerMenu extends Menu {
             return;
         }
 
+        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
+            openSettingsUi(session, targetData);
+            return;
+        }
+
         session.setDraft(PlayerSettingsFlows.SettingsState.class, new PlayerSettingsFlows.SettingsState(targetData.uuid, targetData));
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", targetData.uuid));
+    }
+
+    public void openSettingsUi(Session session, PlayerData targetData) {
+        if (session == null || session.player == null) return;
+        session.clear();
+
+        var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
+        var initialModel = PlayerSettingsUiController.createModel(session, targetData);
+        menuService.openUi(session, controller, initialModel);
     }
 
     public void chatSettings(String uuid, PlayerData targetData) {

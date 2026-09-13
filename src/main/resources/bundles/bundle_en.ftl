@@ -462,6 +462,15 @@ player-menu-settings-content =
     [gray]Language: [white]{ $language }[]
 player-menu-settings-chat = Chat settings
 player-menu-settings-chat-title = [orange]{ -xcore } — Chat Settings
+
+# Modern Player Settings Form
+player-settings-global-chat = Global chat
+player-settings-discord-relay = Discord relay
+player-settings-leaderboard = Show in leaderboard
+player-settings-language = Language
+player-settings-saved = [lime]Settings saved![]
+player-settings-reset-feedback = [lightgray]Custom nickname reset.[]
+player-settings-player-label = Player:
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Chat visibility[]

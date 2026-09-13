@@ -805,6 +805,15 @@ player-menu-settings-content =
     [gray]Мова: [white]{ $language }[]
 player-menu-settings-chat = Налаштування чату
 player-menu-settings-chat-title = [orange]{ -xcore } — Налаштування чату
+
+# Modern Player Settings Form
+player-settings-global-chat = Global чат
+player-settings-discord-relay = Discord relay
+player-settings-leaderboard = Відображати в лідерборді
+player-settings-language = Мова
+player-settings-saved = [lime]Налаштування збережено![]
+player-settings-reset-feedback = [lightgray]Ім'я скинуто.[]
+player-settings-player-label = Гравець:
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Видимість чату[]
