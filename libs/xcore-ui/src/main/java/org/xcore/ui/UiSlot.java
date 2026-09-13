@@ -17,7 +17,7 @@ final class UiSlot {
         // otherwise children are lifted directly into the slot.
         if (table.background() != null || table.margin() != null || table.wrap() != null
                 || table.entries().stream().anyMatch(e -> e instanceof VTable.RowMarker)) {
-            VTable wrapper = new VTable(null, UiLayout.DEFAULT, table.background(), table.margin(), table.wrap(), table.entries());
+            VTable wrapper = new VTable(null, table.layout(), table.background(), table.margin(), table.wrap(), table.entries());
             return new VSlot(slotKey, table.layout(), List.of(wrapper));
         }
         List<VNode> children = table.entries().stream()
