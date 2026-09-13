@@ -302,48 +302,43 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.add(Ui.table(toggles -> {
                 toggles.background("button");
                 toggles.margin(10f);
-                toggles.layout(l -> l.growX().padBottom(8f));
+                toggles.layout(l -> l.align("left").growX().padBottom(8f));
 
                 toggles.check(Text.t("player-settings-global-chat"), c -> c
                         .id("check_global_chat")
                         .checked(model.globalChatVisible())
-                        .layout(l -> l.align("left").padBottom(4f))).row();
+                        .layout(l -> l.align("left").padLeft(6f).padBottom(4f))).row();
 
                 toggles.check(Text.t("player-settings-discord-relay"), c -> c
                         .id("check_discord_relay")
                         .checked(model.discordRelayVisible())
-                        .layout(l -> l.align("left").padBottom(4f))).row();
+                        .layout(l -> l.align("left").padLeft(6f).padBottom(4f))).row();
 
                 toggles.check(Text.t("player-settings-leaderboard"), c -> c
                         .id("check_leaderboard")
                         .checked(model.leaderboard())
-                        .layout(l -> l.align("left")));
+                        .layout(l -> l.align("left").padLeft(6f)));
             })).row();
 
-            // 4. Badges Card
-            t.add(Ui.table(bRow -> {
-                bRow.background("button");
-                bRow.margin(10f);
-                bRow.layout(l -> l.growX().padBottom(8f));
+            // 4. Preferences & Language Card (unified card with In-Place Language Combobox)
+            t.slot("slot_lang", pref -> {
+                pref.background("button");
+                pref.margin(10f);
+                pref.layout(l -> l.growX().padBottom(8f));
 
-                bRow.add(Ui.table(inner -> {
-                    inner.layout(l -> l.growX());
+                // Badges row
+                pref.add(Ui.table(inner -> {
+                    inner.layout(l -> l.growX().padBottom(6f));
                     String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
                     inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
                     inner.button(Text.raw("Edit"), "action:badges", b -> b.layout(l -> l.width(80f).height(30f)));
                 })).row();
-            })).row();
 
-            // 5. In-Place Language Combobox Dropdown Slot
-            t.slot("slot_lang", langTable -> {
-                langTable.background("button");
-                langTable.margin(10f);
-                langTable.layout(l -> l.growX().padBottom(8f));
-
+                // Language Combobox Row
                 String currentLang = resolveLanguageDisplay(model.language());
                 String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
 
-                langTable.add(Ui.table(btnRow -> {
+                pref.add(Ui.table(btnRow -> {
                     btnRow.layout(l -> l.growX());
                     btnRow.label(Text.t("player-settings-language"), l -> l.align("left").width(110f));
                     btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
@@ -351,7 +346,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 })).row();
 
                 if (model.langDropdownOpen()) {
-                    langTable.add(Ui.table(opts -> {
+                    pref.add(Ui.table(opts -> {
                         opts.layout(l -> l.growX().padTop(6f));
                         int col = 0;
                         for (LanguageOption opt : AVAILABLE_LANGUAGES) {
