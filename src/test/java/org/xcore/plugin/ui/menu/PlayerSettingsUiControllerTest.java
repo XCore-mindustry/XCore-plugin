@@ -93,7 +93,6 @@ class PlayerSettingsUiControllerTest {
         // Actions
         assertThat(dsl).contains("action:save");
         assertThat(dsl).contains("action:reset_nick");
-        assertThat(dsl).contains("action:close");
 
         // Language Combobox slot
         assertThat(dsl).contains("id: slot_lang");

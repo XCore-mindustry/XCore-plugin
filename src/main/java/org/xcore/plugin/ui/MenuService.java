@@ -229,7 +229,7 @@ public class MenuService {
         UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
-                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, true, ui);
+                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, false, ui);
             }
 
             @Override

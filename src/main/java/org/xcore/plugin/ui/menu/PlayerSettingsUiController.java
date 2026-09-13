@@ -321,7 +321,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             })).row();
 
             // 4. Preferences & Language Card (unified card with In-Place Language Combobox)
-            t.slot("slot_lang", pref -> {
+            t.add(Ui.table(pref -> {
                 pref.background("button");
                 pref.margin(10f);
                 pref.layout(l -> l.growX().padBottom(8f));
@@ -331,40 +331,44 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     inner.layout(l -> l.growX().padBottom(6f));
                     String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
                     inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
-                    inner.button(Text.raw("Edit"), "action:badges", b -> b.layout(l -> l.width(80f).height(30f)));
+                    inner.button(Text.t("event-menu-edit"), "action:badges", b -> b.layout(l -> l.width(90f).height(30f)));
                 })).row();
 
-                // Language Combobox Row
-                String currentLang = resolveLanguageDisplay(model.language());
-                String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
+                // Language Combobox Slot inside card
+                pref.slot("slot_lang", langSlot -> {
+                    langSlot.layout(l -> l.growX());
 
-                pref.add(Ui.table(btnRow -> {
-                    btnRow.layout(l -> l.growX());
-                    btnRow.label(Text.t("player-settings-language"), l -> l.align("left").width(110f));
-                    btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
-                            .layout(l -> l.growX().height(34f)));
-                })).row();
+                    String currentLang = resolveLanguageDisplay(model.language());
+                    String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
 
-                if (model.langDropdownOpen()) {
-                    pref.add(Ui.table(opts -> {
-                        opts.layout(l -> l.growX().padTop(6f));
-                        int col = 0;
-                        for (LanguageOption opt : AVAILABLE_LANGUAGES) {
-                            boolean isSel = opt.code().equals(model.language());
-                            opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
-                                    .style("togglet")
-                                    .checked(isSel)
-                                    .layout(l -> l.uniform().growX().height(32f).pad(2f)));
-                            col++;
-                            if (col % 2 == 0) {
-                                opts.row();
-                            }
-                        }
+                    langSlot.add(Ui.table(btnRow -> {
+                        btnRow.layout(l -> l.growX());
+                        btnRow.label(Text.t("player-settings-language"), l -> l.align("left").width(110f));
+                        btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
+                                .layout(l -> l.growX().height(34f)));
                     })).row();
-                }
-            }).row();
 
-            // 6. Dynamic Feedback Slot
+                    if (model.langDropdownOpen()) {
+                        langSlot.add(Ui.table(opts -> {
+                            opts.layout(l -> l.growX().padTop(6f));
+                            int col = 0;
+                            for (LanguageOption opt : AVAILABLE_LANGUAGES) {
+                                boolean isSel = opt.code().equals(model.language());
+                                opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
+                                        .style("togglet")
+                                        .checked(isSel)
+                                        .layout(l -> l.uniform().growX().height(32f).pad(2f)));
+                                col++;
+                                if (col % 2 == 0) {
+                                    opts.row();
+                                }
+                            }
+                        })).row();
+                    }
+                });
+            })).row();
+
+            // 5. Dynamic Feedback Slot
             t.slot("slot_feedback", fb -> {
                 fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
                 if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
@@ -372,14 +376,12 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 }
             }).row();
 
-            // 7. Action Footer Bar (clean two wide buttons)
+            // 6. Action Footer Bar
             t.add(Ui.table(f -> {
                 f.layout(l -> l.growX().padTop(4f));
                 f.button(Text.t("save"), "action:save", b -> b
                         .style("defaultt")
-                        .layout(l -> l.uniform().growX().height(40f).padRight(6f)));
-                f.button(Text.t("close"), "action:close", b -> b
-                        .layout(l -> l.uniform().growX().height(40f)));
+                        .layout(l -> l.growX().height(40f)));
             }));
         });
     }
