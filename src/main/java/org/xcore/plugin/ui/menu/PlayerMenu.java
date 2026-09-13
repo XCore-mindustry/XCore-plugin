@@ -80,34 +80,6 @@ public class PlayerMenu extends Menu {
             return;
         }
 
-        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
-            if (async != null) {
-                async.forPlayer(session.player, () -> {
-                    Integer hexedTop = session.playerDataRepository != null
-                            ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
-                            : null;
-                    PlayerStatsOverview stats = gameDataRepository != null
-                            ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
-                            : null;
-                    return new ProfileDataBundle(stats, hexedTop);
-                }, (player, bundle) -> {
-                    Session current = sessionService.get(uuid);
-                    if (current == null) return;
-                    openStatsUi(current, targetData, bundle.stats(), bundle.hexedTop());
-                });
-                return;
-            }
-
-            Integer hexedTop = session.playerDataRepository != null
-                    ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
-                    : null;
-            PlayerStatsOverview stats = gameDataRepository != null
-                    ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
-                    : null;
-            openStatsUi(session, targetData, stats, hexedTop);
-            return;
-        }
-
         if (async != null && session.player != null) {
             async.forPlayer(session.player, () -> {
                 Integer hexedTop = session.playerDataRepository != null
@@ -132,15 +104,6 @@ public class PlayerMenu extends Menu {
     }
 
     private record ProfileDataBundle(PlayerStatsOverview stats, Integer hexedTop) {}
-
-    public void openStatsUi(Session session, PlayerData targetData, PlayerStatsOverview stats, Integer hexedTop) {
-        if (session == null || session.player == null) return;
-        session.clear();
-
-        var controller = new PlayerStatsUiController(this, auditHistoryMenu, session, targetData);
-        var initialModel = PlayerStatsUiController.createModel(this, session, targetData, stats, hexedTop);
-        menuService.openUi(session, controller, initialModel);
-    }
 
     public void players(String uuid, int page) {
         Session session = sessionService.get(uuid);
