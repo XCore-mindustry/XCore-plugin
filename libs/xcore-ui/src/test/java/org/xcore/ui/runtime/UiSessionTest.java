@@ -145,4 +145,23 @@ class UiSessionTest {
         assertThat(gateway.actions).hasSize(4);
         assertThat(gateway.actions.get(3).type()).isEqualTo("HIDE");
     }
+
+    @Test
+    void dispatchDirectEventUpdatesModelAndPatchesSlots() {
+        MockDeliveryGateway gateway = new MockDeliveryGateway();
+        CounterController controller = new CounterController();
+        MockContext ctx = new MockContext();
+
+        UiSession<TestModel, TestEvent> session = UiSession.start(
+                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+        session.open();
+
+        session.dispatch(new TestEvent.Increment());
+
+        assertThat(gateway.actions).hasSize(2);
+        RecordedAction patchAction = gateway.actions.get(1);
+        assertThat(patchAction.type()).isEqualTo("UPDATE");
+        assertThat(patchAction.targetId()).isEqualTo("slot_counter");
+        assertThat(patchAction.dsl()).contains("Count: 1");
+    }
 }

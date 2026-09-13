@@ -77,10 +77,8 @@ public final class UiSession<Model, Event> {
         gateway.show(ctx.playerId(), token, compiled);
     }
 
-    /** Feeds a client result into the reducer and delivers render directives. */
-    public void handle(mindustry.ui.builder.MenuResult result) {
-        Objects.requireNonNull(result, "result");
-        Event event = controller.parseEvent(result);
+    /** Dispatches a domain event directly into the reducer (e.g. from async or push notifications). */
+    public void dispatch(Event event) {
         if (event == null) {
             return;
         }
@@ -103,6 +101,15 @@ public final class UiSession<Model, Event> {
         }
 
         patchSlots(update.dirtySlots());
+    }
+
+    /** Feeds a client result into the reducer and delivers render directives. */
+    public void handle(mindustry.ui.builder.MenuResult result) {
+        Objects.requireNonNull(result, "result");
+        Event event = controller.parseEvent(result);
+        if (event != null) {
+            dispatch(event);
+        }
     }
 
     private void patchSlots(List<SlotKey<?>> dirty) {
