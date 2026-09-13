@@ -72,6 +72,7 @@ dependencies {
     testImplementation(libs.flubundle)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
