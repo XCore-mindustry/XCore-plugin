@@ -3,6 +3,7 @@
 > A type-safe, reactive, server-driven UI framework for Mindustry v160 servers running on Java 25.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-0.1.0-blue.svg)](https://github.com/XCore-mindustry/xcore-ui/releases/tag/v0.1.0)
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)]()
 [![Mindustry](https://img.shields.io/badge/Mindustry-v160-green.svg)]()
 
@@ -34,7 +35,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.xcore:xcore-ui:0.1.0-SNAPSHOT")
+    compileOnly("org.xcore:xcore-ui:0.1.0")
     // Or implementation(...) if you shade it into your plugin jar
 }
 ```
@@ -48,14 +49,14 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'org.xcore:xcore-ui:0.1.0-SNAPSHOT'
+    compileOnly 'org.xcore:xcore-ui:0.1.0'
 }
 ```
 
 ### Version Catalog (`libs.versions.toml`)
 ```toml
 [versions]
-xcore-ui = "0.1.0-SNAPSHOT"
+xcore-ui = "0.1.0"
 
 [libraries]
 xcore-ui = { module = "org.xcore:xcore-ui", version.ref = "xcore-ui" }
