@@ -7,10 +7,10 @@ import org.xcore.ui.VNode;
  *
  * <p>A controller owns three pure artifacts:
  * <ul>
- *   <li>{@link #initialModel(Object)} — the starting state for a player;</li>
- *   <li>{@link #update(Object, Object, ControllerContext)} — a pure reducer
+ *   <li>{@link #initialModel(Object)}: the starting state for a player;</li>
+ *   <li>{@link #update(Object, Object, ControllerContext)}: a pure reducer
  *       mapping (model, event) to a new model plus render directives;</li>
- *   <li>{@link #render(Object)} — a pure view function model -> VNode.</li>
+ *   <li>{@link #render(Object)}: a pure view function model -> VNode.</li>
  * </ul>
  *
  * <p>Events are usually records parsed from {@code MenuResult}: a button click

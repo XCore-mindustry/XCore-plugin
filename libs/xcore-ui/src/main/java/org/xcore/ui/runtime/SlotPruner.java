@@ -9,7 +9,7 @@ import java.util.Set;
  * Removes nested dirty slots whose ancestor is also dirty.
  *
  * <p>When slot A and its descendant A/B are both flagged for update, patching A
- * re-creates A/B from scratch — sending the A/B patch would be redundant traffic
+ * re-creates A/B from scratch; sending the A/B patch would be redundant traffic
  * and could race the A patch on the client. The pruner keeps only the
  * outermost dirty slot per ancestry chain.
  *

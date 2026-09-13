@@ -11,15 +11,23 @@ import java.util.Objects;
  * {@code UiBuilder.NodeBuilder} trees ready for {@code Call.menuBuilder(...)}.
  *
  * <p>Text is resolved against the player's {@link LocalizerResolver} at this
- * point — the last moment before serialization — so localization stays lazy
+ * point (the final stage before serialization) so localization stays lazy
  * yet the wire format is fully concrete.
  */
 public final class VNodeCompiler {
 
     private final LocalizerResolver resolver;
 
+    public VNodeCompiler() {
+        this(LocalizerResolver.getDefault());
+    }
+
     public VNodeCompiler(LocalizerResolver resolver) {
-        this.resolver = resolver == null ? LocalizerResolver.IDENTITY : resolver;
+        this.resolver = resolver == null ? LocalizerResolver.getDefault() : resolver;
+    }
+
+    public LocalizerResolver resolver() {
+        return resolver;
     }
 
     /** Compiles a full dialog body. The result is a table-level builder. */

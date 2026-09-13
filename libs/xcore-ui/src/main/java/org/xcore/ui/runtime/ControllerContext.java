@@ -23,4 +23,12 @@ public interface ControllerContext {
     default void override(VNode node) {
         throw new UnsupportedOperationException("override not supported by this context");
     }
+
+    /**
+     * Updates the localization strategy for this session and triggers full re-render.
+     * Optional operation; host contexts may implement this to allow in-dialog language switching.
+     */
+    default void updateResolver(org.xcore.ui.LocalizerResolver resolver) {
+        // no-op by default
+    }
 }

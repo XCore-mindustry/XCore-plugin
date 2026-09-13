@@ -33,7 +33,7 @@ public final class UiSession<Model, Event> {
     private final UiController<Model, Event> controller;
     private final ControllerContext ctx;
     private final DeliveryGateway gateway;
-    private final VNodeCompiler compiler;
+    private volatile VNodeCompiler compiler;
     private final long token;
 
     private volatile Model model;
@@ -48,6 +48,17 @@ public final class UiSession<Model, Event> {
         this.model = model;
     }
 
+    /**
+     * Starts a new UI session using {@link LocalizerResolver#getDefault()}.
+     */
+    public static <Model, Event> UiSession<Model, Event> start(
+            UiController<Model, Event> controller,
+            Model initialModel,
+            ControllerContext ctx,
+            DeliveryGateway gateway) {
+        return start(controller, initialModel, ctx, gateway, LocalizerResolver.getDefault());
+    }
+
     public static <Model, Event> UiSession<Model, Event> start(
             UiController<Model, Event> controller,
             Model initialModel,
@@ -57,9 +68,18 @@ public final class UiSession<Model, Event> {
         Objects.requireNonNull(controller, "controller");
         Objects.requireNonNull(ctx, "ctx");
         Objects.requireNonNull(gateway, "gateway");
-        VNodeCompiler compiler = new VNodeCompiler(resolver);
+        VNodeCompiler compiler = new VNodeCompiler(resolver != null ? resolver : LocalizerResolver.getDefault());
         long token = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         return new UiSession<>(controller, ctx, gateway, compiler, token, initialModel);
+    }
+
+    /**
+     * Updates the localization resolver for this session and fully re-renders the dialog.
+     * Useful when a player changes their language while a dialog is active.
+     */
+    public void updateResolver(LocalizerResolver resolver) {
+        this.compiler = new VNodeCompiler(resolver != null ? resolver : LocalizerResolver.getDefault());
+        open();
     }
 
     public long token() {

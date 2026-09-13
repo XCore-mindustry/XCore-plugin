@@ -164,4 +164,24 @@ class UiSessionTest {
         assertThat(patchAction.targetId()).isEqualTo("slot_counter");
         assertThat(patchAction.dsl()).contains("Count: 1");
     }
+
+    @Test
+    void sessionDefaultsToGlobalResolverAndCanUpdateResolver() {
+        MockDeliveryGateway gateway = new MockDeliveryGateway();
+        CounterController controller = new CounterController();
+        MockContext ctx = new MockContext();
+
+        // 1. Start without explicit resolver -> uses default (IDENTITY)
+        UiSession<TestModel, TestEvent> session = UiSession.start(
+                controller, controller.initialModel(null), ctx, gateway);
+        session.open();
+        assertThat(gateway.actions).hasSize(1);
+        assertThat(gateway.actions.get(0).type()).isEqualTo("SHOW");
+
+        // 2. Update resolver -> triggers full re-render (SHOW) with new translation
+        LocalizerResolver customResolver = (key, args) -> "trans:" + key;
+        session.updateResolver(customResolver);
+        assertThat(gateway.actions).hasSize(2);
+        assertThat(gateway.actions.get(1).type()).isEqualTo("SHOW");
+    }
 }
