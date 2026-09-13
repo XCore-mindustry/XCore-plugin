@@ -254,7 +254,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
             // 1. Centered Header with Accent title
             t.add(Ui.table(h -> {
-                h.layout(l -> l.growX().padBottom(8f));
+                h.layout(l -> l.width(520f).padBottom(8f));
                 h.label(Text.t("player-menu-settings-title"), l -> l.align("center").growX());
             })).row();
 
@@ -262,7 +262,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.add(Ui.table(p -> {
                 p.background("button");
                 p.margin(10f);
-                p.layout(l -> l.growX().padBottom(8f));
+                p.layout(l -> l.width(520f).padBottom(8f));
 
                 // Vanilla Name info row
                 p.add(Ui.table(row -> {
@@ -302,7 +302,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.add(Ui.table(toggles -> {
                 toggles.background("button");
                 toggles.margin(10f);
-                toggles.layout(l -> l.align("left").growX().padBottom(8f));
+                toggles.layout(l -> l.align("left").width(520f).padBottom(8f));
 
                 toggles.check(Text.t("player-settings-global-chat"), c -> c
                         .id("check_global_chat")
@@ -324,14 +324,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.add(Ui.table(pref -> {
                 pref.background("button");
                 pref.margin(10f);
-                pref.layout(l -> l.growX().padBottom(8f));
+                pref.layout(l -> l.width(520f).padBottom(8f));
 
                 // Badges row
                 pref.add(Ui.table(inner -> {
                     inner.layout(l -> l.growX().padBottom(6f));
                     String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
                     inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
-                    inner.button(Text.t("event-menu-edit"), "action:badges", b -> b.layout(l -> l.width(90f).height(30f)));
+                    inner.button(Text.t("event-menu-edit"), "action:badges", b -> b.layout(l -> l.width(110f).height(30f)));
                 })).row();
 
                 // Language Combobox Slot inside card
@@ -370,7 +370,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
             // 5. Dynamic Feedback Slot
             t.slot("slot_feedback", fb -> {
-                fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
+                fb.layout(l -> l.width(520f).minHeight(20f).padBottom(4f));
                 if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 }
@@ -378,7 +378,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
             // 6. Action Footer Bar
             t.add(Ui.table(f -> {
-                f.layout(l -> l.growX().padTop(4f));
+                f.layout(l -> l.width(520f).padTop(4f));
                 f.button(Text.t("save"), "action:save", b -> b
                         .style("defaultt")
                         .layout(l -> l.growX().height(40f)));
