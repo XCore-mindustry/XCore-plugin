@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import arc.util.Strings;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.PlayerProfileSettingsService;
@@ -20,14 +21,30 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Reactive player settings screen utilizing xcore-ui forms, lenses, and inline field controls.
+ * Modern reactive player settings screen utilizing xcore-ui forms, inline fields,
+ * and an in-place language combobox.
  *
- * <p>Eliminates blocking modal {@code textInput} popups in Mindustry v160 by batching
- * text field and checkbox values into {@link MenuResult#values} upon discrete actions.
+ * <p>Eliminates modal {@code textInput} popups and multi-screen submenus by allowing
+ * in-dialog editing of nickname, description, checkboxes, and language selection.
  */
 public class PlayerSettingsUiController implements UiController<PlayerSettingsUiController.SettingsModel, PlayerSettingsUiController.SettingsEvent> {
 
     public static final SlotKey<Object> SLOT_FEEDBACK = SlotKey.of("slot_feedback");
+    public static final SlotKey<Object> SLOT_LANG = SlotKey.of("slot_lang");
+
+    public record LanguageOption(String code, String displayName) {}
+
+    public static final List<LanguageOption> AVAILABLE_LANGUAGES = List.of(
+            new LanguageOption("auto", "Auto"),
+            new LanguageOption("uk_UA", "Українська"),
+            new LanguageOption("ru", "Русский"),
+            new LanguageOption("en", "English"),
+            new LanguageOption("pl", "Polski"),
+            new LanguageOption("de", "Deutsch"),
+            new LanguageOption("es", "Español"),
+            new LanguageOption("fr", "Français"),
+            new LanguageOption("be", "Беларуская")
+    );
 
     private final PlayerMenu menu;
     private final PlayerProfileSettingsService profileSettings;
@@ -80,31 +97,40 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             boolean leaderboard,
             String activeBadge,
             String language,
+            boolean langDropdownOpen,
             String feedbackMessage,
             boolean isSuccess
     ) {
         public SettingsModel withCustomNickname(String nick) {
-            return new SettingsModel(targetUuid, nickname, nick, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, feedbackMessage, isSuccess);
+            return new SettingsModel(targetUuid, nickname, nick, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, langDropdownOpen, feedbackMessage, isSuccess);
         }
 
         public SettingsModel withDescription(String desc) {
-            return new SettingsModel(targetUuid, nickname, customNickname, desc, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, feedbackMessage, isSuccess);
+            return new SettingsModel(targetUuid, nickname, customNickname, desc, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, langDropdownOpen, feedbackMessage, isSuccess);
         }
 
         public SettingsModel withGlobalChatVisible(boolean visible) {
-            return new SettingsModel(targetUuid, nickname, customNickname, description, visible, discordRelayVisible, leaderboard, activeBadge, language, feedbackMessage, isSuccess);
+            return new SettingsModel(targetUuid, nickname, customNickname, description, visible, discordRelayVisible, leaderboard, activeBadge, language, langDropdownOpen, feedbackMessage, isSuccess);
         }
 
         public SettingsModel withDiscordRelayVisible(boolean visible) {
-            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, visible, leaderboard, activeBadge, language, feedbackMessage, isSuccess);
+            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, visible, leaderboard, activeBadge, language, langDropdownOpen, feedbackMessage, isSuccess);
         }
 
         public SettingsModel withLeaderboard(boolean lb) {
-            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, lb, activeBadge, language, feedbackMessage, isSuccess);
+            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, lb, activeBadge, language, langDropdownOpen, feedbackMessage, isSuccess);
+        }
+
+        public SettingsModel withLanguage(String lang) {
+            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, lang, langDropdownOpen, feedbackMessage, isSuccess);
+        }
+
+        public SettingsModel withLangDropdownOpen(boolean open) {
+            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, open, feedbackMessage, isSuccess);
         }
 
         public SettingsModel withFeedback(String msg, boolean success) {
-            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, msg, success);
+            return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible, discordRelayVisible, leaderboard, activeBadge, language, langDropdownOpen, msg, success);
         }
     }
 
@@ -112,7 +138,8 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         record Save(MenuResult result) implements SettingsEvent {}
         record ResetNickname() implements SettingsEvent {}
         record OpenBadges() implements SettingsEvent {}
-        record OpenLanguage() implements SettingsEvent {}
+        record ToggleLanguageDropdown() implements SettingsEvent {}
+        record SelectLanguage(String code) implements SettingsEvent {}
         record Close() implements SettingsEvent {}
     }
 
@@ -130,9 +157,22 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 targetData.leaderboard,
                 targetData.activeBadge != null ? targetData.activeBadge : "",
                 targetData.language != null ? targetData.language : "auto",
+                false,
                 "",
                 false
         );
+    }
+
+    public static String resolveLanguageDisplay(String code) {
+        if (code == null || code.isBlank() || "auto".equalsIgnoreCase(code)) {
+            return "Auto";
+        }
+        for (LanguageOption opt : AVAILABLE_LANGUAGES) {
+            if (opt.code().equalsIgnoreCase(code)) {
+                return opt.displayName();
+            }
+        }
+        return code;
     }
 
     @Override
@@ -165,6 +205,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     profileSettings.updateGlobalChatVisible(targetData, updated.globalChatVisible());
                     profileSettings.updateDiscordRelayVisible(targetData, updated.discordRelayVisible());
                     profileSettings.updateLeaderboard(targetData, updated.leaderboard());
+                    profileSettings.updateLanguage(targetData, updated.language());
                 }
 
                 String successMsg = session != null && session.locale() != null
@@ -183,18 +224,16 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 yield UpdateResult.rerender(model.withCustomNickname("").withFeedback(resetMsg, true));
             }
 
+            case SettingsEvent.ToggleLanguageDropdown() ->
+                    UpdateResult.patch(model.withLangDropdownOpen(!model.langDropdownOpen()), SLOT_LANG);
+
+            case SettingsEvent.SelectLanguage(var code) ->
+                    UpdateResult.patch(model.withLanguage(code).withLangDropdownOpen(false), SLOT_LANG);
+
             case SettingsEvent.OpenBadges() -> {
                 ctx.close();
                 if (menu != null && session != null && session.player != null) {
                     menu.badges(session.player.uuid(), targetData);
-                }
-                yield UpdateResult.close(model);
-            }
-
-            case SettingsEvent.OpenLanguage() -> {
-                ctx.close();
-                if (menu != null && session != null && session.player != null) {
-                    menu.languageSelectionMenu(session.player.uuid(), targetData, false);
                 }
                 yield UpdateResult.close(model);
             }
@@ -213,10 +252,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.margin(14f);
             t.layout(l -> l.width(480f).pad(6f));
 
-            // 1. Header with title
+            // 1. Centered Header with Accent title
             t.add(Ui.table(h -> {
                 h.layout(l -> l.growX().padBottom(8f));
-                h.label(Text.t("player-menu-settings-title"), l -> l.align("left").growX());
+                h.label(Text.t("player-menu-settings-title"), l -> l.align("center").growX());
             })).row();
 
             // 2. Profile input section
@@ -232,11 +271,22 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                             l -> l.align("left").growX());
                 })).row();
 
-                // Custom Nickname
-                p.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").padBottom(2f)).row();
+                // Custom Nickname header with inline Reset button
+                p.add(Ui.table(nickHeader -> {
+                    nickHeader.layout(l -> l.growX().padBottom(2f));
+                    nickHeader.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").growX());
+                    nickHeader.button(Text.t("player-menu-settings-customNickname-reset"), "action:reset_nick", b -> b
+                            .layout(l -> l.height(24f).padLeft(6f)));
+                })).row();
+
+                String rawHint = session != null && session.locale() != null
+                        ? session.locale().t("player-menu-settings-customNickname-message")
+                        : "Leave blank to reset";
+                String cleanHint = Strings.stripColors(rawHint);
+
                 p.field("field_nickname", f -> f
                         .value(model.customNickname())
-                        .hint(Text.t("player-menu-settings-customNickname-message"))
+                        .hint(cleanHint)
                         .maxLength(40)
                         .layout(l -> l.growX().padBottom(6f))).row();
 
@@ -248,7 +298,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                         .layout(l -> l.growX())).row();
             })).row();
 
-            // 3. Toggles section (chat & leaderboard)
+            // 3. Toggles section (strictly left-aligned without center stretch)
             t.add(Ui.table(toggles -> {
                 toggles.background("button");
                 toggles.margin(10f);
@@ -257,46 +307,84 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 toggles.check(Text.t("player-settings-global-chat"), c -> c
                         .id("check_global_chat")
                         .checked(model.globalChatVisible())
-                        .layout(l -> l.align("left").growX().padBottom(4f))).row();
+                        .layout(l -> l.align("left").padBottom(4f))).row();
 
                 toggles.check(Text.t("player-settings-discord-relay"), c -> c
                         .id("check_discord_relay")
                         .checked(model.discordRelayVisible())
-                        .layout(l -> l.align("left").growX().padBottom(4f))).row();
+                        .layout(l -> l.align("left").padBottom(4f))).row();
 
                 toggles.check(Text.t("player-settings-leaderboard"), c -> c
                         .id("check_leaderboard")
                         .checked(model.leaderboard())
-                        .layout(l -> l.align("left").growX()));
+                        .layout(l -> l.align("left")));
             })).row();
 
-            // 4. Submenus row (Badges & Language)
-            t.add(Ui.table(sub -> {
-                sub.layout(l -> l.growX().padBottom(8f));
-                sub.button(Text.t("player-menu-settings-badges"), "action:badges", b -> b
-                        .layout(l -> l.uniform().growX().height(36f).padRight(4f)));
-                sub.button(Text.t("player-settings-language"), "action:language", b -> b
-                        .layout(l -> l.uniform().growX().height(36f)));
+            // 4. Badges Card
+            t.add(Ui.table(bRow -> {
+                bRow.background("button");
+                bRow.margin(10f);
+                bRow.layout(l -> l.growX().padBottom(8f));
+
+                bRow.add(Ui.table(inner -> {
+                    inner.layout(l -> l.growX());
+                    String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
+                    inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
+                    inner.button(Text.raw("Edit"), "action:badges", b -> b.layout(l -> l.width(80f).height(30f)));
+                })).row();
             })).row();
 
-            // 5. Dynamic Feedback Slot
+            // 5. In-Place Language Combobox Dropdown Slot
+            t.slot("slot_lang", langTable -> {
+                langTable.background("button");
+                langTable.margin(10f);
+                langTable.layout(l -> l.growX().padBottom(8f));
+
+                String currentLang = resolveLanguageDisplay(model.language());
+                String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
+
+                langTable.add(Ui.table(btnRow -> {
+                    btnRow.layout(l -> l.growX());
+                    btnRow.label(Text.t("player-settings-language"), l -> l.align("left").width(110f));
+                    btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
+                            .layout(l -> l.growX().height(34f)));
+                })).row();
+
+                if (model.langDropdownOpen()) {
+                    langTable.add(Ui.table(opts -> {
+                        opts.layout(l -> l.growX().padTop(6f));
+                        int col = 0;
+                        for (LanguageOption opt : AVAILABLE_LANGUAGES) {
+                            boolean isSel = opt.code().equals(model.language());
+                            opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
+                                    .style("togglet")
+                                    .checked(isSel)
+                                    .layout(l -> l.uniform().growX().height(32f).pad(2f)));
+                            col++;
+                            if (col % 2 == 0) {
+                                opts.row();
+                            }
+                        }
+                    })).row();
+                }
+            }).row();
+
+            // 6. Dynamic Feedback Slot
             t.slot("slot_feedback", fb -> {
-                fb.layout(l -> l.growX().minHeight(22f).padBottom(4f));
+                fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
                 if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 }
             }).row();
 
-            // 6. Action Footer Bar
+            // 7. Action Footer Bar (clean two wide buttons)
             t.add(Ui.table(f -> {
-                f.layout(l -> l.growX());
+                f.layout(l -> l.growX().padTop(4f));
                 f.button(Text.t("save"), "action:save", b -> b
                         .style("defaultt")
-                        .layout(l -> l.uniform().growX().height(38f).padRight(4f)));
-                f.button(Text.t("player-menu-settings-customNickname-reset"), "action:reset_nick", b -> b
-                        .layout(l -> l.uniform().growX().height(38f).padRight(4f)));
+                        .layout(l -> l.uniform().growX().height(40f).padRight(6f)));
                 f.button(Text.t("close"), "action:close", b -> b
-                        .layout(l -> l.uniform().growX().height(38f)));
+                        .layout(l -> l.uniform().growX().height(40f)));
             }));
         });
     }
@@ -304,13 +392,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     @Override
     public SettingsEvent parseEvent(MenuResult result) {
         if (result == null || result.result == null) return null;
-        return switch (result.result) {
-            case "action:save" -> new SettingsEvent.Save(result);
-            case "action:reset_nick" -> new SettingsEvent.ResetNickname();
-            case "action:badges" -> new SettingsEvent.OpenBadges();
-            case "action:language" -> new SettingsEvent.OpenLanguage();
-            case "action:close" -> new SettingsEvent.Close();
-            default -> null;
-        };
+        if ("action:save".equals(result.result)) return new SettingsEvent.Save(result);
+        if ("action:reset_nick".equals(result.result)) return new SettingsEvent.ResetNickname();
+        if ("action:badges".equals(result.result)) return new SettingsEvent.OpenBadges();
+        if ("action:toggle_lang".equals(result.result)) return new SettingsEvent.ToggleLanguageDropdown();
+        if (result.result.startsWith("action:select_lang:")) {
+            return new SettingsEvent.SelectLanguage(result.result.substring("action:select_lang:".length()));
+        }
+        if ("action:close".equals(result.result)) return new SettingsEvent.Close();
+        return null;
     }
 }

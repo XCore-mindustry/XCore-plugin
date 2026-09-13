@@ -95,8 +95,64 @@ class PlayerSettingsUiControllerTest {
         assertThat(dsl).contains("action:reset_nick");
         assertThat(dsl).contains("action:close");
 
+        // Language Combobox slot
+        assertThat(dsl).contains("id: slot_lang");
+        assertThat(dsl).contains("action:toggle_lang");
+
         // Feedback slot
         assertThat(dsl).contains("id: slot_feedback");
+    }
+
+    @Test
+    @DisplayName("toggleLanguageDropdown patches slot_lang and inverts open state")
+    void toggleLanguageDropdown_patchesSlotLang() {
+        Session session = createTestSession("uuid-1");
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, null, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(
+                model, new PlayerSettingsUiController.SettingsEvent.ToggleLanguageDropdown(), null
+        );
+
+        assertThat(result.model().langDropdownOpen()).isTrue();
+        assertThat(result.dirtySlots()).containsExactly(PlayerSettingsUiController.SLOT_LANG);
+        assertThat(result.fullRerender()).isFalse();
+    }
+
+    @Test
+    @DisplayName("selectLanguage patches slot_lang, sets language and closes dropdown")
+    void selectLanguage_patchesSlotLangAndUpdatesLanguage() {
+        Session session = createTestSession("uuid-1");
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, null, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data)
+                .withLangDropdownOpen(true);
+
+        UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(
+                model, new PlayerSettingsUiController.SettingsEvent.SelectLanguage("uk_UA"), null
+        );
+
+        assertThat(result.model().language()).isEqualTo("uk_UA");
+        assertThat(result.model().langDropdownOpen()).isFalse();
+        assertThat(result.dirtySlots()).containsExactly(PlayerSettingsUiController.SLOT_LANG);
+        assertThat(result.fullRerender()).isFalse();
+    }
+
+    @Test
+    @DisplayName("render with langDropdownOpen=true renders language option buttons")
+    void render_withLangDropdownOpen_rendersOptionButtons() {
+        Session session = createTestSession("uuid-1");
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, null, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data)
+                .withLangDropdownOpen(true);
+
+        VNode root = controller.render(model);
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        String dsl = UiDslWriter.write(compiler.compile(root));
+
+        assertThat(dsl).contains("action:select_lang:uk_UA");
+        assertThat(dsl).contains("action:select_lang:ru");
+        assertThat(dsl).contains("action:select_lang:en");
+        assertThat(dsl).contains("Українська");
     }
 
     @Test
@@ -214,8 +270,11 @@ class PlayerSettingsUiControllerTest {
         MenuResult badgesRes = new MenuResult("action:badges");
         assertThat(controller.parseEvent(badgesRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.OpenBadges.class);
 
-        MenuResult langRes = new MenuResult("action:language");
-        assertThat(controller.parseEvent(langRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.OpenLanguage.class);
+        MenuResult toggleLangRes = new MenuResult("action:toggle_lang");
+        assertThat(controller.parseEvent(toggleLangRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.ToggleLanguageDropdown.class);
+
+        MenuResult selectLangRes = new MenuResult("action:select_lang:uk_UA");
+        assertThat(controller.parseEvent(selectLangRes)).isEqualTo(new PlayerSettingsUiController.SettingsEvent.SelectLanguage("uk_UA"));
 
         MenuResult closeRes = new MenuResult("action:close");
         assertThat(controller.parseEvent(closeRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.Close.class);
