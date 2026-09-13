@@ -20,14 +20,14 @@ In Mindustry v160, upstream introduced a major leap in server-driven interface c
 Legacy menus (`Call.menu`, `Call.followUpMenu`, `Call.textInput`) and naive imperative wrappers suffer from severe design flaws:
 1. **Dialog Flicker & Focus Destruction**: Any state update (e.g. toggling a checkbox, dragging a slider, incrementing a counter) required tearing down and re-sending the whole dialog window. This resets scrollbar positions, destroys text field focus, and causes client screen flashes.
 2. **Untyped Magic Strings & Runtime Casts**: Inputs rely on loose string IDs (`result.values.get("f_nick")`) and unchecked casting, leading to `ClassCastException` and silent runtime breakage during refactorings.
-3. **Bandwidth Saturation & Redundant Wire Traffic**: Rebuilding full dialog matrices transfers several kilobytes per click, whereas partial updates should only transmit changed subtrees (20–80 bytes).
+3. **Bandwidth Saturation & Redundant Wire Traffic**: Rebuilding full dialog matrices transfers several kilobytes per click, whereas partial updates should only transmit changed subtrees (20-80 bytes).
 4. **Lack of Asset Lifecycle Management**: Streaming PNGs without connection delivery tracking results in duplicate transmissions and client VRAM leaks.
 5. **Rigid Compilation Cycles**: Modifying static announcements, server rules, or layout margins required recompiling the plugin JAR and rebooting servers.
 
 ### 1.3 The XUI Synthesis: Best of Three Paradigms
 `Xcore-UI` (XUI) is an independent Java 25 library that unifies three distinct software architectures:
 - **Paradigm 1 (Reactive Component Model)**: Encapsulated reusable components (`Component<Props>`), deterministic hierarchical keying (`_r/0/1`), pure virtual DOM AST (`VNode`), and topological dirty-tree pruning (`SlotPruner`).
-- **Paradigm 2 (Type-Safe Fluent DSL with Record Lenses & Zero-Allocation)**: Immutable Java 25 record models, functional optics lenses (`Lens<S, V>`), pattern-matching `ValueCodec<T>`, declarative `Validators`, lazy localized `Text` AST for FluBundle, and content-addressable `TextureRegistry`.
+- **Paradigm 2 (Type-Safe Fluent DSL with Record Lenses & Zero-Allocation)**: Immutable Java 25 record models, functional optics lenses (`Lens<S, V>`), pattern-matching `ValueCodec<T>`, declarative `Validators`, lazy localized `Text` AST for pluggable bundles (Arc I18NBundle, FluBundle, or custom), and content-addressable `TextureRegistry`.
 - **Paradigm 3 (Server-Driven UI, Elm Controller & Hot-Reloadable Templates)**: Unidirectional Model-View-Update (Elm / MVI) controllers (`(Model, Event) -> UpdateResult<Model>`), atomic in-place sub-tree patching (`Call.menuBuilderUpdate`), and external `.msui` template hot-reloading via Java NIO `WatchService`.
 
 ---
@@ -126,23 +126,31 @@ public sealed interface VNode permits
 To prevent premature string allocations and guarantee that UI text automatically matches the player's active language, strings are represented as lazy `Text` descriptors:
 
 ```java
-public sealed interface Text {
-    String resolve(BundleContext context);
+public sealed interface Text permits Text.Raw, Text.Localized, Text.Positional, Text.Joined {
+    String resolve(LocalizerResolver resolver);
 
     static Text empty() { return new Raw(""); }
     static Text raw(String text) { return new Raw(text == null ? "" : text); }
     static Text t(String key) { return new Localized(key, Map.of()); }
     static Text t(String key, Map<String, Object> args) { return new Localized(key, args); }
+    static Text pos(String key, Object... args) { return new Positional(key, args); }
 
     record Raw(String value) implements Text {
         @Override
-        public String resolve(BundleContext context) { return value; }
+        public String resolve(LocalizerResolver resolver) { return value; }
     }
 
     record Localized(String key, Map<String, Object> args) implements Text {
         @Override
-        public String resolve(BundleContext context) {
-            return context != null ? context.format(key, args) : key;
+        public String resolve(LocalizerResolver resolver) {
+            return resolver != null ? resolver.format(key, args) : key;
+        }
+    }
+
+    record Positional(String key, Object[] args) implements Text {
+        @Override
+        public String resolve(LocalizerResolver resolver) {
+            return resolver != null ? resolver.formatPositional(key, args) : key;
         }
     }
 }
