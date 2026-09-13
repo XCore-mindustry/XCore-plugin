@@ -4,6 +4,7 @@ import io.avaje.inject.PostConstruct;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import mindustry.ui.Menus;
+import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.ui.flow.ActiveMenuPrompt;
@@ -15,8 +16,12 @@ import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.ui.flow.MenuPrompt;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
+import org.xcore.plugin.ui.flow.MenuScreenToUiAdapter;
 import org.xcore.plugin.ui.route.MenuRoute;
 import org.xcore.plugin.ui.route.RoutedMenuFlow;
+import org.xcore.ui.LocalizerResolver;
+import org.xcore.ui.VNode;
+import org.xcore.ui.VNodeCompiler;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +38,7 @@ public class MenuService {
 
     private int globalMenuId;
     private int globalTextId;
+    private int globalMenuBuilderId;
 
     public interface MenuLifecycleListener {
         default void onMenuOpened(Session session) {}
@@ -57,6 +63,12 @@ public class MenuService {
             Session session = sessionService.get().get(player.uuid());
             onTextInput(session, text);
         });
+
+        this.globalMenuBuilderId = Menus.registerMenuBuilder((player, result) -> {
+            if (player == null) return;
+            Session session = sessionService.get().get(player.uuid());
+            onMenuBuilderResult(session, result);
+        });
     }
 
     public int getMenuId() {
@@ -65,6 +77,10 @@ public class MenuService {
 
     public int getTextId() {
         return globalTextId;
+    }
+
+    public int getMenuBuilderId() {
+        return globalMenuBuilderId;
     }
 
     public void addListener(MenuLifecycleListener listener) {
@@ -153,6 +169,33 @@ public class MenuService {
         } else {
             gateway.menu(session.player, globalMenuId, screen.title(), screen.content(), buttons);
         }
+    }
+
+    public void showUi(Session session, VNode node, String title) {
+        if (session == null || session.player == null || session.player.con == null) return;
+
+        long version = session.nextUiVersion();
+        notifyMenuOpened(session);
+
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        var compiled = compiler.compile(node);
+        gateway.menuBuilder(session.player, globalMenuBuilderId, version, title, true, true, false, compiled);
+    }
+
+    public <TState> void showUi(Session session, MenuScreen screen, MenuFlow<TState> flow, TState state, MenuRoute route) {
+        if (session == null || session.player == null || session.player.con == null) return;
+
+        long version = session.nextUiVersion();
+        List<MenuAction> actions = screen.toActions();
+        List<String> actionIds = screen.rows().stream()
+                .flatMap(row -> row.stream().map(MenuButton::actionId))
+                .toList();
+        var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds, route);
+        session.setActiveScreen(active);
+        notifyMenuOpened(session);
+
+        var compiled = MenuScreenToUiAdapter.compile(screen);
+        gateway.menuBuilder(session.player, globalMenuBuilderId, version, screen.title(), true, true, false, compiled);
     }
 
     public <TState> void renderFlow(Session session, MenuFlow<TState> flow) {
@@ -342,6 +385,33 @@ public class MenuService {
 
         if (option >= 0 && option < session.actions.size()) {
             session.actions.get(option).run();
+        }
+    }
+
+    // Package-private for testing
+    void onMenuBuilderResult(Session session, MenuResult result) {
+        if (session == null || session.data == null || result == null) return;
+
+        if (result.wasCancelled()) {
+            onMenuOption(session, -1);
+            return;
+        }
+
+        if (result.result != null) {
+            try {
+                int option = Integer.parseInt(result.result);
+                onMenuOption(session, option);
+                return;
+            } catch (NumberFormatException ignored) {
+            }
+
+            var screen = session.activeScreen();
+            if (screen != null) {
+                int index = screen.actionIds().indexOf(result.result);
+                if (index >= 0) {
+                    onMenuOption(session, index);
+                }
+            }
         }
     }
 

@@ -50,6 +50,7 @@ val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl
     .orElse("https://maven.x-core.org/releases")
 
 repositories {
+    mavenLocal()
     maven { url = uri("https://maven.x-core.org/snapshots") }
     maven { url = uri("https://maven.x-core.org/releases") }
     mavenCentral()
@@ -66,6 +67,7 @@ dependencies {
     compileOnly(toxopid.dependencies.mindustryHeadless)
     implementation(libs.xcore.protocol.java)
     implementation(libs.flubundle)
+    implementation(libs.xcore.ui)
     implementation(libs.cloud.mindustry)
     implementation(libs.mongodb.sync)
     implementation(libs.mongodb.reactive)

@@ -87,4 +87,12 @@ public class ActiveMenuScreen {
         }
         return actionIds.get(index);
     }
+
+    public List<String> actionIds() {
+        return actionIds;
+    }
+
+    public int indexOfActionId(String actionId) {
+        return actionIds.indexOf(actionId);
+    }
 }

@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui;
 
 import mindustry.gen.Player;
+import mindustry.ui.builder.UiBuilder.NodeBuilder;
 
 public interface MindustryMenuGateway {
     void menu(Player player, int menuId, String title, String content, String[][] buttons);
@@ -14,4 +15,10 @@ public interface MindustryMenuGateway {
     void openUri(Player player, String uri);
 
     void copyToClipboard(Player player, String text);
+
+    void menuBuilder(Player player, int menuId, long token, String title, boolean hideOnClick, boolean hideExisting, boolean fillScreen, NodeBuilder<?> ui);
+
+    void menuBuilderUpdate(Player player, int menuId, String tableId, NodeBuilder<?> ui);
+
+    void hideMenuBuilder(Player player, int menuId);
 }
