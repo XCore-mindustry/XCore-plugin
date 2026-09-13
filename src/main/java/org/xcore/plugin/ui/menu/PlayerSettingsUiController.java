@@ -379,13 +379,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 }
             }).row();
 
-            // 6. Action Footer Bar
-            t.add(Ui.table(f -> {
-                f.layout(l -> l.growX().padTop(2f));
-                f.button(Text.join(Text.raw("[accent]"), Text.t("save")), "action:save", b -> b
-                        .style("cleart")
-                        .layout(l -> l.growX().height(38f)));
-            }));
+            // 6. Action: Save (full-width borderless hitbox)
+            t.button(Text.join(Text.raw("[accent]"), Text.t("save")), "action:save", b -> b
+                    .style("cleart")
+                    .layout(l -> l.growX().fillX().height(44f).padTop(2f)));
         });
     }
 
