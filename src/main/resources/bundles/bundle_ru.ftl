@@ -413,6 +413,37 @@ player-menu-player-content =
     { "" }
     [accent]■ Боевая эффективность[]
     [gray]Блоки (Стр/Разб/Уничт): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+
+# Modern Player Stats UI
+player-stats-tab-overview = Обзор
+player-stats-tab-matches = Матчи
+player-stats-tab-blocks = Блоки
+
+player-stats-account-created = [gray]Регистрация:[]
+player-stats-play-time = [gray]Время в игре:[]
+player-stats-pvp-rating = [gray]MiniPvP:[]
+player-stats-hexed-rank = [gray]Бывший Hexed:[]
+player-stats-hexed-leaderboard = [gray]Топ Hexed:[]
+
+player-stats-total-games = [gray]Всего игр:[]
+player-stats-victories = [gray]Победы:[]
+player-stats-pvp-summary = [gray]PvP:[]
+player-stats-survival-summary = [gray]Выживание:[]
+player-stats-hexed-summary = [gray]Бывший Hexed:[]
+
+player-stats-blocks-built = [gray]Построено:[]
+player-stats-blocks-deconstructed = [gray]Разобрано:[]
+player-stats-blocks-destroyed = [gray]Уничтожено:[]
+
+player-stats-games-played-value = [white]{ $count }[] [gray]игр[]
+player-stats-victories-value = [lime]{ $wins }[] [gray]побед[]  [darkgray]|[]  [sky]{ $winRate }%[] [gray]винрейт[]
+player-stats-hexed-points = [gray]({ $points } очк.)[]
+
+player-stats-btn-settings = Настройки
+player-stats-btn-audit = Аудит
+player-stats-btn-players = Онлайн
+player-stats-btn-close = Закрыть
+player-stats-admin-tag = [coral]<Админ>[]
 player-menu-players = Онлайн игроки
 player-menu-players-title = [orange]{ -xcore } — Онлайн игроки
 player-menu-players-content = [white]Страница [green]{ $page }[] из [green]{ $total }[]

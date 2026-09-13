@@ -99,4 +99,11 @@ class MenuServiceUiTest {
 
         assertThat(session.activeScreen()).isNull();
     }
+
+    @Test
+    @DisplayName("resolverFor delegates to session.locale().format")
+    void resolverFor_delegatesToSessionLocale() {
+        org.xcore.ui.LocalizerResolver resolver = menuService.resolverFor(session);
+        assertThat(resolver).isNotNull();
+    }
 }

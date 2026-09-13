@@ -384,6 +384,37 @@ player-menu-player-content =
     { "" }
     [accent]■ Бойова ефективність[]
     [gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+
+# Modern Player Stats UI
+player-stats-tab-overview = Огляд
+player-stats-tab-matches = Матчі
+player-stats-tab-blocks = Блоки
+
+player-stats-account-created = [gray]Реєстрація:[]
+player-stats-play-time = [gray]Час у грі:[]
+player-stats-pvp-rating = [gray]MiniPvP:[]
+player-stats-hexed-rank = [gray]Колишній Hexed:[]
+player-stats-hexed-leaderboard = [gray]Топ Hexed:[]
+
+player-stats-total-games = [gray]Всього ігор:[]
+player-stats-victories = [gray]Перемоги:[]
+player-stats-pvp-summary = [gray]PvP:[]
+player-stats-survival-summary = [gray]Виживання:[]
+player-stats-hexed-summary = [gray]Колишній Hexed:[]
+
+player-stats-blocks-built = [gray]Побудовано:[]
+player-stats-blocks-deconstructed = [gray]Розібрано:[]
+player-stats-blocks-destroyed = [gray]Знищено:[]
+
+player-stats-games-played-value = [white]{ $count }[] [gray]ігор[]
+player-stats-victories-value = [lime]{ $wins }[] [gray]перемог[]  [darkgray]|[]  [sky]{ $winRate }%[] [gray]вінрейт[]
+player-stats-hexed-points = [gray]({ $points } очк.)[]
+
+player-stats-btn-settings = Налаштування
+player-stats-btn-audit = Аудит
+player-stats-btn-players = Онлайн
+player-stats-btn-close = Закрити
+player-stats-admin-tag = [coral]<Адмін>[]
 player-menu-player-max-rank = Досягнуто максимального рангу
 player-menu-player-hexed-progress = [gray]До [white]{ $nextRankName } [gray]залишилось перемог: [accent]{ $requiredPoints }[]
 player-menu-player-no-mode-stats = [gray]немає даних[]

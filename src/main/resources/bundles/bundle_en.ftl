@@ -403,6 +403,37 @@ player-menu-player-content =
     { "" }
     [accent]■ Combat Efficiency[]
     [gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
+
+# Modern Player Stats UI
+player-stats-tab-overview = Overview
+player-stats-tab-matches = Matches
+player-stats-tab-blocks = Blocks
+
+player-stats-account-created = [gray]Joined:[]
+player-stats-play-time = [gray]Play time:[]
+player-stats-pvp-rating = [gray]MiniPvP:[]
+player-stats-hexed-rank = [gray]Legacy Hexed:[]
+player-stats-hexed-leaderboard = [gray]Hexed Top:[]
+
+player-stats-total-games = [gray]Total games:[]
+player-stats-victories = [gray]Victories:[]
+player-stats-pvp-summary = [gray]PvP:[]
+player-stats-survival-summary = [gray]Survival:[]
+player-stats-hexed-summary = [gray]Legacy Hexed:[]
+
+player-stats-blocks-built = [gray]Blocks built:[]
+player-stats-blocks-deconstructed = [gray]Deconstructed:[]
+player-stats-blocks-destroyed = [gray]Destroyed:[]
+
+player-stats-games-played-value = [white]{ $count }[] [gray]games[]
+player-stats-victories-value = [lime]{ $wins }[] [gray]wins[]  [darkgray]|[]  [sky]{ $winRate }%[] [gray]win rate[]
+player-stats-hexed-points = [gray]({ $points } pts)[]
+
+player-stats-btn-settings = Settings
+player-stats-btn-audit = Audit
+player-stats-btn-players = Online
+player-stats-btn-close = Close
+player-stats-admin-tag = [coral]<Admin>[]
 player-menu-players = Online players
 player-menu-players-title = [orange]{ -xcore } — Online players
 player-menu-players-content = [white]Page [green]{ $page }[] of [green]{ $total }[]

@@ -185,7 +185,7 @@ public class MenuService {
         long version = session.nextUiVersion();
         notifyMenuOpened(session);
 
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        VNodeCompiler compiler = new VNodeCompiler(resolverFor(session));
         var compiled = compiler.compile(node);
         gateway.menuBuilder(session.player, globalMenuBuilderId, version, title, true, true, false, compiled);
     }
@@ -202,7 +202,7 @@ public class MenuService {
         session.setActiveScreen(active);
         notifyMenuOpened(session);
 
-        var compiled = MenuScreenToUiAdapter.compile(screen);
+        var compiled = MenuScreenToUiAdapter.compile(screen, resolverFor(session));
         gateway.menuBuilder(session.player, globalMenuBuilderId, version, screen.title(), true, true, false, compiled);
     }
 
@@ -245,10 +245,18 @@ public class MenuService {
             }
         };
 
-        UiSession<M, E> uiSession = UiSession.start(controller, initialModel, ctx, deliveryGateway, LocalizerResolver.IDENTITY);
+        LocalizerResolver resolver = resolverFor(session);
+        UiSession<M, E> uiSession = UiSession.start(controller, initialModel, ctx, deliveryGateway, resolver);
         session.setActiveUiSession(uiSession);
         uiSession.open();
         return uiSession;
+    }
+
+    public LocalizerResolver resolverFor(Session session) {
+        if (session == null || session.locale() == null) {
+            return LocalizerResolver.IDENTITY;
+        }
+        return (key, args) -> session.locale().format(key, args);
     }
 
     public <TState> void renderFlow(Session session, MenuFlow<TState> flow) {

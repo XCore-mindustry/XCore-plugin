@@ -109,17 +109,23 @@ class PlayerStatsUiControllerTest {
         assertThat(dsl).contains("#42");
         assertThat(dsl).contains("Core defender");
 
-        // Tab buttons
+        // Tab buttons (localized keys)
+        assertThat(dsl).contains("player-stats-tab-overview");
+        assertThat(dsl).contains("player-stats-tab-matches");
+        assertThat(dsl).contains("player-stats-tab-blocks");
         assertThat(dsl).contains("tab:overview");
         assertThat(dsl).contains("tab:matches");
         assertThat(dsl).contains("tab:blocks");
 
-        // Dynamic slot body with overview stats
+        // Dynamic slot body with overview stats (localized keys and values)
         assertThat(dsl).contains("id: slot_tab_body");
-        assertThat(dsl).contains("MiniPvP Rating:");
+        assertThat(dsl).contains("player-stats-pvp-rating");
         assertThat(dsl).contains("[sky]1500[]");
 
-        // Action buttons
+        // Action buttons (localized keys)
+        assertThat(dsl).contains("player-stats-btn-settings");
+        assertThat(dsl).contains("player-stats-btn-players");
+        assertThat(dsl).contains("player-stats-btn-close");
         assertThat(dsl).contains("action:settings");
         assertThat(dsl).contains("action:players");
         assertThat(dsl).contains("action:close");

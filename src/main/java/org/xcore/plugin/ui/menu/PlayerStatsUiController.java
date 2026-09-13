@@ -216,10 +216,12 @@ public class PlayerStatsUiController implements UiController<PlayerStatsUiContro
                 // Title row
                 h.add(Ui.table(row -> {
                     row.layout(l -> l.growX());
-                    String adminTag = model.isAdmin() ? "  [coral]<Admin>[]" : "";
                     String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "";
-                    row.label(Text.raw("[accent]" + model.customNickname() + "[] [gray]#" + model.pid() + "[]" + adminTag + badgeTag),
-                            l -> l.align("left").growX());
+                    Text title = Text.raw("[accent]" + model.customNickname() + "[] [gray]#" + model.pid() + "[]" + badgeTag);
+                    if (model.isAdmin()) {
+                        title = Text.join(title, Text.join(Text.raw("  "), Text.t("player-stats-admin-tag")));
+                    }
+                    row.label(title, l -> l.align("left").growX());
                 })).row();
 
                 // Description row
@@ -233,15 +235,15 @@ public class PlayerStatsUiController implements UiController<PlayerStatsUiContro
             // 2. Navigation Tabs (togglet style with clear visual active highlight)
             t.add(Ui.table(tabs -> {
                 tabs.layout(l -> l.growX().padBottom(8f));
-                tabs.button(Text.raw("Overview"), "tab:overview", b -> b
+                tabs.button(Text.t("player-stats-tab-overview"), "tab:overview", b -> b
                         .style("togglet")
                         .checked("overview".equals(model.activeTab()))
                         .layout(l -> l.uniform().growX()));
-                tabs.button(Text.raw("Matches"), "tab:matches", b -> b
+                tabs.button(Text.t("player-stats-tab-matches"), "tab:matches", b -> b
                         .style("togglet")
                         .checked("matches".equals(model.activeTab()))
                         .layout(l -> l.uniform().growX()));
-                tabs.button(Text.raw("Blocks"), "tab:blocks", b -> b
+                tabs.button(Text.t("player-stats-tab-blocks"), "tab:blocks", b -> b
                         .style("togglet")
                         .checked("blocks".equals(model.activeTab()))
                         .layout(l -> l.uniform().growX()));
@@ -254,21 +256,27 @@ public class PlayerStatsUiController implements UiController<PlayerStatsUiContro
                 body.layout(l -> l.growX().minHeight(150f));
 
                 if ("overview".equals(model.activeTab())) {
-                    addStatRow(body, "Account Created:", "[white]" + model.accountCreated() + "[]");
-                    addStatRow(body, "Total Play Time:", "[white]" + model.totalPlayTime() + "[]");
-                    addStatRow(body, "MiniPvP Rating:", "[sky]" + model.pvpRating() + "[]");
-                    addStatRow(body, "Hexed Rank:", "[sky]" + model.hexedRankName() + "[] [gray](" + model.hexedPoints() + " pts)[]");
-                    addStatRow(body, "Hexed Leaderboard:", "[accent]" + model.hexedTopRank() + "[]");
+                    addStatRow(body, Text.t("player-stats-account-created"), Text.raw("[white]" + model.accountCreated() + "[]"));
+                    addStatRow(body, Text.t("player-stats-play-time"), Text.raw("[white]" + model.totalPlayTime() + "[]"));
+                    addStatRow(body, Text.t("player-stats-pvp-rating"), Text.raw("[sky]" + model.pvpRating() + "[]"));
+                    Text hexedVal = model.hexedPoints() > 0
+                            ? Text.join(Text.raw("[sky]" + model.hexedRankName() + "[] "),
+                                    Text.t("player-stats-hexed-points", java.util.Map.of("points", model.hexedPoints())))
+                            : Text.raw("[sky]" + model.hexedRankName() + "[]");
+                    addStatRow(body, Text.t("player-stats-hexed-rank"), hexedVal);
+                    addStatRow(body, Text.t("player-stats-hexed-leaderboard"), Text.raw("[accent]" + model.hexedTopRank() + "[]"));
                 } else if ("matches".equals(model.activeTab())) {
-                    addStatRow(body, "Total Games:", "[white]" + model.gamesPlayed() + "[] [gray]played[]");
-                    addStatRow(body, "Victories:", "[lime]" + model.gamesWon() + "[] [gray]wins[]  [darkgray]|[]  [sky]" + model.winRatePercent() + "%[] [gray]win rate[]");
-                    addStatRow(body, "PvP Summary:", model.pvpSummary());
-                    addStatRow(body, "Survival:", model.survivalSummary());
-                    addStatRow(body, "Hexed:", model.hexedSummary());
+                    addStatRow(body, Text.t("player-stats-total-games"),
+                            Text.t("player-stats-games-played-value", java.util.Map.of("count", model.gamesPlayed())));
+                    addStatRow(body, Text.t("player-stats-victories"),
+                            Text.t("player-stats-victories-value", java.util.Map.of("wins", model.gamesWon(), "winRate", model.winRatePercent())));
+                    addStatRow(body, Text.t("player-stats-pvp-summary"), Text.raw(model.pvpSummary()));
+                    addStatRow(body, Text.t("player-stats-survival-summary"), Text.raw(model.survivalSummary()));
+                    addStatRow(body, Text.t("player-stats-hexed-summary"), Text.raw(model.hexedSummary()));
                 } else {
-                    addStatRow(body, "Blocks Built:", "[lime]" + model.blocksBuilt() + "[]");
-                    addStatRow(body, "Deconstructed:", "[orange]" + model.blocksDeconstructed() + "[]");
-                    addStatRow(body, "Destroyed:", "[scarlet]" + model.blocksDestroyed() + "[]");
+                    addStatRow(body, Text.t("player-stats-blocks-built"), Text.raw("[lime]" + model.blocksBuilt() + "[]"));
+                    addStatRow(body, Text.t("player-stats-blocks-deconstructed"), Text.raw("[orange]" + model.blocksDeconstructed() + "[]"));
+                    addStatRow(body, Text.t("player-stats-blocks-destroyed"), Text.raw("[scarlet]" + model.blocksDestroyed() + "[]"));
                 }
             }).row();
 
@@ -276,20 +284,20 @@ public class PlayerStatsUiController implements UiController<PlayerStatsUiContro
             t.add(Ui.table(f -> {
                 f.layout(l -> l.growX().padTop(8f));
                 if (model.isOwner() || model.viewerIsAdmin()) {
-                    f.button(Text.raw("Settings"), "action:settings", b -> b.layout(l -> l.uniform().growX().height(36f)));
+                    f.button(Text.t("player-stats-btn-settings"), "action:settings", b -> b.layout(l -> l.uniform().growX().height(36f)));
                 }
                 if (model.viewerIsAdmin()) {
-                    f.button(Text.raw("Audit"), "action:audit_history", b -> b.layout(l -> l.uniform().growX().height(36f)));
+                    f.button(Text.t("player-stats-btn-audit"), "action:audit_history", b -> b.layout(l -> l.uniform().growX().height(36f)));
                 }
-                f.button(Text.raw("Players"), "action:players", b -> b.layout(l -> l.uniform().growX().height(36f)));
-                f.button(Text.raw("Close"), "action:close", b -> b.layout(l -> l.uniform().growX().height(36f)));
+                f.button(Text.t("player-stats-btn-players"), "action:players", b -> b.layout(l -> l.uniform().growX().height(36f)));
+                f.button(Text.t("player-stats-btn-close"), "action:close", b -> b.layout(l -> l.uniform().growX().height(36f)));
             }));
         });
     }
 
-    private static void addStatRow(Ui.TableBuilder body, String label, String value) {
-        body.label(Text.raw("[gray]" + label), l -> l.align("left").padRight(16f));
-        body.label(Text.raw(value), l -> l.align("left"));
+    private static void addStatRow(Ui.TableBuilder body, Text label, Text value) {
+        body.label(label, l -> l.align("left").padRight(16f));
+        body.label(value, l -> l.align("left"));
         body.row();
     }
 
