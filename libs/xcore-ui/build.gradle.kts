@@ -88,11 +88,9 @@ publishing {
 dependencies {
     compileOnly(libs.mindustry.core)
     compileOnly(libs.arc.core)
-    compileOnly(libs.flubundle)
 
     testImplementation(libs.mindustry.core)
     testImplementation(libs.arc.core)
-    testImplementation(libs.flubundle)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
