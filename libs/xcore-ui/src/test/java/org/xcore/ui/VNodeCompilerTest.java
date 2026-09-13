@@ -22,7 +22,6 @@ class VNodeCompilerTest {
         UiBuilder.TableBuilder compiled = compiler.compile(root);
         String dsl = UiDslWriter.write(compiled);
 
-        assertThat(dsl).contains("table");
         assertThat(dsl).contains("background: pane");
         assertThat(dsl).contains("margin: 8");
         assertThat(dsl).contains("label: \"Hello Mindustry v160\"");

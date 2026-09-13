@@ -25,6 +25,15 @@ public final class VNodeCompiler {
     /** Compiles a full dialog body. The result is a table-level builder. */
     public UiBuilder.TableBuilder compile(VNode root) {
         Objects.requireNonNull(root, "root");
+        if (root instanceof VTable t) {
+            UiBuilder.TableBuilder builder = UiBuilder.table();
+            if (t.background() != null) builder.background(t.background());
+            if (t.margin() != null) builder.margin(t.margin());
+            if (Boolean.TRUE.equals(t.wrap())) builder.wrap(true);
+            applyCommon(builder, t);
+            compileEntries(builder, t.entries());
+            return builder;
+        }
         UiBuilder.TableBuilder table = UiBuilder.table();
         compileChildren(table, List.of(root));
         return table;
