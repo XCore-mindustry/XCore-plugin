@@ -65,7 +65,7 @@ class MenuServiceUiTest {
 
         menuService.showUi(session, root, "Test Title");
 
-        verify(gateway).menuBuilder(eq(session.player), eq(0), eq(1L), eq("Test Title"), eq(true), eq(true), eq(false), any());
+        verify(gateway).menuBuilder(eq(session.player), eq(menuService.getMenuBuilderId()), eq(1L), eq("Test Title"), eq(true), eq(true), eq(false), any());
         assertThat(session.activeScreen()).isNull();
     }
 

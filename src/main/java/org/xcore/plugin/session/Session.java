@@ -93,6 +93,8 @@ public class Session {
         return ++uiVersion;
     }
 
+    private org.xcore.ui.runtime.UiSession<?, ?> activeUiSession;
+
     public void setActiveScreen(ActiveMenuScreen screen) {
         this.activeScreen = screen;
     }
@@ -103,6 +105,22 @@ public class Session {
 
     public void clearActiveScreen() {
         this.activeScreen = null;
+    }
+
+    public void setActiveUiSession(org.xcore.ui.runtime.UiSession<?, ?> uiSession) {
+        this.activeUiSession = uiSession;
+    }
+
+    public org.xcore.ui.runtime.UiSession<?, ?> activeUiSession() {
+        return activeUiSession;
+    }
+
+    public boolean hasActiveUiSession() {
+        return activeUiSession != null;
+    }
+
+    public void clearActiveUiSession() {
+        this.activeUiSession = null;
     }
 
     public void setActivePrompt(ActiveMenuPrompt prompt) {
@@ -118,12 +136,13 @@ public class Session {
     }
 
     public boolean hasActiveMenu() {
-        return activeScreen != null || activePrompt != null || !actions.isEmpty() || textHandler != null;
+        return activeScreen != null || activePrompt != null || activeUiSession != null || !actions.isEmpty() || textHandler != null;
     }
 
     public void clearUiState() {
         clearActiveScreen();
         clearActivePrompt();
+        clearActiveUiSession();
         actions.clear();
         textHandler = null;
     }

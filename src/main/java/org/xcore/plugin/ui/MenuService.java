@@ -22,6 +22,10 @@ import org.xcore.plugin.ui.route.RoutedMenuFlow;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
+import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.UiController;
+import org.xcore.ui.runtime.UiSession;
+import mindustry.ui.builder.UiBuilder;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,9 +40,13 @@ public class MenuService {
     private final Map<String, RoutedMenuFlow<?>> routedFlows = new HashMap<>();
     private final List<MenuLifecycleListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
-    private int globalMenuId;
-    private int globalTextId;
-    private int globalMenuBuilderId;
+    private int globalMenuId = 0;
+    private int globalTextId = 0;
+    private int globalMenuBuilderId = -1;
+
+    public boolean hasMenuBuilder() {
+        return globalMenuBuilderId >= 0;
+    }
 
     public interface MenuLifecycleListener {
         default void onMenuOpened(Session session) {}
@@ -196,6 +204,51 @@ public class MenuService {
 
         var compiled = MenuScreenToUiAdapter.compile(screen);
         gateway.menuBuilder(session.player, globalMenuBuilderId, version, screen.title(), true, true, false, compiled);
+    }
+
+    public <M, E> UiSession<M, E> openUi(Session session, UiController<M, E> controller, M initialModel) {
+        if (session == null || session.player == null || session.player.con == null) return null;
+
+        long version = session.nextUiVersion();
+        notifyMenuOpened(session);
+
+        ControllerContext ctx = new ControllerContext() {
+            @Override
+            public String playerId() {
+                return session.player.uuid();
+            }
+
+            @Override
+            public void close() {
+                gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+                session.clearActiveUiSession();
+                notifyMenuClosed(session);
+            }
+        };
+
+        UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
+            @Override
+            public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
+                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, true, ui);
+            }
+
+            @Override
+            public void update(String playerId, long token, String elementId, UiBuilder.NodeBuilder<?> ui) {
+                gateway.menuBuilderUpdate(session.player, globalMenuBuilderId, elementId, ui);
+            }
+
+            @Override
+            public void hide(String playerId) {
+                gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+                session.clearActiveUiSession();
+                notifyMenuClosed(session);
+            }
+        };
+
+        UiSession<M, E> uiSession = UiSession.start(controller, initialModel, ctx, deliveryGateway, LocalizerResolver.IDENTITY);
+        session.setActiveUiSession(uiSession);
+        uiSession.open();
+        return uiSession;
     }
 
     public <TState> void renderFlow(Session session, MenuFlow<TState> flow) {
@@ -391,6 +444,11 @@ public class MenuService {
     // Package-private for testing
     void onMenuBuilderResult(Session session, MenuResult result) {
         if (session == null || session.data == null || result == null) return;
+
+        if (session.hasActiveUiSession()) {
+            session.activeUiSession().handle(result);
+            return;
+        }
 
         if (result.wasCancelled()) {
             onMenuOption(session, -1);

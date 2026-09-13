@@ -329,7 +329,7 @@ final class PlayerProfileFlows {
         );
     }
 
-    private static String formatPvpSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+    static String formatPvpSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
         if (!stats.hasData()) {
             return local.t("player-menu-player-no-mode-stats");
         }
@@ -340,7 +340,7 @@ final class PlayerProfileFlows {
         ));
     }
 
-    private static String formatSurvivalSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+    static String formatSurvivalSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
         if (!stats.hasData()) {
             return local.t("player-menu-player-no-mode-stats");
         }
@@ -351,7 +351,7 @@ final class PlayerProfileFlows {
         ));
     }
 
-    private static String formatHexedSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
+    static String formatHexedSummary(Localization local, ModeStatsSummary stats, NumberFormat numberFormat) {
         if (!stats.hasData()) {
             return local.t("player-menu-player-no-mode-stats");
         }
@@ -363,7 +363,7 @@ final class PlayerProfileFlows {
         ));
     }
 
-    private static String formatHexedProgress(Localization local, PlayerData targetData) {
+    static String formatHexedProgress(Localization local, PlayerData targetData) {
         var rank = targetData.hexedRank();
         if (!rank.hasNext()) {
             return local.t("player-menu-player-max-rank");
