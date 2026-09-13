@@ -337,6 +337,54 @@ map-rtv = [orange]Голосування
 map-artv = [red]Миттєва зміна
 map-maps = Мапи
 map-maps-back = ← До списку мап
+
+# Map UI Modernized
+map-ui-search-hint = Пошук мапи або автора...
+map-ui-no-maps-found = [lightgray]Мапи за вашим запитом не знайдено.[]
+map-ui-page-info = [lightgray]Сторінка [white]{ $page }[] з [white]{ $total }[]
+map-ui-prev = < Назад
+map-ui-next = Вперед >
+map-ui-by = від [lightgray]{ $author }[]
+map-ui-mode = Режим: [white]{ $mode }[]
+map-ui-loading = [gray]Завантаження...[]
+map-ui-no-preview = [gray]Немає прев'ю[]
+map-ui-dimensions = [gray]Розміри: [white]{ $width } x { $height }[]
+map-ui-total-plays = [gray]Усього зіграно: [white]{ $played } [lightgray]({ $playedYear } за рік)[]
+map-ui-last-played = [gray]Остання гра: [white]{ $lastPlayed }[]
+map-ui-description = [gray]Опис: [lightgray]{ $description }[]
+map-ui-no-description = [gray]Опис: [lightgray]Опис відсутній.[]
+
+map-ui-col-duration = [accent]ТРИВАЛІСТЬ[]
+map-ui-duration-min = [gray]Мін: [white]{ $value }[]
+map-ui-duration-avg = [gray]Сер: [white]{ $value }[]
+map-ui-duration-max = [gray]Макс: [white]{ $value }[]
+
+map-ui-col-popularity = [accent]ПОПУЛЯРНІСТЬ[]
+map-ui-popularity-score = [gray]Рейтинг: [white]+{ $value }[]
+map-ui-popularity-pop = [gray]Поп: [white]{ $value }[]
+map-ui-popularity-interest = [gray]Інтерес: [white]{ $value }[]
+
+map-ui-col-community = [accent]СПІЛЬНОТА[]
+map-ui-community-approval = [gray]Схвалення: [green]{ $rate }%[]
+map-ui-community-likes = [gray]Вподобайки: [white]{ $value }[]
+map-ui-community-dislikes = [gray]Дизлайки: [white]{ $value }[]
+
+map-ui-btn-like = [lightgray]👍 Подобається ({ $count })[]
+map-ui-btn-liked = [green]✔ Подобається ({ $count })[]
+map-ui-btn-dislike = [lightgray]👎 Не подобається ({ $count })[]
+map-ui-btn-disliked = [scarlet]✔ Не подобається ({ $count })[]
+
+map-ui-rtv-active-status = [accent]● RTV Голосування: [white]{ $votes }/{ $required }[] [gray](залишилось [white]{ $seconds }с[gray])[]
+map-ui-rtv-vote-yes = [accent]✔ Проголосувати ЗА цю мапу[]
+map-ui-rtv-start = [accent]ГОЛОСУВАННЯ ЗА ЗМІНУ МАПИ (RTV)[]
+map-ui-admin-rtv = [red]⚡ Адмін: Змінити мапу негайно (ARTV)[]
+map-ui-admin-rtv-confirm = [scarlet]⚠ Натисніть ще раз для підтвердження! ⚠
+
+gamemode-survival = Виживання
+gamemode-attack = Атака
+gamemode-pvp = PvP
+gamemode-sandbox = Пісочниця
+gamemode-editor = Редактор
 rtv-vote =
     { $nickname }[lightgray] проголосував за зміну поточної мапи на [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишіть [orange]y[] або [orange]n[], щоб проголосувати.

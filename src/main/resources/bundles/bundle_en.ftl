@@ -356,6 +356,54 @@ map-maps = Maps
 map-maps-back = ← Back to map list
 current-map = Current map
 next-map = Next map
+
+# Map UI Modernized
+map-ui-search-hint = Search map or author...
+map-ui-no-maps-found = [lightgray]No maps found matching query.[]
+map-ui-page-info = [lightgray]Page [white]{ $page }[] of [white]{ $total }[]
+map-ui-prev = < Prev
+map-ui-next = Next >
+map-ui-by = by [lightgray]{ $author }[]
+map-ui-mode = Mode: [white]{ $mode }[]
+map-ui-loading = [gray]Loading...[]
+map-ui-no-preview = [gray]No preview[]
+map-ui-dimensions = [gray]Dimensions: [white]{ $width } x { $height }[]
+map-ui-total-plays = [gray]Total Plays: [white]{ $played } [lightgray]({ $playedYear } this year)[]
+map-ui-last-played = [gray]Last Played: [white]{ $lastPlayed }[]
+map-ui-description = [gray]Description: [lightgray]{ $description }[]
+map-ui-no-description = [gray]Description: [lightgray]No description available.[]
+
+map-ui-col-duration = [accent]DURATION[]
+map-ui-duration-min = [gray]Min: [white]{ $value }[]
+map-ui-duration-avg = [gray]Avg: [white]{ $value }[]
+map-ui-duration-max = [gray]Max: [white]{ $value }[]
+
+map-ui-col-popularity = [accent]POPULARITY[]
+map-ui-popularity-score = [gray]Score: [white]+{ $value }[]
+map-ui-popularity-pop = [gray]Pop: [white]{ $value }[]
+map-ui-popularity-interest = [gray]Interest: [white]{ $value }[]
+
+map-ui-col-community = [accent]COMMUNITY[]
+map-ui-community-approval = [gray]Approval: [green]{ $rate }%[]
+map-ui-community-likes = [gray]Likes: [white]{ $value }[]
+map-ui-community-dislikes = [gray]Dislikes: [white]{ $value }[]
+
+map-ui-btn-like = [lightgray]👍 Like ({ $count })[]
+map-ui-btn-liked = [green]✔ Liked ({ $count })[]
+map-ui-btn-dislike = [lightgray]👎 Dislike ({ $count })[]
+map-ui-btn-disliked = [scarlet]✔ Disliked ({ $count })[]
+
+map-ui-rtv-active-status = [accent]● RTV Voting: [white]{ $votes }/{ $required }[] [gray](ends in [white]{ $seconds }s[gray])[]
+map-ui-rtv-vote-yes = [accent]✔ Vote YES for this Map[]
+map-ui-rtv-start = [accent]VOTE TO PLAY THIS MAP (RTV)[]
+map-ui-admin-rtv = [red]⚡ Admin: Force Change Map (ARTV)[]
+map-ui-admin-rtv-confirm = [scarlet]⚠ Click again to confirm instant change! ⚠
+
+gamemode-survival = Survival
+gamemode-attack = Attack
+gamemode-pvp = PvP
+gamemode-sandbox = Sandbox
+gamemode-editor = Editor
 rtv-vote =
     { $nickname }[lightgray] voted to change the current map to [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Type [orange]y[] or [orange]n[] to vote.

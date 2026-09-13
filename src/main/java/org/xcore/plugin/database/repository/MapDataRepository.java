@@ -67,6 +67,13 @@ public class MapDataRepository extends DataRepository<MapData> {
         );
     }
 
+    public Optional<MapData> findByFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(collection.find(eq("file_name", fileName)).first());
+    }
+
     public List<MapData> findAll() {
         return collection.find().into(new ArrayList<>());
     }

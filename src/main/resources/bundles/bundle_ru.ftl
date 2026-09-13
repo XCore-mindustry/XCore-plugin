@@ -364,6 +364,54 @@ map-maps = Карты
 map-maps-back = ← К списку карт
 current-map = Текущая карта
 next-map = Следующая карта
+
+# Map UI Modernized
+map-ui-search-hint = Поиск карты или автора...
+map-ui-no-maps-found = [lightgray]Карты по вашему запросу не найдены.[]
+map-ui-page-info = [lightgray]Страница [white]{ $page }[] из [white]{ $total }[]
+map-ui-prev = < Назад
+map-ui-next = Вперед >
+map-ui-by = от [lightgray]{ $author }[]
+map-ui-mode = Режим: [white]{ $mode }[]
+map-ui-loading = [gray]Загрузка...[]
+map-ui-no-preview = [gray]Нет превью[]
+map-ui-dimensions = [gray]Размеры: [white]{ $width } x { $height }[]
+map-ui-total-plays = [gray]Всего сыграно: [white]{ $played } [lightgray]({ $playedYear } за год)[]
+map-ui-last-played = [gray]Последняя игра: [white]{ $lastPlayed }[]
+map-ui-description = [gray]Описание: [lightgray]{ $description }[]
+map-ui-no-description = [gray]Описание: [lightgray]Описание отсутствует.[]
+
+map-ui-col-duration = [accent]ДЛИТЕЛЬНОСТЬ[]
+map-ui-duration-min = [gray]Мин: [white]{ $value }[]
+map-ui-duration-avg = [gray]Сред: [white]{ $value }[]
+map-ui-duration-max = [gray]Макс: [white]{ $value }[]
+
+map-ui-col-popularity = [accent]ПОПУЛЯРНОСТЬ[]
+map-ui-popularity-score = [gray]Рейтинг: [white]+{ $value }[]
+map-ui-popularity-pop = [gray]Поп: [white]{ $value }[]
+map-ui-popularity-interest = [gray]Интерес: [white]{ $value }[]
+
+map-ui-col-community = [accent]СООБЩЕСТВО[]
+map-ui-community-approval = [gray]Одобрение: [green]{ $rate }%[]
+map-ui-community-likes = [gray]Лайки: [white]{ $value }[]
+map-ui-community-dislikes = [gray]Дизлайки: [white]{ $value }[]
+
+map-ui-btn-like = [lightgray]👍 Нравится ({ $count })[]
+map-ui-btn-liked = [green]✔ Нравится ({ $count })[]
+map-ui-btn-dislike = [lightgray]👎 Не нравится ({ $count })[]
+map-ui-btn-disliked = [scarlet]✔ Не нравится ({ $count })[]
+
+map-ui-rtv-active-status = [accent]● RTV Голосование: [white]{ $votes }/{ $required }[] [gray](осталось [white]{ $seconds }с[gray])[]
+map-ui-rtv-vote-yes = [accent]✔ Проголосовать ЗА эту карту[]
+map-ui-rtv-start = [accent]ГОЛОСОВАНИЕ ЗА СМЕНУ КАРТЫ (RTV)[]
+map-ui-admin-rtv = [red]⚡ Админ: Сменить карту немедленно (ARTV)[]
+map-ui-admin-rtv-confirm = [scarlet]⚠ Нажмите еще раз для подтверждения! ⚠
+
+gamemode-survival = Выживание
+gamemode-attack = Атака
+gamemode-pvp = PvP
+gamemode-sandbox = Песочница
+gamemode-editor = Редактор
 rtv-vote =
     { $nickname }[lightgray] проголосовал за смену текущей карты на [orange]{ $mapName }[lightgray]. ([accent]{ $votes }[]/[accent]{ $votesRequired }[])
     Напишите [orange]y[] или [orange]n[], чтобы проголосовать.

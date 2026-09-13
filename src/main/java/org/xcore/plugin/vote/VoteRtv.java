@@ -33,6 +33,7 @@ public class VoteRtv extends VoteSession {
     private final VoteService voteService;
     private final GameStateService gameStateService;
     private final GameDataService gameDataService;
+    private final org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService;
 
     @Inject
     public VoteRtv(
@@ -44,7 +45,8 @@ public class VoteRtv extends VoteSession {
             SessionService sessionService,
             VoteService voteService,
             GameStateService gameStateService,
-            GameDataService gameDataService) {
+            GameDataService gameDataService,
+            org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService) {
         super(secretsConfig);
         this.target = target;
         this.isManualSelection = isManualSelection;
@@ -54,6 +56,19 @@ public class VoteRtv extends VoteSession {
         this.voteService = voteService;
         this.gameStateService = gameStateService;
         this.gameDataService = gameDataService;
+        this.mapVoteObserverService = mapVoteObserverService;
+    }
+
+    public VoteRtv(
+            Map target,
+            boolean isManualSelection,
+            MapDataRepository mapDataRepository,
+            TomlSecretsConfig secretsConfig,
+            SessionService sessionService,
+            VoteService voteService,
+            GameStateService gameStateService,
+            GameDataService gameDataService) {
+        this(target, isManualSelection, mapDataRepository, secretsConfig, sessionService, voteService, gameStateService, gameDataService, null);
     }
 
     @Override
@@ -64,6 +79,12 @@ public class VoteRtv extends VoteSession {
                 "mapName", target.name(),
                 "votes", votes(),
                 "votesRequired", votesRequired()));
+
+        if (mapVoteObserverService != null) {
+            String mapId = target.file != null ? target.file.name() : target.plainName();
+            int remaining = end != null ? (int) Math.max(0, (end.getExecuteTimeMillis() - System.currentTimeMillis()) / 1000L) : 0;
+            mapVoteObserverService.notifyVoteProgress(mapId, votes(), votesRequired(), remaining);
+        }
     }
 
     @Override
@@ -73,12 +94,22 @@ public class VoteRtv extends VoteSession {
                     "nickname", player.coloredName(),
                     "votes", votes(),
                     "votesRequired", votesRequired()));
+
+            if (mapVoteObserverService != null) {
+                String mapId = target.file != null ? target.file.name() : target.plainName();
+                int remaining = end != null ? (int) Math.max(0, (end.getExecuteTimeMillis() - System.currentTimeMillis()) / 1000L) : 0;
+                mapVoteObserverService.notifyVoteProgress(mapId, votes(), votesRequired(), remaining);
+            }
         }
     }
 
     @Override
     public void success() {
         stop();
+        if (mapVoteObserverService != null) {
+            String mapId = target.file != null ? target.file.name() : target.plainName();
+            mapVoteObserverService.notifyVoteEnded(mapId);
+        }
         sessionService.broadcast("rtv-success", args(
                 "mapName", target.name(),
                 "mapLoadDelay", secretsConfig.maps.voting.switchDelaySeconds));
@@ -124,12 +155,20 @@ public class VoteRtv extends VoteSession {
     @Override
     public void fail() {
         stop();
+        if (mapVoteObserverService != null) {
+            String mapId = target.file != null ? target.file.name() : target.plainName();
+            mapVoteObserverService.notifyVoteEnded(mapId);
+        }
         sessionService.broadcast("rtv-fail", args("mapName", target.name()));
     }
 
     @Override
     public void cancelByAdmin(Player admin) {
         stop();
+        if (mapVoteObserverService != null) {
+            String mapId = target.file != null ? target.file.name() : target.plainName();
+            mapVoteObserverService.notifyVoteEnded(mapId);
+        }
         sessionService.broadcast("rtv-cancelled", args(
                 "mapName", target.name(),
                 "admin", admin.coloredName()));

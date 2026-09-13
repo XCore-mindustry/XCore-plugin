@@ -113,6 +113,56 @@ commands-maps-page-description = Нумар старонкі
 commands-maps-text-page-description = Нумар старонкі
 commands-rtv-map-description = Карта для галасавання (неабавязкова)
 commands-artv-map-description = Карта для прымусовай змены
+map-maps = Карты
+map-maps-back = ← Да спісу карт
+
+# Map UI Modernized
+map-ui-search-hint = Пошук карты ці аўтара...
+map-ui-no-maps-found = [lightgray]Карты па вашым запыце не знойдзены.[]
+map-ui-page-info = [lightgray]Старонка [white]{ $page }[] з [white]{ $total }[]
+map-ui-prev = < Назад
+map-ui-next = Уперад >
+map-ui-by = ад [lightgray]{ $author }[]
+map-ui-mode = Рэжым: [white]{ $mode }[]
+map-ui-loading = [gray]Загрузка...[]
+map-ui-no-preview = [gray]Няма прэв'ю[]
+map-ui-dimensions = [gray]Памеры: [white]{ $width } x { $height }[]
+map-ui-total-plays = [gray]Усяго згуляна: [white]{ $played } [lightgray]({ $playedYear } за год)[]
+map-ui-last-played = [gray]Апошняя гульня: [white]{ $lastPlayed }[]
+map-ui-description = [gray]Апісанне: [lightgray]{ $description }[]
+map-ui-no-description = [gray]Апісанне: [lightgray]Апісанне адсутнічае.[]
+
+map-ui-col-duration = [accent]ПРАЦЯГЛАСЦЬ[]
+map-ui-duration-min = [gray]Мін: [white]{ $value }[]
+map-ui-duration-avg = [gray]Сяр: [white]{ $value }[]
+map-ui-duration-max = [gray]Макс: [white]{ $value }[]
+
+map-ui-col-popularity = [accent]ПАПУЛЯРНАСЦЬ[]
+map-ui-popularity-score = [gray]Рэйтынг: [white]+{ $value }[]
+map-ui-popularity-pop = [gray]Пап: [white]{ $value }[]
+map-ui-popularity-interest = [gray]Цікавасць: [white]{ $value }[]
+
+map-ui-col-community = [accent]СУПОЛЬНАСЦЬ[]
+map-ui-community-approval = [gray]Ухваленне: [green]{ $rate }%[]
+map-ui-community-likes = [gray]Падабайкі: [white]{ $value }[]
+map-ui-community-dislikes = [gray]Дызлайкі: [white]{ $value }[]
+
+map-ui-btn-like = [lightgray]👍 Падабаецца ({ $count })[]
+map-ui-btn-liked = [green]✔ Падабаецца ({ $count })[]
+map-ui-btn-dislike = [lightgray]👎 Не падабаецца ({ $count })[]
+map-ui-btn-disliked = [scarlet]✔ Не падабаецца ({ $count })[]
+
+map-ui-rtv-active-status = [accent]● RTV Галасаванне: [white]{ $votes }/{ $required }[] [gray](засталося [white]{ $seconds }с[gray])[]
+map-ui-rtv-vote-yes = [accent]✔ Прагаласаваць ЗА гэтую карту[]
+map-ui-rtv-start = [accent]ГАЛАСАВАННЕ ЗА ЗМЕНУ КАРТЫ (RTV)[]
+map-ui-admin-rtv = [red]⚡ Адмін: Змяніць карту неадкладна (ARTV)[]
+map-ui-admin-rtv-confirm = [scarlet]⚠ Націсніце яшчэ раз для пацверджання! ⚠
+
+gamemode-survival = Выжыванне
+gamemode-attack = Атака
+gamemode-pvp = PvP
+gamemode-sandbox = Пясочніца
+gamemode-editor = Рэдактар
 commands-ai-state-description = Стан AI: атака (a) або бяздзейнасць (i)
 commands-events-page-description = Нумар старонкі
 commands-information-description = Паказаць інфармацыю аб серверы

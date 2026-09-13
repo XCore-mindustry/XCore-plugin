@@ -36,11 +36,15 @@ public class MapMenu extends Menu {
     private final MenuService menuService;
     private final TomlXcoreConfig config;
     private final EventDataRepository eventDataRepository;
+    private final org.xcore.plugin.service.map.MapPreviewService mapPreviewService;
+    private final org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService;
 
     @Inject
     public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
-                   MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService) {
+                   MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService,
+                   org.xcore.plugin.service.map.MapPreviewService mapPreviewService,
+                   org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService) {
         super(secretsConfig, sessionService);
         this.config = config;
         this.mapDataRepository = mapDataRepository;
@@ -48,6 +52,14 @@ public class MapMenu extends Menu {
         this.mapService = mapService;
         this.eventMenu = eventMenu;
         this.menuService = menuService;
+        this.mapPreviewService = mapPreviewService;
+        this.mapVoteObserverService = mapVoteObserverService;
+    }
+
+    public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
+                   MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
+                   MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService) {
+        this(config, secretsConfig, sessionService, mapDataRepository, eventDataRepository, mapService, eventMenu, menuService, null, null);
     }
 
     @PostConstruct
@@ -60,6 +72,12 @@ public class MapMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
+
+        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
+            openMapDetailsUi(session, m);
+            return;
+        }
+
         String mapId = m != null && m.id != null ? m.id.toHexString() : "";
         session.menuService.renderRoute(session, MenuRoute.of(MapFlows.ROUTE_MAP).withParam("mapId", mapId));
     }
@@ -73,7 +91,32 @@ public class MapMenu extends Menu {
             session.locale().send("empty");
             return;
         }
+
+        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
+            openMapBrowserUi(session, page);
+            return;
+        }
+
         session.menuService.renderRoute(session, MenuRoute.of(MapFlows.ROUTE_MAPS).withParam("page", String.valueOf(page)));
+    }
+
+    public void openMapBrowserUi(Session session, int page) {
+        if (session == null || session.player == null) return;
+        session.clear();
+
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session);
+        var initialModel = controller.createInitialBrowserModel(session, page);
+        menuService.openUi(session, controller, initialModel);
+    }
+
+    public void openMapDetailsUi(Session session, MapData m) {
+        if (session == null || session.player == null) return;
+        session.clear();
+
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session);
+        var initialModel = controller.createInitialDetailsModel(session, m);
+        menuService.openUi(session, controller, initialModel);
+        controller.requestPreviewAsync(session, m != null && m.id != null ? m.id.toHexString() : "");
     }
 
     MapData resolveMap(String mapId) {
