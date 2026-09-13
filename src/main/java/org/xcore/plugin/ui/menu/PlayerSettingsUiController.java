@@ -250,33 +250,27 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return Ui.table(t -> {
             t.background("pane");
             t.margin(14f);
-            t.layout(l -> l.width(480f).pad(6f));
+            t.layout(l -> l.width(520f).pad(6f));
 
-            // 1. Centered Header with Accent title
+            // 1. Centered Header with Accent title and underline
             t.add(Ui.table(h -> {
-                h.layout(l -> l.width(520f).padBottom(8f));
+                h.layout(l -> l.growX().padBottom(4f));
                 h.label(Text.t("player-menu-settings-title"), l -> l.align("center").growX());
             })).row();
+            t.image("whiteui", l -> l.growX().height(3f).padBottom(10f).color("ffd37f")).row();
 
             // 2. Profile input section
             t.add(Ui.table(p -> {
-                p.background("button");
-                p.margin(10f);
-                p.layout(l -> l.width(520f).padBottom(8f));
+                p.layout(l -> l.growX());
 
-                // Vanilla Name info row
+                // Vanilla Name info row with inline Reset button
                 p.add(Ui.table(row -> {
-                    row.layout(l -> l.growX().padBottom(6f));
+                    row.layout(l -> l.growX().padBottom(4f));
                     row.label(Text.join(Text.t("player-settings-player-label"), Text.raw("  [white]" + model.nickname() + "[]")),
                             l -> l.align("left").growX());
-                })).row();
-
-                // Custom Nickname header with inline Reset button
-                p.add(Ui.table(nickHeader -> {
-                    nickHeader.layout(l -> l.growX().padBottom(2f));
-                    nickHeader.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").growX());
-                    nickHeader.button(Text.t("player-menu-settings-customNickname-reset"), "action:reset_nick", b -> b
-                            .layout(l -> l.height(24f).padLeft(6f)));
+                    row.button(Text.t("player-settings-reset-nick-btn"), "action:reset_nick", b -> b
+                            .style("cleart")
+                            .layout(l -> l.height(24f)));
                 })).row();
 
                 String rawHint = session != null && session.locale() != null
@@ -284,57 +278,62 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                         : "Leave blank to reset";
                 String cleanHint = Strings.stripColors(rawHint);
 
+                p.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").padBottom(2f)).row();
                 p.field("field_nickname", f -> f
                         .value(model.customNickname())
                         .hint(cleanHint)
                         .maxLength(40)
-                        .layout(l -> l.growX().padBottom(6f))).row();
+                        .layout(l -> l.growX().padBottom(8f))).row();
 
                 // Description
                 p.label(Text.t("player-menu-settings-description"), l -> l.align("left").padBottom(2f)).row();
                 p.field("field_description", f -> f
                         .value(model.description())
                         .maxLength(200)
-                        .layout(l -> l.growX())).row();
+                        .layout(l -> l.growX()));
             })).row();
 
-            // 3. Toggles section (strictly left-aligned without center stretch)
+            // Divider line
+            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
+
+            // 3. Toggles section (clean left-aligned checkboxes directly on pane)
             t.add(Ui.table(toggles -> {
-                toggles.background("button");
-                toggles.margin(10f);
-                toggles.layout(l -> l.align("left").width(520f).padBottom(8f));
+                toggles.layout(l -> l.align("left").growX());
 
                 toggles.check(Text.t("player-settings-global-chat"), c -> c
                         .id("check_global_chat")
                         .checked(model.globalChatVisible())
-                        .layout(l -> l.align("left").padLeft(6f).padBottom(4f))).row();
+                        .layout(l -> l.align("left").padBottom(6f))).row();
 
                 toggles.check(Text.t("player-settings-discord-relay"), c -> c
                         .id("check_discord_relay")
                         .checked(model.discordRelayVisible())
-                        .layout(l -> l.align("left").padLeft(6f).padBottom(4f))).row();
+                        .layout(l -> l.align("left").padBottom(6f))).row();
 
                 toggles.check(Text.t("player-settings-leaderboard"), c -> c
                         .id("check_leaderboard")
                         .checked(model.leaderboard())
-                        .layout(l -> l.align("left").padLeft(6f)));
+                        .layout(l -> l.align("left")));
             })).row();
 
-            // 4. Preferences & Language Card (unified card with In-Place Language Combobox)
+            // Divider line
+            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
+
+            // 4. Preferences & Language Section
             t.add(Ui.table(pref -> {
-                pref.background("button");
-                pref.margin(10f);
-                pref.layout(l -> l.width(520f).padBottom(8f));
+                pref.layout(l -> l.growX());
 
                 // Badges row
                 pref.add(Ui.table(inner -> {
                     inner.layout(l -> l.growX().padBottom(6f));
                     String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
                     inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
-                    inner.button(Text.t("event-menu-edit"), "action:badges", b -> b.layout(l -> l.width(110f).height(30f)));
+                    inner.button(Text.t("player-settings-edit-badges"), "action:badges", b -> b
+                            .style("cleart")
+                            .layout(l -> l.height(28f)));
                 })).row();
 
-                // Language Combobox Slot inside card
+                // Language Combobox Slot inside section
                 pref.slot("slot_lang", langSlot -> {
                     langSlot.layout(l -> l.growX());
 
@@ -343,9 +342,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
                     langSlot.add(Ui.table(btnRow -> {
                         btnRow.layout(l -> l.growX());
-                        btnRow.label(Text.t("player-settings-language"), l -> l.align("left").width(110f));
+                        btnRow.label(Text.t("player-settings-language"), l -> l.align("left").growX());
                         btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
-                                .layout(l -> l.growX().height(34f)));
+                                .style("cleart")
+                                .layout(l -> l.height(30f)));
                     })).row();
 
                     if (model.langDropdownOpen()) {
@@ -368,9 +368,12 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 });
             })).row();
 
+            // Divider line
+            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(8f).color("454545")).row();
+
             // 5. Dynamic Feedback Slot
             t.slot("slot_feedback", fb -> {
-                fb.layout(l -> l.width(520f).minHeight(20f).padBottom(4f));
+                fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
                 if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 }
@@ -378,10 +381,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
             // 6. Action Footer Bar
             t.add(Ui.table(f -> {
-                f.layout(l -> l.width(520f).padTop(4f));
+                f.layout(l -> l.growX().padTop(2f));
                 f.button(Text.t("save"), "action:save", b -> b
                         .style("defaultt")
-                        .layout(l -> l.growX().height(40f)));
+                        .layout(l -> l.growX().height(42f)));
             }));
         });
     }

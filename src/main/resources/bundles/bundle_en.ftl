@@ -471,6 +471,8 @@ player-settings-language = Language
 player-settings-saved = [lime]Settings saved![]
 player-settings-reset-feedback = [lightgray]Custom nickname reset.[]
 player-settings-player-label = Player:
+player-settings-edit-badges = [accent]Edit[]
+player-settings-reset-nick-btn = [scarlet]Reset[]
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Chat visibility[]

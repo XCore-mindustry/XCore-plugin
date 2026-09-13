@@ -481,6 +481,8 @@ player-settings-language = Язык
 player-settings-saved = [lime]Настройки сохранены![]
 player-settings-reset-feedback = [lightgray]Имя сброшено.[]
 player-settings-player-label = Игрок:
+player-settings-edit-badges = [accent]Редактировать[]
+player-settings-reset-nick-btn = [scarlet]Сбросить[]
 player-menu-settings-chat-content =
     [gray]━━━━━━━━━━━━━━━━━━━━━━━━━[]
     [accent]■ Видимость чата[]
