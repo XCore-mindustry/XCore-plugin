@@ -6,4 +6,10 @@ public record PlayerStatsOverview(
         ModeStatsSummary survival,
         ModeStatsSummary hexed
 ) {
+    public static final PlayerStatsOverview EMPTY = new PlayerStatsOverview(
+            AggregatedPlayerStats.EMPTY,
+            ModeStatsSummary.EMPTY,
+            ModeStatsSummary.EMPTY,
+            ModeStatsSummary.EMPTY
+    );
 }

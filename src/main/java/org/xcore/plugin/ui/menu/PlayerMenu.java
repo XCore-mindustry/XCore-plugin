@@ -7,6 +7,7 @@ import jakarta.inject.Singleton;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.TopCategory;
@@ -24,6 +25,7 @@ public class PlayerMenu extends Menu {
     private final PlayerProfileSettingsService profileSettings;
     private final MenuService menuService;
     private final GameDataRepository gameDataRepository;
+    private final PlayerDataRepository playerDataRepository;
     private final Async async;
     private final AuditHistoryMenu auditHistoryMenu;
 
@@ -31,6 +33,7 @@ public class PlayerMenu extends Menu {
     public PlayerMenu(TomlSecretsConfig secretsConfig,
                       SessionService sessionService,
                       GameDataRepository gameDataRepository,
+                      PlayerDataRepository playerDataRepository,
                       Bundle bundle,
                       PlayerDisplayService playerDisplayService,
                       PlayerProfileSettingsService profileSettings,
@@ -42,10 +45,11 @@ public class PlayerMenu extends Menu {
         this.profileSettings = profileSettings;
         this.menuService = menuService;
         this.gameDataRepository = gameDataRepository;
+        this.playerDataRepository = playerDataRepository;
         this.async = async;
         this.auditHistoryMenu = auditHistoryMenu;
 
-        menuService.registerRoute(new PlayerProfileFlows.PlayerFlow(this, gameDataRepository, auditHistoryMenu));
+        menuService.registerRoute(new PlayerProfileFlows.PlayerFlow(this, playerDataRepository, gameDataRepository, auditHistoryMenu));
         menuService.registerRoute(new PlayerProfileFlows.PlayersFlow(this, sessionService, playerDisplayService));
     }
 
@@ -56,8 +60,20 @@ public class PlayerMenu extends Menu {
                       PlayerDisplayService playerDisplayService,
                       PlayerProfileSettingsService profileSettings,
                       AuditHistoryMenu auditHistoryMenu,
+                      MenuService menuService,
+                      Async async) {
+        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, async);
+    }
+
+    public PlayerMenu(TomlSecretsConfig secretsConfig,
+                      SessionService sessionService,
+                      GameDataRepository gameDataRepository,
+                      Bundle bundle,
+                      PlayerDisplayService playerDisplayService,
+                      PlayerProfileSettingsService profileSettings,
+                      AuditHistoryMenu auditHistoryMenu,
                       MenuService menuService) {
-        this(secretsConfig, sessionService, gameDataRepository, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, null);
+        this(secretsConfig, sessionService, gameDataRepository, null, bundle, playerDisplayService, profileSettings, auditHistoryMenu, menuService, null);
     }
 
     @PostConstruct
@@ -82,9 +98,11 @@ public class PlayerMenu extends Menu {
 
         if (async != null && session.player != null) {
             async.forPlayer(session.player, () -> {
-                Integer hexedTop = session.playerDataRepository != null
-                        ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
-                        : null;
+                Integer hexedTop = playerDataRepository != null
+                        ? playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
+                        : (session.playerDataRepository != null
+                                ? session.playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
+                                : null);
                 PlayerStatsOverview stats = gameDataRepository != null
                         ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
                         : null;

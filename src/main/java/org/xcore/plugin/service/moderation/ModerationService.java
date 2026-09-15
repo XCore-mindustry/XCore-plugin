@@ -95,6 +95,73 @@ public class ModerationService {
     }
 
     /**
+     * Executes a unified ban command.
+     */
+    public ModerationResult<BanData> ban(BanCommand command) {
+        if (command == null) {
+            return ModerationResult.failure("Invalid ban command");
+        }
+        if (command.targetId() >= 0) {
+            return banById(command.targetId(), command.actor().name(), command.actor().discordId(),
+                    command.reason(), command.duration(), command.kickOnline());
+        }
+        return tempBanByUuidOrIp(command.targetUuid(), command.targetIp(), command.targetName(),
+                command.duration(), command.reason(), command.actor().name(), command.actor().discordId());
+    }
+
+    /**
+     * Executes a unified unban command.
+     */
+    public ModerationResult<PlayerData> unban(UnbanCommand command) {
+        if (command == null) {
+            return ModerationResult.failure("Invalid unban command");
+        }
+        if (command.targetId() >= 0) {
+            return unbanById(command.targetId(), command.actor().name(), command.actor().discordId());
+        }
+        var res = tempUnban(command.targetUuid(), command.targetIp(), command.actor().name(), command.actor().discordId());
+        if (!res.isSuccess()) {
+            return ModerationResult.failure(res.getMessage().orElse("Failed to unban"));
+        }
+        return ModerationResult.success(res.getMessage().orElse("Unbanned"), null);
+    }
+
+    /**
+     * Executes a unified mute command.
+     */
+    public ModerationResult<MuteData> mute(MuteCommand command) {
+        if (command == null) {
+            return ModerationResult.failure("Invalid mute command");
+        }
+        if (command.targetId() >= 0) {
+            return muteById(command.targetId(), command.actor().name(), command.actor().discordId(),
+                    command.reason(), command.duration());
+        }
+        var target = sessionService.getOrLoadFromDb(command.targetUuid());
+        if (target != null) {
+            return muteById(target.pid, command.actor().name(), command.actor().discordId(), command.reason(), command.duration());
+        }
+        return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
+    }
+
+    /**
+     * Executes a unified unmute command.
+     */
+    public ModerationResult<PlayerData> unmute(UnmuteCommand command) {
+        if (command == null) {
+            return ModerationResult.failure("Invalid unmute command");
+        }
+        if (command.targetId() >= 0) {
+            return unmuteById(command.targetId(), command.actor().name(), command.actor().discordId());
+        }
+        var target = sessionService.getOrLoadFromDb(command.targetUuid());
+        if (target != null) {
+            return unmuteById(target.pid, command.actor().name(), command.actor().discordId());
+        }
+        return ModerationResult.failure(PLAYER_NOT_FOUND_MESSAGE);
+    }
+
+    /**
      * Ban a player by their ID.
      *
      * @param id          Player ID

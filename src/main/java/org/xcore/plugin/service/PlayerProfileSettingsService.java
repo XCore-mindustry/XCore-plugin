@@ -42,6 +42,11 @@ public class PlayerProfileSettingsService {
         this.config = config;
     }
 
+    public PlayerData findByUuid(String uuid) {
+        if (uuid == null || uuid.isBlank()) return null;
+        return playerDataRepository != null ? playerDataRepository.findByUuid(uuid) : null;
+    }
+
     public record NicknameValidationResult(boolean valid, String errorKey, int maxBytes) {
         public static NicknameValidationResult ok() {
             return new NicknameValidationResult(true, null, MAX_PLAIN_NAME_BYTES);

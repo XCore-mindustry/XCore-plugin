@@ -14,7 +14,12 @@ import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
+import org.xcore.plugin.service.moderation.BanCommand;
+import org.xcore.plugin.service.moderation.ModerationActor;
 import org.xcore.plugin.service.moderation.ModerationService;
+import org.xcore.plugin.service.moderation.MuteCommand;
+import org.xcore.plugin.service.moderation.UnbanCommand;
+import org.xcore.plugin.service.moderation.UnmuteCommand;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
@@ -38,24 +43,27 @@ public class ModerationController implements CloudClientController {
         this.sessionService = sessionService;
     }
 
+    private Session resolveSession(XCoreSender sender) {
+        if (sender == null) return null;
+        Session s = sender.session();
+        if (s != null) return s;
+        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
+    }
+
     @Command("ban <id> <period> [reason]")
     public void ban(XCoreSender sender,
                     @Argument("id") int id,
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
                     @Argument("reason") @Greedy String reason) {
 
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.banById(
-                id,
-                session.player.name,
-                session.data.discordId,
-                reason == null || reason.isBlank() ? null : reason,
-                period,
-                true
-        );
+        var result = moderationService.ban(BanCommand.byId(id, ModerationActor.of(session), period)
+                .reason(reason == null || reason.isBlank() ? null : reason)
+                .kickOnline(true)
+                .build());
 
         if (result.isSuccess()) {
             local.send("commands-ban-success", args("nickname", result.getData().get().name));
@@ -66,15 +74,11 @@ public class ModerationController implements CloudClientController {
 
     @Command("unban <id>")
     public void unban(XCoreSender sender, @Argument("id") int id) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unbanById(
-                id,
-                session.player.name,
-                session.data.discordId
-        );
+        var result = moderationService.unban(UnbanCommand.byId(id, ModerationActor.of(session)));
 
         if (result.isSuccess()) {
             var target = result.getData().get();
@@ -93,17 +97,13 @@ public class ModerationController implements CloudClientController {
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument("reason") @Greedy String reason) {
 
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.muteById(
-                id,
-                session.player.name,
-                session.data.discordId,
-                reason == null || reason.isBlank() ? null : reason,
-                period
-        );
+        var result = moderationService.mute(MuteCommand.byId(id, ModerationActor.of(session), period)
+                .reason(reason == null || reason.isBlank() ? null : reason)
+                .build());
 
         if (result.isSuccess()) {
             var mute = result.getData().get();
@@ -112,7 +112,9 @@ public class ModerationController implements CloudClientController {
             Player p = find.playerByUuid(mute.uuid);
             if (p != null) {
                 Session s = sessionService.get(p.uuid());
-                s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                if (s != null) {
+                    s.locale().send("you-are-muted-by", SecurityService.muteMessageArgs(sender.player().coloredName(), mute.reason, period));
+                }
             }
         } else {
             sendModerationFailure(local, result);
@@ -121,15 +123,11 @@ public class ModerationController implements CloudClientController {
 
     @Command("unmute <id>")
     public void unmute(XCoreSender sender, @Argument("id") int id) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unmuteById(
-                id,
-                session.player.name,
-                session.data.discordId
-        );
+        var result = moderationService.unmute(UnmuteCommand.byId(id, ModerationActor.of(session)));
 
         if (result.isSuccess()) {
             local.send("commands-unmute-success",

@@ -3,6 +3,7 @@ package org.xcore.plugin.ui.menu;
 import org.xcore.plugin.common.CustomGatherers;
 import org.xcore.plugin.common.StatusEnum;
 import org.xcore.plugin.database.repository.GameDataRepository;
+import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
@@ -35,12 +36,14 @@ final class PlayerProfileFlows {
 
     static final class PlayerFlow extends BaseMenuFlow<PlayerState> {
         private final PlayerMenu menu;
+        private final PlayerDataRepository playerDataRepository;
         private final GameDataRepository gameDataRepository;
         private final AuditHistoryMenu auditHistoryMenu;
 
-        PlayerFlow(PlayerMenu menu, GameDataRepository gameDataRepository, AuditHistoryMenu auditHistoryMenu) {
+        PlayerFlow(PlayerMenu menu, PlayerDataRepository playerDataRepository, GameDataRepository gameDataRepository, AuditHistoryMenu auditHistoryMenu) {
             super(ROUTE_PLAYER, PlayerState.class);
             this.menu = menu;
+            this.playerDataRepository = playerDataRepository;
             this.gameDataRepository = gameDataRepository;
             this.auditHistoryMenu = auditHistoryMenu;
 
@@ -48,6 +51,10 @@ final class PlayerProfileFlows {
             action("audit-history", ctx -> auditHistoryMenu.history(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("audit-actions", ctx -> auditHistoryMenu.actions(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("players", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_PLAYERS).withParam("page", "1")));
+        }
+
+        PlayerFlow(PlayerMenu menu, GameDataRepository gameDataRepository, AuditHistoryMenu auditHistoryMenu) {
+            this(menu, null, gameDataRepository, auditHistoryMenu);
         }
 
         @Override
@@ -86,13 +93,17 @@ final class PlayerProfileFlows {
             NumberFormat numberFormat = NumberFormat.getIntegerInstance(local.getLocale());
             Integer hexedTop = context.state().hexedTopRank != null
                     ? context.state().hexedTopRank
-                    : (session.playerDataRepository != null
-                            ? session.playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
-                            : null);
+                    : (playerDataRepository != null
+                            ? playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
+                            : (session.playerDataRepository != null
+                                    ? session.playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)
+                                    : null));
             String hexedTopRank = hexedTop != null ? "#" + numberFormat.format(hexedTop) : "-";
             PlayerStatsOverview statsOverview = context.state().statsOverview != null
                     ? context.state().statsOverview
-                    : gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid);
+                    : (gameDataRepository != null
+                            ? gameDataRepository.aggregatePlayerStatsOverview(targetData.uuid)
+                            : PlayerStatsOverview.EMPTY);
             var overallStats = statsOverview.overall();
 
             var grid = new MenuGrid();
@@ -159,6 +170,9 @@ final class PlayerProfileFlows {
                 if (onlineSession != null && onlineSession.data != null) {
                     return onlineSession.data;
                 }
+            }
+            if (playerDataRepository != null) {
+                return playerDataRepository.findByUuid(targetUuid);
             }
             return session != null && session.playerDataRepository != null
                     ? session.playerDataRepository.findByUuid(targetUuid)

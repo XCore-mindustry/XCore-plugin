@@ -5,10 +5,15 @@ import jakarta.inject.Provider;
 import lombok.Getter;
 import mindustry.gen.Player;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -31,6 +36,59 @@ public class XCoreSender {
 
     public boolean isPlayer() {
         return handle.isPlayer();
+    }
+
+    /**
+     * Resolves the active player session, or null if the sender is the server console
+     * or the player is not currently connected.
+     */
+    public Session session() {
+        if (sessionService == null || player() == null) {
+            return null;
+        }
+        SessionService service = sessionService.get();
+        return service != null ? service.get(player()) : null;
+    }
+
+    /**
+     * Resolves the active player session wrapped in an Optional.
+     */
+    public Optional<Session> optionalSession() {
+        return Optional.ofNullable(session());
+    }
+
+    /**
+     * Resolves the player's persistent data if an active session exists.
+     */
+    public PlayerData playerData() {
+        Session s = session();
+        return s != null ? s.data : null;
+    }
+
+    /**
+     * Executes the given action if an active player session with valid data exists.
+     *
+     * @return true if the action was executed, false otherwise
+     */
+    public boolean withSession(Consumer<Session> consumer) {
+        Session s = session();
+        if (s != null && s.data != null) {
+            consumer.accept(s);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the bound Localization instance for the sender's active session,
+     * or a fallback localization if the sender is console or session is missing.
+     */
+    public Localization localization() {
+        Session s = session();
+        if (s != null) {
+            return s.locale();
+        }
+        return new Localization(bundle, locale());
     }
 
     public void sendMessage(String message) {

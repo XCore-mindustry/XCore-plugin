@@ -64,6 +64,17 @@ public class PrivateMessageRepository extends DataRepository<PrivateMessage> {
         ));
     }
 
+    public java.util.concurrent.CompletionStage<Long> countUnreadAsync(String uuid) {
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.completedFuture(countUnread(uuid));
+        }
+        return MongoAsync.first(reactiveCollection.countDocuments(Filters.and(
+                eq("to_uuid", uuid),
+                eq("recipient_deleted", false),
+                eq("read_at", 0L)
+        )));
+    }
+
     @Override
     public PrivateMessage findById(ObjectId id) {
         return super.findById(id);

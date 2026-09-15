@@ -67,11 +67,18 @@ public class SocialController implements CloudClientController {
         translatorService.translateTeamChat(sender.player(), message);
     }
 
+    private Session resolveSession(XCoreSender sender) {
+        if (sender == null) return null;
+        Session s = sender.session();
+        if (s != null) return s;
+        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
+    }
+
     @RequiresMuteCheck
     @RequiresPlayTime(PlayTimeLimit.GLOBAL_CHAT)
     @Command("g <message>")
     public void globalChat(XCoreSender sender, @Argument("message") @Greedy String message) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
 
         network.post(new ChatGlobalV1(
@@ -95,7 +102,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord link")
     public void discordLink(XCoreSender sender) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -118,7 +125,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord status")
     public void discordStatus(XCoreSender sender) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -136,7 +143,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord unlink")
     public void discordUnlink(XCoreSender sender) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -150,7 +157,7 @@ public class SocialController implements CloudClientController {
 
     @Command("tr <language>")
     public void translator(XCoreSender sender, @Argument(value = "language", parserName = "language") String language) {
-        Session session = sessionService.get(sender.player().uuid());
+        Session session = resolveSession(sender);
         if (session == null || session.data == null) return;
         PlayerData data = session.data;
         Localization local = session.locale();

@@ -323,6 +323,28 @@ public class SessionService {
         return updated;
     }
 
+    public CompletionStage<Boolean> incrementPlayTimeAsync(Session session, int delta) {
+        if (!hasData(session)) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        session.data.totalPlayTime += delta;
+        var stage = playerDataRepository.incrementPlayTimeAsync(session.data.uuid, delta);
+        if (stage != null) {
+            return stage.thenApply(updated -> {
+                if (Boolean.TRUE.equals(updated)) {
+                    invalidateLeaderboardCache();
+                }
+                return updated;
+            });
+        }
+        boolean updated = playerDataRepository.incrementPlayTime(session.data.uuid, delta);
+        if (updated) {
+            invalidateLeaderboardCache();
+        }
+        return CompletableFuture.completedFuture(updated);
+    }
+
     public boolean updateIp(Session session, String ip) {
         return mutateSession(session,
                 data -> data.ip = ip,

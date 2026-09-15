@@ -38,16 +38,23 @@ final class PlayerSettingsFlows {
     private PlayerSettingsFlows() {
     }
 
-    static PlayerData resolveTarget(Session session, String targetUuid) {
+    static PlayerData resolveTarget(PlayerProfileSettingsService profileSettings, Session session, String targetUuid) {
         if (targetUuid == null || targetUuid.isBlank()) {
             return null;
         }
         if (session != null && session.data != null && targetUuid.equals(session.data.uuid)) {
             return session.data;
         }
+        if (profileSettings != null) {
+            return profileSettings.findByUuid(targetUuid);
+        }
         return session != null && session.playerDataRepository != null
                 ? session.playerDataRepository.findByUuid(targetUuid)
                 : null;
+    }
+
+    static PlayerData resolveTarget(Session session, String targetUuid) {
+        return resolveTarget(null, session, targetUuid);
     }
 
     static final class SettingsFlow extends BaseMenuFlow<SettingsState> {
@@ -206,7 +213,7 @@ final class PlayerSettingsFlows {
 
         private PlayerData resolveTargetData(MenuRenderContext<SettingsState> context) {
             SettingsState state = context.state();
-            return state.targetData != null ? state.targetData : resolveTarget(context.session(), state.targetUuid);
+            return state.targetData != null ? state.targetData : resolveTarget(profileSettings, context.session(), state.targetUuid);
         }
     }
 
@@ -285,7 +292,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<ChatSettingsState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
         }
     }
 
@@ -370,7 +377,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<LanguageSelectionState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
         }
     }
 
@@ -435,7 +442,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<BadgeSymbolColorModeState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
         }
     }
 
@@ -527,7 +534,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<BadgesState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
         }
     }
 
@@ -599,7 +606,7 @@ final class PlayerSettingsFlows {
         }
 
         private PlayerData resolveTargetData(MenuRenderContext<AllBadgesState> context) {
-            return resolveTarget(context.session(), context.state().targetUuid);
+            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
         }
     }
 

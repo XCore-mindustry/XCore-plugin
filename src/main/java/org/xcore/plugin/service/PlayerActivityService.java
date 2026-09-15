@@ -39,7 +39,7 @@ public class PlayerActivityService {
                 PlayerData data = session.data;
                 Localization local = session.locale();
 
-                sessionService.incrementPlayTime(session, 1);
+                sessionService.incrementPlayTimeAsync(session, 1);
 
                 if (data.totalPlayTime == secretsConfig.moderation.votekick.minPlayTimeMinutes) {
                     local.send("notification-votekick-playtime",

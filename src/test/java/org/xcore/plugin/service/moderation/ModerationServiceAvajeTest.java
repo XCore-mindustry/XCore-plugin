@@ -623,6 +623,62 @@ class ModerationServiceAvajeTest {
         verify(find).playerData("unknown");
     }
 
+    @Test
+    @DisplayName("ban(BanCommand) delegates to banById when targetId is valid")
+    void banCommand_delegatesToBanById() {
+        when(playerDataRepository.findByPid(404)).thenReturn(null);
+
+        BanCommand cmd = BanCommand.byId(404, ModerationActor.of("admin", "123"), Duration.ofMinutes(10))
+                .reason("grief")
+                .build();
+        var result = moderationService.ban(cmd);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verify(playerDataRepository).findByPid(404);
+    }
+
+    @Test
+    @DisplayName("unban(UnbanCommand) delegates to unbanById when targetId is valid")
+    void unbanCommand_delegatesToUnbanById() {
+        when(playerDataRepository.findByPid(405)).thenReturn(null);
+
+        UnbanCommand cmd = UnbanCommand.byId(405, ModerationActor.of("admin", "123"));
+        var result = moderationService.unban(cmd);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verify(playerDataRepository).findByPid(405);
+    }
+
+    @Test
+    @DisplayName("mute(MuteCommand) delegates to muteById when targetId is valid")
+    void muteCommand_delegatesToMuteById() {
+        when(sessionService.getOrLoadFromDb(100)).thenReturn(null);
+
+        MuteCommand cmd = MuteCommand.byId(100, ModerationActor.of("admin", null), Duration.ofMinutes(30))
+                .reason("spam")
+                .build();
+        var result = moderationService.mute(cmd);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verify(sessionService).getOrLoadFromDb(100);
+    }
+
+    @Test
+    @DisplayName("unmute(UnmuteCommand) delegates to unmuteById when targetId is valid")
+    void unmuteCommand_delegatesToUnmuteById() {
+        when(sessionService.getOrLoadFromDb(8)).thenReturn(null);
+
+        UnmuteCommand cmd = UnmuteCommand.byId(8, ModerationActor.of("admin", "123"));
+        var result = moderationService.unmute(cmd);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Player not found");
+        verify(sessionService).getOrLoadFromDb(8);
+    }
+
     private static AuditRecord validAuditRecord() {
         return validAuditRecord("audit-target-uuid", "Audit Target", null);
     }

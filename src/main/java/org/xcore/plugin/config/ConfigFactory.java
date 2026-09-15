@@ -30,6 +30,7 @@ public class ConfigFactory {
     }
 
     @Bean
+    @Deprecated
     public Config config(TomlXcoreConfig serverLocalConfig) {
         Config config = ConfigTomlMapper.toConfig(serverLocalConfig);
         config.normalize();
@@ -52,8 +53,18 @@ public class ConfigFactory {
     }
 
     @Bean
+    public TomlSecretsConfig tomlSecretsConfig(TomlXcoreConfig serverLocalConfig, @Named("pretty") Gson gson) {
+        var result = ConfigTomlLoader.loadTomlSecretsConfig(serverLocalConfig.paths.globalConfigDirectory, gson);
+        logSource("GlobalConfig", result.file, result.source);
+
+        TomlSecretsConfig tomlSecretsConfig = result.config;
+        tomlSecretsConfig.normalize();
+        return tomlSecretsConfig;
+    }
+
+    @Deprecated
     public TomlSecretsConfig tomlSecretsConfig(Config config, @Named("pretty") Gson gson) {
-        var result = ConfigTomlLoader.loadTomlSecretsConfig(config.globalConfigDirectory, gson);
+        var result = ConfigTomlLoader.loadTomlSecretsConfig(config != null ? config.globalConfigDirectory : null, gson);
         logSource("GlobalConfig", result.file, result.source);
 
         TomlSecretsConfig tomlSecretsConfig = result.config;
@@ -62,10 +73,19 @@ public class ConfigFactory {
     }
 
     @Bean
+    @Deprecated
+    public GlobalConfig globalConfig(TomlXcoreConfig serverLocalConfig, TomlSecretsConfig tomlSecretsConfig) {
+        GlobalConfig globalConfig = ConfigTomlMapper.toGlobalConfig(tomlSecretsConfig);
+        globalConfig.normalize();
+        globalConfig.postInit(ConfigTomlLoader.resolveSecretsToml(serverLocalConfig.paths.globalConfigDirectory));
+        return globalConfig;
+    }
+
+    @Deprecated
     public GlobalConfig globalConfig(Config config, TomlSecretsConfig tomlSecretsConfig) {
         GlobalConfig globalConfig = ConfigTomlMapper.toGlobalConfig(tomlSecretsConfig);
         globalConfig.normalize();
-        globalConfig.postInit(ConfigTomlLoader.resolveSecretsToml(config.globalConfigDirectory));
+        globalConfig.postInit(ConfigTomlLoader.resolveSecretsToml(config != null ? config.globalConfigDirectory : null));
         return globalConfig;
     }
 
