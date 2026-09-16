@@ -5,7 +5,7 @@ avaje = "12.5"
 cloud = "0.2.0-SNAPSHOT"
 shadow = "9.3.0"
 toxopid = "4.2.0"
-xcore-plugin = "4.0.0"
+xcore-plugin = "4.6.0"
 flubundle = "1.7.1"
 
 [libraries]

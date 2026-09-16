@@ -16,6 +16,8 @@ import mindustry.net.Administration.PlayerInfo;
 import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.ConstructBlock.ConstructBuild;
+import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
@@ -23,10 +25,13 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import tilelogger.*;
 
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -41,6 +46,7 @@ public class TileLoggerService {
     private final SessionService playerSessionService;
     private final FindService findService;
     private final Bundle bundle;
+    private final Async async;
 
     private final ObjectMap<String, PlayerConfig> playerConfigs = new ObjectMap<>();
     private final java.util.concurrent.ConcurrentMap<String, PlayerDescriptor> descriptorCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -48,11 +54,14 @@ public class TileLoggerService {
     @Inject
     public TileLoggerService(PlayerDataRepository playerDataRepository,
                              SessionService playerSessionService,
-                             FindService findService, Bundle bundle) {
+                             FindService findService,
+                             Bundle bundle,
+                             Async async) {
         this.playerDataRepository = playerDataRepository;
         this.playerSessionService = playerSessionService;
         this.findService = findService;
         this.bundle = bundle;
+        this.async = async;
     }
 
     public PlayerConfig getPlayerConfig(Player player) {
@@ -116,37 +125,75 @@ public class TileLoggerService {
 
 
     public void showHistory(@Nullable Player caller, PlayerDescriptor target, long size) {
-        var locale = resolveLocale(caller);
+        TileState[] states = TileLogger.getHistory((short)0, (short)0, (short)-1, (short)-1,
+                target.uuid, -1, 0, size);
 
-        StringBuilder str = new StringBuilder();
-        str.append(bundle.format(locale, "tilelogger-history-player", args(
-                "player", target.toString(),
-                "time", getCurrentTimeFormatted()
-        )));
+        preloadAndRenderHistory(caller, states, () -> {
+            var locale = resolveLocale(caller);
+            StringBuilder str = new StringBuilder();
+            str.append(bundle.format(locale, "tilelogger-history-player", args(
+                    "player", target.toString(),
+                    "time", getCurrentTimeFormatted()
+            )));
 
-        for (TileState state : TileLogger.getHistory((short)0, (short)0, (short)-1, (short)-1,
-                target.uuid, -1, 0, size)) {
-            appendStateLine(str, state);
-        }
+            for (TileState state : states) {
+                appendStateLine(str, state);
+            }
 
-        if (caller == null) Log.info(str.toString());
-        else caller.sendMessage(str.toString());
+            if (caller == null) Log.info(str.toString());
+            else caller.sendMessage(str.toString());
+        });
     }
 
     public void showHistory(@Nullable Player caller, short x, short y, long size) {
-        var locale = resolveLocale(caller);
+        TileState[] states = TileLogger.getHistory(x, y, x, y, "", -1, 0, size);
 
-        StringBuilder str = new StringBuilder();
-        str.append(bundle.format(locale, "tilelogger-history-tile", args(
-                "x", x, "y", y, "time", getCurrentTimeFormatted()
-        )));
+        preloadAndRenderHistory(caller, states, () -> {
+            var locale = resolveLocale(caller);
+            StringBuilder str = new StringBuilder();
+            str.append(bundle.format(locale, "tilelogger-history-tile", args(
+                    "x", x, "y", y, "time", getCurrentTimeFormatted()
+            )));
 
-        for (TileState state : TileLogger.getHistory(x, y, x, y, "", -1, 0, size)) {
-            appendStateLine(str, state);
+            for (TileState state : states) {
+                appendStateLine(str, state);
+            }
+
+            if (caller == null) Log.info(str.toString());
+            else caller.sendMessage(str.toString());
+        });
+    }
+
+    private CompletableFuture<Void> preloadDescriptorsAsync(TileState[] states) {
+        if (states == null || states.length == 0) {
+            return CompletableFuture.completedFuture(null);
+        }
+        List<CompletableFuture<?>> futures = new ArrayList<>();
+        for (TileState state : states) {
+            if (state.uuid != null && !state.uuid.isBlank() && findPlayerUuidFast(state.uuid) == null) {
+                futures.add(findPlayerUuidAsync(state.uuid));
+            }
+        }
+        if (futures.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+    }
+
+    private void preloadAndRenderHistory(@Nullable Player caller, TileState[] states, Runnable renderAction) {
+        CompletableFuture<Void> future = preloadDescriptorsAsync(states);
+        if (future.isDone()) {
+            renderAction.run();
+            return;
         }
 
-        if (caller == null) Log.info(str.toString());
-        else caller.sendMessage(str.toString());
+        if (caller != null) {
+            async.onMainForPlayer(caller, future, (p, ignored) -> renderAction.run());
+        } else {
+            async.onMain(future, (ignored, err) -> {
+                if (err == null) renderAction.run();
+            });
+        }
     }
 
     public void rollback(@Nullable Player caller, PlayerDescriptor target, int teams, int time, Rect rect) {
@@ -213,14 +260,18 @@ public class TileLoggerService {
     }
 
     public void sendTileHistory(short x, short y, Player caller) {
-        sendHistoryPacket(caller, "tilelogger_history_tile",
-                TileLogger.getHistory(x, y, x, y, "", -1, 0, 100));
+        TileState[] states = TileLogger.getHistory(x, y, x, y, "", -1, 0, 100);
+        preloadAndRenderHistory(caller, states, () -> {
+            sendHistoryPacket(caller, "tilelogger_history_tile", states);
+        });
     }
 
     public void sendPlayerHistory(PlayerDescriptor target, Player caller) {
-        sendHistoryPacket(caller, "tilelogger_history_player",
-                TileLogger.getHistory((short)0, (short)0, (short)-1, (short)-1,
-                        target.uuid, -1, 0, 100));
+        TileState[] states = TileLogger.getHistory((short)0, (short)0, (short)-1, (short)-1,
+                target.uuid, -1, 0, 100);
+        preloadAndRenderHistory(caller, states, () -> {
+            sendHistoryPacket(caller, "tilelogger_history_player", states);
+        });
     }
 
     public String getMemoryUsage(@Nullable Player viewer) {
@@ -239,44 +290,43 @@ public class TileLoggerService {
         ));
     }
 
-    public @Nullable PlayerDescriptor findPlayer(String str) {
+    public @Nullable PlayerDescriptor findPlayerFast(String str) {
         if (str == null || str.isBlank()) return null;
         if (str.equals("all")) return new PlayerDescriptor("all", "", -1);
 
-        // 1. Online player by name (instant RAM check)
+        PlayerDescriptor cached = descriptorCache.get(str);
+        if (cached != null) return cached;
+
         Player player = findService.playerByName(str);
         if (player != null) {
             var session = playerSessionService.get(player.uuid());
             PlayerData data = session != null ? session.getData() : null;
-            if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+            if (data != null) {
+                PlayerDescriptor desc = new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+                descriptorCache.put(data.uuid, desc);
+                return desc;
+            }
             return new PlayerDescriptor(player.name, player.uuid(), -1);
         }
 
-        // 2. Numeric PID: check session cache / DB
-        if (arc.util.Strings.canParseInt(str)) {
-            int pid = Integer.parseInt(str);
-            PlayerData data = playerSessionService.getOrLoadFromDb(pid);
-            if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
-        }
-
-        // 3. Online player by UUID (instant RAM check)
         var onlineByUuid = playerSessionService.get(str);
         if (onlineByUuid != null && onlineByUuid.getData() != null) {
-            return new PlayerDescriptor(onlineByUuid.getData().nickname, onlineByUuid.getData().uuid, onlineByUuid.getData().pid);
+            PlayerDescriptor desc = new PlayerDescriptor(onlineByUuid.getData().nickname, onlineByUuid.getData().uuid, onlineByUuid.getData().pid);
+            descriptorCache.put(onlineByUuid.getData().uuid, desc);
+            return desc;
         }
 
-        // 4. Mindustry native PlayerInfo (instant RAM check)
         var info = Vars.netServer.admins.getInfoOptional(str);
-        if (info != null) return new PlayerDescriptor(info.lastName, str, -1);
-
-        // 5. Fallback to DB query
-        PlayerData data = playerDataRepository.findByUuid(str);
-        if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+        if (info != null) {
+            PlayerDescriptor desc = new PlayerDescriptor(info.lastName, str, -1);
+            descriptorCache.put(str, desc);
+            return desc;
+        }
 
         return null;
     }
 
-    public @Nullable PlayerDescriptor findPlayerUuid(String uuid) {
+    public @Nullable PlayerDescriptor findPlayerUuidFast(String uuid) {
         if (uuid == null || uuid.isBlank()) return null;
 
         PlayerDescriptor cached = descriptorCache.get(uuid);
@@ -295,6 +345,165 @@ public class TileLoggerService {
             descriptorCache.put(uuid, desc);
             return desc;
         }
+
+        return null;
+    }
+
+    public CompletableFuture<PlayerDescriptor> findPlayerUuidAsync(String uuid) {
+        if (uuid == null || uuid.isBlank()) return CompletableFuture.completedFuture(null);
+        PlayerDescriptor fast = findPlayerUuidFast(uuid);
+        if (fast != null) return CompletableFuture.completedFuture(fast);
+
+        return playerDataRepository.findByUuidAsync(uuid)
+                .toCompletableFuture()
+                .thenApply(data -> {
+                    if (data != null) {
+                        PlayerDescriptor desc = new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+                        descriptorCache.put(uuid, desc);
+                        return desc;
+                    }
+                    return null;
+                });
+    }
+
+    public CompletableFuture<PlayerDescriptor> findPlayerAsync(String str) {
+        if (str == null || str.isBlank()) return CompletableFuture.completedFuture(null);
+        PlayerDescriptor fast = findPlayerFast(str);
+        if (fast != null) return CompletableFuture.completedFuture(fast);
+
+        if (arc.util.Strings.canParseInt(str)) {
+            int pid = Integer.parseInt(str);
+            return playerDataRepository.findByPidAsync(pid)
+                    .toCompletableFuture()
+                    .thenCompose(data -> {
+                        if (data != null) {
+                            PlayerDescriptor desc = new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+                            descriptorCache.put(data.uuid, desc);
+                            return CompletableFuture.completedFuture(desc);
+                        }
+                        return playerDataRepository.findByUuidAsync(str)
+                                .toCompletableFuture()
+                                .thenApply(d -> {
+                                    if (d != null) {
+                                        PlayerDescriptor desc = new PlayerDescriptor(d.nickname, d.uuid, d.pid);
+                                        descriptorCache.put(d.uuid, desc);
+                                        return desc;
+                                    }
+                                    return null;
+                                });
+                    });
+        }
+
+        return playerDataRepository.findByUuidAsync(str)
+                .toCompletableFuture()
+                .thenApply(data -> {
+                    if (data != null) {
+                        PlayerDescriptor desc = new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+                        descriptorCache.put(data.uuid, desc);
+                        return desc;
+                    }
+                    return null;
+                });
+    }
+
+    public void executeRollback(XCoreSender sender, String targetStr, Duration duration, boolean useSelection) {
+        int timeSeconds = (int) duration.toSeconds();
+        Rect rect;
+        if (useSelection && sender.isPlayer()) {
+            rect = getPlayerConfig(sender.player()).rect;
+        } else {
+            rect = new Rect((short)0, (short)0, (short)(Vars.world.width()-1), (short)(Vars.world.height()-1));
+        }
+
+        if (targetStr.equalsIgnoreCase("self") && sender.isPlayer()) {
+            PlayerDescriptor target = findPlayerUuidFast(sender.player().uuid());
+            if (target == null) {
+                target = new PlayerDescriptor(sender.player().plainName(), sender.player().uuid(), -1);
+            }
+            rollback(sender.player(), target, -1, timeSeconds, rect);
+            return;
+        }
+
+        PlayerDescriptor fastTarget = findPlayerFast(targetStr);
+        if (fastTarget != null) {
+            rollback(sender.isPlayer() ? sender.player() : null, fastTarget, -1, timeSeconds, rect);
+            return;
+        }
+
+        var future = findPlayerAsync(targetStr);
+        if (sender.isPlayer()) {
+            async.onMainForPlayer(sender.player(), future, (player, target) -> {
+                if (target == null) {
+                    sender.send("error-player-not-found", args());
+                    return;
+                }
+                rollback(player, target, -1, timeSeconds, rect);
+            });
+        } else {
+            async.onMain(future, (target, err) -> {
+                if (target == null || err != null) {
+                    sender.send("error-player-not-found", args());
+                    return;
+                }
+                rollback(null, target, -1, timeSeconds, rect);
+            });
+        }
+    }
+
+    public void executeHistoryPlayer(XCoreSender sender, String targetStr, long size) {
+        if (size <= 0) return;
+
+        PlayerDescriptor fastTarget = findPlayerFast(targetStr);
+        if (fastTarget != null) {
+            showHistory(sender.player(), fastTarget, size);
+            if (sender.isPlayer() && useAdminTools(sender.player())) {
+                sendPlayerHistory(fastTarget, sender.player());
+            }
+            return;
+        }
+
+        var future = findPlayerAsync(targetStr);
+        if (sender.isPlayer()) {
+            async.onMainForPlayer(sender.player(), future, (player, target) -> {
+                if (target == null) {
+                    sender.send("error-player-not-found", args());
+                    return;
+                }
+                showHistory(player, target, size);
+                if (useAdminTools(player)) {
+                    sendPlayerHistory(target, player);
+                }
+            });
+        } else {
+            async.onMain(future, (target, err) -> {
+                if (target == null || err != null) {
+                    sender.send("error-player-not-found", args());
+                    return;
+                }
+                showHistory(null, target, size);
+            });
+        }
+    }
+
+    public @Nullable PlayerDescriptor findPlayer(String str) {
+        PlayerDescriptor fast = findPlayerFast(str);
+        if (fast != null) return fast;
+
+        if (arc.util.Strings.canParseInt(str)) {
+            int pid = Integer.parseInt(str);
+            PlayerData data = playerSessionService.getOrLoadFromDb(pid);
+            if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+        }
+
+        PlayerData data = playerDataRepository.findByUuid(str);
+        if (data != null) return new PlayerDescriptor(data.nickname, data.uuid, data.pid);
+
+        return null;
+    }
+
+    public @Nullable PlayerDescriptor findPlayerUuid(String uuid) {
+        PlayerDescriptor fast = findPlayerUuidFast(uuid);
+        if (fast != null) return fast;
 
         PlayerData data = playerSessionService.getOrLoadFromDb(uuid);
         if (data != null) {

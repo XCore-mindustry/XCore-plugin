@@ -43,19 +43,7 @@ public class HistoryController {
     public void historyTarget(XCoreSender sender,
                               @Argument("target") String targetStr,
                               @Argument("size") @Default("10") long size) {
-        PlayerDescriptor target = service.findPlayer(targetStr);
-        if (target == null) {
-            sender.send("error-player-not-found", args());
-            return;
-        }
-
-        if (size > 0) {
-            service.showHistory(sender.player(), target, size);
-
-            if (sender.isPlayer() && service.useAdminTools(sender.player())) {
-                service.sendPlayerHistory(target, sender.player());
-            }
-        }
+        service.executeHistoryPlayer(sender, targetStr, size);
     }
 
     @Command("history t|tile <x> <y> [size]")

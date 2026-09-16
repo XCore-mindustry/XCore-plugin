@@ -36,29 +36,6 @@ public class RollbackController {
                          @Argument("target") String targetStr,
                          @Argument("time") @AllowNegativeDuration @DefaultUnit(TimeUnit.MINUTES) @Default("0") Duration duration,
                          @Flag("selection") boolean useSelection) {
-
-        PlayerDescriptor target;
-
-        if (targetStr.equalsIgnoreCase("self") && sender.isPlayer()) {
-            target = service.findPlayerUuid(sender.player().uuid());
-        } else {
-            target = service.findPlayer(targetStr);
-        }
-
-        if (target == null) {
-            sender.send("error-player-not-found", args());
-            return;
-        }
-
-        int timeSeconds = (int) duration.toSeconds();
-        Rect rect;
-
-        if (useSelection && sender.isPlayer()) {
-            rect = service.getPlayerConfig(sender.player()).rect;
-        } else {
-            rect = new Rect((short)0, (short)0, (short)(Vars.world.width()-1), (short)(Vars.world.height()-1));
-        }
-
-        service.rollback(sender.isPlayer() ? sender.player() : null, target, -1, timeSeconds, rect);
+        service.executeRollback(sender, targetStr, duration, useSelection);
     }
 }
