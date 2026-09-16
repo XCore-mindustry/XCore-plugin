@@ -13,6 +13,10 @@ import org.xcore.plugin.localization.TranslationResult;
 import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionException;
 
 @Singleton
@@ -95,8 +99,8 @@ public class TranslatorService {
     }
 
     public void translate(Player author, String text) {
-        var cache = new StringMap();
         var message = chatFormatService.formatChat(author, text);
+        Map<String, List<Player>> langToRecipients = new LinkedHashMap<>();
 
         for (var data : sessionService.getAllCachedSnapshot()) {
             var player = Groups.player.find(p -> p.uuid().equals(data.data.uuid));
@@ -107,7 +111,7 @@ public class TranslatorService {
                 continue;
             }
 
-             if (!translationFallbackService.supports(data.data.translatorLanguage)) {
+            if (!translationFallbackService.supports(data.data.translatorLanguage)) {
                 translationMetricsService.incrementGlobal("unsupported_language_total");
                 Log.debug("[Translation] Player '@' has unsupported translator language '@'",
                         data.data.uuid, data.data.translatorLanguage);
@@ -115,34 +119,40 @@ public class TranslatorService {
                 continue;
             }
 
-            if (cache.containsKey(data.data.translatorLanguage)) {
-                String translatedText = extractTranslatedText(cache.get(data.data.translatorLanguage));
-                if (!hasMeaningfulTranslation(text, translatedText)) {
-                    player.sendMessage(message, author, text);
-                    continue;
-                }
+            langToRecipients.computeIfAbsent(data.data.translatorLanguage, k -> new ArrayList<>()).add(player);
+        }
 
-                player.sendMessage(cache.get(data.data.translatorLanguage), author,
-                        buildCompatibilityText(text, translatedText));
-            } else translate(text, "auto", data.data.translatorLanguage, result -> {
+        for (var entry : langToRecipients.entrySet()) {
+            String targetLang = entry.getKey();
+            List<Player> recipients = entry.getValue();
+
+            translate(text, "auto", targetLang, result -> {
                 if (!hasMeaningfulTranslation(text, result)) {
-                    player.sendMessage(message, author, text);
+                    for (Player player : recipients) {
+                        player.sendMessage(message, author, text);
+                    }
                     return;
                 }
 
-                cache.put(data.data.translatorLanguage, message + " [white]([lightgray]" + result + "[])");
-                player.sendMessage(cache.get(data.data.translatorLanguage), author,
-                        buildCompatibilityText(text, result));
+                String formattedTranslation = message + " [white]([lightgray]" + result + "[])";
+                String compatText = buildCompatibilityText(text, result);
+                for (Player player : recipients) {
+                    player.sendMessage(formattedTranslation, author, compatText);
+                }
             }, () -> {
                 if (config.translation.preserveOriginalMessageOnFailure) {
-                    player.sendMessage(message, author, text);
+                    for (Player player : recipients) {
+                        player.sendMessage(message, author, text);
+                    }
                 }
             });
         }
     }
 
+    private record TeamRecipient(Player player, String message, boolean foosCompatible) {}
+
     public void translateTeamChat(Player author, String text) {
-        var cache = new StringMap();
+        Map<String, List<TeamRecipient>> langToRecipients = new LinkedHashMap<>();
 
         for (var session : sessionService.findByTeam(author.team())) {
             var player = session.player;
@@ -163,33 +173,35 @@ public class TranslatorService {
                 continue;
             }
 
-            if (cache.containsKey(session.data.translatorLanguage)) {
-                String translatedText = cache.get(session.data.translatorLanguage);
-                if (!hasMeaningfulTranslation(text, translatedText)) {
-                    sendTeamChat(player, message, author, text, foosCompatible);
-                    continue;
-                }
+            langToRecipients.computeIfAbsent(session.data.translatorLanguage, k -> new ArrayList<>())
+                    .add(new TeamRecipient(player, message, foosCompatible));
+        }
 
-                sendTeamChat(player,
-                        appendTranslation(message, translatedText),
-                        author,
-                        buildCompatibilityText(text, translatedText),
-                        foosCompatible);
-            } else translate(text, "auto", session.data.translatorLanguage, result -> {
+        for (var entry : langToRecipients.entrySet()) {
+            String targetLang = entry.getKey();
+            List<TeamRecipient> recipients = entry.getValue();
+
+            translate(text, "auto", targetLang, result -> {
                 if (!hasMeaningfulTranslation(text, result)) {
-                    sendTeamChat(player, message, author, text, foosCompatible);
+                    for (var recipient : recipients) {
+                        sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                    }
                     return;
                 }
 
-                cache.put(session.data.translatorLanguage, result);
-                sendTeamChat(player,
-                        appendTranslation(message, result),
-                        author,
-                        buildCompatibilityText(text, result),
-                        foosCompatible);
+                String compatText = buildCompatibilityText(text, result);
+                for (var recipient : recipients) {
+                    sendTeamChat(recipient.player,
+                            appendTranslation(recipient.message, result),
+                            author,
+                            compatText,
+                            recipient.foosCompatible);
+                }
             }, () -> {
                 if (config.translation.preserveOriginalMessageOnFailure) {
-                    sendTeamChat(player, message, author, text, foosCompatible);
+                    for (var recipient : recipients) {
+                        sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                    }
                 }
             });
         }
@@ -224,25 +236,6 @@ public class TranslatorService {
         }
 
         return text.trim().replaceAll("\\s+", " ");
-    }
-
-    private String extractTranslatedText(String formattedMessage) {
-        if (formattedMessage == null) {
-            return "";
-        }
-
-        int suffixStart = formattedMessage.lastIndexOf(" [white]([lightgray]");
-        if (suffixStart < 0) {
-            return "";
-        }
-
-        int translatedStart = suffixStart + " [white]([lightgray]".length();
-        int translatedEnd = formattedMessage.indexOf("[])", translatedStart);
-        if (translatedEnd < 0 || translatedEnd <= translatedStart) {
-            return "";
-        }
-
-        return formattedMessage.substring(translatedStart, translatedEnd);
     }
 
     private void sendTeamChat(Player player,

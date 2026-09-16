@@ -17,9 +17,7 @@ public class VoteService {
 
     public void endVote() {
         if (currentSession != null) {
-            if (currentSession.end != null && !currentSession.end.isScheduled()) {
-                currentSession.end.cancel();
-            }
+            currentSession.stop();
         }
         this.currentSession = null;
     }

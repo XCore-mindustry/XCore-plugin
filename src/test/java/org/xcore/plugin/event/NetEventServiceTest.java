@@ -107,8 +107,8 @@ class NetEventServiceTest {
         boolean allowed = service.connectFilter("1.2.3.4");
 
         assertThat(allowed).isTrue();
-        assertThat(service.blockedIPs).isZero();
-        assertThat(service.blockedIPsPerMinute).isZero();
+        assertThat(service.getBlockedIPs()).isZero();
+        assertThat(service.getBlockedIPsPerMinute()).isZero();
     }
 
     @Test
@@ -119,7 +119,7 @@ class NetEventServiceTest {
         boolean allowed = service.connectFilter("5.6.7.8");
 
         assertThat(allowed).isFalse();
-        assertThat(service.blockedIPs).isEqualTo(1);
-        assertThat(service.blockedIPsPerMinute).isEqualTo(1);
+        assertThat(service.getBlockedIPs()).isEqualTo(1);
+        assertThat(service.getBlockedIPsPerMinute()).isEqualTo(1);
     }
 }

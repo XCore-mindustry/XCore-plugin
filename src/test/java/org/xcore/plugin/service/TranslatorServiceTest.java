@@ -682,6 +682,63 @@ class TranslatorServiceTest {
         verify(author).sendMessage("team-author", author);
         verify(recipient).sendMessage("team-recipient [white]([lightgray]привет[])", author, "hello (привет)");
     }
+    @Test
+    @DisplayName("translate groups recipients by language calling provider only once for multiple players with same language")
+    void translate_groupsRecipientsByLanguage_callingProviderOnlyOnceForMultiplePlayers() {
+        TomlXcoreConfig config = config();
+        SessionService sessionService = mock(SessionService.class);
+        ChatFormatService chatFormatService = mock(ChatFormatService.class);
+        ClientCompatibilityService clientCompatibilityService = mock(ClientCompatibilityService.class);
+        TranslationFallbackService translationFallbackService = mock(TranslationFallbackService.class);
+        TranslationCacheService translationCacheService = mock(TranslationCacheService.class);
+        TranslationMetricsService translationMetricsService = mock(TranslationMetricsService.class);
+        TranslatorService service = new TranslatorService(
+                config,
+                sessionService,
+                chatFormatService,
+                clientCompatibilityService,
+                translationFallbackService,
+                translationCacheService,
+                translationMetricsService
+        );
+
+        Player author = mock(Player.class);
+        Player recipient1 = mock(Player.class);
+        when(recipient1.uuid()).thenReturn("rec1");
+        Player recipient2 = mock(Player.class);
+        when(recipient2.uuid()).thenReturn("rec2");
+
+        Session s1 = mock(Session.class);
+        s1.data = new PlayerData("rec1", true);
+        s1.data.translatorLanguage = "ru";
+
+        Session s2 = mock(Session.class);
+        s2.data = new PlayerData("rec2", true);
+        s2.data.translatorLanguage = "ru";
+
+        when(sessionService.getAllCachedSnapshot()).thenReturn(List.of(s1, s2));
+        when(chatFormatService.formatChat(author, "hello")).thenReturn("formatted");
+        doAnswer(invocation -> {
+            Boolf<Player> predicate = invocation.getArgument(0);
+            if (predicate.get(recipient1)) return recipient1;
+            if (predicate.get(recipient2)) return recipient2;
+            return null;
+        }).when(Groups.player).find(any());
+
+        when(translationFallbackService.supports("ru")).thenReturn(true);
+        doAnswer(invocation -> {
+            arc.func.Cons<TranslationResult> callback = invocation.getArgument(1);
+            callback.get(TranslationResult.success("привет"));
+            return null;
+        }).when(translationFallbackService).translate(any(TranslationProvider.Request.class), any());
+
+        service.translate(author, "hello");
+
+        verify(translationFallbackService, org.mockito.Mockito.times(1)).translate(any(TranslationProvider.Request.class), any());
+        verify(recipient1).sendMessage("formatted [white]([lightgray]привет[])", author, "hello (привет)");
+        verify(recipient2).sendMessage("formatted [white]([lightgray]привет[])", author, "hello (привет)");
+    }
+
     private static TomlXcoreConfig config() {
         return new TomlXcoreConfig();
     }

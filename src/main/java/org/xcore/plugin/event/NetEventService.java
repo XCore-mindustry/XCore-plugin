@@ -1,5 +1,6 @@
 package org.xcore.plugin.event;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import arc.Events;
 import arc.func.Boolf;
 import jakarta.inject.Inject;
@@ -18,8 +19,16 @@ public class NetEventService {
 
     @Getter @Setter
     public Boolf<String> ipAcceptor = (ip) -> true;
-    public int blockedIPs = 0;
-    public int blockedIPsPerMinute = 0;
+    private final AtomicInteger blockedIPs = new AtomicInteger();
+    private final AtomicInteger blockedIPsPerMinute = new AtomicInteger();
+
+    public int getBlockedIPs() {
+        return blockedIPs.get();
+    }
+
+    public int getBlockedIPsPerMinute() {
+        return blockedIPsPerMinute.get();
+    }
 
     private final ChatMessageHandler chatMessageHandler;
     private final AdminRequestHandler adminRequestHandler;
@@ -41,8 +50,8 @@ public class NetEventService {
 
     public boolean connectFilter(String address) {
         var result = connectionFilterService.filter(address, ipAcceptor);
-        blockedIPs += result.blockedIpDelta();
-        blockedIPsPerMinute += result.blockedIpsPerMinuteDelta();
+        blockedIPs.addAndGet(result.blockedIpDelta());
+        blockedIPsPerMinute.addAndGet(result.blockedIpsPerMinuteDelta());
         return result.allowed();
     }
 
