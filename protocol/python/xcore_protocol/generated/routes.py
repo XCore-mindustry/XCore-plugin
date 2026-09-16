@@ -18,16 +18,25 @@ from .chat import (
     ChatGlobalV1,
     ChatDiscordIngressCommandV1,
     ChatPrivateV1,
-    ServerActionV1,
+)
+
+from .identity import (
     PlayerJoinLeaveV1,
     PlayerCustomNicknameChangedCommandV1,
     PlayerActiveBadgeChangedCommandV1,
     PlayerBadgeInventoryChangedCommandV1,
     PlayerBadgeSymbolColorModeChangedCommandV1,
-    PlayerPasswordResetCommandV1,
-    PlayerDataCacheReloadCommandV1,
+)
+
+from .server import (
+    ServerActionV1,
     ServerCommandExecuteCommandV1,
+    PlayerDataCacheReloadCommandV1,
     ServerHeartbeatV1,
+)
+
+from .security import (
+    PlayerPasswordResetCommandV1,
 )
 
 from .discord import (
@@ -215,25 +224,8 @@ CHAT_PRIVATE_V1 = RouteDescriptor(
     response=None,
 )
 
-SERVER_ACTION_V1 = RouteDescriptor(
-    family='chat',
-    methodName='serverActionV1Route',
-    messageType='server.action',
-    messageVersion=1,
-    payloadType=ServerActionV1,
-    kind='event',
-    stream='xcore:evt:server:action',
-    bindings={},
-    targetScope='broadcast',
-    ttlMs=60000,
-    replayable=True,
-    idempotentConsumerRecommended=False,
-    owner='server-runtime',
-    response=None,
-)
-
 PLAYER_JOIN_LEAVE_V1 = RouteDescriptor(
-    family='chat',
+    family='identity',
     methodName='playerJoinLeaveV1Route',
     messageType='player.join-leave',
     messageVersion=1,
@@ -250,7 +242,7 @@ PLAYER_JOIN_LEAVE_V1 = RouteDescriptor(
 )
 
 PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1 = RouteDescriptor(
-    family='chat',
+    family='identity',
     methodName='playerCustomNicknameChangedCommandV1Route',
     messageType='player.custom-nickname.changed.command',
     messageVersion=1,
@@ -267,7 +259,7 @@ PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1 = RouteDescriptor(
 )
 
 PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = RouteDescriptor(
-    family='chat',
+    family='identity',
     methodName='playerActiveBadgeChangedCommandV1Route',
     messageType='player.active-badge.changed.command',
     messageVersion=1,
@@ -284,7 +276,7 @@ PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = RouteDescriptor(
 )
 
 PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = RouteDescriptor(
-    family='chat',
+    family='identity',
     methodName='playerBadgeInventoryChangedCommandV1Route',
     messageType='player.badge-inventory.changed.command',
     messageVersion=1,
@@ -301,7 +293,7 @@ PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = RouteDescriptor(
 )
 
 PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = RouteDescriptor(
-    family='chat',
+    family='identity',
     methodName='playerBadgeSymbolColorModeChangedCommandV1Route',
     messageType='player.badge-symbol-color-mode.changed.command',
     messageVersion=1,
@@ -317,42 +309,25 @@ PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = RouteDescriptor(
     response=None,
 )
 
-PLAYER_PASSWORD_RESET_COMMAND_V1 = RouteDescriptor(
-    family='chat',
-    methodName='playerPasswordResetCommandV1Route',
-    messageType='player.password-reset.command',
+SERVER_ACTION_V1 = RouteDescriptor(
+    family='server',
+    methodName='serverActionV1Route',
+    messageType='server.action',
     messageVersion=1,
-    payloadType=PlayerPasswordResetCommandV1,
-    kind='command',
-    stream='xcore:cmd:player-password-reset:{server}',
-    bindings={'server': 'payload.server'},
-    targetScope='server',
-    ttlMs=120000,
-    replayable=False,
-    idempotentConsumerRecommended=True,
-    owner='player-session',
-    response=None,
-)
-
-PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = RouteDescriptor(
-    family='chat',
-    methodName='playerDataCacheReloadCommandV1Route',
-    messageType='player-data-cache.reload.command',
-    messageVersion=1,
-    payloadType=PlayerDataCacheReloadCommandV1,
-    kind='command',
-    stream='xcore:cmd:reload-cache:{server}',
-    bindings={'server': 'payload.server'},
-    targetScope='server',
-    ttlMs=120000,
-    replayable=False,
-    idempotentConsumerRecommended=True,
-    owner='player-session',
+    payloadType=ServerActionV1,
+    kind='event',
+    stream='xcore:evt:server:action',
+    bindings={},
+    targetScope='broadcast',
+    ttlMs=60000,
+    replayable=True,
+    idempotentConsumerRecommended=False,
+    owner='server-runtime',
     response=None,
 )
 
 SERVER_COMMAND_EXECUTE_COMMAND_V1 = RouteDescriptor(
-    family='chat',
+    family='server',
     methodName='serverCommandExecuteCommandV1Route',
     messageType='server-command.execute.command',
     messageVersion=1,
@@ -368,8 +343,25 @@ SERVER_COMMAND_EXECUTE_COMMAND_V1 = RouteDescriptor(
     response=None,
 )
 
+PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = RouteDescriptor(
+    family='server',
+    methodName='playerDataCacheReloadCommandV1Route',
+    messageType='player-data-cache.reload.command',
+    messageVersion=1,
+    payloadType=PlayerDataCacheReloadCommandV1,
+    kind='command',
+    stream='xcore:cmd:reload-cache:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='player-session',
+    response=None,
+)
+
 SERVER_HEARTBEAT_V1 = RouteDescriptor(
-    family='chat',
+    family='server',
     methodName='serverHeartbeatV1Route',
     messageType='server.heartbeat',
     messageVersion=1,
@@ -382,6 +374,23 @@ SERVER_HEARTBEAT_V1 = RouteDescriptor(
     replayable=True,
     idempotentConsumerRecommended=False,
     owner='server-runtime',
+    response=None,
+)
+
+PLAYER_PASSWORD_RESET_COMMAND_V1 = RouteDescriptor(
+    family='security',
+    methodName='playerPasswordResetCommandV1Route',
+    messageType='player.password-reset.command',
+    messageVersion=1,
+    payloadType=PlayerPasswordResetCommandV1,
+    kind='command',
+    stream='xcore:cmd:player-password-reset:{server}',
+    bindings={'server': 'payload.server'},
+    targetScope='server',
+    ttlMs=120000,
+    replayable=False,
+    idempotentConsumerRecommended=True,
+    owner='player-session',
     response=None,
 )
 
@@ -683,16 +692,16 @@ ROUTES_BY_MESSAGE: dict[tuple[str, int], RouteDescriptor] = {
     ('chat.global', 1): CHAT_GLOBAL_V1,
     ('chat.discord-ingress.command', 1): CHAT_DISCORD_INGRESS_COMMAND_V1,
     ('chat.private', 1): CHAT_PRIVATE_V1,
-    ('server.action', 1): SERVER_ACTION_V1,
     ('player.join-leave', 1): PLAYER_JOIN_LEAVE_V1,
     ('player.custom-nickname.changed.command', 1): PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1,
     ('player.active-badge.changed.command', 1): PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1,
     ('player.badge-inventory.changed.command', 1): PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1,
     ('player.badge-symbol-color-mode.changed.command', 1): PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1,
-    ('player.password-reset.command', 1): PLAYER_PASSWORD_RESET_COMMAND_V1,
-    ('player-data-cache.reload.command', 1): PLAYER_DATA_CACHE_RELOAD_COMMAND_V1,
+    ('server.action', 1): SERVER_ACTION_V1,
     ('server-command.execute.command', 1): SERVER_COMMAND_EXECUTE_COMMAND_V1,
+    ('player-data-cache.reload.command', 1): PLAYER_DATA_CACHE_RELOAD_COMMAND_V1,
     ('server.heartbeat', 1): SERVER_HEARTBEAT_V1,
+    ('player.password-reset.command', 1): PLAYER_PASSWORD_RESET_COMMAND_V1,
     ('discord.link-code-created', 1): DISCORD_LINK_CODE_CREATED_V1,
     ('discord.link.confirm.command', 1): DISCORD_LINK_CONFIRM_COMMAND_V1,
     ('discord.unlink.command', 1): DISCORD_UNLINK_COMMAND_V1,
@@ -723,16 +732,16 @@ __all__ = [
     "CHAT_GLOBAL_V1",
     "CHAT_DISCORD_INGRESS_COMMAND_V1",
     "CHAT_PRIVATE_V1",
-    "SERVER_ACTION_V1",
     "PLAYER_JOIN_LEAVE_V1",
     "PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1",
     "PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1",
     "PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1",
     "PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1",
-    "PLAYER_PASSWORD_RESET_COMMAND_V1",
-    "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
+    "SERVER_ACTION_V1",
     "SERVER_COMMAND_EXECUTE_COMMAND_V1",
+    "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
     "SERVER_HEARTBEAT_V1",
+    "PLAYER_PASSWORD_RESET_COMMAND_V1",
     "DISCORD_LINK_CODE_CREATED_V1",
     "DISCORD_LINK_CONFIRM_COMMAND_V1",
     "DISCORD_UNLINK_COMMAND_V1",

@@ -2,6 +2,9 @@ package org.xcore.protocol.generated;
 
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.*;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.*;
+import org.xcore.protocol.generated.messages.server.ServerMessages.*;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.*;
 import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1Action;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;

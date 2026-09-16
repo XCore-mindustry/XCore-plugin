@@ -107,8 +107,8 @@ CANONICAL_CASES: list[tuple[str, Path, Path, type[Any], CanonicalAssertion]] = [
     ),
     (
         "server_heartbeat",
-        spec_root() / "messages" / "chat" / "server.heartbeat.v1.json",
-        CANONICAL_FIXTURES_ROOT / "chat" / "server.heartbeat.v1.json",
+        spec_root() / "messages" / "server" / "server.heartbeat.v1.json",
+        CANONICAL_FIXTURES_ROOT / "server" / "server.heartbeat.v1.json",
         ServerHeartbeatV1,
         _assert_heartbeat_semantics,
     ),

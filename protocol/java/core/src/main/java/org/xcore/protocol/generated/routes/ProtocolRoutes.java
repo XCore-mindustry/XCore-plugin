@@ -6,9 +6,12 @@ import java.util.Map;
 import org.xcore.protocol.generated.runtime.ProtocolPayload;
 import org.xcore.protocol.generated.messages.chat.ChatMessages;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages;
 import org.xcore.protocol.generated.messages.maps.MapsMessages;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
+import org.xcore.protocol.generated.messages.security.SecurityMessages;
 import org.xcore.protocol.generated.messages.sentinel.SentinelMessages;
+import org.xcore.protocol.generated.messages.server.ServerMessages;
 
 public final class ProtocolRoutes {
     private ProtocolRoutes() {
@@ -173,29 +176,12 @@ public final class ProtocolRoutes {
             null
     );
 
-    public static final RouteDescriptor SERVER_ACTION_V1 = new RouteDescriptor(
-            "chat",
-            "serverActionV1Route",
-            "server.action",
-            1,
-            ChatMessages.ServerActionV1.class,
-            "event",
-            "xcore:evt:server:action",
-            Map.of(),
-            "broadcast",
-            60000,
-            true,
-            false,
-            "server-runtime",
-            null
-    );
-
     public static final RouteDescriptor PLAYER_JOIN_LEAVE_V1 = new RouteDescriptor(
-            "chat",
+            "identity",
             "playerJoinLeaveV1Route",
             "player.join-leave",
             1,
-            ChatMessages.PlayerJoinLeaveV1.class,
+            IdentityMessages.PlayerJoinLeaveV1.class,
             "event",
             "xcore:evt:player:joinleave",
             Map.of(),
@@ -208,11 +194,11 @@ public final class ProtocolRoutes {
     );
 
     public static final RouteDescriptor PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1 = new RouteDescriptor(
-            "chat",
+            "identity",
             "playerCustomNicknameChangedCommandV1Route",
             "player.custom-nickname.changed.command",
             1,
-            ChatMessages.PlayerCustomNicknameChangedCommandV1.class,
+            IdentityMessages.PlayerCustomNicknameChangedCommandV1.class,
             "command",
             "xcore:cmd:player-custom-nickname:{server}",
             Map.of("server", "payload.server"),
@@ -225,11 +211,11 @@ public final class ProtocolRoutes {
     );
 
     public static final RouteDescriptor PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1 = new RouteDescriptor(
-            "chat",
+            "identity",
             "playerActiveBadgeChangedCommandV1Route",
             "player.active-badge.changed.command",
             1,
-            ChatMessages.PlayerActiveBadgeChangedCommandV1.class,
+            IdentityMessages.PlayerActiveBadgeChangedCommandV1.class,
             "command",
             "xcore:cmd:player-active-badge:{server}",
             Map.of("server", "payload.server"),
@@ -242,11 +228,11 @@ public final class ProtocolRoutes {
     );
 
     public static final RouteDescriptor PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1 = new RouteDescriptor(
-            "chat",
+            "identity",
             "playerBadgeInventoryChangedCommandV1Route",
             "player.badge-inventory.changed.command",
             1,
-            ChatMessages.PlayerBadgeInventoryChangedCommandV1.class,
+            IdentityMessages.PlayerBadgeInventoryChangedCommandV1.class,
             "command",
             "xcore:cmd:player-badge-inventory:{server}",
             Map.of("server", "payload.server"),
@@ -259,11 +245,11 @@ public final class ProtocolRoutes {
     );
 
     public static final RouteDescriptor PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1 = new RouteDescriptor(
-            "chat",
+            "identity",
             "playerBadgeSymbolColorModeChangedCommandV1Route",
             "player.badge-symbol-color-mode.changed.command",
             1,
-            ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class,
+            IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class,
             "command",
             "xcore:cmd:player-badge-symbol-color-mode:{server}",
             Map.of("server", "payload.server"),
@@ -275,46 +261,29 @@ public final class ProtocolRoutes {
             null
     );
 
-    public static final RouteDescriptor PLAYER_PASSWORD_RESET_COMMAND_V1 = new RouteDescriptor(
-            "chat",
-            "playerPasswordResetCommandV1Route",
-            "player.password-reset.command",
-            1,
-            ChatMessages.PlayerPasswordResetCommandV1.class,
-            "command",
-            "xcore:cmd:player-password-reset:{server}",
-            Map.of("server", "payload.server"),
+    public static final RouteDescriptor SERVER_ACTION_V1 = new RouteDescriptor(
             "server",
-            120000,
-            false,
-            true,
-            "player-session",
-            null
-    );
-
-    public static final RouteDescriptor PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = new RouteDescriptor(
-            "chat",
-            "playerDataCacheReloadCommandV1Route",
-            "player-data-cache.reload.command",
+            "serverActionV1Route",
+            "server.action",
             1,
-            ChatMessages.PlayerDataCacheReloadCommandV1.class,
-            "command",
-            "xcore:cmd:reload-cache:{server}",
-            Map.of("server", "payload.server"),
-            "server",
-            120000,
-            false,
+            ServerMessages.ServerActionV1.class,
+            "event",
+            "xcore:evt:server:action",
+            Map.of(),
+            "broadcast",
+            60000,
             true,
-            "player-session",
+            false,
+            "server-runtime",
             null
     );
 
     public static final RouteDescriptor SERVER_COMMAND_EXECUTE_COMMAND_V1 = new RouteDescriptor(
-            "chat",
+            "server",
             "serverCommandExecuteCommandV1Route",
             "server-command.execute.command",
             1,
-            ChatMessages.ServerCommandExecuteCommandV1.class,
+            ServerMessages.ServerCommandExecuteCommandV1.class,
             "command",
             "xcore:cmd:execute-command:broadcast",
             Map.of(),
@@ -326,12 +295,29 @@ public final class ProtocolRoutes {
             null
     );
 
+    public static final RouteDescriptor PLAYER_DATA_CACHE_RELOAD_COMMAND_V1 = new RouteDescriptor(
+            "server",
+            "playerDataCacheReloadCommandV1Route",
+            "player-data-cache.reload.command",
+            1,
+            ServerMessages.PlayerDataCacheReloadCommandV1.class,
+            "command",
+            "xcore:cmd:reload-cache:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
+            null
+    );
+
     public static final RouteDescriptor SERVER_HEARTBEAT_V1 = new RouteDescriptor(
-            "chat",
+            "server",
             "serverHeartbeatV1Route",
             "server.heartbeat",
             1,
-            ChatMessages.ServerHeartbeatV1.class,
+            ServerMessages.ServerHeartbeatV1.class,
             "event",
             "xcore:evt:server:heartbeat",
             Map.of(),
@@ -340,6 +326,23 @@ public final class ProtocolRoutes {
             true,
             false,
             "server-runtime",
+            null
+    );
+
+    public static final RouteDescriptor PLAYER_PASSWORD_RESET_COMMAND_V1 = new RouteDescriptor(
+            "security",
+            "playerPasswordResetCommandV1Route",
+            "player.password-reset.command",
+            1,
+            SecurityMessages.PlayerPasswordResetCommandV1.class,
+            "command",
+            "xcore:cmd:player-password-reset:{server}",
+            Map.of("server", "payload.server"),
+            "server",
+            120000,
+            false,
+            true,
+            "player-session",
             null
     );
 
@@ -641,16 +644,16 @@ public final class ProtocolRoutes {
             entry(key("chat.global", 1), CHAT_GLOBAL_V1),
             entry(key("chat.discord-ingress.command", 1), CHAT_DISCORD_INGRESS_COMMAND_V1),
             entry(key("chat.private", 1), CHAT_PRIVATE_V1),
-            entry(key("server.action", 1), SERVER_ACTION_V1),
             entry(key("player.join-leave", 1), PLAYER_JOIN_LEAVE_V1),
             entry(key("player.custom-nickname.changed.command", 1), PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
             entry(key("player.active-badge.changed.command", 1), PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
             entry(key("player.badge-inventory.changed.command", 1), PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
             entry(key("player.badge-symbol-color-mode.changed.command", 1), PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
-            entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
-            entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
+            entry(key("server.action", 1), SERVER_ACTION_V1),
             entry(key("server-command.execute.command", 1), SERVER_COMMAND_EXECUTE_COMMAND_V1),
+            entry(key("player-data-cache.reload.command", 1), PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
             entry(key("server.heartbeat", 1), SERVER_HEARTBEAT_V1),
+            entry(key("player.password-reset.command", 1), PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry(key("discord.link-code-created", 1), DISCORD_LINK_CODE_CREATED_V1),
             entry(key("discord.link.confirm.command", 1), DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry(key("discord.unlink.command", 1), DISCORD_UNLINK_COMMAND_V1),
@@ -678,16 +681,16 @@ public final class ProtocolRoutes {
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatGlobalV1.class, CHAT_GLOBAL_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatDiscordIngressCommandV1.class, CHAT_DISCORD_INGRESS_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) ChatMessages.ChatPrivateV1.class, CHAT_PRIVATE_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.ServerActionV1.class, SERVER_ACTION_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerJoinLeaveV1.class, PLAYER_JOIN_LEAVE_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerCustomNicknameChangedCommandV1.class, PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerActiveBadgeChangedCommandV1.class, PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerBadgeInventoryChangedCommandV1.class, PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class, PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerPasswordResetCommandV1.class, PLAYER_PASSWORD_RESET_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.PlayerDataCacheReloadCommandV1.class, PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.ServerCommandExecuteCommandV1.class, SERVER_COMMAND_EXECUTE_COMMAND_V1),
-            entry((Class<? extends ProtocolPayload>) ChatMessages.ServerHeartbeatV1.class, SERVER_HEARTBEAT_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerJoinLeaveV1.class, PLAYER_JOIN_LEAVE_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerCustomNicknameChangedCommandV1.class, PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerActiveBadgeChangedCommandV1.class, PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerBadgeInventoryChangedCommandV1.class, PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1.class, PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerActionV1.class, SERVER_ACTION_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerCommandExecuteCommandV1.class, SERVER_COMMAND_EXECUTE_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.PlayerDataCacheReloadCommandV1.class, PLAYER_DATA_CACHE_RELOAD_COMMAND_V1),
+            entry((Class<? extends ProtocolPayload>) ServerMessages.ServerHeartbeatV1.class, SERVER_HEARTBEAT_V1),
+            entry((Class<? extends ProtocolPayload>) SecurityMessages.PlayerPasswordResetCommandV1.class, PLAYER_PASSWORD_RESET_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkCodeCreatedV1.class, DISCORD_LINK_CODE_CREATED_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordLinkConfirmCommandV1.class, DISCORD_LINK_CONFIRM_COMMAND_V1),
             entry((Class<? extends ProtocolPayload>) DiscordMessages.DiscordUnlinkCommandV1.class, DISCORD_UNLINK_COMMAND_V1),

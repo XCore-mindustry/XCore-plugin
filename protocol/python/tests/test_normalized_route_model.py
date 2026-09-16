@@ -92,80 +92,33 @@ def test_generation_plan_only_uses_reachable_maps_shared_types() -> None:
 def test_generation_plan_supports_chat_family_without_shared_refs() -> None:
     plan = load_generation_plan(family="chat")
 
-    assert [schema.title for schema in plan.shared_schemas] == [
-        "MapEntryV1",
-        "MapFileSourceV1",
-    ]
+    assert [schema.title for schema in plan.shared_schemas] == []
     assert [schema.title for schema in plan.message_schemas_for("chat")] == [
         "ChatDiscordIngressCommandV1",
         "ChatGlobalV1",
         "ChatMessageV1",
         "ChatPrivateV1",
-        "PlayerDataCacheReloadCommandV1",
-        "PlayerActiveBadgeChangedCommandV1",
-        "PlayerBadgeInventoryChangedCommandV1",
-        "PlayerBadgeSymbolColorModeChangedCommandV1",
-        "PlayerCustomNicknameChangedCommandV1",
-        "PlayerJoinLeaveV1",
-        "PlayerPasswordResetCommandV1",
-        "ServerCommandExecuteCommandV1",
-        "ServerActionV1",
-        "ServerHeartbeatV1",
     ]
     assert [route.message_type for route in plan.routes_for("chat")] == [
         "chat.message",
         "chat.global",
         "chat.discord-ingress.command",
         "chat.private",
-        "server.action",
-        "player.join-leave",
-        "player.custom-nickname.changed.command",
-        "player.active-badge.changed.command",
-        "player.badge-inventory.changed.command",
-        "player.badge-symbol-color-mode.changed.command",
-        "player.password-reset.command",
-        "player-data-cache.reload.command",
-        "server-command.execute.command",
-        "server.heartbeat",
-    ]
-    assert [schema.title for schema in plan.map_schemas] == [
-        "MapsListRequestV1",
-        "MapsListResponseV1",
-        "MapsLoadCommandV1",
-        "MapsRemoveRequestV1",
-        "MapsRemoveResponseV1",
     ]
     assert [route.constant_name for route in plan.chat_routes] == [
         "CHAT_MESSAGE_V1",
         "CHAT_GLOBAL_V1",
         "CHAT_DISCORD_INGRESS_COMMAND_V1",
         "CHAT_PRIVATE_V1",
-        "SERVER_ACTION_V1",
-        "PLAYER_JOIN_LEAVE_V1",
-        "PLAYER_CUSTOM_NICKNAME_CHANGED_COMMAND_V1",
-        "PLAYER_ACTIVE_BADGE_CHANGED_COMMAND_V1",
-        "PLAYER_BADGE_INVENTORY_CHANGED_COMMAND_V1",
-        "PLAYER_BADGE_SYMBOL_COLOR_MODE_CHANGED_COMMAND_V1",
-        "PLAYER_PASSWORD_RESET_COMMAND_V1",
-        "PLAYER_DATA_CACHE_RELOAD_COMMAND_V1",
-        "SERVER_COMMAND_EXECUTE_COMMAND_V1",
-        "SERVER_HEARTBEAT_V1",
-    ]
-    assert [route.constant_name for route in plan.map_routes] == [
-        "MAPS_LIST_REQUEST_V1",
-        "MAPS_REMOVE_REQUEST_V1",
-        "MAPS_LOAD_COMMAND_V1",
     ]
 
 
 def test_generation_plan_keeps_family_inputs_separate() -> None:
     plan = load_generation_plan(family="chat")
 
-    assert [family_input.family for family_input in plan.family_inputs] == ["maps", "chat"]
-    assert plan.family_inputs[0].message_schemas == plan.message_schemas_for("maps")
-    assert plan.family_inputs[0].routes == plan.routes_for("maps")
-    assert plan.family_inputs[1].message_schemas == plan.message_schemas_for("chat")
-    assert plan.family_inputs[1].routes == plan.routes_for("chat")
+    assert [family_input.family for family_input in plan.family_inputs] == ["chat"]
+    assert plan.family_inputs[0].message_schemas == plan.message_schemas_for("chat")
+    assert plan.family_inputs[0].routes == plan.routes_for("chat")
 
 
 def test_generation_plan_supports_discord_family_with_nested_shared_refs() -> None:
