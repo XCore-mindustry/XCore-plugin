@@ -79,7 +79,10 @@ public class VoteEvent extends VoteSession {
 
     @Override
     public void stop() {
+        if (isStopped()) {
+            return;
+        }
+        super.stop();
         voteService.endVote();
-        if (end != null) end.cancel();
     }
 }

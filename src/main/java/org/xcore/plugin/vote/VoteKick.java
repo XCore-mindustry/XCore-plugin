@@ -234,9 +234,10 @@ public class VoteKick extends VoteSession {
 
     @Override
     public void stop() {
-        if (end != null) {
-            end.cancel();
+        if (isStopped()) {
+            return;
         }
+        super.stop();
         voteService.endVote();
     }
 

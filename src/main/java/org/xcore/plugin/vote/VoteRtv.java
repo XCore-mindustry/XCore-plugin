@@ -176,7 +176,10 @@ public class VoteRtv extends VoteSession {
 
     @Override
     public void stop() {
+        if (isStopped()) {
+            return;
+        }
+        super.stop();
         voteService.endVote();
-        end.cancel();
     }
 }

@@ -7,18 +7,26 @@ import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.config.TomlSecretsConfig;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static arc.Core.app;
 
 public abstract class VoteSession {
 
     public final IntIntMap voted = new IntIntMap();
     public final Timer.Task end;
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
 
     public VoteSession(TomlSecretsConfig secretsConfig) {
         end = Timer.schedule(this::fail, secretsConfig.moderation.votekick.voteDurationSeconds);
     }
 
+    public boolean isStopped() {
+        return stopped.get();
+    }
+
     public void vote(Player player, int sign) {
+        if (isStopped()) return;
         voted.put(player.id, sign);
         if (votes() >= votesRequired()) app.post(this::success);
     }
@@ -32,7 +40,12 @@ public abstract class VoteSession {
     public abstract void cancelByAdmin(Player admin);
 
     public void stop() {
-        end.cancel();
+        if (!stopped.compareAndSet(false, true)) {
+            return;
+        }
+        if (end != null) {
+            end.cancel();
+        }
     }
 
     public int votes() {

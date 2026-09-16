@@ -16,10 +16,12 @@ public class VoteService {
     }
 
     public void endVote() {
-        if (currentSession != null) {
-            currentSession.stop();
+        VoteSession session = this.currentSession;
+        if (session == null) {
+            return;
         }
         this.currentSession = null;
+        session.stop();
     }
 
     public boolean isVoting() {

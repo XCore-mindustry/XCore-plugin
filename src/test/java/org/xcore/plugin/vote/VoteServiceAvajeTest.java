@@ -140,6 +140,32 @@ class VoteServiceAvajeTest {
         assertThat(session.lastLeftPlayer).isSameAs(player);
     }
 
+    @Test
+    @DisplayName("endVote safely terminates re-entrant session stop without stack overflow")
+    void endVoteSafelyTerminatesReentrantSessionStop() {
+        var reentrantSession = new ReentrantTestVoteSession(voteService);
+        voteService.startVote(reentrantSession);
+
+        voteService.endVote();
+
+        assertThat(voteService.getCurrentSession()).isNull();
+        assertThat(reentrantSession.isStopped()).isTrue();
+        assertThat(reentrantSession.stopCalls).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("session stop invoking endVote safely clears session without stack overflow")
+    void sessionStopInvokingEndVoteSafelyClearsSession() {
+        var reentrantSession = new ReentrantTestVoteSession(voteService);
+        voteService.startVote(reentrantSession);
+
+        reentrantSession.stop();
+
+        assertThat(voteService.getCurrentSession()).isNull();
+        assertThat(reentrantSession.isStopped()).isTrue();
+        assertThat(reentrantSession.stopCalls).isEqualTo(1);
+    }
+
     private static final class VoteServiceModule implements AvajeModule {
         @Override
         public Class<?>[] classes() {
@@ -168,6 +194,49 @@ class VoteServiceAvajeTest {
         public void left(Player player) {
             leftCalls++;
             lastLeftPlayer = player;
+        }
+
+        @Override
+        public void success() {
+        }
+
+        @Override
+        public void fail() {
+        }
+
+        @Override
+        public void cancelByAdmin(Player admin) {
+        }
+
+        private static TomlSecretsConfig testConfig() {
+            var config = new TomlSecretsConfig();
+            config.moderation.votekick.voteDurationSeconds = 10_000.0f;
+            return config;
+        }
+    }
+
+    private static final class ReentrantTestVoteSession extends VoteSession {
+        private final VoteService voteService;
+        private int stopCalls;
+
+        private ReentrantTestVoteSession(VoteService voteService) {
+            super(testConfig());
+            this.voteService = voteService;
+            end.cancel();
+        }
+
+        @Override
+        public void stop() {
+            if (isStopped()) {
+                return;
+            }
+            stopCalls++;
+            super.stop();
+            voteService.endVote();
+        }
+
+        @Override
+        public void left(Player player) {
         }
 
         @Override

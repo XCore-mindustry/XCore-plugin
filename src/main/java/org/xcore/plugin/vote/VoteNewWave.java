@@ -82,10 +82,11 @@ public class VoteNewWave extends VoteSession {
 
     @Override
     public void stop() {
-        voteService.endVote();
-        if (end != null) {
-            end.cancel();
+        if (isStopped()) {
+            return;
         }
+        super.stop();
+        voteService.endVote();
     }
 
     private int targetWave() {
