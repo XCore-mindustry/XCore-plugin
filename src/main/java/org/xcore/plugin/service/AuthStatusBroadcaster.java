@@ -6,7 +6,7 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
-import org.xcore.plugin.model.AuthStatusPacket;
+import org.xcore.protocol.packet.auth.AuthStatusPacket;
 
 import java.util.concurrent.atomic.AtomicLong;
 

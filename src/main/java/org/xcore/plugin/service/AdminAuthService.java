@@ -4,7 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Player;
 import org.xcore.plugin.database.repository.AdminDataRepository;
-import org.xcore.plugin.model.AuthStatusPacket;
+import org.xcore.protocol.packet.auth.AuthStatusPacket;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.enums.AuthResultStatus;
 import org.xcore.plugin.session.Session;
