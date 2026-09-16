@@ -97,9 +97,13 @@ public record MapUiModel(
     }
 
     public MapUiModel withPagination(int newPage, int newTotalPages, List<MapSummary> maps) {
+        return withPagination(newPage, newTotalPages, maps, totalMapsCount);
+    }
+
+    public MapUiModel withPagination(int newPage, int newTotalPages, List<MapSummary> maps, int newTotalMapsCount) {
         return new MapUiModel(
                 mode, playerUuid, isAdmin,
-                searchQuery, newPage, newTotalPages, maps, totalMapsCount,
+                searchQuery, newPage, newTotalPages, maps, newTotalMapsCount,
                 selectedMapId, mapName, mapAuthor, mapDescription, width, height, gamemodeName, isCurrentMap,
                 playedTimes, playedTimesYear, lastPlayedFormatted, minGameTime, avgGameTime, maxGameTime,
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,

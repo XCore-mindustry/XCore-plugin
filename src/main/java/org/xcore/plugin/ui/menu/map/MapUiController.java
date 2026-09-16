@@ -35,7 +35,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     public static final SlotKey<Object> SLOT_REPUTATION = SlotKey.of("slot_reputation");
     public static final SlotKey<Object> SLOT_RTV = SlotKey.of("slot_rtv");
 
-    public static final int MAPS_PER_PAGE = 6;
+    public static final int MAPS_PER_PAGE = 10;
 
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
@@ -66,6 +66,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             // --- Browser Search & Pagination ---
             case MapUiEvent.SearchChanged(var query) -> {
                 MapUiModel updated = filterAndPaginate(model.withSearchQuery(query), 1);
+                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+            }
+            case MapUiEvent.NextPage() -> {
+                MapUiModel updated = filterAndPaginate(model, model.page() + 1);
+                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+            }
+            case MapUiEvent.PrevPage() -> {
+                MapUiModel updated = filterAndPaginate(model, model.page() - 1);
                 yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
             }
             case MapUiEvent.ChangePage(int newPage) -> {
@@ -449,8 +457,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             String q = result.values != null && result.values.get("field_search") instanceof String s ? s : "";
             return new MapUiEvent.SearchChanged(q);
         }
-        if ("action:page:prev".equals(res)) return new MapUiEvent.ChangePage(-1); // special sentinel or handled in update
-        if ("action:page:next".equals(res)) return new MapUiEvent.ChangePage(1);
+        if ("action:page:prev".equals(res)) return new MapUiEvent.PrevPage();
+        if ("action:page:next".equals(res)) return new MapUiEvent.NextPage();
 
         if (res.startsWith("action:select_map:")) {
             return new MapUiEvent.OpenMapDetails(res.substring("action:select_map:".length()));
@@ -528,20 +536,24 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                         || m.author().toLowerCase().contains(q))
                 .toList();
 
-        int totalPages = Math.max(1, (int) Math.ceil((double) filtered.size() / MAPS_PER_PAGE));
-        int page = targetPage;
-        if (targetPage == -1) page = Math.max(1, model.page() - 1);
-        else if (targetPage == 1 && model.page() > 1 && !q.isEmpty()) page = 1;
-        else if (targetPage == 1 && model.page() > 0) page = Math.min(totalPages, model.page() + 1);
-        page = Math.clamp(page, 1, totalPages);
+        int pageSize = mapsPerPage();
+        int totalPages = Math.max(1, (int) Math.ceil((double) filtered.size() / pageSize));
+        int page = Math.clamp(targetPage, 1, totalPages);
 
-        int fromIndex = (page - 1) * MAPS_PER_PAGE;
-        int toIndex = Math.min(fromIndex + MAPS_PER_PAGE, filtered.size());
+        int fromIndex = (page - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, filtered.size());
         List<MapUiModel.MapSummary> pageItems = fromIndex < filtered.size()
                 ? filtered.subList(fromIndex, toIndex)
                 : List.of();
 
-        return model.withPagination(page, totalPages, pageItems);
+        return model.withPagination(page, totalPages, pageItems, all.size());
+    }
+
+    public int mapsPerPage() {
+        if (session != null && session.secretsConfig != null && session.secretsConfig.pagination != null) {
+            return Math.max(1, session.secretsConfig.pagination.mapsPerPage);
+        }
+        return MAPS_PER_PAGE;
     }
 
     private List<MapUiModel.MapSummary> cachedMapSummaries;

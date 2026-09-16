@@ -7,6 +7,8 @@ public sealed interface MapUiEvent {
 
     // --- Browser Actions ---
     record SearchChanged(String query) implements MapUiEvent {}
+    record NextPage() implements MapUiEvent {}
+    record PrevPage() implements MapUiEvent {}
     record ChangePage(int newPage) implements MapUiEvent {}
     record OpenMapDetails(String mapId) implements MapUiEvent {}
 

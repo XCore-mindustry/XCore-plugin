@@ -261,6 +261,57 @@ class MapUiControllerTest {
 
         MenuResult backRes = new MenuResult("action:back_to_list");
         assertThat(controller.parseEvent(backRes)).isEqualTo(new MapUiEvent.BackToBrowser());
+
+        MenuResult prevRes = new MenuResult("action:page:prev");
+        assertThat(controller.parseEvent(prevRes)).isEqualTo(new MapUiEvent.PrevPage());
+
+        MenuResult nextRes = new MenuResult("action:page:next");
+        assertThat(controller.parseEvent(nextRes)).isEqualTo(new MapUiEvent.NextPage());
+    }
+
+    @Test
+    @DisplayName("pagination navigates between pages with 10 maps per page and updates totalMapsCount")
+    void pagination_navigatesPagesWithTenMapsPerPage() {
+        arc.struct.Seq<mindustry.maps.Map> mockMaps = new arc.struct.Seq<>();
+        for (int i = 1; i <= 25; i++) {
+            mindustry.maps.Map m = mock(mindustry.maps.Map.class);
+            when(m.plainName()).thenReturn("Map " + i);
+            when(m.author()).thenReturn("Author " + i);
+            mockMaps.add(m);
+        }
+        when(mapService.getAvailableMaps()).thenReturn(mockMaps);
+
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        assertThat(controller.mapsPerPage()).isEqualTo(10);
+
+        MapUiModel initial = controller.createInitialBrowserModel(session, 1);
+        assertThat(initial.page()).isEqualTo(1);
+        assertThat(initial.totalPages()).isEqualTo(3);
+        assertThat(initial.totalMapsCount()).isEqualTo(25);
+        assertThat(initial.displayedMaps()).hasSize(10);
+        assertThat(initial.displayedMaps().get(0).name()).isEqualTo("Map 1");
+
+        // Next page advances to page 2 (items 11-20)
+        UpdateResult<MapUiModel> page2Result = controller.update(initial, new MapUiEvent.NextPage(), null);
+        MapUiModel page2 = page2Result.model();
+        assertThat(page2.page()).isEqualTo(2);
+        assertThat(page2.displayedMaps()).hasSize(10);
+        assertThat(page2.displayedMaps().get(0).name()).isEqualTo("Map 11");
+
+        // Next page advances to page 3 (remaining 5 items)
+        UpdateResult<MapUiModel> page3Result = controller.update(page2, new MapUiEvent.NextPage(), null);
+        MapUiModel page3 = page3Result.model();
+        assertThat(page3.page()).isEqualTo(3);
+        assertThat(page3.displayedMaps()).hasSize(5);
+        assertThat(page3.displayedMaps().get(0).name()).isEqualTo("Map 21");
+
+        // Next page clamps at totalPages (3)
+        UpdateResult<MapUiModel> clampedResult = controller.update(page3, new MapUiEvent.NextPage(), null);
+        assertThat(clampedResult.model().page()).isEqualTo(3);
+
+        // Prev page goes back to page 2
+        UpdateResult<MapUiModel> prevResult = controller.update(page3, new MapUiEvent.PrevPage(), null);
+        assertThat(prevResult.model().page()).isEqualTo(2);
     }
 
     @Test
