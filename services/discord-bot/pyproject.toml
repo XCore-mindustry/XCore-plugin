@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-xcore-protocol = { path = "../xcore-protocol", editable = true }
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", branch = "main" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

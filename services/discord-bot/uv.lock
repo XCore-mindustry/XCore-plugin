@@ -1339,7 +1339,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", editable = "../xcore-protocol" },
+    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main" },
 ]
 
 [package.metadata.requires-dev]
@@ -1354,23 +1354,13 @@ dev = [
 [[package]]
 name = "xcore-protocol"
 version = "0.6.2"
-source = { editable = "../xcore-protocol" }
+source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main#7c5242bdb235b738cc04d672cc6232a08eb0f3f2" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "referencing" },
     { name = "rfc3339-validator" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "jsonschema", specifier = ">=4.23.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "referencing", specifier = ">=0.35.0" },
-    { name = "rfc3339-validator", specifier = ">=0.1.4" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "yarl"
