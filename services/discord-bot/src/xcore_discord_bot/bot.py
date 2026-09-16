@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 import secrets
 import traceback
 from collections.abc import Awaitable, Callable, Mapping
@@ -15,7 +14,6 @@ from discord.abc import Messageable
 from discord.ext import commands
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
-from . import runtime_consumers
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SubnetCog
 from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
 from .moderation_modals import StatsBanModal, StatsMuteModal
@@ -44,141 +42,22 @@ MSG_PLAYER_UUID_MISSING = "Player UUID is missing"
 PRESENCE_UPDATE_INTERVAL_SECONDS = 30
 DISCORD_MODAL_TITLE_MAX = 45
 
-MINDUSTRY_COLOR_NAMES = {
-    "clear",
-    "black",
-    "white",
-    "light_gray",
-    "gray",
-    "dark_gray",
-    "light_grey",
-    "grey",
-    "dark_grey",
-    "blue",
-    "navy",
-    "royal",
-    "slate",
-    "sky",
-    "cyan",
-    "teal",
-    "green",
-    "acid",
-    "lime",
-    "forest",
-    "olive",
-    "yellow",
-    "gold",
-    "goldenrod",
-    "orange",
-    "brown",
-    "tan",
-    "brick",
-    "red",
-    "scarlet",
-    "crimson",
-    "coral",
-    "salmon",
-    "pink",
-    "magenta",
-    "purple",
-    "violet",
-    "maroon",
-    "accent",
-}
+from .container import ServiceContainer
+from .daemons.presence_daemon import PresenceDaemon
+from .utils.duration import parse_duration
+from .utils.mindustry_colors import (
+    MINDUSTRY_COLOR_NAMES,
+    _parse_color_markup,
+    strip_mindustry_colors,
+)
 
-
-def parse_duration(token: str, default_unit: str = "d") -> timedelta:
-    normalized = token.strip().lower()
-    if not normalized:
-        raise ValueError("Invalid period format. Use 10m, 1h, 1d, 1w, 1y")
-
-    factors = {
-        "s": 1,
-        "m": 60,
-        "h": 3600,
-        "d": 86400,
-        "w": 604800,
-        "y": 31536000,
-    }
-
-    if default_unit not in factors:
-        raise ValueError("Invalid default unit")
-
-    if normalized.isdigit():
-        return timedelta(seconds=int(normalized) * factors[default_unit])
-
-    total_seconds = 0
-    consumed = 0
-    for match in re.finditer(r"(\d+)([smhdwy])", normalized):
-        start, end = match.span()
-        if start != consumed:
-            raise ValueError("Invalid period format. Use 10m, 1h, 1d, 1w, 1y")
-        value = int(match.group(1))
-        unit = match.group(2)
-        total_seconds += value * factors[unit]
-        consumed = end
-
-    if consumed != len(normalized) or total_seconds <= 0:
-        raise ValueError("Invalid period format. Use 10m, 1h, 1d, 1w, 1y")
-
-    return timedelta(seconds=total_seconds)
-
-
-def strip_mindustry_colors(text: str) -> str:
-    out: list[str] = []
-    i = 0
-    n = len(text)
-
-    while i < n:
-        c = text[i]
-        if c != "[":
-            out.append(c)
-            i += 1
-            continue
-
-        parsed_len = _parse_color_markup(text, i + 1, n)
-        if parsed_len >= 0:
-            i += parsed_len + 2
-            continue
-
-        out.append(c)
-        i += 1
-
-    return "".join(out)
-
-
-def _parse_color_markup(text: str, start: int, end: int) -> int:
-    if start >= end:
-        return -1
-
-    ch0 = text[start]
-    if ch0 == "#":
-        i = start + 1
-        while i < end:
-            ch = text[i]
-            if ch == "]":
-                if i < start + 2 or i > start + 9:
-                    return -1
-                return i - start
-            if not (ch.isdigit() or "a" <= ch <= "f" or "A" <= ch <= "F"):
-                return -1
-            i += 1
-        return -1
-
-    if ch0 == "[":
-        return -2
-
-    if ch0 == "]":
-        return 0
-
-    i = start + 1
-    while i < end:
-        if text[i] == "]":
-            name = text[start:i].lower()
-            return i - start if name in MINDUSTRY_COLOR_NAMES else -1
-        i += 1
-
-    return -1
+__all__ = [
+    "MINDUSTRY_COLOR_NAMES",
+    "XCoreDiscordBot",
+    "_parse_color_markup",
+    "parse_duration",
+    "strip_mindustry_colors",
+]
 
 
 StatsActionsView.__name__ = "_StatsActionsView"
@@ -216,6 +95,7 @@ class XCoreDiscordBot(commands.Bot):
         self._settings = settings
         self._bus = bus
         self._store = store
+        self.container = ServiceContainer.create(settings, self)
         self._chat_consumer_task: asyncio.Task[None] | None = None
         self._global_chat_consumer_task: asyncio.Task[None] | None = None
         self._join_leave_consumer_task: asyncio.Task[None] | None = None
@@ -228,6 +108,13 @@ class XCoreDiscordBot(commands.Bot):
         self._admin_reconcile_task: asyncio.Task[None] | None = None
         self._presence_rotation_index = 0
         self._map_cache: dict[str, tuple[float, list[dict[str, str]]]] = {}
+
+    def _ensure_container(self) -> ServiceContainer:
+        if not hasattr(self, "container"):
+            settings = getattr(self, "_settings", None)
+            if settings is not None:
+                self.container = ServiceContainer.create(settings, self)
+        return self.container
 
     @property
     def settings(self) -> Settings:
@@ -301,9 +188,7 @@ class XCoreDiscordBot(commands.Bot):
     async def rpc_subnet_rules_command(self, **kwargs):
         return await self._bus.rpc_subnet_rules_command(**kwargs)
 
-    async def rpc_subnet_rules_list(
-        self, target_server: str, timeout_ms: int
-    ):
+    async def rpc_subnet_rules_list(self, target_server: str, timeout_ms: int):
         return await self._bus.rpc_subnet_rules_list(target_server, timeout_ms)
 
     async def rpc_subnet_rules_check(
@@ -923,41 +808,10 @@ class XCoreDiscordBot(commands.Bot):
 
         await self._bus.connect()
         await self._store.connect()
-        self._chat_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_game_chat(self), name="redis-chat-consumer"
-        )
-        self._global_chat_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_global_chat(self),
-            name="redis-global-chat-consumer",
-        )
-        self._join_leave_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_join_leave(self),
-            name="redis-join-leave-consumer",
-        )
-        self._server_action_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_server_actions(self),
-            name="redis-server-action-consumer",
-        )
-        self._ban_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_bans(self), name="redis-ban-consumer"
-        )
-        self._mute_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_mutes(self), name="redis-mute-consumer"
-        )
-        self._votekick_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_vote_kicks(self), name="redis-votekick-consumer"
-        )
-        self._heartbeat_consumer_task = asyncio.create_task(
-            runtime_consumers.consume_server_heartbeats(self),
-            name="redis-server-heartbeat-consumer",
-        )
-        self._admin_reconcile_task = asyncio.create_task(
-            self._admin_reconcile_loop(),
-            name="discord-admin-reconcile",
-        )
-        self._presence_task = asyncio.create_task(
-            self._update_presence_loop(), name="discord-presence-updater"
-        )
+
+        self._ensure_container().stream_supervisor.start()
+        self._ensure_container().presence_daemon.start()
+        self._ensure_container().admin_sync_daemon.start()
 
         await self._sync_application_commands()
 
@@ -1052,35 +906,10 @@ class XCoreDiscordBot(commands.Bot):
         )
 
     async def close(self) -> None:
-        for task in (
-            self._chat_consumer_task,
-            self._global_chat_consumer_task,
-            self._join_leave_consumer_task,
-            self._server_action_consumer_task,
-            self._ban_consumer_task,
-            self._mute_consumer_task,
-            self._votekick_consumer_task,
-            self._heartbeat_consumer_task,
-            self._admin_reconcile_task,
-            self._presence_task,
-        ):
-            if task is not None:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-        self._chat_consumer_task = None
-        self._global_chat_consumer_task = None
-        self._join_leave_consumer_task = None
-        self._server_action_consumer_task = None
-        self._ban_consumer_task = None
-        self._mute_consumer_task = None
-        self._votekick_consumer_task = None
-        self._heartbeat_consumer_task = None
-        self._admin_reconcile_task = None
-        self._presence_task = None
+        if hasattr(self, "container"):
+            self.container.presence_daemon.stop()
+            self.container.admin_sync_daemon.stop()
+            await self.container.stream_supervisor.stop()
 
         await self._bus.close()
         await self._store.close()
@@ -1122,9 +951,7 @@ class XCoreDiscordBot(commands.Bot):
 
     @staticmethod
     def _sort_live_servers(servers, mode: Literal["players", "name"]):
-        if mode == "name":
-            return sorted(servers, key=lambda s: s.name.lower())
-        return sorted(servers, key=lambda s: (-s.players, s.name.lower()))
+        return PresenceDaemon.sort_live_servers(servers, mode)
 
     def _build_servers_embed_for_mode(
         self,
