@@ -9,9 +9,9 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
 
 import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;

@@ -13,7 +13,7 @@ import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerActiveBadgeChangedCommandV1;
 
 import static com.ospx.flubundle.Bundle.args;
 

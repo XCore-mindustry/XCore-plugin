@@ -15,7 +15,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.protocol.generated.messages.chat.ChatMessages;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeInventoryChangedCommandV1;
 
 import java.util.HashSet;
 import java.util.List;
@@ -120,7 +120,7 @@ public class BadgeAdminController implements CloudServerController {
             persistBadgeState(target);
         }
 
-        network.post(new ChatMessages.PlayerBadgeInventoryChangedCommandV1(
+        network.post(new PlayerBadgeInventoryChangedCommandV1(
                 target.uuid,
                 updatedActiveBadge,
                 List.copyOf(updatedBadges),

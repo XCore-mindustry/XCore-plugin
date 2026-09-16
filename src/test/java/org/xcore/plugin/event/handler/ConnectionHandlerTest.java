@@ -10,7 +10,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Player;
 import mindustry.net.Administration;
 import mindustry.net.NetConnection;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

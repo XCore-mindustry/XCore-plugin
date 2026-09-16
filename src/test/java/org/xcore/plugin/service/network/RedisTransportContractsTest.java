@@ -6,14 +6,14 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeInventoryChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerPasswordResetCommandV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeInventoryChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerBadgeSymbolColorModeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.security.SecurityMessages.PlayerPasswordResetCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordAdminAccessChangedCommandV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkCodeCreatedV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkStatusChangedV1;
@@ -25,7 +25,7 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRespons
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationBanCreatedV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationKickBannedCommandV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.ModerationMuteCreatedV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerCommandExecuteCommandV1;
 import org.xcore.protocol.generated.routes.ProtocolRoutes;
 
 import java.util.List;

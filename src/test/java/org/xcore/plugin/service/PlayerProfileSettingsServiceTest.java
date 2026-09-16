@@ -8,7 +8,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerCustomNicknameChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerCustomNicknameChangedCommandV1;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -313,7 +313,7 @@ class PlayerProfileSettingsServiceTest {
         assertThat(onlineSession.data.activeBadge).isEqualTo("developer");
         verify(repository).setActiveBadge("uuid-1", "developer");
         verify(displayService).refresh(onlineSession);
-        verify(network).post(any(org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1.class));
+        verify(network).post(any(org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerActiveBadgeChangedCommandV1.class));
     }
 
     @Test

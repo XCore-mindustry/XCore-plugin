@@ -13,7 +13,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.io.JsonIO;
 import mindustry.net.Packets;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.plugin.common.PluginState;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;

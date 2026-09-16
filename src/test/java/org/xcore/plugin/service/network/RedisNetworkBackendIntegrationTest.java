@@ -28,7 +28,7 @@ import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.VoteKickParticipantV1;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerCommandExecuteCommandV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerCommandExecuteCommandV1;
 import org.xcore.plugin.model.BanData;
 import org.xcore.plugin.model.MuteData;
 import org.xcore.plugin.model.Punishment;

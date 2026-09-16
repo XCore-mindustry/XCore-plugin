@@ -10,7 +10,7 @@ import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.net.Packets;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerActionV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerActionV1;
 import org.xcore.plugin.common.VersionComparator;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;

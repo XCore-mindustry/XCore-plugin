@@ -17,7 +17,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
 import org.xcore.plugin.ui.menu.PlayerMenu;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerActiveBadgeChangedCommandV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerActiveBadgeChangedCommandV1;
 
 import java.util.Locale;
 import java.util.Map;

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngressCommandV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatMessageV1;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.ServerHeartbeatV1;
+import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.DiscordLinkConfirmCommandV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListRequestV1;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsListResponseV1;

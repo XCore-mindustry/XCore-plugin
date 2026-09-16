@@ -7,7 +7,7 @@ import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
-import org.xcore.protocol.generated.messages.chat.ChatMessages.PlayerJoinLeaveV1;
+import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.AdminDataRepository;
