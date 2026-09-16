@@ -3,9 +3,11 @@ from __future__ import annotations
 from types import MethodType, SimpleNamespace
 
 import pytest
-from xcore_protocol.generated.chat import (
+from xcore_protocol.generated.identity import (
     PlayerActiveBadgeChangedCommandV1,
     PlayerBadgeInventoryChangedCommandV1,
+)
+from xcore_protocol.generated.security import (
     PlayerPasswordResetCommandV1,
 )
 

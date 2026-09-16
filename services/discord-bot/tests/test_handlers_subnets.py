@@ -34,7 +34,9 @@ class _Response:
 class _Interaction:
     response: _Response = field(default_factory=_Response)
     followups: list[tuple[str, bool]] = field(default_factory=list)
-    user: Any = field(default_factory=lambda: SimpleNamespace(id=7, display_name="Admin"))
+    user: Any = field(
+        default_factory=lambda: SimpleNamespace(id=7, display_name="Admin")
+    )
 
     class _Followup:
         def __init__(self, parent: _Interaction) -> None:
@@ -64,7 +66,6 @@ class _Bot:
         return SimpleNamespace(rules=("10.0.0.0/8", "::/0"))
 
 
-
 def test_parse_import_normalizes_and_deduplicates() -> None:
     assert parse_import("10.0.0.1/8, 10.0.0.0/8\n2001:db8::/32") == [
         "10.0.0.0/8",
@@ -77,8 +78,11 @@ async def test_import_uses_one_rpc_and_ephemeral_followup() -> None:
     bot = _Bot()
     interaction = _Interaction()
     from xcore_discord_bot.registry import server_registry
+
     server_registry.update_server("prod", 1, 0, 10, "test")
-    await cmd_subnet_import(cast(Any, bot), cast(Any, interaction), "10.0.0.1/8,10.0.0.0/8")
+    await cmd_subnet_import(
+        cast(Any, bot), cast(Any, interaction), "10.0.0.1/8,10.0.0.0/8"
+    )
     assert len(bot.calls) == 1
     assert bot.calls[0]["operation"] == "IMPORT"
     assert bot.calls[0]["rules"] == ["10.0.0.0/8"]
@@ -90,6 +94,7 @@ async def test_list_is_compact_and_ephemeral() -> None:
     bot = _Bot()
     interaction = _Interaction()
     from xcore_discord_bot.registry import server_registry
+
     server_registry.update_server("prod", 1, 0, 10, "test")
     await cmd_subnet_list(cast(Any, bot), cast(Any, interaction))
     assert interaction.followups[0][1] is True

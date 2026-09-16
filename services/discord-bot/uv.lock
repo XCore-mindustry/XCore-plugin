@@ -1339,7 +1339,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", specifier = "==0.6.1" },
+    { name = "xcore-protocol", editable = "../xcore-protocol" },
 ]
 
 [package.metadata.requires-dev]
@@ -1353,18 +1353,24 @@ dev = [
 
 [[package]]
 name = "xcore-protocol"
-version = "0.6.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.6.2"
+source = { editable = "../xcore-protocol" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },
     { name = "referencing" },
     { name = "rfc3339-validator" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/5f/08bf94d888032f87725cc0c204ef43d2f619e725e1c4e57c1fd585496e95/xcore_protocol-0.6.1.tar.gz", hash = "sha256:9c512783008fa472a1e3f180a21383f6264eefc1015d9a54b2258070b1861055", size = 37661, upload-time = "2026-08-30T11:41:03.249Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/fe/d4ff076582707146b3887afde79afa056c7d5a9952b49c86da7821297b42/xcore_protocol-0.6.1-py3-none-any.whl", hash = "sha256:8537c0aa08d9492ef2bd3335c834eeab04749684f7dddbca4fb2f502af4911ac", size = 52586, upload-time = "2026-08-30T11:41:02.094Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.23.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "referencing", specifier = ">=0.35.0" },
+    { name = "rfc3339-validator", specifier = ">=0.1.4" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "yarl"

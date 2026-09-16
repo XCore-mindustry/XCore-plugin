@@ -839,7 +839,9 @@ class RedisBus:
         body = await self._rpc_request(
             server=target_server,
             rpc_type=SentinelSubnetRulesListRequestV1.MESSAGE_TYPE,
-            payload=build_sentinel_subnet_rules_list_request(target_server).to_payload(),
+            payload=build_sentinel_subnet_rules_list_request(
+                target_server
+            ).to_payload(),
             timeout_ms=timeout_ms,
         )
         return SentinelSubnetRulesListResponseV1.from_payload(
@@ -852,7 +854,9 @@ class RedisBus:
         body = await self._rpc_request(
             server=target_server,
             rpc_type=SentinelSubnetRulesCheckRequestV1.MESSAGE_TYPE,
-            payload=build_sentinel_subnet_rules_check_request(target_server, ip).to_payload(),
+            payload=build_sentinel_subnet_rules_check_request(
+                target_server, ip
+            ).to_payload(),
             timeout_ms=timeout_ms,
         )
         return SentinelSubnetRulesCheckResponseV1.from_payload(

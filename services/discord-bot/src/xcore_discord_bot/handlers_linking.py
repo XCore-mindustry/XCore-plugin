@@ -133,8 +133,7 @@ async def cmd_link_status(bot: XCoreDiscordBot, interaction: Interaction) -> Non
         return
 
     lines = [
-        f"`{player.pid}` — {_clean_player_name(player.nickname)}"
-        for player in players
+        f"`{player.pid}` — {_clean_player_name(player.nickname)}" for player in players
     ]
     embed = discord.Embed(
         title="Linked Mindustry accounts",

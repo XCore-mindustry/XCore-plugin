@@ -15,8 +15,11 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "redis>=5.2.1",
     "tenacity>=9.1.2",
-    "xcore-protocol==0.6.1",
+    "xcore-protocol",
 ]
+
+[tool.uv.sources]
+xcore-protocol = { path = "../xcore-protocol", editable = true }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

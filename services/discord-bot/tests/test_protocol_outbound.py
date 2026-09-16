@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from xcore_protocol.generated.chat import (
     ChatDiscordIngressCommandV1,
-    PlayerActiveBadgeChangedCommandV1,
-    PlayerBadgeInventoryChangedCommandV1,
-    PlayerPasswordResetCommandV1,
 )
 from xcore_protocol.generated.discord import (
     DiscordAdminAccessChangedCommandV1,
     DiscordLinkConfirmCommandV1,
     DiscordUnlinkCommandV1,
+)
+from xcore_protocol.generated.identity import (
+    PlayerActiveBadgeChangedCommandV1,
+    PlayerBadgeInventoryChangedCommandV1,
 )
 from xcore_protocol.generated.maps import (
     MapsListRequestV1,
@@ -21,6 +22,9 @@ from xcore_protocol.generated.maps import (
 from xcore_protocol.generated.moderation import (
     ModerationKickBannedCommandV1,
     ModerationPardonCommandV1,
+)
+from xcore_protocol.generated.security import (
+    PlayerPasswordResetCommandV1,
 )
 from xcore_protocol.generated.shared import MapFileSourceV1
 

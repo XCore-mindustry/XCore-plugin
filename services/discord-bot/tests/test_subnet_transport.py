@@ -23,7 +23,11 @@ from xcore_discord_bot.redis_bus import RedisBus
 
 
 def _settings() -> SimpleNamespace:
-    return SimpleNamespace(redis_url="redis://localhost", redis_group_prefix="xcore", redis_consumer_name="discord")
+    return SimpleNamespace(
+        redis_url="redis://localhost",
+        redis_group_prefix="xcore",
+        redis_consumer_name="discord",
+    )
 
 
 def test_subnet_command_builder_round_trip() -> None:
@@ -48,8 +52,16 @@ def test_subnet_command_builder_round_trip() -> None:
 @pytest.mark.parametrize(
     ("builder", "model", "expected"),
     [
-        (build_sentinel_subnet_rules_list_request, SentinelSubnetRulesListRequestV1, {"target_server": "survival-1"}),
-        (build_sentinel_subnet_rules_check_request, SentinelSubnetRulesCheckRequestV1, {"target_server": "survival-1", "ip": "1.2.3.4"}),
+        (
+            build_sentinel_subnet_rules_list_request,
+            SentinelSubnetRulesListRequestV1,
+            {"target_server": "survival-1"},
+        ),
+        (
+            build_sentinel_subnet_rules_check_request,
+            SentinelSubnetRulesCheckRequestV1,
+            {"target_server": "survival-1", "ip": "1.2.3.4"},
+        ),
     ],
 )
 def test_subnet_request_builders_round_trip(builder, model, expected) -> None:
@@ -61,9 +73,15 @@ def test_subnet_request_builders_round_trip(builder, model, expected) -> None:
 async def test_subnet_rpc_methods_parse_typed_responses() -> None:
     bus = RedisBus(_settings())
     responses = {
-        SentinelSubnetRulesCommandV1.MESSAGE_TYPE: SentinelSubnetRulesResponseV1(request="req", success=True, targetServer="s"),
-        SentinelSubnetRulesListRequestV1.MESSAGE_TYPE: SentinelSubnetRulesListResponseV1(request="req", targetServer="s", rules=("1.2.3.0/24",)),
-        SentinelSubnetRulesCheckRequestV1.MESSAGE_TYPE: SentinelSubnetRulesCheckResponseV1(request="req", targetServer="s", allowed=False, matchedRules=("1.2.3.0/24",)),
+        SentinelSubnetRulesCommandV1.MESSAGE_TYPE: SentinelSubnetRulesResponseV1(
+            request="req", success=True, targetServer="s"
+        ),
+        SentinelSubnetRulesListRequestV1.MESSAGE_TYPE: SentinelSubnetRulesListResponseV1(
+            request="req", targetServer="s", rules=("1.2.3.0/24",)
+        ),
+        SentinelSubnetRulesCheckRequestV1.MESSAGE_TYPE: SentinelSubnetRulesCheckResponseV1(
+            request="req", targetServer="s", allowed=False, matchedRules=("1.2.3.0/24",)
+        ),
     }
 
     async def fake_rpc_request(self, *, server, rpc_type, payload, timeout_ms):
@@ -74,7 +92,11 @@ async def test_subnet_rpc_methods_parse_typed_responses() -> None:
 
     bus._rpc_request = MethodType(fake_rpc_request, bus)
     command = await bus.rpc_subnet_rules_command(
-        operation="DENY", rules=["1.2.3.0/24"], discord_id="42", target_server="s", timeout_ms=1234
+        operation="DENY",
+        rules=["1.2.3.0/24"],
+        discord_id="42",
+        target_server="s",
+        timeout_ms=1234,
     )
     listed = await bus.rpc_subnet_rules_list("s", 1234)
     checked = await bus.rpc_subnet_rules_check("s", "1.2.3.4", 1234)
