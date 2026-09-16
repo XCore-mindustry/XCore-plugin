@@ -8,9 +8,11 @@ plugins {
 }
 
 fun pyprojectBaseVersion(): String {
-    val versionLine = file("pyproject.toml").readLines()
-        .firstOrNull { it.trim().startsWith("version = ") }
-        ?: error("Unable to locate project version in pyproject.toml")
+    val versionLine =
+        file("pyproject.toml")
+            .readLines()
+            .firstOrNull { it.trim().startsWith("version = ") }
+            ?: error("Unable to locate project version in pyproject.toml")
 
     return Regex("\"([^\"]+)\"")
         .find(versionLine)
@@ -23,14 +25,18 @@ group = "org.xcore"
 val baseVersion = pyprojectBaseVersion()
 version = providers.gradleProperty("xcorePublishVersion").orElse("$baseVersion-SNAPSHOT").get()
 
-val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
-    .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
-    .orElse("https://maven.x-core.org/releases")
+val xcoreSnapshotsRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenSnapshotsUrl")
+        .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenReleasesUrl")
+        .orElse("https://maven.x-core.org/releases")
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
 }
