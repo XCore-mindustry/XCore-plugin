@@ -9,6 +9,8 @@ import mindustry.content.Blocks;
 import mindustry.entities.units.AIController;
 import mindustry.game.EventType;
 import mindustry.game.Team;
+import mindustry.gen.Groups;
+import mindustry.gen.Unit;
 import mindustry.world.Block;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.gamemode.laststanding.LastStandingAi;
@@ -46,12 +48,19 @@ public class LastStanding {
                     });
                 })));
 
-        Events.on(EventType.PlayEvent.class, event -> state.rules.waves = true);
-
-        content.units().each(type -> {
-            var controller = type.controller;
-            type.controller = unit -> unit.team == state.rules.waveTeam && unit.type.aiController.get() instanceof AIController ai
-                    ? new LastStandingAi(ai) : controller.get(unit);
+        Events.on(EventType.PlayEvent.class, event -> {
+            state.rules.waves = true;
+            Groups.unit.each(this::applyAi);
         });
+
+        Events.on(EventType.UnitSpawnEvent.class, event -> applyAi(event.unit));
+        Events.on(EventType.UnitCreateEvent.class, event -> applyAi(event.unit));
+    }
+
+    private void applyAi(Unit unit) {
+        if (unit != null && state != null && state.rules != null && unit.team == state.rules.waveTeam
+                && unit.type != null && unit.type.aiController.get() instanceof AIController ai) {
+            unit.controller(new LastStandingAi(ai));
+        }
     }
 }

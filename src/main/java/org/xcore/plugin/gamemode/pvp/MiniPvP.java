@@ -14,6 +14,7 @@ import mindustry.game.Team;
 import mindustry.game.Teams.TeamData;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.server.ServerControl;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
@@ -255,13 +256,8 @@ public class MiniPvP {
         defeatedPlayers.each(observerService::resetObserverState);
         defeatedPlayers.clear();
         roundHadMultipleTeams = false;
-        try {
-            Class<?> scClass = Class.forName("mindustry.server.ServerControl");
-            Object instance = scClass.getField("instance").get(null);
-            if (instance != null) {
-                scClass.getField("inGameOverWait").setBoolean(instance, false);
-            }
-        } catch (Throwable ignored) {
+        if (ServerControl.instance != null) {
+            ServerControl.instance.inGameOverWait = false;
         }
     }
 }

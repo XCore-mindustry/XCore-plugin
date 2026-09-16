@@ -1,12 +1,12 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import com.xpdustry.toxopid.Toxopid
 import com.xpdustry.toxopid.extension.anukeXpdustry
-import com.xpdustry.toxopid.task.MindustryExec
 import com.xpdustry.toxopid.spec.ModMetadata
 import com.xpdustry.toxopid.spec.ModPlatform
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.api.tasks.testing.Test
+import com.xpdustry.toxopid.task.MindustryExec
 import org.gradle.api.credentials.PasswordCredentials
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.testing.Test
 import org.gradle.authentication.http.BasicAuthentication
 
 plugins {
@@ -34,20 +34,25 @@ toxopid {
     platforms = setOf(ModPlatform.SERVER)
 }
 
-val metadata = ModMetadata(
-    name = "xcore-plugin",
-    displayName = "XCore-plugin",
-    description = "The main plugin for XCore servers.",
-    author = "osp54, Radomyr (site: radomyr.net, github: BRamil0)",
-    version = project.version.toString(),
-    minGameVersion = mindustryVersion,
-    mainClass = "${project.group}.XcorePlugin"
-)
+val metadata =
+    ModMetadata(
+        name = "xcore-plugin",
+        displayName = "XCore-plugin",
+        description = "The main plugin for XCore servers.",
+        author = "osp54, Radomyr (site: radomyr.net, github: BRamil0)",
+        version = project.version.toString(),
+        minGameVersion = mindustryVersion,
+        mainClass = "${project.group}.XcorePlugin",
+    )
 
-val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
-    .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
-    .orElse("https://maven.x-core.org/releases")
+val xcoreSnapshotsRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenSnapshotsUrl")
+        .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenReleasesUrl")
+        .orElse("https://maven.x-core.org/releases")
 
 repositories {
     mavenLocal()
@@ -91,6 +96,7 @@ dependencies {
     testImplementation(libs.avaje.inject.test)
     testImplementation(toxopid.dependencies.arcCore)
     testImplementation(toxopid.dependencies.mindustryCore)
+    testImplementation(toxopid.dependencies.mindustryHeadless)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testAnnotationProcessor(libs.avaje.inject.generator)
 }
@@ -136,11 +142,12 @@ tasks.register<ShadowJar>("shadowJarRelease") {
     configurations = listOf(project.configurations.runtimeClasspath.get())
 }
 
-val publishJarTask = if (isSnapshotVersion) {
-    tasks.named<ShadowJar>("shadowJar")
-} else {
-    tasks.named<ShadowJar>("shadowJarRelease")
-}
+val publishJarTask =
+    if (isSnapshotVersion) {
+        tasks.named<ShadowJar>("shadowJar")
+    } else {
+        tasks.named<ShadowJar>("shadowJarRelease")
+    }
 
 publishing {
     repositories {
@@ -182,8 +189,20 @@ tasks.register("printArtifacts") {
     dependsOn(tasks.shadowJar, tasks.named("shadowJarRelease"))
 
     doLast {
-        val shadow = tasks.named<ShadowJar>("shadowJar").get().archiveFile.get().asFile
-        val release = tasks.named<ShadowJar>("shadowJarRelease").get().archiveFile.get().asFile
+        val shadow =
+            tasks
+                .named<ShadowJar>("shadowJar")
+                .get()
+                .archiveFile
+                .get()
+                .asFile
+        val release =
+            tasks
+                .named<ShadowJar>("shadowJarRelease")
+                .get()
+                .archiveFile
+                .get()
+                .asFile
 
         println("shadowJar: ${shadow.absolutePath}")
         println("shadowJarRelease: ${release.absolutePath}")
