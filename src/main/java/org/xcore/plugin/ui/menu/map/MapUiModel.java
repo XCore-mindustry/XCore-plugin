@@ -225,6 +225,31 @@ public record MapUiModel(
         );
     }
 
+    /** Converts legacy monolithic model to Java 25 discriminated {@link MapUiState} union. */
+    public MapUiState toState() {
+        if (mode == ViewMode.BROWSER) {
+            List<MapUiState.MapSummary> summaries = displayedMaps == null ? List.of() : displayedMaps.stream()
+                    .map(s -> new MapUiState.MapSummary(s.id(), s.name(), s.author(), s.width(), s.height(), s.likes(), s.dislikes(), s.isCurrent()))
+                    .toList();
+            return new MapUiState.Browser(
+                    playerUuid, isAdmin, searchQuery, page, totalPages, summaries, totalMapsCount, false
+            );
+        } else {
+            return new MapUiState.Details(
+                    playerUuid,
+                    isAdmin,
+                    selectedMapId,
+                    new MapUiState.MapIdentity(mapName, mapAuthor, mapDescription, width, height, gamemodeName, isCurrentMap),
+                    new MapUiState.TelemetryMatrix(playedTimes, playedTimesYear, lastPlayedFormatted, minGameTime, avgGameTime, maxGameTime, reputation, popularity, interest),
+                    new MapUiState.ReputationState(playerVote, likes, dislikes, approvalRatePercent, false),
+                    new MapUiState.PreviewState(previewLoading, previewTextureRegion, false),
+                    new MapUiState.RtvState(rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds),
+                    new MapUiState.AdminState(isAdmin, adminForceConfirming, adminConfirmExpireMillis),
+                    resolvedDetails
+            );
+        }
+    }
+
     public MapUiModel withResolvedDetails(MapData details) {
         return new MapUiModel(
                 mode, playerUuid, isAdmin,
