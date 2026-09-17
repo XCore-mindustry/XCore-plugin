@@ -116,7 +116,10 @@ public class MapMenu extends Menu {
         var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session);
         var initialModel = controller.createInitialDetailsModel(session, m);
         menuService.openUi(session, controller, initialModel);
-        controller.requestPreviewAsync(session, m != null && m.id != null ? m.id.toHexString() : "");
+        if (mapVoteObserverService != null) {
+            mapVoteObserverService.registerViewing(session.player.uuid(), initialModel.selectedMapId());
+        }
+        controller.requestPreviewAsync(session, initialModel.selectedMapId());
     }
 
     MapData resolveMap(String mapId) {

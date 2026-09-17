@@ -1,6 +1,7 @@
 package org.xcore.plugin.database.repository;
 
 import arc.struct.ObjectMap;
+import arc.util.Strings;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
@@ -20,6 +21,7 @@ import org.xcore.plugin.model.MapData;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static com.mongodb.client.model.Filters.*;
 
@@ -45,33 +47,58 @@ public class MapDataRepository extends DataRepository<MapData> {
     }
 
     public Optional<MapData> find(String name, String author, String gameMode) {
-    return Optional.ofNullable(
-        collection.find(and(
-            eq("name", name),
-            eq("author", author),
-            eq("game_mode", gameMode)
-        )).first()
-    );
-}
+        if (name == null || author == null || gameMode == null) {
+            return Optional.empty();
+        }
+
+        MapData doc = collection.find(and(
+                eq("name", name),
+                eq("author", author),
+                eq("game_mode", gameMode)
+        )).first();
+
+        if (doc == null) {
+            String plainName = Strings.stripColors(name);
+            String plainAuthor = Strings.stripColors(author);
+            doc = collection.find(and(
+                    regex("name", "^" + Pattern.quote(plainName) + "$", "i"),
+                    regex("author", "^" + Pattern.quote(plainAuthor) + "$", "i"),
+                    regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i")
+            )).first();
+        }
+
+        return Optional.ofNullable(doc);
+    }
 
     public Optional<MapData> findByFileName(String fileName, String gameMode) {
         if (fileName == null || fileName.isBlank() || gameMode == null || gameMode.isBlank()) {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(
-                collection.find(and(
-                        eq("file_name", fileName),
-                        eq("game_mode", gameMode)
-                )).first()
-        );
+        MapData doc = collection.find(and(
+                eq("file_name", fileName),
+                eq("game_mode", gameMode)
+        )).first();
+
+        if (doc == null) {
+            doc = collection.find(and(
+                    regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"),
+                    regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i")
+            )).first();
+        }
+
+        return Optional.ofNullable(doc);
     }
 
     public Optional<MapData> findByFileName(String fileName) {
         if (fileName == null || fileName.isBlank()) {
             return Optional.empty();
         }
-        return Optional.ofNullable(collection.find(eq("file_name", fileName)).first());
+        MapData doc = collection.find(eq("file_name", fileName)).first();
+        if (doc == null) {
+            doc = collection.find(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i")).first();
+        }
+        return Optional.ofNullable(doc);
     }
 
     public List<MapData> findAll() {
