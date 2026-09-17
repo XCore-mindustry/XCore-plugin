@@ -88,7 +88,6 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 if (model.mode() != MapUiModel.ViewMode.DETAILS || !Objects.equals(mapId, model.selectedMapId())) {
                     yield UpdateResult.of(model);
                 }
-                resolvedDetails = data;
                 yield UpdateResult.rerender(loadDetailsModel(model, mapId, data));
             }
             case MapUiEvent.DetailsFailed(var mapId) -> {
@@ -123,7 +122,6 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Navigation: Browser -> Details ---
             case MapUiEvent.OpenMapDetails(var mapId) -> {
-                resolvedDetails = null;
                 MapUiModel details = loadDetailsModel(model, mapId);
                 if (ctx != null) ctx.post(() -> requestDetailsAsync(mapId));
                 else requestDetailsAsync(mapId);
@@ -179,7 +177,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 MapUiModel updated = model.withReputation(next, newRep, newLikes, newDislikes, newApproval);
 
                 // Async persistence to MongoDB and session data
-                MapData mapData = resolvedDetails;
+                MapData mapData = model.resolvedDetails();
                 if (mapData != null && session != null && session.player != null && mapService != null) {
                     mapService.handleReputation(session.player, like, mapData);
                 }
@@ -199,7 +197,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Player Trigger RTV ---
             case MapUiEvent.TriggerRtv() -> {
-                Map mindustryMap = findMindustryMap(model.selectedMapId());
+                Map mindustryMap = findMindustryMap(model.selectedMapId(), model.resolvedDetails());
                 if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                     mapService.startRtvSession(session.player, mindustryMap, true, false);
                 }
@@ -211,7 +209,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 if (!model.isAdmin()) yield UpdateResult.of(model);
                 long now = System.currentTimeMillis();
                 if (model.adminForceConfirming() && now < model.adminConfirmExpireMillis()) {
-                    Map mindustryMap = findMindustryMap(model.selectedMapId());
+                    Map mindustryMap = findMindustryMap(model.selectedMapId(), model.resolvedDetails());
                     if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                         mapService.startRtvSession(session.player, mindustryMap, true, true);
                     }
@@ -577,9 +575,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 0, 0.0, 0.0, 0, 0, 0, null,
                 false, null,
                 false, 0, 0, 0,
-                false, 0L
+                false, 0L,
+                mapData
         );
-        resolvedDetails = mapData;
         return loadDetailsModel(base, mapId, mapData);
     }
 
@@ -679,11 +677,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         return loadDetailsModel(current, mapId, null);
     }
 
-    private MapData resolvedDetails;
-
     private MapUiModel loadDetailsModel(MapUiModel current, String mapId, MapData preloadedData) {
-        MapData data = preloadedData;
-        Map mindustryMap = findMindustryMap(mapId);
+        MapData data = preloadedData != null ? preloadedData : current.resolvedDetails();
+        Map mindustryMap = findMindustryMap(mapId, data);
         if (mindustryMap == null && data != null && mapService != null) {
             mindustryMap = mapService.findPersistedMap(data);
         }
@@ -765,7 +761,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 loading,
                 cachedRegion,
                 false, 0, 0, 0,
-                false, 0L
+                false, 0L,
+                data
         );
     }
 
@@ -849,13 +846,17 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     private Map findMindustryMap(String mapId) {
+        return findMindustryMap(mapId, null);
+    }
+
+    private Map findMindustryMap(String mapId, MapData details) {
         if (mapId == null || mapId.isBlank() || mapService == null) return null;
         Map byFile = mapService.findMapByFileName(mapId);
         if (byFile != null) return byFile;
         Map byName = mapService.findMap(mapId);
         if (byName != null) return byName;
-        if (resolvedDetails != null && resolvedDetails.id != null && mapId.equals(resolvedDetails.id.toHexString())) {
-            return mapService.findPersistedMap(resolvedDetails);
+        if (details != null && details.id != null && mapId.equals(details.id.toHexString())) {
+            return mapService.findPersistedMap(details);
         }
         return null;
     }

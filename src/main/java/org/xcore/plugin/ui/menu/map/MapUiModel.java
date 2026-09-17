@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui.menu.map;
 
+import org.xcore.plugin.model.MapData;
+
 import java.util.List;
 
 /**
@@ -52,8 +54,59 @@ public record MapUiModel(
         int rtvVotesRequired,
         int rtvRemainingSeconds,
         boolean adminForceConfirming,
-        long adminConfirmExpireMillis
+        long adminConfirmExpireMillis,
+
+        // --- Resolved Database Details ---
+        MapData resolvedDetails
 ) {
+    /** Backwards-compatible constructor without resolvedDetails. */
+    public MapUiModel(
+            ViewMode mode,
+            String playerUuid,
+            boolean isAdmin,
+            String searchQuery,
+            int page,
+            int totalPages,
+            List<MapSummary> displayedMaps,
+            int totalMapsCount,
+            String selectedMapId,
+            String mapName,
+            String mapAuthor,
+            String mapDescription,
+            int width,
+            int height,
+            String gamemodeName,
+            boolean isCurrentMap,
+            long playedTimes,
+            long playedTimesYear,
+            String lastPlayedFormatted,
+            String minGameTime,
+            String avgGameTime,
+            String maxGameTime,
+            int reputation,
+            double popularity,
+            double interest,
+            int likes,
+            int dislikes,
+            int approvalRatePercent,
+            Boolean playerVote,
+            boolean previewLoading,
+            String previewTextureRegion,
+            boolean rtvActive,
+            int rtvVotes,
+            int rtvVotesRequired,
+            int rtvRemainingSeconds,
+            boolean adminForceConfirming,
+            long adminConfirmExpireMillis
+    ) {
+        this(mode, playerUuid, isAdmin, searchQuery, page, totalPages, displayedMaps, totalMapsCount,
+                selectedMapId, mapName, mapAuthor, mapDescription, width, height, gamemodeName, isCurrentMap,
+                playedTimes, playedTimesYear, lastPlayedFormatted, minGameTime, avgGameTime, maxGameTime,
+                reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
+                previewLoading, previewTextureRegion, rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
+                adminForceConfirming, adminConfirmExpireMillis, null);
+    }
+
     public enum ViewMode {
         BROWSER,
         DETAILS
@@ -79,7 +132,8 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 previewLoading, previewTextureRegion,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -92,7 +146,8 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 previewLoading, previewTextureRegion,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -109,7 +164,8 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 previewLoading, previewTextureRegion,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -122,7 +178,8 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 loading, region,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -135,7 +192,8 @@ public record MapUiModel(
                 newReputation, popularity, interest, newLikes, newDislikes, newApprovalRate, newVote,
                 previewLoading, previewTextureRegion,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -148,7 +206,8 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 previewLoading, previewTextureRegion,
                 active, votes, required, seconds,
-                adminForceConfirming, adminConfirmExpireMillis
+                adminForceConfirming, adminConfirmExpireMillis,
+                resolvedDetails
         );
     }
 
@@ -161,7 +220,22 @@ public record MapUiModel(
                 reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
                 previewLoading, previewTextureRegion,
                 rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
-                confirming, expireMillis
+                confirming, expireMillis,
+                resolvedDetails
+        );
+    }
+
+    public MapUiModel withResolvedDetails(MapData details) {
+        return new MapUiModel(
+                mode, playerUuid, isAdmin,
+                searchQuery, page, totalPages, displayedMaps, totalMapsCount,
+                selectedMapId, mapName, mapAuthor, mapDescription, width, height, gamemodeName, isCurrentMap,
+                playedTimes, playedTimesYear, lastPlayedFormatted, minGameTime, avgGameTime, maxGameTime,
+                reputation, popularity, interest, likes, dislikes, approvalRatePercent, playerVote,
+                previewLoading, previewTextureRegion,
+                rtvActive, rtvVotes, rtvVotesRequired, rtvRemainingSeconds,
+                adminForceConfirming, adminConfirmExpireMillis,
+                details
         );
     }
 }
