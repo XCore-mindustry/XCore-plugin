@@ -3,6 +3,7 @@
 ## Status
 
 Accepted — реализовано и верифицировано:
+
 - `mindustry-testkit` (`core`/`ui`) создан как отдельный репозиторий;
 - actual-client parity доказана в plain JVM на настоящем `mindustry.ui.Menus` и `arc.scene.ui.Dialog` (`ActualMenusOracleTest`, `ActualDialogHideTest`) с SHA-256 fingerprinting реально загруженных JAR;
 - `DeterministicUiLoop` с двумя FIFO очередями транспорта и snapshot-drain server-post реализован;
