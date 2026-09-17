@@ -13,7 +13,9 @@
 
 Actual-Dialog spike доказал только один момент lifecycle: hide-уведомление синхронно и не требует рендера/Xvfb. Замена окон, show-path, продакшн-стили/шрифты и `menuBuilder` (BaseDialog: иконки, `Tex.whiteui`, звуки) ещё не проверены.
 
-`HeadlessMenuClient`, actual-Menus parity, trace и интеграция с `UiSession` ещё не реализованы. Наличие зелёных unit-тестов не подтверждает fidelity клиента.
+`HeadlessMenuClient` пока моделирует только текущее окно, outbox выбора и журнал последних patch payloads. `wasHidden` подавляет cancel при Escape, серверном hide и замене после клика; новый show создаёт новое состояние даже при том же token. В xcore-ui есть синтетические интеграционные тесты counter/slot и replacement-cancel через настоящий `UiSession`.
+
+**Ограничения:** нет actual-Menus parity, дерева клиентских элементов, проверки существования targetId/кнопки, нескольких одновременно видимых окон, hideOnClick, полного wire codec и trace. `lastPatchDsl` — журнал доставки, не доказательство применения патча к клиентскому дереву; он пока сохраняется между окнами. Выбор переносит action/token, но не значения формы. Две транспортные очереди и server-post ещё не соединены. Зелёные тесты не подтверждают fidelity клиента или исправность maps.
 
 ## Сборка
 
@@ -33,7 +35,7 @@ testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
 ./gradlew --include-build ../mindustry-testkit test
 ```
 
-Это обычные library artifacts, подключаемые **только в test scope**, не Gradle test-fixture variants. Интеграция потребителя пока не проверена. Remote Maven repository и Git remote не настроены.
+Это обычные library artifacts, подключаемые **только в test scope**, не Gradle test-fixture variants. Подключение xcore-ui проверено через `publishToMavenLocal` и через `--include-build ../mindustry-testkit`; composite использует текущие исходники без повторной публикации snapshot. Remote Maven repository и Git remote не настроены.
 
 ## Очередь
 
@@ -44,8 +46,8 @@ API предназначен для одного потока и внешнег�
 ## Следующие шаги
 
 1. Зафиксировать fingerprints реально загруженных Mindustry/Arc artifacts (arc-core-v160 SHA-256 получен) и проверить `menuBuilder` path (`MenuDialog`/`BaseDialog`: `Tex.whiteui`, close-кнопка, звуки, `net.active()`).
-2. Реализовать минимальный HeadlessMenuClient и trace через TDD.
-3. В xcore-ui добавить test-only DeliveryGateway adapter и сквозной counter/slot тест.
+2. Довести HeadlessMenuClient до дерева элементов и parity; добавить wire/trace и детерминированную доставку.
+3. Расширить test-only DeliveryGateway adapter в xcore-ui: две FIFO-очереди, server-post и проверки реально применённых slot-патчей.
 4. В XCore-plugin добавить сценарии maps; исправлять подтверждённые product RED отдельно.
 
 Зависимости окружения actual oracle: `Core.gl`/`Core.graphics`/`Core.app` = Arc `Mock*` классы, `Core.scene = new Scene()`, `DialogStyle` с синтетическим `Font` (пустой `FontData` + `Pixmap`-текстура). Глобальные statics Core требуют сброса между тестами; isolation ещё не реализована.

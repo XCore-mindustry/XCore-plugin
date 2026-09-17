@@ -20,6 +20,37 @@ class HeadlessMenuClientTest {
     }
 
     @Test
+    void serverHideAfterClickDoesNotEmitCancel() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 42, true, body());
+        client.click(MENU, "select:a");
+        client.outbox().remove();
+
+        client.hide(MENU);
+
+        assertTrue(client.outbox().isEmpty());
+        assertFalse(client.isVisible(MENU));
+    }
+
+    @Test
+    void replacementAfterClickSuppressesOldCancelButNewWindowCanCancel() {
+        var client = new HeadlessMenuClient();
+        client.show(MENU, 42, true, body());
+        client.click(MENU, "select:a");
+        client.outbox().remove();
+
+        client.show(MENU, 42, true, body());
+
+        assertTrue(client.outbox().isEmpty());
+        assertTrue(client.isVisible(MENU));
+        client.dismiss(MENU);
+        assertEquals(1, client.outbox().size());
+        var cancel = client.outbox().remove();
+        assertTrue(cancel.isCancel());
+        assertEquals(42, cancel.token());
+    }
+
+    @Test
     void hideEmitsCancelWithCurrentTokenAndClosesWindowSynchronously() {
         var client = new HeadlessMenuClient();
         client.show(MENU, 42, false, body());

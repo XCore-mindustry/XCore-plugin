@@ -31,7 +31,8 @@ public final class HeadlessMenuClient {
     public void show(int menuId, long token, boolean hidePrevious, UiSnapshot body) {
         Objects.requireNonNull(body, "body");
         if (current != null && current.menuId == menuId) {
-            // same-menuId replacement: server hides the old window first (hidePrevious)
+            // Menus hides the old instance during replacement; its hidden listener
+            // only emits cancel if that instance has not reported a click.
             if (hidePrevious) emitCancel(current);
             current = null;
         }
@@ -53,7 +54,7 @@ public final class HeadlessMenuClient {
     /** Simulates Escape/back without a prior click; sends cancel like the real client. */
     public void dismiss(int menuId) {
         if (current == null || current.menuId != menuId) return;
-        if (!current.wasHidden) emitCancel(current); // post-click Escape sends nothing (wasHidden)
+        emitCancel(current);
         current = null;
     }
 
@@ -75,6 +76,7 @@ public final class HeadlessMenuClient {
     public Queue<MenuChoose> outbox() { return outbox; }
 
     private void emitCancel(Window window) {
+        if (window.wasHidden) return;
         outbox.add(new MenuChoose(window.menuId, window.token, null));
     }
 }
