@@ -258,7 +258,7 @@ public class MapService {
         if (isRevoking) {
             if (previousVote == null) return;
             int reputationDelta = previousVote ? -NEW_VOTE_REPUTATION_DELTA : NEW_VOTE_REPUTATION_DELTA;
-            double popularityDelta = reputationDelta * (previousVote ? POPULARITY_PER_REPUTATION : NEGATIVE_POPULARITY_FACTOR);
+            double popularityDelta = reputationDelta * POPULARITY_PER_REPUTATION;
             int likeDelta = previousVote ? -1 : 0;
             int dislikeDelta = previousVote ? 0 : -1;
 
@@ -268,6 +268,8 @@ public class MapService {
             mapDataRepository.applyVoteAsync(map.id, reputationDelta, popularityDelta, likeDelta, dislikeDelta)
                     .exceptionally(err -> {
                         arc.util.Log.err("Failed to persist vote revocation for @: @", map.id, err.getMessage());
+                        applyVoteDelta(map, new VoteDelta(-reputationDelta, -popularityDelta, -likeDelta, -dislikeDelta, ""));
+                        session.data.mapVotes.put(map.id.toString(), previousVote);
                         return false;
                     });
             return;
@@ -286,6 +288,12 @@ public class MapService {
         mapDataRepository.applyVoteAsync(map.id, delta.reputationDelta(), delta.popularityDelta(), delta.likeDelta(), delta.dislikeDelta())
                 .exceptionally(err -> {
                     arc.util.Log.err("Failed to persist map vote for @: @", map.id, err.getMessage());
+                    applyVoteDelta(map, new VoteDelta(-delta.reputationDelta(), -delta.popularityDelta(), -delta.likeDelta(), -delta.dislikeDelta(), ""));
+                    if (previousVote == null) {
+                        session.data.mapVotes.remove(map.id.toString());
+                    } else {
+                        session.data.mapVotes.put(map.id.toString(), previousVote);
+                    }
                     return false;
                 });
     }

@@ -1,6 +1,6 @@
 # Architecture Specification: Map Identity, Lifecycle & Reactive UI Architecture (v2)
 
-- **Status**: Proposed; implementation started with identity primitives only
+- **Status**: Accepted — Phase 1 (identity primitives, catalog, reactive cache/write-behind), Phase 2 (MapEntity domain schema, consolidation, reactive repository), and Phase 3 (sealed MapUiState, MapUiCmd, pure evaluator) implemented; production data migration pending
 - **Domain**: Maps, Telemetry, Storage, Server-Driven UI
 - **Target Component**: `XCore-plugin` (Mindustry v160, Java 25)
 
@@ -51,7 +51,7 @@ Separate exact file identity from human aliases and persisted entity identity. A
 |                                             v                                                      |
 |  TIER 2: SEMANTIC IDENTITY (Logical Slug)                                                          |
 |  +-----------------------------------------------------------------------------------------------+ |
-|  | MapSlug: {normalized-author}:{normalized-title} (e.g. "uylol/in-research-of-power")            | |
+|  | MapSlug: {normalized-author}/{normalized-title} (e.g. "uylol/in-research-of-power")            | |
 |  | • Stripped of color markup and PUA glyphs, lowercase, kebab-cased.                            | |
 |  | • Stable human-readable namespace for routing, URLs, and Discord commands.                    | |
 |  +-----------------------------------------------------------------------------------------------+ |

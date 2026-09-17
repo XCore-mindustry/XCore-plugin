@@ -31,7 +31,7 @@ public class MapEntityRepository extends DataRepository<MapEntity> {
 
         collection.createIndex(
                 new Document("content_hash", 1),
-                new IndexOptions().unique(true).sparse(true)
+                new IndexOptions().sparse(true)
         );
         collection.createIndex(new Document("slug", 1));
         collection.createIndex(new Document("popularity", -1));
@@ -53,15 +53,15 @@ public class MapEntityRepository extends DataRepository<MapEntity> {
         return MongoAsync.first(reactiveCollection.find(eq("content_hash", contentHash)));
     }
 
-    public CompletionStage<MapEntity> findBySlugAsync(String slug) {
+    public CompletionStage<java.util.List<MapEntity>> findBySlugAsync(String slug) {
         if (slug == null || slug.isBlank()) {
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.completedFuture(java.util.List.of());
         }
         if (reactiveCollection == null) {
             return CompletableFuture.failedFuture(new IllegalStateException(
                     "Reactive MongoDB store is required for findBySlugAsync"));
         }
-        return MongoAsync.first(reactiveCollection.find(eq("slug", slug)));
+        return MongoAsync.list(reactiveCollection.find(eq("slug", slug)));
     }
 
     public Optional<MapEntity> findByContentHash(String contentHash) {
@@ -71,10 +71,12 @@ public class MapEntityRepository extends DataRepository<MapEntity> {
         return Optional.ofNullable(collection.find(eq("content_hash", contentHash)).first());
     }
 
-    public Optional<MapEntity> findBySlug(String slug) {
+    public java.util.List<MapEntity> findBySlug(String slug) {
         if (slug == null || slug.isBlank()) {
-            return Optional.empty();
+            return java.util.List.of();
         }
-        return Optional.ofNullable(collection.find(eq("slug", slug)).first());
+        var list = new java.util.ArrayList<MapEntity>();
+        collection.find(eq("slug", slug)).into(list);
+        return list;
     }
 }

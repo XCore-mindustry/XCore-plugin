@@ -52,7 +52,7 @@ public class MapDataConsolidator {
 
         Map<String, MapEntity.GamemodeMetrics> gamemodeStats = new HashMap<>();
         for (MapData record : records) {
-            String mode = record.gameMode != null ? record.gameMode.trim().toLowerCase() : "survival";
+            String mode = record.gameMode != null ? record.gameMode.trim().toLowerCase(java.util.Locale.ROOT) : "survival";
             if (mode.isBlank()) mode = "survival";
 
             MapEntity.GamemodeMetrics existing = gamemodeStats.get(mode);

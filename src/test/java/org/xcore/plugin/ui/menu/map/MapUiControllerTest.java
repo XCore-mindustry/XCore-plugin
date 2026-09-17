@@ -216,7 +216,8 @@ class MapUiControllerTest {
                 null,
                 false, "net-xcore_test123",
                 false, 0, 0, 0,
-                false, 0L
+                false, 0L,
+                new MapData("Desert Crossing", "desert.msav", "Anuke", "Survival")
         );
     }
 
@@ -273,6 +274,21 @@ class MapUiControllerTest {
         assertThat(result.model().likes()).isEqualTo(15);
         assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_REPUTATION);
         assertThat(result.fullRerender()).isFalse();
+    }
+
+    @Test
+    @DisplayName("update on ToggleReputation is a no-op when resolvedDetails is null")
+    void update_toggleReputation_guardsAgainstNullResolvedDetails() {
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel modelWithoutDetails = createTestDetailsModel("map-1").withResolvedDetails(null);
+
+        UpdateResult<MapUiModel> result = controller.update(
+                modelWithoutDetails, new MapUiEvent.ToggleReputation(true), null
+        );
+
+        assertThat(result.model().playerVote()).isNull();
+        assertThat(result.model().likes()).isEqualTo(14);
+        assertThat(result.dirtySlots()).isEmpty();
     }
 
     @Test

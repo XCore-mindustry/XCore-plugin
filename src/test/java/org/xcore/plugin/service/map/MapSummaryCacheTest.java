@@ -77,4 +77,23 @@ class MapSummaryCacheTest {
         assertEquals(5, cache.snapshot().getFirst().likes());
         assertEquals(2, cache.snapshot().getFirst().dislikes());
     }
+
+    @Test
+    void optimisticVotePatchMatchesGamemodeWhenMultipleRowsExist() {
+        var repository = mock(MapDataRepository.class);
+        var survivalRow = new MapData("Arena", "arena.msav", "Author", "survival");
+        survivalRow.like = 5;
+        var pvpRow = new MapData("Arena", "arena.msav", "Author", "pvp");
+        pvpRow.like = 10;
+        when(repository.findAllAsync()).thenReturn(CompletableFuture.completedFuture(List.of(survivalRow, pvpRow)));
+        var cache = new MapSummaryCache(repository);
+        cache.refresh().toCompletableFuture().join();
+
+        // Patch only survival
+        cache.patchVoteOptimistic("arena.msav", "survival", 1, 0);
+
+        var snap = cache.snapshot();
+        assertEquals(6, snap.stream().filter(s -> "survival".equals(s.mode())).findFirst().get().likes());
+        assertEquals(10, snap.stream().filter(s -> "pvp".equals(s.mode())).findFirst().get().likes()); // Untouched!
+    }
 }

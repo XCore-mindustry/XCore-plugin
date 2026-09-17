@@ -60,11 +60,12 @@ public class MapDataRepository extends DataRepository<MapData> {
         if (doc == null) {
             String plainName = Strings.stripColors(name);
             String plainAuthor = Strings.stripColors(author);
-            doc = collection.find(and(
+            var matches = collection.find(and(
                     regex("name", "^" + Pattern.quote(plainName) + "$", "i"),
                     regex("author", "^" + Pattern.quote(plainAuthor) + "$", "i"),
                     regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i")
-            )).first();
+            )).limit(2).into(new java.util.ArrayList<>());
+            doc = matches.size() == 1 ? matches.getFirst() : null;
         }
 
         return Optional.ofNullable(doc);
@@ -81,10 +82,11 @@ public class MapDataRepository extends DataRepository<MapData> {
         )).first();
 
         if (doc == null) {
-            doc = collection.find(and(
+            var matches = collection.find(and(
                     regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"),
                     regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i")
-            )).first();
+            )).limit(2).into(new java.util.ArrayList<>());
+            doc = matches.size() == 1 ? matches.getFirst() : null;
         }
 
         return Optional.ofNullable(doc);
@@ -96,7 +98,9 @@ public class MapDataRepository extends DataRepository<MapData> {
         }
         MapData doc = collection.find(eq("file_name", fileName)).first();
         if (doc == null) {
-            doc = collection.find(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i")).first();
+            var matches = collection.find(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"))
+                    .limit(2).into(new java.util.ArrayList<>());
+            doc = matches.size() == 1 ? matches.getFirst() : null;
         }
         return Optional.ofNullable(doc);
     }

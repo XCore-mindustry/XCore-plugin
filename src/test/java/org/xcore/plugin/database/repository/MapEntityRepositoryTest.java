@@ -42,6 +42,6 @@ class MapEntityRepositoryTest {
         when(reactiveCol.find(any(org.bson.conversions.Bson.class))).thenReturn(mock(com.mongodb.reactivestreams.client.FindPublisher.class));
 
         assertThat(repository.findByContentHashAsync(null)).isCompletedWithValue(null);
-        assertThat(repository.findBySlugAsync(null)).isCompletedWithValue(null);
+        assertThat(repository.findBySlugAsync(null)).isCompletedWithValue(java.util.List.of());
     }
 }

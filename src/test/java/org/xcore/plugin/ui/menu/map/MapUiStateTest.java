@@ -85,6 +85,21 @@ class MapUiStateTest {
         List<MapUiCmd> triggerRtvCmds = MapUiController.evaluateCommands(details, new MapUiEvent.TriggerRtv(), 12345L);
         assertThat(triggerRtvCmds).containsExactly(new MapUiCmd.TriggerRtv("arena.msav", false));
 
+        // Admin force RTV two-click confirmation
+        long now = 1000L;
+        var unconfirmedAdmin = new MapUiState.Details("u", true, "arena.msav", null, null, null, null, null,
+                new MapUiState.AdminState(true, false, 0L), null);
+        List<MapUiCmd> firstClickCmds = MapUiController.evaluateCommands(unconfirmedAdmin, new MapUiEvent.AdminForceRtvClick(), 12345L, now);
+        assertThat(firstClickCmds).isEmpty(); // First click does not force RTV yet!
+
+        var confirmedAdmin = new MapUiState.Details("u", true, "arena.msav", null, null, null, null, null,
+                new MapUiState.AdminState(true, true, now + 3000L), null);
+        List<MapUiCmd> secondClickCmds = MapUiController.evaluateCommands(confirmedAdmin, new MapUiEvent.AdminForceRtvClick(), 12345L, now + 1000L);
+        assertThat(secondClickCmds).containsExactly(new MapUiCmd.TriggerRtv("arena.msav", true));
+
+        List<MapUiCmd> expiredClickCmds = MapUiController.evaluateCommands(confirmedAdmin, new MapUiEvent.AdminForceRtvClick(), 12345L, now + 4000L);
+        assertThat(expiredClickCmds).isEmpty(); // Expired confirmation does not trigger!
+
         List<MapUiCmd> closeCmds = MapUiController.evaluateCommands(details, new MapUiEvent.Close(), 12345L);
         assertThat(closeCmds).containsExactly(
                 new MapUiCmd.UnsubscribeRtv(12345L),
