@@ -27,7 +27,7 @@ class MapDataRepositoryReadForwardTest {
         when(store.collection("maps", MapData.class)).thenReturn(collection);
         FindPublisher<MapData> query = mock(FindPublisher.class);
         when(collection.find(any(org.bson.conversions.Bson.class))).thenReturn(query);
-        when(query.limit(2)).thenReturn(query);
+        when(query.limit(anyInt())).thenReturn(query);
         var rows = new java.util.concurrent.atomic.AtomicReference<>(List.<MapData>of());
         doAnswer(call -> {
             Subscriber<? super MapData> subscriber = call.getArgument(0);
@@ -47,11 +47,12 @@ class MapDataRepositoryReadForwardTest {
         assertThat(repository.findExistingAsync("A", "a.msav", "B", "survival").toCompletableFuture().join()).isNull();
         verify(collection, never()).insertOne(any());
         var first = new MapData("A", "a.msav", "B", "survival");
-        rows.set(List.of(first));
+        first.playedTimes = 10;
+        var second = new MapData("A", "a.msav", "B", "survival");
+        second.playedTimes = 5;
+        rows.set(List.of(first, second));
+        // Resilient: picks the highest-played duplicate rather than failing the future
         assertThat(repository.findExistingAsync("A", "a.msav", "B", "survival").toCompletableFuture().join()).isSameAs(first);
-        rows.set(List.of(first, new MapData("A", "a.msav", "B", "survival")));
-        assertThatThrownBy(() -> repository.findExistingAsync("A", "a.msav", "B", "survival").toCompletableFuture().join())
-                .hasRootCauseInstanceOf(IllegalStateException.class);
         verify(sync, never()).find(any(org.bson.conversions.Bson.class));
 
         // Parameter null safety

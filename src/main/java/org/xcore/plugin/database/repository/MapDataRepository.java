@@ -131,19 +131,25 @@ public class MapDataRepository extends DataRepository<MapData> {
         String cleanAuthor = author != null ? Strings.stripColors(author) : "";
         var fileFilter = and(eq("file_name", fileName), eq("game_mode", gameMode));
         return MongoAsync.list(reactiveCollection.find(fileFilter).limit(2)).thenCompose(exact -> {
-            if (exact.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(
-                    new IllegalStateException("Ambiguous legacy map identity: " + fileName));
-            if (exact.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(exact.getFirst());
-            // Legacy aliases may help read an existing record, but ambiguous matches never select one.
+            if (!exact.isEmpty()) {
+                if (exact.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(exact.getFirst());
+                var sorted = new java.util.ArrayList<>(exact);
+                sorted.sort((a, b) -> Long.compare(b.playedTimes, a.playedTimes));
+                return java.util.concurrent.CompletableFuture.completedFuture(sorted.getFirst());
+            }
+            // Legacy aliases may help read an existing record
             return MongoAsync.list(reactiveCollection.find(and(
                     regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i"),
                     or(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"),
                             and(regex("name", "^" + Pattern.quote(cleanName) + "$", "i"),
-                                    regex("author", "^" + Pattern.quote(cleanAuthor) + "$", "i"))))).limit(2))
+                                    regex("author", "^" + Pattern.quote(cleanAuthor) + "$", "i"))))).limit(5))
                     .thenCompose(matches -> {
-                        if (matches.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(matches.getFirst());
-                        if (matches.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(
-                                new IllegalStateException("Ambiguous legacy map identity: " + fileName));
+                        if (!matches.isEmpty()) {
+                            if (matches.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(matches.getFirst());
+                            var sorted = new java.util.ArrayList<>(matches);
+                            sorted.sort((a, b) -> Long.compare(b.playedTimes, a.playedTimes));
+                            return java.util.concurrent.CompletableFuture.completedFuture(sorted.getFirst());
+                        }
                         return java.util.concurrent.CompletableFuture.completedFuture(null);
                     });
         });

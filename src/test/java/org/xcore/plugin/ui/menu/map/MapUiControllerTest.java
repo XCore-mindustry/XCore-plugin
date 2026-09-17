@@ -562,6 +562,44 @@ class MapUiControllerTest {
     }
 
     @Test
+    @DisplayName("OpenMapDetails for unplayed map creates default in-memory details and never sends error-map-not-found")
+    void openMapDetails_forUnplayedMap_resolvesDefaultDetailsAndNeverSendsNotFound() {
+        Map mindustryMap = new Map(
+                new Fi("unplayed.msav"),
+                100,
+                100,
+                StringMap.of("name", "Unplayed Map", "author", "NewAuthor", "description", "Fresh map"),
+                true
+        );
+        when(mapService.findMapByFileName("unplayed.msav")).thenReturn(mindustryMap);
+        when(mapDataRepository.findExistingAsync(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+
+        session.player = mindustry.gen.Player.create();
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+
+        var detailsStage = controller.resolveMapData("unplayed.msav");
+        MapData resolved = detailsStage.toCompletableFuture().join();
+
+        assertThat(resolved).isNotNull();
+        assertThat(resolved.name).isEqualTo("Unplayed Map");
+        assertThat(resolved.fileName).isEqualTo("unplayed.msav");
+        assertThat(resolved.author).isEqualTo("NewAuthor");
+        assertThat(resolved.like).isZero();
+        assertThat(resolved.dislike).isZero();
+        assertThat(resolved.playedTimes).isZero();
+
+        // Updating with DetailsReady sets resolvedDetails and allows liking
+        MapUiModel browserModel = createTestBrowserModel();
+        UpdateResult<MapUiModel> opened = controller.update(browserModel, new MapUiEvent.OpenMapDetails("unplayed.msav"), null);
+        MapUiModel details = controller.update(opened.model(), new MapUiEvent.DetailsReady("unplayed.msav", resolved), null).model();
+
+        assertThat(details.resolvedDetails()).isNotNull();
+        UpdateResult<MapUiModel> vote = controller.update(details, new MapUiEvent.ToggleReputation(true), null);
+        assertThat(vote.model().likes()).isEqualTo(1);
+    }
+
+    @Test
     void browserRendersWithoutWaitingForMongo() {
         var engineMap = new Map(new Fi("arena.msav"), 10, 10, StringMap.of("name", "Arena"), true);
         when(mapService.getAvailableMaps()).thenReturn(arc.struct.Seq.with(engineMap));

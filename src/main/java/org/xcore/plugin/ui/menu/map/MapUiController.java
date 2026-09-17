@@ -890,12 +890,15 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     if (target == null || session.activeUiSession() != target) return;
                     @SuppressWarnings("unchecked")
                     var typed = (org.xcore.ui.runtime.UiSession<MapUiModel, MapUiEvent>) target;
-                    typed.dispatch(error == null && data != null
-                            ? new MapUiEvent.DetailsReady(mapId, data) : new MapUiEvent.DetailsFailed(mapId));
+                    if (error == null && data != null) {
+                        typed.dispatch(new MapUiEvent.DetailsReady(mapId, data));
+                    } else if (findMindustryMap(mapId) == null) {
+                        typed.dispatch(new MapUiEvent.DetailsFailed(mapId));
+                    }
                 }));
     }
 
-    private java.util.concurrent.CompletionStage<MapData> resolveMapData(String mapId) {
+    java.util.concurrent.CompletionStage<MapData> resolveMapData(String mapId) {
         if (mapId == null || mapId.isBlank() || mapDataRepository == null) {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
@@ -912,10 +915,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             String fileName = mindustryMap.file != null ? mindustryMap.file.name() : mapId;
             var file = mindustryMap.file;
             return mapDataRepository.findExistingAsync(mindustryMap.plainName(), fileName, mindustryMap.author(), mode)
-                    .thenApply(data -> {
-                        if (hashService != null && data != null && data.id != null
-                                && data.contentHash == null && file != null
-                                && fileName.equals(data.fileName) && !mapDataRepository.isReadOnly()) {
+                    .thenApply(existingData -> {
+                        MapData data = existingData != null
+                                ? existingData
+                                : new MapData(mindustryMap.plainName(), fileName, mindustryMap.author(), mode);
+                        if (data.id == null) {
+                            data.id = new org.bson.types.ObjectId();
+                        }
+                        if (hashService != null && data.contentHash == null && file != null && !mapDataRepository.isReadOnly()) {
                             var id = data.id;
                             hashService.hashAsync(file::read)
                                     .thenCompose(hash -> mapDataRepository.updateMapContentHashAsync(id, fileName, hash))
