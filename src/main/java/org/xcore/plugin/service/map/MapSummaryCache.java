@@ -36,13 +36,14 @@ public class MapSummaryCache {
         return snapshot;
     }
 
-    /** Optimistically updates vote tallies in the cached snapshot across all sessions. */
-    public synchronized void patchVoteOptimistic(String mapId, int likeDelta, int dislikeDelta) {
+    /** Optimistically updates vote tallies in the cached snapshot across all sessions for a given gamemode. */
+    public synchronized void patchVoteOptimistic(String mapId, String mode, int likeDelta, int dislikeDelta) {
         if (mapId == null || mapId.isBlank() || snapshot.isEmpty()) return;
         var updated = new java.util.ArrayList<Summary>(snapshot.size());
         boolean matched = false;
         for (Summary s : snapshot) {
-            if (mapId.equals(s.id()) || mapId.equalsIgnoreCase(s.fileName()) || mapId.equalsIgnoreCase(s.name())) {
+            boolean modeMatch = (mode == null || mode.isBlank() || mode.equalsIgnoreCase(s.mode()));
+            if (modeMatch && (mapId.equals(s.id()) || mapId.equalsIgnoreCase(s.fileName()) || mapId.equalsIgnoreCase(s.name()))) {
                 matched = true;
                 updated.add(new Summary(
                         s.id(), s.fileName(), s.name(), s.author(), s.mode(),
@@ -56,6 +57,10 @@ public class MapSummaryCache {
         if (matched) {
             this.snapshot = List.copyOf(updated);
         }
+    }
+
+    public synchronized void patchVoteOptimistic(String mapId, int likeDelta, int dislikeDelta) {
+        patchVoteOptimistic(mapId, null, likeDelta, dislikeDelta);
     }
 
     public synchronized CompletionStage<List<Summary>> refresh() {

@@ -30,6 +30,7 @@ class MapCatalogLifecycleTest {
 
     @AfterEach
     void tearDown() throws Exception {
+        arc.Events.clear();
         var mapsField = mindustry.Vars.class.getField("maps");
         mapsField.set(null, originalMaps);
     }

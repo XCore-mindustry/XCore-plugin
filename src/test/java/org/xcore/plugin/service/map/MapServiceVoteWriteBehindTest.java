@@ -197,4 +197,88 @@ class MapServiceVoteWriteBehindTest {
         assertThat(session.data.mapVotes).doesNotContainKey(map.id.toString());
         verify(mapRepository).applyVoteAsync(eq(map.id), eq(-1), anyDouble(), eq(-1), eq(0));
     }
+
+    @Test
+    void handleReputationRevokingDislikeRestoresPopularityPositively() {
+        var sessionService = mock(SessionService.class);
+        var mapRepository = mock(MapDataRepository.class);
+        var playerRepository = mock(PlayerDataRepository.class);
+
+        var session = new Session(new TomlSecretsConfig(), mock(Bundle.class),
+                null, playerRepository, null, new PlayerData("voter", true));
+        session.data.mapVotes = new HashMap<>();
+        session.localization = mock(org.xcore.plugin.localization.Localization.class);
+        when(sessionService.get(anyString())).thenReturn(session);
+
+        var map = new MapData("Arena", "arena.msav", "Author", "survival");
+        map.id = new ObjectId();
+        map.dislike = 2;
+        map.popularity = 10.0;
+        map.reputation = 5;
+        session.data.mapVotes.put(map.id.toString(), false); // voter previously disliked
+
+        when(mapRepository.applyVoteAsync(eq(map.id), eq(1), eq(2.0), eq(0), eq(-1)))
+                .thenReturn(CompletableFuture.completedFuture(true));
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mapRepository,
+                sessionService,
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
+                mock(VoteRtvFactory.class),
+                new GameStateService()
+        );
+
+        service.handleReputation(mindustry.gen.Player.create(), false, true, map);
+
+        assertThat(map.dislike).isEqualTo(1);
+        assertThat(map.popularity).isEqualTo(12.0); // Restored +2.0, NOT penalized -2.0!
+        assertThat(map.reputation).isEqualTo(6);
+        assertThat(session.data.mapVotes).doesNotContainKey(map.id.toString());
+        verify(mapRepository).applyVoteAsync(eq(map.id), eq(1), eq(2.0), eq(0), eq(-1));
+    }
+
+    @Test
+    void handleReputationRollsBackOptimisticMutationWhenPersistenceFails() {
+        var sessionService = mock(SessionService.class);
+        var mapRepository = mock(MapDataRepository.class);
+        var playerRepository = mock(PlayerDataRepository.class);
+
+        var session = new Session(new TomlSecretsConfig(), mock(Bundle.class),
+                null, playerRepository, null, new PlayerData("voter", true));
+        session.data.mapVotes = new HashMap<>();
+        session.localization = mock(org.xcore.plugin.localization.Localization.class);
+        when(sessionService.get(anyString())).thenReturn(session);
+
+        var map = new MapData("Arena", "arena.msav", "Author", "survival");
+        map.id = new ObjectId();
+        map.like = 0;
+        map.reputation = 0;
+        var failedFuture = new CompletableFuture<Boolean>();
+        failedFuture.completeExceptionally(new RuntimeException("database timeout"));
+        when(mapRepository.applyVoteAsync(any(), anyInt(), anyDouble(), anyInt(), anyInt()))
+                .thenReturn(failedFuture);
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mapRepository,
+                sessionService,
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
+                mock(VoteRtvFactory.class),
+                new GameStateService()
+        );
+
+        service.handleReputation(mindustry.gen.Player.create(), true, false, map);
+
+        // Rolled back because persistence failed!
+        assertThat(map.like).isZero();
+        assertThat(map.reputation).isZero();
+        assertThat(session.data.mapVotes).doesNotContainKey(map.id.toString());
+    }
 }

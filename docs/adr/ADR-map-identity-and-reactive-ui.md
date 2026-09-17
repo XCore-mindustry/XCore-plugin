@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — implementation started with identity value objects only; runtime integration and migration are pending.
+Accepted — Phase 1 (identity primitives, non-blocking cache, catalog, reactive write-behind), Phase 2 (MapEntity domain schema, consolidation, reactive repository), and Phase 3 (sealed MapUiState, MapUiCmd, stateless controller) are implemented; production data migration and unique hash index cutover are pending.
 
 ## Context
 

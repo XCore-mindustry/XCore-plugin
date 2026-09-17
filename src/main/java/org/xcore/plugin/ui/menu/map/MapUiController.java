@@ -91,7 +91,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 yield UpdateResult.rerender(loadDetailsModel(model, model.selectedMapId(), data));
             }
             case MapUiEvent.DetailsFailed(var mapId) -> {
-                if (isSameMap(mapId, model.selectedMapId()) && session != null) {
+                if (model.mode() == MapUiModel.ViewMode.DETAILS
+                        && isSameMap(mapId, model.selectedMapId())
+                        && session != null) {
                     session.locale().send("error-map-not-found");
                 }
                 yield UpdateResult.of(model);
@@ -138,7 +140,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 if (observerService != null) {
                     observerService.unregisterViewing(model.playerUuid());
                 }
-                MapUiModel browser = filterAndPaginate(model.withMode(MapUiModel.ViewMode.BROWSER), model.page());
+                MapUiModel browser = filterAndPaginate(model.withMode(MapUiModel.ViewMode.BROWSER), model.page())
+                        .withResolvedDetails(null);
                 yield UpdateResult.rerender(browser);
             }
 
@@ -154,6 +157,11 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Optimistic Reputation (Like / Dislike) ---
             case MapUiEvent.ToggleReputation(boolean like) -> {
+                MapData mapData = model.resolvedDetails();
+                if (mapData == null) {
+                    yield UpdateResult.of(model);
+                }
+
                 Boolean current = model.playerVote();
                 boolean isRevoking = (current != null && current == like);
                 Boolean next = isRevoking ? null : like;
@@ -177,13 +185,12 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 MapUiModel updated = model.withReputation(next, newRep, newLikes, newDislikes, newApproval);
 
                 // Async persistence to MongoDB and session data
-                MapData mapData = model.resolvedDetails();
-                if (mapData != null && session != null && session.player != null && mapService != null) {
+                if (session != null && session.player != null && mapService != null) {
                     mapService.handleReputation(session.player, like, isRevoking, mapData);
                 }
 
                 if (summaryCache != null) {
-                    summaryCache.patchVoteOptimistic(model.selectedMapId(), likeDelta, dislikeDelta);
+                    summaryCache.patchVoteOptimistic(model.selectedMapId(), mapData.gameMode, likeDelta, dislikeDelta);
                 }
 
                 cachedMapSummaries = null;
@@ -437,6 +444,13 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         // 4. Interactive Reputation Slot (SLOT_REPUTATION)
         root.slot(SLOT_REPUTATION.path(), rSlot -> {
             rSlot.layout(l -> l.width(520f).padBottom(8f));
+            if (model.resolvedDetails() == null) {
+                rSlot.add(Ui.table(loading -> {
+                    loading.layout(l -> l.growX().height(32f));
+                    loading.label(Text.t("map-ui-loading"), l -> l.align("center"));
+                }));
+                return;
+            }
             rSlot.add(Ui.table(votes -> {
                 votes.layout(l -> l.growX());
                 boolean isLiked = Boolean.TRUE.equals(model.playerVote());
@@ -536,6 +550,10 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
      * Pure function mapping state and event to side-effect commands (MVI architecture).
      */
     public static List<MapUiCmd> evaluateCommands(MapUiState state, MapUiEvent event, long sessionToken) {
+        return evaluateCommands(state, event, sessionToken, System.currentTimeMillis());
+    }
+
+    public static List<MapUiCmd> evaluateCommands(MapUiState state, MapUiEvent event, long sessionToken, long nowMillis) {
         return switch (event) {
             case MapUiEvent.SearchChanged(var query) -> List.of(new MapUiCmd.LoadAllSummaries(query, 1));
             case MapUiEvent.ChangePage(int newPage) -> {
@@ -572,8 +590,12 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 yield List.of(new MapUiCmd.TriggerRtv(mapId, false));
             }
             case MapUiEvent.AdminForceRtvClick() -> {
-                String mapId = (state instanceof MapUiState.Details d) ? d.mapId() : "";
-                yield List.of(new MapUiCmd.TriggerRtv(mapId, true));
+                if (state instanceof MapUiState.Details d && d.admin() != null && d.admin().isAdmin()) {
+                    if (d.admin().confirming() && nowMillis < d.admin().confirmExpireMillis()) {
+                        yield List.of(new MapUiCmd.TriggerRtv(d.mapId(), true));
+                    }
+                }
+                yield List.of();
             }
             case MapUiEvent.Close() -> List.of(
                     new MapUiCmd.UnsubscribeRtv(sessionToken),
@@ -733,7 +755,13 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     private MapUiModel loadDetailsModel(MapUiModel current, String mapId, MapData preloadedData) {
-        MapData data = preloadedData != null ? preloadedData : current.resolvedDetails();
+        MapData data = preloadedData;
+        if (data == null && current.resolvedDetails() != null) {
+            MapData existing = current.resolvedDetails();
+            if (isSameMap(mapId, existing.fileName) || (existing.id != null && mapId.equals(existing.id.toHexString()))) {
+                data = existing;
+            }
+        }
         Map mindustryMap = findMindustryMap(mapId, data);
         if (mindustryMap == null && data != null && mapService != null) {
             mindustryMap = mapService.findPersistedMap(data);
@@ -849,7 +877,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         Map m1 = findMindustryMap(id1);
         Map m2 = findMindustryMap(id2);
         if (m1 != null && m2 != null) {
-            return Objects.equals(m1.file, m2.file) || m1.plainName().equalsIgnoreCase(m2.plainName());
+            return m1 == m2
+                    || (m1.file != null && m2.file != null && Objects.equals(m1.file, m2.file));
         }
         return false;
     }
