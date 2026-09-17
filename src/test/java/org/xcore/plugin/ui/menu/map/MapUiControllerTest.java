@@ -92,7 +92,8 @@ class MapUiControllerTest {
         var data = new MapData("test", "test.msav", "author", "survival");
         data.id = new ObjectId();
         when(mapService.findMapByFileName("test.msav")).thenReturn(engineMap);
-        when(mapDataRepository.findOrCreate(anyString(), eq("test.msav"), anyString(), anyString())).thenReturn(data);
+        when(mapDataRepository.findExistingAsync(anyString(), eq("test.msav"), anyString(), anyString()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(data));
         var tasks = new java.util.ArrayDeque<Runnable>();
         var executor = mock(org.xcore.plugin.concurrent.StorageExecutor.class, CALLS_REAL_METHODS);
         doAnswer(call -> { tasks.add(call.getArgument(0)); return null; }).when(executor).execute(any());
@@ -103,13 +104,69 @@ class MapUiControllerTest {
         var resolve = MapUiController.class.getDeclaredMethod("resolveMapData", String.class);
         resolve.setAccessible(true);
 
-        assertThat(resolve.invoke(controller, "test.msav")).isSameAs(data);
+        var resolved = (java.util.concurrent.CompletionStage<?>) resolve.invoke(controller, "test.msav");
+        assertThat(resolved.toCompletableFuture().join()).isSameAs(data);
         verify(file, never()).read();
         verify(mapDataRepository, never()).updateMapContentHashAsync(any(), anyString(), any());
         tasks.remove().run();
         verify(mapDataRepository).updateMapContentHashAsync(eq(data.id), eq("test.msav"),
                 eq(org.xcore.plugin.map.domain.MapContentHash.fromHex("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")));
         assertThat(data.contentHash).isNull(); // worker must not mutate shared state
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void previewCompletionNeverDispatchesIntoReplacementDialog() {
+        var map = new Map(new Fi("arena.msav"), 10, 10, StringMap.of("name", "Arena"), true);
+        when(mapService.findMapByFileName("arena.msav")).thenReturn(map);
+        session.player = mindustry.gen.Player.create();
+        var original = mock(org.xcore.ui.runtime.UiSession.class);
+        var replacement = mock(org.xcore.ui.runtime.UiSession.class);
+        session.setActiveUiSession(original);
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        controller.requestPreviewAsync(session, "arena.msav");
+        var callback = org.mockito.ArgumentCaptor.forClass(java.util.function.BiConsumer.class);
+        verify(previewService).requestPreview(any(), eq(map), callback.capture());
+        session.setActiveUiSession(replacement);
+        callback.getValue().accept("texture", null);
+        verify(replacement, never()).dispatch(any());
+        verify(original, never()).dispatch(any());
+    }
+
+    @Test
+    void openingCardThroughUiSessionShowsSavedStatsWhenReadCompletesImmediately() {
+        var engineMap = new Map(new Fi("arena.msav"), 150, 200,
+                StringMap.of("name", "Arena", "author", "Author"), true);
+        when(mapService.findMapByFileName("arena.msav")).thenReturn(engineMap);
+        var saved = new MapData("Arena", "arena.msav", "Author", "survival");
+        saved.id = new ObjectId();
+        saved.playedTimes = 25;
+        saved.like = 18;
+        saved.dislike = 2;
+        saved.averageGameTime = 1_200_000L;
+        when(mapDataRepository.findExistingAsync("Arena", "arena.msav", "Author", "survival"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(saved));
+        var followUps = new java.util.ArrayDeque<Runnable>();
+        var context = new ControllerContext() {
+            public String playerId() { return "test-uuid"; }
+            public void close() {}
+            public void post(Runnable task) { followUps.add(task); }
+        };
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        var ui = org.xcore.ui.runtime.UiSession.start(controller, createTestBrowserModel(), context,
+                mock(org.xcore.ui.runtime.UiSession.DeliveryGateway.class), LocalizerResolver.IDENTITY);
+        session.setActiveUiSession(ui);
+
+        ui.handle(new MenuResult("action:select_map:arena.msav"));
+        while (!followUps.isEmpty()) followUps.remove().run();
+
+        assertThat(ui.model().mode()).isEqualTo(MapUiModel.ViewMode.DETAILS);
+        assertThat(ui.model().selectedMapId()).isEqualTo("arena.msav");
+        assertThat(ui.model().playedTimes()).isEqualTo(25);
+        assertThat(ui.model().likes()).isEqualTo(18);
+        assertThat(ui.model().dislikes()).isEqualTo(2);
+        assertThat(ui.model().avgGameTime()).isNotEqualTo("-");
+        verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
     }
 
     private MapUiModel createTestBrowserModel() {
@@ -443,8 +500,9 @@ class MapUiControllerTest {
                 .lastPlayedTime(System.currentTimeMillis() - 3600_000L)
                 .build();
 
-        when(mapDataRepository.findOrCreate(eq("in research of power..."), eq("in_research_of_power.msav"), eq("uylol"), anyString()))
-                .thenReturn(persistedData);
+        var pendingDetails = new java.util.concurrent.CompletableFuture<MapData>();
+        when(mapDataRepository.findExistingAsync(eq("in research of power..."), eq("in_research_of_power.msav"), eq("uylol"), anyString()))
+                .thenReturn(pendingDetails);
 
         session.player = mindustry.gen.Player.create();
         MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
@@ -452,7 +510,10 @@ class MapUiControllerTest {
 
         UpdateResult<MapUiModel> result = controller.update(browserModel, new MapUiEvent.OpenMapDetails("in_research_of_power.msav"), null);
 
-        MapUiModel details = result.model();
+        assertThat(result.model().playedTimes()).isZero();
+        verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
+        pendingDetails.complete(persistedData);
+        MapUiModel details = controller.update(result.model(), new MapUiEvent.DetailsReady("in_research_of_power.msav", persistedData), null).model();
         assertThat(details.mode()).isEqualTo(MapUiModel.ViewMode.DETAILS);
         assertThat(details.mapName()).isEqualTo("in research of power...");
         assertThat(details.mapAuthor()).isEqualTo("uylol");
@@ -471,6 +532,26 @@ class MapUiControllerTest {
 
         verify(observerService).registerViewing("test-uuid", "in_research_of_power.msav");
         verify(previewService).requestPreview(any(), eq(mindustryMap), any());
+    }
+
+    @Test
+    void browserRendersWithoutWaitingForMongo() {
+        var engineMap = new Map(new Fi("arena.msav"), 10, 10, StringMap.of("name", "Arena"), true);
+        when(mapService.getAvailableMaps()).thenReturn(arc.struct.Seq.with(engineMap));
+        var pending = new java.util.concurrent.CompletableFuture<List<MapData>>();
+        when(mapDataRepository.findAllAsync()).thenReturn(pending);
+        var cache = new org.xcore.plugin.service.map.MapSummaryCache(mapDataRepository);
+        cache.refresh();
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session, null, cache);
+        var initial = controller.createInitialBrowserModel(session, 1);
+        assertThat(initial.displayedMaps().getFirst().likes()).isZero();
+        verify(mapDataRepository, never()).findAllAsMap();
+        var data = new MapData("Arena", "arena.msav", "unknown", "survival");
+        data.like = 5;
+        pending.complete(List.of(data));
+        var result = controller.update(initial, new MapUiEvent.SummariesReady(), null);
+        assertThat(result.model().displayedMaps().getFirst().likes()).isEqualTo(5);
+        assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_MAP_TABLE);
     }
 
     @Test
@@ -494,10 +575,12 @@ class MapUiControllerTest {
                 .like(12)
                 .dislike(3)
                 .build());
-        when(mapDataRepository.findAllAsMap()).thenReturn(allStats);
-
-        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        when(mapDataRepository.findAllAsync()).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(List.of(allStats.values().next())));
+        var cache = new org.xcore.plugin.service.map.MapSummaryCache(mapDataRepository);
+        cache.refresh().toCompletableFuture().join();
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session, null, cache);
         MapUiModel browser = controller.createInitialBrowserModel(session, 1);
+        verify(mapDataRepository, never()).findAllAsMap();
 
         assertThat(browser.displayedMaps()).hasSize(1);
         MapUiModel.MapSummary summary = browser.displayedMaps().get(0);

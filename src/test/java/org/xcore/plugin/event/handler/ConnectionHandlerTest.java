@@ -25,6 +25,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
+import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -88,7 +89,8 @@ class ConnectionHandlerTest {
                 privateMessageService,
                 playerDisplayService,
                 discordAdminAccessService,
-                observerService
+                observerService,
+                mock(MapVoteObserverService.class)
         );
 
         Player player = Player.create();
@@ -130,6 +132,25 @@ class ConnectionHandlerTest {
         verify(playerDisplayService).refresh(session);
         verify(networkService).post(any(PlayerJoinLeaveV1.class));
         verify(sessionService, never()).persistPlayer(session);
+    }
+
+    @Test
+    void onPlayerLeaveUnregistersMapObserverEvenWithoutPlayerData() {
+        SessionService sessionService = mock(SessionService.class);
+        MapVoteObserverService mapObserver = mock(MapVoteObserverService.class);
+        VoteService voteService = mock(VoteService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(AdminDataRepository.class),
+                mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(), voteService,
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
+                mock(DiscordAdminAccessService.class), mock(ObserverService.class), mapObserver);
+        Player player = Player.create();
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-left";
+
+        handler.onPlayerLeave(new EventType.PlayerLeave(player));
+
+        verify(mapObserver).unregisterViewing("uuid-left");
+        verify(voteService).handleLeave(player);
     }
 
     private static final class DummyNetConnection extends NetConnection {
