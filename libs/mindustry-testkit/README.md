@@ -4,11 +4,13 @@
 
 ## Текущее состояние
 
-Начальный срез, **не готовый симулятор клиента**:
+Реализованный детерминированный стенд для UI-тестов (Этапы 1–4 плана завершены):
 
 - `core`: `DeterministicQueue` — явная FIFO-доставка и snapshot-drain turn;
 - `ui`: `UiSnapshot` — неизменяемая копия `NodeBuilder` через штатный binary codec;
-- `ui`: `HeadlessMenuClient` — воспроизведение семантики клиента Mindustry (меню, token, outbox, wasHidden-подавление cancel, замена окон);
+- `ui`: `HeadlessMenuClient` — семантический клиент Mindustry (меню, token, outbox, wasHidden-подавление cancel, замена окон);
+- `ui`: `UiWireMessage` и `UiTranscript` — снимки wire-сообщений (`Show`, `Update`, `Hide`, `Choose`) и хронологический лог;
+- `ui`: `DeterministicUiLoop` — две FIFO-очереди транспорта (S→C и C→S) + snapshot-drain очередь `serverPost`;
 - `ui`: actual-client oracle тесты (`ActualDialogHideTest`, `ActualMenusOracleTest`) — исполнение настоящего `mindustry.ui.Menus` и `arc.scene.ui.Dialog` под `Mock*` из arc-core в plain JVM без рендера и Xvfb:
   1. Замена окна до клика (`hidePrevious=true`) синхронно шлёт cancel старого окна со старым токеном;
   2. Клик по кнопке устанавливает `wasHidden=true` и передаёт choose-пакет;
@@ -17,11 +19,14 @@
   5. SHA-256 fingerprinting реально загруженных JAR артефактов (`Menus.class`: `283c9b56fb...`, `Core.class`: `c2df13f7...`).
 - Java 25, Gradle 9.3.1, JUnit 5.
 
-Actual-Menus oracle доказал полную эквивалентность семантики `HeadlessMenuClient` и настоящего `Menus.menuBuilder` в headless окружении.
+Actual-Menus oracle доказал эквивалентность семантики `HeadlessMenuClient` и настоящего `Menus.menuBuilder` в headless окружении.
 
-`HeadlessMenuClient` пока моделирует только текущее окно, outbox выбора и журнал последних patch payloads. `wasHidden` подавляет cancel при Escape, серверном hide и замене после клика; новый show создаёт новое состояние даже при том же token. В xcore-ui есть синтетические интеграционные тесты counter/slot и replacement-cancel через настоящий `UiSession`.
+В `xcore-ui` и `XCore-plugin` реализованы сквозные интеграционные тесты (`UiSessionClientIntegrationTest` и `MapUiClientIntegrationTest`, сценарии UI-01..UI-09).
 
-**Ограничения:** нет actual-Menus parity, дерева клиентских элементов, проверки существования targetId/кнопки, нескольких одновременно видимых окон, hideOnClick, полного wire codec и trace. `lastPatchDsl` — журнал доставки, не доказательство применения патча к клиентскому дереву; он пока сохраняется между окнами. Выбор переносит action/token, но не значения формы. Две транспортные очереди и server-post ещё не соединены. Зелёные тесты не подтверждают fidelity клиента или исправность maps.
+**Ограничения и дальнейшее развитие:**
+- `HeadlessMenuClient` моделирует одно активное окно и профиль `menuBuilder`; полный рендеринг геометрии и Scene graph не эмулируются (для этого используется `ActualMenusOracleTest`).
+- Escape без клика шлёт cancel, который серверный `MapUiController` игнорирует для защиты от самозакрытия при замене окон; серверная очистка по Escape требует отдельного механизма корреляции токенов.
+- Публикация в удалённый Maven репозиторий пока не настроена (используется `mavenLocal` и `--include-build`).
 
 ## Сборка
 
