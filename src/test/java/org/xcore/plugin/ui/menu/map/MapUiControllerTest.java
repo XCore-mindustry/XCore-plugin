@@ -373,6 +373,13 @@ class MapUiControllerTest {
 
         MenuResult nextRes = new MenuResult("action:page:next");
         assertThat(controller.parseEvent(nextRes)).isEqualTo(new MapUiEvent.NextPage());
+
+        MenuResult closeRes = new MenuResult("action:close");
+        assertThat(controller.parseEvent(closeRes)).isEqualTo(new MapUiEvent.Close());
+
+        // Cancelled dialog results (empty MenuResult from client replace) are safely ignored
+        assertThat(controller.parseEvent(null)).isNull();
+        assertThat(controller.parseEvent(new MenuResult())).isNull();
     }
 
     @Test

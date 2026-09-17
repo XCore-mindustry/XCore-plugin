@@ -507,9 +507,15 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
         // 6. Footer Navigation
         root.image("whiteui", l -> l.width(520f).height(2f).padBottom(6f).color("454545")).row();
-        root.button(Text.join(Text.raw("[accent]"), Text.t("map-maps-back")), "action:back_to_list", b -> b
-                .style("cleart")
-                .layout(l -> l.width(520f).fillX().height(38f)));
+        root.add(Ui.table(nav -> {
+            nav.layout(l -> l.width(520f));
+            nav.button(Text.join(Text.raw("[accent]"), Text.t("map-maps-back")), "action:back_to_list", b -> b
+                    .style("cleart")
+                    .layout(l -> l.uniform().growX().height(38f).padRight(6f)));
+            nav.button(Text.join(Text.raw("[gray]"), Text.t("close")), "action:close", b -> b
+                    .style("cleart")
+                    .layout(l -> l.uniform().growX().height(38f)));
+        }));
     }
 
     // ==================================================================
@@ -518,7 +524,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     @Override
     public MapUiEvent parseEvent(MenuResult result) {
-        if (result == null || result.result == null) return new MapUiEvent.Close();
+        if (result == null || result.result == null) return null;
 
         String res = result.result;
         if ("action:search".equals(res)) {
