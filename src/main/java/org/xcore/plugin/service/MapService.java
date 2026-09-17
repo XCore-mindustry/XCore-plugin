@@ -5,6 +5,8 @@ import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Timer;
 import arc.util.Strings;
+import org.jspecify.annotations.Nullable;
+import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -20,6 +22,7 @@ import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.EventData;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.model.enums.Feature;
+import org.xcore.plugin.service.map.MapIdentityCatalog;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.vote.VoteNewWave;
 import org.xcore.plugin.vote.VoteNewWaveFactory;
@@ -59,7 +62,8 @@ public class MapService {
                       VoteService voteService,
                       VoteNewWaveFactory voteNewWaveFactory,
                       VoteRtvFactory voteRtvFactory,
-                      GameStateService gameStateService) {
+                      GameStateService gameStateService,
+                      @Nullable MapIdentityCatalog identityCatalog) {
         this.eventDataRepository = eventDataRepository;
         this.mapDataRepository = mapDataRepository;
         this.sessionService = sessionService;
@@ -69,6 +73,25 @@ public class MapService {
         this.voteNewWaveFactory = voteNewWaveFactory;
         this.voteRtvFactory = voteRtvFactory;
         this.gameStateService = gameStateService;
+        this.identityCatalog = identityCatalog;
+    }
+
+    public MapService(EventDataRepository eventDataRepository,
+                      MapDataRepository mapDataRepository,
+                      SessionService sessionService,
+                      TomlXcoreConfig config,
+                      TomlSecretsConfig secretsConfig,
+                      VoteService voteService,
+                      VoteNewWaveFactory voteNewWaveFactory,
+                      VoteRtvFactory voteRtvFactory,
+                      GameStateService gameStateService) {
+        this(eventDataRepository, mapDataRepository, sessionService, config, secretsConfig,
+                voteService, voteNewWaveFactory, voteRtvFactory, gameStateService, null);
+    }
+
+    @PostConstruct
+    public void init() {
+        registerCatalogTriggers();
     }
 
     public Seq<Map> getAvailableMaps() {

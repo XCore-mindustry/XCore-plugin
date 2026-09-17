@@ -87,4 +87,32 @@ class MapCatalogTriggerTest {
         assertThat(CAPTURED).hasSize(1);
         assertThat(CAPTURED.getFirst()).extracting(MapIdentityCatalog.Source::fileName).containsExactly("arena.msav");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void mapsRemoveRequestViaNetworkTriggersCatalogRebuild() {
+        var network = mock(org.xcore.plugin.service.NetworkService.class);
+        var removeListeners = new java.util.ArrayList<arc.func.Cons<org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1>>();
+        when(network.subscribe(eq(org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1.class), any())).thenAnswer(call -> {
+            removeListeners.add(call.getArgument(1));
+            return null;
+        });
+
+        var config = new org.xcore.plugin.config.TomlXcoreConfig();
+        config.server.name = "test-server";
+        var mapService = serviceWithTracingCatalog();
+        var transport = new org.xcore.plugin.event.transport.MapTransportHandler(
+                network,
+                config,
+                mapService,
+                mock(org.xcore.plugin.database.repository.MapDataRepository.class)
+        );
+        transport.registerListeners();
+        CAPTURED.clear();
+
+        // Simulate network message arriving to remove arena.msav
+        removeListeners.getFirst().get(new org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequestV1("test-server", "arena.msav"));
+
+        assertThat(CAPTURED).hasSize(1);
+    }
 }
