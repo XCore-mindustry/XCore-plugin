@@ -1,5 +1,6 @@
 package org.xcore.plugin.service;
 
+import arc.Events;
 import arc.func.Boolf;
 import arc.struct.Seq;
 import arc.util.Timer;
@@ -7,6 +8,7 @@ import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
+import mindustry.game.EventType;
 import mindustry.game.Gamemode;
 import mindustry.gen.Player;
 import mindustry.maps.Map;
@@ -265,6 +267,11 @@ public class MapService {
     /** Optional identity catalog hook; absent when the reactive store is unavailable. */
     public void attachIdentityCatalog(org.xcore.plugin.service.map.MapIdentityCatalog catalog) {
         this.identityCatalog = catalog;
+    }
+
+    /** Registers engine event triggers; safe in headless tests, no-op without a catalog. */
+    public void registerCatalogTriggers() {
+        Events.on(EventType.ServerLoadEvent.class, ignored -> rebuildIdentityCatalog());
     }
 
     /** Rebuilds the identity catalog from live engine maps; metadata is captured on the calling thread. */
