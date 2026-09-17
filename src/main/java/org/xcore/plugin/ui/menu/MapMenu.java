@@ -40,6 +40,7 @@ public class MapMenu extends Menu {
     private final org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService;
 
     private final org.xcore.plugin.service.map.MapContentHashService hashService;
+    private final org.xcore.plugin.service.map.MapSummaryCache summaryCache;
 
     public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
@@ -50,14 +51,27 @@ public class MapMenu extends Menu {
                 mapService, eventMenu, menuService, mapPreviewService, mapVoteObserverService, null);
     }
 
-    @Inject
     public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
                    MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService,
                    org.xcore.plugin.service.map.MapPreviewService mapPreviewService,
                    org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService,
                    org.xcore.plugin.service.map.MapContentHashService hashService) {
+        this(config, secretsConfig, sessionService, mapDataRepository, eventDataRepository, mapService,
+                eventMenu, menuService, mapPreviewService, mapVoteObserverService, hashService,
+                new org.xcore.plugin.service.map.MapSummaryCache(mapDataRepository));
+    }
+
+    @Inject
+    public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
+                   MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
+                   MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService,
+                   org.xcore.plugin.service.map.MapPreviewService mapPreviewService,
+                   org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService,
+                   org.xcore.plugin.service.map.MapContentHashService hashService,
+                   org.xcore.plugin.service.map.MapSummaryCache summaryCache) {
         super(secretsConfig, sessionService);
+        this.summaryCache = summaryCache;
         this.hashService = hashService;
         this.config = config;
         this.mapDataRepository = mapDataRepository;
@@ -117,16 +131,17 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService);
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
         var initialModel = controller.createInitialBrowserModel(session, page);
         menuService.openUi(session, controller, initialModel);
+        controller.requestSummariesAsync();
     }
 
     public void openMapDetailsUi(Session session, MapData m) {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService);
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
         var initialModel = controller.createInitialDetailsModel(session, m);
         menuService.openUi(session, controller, initialModel);
         if (mapVoteObserverService != null) {

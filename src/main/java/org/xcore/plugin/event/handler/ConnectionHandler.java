@@ -17,6 +17,7 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.service.PrivateMessageService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
+import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.session.Session;
@@ -40,6 +41,7 @@ public class ConnectionHandler {
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
     private final ObserverService observerService;
+    private final MapVoteObserverService mapVoteObserverService;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -51,7 +53,8 @@ public class ConnectionHandler {
                              PrivateMessageService privateMessageService,
                              PlayerDisplayService playerDisplayService,
                              DiscordAdminAccessService discordAdminAccessService,
-                             ObserverService observerService) {
+                             ObserverService observerService,
+                             MapVoteObserverService mapVoteObserverService) {
         this.sessionService = sessionService;
         this.adminDataRepository = adminDataRepository;
         this.network = network;
@@ -62,6 +65,7 @@ public class ConnectionHandler {
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
         this.observerService = observerService;
+        this.mapVoteObserverService = mapVoteObserverService;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
@@ -126,6 +130,7 @@ public class ConnectionHandler {
     public void onPlayerLeave(PlayerLeave event) {
         Player player = event.player;
 
+        mapVoteObserverService.unregisterViewing(player.uuid());
         Session session = sessionService.registerLogout(event.player);
         PlayerData data = session != null ? session.data : null;
 

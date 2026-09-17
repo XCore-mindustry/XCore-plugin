@@ -214,6 +214,11 @@ public class MenuService {
 
         ControllerContext ctx = new ControllerContext() {
             @Override
+            public void post(Runnable action) {
+                arc.Core.app.post(action);
+            }
+
+            @Override
             public String playerId() {
                 return session.player.uuid();
             }

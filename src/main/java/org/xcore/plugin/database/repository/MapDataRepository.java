@@ -105,6 +105,41 @@ public class MapDataRepository extends DataRepository<MapData> {
         return collection.find().into(new ArrayList<>());
     }
 
+    public java.util.concurrent.CompletionStage<List<MapData>> findAllAsync() {
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Reactive MongoDB store is required for findAllAsync"));
+        }
+        return MongoAsync.list(reactiveCollection.find());
+    }
+
+    /** Read-only compatibility lookup. Never creates or relinks identity from a filename/alias. */
+    public java.util.concurrent.CompletionStage<MapData> findExistingAsync(
+            String name, String fileName, String author, String gameMode) {
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Reactive MongoDB store is required for map resolution"));
+        }
+        var fileFilter = and(eq("file_name", fileName), eq("game_mode", gameMode));
+        return MongoAsync.list(reactiveCollection.find(fileFilter).limit(2)).thenCompose(exact -> {
+            if (exact.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Ambiguous legacy map identity: " + fileName));
+            if (exact.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(exact.getFirst());
+            // Legacy aliases may help read an existing record, but ambiguous matches never select one.
+            return MongoAsync.list(reactiveCollection.find(and(
+                    regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i"),
+                    or(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"),
+                            and(regex("name", "^" + Pattern.quote(Strings.stripColors(name)) + "$", "i"),
+                                    regex("author", "^" + Pattern.quote(Strings.stripColors(author)) + "$", "i"))))).limit(2))
+                    .thenCompose(matches -> {
+                        if (matches.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(matches.getFirst());
+                        if (matches.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(
+                                new IllegalStateException("Ambiguous legacy map identity: " + fileName));
+                        return java.util.concurrent.CompletableFuture.completedFuture(null);
+                    });
+        });
+    }
+
     public MapData findOrCreate(String name, String fileName, String author, String gameMode) {
         return findByFileName(fileName, gameMode)
                 .or(() -> find(name, author, gameMode))
