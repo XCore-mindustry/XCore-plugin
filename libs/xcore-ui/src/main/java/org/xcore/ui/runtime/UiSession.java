@@ -30,11 +30,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class UiSession<Model, Event> {
 
+    private static final java.util.concurrent.atomic.AtomicLong TOKEN_GENERATOR =
+            new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis() << 16);
+
     private final UiController<Model, Event> controller;
     private final ControllerContext ctx;
     private final DeliveryGateway gateway;
     private volatile VNodeCompiler compiler;
-    private final long token;
+    private volatile long token;
 
     private volatile Model model;
 
@@ -69,7 +72,7 @@ public final class UiSession<Model, Event> {
         Objects.requireNonNull(ctx, "ctx");
         Objects.requireNonNull(gateway, "gateway");
         VNodeCompiler compiler = new VNodeCompiler(resolver != null ? resolver : LocalizerResolver.getDefault());
-        long token = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        long token = TOKEN_GENERATOR.incrementAndGet();
         return new UiSession<>(controller, ctx, gateway, compiler, token, initialModel);
     }
 
@@ -90,8 +93,9 @@ public final class UiSession<Model, Event> {
         return model;
     }
 
-    /** Renders the current model and shows the dialog. */
+    /** Renders the current model and shows the dialog with a fresh window token. */
     public void open() {
+        this.token = TOKEN_GENERATOR.incrementAndGet();
         VNode tree = controller.render(model);
         UiBuilder.NodeBuilder<?> compiled = compiler.compile(tree);
         gateway.show(ctx.playerId(), token, compiled);
@@ -126,6 +130,10 @@ public final class UiSession<Model, Event> {
     /** Feeds a client result into the reducer and delivers render directives. */
     public void handle(mindustry.ui.builder.MenuResult result) {
         Objects.requireNonNull(result, "result");
+        if (result.token != 0 && result.token != this.token) {
+            // Drop stale results from an older window generation (replacement cancels, late clicks)
+            return;
+        }
         Event event = controller.parseEvent(result);
         if (event != null) {
             dispatch(event);

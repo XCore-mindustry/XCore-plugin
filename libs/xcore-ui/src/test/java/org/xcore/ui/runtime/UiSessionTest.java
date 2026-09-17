@@ -184,4 +184,35 @@ class UiSessionTest {
         assertThat(gateway.actions).hasSize(2);
         assertThat(gateway.actions.get(1).type()).isEqualTo("SHOW");
     }
+
+    @Test
+    void eachOpenAssignsFreshTokenAndHandleRejectsStaleTokens() {
+        MockDeliveryGateway gateway = new MockDeliveryGateway();
+        CounterController controller = new CounterController();
+        MockContext ctx = new MockContext();
+
+        UiSession<TestModel, TestEvent> session = UiSession.start(
+                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+
+        session.open();
+        long token1 = session.token();
+        assertThat(token1).isGreaterThan(0);
+
+        // Full re-render -> open() -> fresh token
+        session.open();
+        long token2 = session.token();
+        assertThat(token2).isNotEqualTo(token1);
+
+        // Result with stale token1 is rejected
+        MenuResult staleResult = new MenuResult("inc");
+        staleResult.token = token1;
+        session.handle(staleResult);
+        assertThat(session.model().count()).isEqualTo(0); // not incremented!
+
+        // Result with current token2 is accepted
+        MenuResult currentResult = new MenuResult("inc");
+        currentResult.token = token2;
+        session.handle(currentResult);
+        assertThat(session.model().count()).isEqualTo(1); // incremented!
+    }
 }
