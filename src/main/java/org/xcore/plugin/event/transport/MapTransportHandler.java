@@ -44,6 +44,11 @@ public class MapTransportHandler {
         this.mapDataRepository = mapDataRepository;
     }
 
+    /** Re-captures map identity after any engine maps.reload() (upload/remove paths). */
+    public void onMapsReloaded() {
+        mapService.rebuildIdentityCatalog();
+    }
+
     public void registerListeners() {
         network.subscribe(MapsListRequestV1.class, request -> {
             if (!request.server().equals(config.server.name)) return;
