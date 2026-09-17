@@ -91,6 +91,7 @@ dependencies {
 
     testImplementation(libs.mindustry.core)
     testImplementation(libs.arc.core)
+    testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
