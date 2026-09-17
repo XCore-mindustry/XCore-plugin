@@ -8,10 +8,16 @@
 
 - `core`: `DeterministicQueue` — явная FIFO-доставка и snapshot-drain turn;
 - `ui`: `UiSnapshot` — неизменяемая копия `NodeBuilder` через штатный binary codec;
-- `ui`: первый actual-client oracle тест — настоящий Arc `Dialog` под `Mock*` из arc-core: `hide(null)` синхронно вызывает `hidden`-callback;
+- `ui`: `HeadlessMenuClient` — воспроизведение семантики клиента Mindustry (меню, token, outbox, wasHidden-подавление cancel, замена окон);
+- `ui`: actual-client oracle тесты (`ActualDialogHideTest`, `ActualMenusOracleTest`) — исполнение настоящего `mindustry.ui.Menus` и `arc.scene.ui.Dialog` под `Mock*` из arc-core в plain JVM без рендера и Xvfb:
+  1. Замена окна до клика (`hidePrevious=true`) синхронно шлёт cancel старого окна со старым токеном;
+  2. Клик по кнопке устанавливает `wasHidden=true` и передаёт choose-пакет;
+  3. Замена окна после клика подавляет cancel старого окна;
+  4. Закрытие нового окна шлёт cancel с новым токеном;
+  5. SHA-256 fingerprinting реально загруженных JAR артефактов (`Menus.class`: `283c9b56fb...`, `Core.class`: `c2df13f7...`).
 - Java 25, Gradle 9.3.1, JUnit 5.
 
-Actual-Dialog spike доказал только один момент lifecycle: hide-уведомление синхронно и не требует рендера/Xvfb. Замена окон, show-path, продакшн-стили/шрифты и `menuBuilder` (BaseDialog: иконки, `Tex.whiteui`, звуки) ещё не проверены.
+Actual-Menus oracle доказал полную эквивалентность семантики `HeadlessMenuClient` и настоящего `Menus.menuBuilder` в headless окружении.
 
 `HeadlessMenuClient` пока моделирует только текущее окно, outbox выбора и журнал последних patch payloads. `wasHidden` подавляет cancel при Escape, серверном hide и замене после клика; новый show создаёт новое состояние даже при том же token. В xcore-ui есть синтетические интеграционные тесты counter/slot и replacement-cancel через настоящий `UiSession`.
 
