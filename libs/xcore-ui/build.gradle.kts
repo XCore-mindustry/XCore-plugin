@@ -28,10 +28,14 @@ repositories {
     maven("https://www.jitpack.io")
 }
 
-val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
-    .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
-    .orElse("https://maven.x-core.org/releases")
+val xcoreSnapshotsRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenSnapshotsUrl")
+        .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenReleasesUrl")
+        .orElse("https://maven.x-core.org/releases")
 
 publishing {
     repositories {
