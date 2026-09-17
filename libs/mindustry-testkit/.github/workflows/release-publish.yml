@@ -1,0 +1,94 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag in vX.Y.Z format
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || (github.event_name == 'release' && github.event.release.tag_name) || github.ref }}
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Resolve release coordinates
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG_EVENT: ${{ github.event.release.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ -n "$INPUT_TAG" ]]; then
+            TAG_NAME="$INPUT_TAG"
+          elif [[ -n "$RELEASE_TAG_EVENT" ]]; then
+            TAG_NAME="$RELEASE_TAG_EVENT"
+          else
+            TAG_NAME="$REF_NAME"
+          fi
+
+          if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+            echo "Expected release tag starting with v (e.g. vX.Y.Z), got: $TAG_NAME" >&2
+            exit 1
+          fi
+
+          echo "RELEASE_TAG=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "XCORE_PUBLISH_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+
+      - name: Build, test and publish release
+        run: ./gradlew test publishAllPublicationsToXcoreRepositoryReleasesRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        env:
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesUsername: ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositoryReleasesPassword: ${{ secrets.XCORE_PASSWORD }}
+
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-libs
+          path: "**/build/libs/*.jar"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-reports
+          path: |
+            **/build/reports/tests/test/
+            **/build/test-results/test/
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.XCORE_PUBLISH_VERSION }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            **/build/libs/*.jar
