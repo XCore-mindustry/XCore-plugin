@@ -81,6 +81,7 @@ class MapUiControllerTest {
     @AfterEach
     void tearDown() {
         state = originalState;
+        arc.Core.app = null;
     }
 
     @Test
