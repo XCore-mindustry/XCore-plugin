@@ -3,6 +3,7 @@ package org.xcore.testkit.ui;
 import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.Queue;
+import mindustry.ui.builder.UiDslWriter;
 
 /**
  * Semantic stand-in for the Mindustry client menu model (MenuDialog + Menus registries).
@@ -11,6 +12,7 @@ import java.util.Queue;
 public final class HeadlessMenuClient {
     private final Queue<MenuChoose> outbox = new java.util.ArrayDeque<>();
     private Window current;
+    private final java.util.Map<String, String> lastPatches = new java.util.HashMap<>();
 
     static final class Window {
         final int menuId;
@@ -38,6 +40,7 @@ public final class HeadlessMenuClient {
 
     public void update(int menuId, String targetId, UiSnapshot body) {
         if (current == null || current.menuId != menuId) return; // real client: no-op
+        lastPatches.put(targetId, UiDslWriter.write(body.decode()));
     }
 
     /** Simulates pressing a button; the window stays visible (hideOnClick handled by explicit hide()). */
@@ -62,6 +65,11 @@ public final class HeadlessMenuClient {
 
     public boolean isVisible(int menuId) {
         return current != null && current.menuId == menuId;
+    }
+
+    /** DSL of the last patch delivered to {@code targetId} of the visible window, or null. */
+    public String lastPatchDsl(String targetId) {
+        return lastPatches.get(targetId);
     }
 
     public Queue<MenuChoose> outbox() { return outbox; }
