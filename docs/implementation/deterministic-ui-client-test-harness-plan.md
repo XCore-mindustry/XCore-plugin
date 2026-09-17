@@ -3,6 +3,7 @@
 ## Статус
 
 Этапы 1–4 плана **полностью завершены и проверены тестами**:
+
 - `mindustry-testkit`: `core` и `ui` с очередью, binary snapshot, `HeadlessMenuClient`, `DeterministicUiLoop`, `UiWireMessage`, `UiTranscript`, и actual-client oracle (`ActualDialogHideTest`, `ActualMenusOracleTest`) с SHA-256 fingerprinting артефактов.
 - `xcore-ui`: runtime adapter и `UiSessionClientIntegrationTest`.
 - `XCore-plugin`: `MapUiClientIntegrationTest` со всеми 9 сценариями MVP (UI-01..UI-09).

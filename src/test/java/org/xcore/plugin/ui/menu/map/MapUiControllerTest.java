@@ -199,12 +199,12 @@ class MapUiControllerTest {
         var cancel = client.outbox().remove();
         assertThat(cancel.menuId()).isEqualTo(menuId);
         assertThat(cancel.isCancel()).isTrue();
-        assertThat(cancel.token()).isEqualTo(ui.token());
+        assertThat(cancel.token()).isNotEqualTo(ui.token()); // replacement cancel carries the OLD window generation token
         var result = new MenuResult(cancel.action());
         result.token = cancel.token();
         var modelBeforeCancel = ui.model();
 
-        ui.handle(result);
+        ui.handle(result); // rejected as stale token by UiSession
 
         assertThat(client.isVisible(menuId)).isTrue();
         assertThat(client.outbox()).isEmpty();
@@ -419,9 +419,9 @@ class MapUiControllerTest {
         MenuResult closeRes = new MenuResult("action:close");
         assertThat(controller.parseEvent(closeRes)).isEqualTo(new MapUiEvent.Close());
 
-        // Cancelled dialog results (empty MenuResult from client replace) are safely ignored
+        // Cancelled dialog results (Escape on the active window) trigger Close
         assertThat(controller.parseEvent(null)).isNull();
-        assertThat(controller.parseEvent(new MenuResult())).isNull();
+        assertThat(controller.parseEvent(new MenuResult())).isEqualTo(new MapUiEvent.Close());
     }
 
     @Test

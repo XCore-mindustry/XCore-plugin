@@ -525,7 +525,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     @Override
     public MapUiEvent parseEvent(MenuResult result) {
-        if (result == null || result.result == null) return null;
+        if (result == null) return null;
+        if (result.wasCancelled()) return new MapUiEvent.Close();
 
         String res = result.result;
         if ("action:search".equals(res)) {

@@ -281,8 +281,10 @@ class MapUiClientIntegrationTest {
         // Reset session and client for Path 2
         int menuId = menuService.getMenuBuilderId();
         loop.client().hide(menuId);
-        loop.stepClientToServer();
         session.clearActiveUiSession();
+        while (loop.stepServerToClient()) {}
+        while (loop.stepClientToServer()) {}
+        loop.stepServerPost();
 
         // Path 2: Delayed details
         var pendingDetails = new CompletableFuture<MapData>();
@@ -562,6 +564,32 @@ class MapUiClientIntegrationTest {
         assertThat(session.hasActiveUiSession()).isFalse();
 
         // Step server->client: hide delivered to client
+        loop.stepServerToClient();
+        assertThat(loop.client().isVisible(menuId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("UI-10: Escape (dismiss without click) on active window triggers Close and cleans up session")
+    void ui10_escapeOnActiveWindowTriggersCloseAndCleansUpSession() {
+        var engineMap = new Map(new Fi("glacier.msav"), 200, 200, StringMap.of("name", "Glacier", "author", "Delta"), true);
+        when(mapService.findMapByFileName("glacier.msav")).thenReturn(engineMap);
+        var savedData = new MapData("Glacier", "glacier.msav", "Delta", "survival");
+
+        mapMenu.openMapDetailsUi(session, savedData);
+        int menuId = menuService.getMenuBuilderId();
+        loop.stepServerToClient();
+
+        assertThat(loop.client().isVisible(menuId)).isTrue();
+        assertThat(session.hasActiveUiSession()).isTrue();
+
+        // Client presses Escape (dismiss without a prior button click)
+        loop.client().dismiss(menuId);
+        loop.stepClientToServer();
+
+        // Server session must be closed and cleaned up!
+        assertThat(session.hasActiveUiSession()).isFalse();
+
+        // Client receives Hide
         loop.stepServerToClient();
         assertThat(loop.client().isVisible(menuId)).isFalse();
     }
