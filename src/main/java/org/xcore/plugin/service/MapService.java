@@ -219,9 +219,26 @@ public class MapService {
     }
 
     public void handleReputation(Player player, boolean like) {
-        if (Vars.state.map == null) return;
-        MapData map = mapDataRepository.findOrCreate(Vars.state.map.plainName(), Vars.state.map.file.name(), Vars.state.map.author(), Vars.state.rules.mode().name());
-        handleReputation(player, like, map);
+        if (Vars.state.map == null || player == null) return;
+        Map currentMap = Vars.state.map;
+        String name = currentMap.plainName();
+        String file = currentMap.file != null ? currentMap.file.name() : name;
+        String author = currentMap.author();
+        String mode = (Vars.state.rules != null && Vars.state.rules.mode() != null)
+                ? Vars.state.rules.mode().name()
+                : "survival";
+
+        mapDataRepository.findExistingAsync(name, file, author, mode)
+                .thenAccept(existing -> {
+                    MapData map = existing != null ? existing : mapDataRepository.findOrCreate(name, file, author, mode);
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                        handleReputation(player, like, map);
+                    });
+                })
+                .exceptionally(err -> {
+                    arc.util.Log.err("Failed to resolve map for reputation vote: @", err.getMessage());
+                    return null;
+                });
     }
 
     public void handleReputation(Player player, boolean like, MapData map) {
