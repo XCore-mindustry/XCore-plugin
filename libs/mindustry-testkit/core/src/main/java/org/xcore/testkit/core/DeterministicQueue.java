@@ -1,18 +1,24 @@
 package org.xcore.testkit.core;
 
-/** Single-threaded queue driven explicitly by a test. */
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Single-threaded queue driven explicitly by a test.
+ *
+ * <p>Run semantics follow Arc's snapshot-drain model: each turn executes the
+ * tasks that were pending when it started; tasks posted by those tasks remain
+ * queued for the next turn. Unlike Arc's TaskQueue, tasks of an interrupted
+ * turn's snapshot are not restored after a callback exception — the scenario
+ * is expected to fail loudly.
+ */
 public final class DeterministicQueue {
-    private final java.util.ArrayDeque<Runnable> tasks = new java.util.ArrayDeque<>();
+    private final ArrayDeque<Runnable> tasks = new ArrayDeque<>();
 
     public void post(Runnable task) {
-        tasks.addLast(java.util.Objects.requireNonNull(task));
-    }
-
-    /** Executes a snapshot; tasks posted by this turn remain pending. */
-    public void runTurn() {
-        var snapshot = new java.util.ArrayList<>(tasks);
-        tasks.clear();
-        for (Runnable task : snapshot) task.run();
+        tasks.addLast(Objects.requireNonNull(task));
     }
 
     public boolean runNext() {
@@ -20,5 +26,11 @@ public final class DeterministicQueue {
         if (task == null) return false;
         task.run();
         return true;
+    }
+
+    public void runTurn() {
+        List<Runnable> snapshot = new ArrayList<>(tasks);
+        tasks.clear();
+        for (Runnable task : snapshot) task.run();
     }
 }
