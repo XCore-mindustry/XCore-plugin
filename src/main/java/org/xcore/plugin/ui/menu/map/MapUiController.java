@@ -42,12 +42,23 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     private final MapPreviewService previewService;
     private final MapVoteObserverService observerService;
     private final Session session;
+    private final org.xcore.plugin.service.map.MapContentHashService hashService;
 
     public MapUiController(MapService mapService,
                            MapDataRepository mapDataRepository,
                            MapPreviewService previewService,
                            MapVoteObserverService observerService,
                            Session session) {
+        this(mapService, mapDataRepository, previewService, observerService, session, null);
+    }
+
+    public MapUiController(MapService mapService,
+                           MapDataRepository mapDataRepository,
+                           MapPreviewService previewService,
+                           MapVoteObserverService observerService,
+                           Session session,
+                           org.xcore.plugin.service.map.MapContentHashService hashService) {
+        this.hashService = hashService;
         this.mapService = mapService;
         this.mapDataRepository = mapDataRepository;
         this.previewService = previewService;
@@ -769,12 +780,27 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
         if (mindustryMap != null) {
             String fileName = mindustryMap.file != null ? mindustryMap.file.name() : mapId;
-            return mapDataRepository.findOrCreate(
+            MapData data = mapDataRepository.findOrCreate(
                     mindustryMap.plainName(),
                     fileName,
                     mindustryMap.author(),
                     mode
             );
+            if (hashService != null && data != null && data.id != null
+                    && data.contentHash == null && mindustryMap.file != null
+                    && fileName.equals(data.fileName) && !mapDataRepository.isReadOnly()) {
+                // Capture the exact file and record id, not mutable engine/record objects.
+                var file = mindustryMap.file;
+                var id = data.id;
+                hashService.hashAsync(file::read)
+                        .thenCompose(hash -> mapDataRepository.updateMapContentHashAsync(id, fileName, hash))
+                        .whenComplete((updated, error) -> {
+                            if (error != null) {
+                                org.xcore.plugin.common.PLog.warn("Map content hash failed for @: @", fileName, error.toString());
+                            }
+                        });
+            }
+            return data;
         }
 
         return mapDataRepository.findByFileName(mapId, mode)

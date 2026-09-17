@@ -115,6 +115,22 @@ public class MapDataRepository extends DataRepository<MapData> {
                 });
     }
 
+    /** Add advisory metadata only; never overwrite an existing identity or unrelated statistics. */
+    public java.util.concurrent.CompletionStage<Boolean> updateMapContentHashAsync(
+            ObjectId id, String fileName, org.xcore.plugin.map.domain.MapContentHash hash) {
+        if (id == null || fileName == null || hash == null || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Reactive MongoDB store is required for content hash updates"));
+        }
+        return MongoAsync.first(reactiveCollection.updateOne(
+                and(eq("_id", id), eq("file_name", fileName), eq("content_hash", null)),
+                Updates.set("content_hash", hash.asHex())))
+                .thenApply(result -> result != null && result.getMatchedCount() > 0);
+    }
+
     public void incrementStats(ObjectId id, double popularityDelta, double interestDelta, int reputationDelta) {
         if (id == null) return;
         collection.updateOne(
