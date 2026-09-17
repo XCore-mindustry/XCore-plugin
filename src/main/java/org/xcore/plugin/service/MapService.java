@@ -46,6 +46,7 @@ public class MapService {
     private final VoteNewWaveFactory voteNewWaveFactory;
     private final VoteRtvFactory voteRtvFactory;
     private final GameStateService gameStateService;
+    private volatile org.xcore.plugin.service.map.MapIdentityCatalog identityCatalog;
 
     @Inject
     public MapService(EventDataRepository eventDataRepository,
@@ -259,6 +260,24 @@ public class MapService {
                 "commands-artv-map-skipped",
                 args("name", target.name(), "nickname", player.coloredName())
         );
+    }
+
+    /** Optional identity catalog hook; absent when the reactive store is unavailable. */
+    public void attachIdentityCatalog(org.xcore.plugin.service.map.MapIdentityCatalog catalog) {
+        this.identityCatalog = catalog;
+    }
+
+    /** Rebuilds the identity catalog from live engine maps; metadata is captured on the calling thread. */
+    public void rebuildIdentityCatalog() {
+        var catalog = this.identityCatalog;
+        if (catalog == null) return;
+        var sources = new java.util.ArrayList<org.xcore.plugin.service.map.MapIdentityCatalog.Source>();
+        for (Map map : getAvailableMaps()) {
+            String fileName = map.file != null ? map.file.name() : map.plainName();
+            sources.add(new org.xcore.plugin.service.map.MapIdentityCatalog.Source(
+                    fileName, map.plainName(), map.plainAuthor(), map.width, map.height, map.file::read));
+        }
+        catalog.rebuild(sources);
     }
 
     private void startMapVote(Player player, Map target, boolean isManual) {
