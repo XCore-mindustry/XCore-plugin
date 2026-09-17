@@ -534,6 +534,13 @@ class MapUiControllerTest {
         UpdateResult<MapUiModel> voteResult = controller.update(details, new MapUiEvent.ToggleReputation(true), null);
         assertThat(voteResult.model().resolvedDetails()).isSameAs(persistedData);
 
+        // Verify DetailsReady with display name still matches selected filename via isSameMap
+        when(mapService.findMap("in research of power...")).thenReturn(mindustryMap);
+        MapUiModel detailsByDisplayName = controller.update(result.model(),
+                new MapUiEvent.DetailsReady("in research of power...", persistedData), null).model();
+        assertThat(detailsByDisplayName.mode()).isEqualTo(MapUiModel.ViewMode.DETAILS);
+        assertThat(detailsByDisplayName.playedTimes()).isEqualTo(25);
+
         verify(observerService).registerViewing("test-uuid", "in_research_of_power.msav");
         verify(previewService).requestPreview(any(), eq(mindustryMap), any());
     }

@@ -53,5 +53,11 @@ class MapDataRepositoryReadForwardTest {
         assertThatThrownBy(() -> repository.findExistingAsync("A", "a.msav", "B", "survival").toCompletableFuture().join())
                 .hasRootCauseInstanceOf(IllegalStateException.class);
         verify(sync, never()).find(any(org.bson.conversions.Bson.class));
+
+        // Parameter null safety
+        assertThat(repository.findExistingAsync(null, null, null, null).toCompletableFuture().join()).isNull();
+        assertThat(repository.findExistingAsync("A", "", "B", "survival").toCompletableFuture().join()).isNull();
+        rows.set(List.of(first));
+        assertThat(repository.findExistingAsync(null, "a.msav", null, "survival").toCompletableFuture().join()).isNotNull();
     }
 }

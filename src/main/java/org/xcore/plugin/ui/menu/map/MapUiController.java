@@ -85,13 +85,13 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     public UpdateResult<MapUiModel> update(MapUiModel model, MapUiEvent event, ControllerContext ctx) {
         return switch (event) {
             case MapUiEvent.DetailsReady(var mapId, var data) -> {
-                if (model.mode() != MapUiModel.ViewMode.DETAILS || !Objects.equals(mapId, model.selectedMapId())) {
+                if (model.mode() != MapUiModel.ViewMode.DETAILS || !isSameMap(mapId, model.selectedMapId())) {
                     yield UpdateResult.of(model);
                 }
-                yield UpdateResult.rerender(loadDetailsModel(model, mapId, data));
+                yield UpdateResult.rerender(loadDetailsModel(model, model.selectedMapId(), data));
             }
             case MapUiEvent.DetailsFailed(var mapId) -> {
-                if (Objects.equals(mapId, model.selectedMapId()) && session != null) {
+                if (isSameMap(mapId, model.selectedMapId()) && session != null) {
                     session.locale().send("error-map-not-found");
                 }
                 yield UpdateResult.of(model);
@@ -123,9 +123,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             // --- Navigation: Browser -> Details ---
             case MapUiEvent.OpenMapDetails(var mapId) -> {
                 MapUiModel details = loadDetailsModel(model, mapId);
-                if (ctx != null) ctx.post(() -> requestDetailsAsync(mapId));
-                else requestDetailsAsync(mapId);
                 String selectedId = details.selectedMapId();
+                if (ctx != null) ctx.post(() -> requestDetailsAsync(selectedId));
+                else requestDetailsAsync(selectedId);
                 if (observerService != null) {
                     observerService.registerViewing(model.playerUuid(), selectedId);
                 }
@@ -179,7 +179,11 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 // Async persistence to MongoDB and session data
                 MapData mapData = model.resolvedDetails();
                 if (mapData != null && session != null && session.player != null && mapService != null) {
-                    mapService.handleReputation(session.player, like, mapData);
+                    mapService.handleReputation(session.player, like, isRevoking, mapData);
+                }
+
+                if (summaryCache != null) {
+                    summaryCache.patchVoteOptimistic(model.selectedMapId(), likeDelta, dislikeDelta);
                 }
 
                 cachedMapSummaries = null;
@@ -698,10 +702,10 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         for (Map m : available) {
             String id = m.file != null ? m.file.name() : m.plainName();
             String mode = state.rules != null ? state.rules.mode().name() : "survival";
-            var matches = allData.stream().filter(row -> mode.equals(row.mode())
+            var matches = allData.stream().filter(row -> mode.equalsIgnoreCase(row.mode())
                     && row.fileName() != null && id.equalsIgnoreCase(row.fileName())).toList();
             if (matches.isEmpty()) {
-                matches = allData.stream().filter(row -> mode.equals(row.mode())
+                matches = allData.stream().filter(row -> mode.equalsIgnoreCase(row.mode())
                         && m.plainName().equalsIgnoreCase(arc.util.Strings.stripColors(row.name() == null ? "" : row.name()))
                         && m.plainAuthor().equalsIgnoreCase(arc.util.Strings.stripColors(row.author() == null ? "" : row.author()))).toList();
             }

@@ -26,7 +26,7 @@ public sealed interface MapUiState {
     ) implements MapUiState {
         @Override
         public MapUiModel toModel() {
-            List<MapUiModel.MapSummary> summaries = displayedMaps.stream()
+            List<MapUiModel.MapSummary> summaries = displayedMaps == null ? List.of() : displayedMaps.stream()
                     .map(s -> new MapUiModel.MapSummary(s.id(), s.name(), s.author(), s.width(), s.height(), s.likes(), s.dislikes(), s.isCurrent()))
                     .toList();
             return new MapUiModel(

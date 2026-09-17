@@ -66,6 +66,34 @@ class MapCatalogLifecycleTest {
     }
 
     @Test
+    void mapsWithNullFileAreSafelySkippedWithoutCrashingRebuild() throws Exception {
+        var maps = org.mockito.Mockito.mock(mindustry.maps.Maps.class);
+        var proceduralMap = new mindustry.maps.Map(null, 10, 20,
+                arc.struct.StringMap.of("name", "Procedural", "author", "Engine"), false);
+        org.mockito.Mockito.when(maps.customMaps()).thenReturn(arc.struct.Seq.with(proceduralMap));
+        mindustry.Vars.class.getField("maps").set(null, maps);
+
+        var catalog = org.mockito.Mockito.mock(MapIdentityCatalog.class);
+        org.mockito.Mockito.when(catalog.rebuild(any())).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mock(org.xcore.plugin.database.repository.MapDataRepository.class),
+                mock(org.xcore.plugin.session.SessionService.class),
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(org.xcore.plugin.vote.VoteService.class),
+                mock(org.xcore.plugin.vote.VoteNewWaveFactory.class),
+                mock(org.xcore.plugin.vote.VoteRtvFactory.class),
+                mock(GameStateService.class)
+        );
+        service.attachIdentityCatalog(catalog);
+
+        // Should not throw NullPointerException on proceduralMap.file::read
+        service.rebuildIdentityCatalog();
+    }
+
+    @Test
     void postConstructRegistersCatalogTriggers() {
         arc.Events.clear();
         var captured = new java.util.ArrayDeque<List<MapIdentityCatalog.Source>>();

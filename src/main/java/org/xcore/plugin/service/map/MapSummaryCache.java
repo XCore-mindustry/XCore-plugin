@@ -36,6 +36,28 @@ public class MapSummaryCache {
         return snapshot;
     }
 
+    /** Optimistically updates vote tallies in the cached snapshot across all sessions. */
+    public synchronized void patchVoteOptimistic(String mapId, int likeDelta, int dislikeDelta) {
+        if (mapId == null || mapId.isBlank() || snapshot.isEmpty()) return;
+        var updated = new java.util.ArrayList<Summary>(snapshot.size());
+        boolean matched = false;
+        for (Summary s : snapshot) {
+            if (mapId.equals(s.id()) || mapId.equalsIgnoreCase(s.fileName()) || mapId.equalsIgnoreCase(s.name())) {
+                matched = true;
+                updated.add(new Summary(
+                        s.id(), s.fileName(), s.name(), s.author(), s.mode(),
+                        Math.max(0, s.likes() + likeDelta),
+                        Math.max(0, s.dislikes() + dislikeDelta)
+                ));
+            } else {
+                updated.add(s);
+            }
+        }
+        if (matched) {
+            this.snapshot = List.copyOf(updated);
+        }
+    }
+
     public synchronized CompletionStage<List<Summary>> refresh() {
         if (pending != null) return pending;
         if (loaded && clock.getAsLong() < expiresAt) {
