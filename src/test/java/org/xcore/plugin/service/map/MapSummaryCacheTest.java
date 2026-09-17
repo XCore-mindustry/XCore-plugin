@@ -55,4 +55,26 @@ class MapSummaryCacheTest {
         cache.refresh();
         verify(repository, times(1)).findAllAsync();
     }
+
+    @Test
+    void optimisticVotePatchUpdatesCachedSnapshotImmediately() {
+        var repository = mock(MapDataRepository.class);
+        var row = new MapData("Arena", "arena.msav", "Author", "survival");
+        row.like = 5;
+        row.dislike = 1;
+        when(repository.findAllAsync()).thenReturn(CompletableFuture.completedFuture(List.of(row)));
+        var cache = new MapSummaryCache(repository);
+        cache.refresh().toCompletableFuture().join();
+
+        assertEquals(5, cache.snapshot().getFirst().likes());
+        assertEquals(1, cache.snapshot().getFirst().dislikes());
+
+        cache.patchVoteOptimistic("arena.msav", 1, 0);
+        assertEquals(6, cache.snapshot().getFirst().likes());
+        assertEquals(1, cache.snapshot().getFirst().dislikes());
+
+        cache.patchVoteOptimistic("arena.msav", -1, 1);
+        assertEquals(5, cache.snapshot().getFirst().likes());
+        assertEquals(2, cache.snapshot().getFirst().dislikes());
+    }
 }

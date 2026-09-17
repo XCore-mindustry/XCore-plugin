@@ -156,4 +156,45 @@ class MapServiceVoteWriteBehindTest {
             mindustry.Vars.state = oldState;
         }
     }
+
+    @Test
+    void handleReputationWithRevocationDecreasesStatsAndRemovesVoteFromSession() {
+        var sessionService = mock(SessionService.class);
+        var mapRepository = mock(MapDataRepository.class);
+        var playerRepository = mock(PlayerDataRepository.class);
+
+        var session = new Session(new TomlSecretsConfig(), mock(Bundle.class),
+                null, playerRepository, null, new PlayerData("voter", true));
+        session.data.mapVotes = new HashMap<>();
+        session.localization = mock(org.xcore.plugin.localization.Localization.class);
+        when(sessionService.get(anyString())).thenReturn(session);
+
+        var map = new MapData("Arena", "arena.msav", "Author", "survival");
+        map.id = new ObjectId();
+        map.like = 5;
+        map.reputation = 10;
+        session.data.mapVotes.put(map.id.toString(), true);
+
+        when(mapRepository.applyVoteAsync(eq(map.id), eq(-1), anyDouble(), eq(-1), eq(0)))
+                .thenReturn(CompletableFuture.completedFuture(true));
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mapRepository,
+                sessionService,
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
+                mock(VoteRtvFactory.class),
+                new GameStateService()
+        );
+
+        service.handleReputation(mindustry.gen.Player.create(), true, true, map);
+
+        assertThat(map.like).isEqualTo(4);
+        assertThat(map.reputation).isEqualTo(9);
+        assertThat(session.data.mapVotes).doesNotContainKey(map.id.toString());
+        verify(mapRepository).applyVoteAsync(eq(map.id), eq(-1), anyDouble(), eq(-1), eq(0));
+    }
 }

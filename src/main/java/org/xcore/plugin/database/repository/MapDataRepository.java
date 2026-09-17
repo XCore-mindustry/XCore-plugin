@@ -116,10 +116,15 @@ public class MapDataRepository extends DataRepository<MapData> {
     /** Read-only compatibility lookup. Never creates or relinks identity from a filename/alias. */
     public java.util.concurrent.CompletionStage<MapData> findExistingAsync(
             String name, String fileName, String author, String gameMode) {
+        if (fileName == null || fileName.isBlank() || gameMode == null || gameMode.isBlank()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
+        }
         if (reactiveCollection == null) {
             return java.util.concurrent.CompletableFuture.failedFuture(
                     new IllegalStateException("Reactive MongoDB store is required for map resolution"));
         }
+        String cleanName = name != null ? Strings.stripColors(name) : "";
+        String cleanAuthor = author != null ? Strings.stripColors(author) : "";
         var fileFilter = and(eq("file_name", fileName), eq("game_mode", gameMode));
         return MongoAsync.list(reactiveCollection.find(fileFilter).limit(2)).thenCompose(exact -> {
             if (exact.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(
@@ -129,8 +134,8 @@ public class MapDataRepository extends DataRepository<MapData> {
             return MongoAsync.list(reactiveCollection.find(and(
                     regex("game_mode", "^" + Pattern.quote(gameMode) + "$", "i"),
                     or(regex("file_name", "^" + Pattern.quote(fileName) + "$", "i"),
-                            and(regex("name", "^" + Pattern.quote(Strings.stripColors(name)) + "$", "i"),
-                                    regex("author", "^" + Pattern.quote(Strings.stripColors(author)) + "$", "i"))))).limit(2))
+                            and(regex("name", "^" + Pattern.quote(cleanName) + "$", "i"),
+                                    regex("author", "^" + Pattern.quote(cleanAuthor) + "$", "i"))))).limit(2))
                     .thenCompose(matches -> {
                         if (matches.size() == 1) return java.util.concurrent.CompletableFuture.completedFuture(matches.getFirst());
                         if (matches.size() > 1) return java.util.concurrent.CompletableFuture.failedFuture(

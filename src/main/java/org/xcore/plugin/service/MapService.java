@@ -229,10 +229,14 @@ public class MapService {
                 : "survival";
 
         mapDataRepository.findExistingAsync(name, file, author, mode)
-                .thenAccept(existing -> {
-                    MapData map = existing != null ? existing : mapDataRepository.findOrCreate(name, file, author, mode);
+                .thenCompose(existing -> existing != null
+                        ? java.util.concurrent.CompletableFuture.completedFuture(existing)
+                        : java.util.concurrent.CompletableFuture.supplyAsync(
+                                () -> mapDataRepository.findOrCreate(name, file, author, mode),
+                                java.util.concurrent.ForkJoinPool.commonPool()))
+                .thenAccept(map -> {
                     org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
-                        handleReputation(player, like, map);
+                        handleReputation(player, like, false, map);
                     });
                 })
                 .exceptionally(err -> {
@@ -242,8 +246,32 @@ public class MapService {
     }
 
     public void handleReputation(Player player, boolean like, MapData map) {
+        handleReputation(player, like, false, map);
+    }
+
+    public void handleReputation(Player player, boolean like, boolean isRevoking, MapData map) {
+        if (player == null || map == null || map.id == null) return;
         var session = sessionService.get(player.uuid());
+        if (session == null || session.data == null || session.data.mapVotes == null) return;
         Boolean previousVote = session.data.mapVotes.get(map.id.toString());
+
+        if (isRevoking) {
+            if (previousVote == null) return;
+            int reputationDelta = previousVote ? -NEW_VOTE_REPUTATION_DELTA : NEW_VOTE_REPUTATION_DELTA;
+            double popularityDelta = reputationDelta * (previousVote ? POPULARITY_PER_REPUTATION : NEGATIVE_POPULARITY_FACTOR);
+            int likeDelta = previousVote ? -1 : 0;
+            int dislikeDelta = previousVote ? 0 : -1;
+
+            applyVoteDelta(map, new VoteDelta(reputationDelta, popularityDelta, likeDelta, dislikeDelta, "like-map-revoked"));
+            if (session.locale() != null) session.locale().send("like-map-revoked");
+            session.data.mapVotes.remove(map.id.toString());
+            mapDataRepository.applyVoteAsync(map.id, reputationDelta, popularityDelta, likeDelta, dislikeDelta)
+                    .exceptionally(err -> {
+                        arc.util.Log.err("Failed to persist vote revocation for @: @", map.id, err.getMessage());
+                        return false;
+                    });
+            return;
+        }
 
         if (Boolean.valueOf(like).equals(previousVote)) {
             session.locale().send("error-already-voted");
@@ -324,9 +352,9 @@ public class MapService {
         if (catalog == null) return;
         var sources = new java.util.ArrayList<org.xcore.plugin.service.map.MapIdentityCatalog.Source>();
         for (Map map : getAvailableMaps()) {
-            String fileName = map.file != null ? map.file.name() : map.plainName();
+            if (map.file == null) continue;
             sources.add(new org.xcore.plugin.service.map.MapIdentityCatalog.Source(
-                    fileName, map.plainName(), map.plainAuthor(), map.width, map.height, map.file::read));
+                    map.file.name(), map.plainName(), map.plainAuthor(), map.width, map.height, map.file::read));
         }
         catalog.rebuild(sources);
     }
