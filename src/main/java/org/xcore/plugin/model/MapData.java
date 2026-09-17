@@ -18,6 +18,13 @@ public class MapData extends ModelData {
     @BsonProperty("file_name")
     @Builder.Default public String fileName = "Unknown";
     @Builder.Default public String author = "Unknown";
+
+    /**
+     * SHA-256 of the exact map file bytes. Advisory metadata captured off-thread;
+     * not an identity key and not yet enforced unique.
+     */
+    @BsonProperty("content_hash")
+    @Builder.Default public String contentHash = null;
     @BsonProperty("game_mode")
     @Builder.Default public String gameMode = "Unknown";
 
