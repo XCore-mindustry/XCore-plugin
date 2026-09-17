@@ -1,32 +1,32 @@
-# Детерминированный клиентский стенд для UI-тестов
+# Deterministic Client Test Harness for Reactive UI
 
-## Статус и назначение
+## Status and Purpose
 
-**Изменение размещения:** по последующему решению общий код переносится в самостоятельный `mindustry-testkit` (`core`/`ui`, обычные library artifacts для `testImplementation`). В `xcore-ui` остаётся только test-only адаптер `UiSession`, в plugin — maps-сценарии. Указанные ниже пути общего кода в `xcore-ui/src/testFixtures` — исходный вариант, заменённый этим решением. Начат bootstrap нового репозитория: FIFO/snapshot queue и binary UI snapshot; клиент и parity ещё не реализованы. Текущее состояние — `mindustry-testkit/README.md` относительно workspace.
+**Repository Placement Note:** The shared test infrastructure is hosted in `mindustry-testkit` (`core` and `ui` modules, consumed as standard library artifacts via `testImplementation`). `xcore-ui` provides the `UiSession` delivery gateway adapter, and `XCore-plugin` contains the plugin integration scenarios (`MapUiClientIntegrationTest`). Earlier design notes referring to `xcore-ui/src/testFixtures` have been superseded by the standalone `mindustry-testkit` repository.
 
-Проект по результатам трёх независимых исследований и последующего отдельного синтеза. Начат инфраструктурный срез; feasibility настоящего headless-клиента не проверена. Выводы по исходникам не равнозначны воспроизведённым дефектам.
-
-Связанные документы:
+Related Documents:
 
 - [ADR](../adr/ADR-deterministic-ui-client-test-harness.md)
-- [План реализации](../implementation/deterministic-ui-client-test-harness-plan.md)
+- [Implementation Plan](../implementation/deterministic-ui-client-test-harness-plan.md)
 
-Исходная документация межрепозиторного стенда хранится здесь; общий toolkit реализуется в `mindustry-testkit`, адаптер runtime — в `xcore-ui`, интеграционные сценарии — в `XCore-plugin`. Пути ниже относительно корня workspace, если начинаются с имени репозитория.
+---
 
-## 1. Цель и границы
+## 1. Goals & Scope
 
-Воспроизводить ошибки на границе серверного UI и клиента: отмена при замене окна, запоздалые данные, закрытие при pending I/O, расхождение серверной модели и клиентского окна.
+Reproduce and prevent defects across the server-client boundary: window replacement cancellations, delayed asynchronous responses, dialog closing during pending I/O, and divergences between the server-side model and the client wire tree.
 
-Каждый сценарий проверяет четыре наблюдения:
+Every test scenario asserts across four observation axes:
 
-1. Серверную модель и активную сессию.
-2. Логическое дерево открытого клиентского окна.
-3. Команды show/update/hide и результаты выбора.
-4. Живые серверные регистрации/подписки.
+1. Server domain model and active UI session state;
+2. Logical widget tree of the active client dialog;
+3. Transport wire messages (`Show`, `Update`, `Hide`, `Choose`);
+4. Live observer registrations, callbacks, and subscription lifecycles.
 
-Не входит в MVP: MongoDB, Redis, сокеты, игровой мир, отрисовка, геометрия, focus/scroll, доставка текстур, таймеры, общий model checking, случайные расписания, shrinking и перестройка production-кода на MapUiCmd. Это не полноценный визуальный E2E.
+**Out of scope for MVP**: Real MongoDB/Redis I/O, live sockets, game world simulation, graphical rendering, pixel geometry, focus/scroll offsets, texture streaming, and arbitrary schedule permutations.
 
-## 2. Архитектура
+---
+
+## 2. Architecture
 
 ```text
 MapMenu -> MapUiController.update -> UiSession -> MenuService
@@ -42,82 +42,66 @@ MapMenu -> MapUiController.update -> UiSession -> MenuService
                                   MenuService.onMenuBuilderResult
 ```
 
-Исполняются настоящие `Session`, `MenuService`, `MapMenu`, `MapUiController`, `UiSession`, observer. `evaluateCommands` и новый интерпретатор `MapUiCmd` не заменяют рабочий `update`.
+The real production runtime executes end-to-end: `Session`, `MenuService`, `MapMenu`, `MapUiController`, `UiSession`, and observer services.
 
-Подменяются только внешние границы:
+Only external system boundaries are substituted:
 
-- repository: отдельный controlled CompletableFuture на каждый запрос;
-- preview: захваченный callback каждого запроса;
-- каталог: фиксированные карты A/B;
-- локализация: детерминированные строки;
-- сеть: очередь gateway;
-- Core.app.post: управляемая очередь.
+- **Repository**: Individual controlled `CompletableFuture` instances per query;
+- **Preview**: Captured per-request callbacks;
+- **Catalog**: Deterministic in-memory map fixtures;
+- **Localization**: Predictable identity or formatting resolver;
+- **Transport**: Isolated FIFO queues;
+- **Task Dispatching**: Arc snapshot-drain `serverPost` queue (`DeterministicQueue`).
 
-Повторные запросы одной карты A₁/A₂ имеют разные request ID и futures. Fixture обязан включать builder-путь (регистрация меню, Player.con); legacy MapFlows проверяется отдельно и не считается reactive coverage.
+---
 
-## 3. Компоненты и размещение
+## 3. Components & Organization
 
-Общие test-only классы:
+### Shared Test Infrastructure (`mindustry-testkit`)
 
-```text
-xcore-ui/src/testFixtures/java/org/xcore/ui/testing/client/
-    DeterministicUiLoop.java
-    HeadlessMenuClient.java
-    UiWireMessage.java
-    UiTranscript.java
-    UiSessionClientGateway.java
-```
+Hosted in `mindustry-testkit`:
 
-| Компонент | Ответственность |
+- `core`: `DeterministicQueue` (single-threaded queue with snapshot-drain turn execution);
+- `ui`: `HeadlessMenuClient`, `DeterministicUiLoop`, `UiWireMessage`, `UiTranscript`, `UiSnapshot`.
+
+| Component | Responsibility |
 | --- | --- |
-| DeterministicUiLoop | FIFO каждого направления, snapshot-drain post, пошаговое исполнение |
-| HeadlessMenuClient | Экземпляры окон, registry, дерево поддержанного профиля, callbacks |
-| UiWireMessage | Снимки реальных wire-сообщений |
-| UiTranscript | Причины, шаги, payload и наблюдения после каждого шага |
-| UiSessionClientGateway | Подключение DeliveryGateway к общему клиенту |
+| `DeterministicUiLoop` | Two independent FIFO transport queues, snapshot-drain `serverPost`, explicit step stepping |
+| `HeadlessMenuClient` | Client dialog registry simulation, token tracking, `wasHidden` cancellation suppression |
+| `UiWireMessage` | Immutable snapshots of wire messages (`Show`, `Update`, `Hide`, `Choose`) |
+| `UiTranscript` | Append-only execution log capturing every transport action for assertions |
+| `UiSnapshot` | Wire copy serialized via Mindustry's native binary codec (`NodeBuilder.write/read`) |
 
-Интеграционные тесты:
+### Integration Test Suites
 
-```text
-xcore-ui/src/test/java/org/xcore/ui/runtime/UiSessionClientIntegrationTest.java
-XCore-plugin/src/test/java/org/xcore/plugin/ui/MapUiClientIntegrationTest.java
-```
+- `xcore-ui`: `UiSessionClientIntegrationTest.java` (exercises `UiSession` through `DeterministicUiLoop` with network delays).
+- `XCore-plugin`: `MapUiClientIntegrationTest.java` (package `org.xcore.plugin.ui` for package-private `onMenuBuilderResult` access).
 
-Пакет plugin fixture — именно `org.xcore.plugin.ui`, не подпакет `integration`: нужен package-private вход `onMenuBuilderResult`. Production API ради доступа не расширять.
+---
 
-Общий код публикуется через `java-test-fixtures`. Plugin использует fixture variant; локальный composite build допустим после проверки variant resolution. Не копировать fake между репозиториями. Mindustry/Arc не добавлять в production implementation ради тестов; exposed fixture types требуют соответствующих test-fixture dependencies.
+## 4. Deterministic Execution & Queues
 
-## 4. Детерминированное исполнение
-
-Минимальный предлагаемый API (ещё не реализован):
+The harness provides explicit, synchronous stepping:
 
 ```java
-deliverNextToClient();
-deliverNextToServer();
-runServerTurn();
+loop.stepServerToClient();
+loop.stepClientToServer();
+loop.stepServerPost();
 client.click(menuId, action);
 client.dismiss(menuId);
-// futures завершаются тестом явно:
-detailsRequestA.complete(mapDataA);
 ```
 
-### Транспорт
+### Transport Queues
 
-Две независимые FIFO на соединение. Доставляется только голова выбранного направления. Запрещены произвольная перестановка, потеря и дублирование TCP-сообщений. Для reconnect использовать отдельную connection epoch; старые пакеты не переносить в новое соединение.
+Two independent FIFO queues per connection. Messages advance strictly one at a time. No packet dropping, reordering, or arbitrary interleaving is simulated without explicit step calls.
 
-Допустимая гонка: клиент отправил результат A; независимый серверный callback открыл B; затем результат A дошёл до сервера. FIFO каждого направления при этом сохранён.
+### Snapshot-Drain Server Post
 
-Gateway не вызывает сервер рекурсивно внутри show. Hidden callback только ставит Choose в C→S. Futures могут исполнять continuation немедленно, как настоящий CompletionStage, но последующий post остаётся отложенным.
+`loop.stepServerPost()` snapshots tasks pending when the turn begins and executes them in FIFO order. Tasks scheduled by those tasks wait deterministically for the next turn, mirroring `Arc/arc-core/src/arc/util/TaskQueue.java`.
 
-### Snapshot-drain post
+---
 
-`runServerTurn` забирает снимок текущей очереди и исполняет его FIFO. Новые post во время исполнения остаются следующему turn — как в Arc TaskQueue.run. Inline post и рекурсивное опустошение очереди маскируют реальные границы исполнения.
-
-MVP использует рукописные расписания, без Thread.sleep и фоновых потоков. Вспомогательный drain имеет maxSteps и явно падает при превышении. Он не завершает futures автоматически. Client-post queue добавляется, если её требует поддержанный dismiss/parity сценарий, с той же snapshot-семантикой.
-
-Виртуальные часы вводить только с первым timed-сценарием. Они не подменяют автоматически System.currentTimeMillis; потребуется узкий Clock/LongSupplier seam.
-
-## 5. Клиентский контракт
+## 5. Client Wire Contract
 
 ```text
 Show(menuId, token, flags, body)
@@ -126,92 +110,50 @@ Hide(menuId)
 Choose(menuId, token, result, values)
 ```
 
-У Update и Hide нет token на настоящем wire. Нельзя добавлять token guard в fake на основании удобного параметра DeliveryGateway.
+Key recorded Mindustry client behaviors:
 
-Наблюдения по исследованным исходникам, требующие проверки относительно resolved artifact:
+- Every `Show` instantiates a new client `MenuDialog`.
+- Replacement (`hidePrevious = true`) hides the old dialog, synchronously emitting cancellation unless already marked `wasHidden`.
+- Clicking any button sets `wasHidden = true`, suppressing subsequent cancellation upon dismiss or replacement.
+- `Update` and `Hide` packets carry no token on the real wire.
+- `UiSession` generates fresh window display tokens on each `open()`, dropping stale tokens at the session layer.
 
-- Каждый Show создаёт новый экземпляр окна.
-- Replacement при hidePrevious=true скрывает старый экземпляр и может отправить отмену с его token.
-- Callback зависит от wasHidden; нажатие устанавливает этот флаг даже при hideOnClick=false.
-- Поэтому dismiss/Escape после первого клика может не отправить никакого результата.
-- Серверный Hide тоже может породить hidden callback.
-- UiSession повторно использует token при full rerender: один token-check не решает отмену внутри той же сессии.
-- Update адресуется по menuId/element ID; отсутствующая или неподходящая цель даёт no-op.
-- Клиент пополняет ID-индекс через putAll, без полной очистки старых ID.
+The simulator strictly mirrors these invariants. It does not synthesize artificial guards or perform unauthorized cleanup on behalf of the production code.
 
-Симулятор различает видимые экземпляры и текущую запись registry. Поддерживаемые flags должны быть явно описаны; неподдержанные комбинации отклонять.
+---
 
-Профиль MVP: tables, scroll pane, labels, buttons и необходимые структурные контейнеры/декоративные листья maps UI. Геометрия и image delivery не моделируются. Неизвестное поведенческое свойство — явная ошибка fixture, а не молчаливое приближение. Fields и build-local контексты values расширяются отдельными parity cases.
+## 6. Actual-Client Oracle & Parity
 
-Payload снимать при отправке, предпочтительно настоящим TypeIO round-trip после проверки доступности codec. Mutable NodeBuilder по ссылке не сохранять.
+To verify that `HeadlessMenuClient` does not drift from Mindustry's real client bytecode, `ActualMenusOracleTest` executes `mindustry.ui.Menus` and `arc.scene.ui.Dialog` directly in plain JVM:
 
-Fake не фильтрует stale events, не переводит cancel в action:close и не освобождает серверные подписки вместо production.
+- Runs headless under Arc's official `MockGL20`, `MockGraphics`, `MockAudio`, and `MockApplication`.
+- Replays identical replacement and click sequences, asserting bit-for-bit parity.
+- Runtime classpath assertions verify exact SHA-256 fingerprints of resolved Mindustry and Arc JARs (`Menus.class` and `Core.class`).
 
-## 6. Trace и воспроизведение
+---
 
-Записывать: sequence, причину, направление, player/connection epoch, menuId, экземпляр окна, token, flags, target, снимок payload и наблюдения после шага. Хранить состояние очередей при падении.
+## 7. MVP Scenario Matrix
 
-Runtime tokens можно представлять символически (`session-1`), сохраняя отношения равенства. Production UUID generator ради тестов не менять. Replay воспроизводит точную последовательность выбранных шагов, не только seed.
-
-Для MVP достаточно стабильного текстового dump/Java records. JSONL, ограниченный перебор разрешённых голов очередей и shrinking — последующие расширения. Лимиты будущего перебора выводить явно; исчерпание бюджета не означает полноту проверки.
-
-## 7. Достоверность: parity и product correctness
-
-Два независимых набора:
-
-1. Parity: fake и настоящий Menus дают одинаковые наблюдения на одном transcript.
-2. Product correctness: настоящий сервер обеспечивает требуемый пользовательский результат.
-
-Совпадение с ошибкой/ограничением клиента не доказывает корректность продукта.
-
-### Fingerprint
-
-Фиксировать resolved coordinates, SHA-256 фактически загруженных Mindustry/Arc JAR, SHA использованных исходников и версию fixture profile. Исследователь обнаружил разные cached core-v160.jar под одной координатой: строка v160 и соседний checkout недостаточны.
-
-### Actual oracle
-
-Ограниченный feasibility spike: настоящий Menus + Arc Scene, управляемый Application, минимальные ресурсы, без draw. Работоспособность не проверена.
-
-Если это требует чрезмерных графических заглушек — отдельный actual-client job под Xvfb/Mesa. Проверка только UiTreeBuilder подтверждает лишь widget contracts, но не Menus lifecycle. Если actual execution недоступен, маркировать parity как непроверенную; исторические golden traces не доказывают соответствие текущему artifact.
-
-Минимальные transcripts: replacement до/после клика, dismiss, server hide, patch существующей/отсутствующей цели, старый descendant ID после parent patch. Сравнивать видимые окна отдельно от registry, порядок результатов и эффект patch после каждого шага.
-
-Actual oracle запускать отдельным процессом из-за Core/Vars/Events/Menus globals. Не делать соседние исходники Mindustry/Arc неявной зависимостью CI.
-
-## 8. Матрица MVP
-
-| ID | Сценарий | Проверка |
+| ID | Scenario | Verified Invariant |
 | --- | --- | --- |
-| UI-01 | Show → click → reducer → patch | Обновлён нужный слот, соседний неизменен |
-| UI-02 | /maps с pending summaries | Browser показан немедленно, нет sync repository calls |
-| UI-03 | A: immediate и delayed details | Одинаковые данные модели и клиентского дерева |
-| UI-04 | Full rerender → cancel старого окна с тем же token | Обновлённая карточка остаётся открытой |
-| UI-05 | A → browser → B; затем details/preview A | B не меняется |
-| UI-06 | A₁ → B → A₂; ответы A₂, затем A₁ | Устаревшая загрузка не затирает новую |
-| UI-07 | Close до request-post → другой диалог → post/completion | Map events не попадают в чужую сессию |
-| UI-08 | Explicit close при pending details/preview/RTV | Нет воскресшего show/update, корректное число close/hide, cleanup до notify |
-| UI-09 | RTV update → delayed DetailsReady | Статистика не сбрасывает live-прогресс |
+| **UI-01** | Show → click → reducer → patch | Target slot updated, sibling slots unchanged |
+| **UI-02** | `/maps` with pending summaries | Browser appears immediately; async summaries deliver granular slot `Update` |
+| **UI-03** | Immediate vs delayed details | Model and rendered wire tree DSL are strictly identical |
+| **UI-04** | Full rerender replacement cancel | Stale replacement cancel with old token does not close active card |
+| **UI-05** | A → browser → B; late A response | Late asynchronous details from A do not mutate active card B |
+| **UI-06** | A₁ → B → A₂; A₂ resolves before A₁ | Stale response A₁ does not overwrite newer data A₂ (*bug fixed in product*) |
+| **UI-07** | Close before request-post | Map events do not leak into a subsequent active session |
+| **UI-08** | Explicit close with pending I/O | Immediate hide, session cleared, observer unregisters viewing |
+| **UI-09** | Live RTV update vs delayed details | Arriving map stats do not wipe active live RTV vote progress (*bug fixed in product*) |
+| **UI-10** | Active window Escape (dismiss) | Escape on active window triggers clean `Close` and server session cleanup |
 
-UI-04–09 — кандидаты для RED, не результаты запуска. Часть сценариев может уже проходить; это не повод создавать искусственное падение.
+---
 
-Отдельная characterization: Escape до/после клика. Нельзя требовать мгновенного серверного cleanup при отсутствующем клиентском сигнале. Legacy smoke не подменяет reactive coverage.
+## 8. Verification Anchors
 
-## 9. Последующие production-решения
-
-Только после воспроизведения рассматривать ранний захват владельца async-запроса, request-generation, merge статистики без сброса RTV, единый идемпотентный close/dispose, владение подписками, идентичность каждого показанного окна и политику для неуведомлённых закрытий.
-
-Закрытие UI должно запрещать доставку старому окну, но не обязательно отменять общую cache/hash загрузку. Исправления продукта отделять от инфраструктуры; стенд не реализует эти гарантии за продукт.
-
-## 10. Исходные точки проверки
-
-- `Mindustry/core/src/mindustry/ui/Menus.java` — show/update/hide и callbacks.
-- `Mindustry/core/src/mindustry/ui/builder/UiTreeBuilder.java` — ID-индекс и контексты values.
-- `Mindustry/core/src/mindustry/ui/builder/MenuResult.java` — token/result/values.
-- `Mindustry/core/src/mindustry/io/TypeIO.java` — codec snapshots.
-- `Arc/arc-core/src/arc/util/TaskQueue.java` — snapshot-drain.
-- `xcore-ui/src/main/java/org/xcore/ui/runtime/UiSession.java` — runtime.
-- `XCore-plugin/src/main/java/org/xcore/plugin/ui/MenuService.java` — routing/gateway.
-- `XCore-plugin/src/main/java/org/xcore/plugin/ui/menu/map/MapUiController.java` — actual reducer/async delivery.
-- `XCore-plugin/src/main/java/org/xcore/plugin/service/map/MapVoteObserverService.java` — subscriptions.
-
-Пути являются ориентирами для реализации, не доказательством совпадения локальных исходников с используемыми бинарными зависимостями.
+- `Mindustry/core/src/mindustry/ui/Menus.java`: Client menu registries and replacement listeners;
+- `Mindustry/core/src/mindustry/ui/builder/UiTreeBuilder.java`: Element ID indexing and action wiring;
+- `Mindustry/core/src/mindustry/ui/builder/MenuResult.java`: Wire result model (`token`, `result`, `values`);
+- `Arc/arc-core/src/arc/util/TaskQueue.java`: Snapshot-drain queue semantics reference;
+- `xcore-ui/src/main/java/org/xcore/ui/runtime/UiSession.java`: Token generation, session lifecycle, and stale token filtering;
+- `XCore-plugin/src/main/java/org/xcore/plugin/ui/menu/map/MapUiController.java`: MVI reducer, request generation, and RTV state retention.

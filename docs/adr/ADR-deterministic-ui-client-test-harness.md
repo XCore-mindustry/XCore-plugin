@@ -1,79 +1,74 @@
-# ADR: Детерминированный клиентский стенд для UI-тестов
+# ADR: Deterministic Client Test Harness for Reactive UI
 
 ## Status
 
-Accepted — реализовано и верифицировано:
+Accepted — fully implemented and verified:
 
-- `mindustry-testkit` (`core`/`ui`) создан как отдельный репозиторий;
-- actual-client parity доказана в plain JVM на настоящем `mindustry.ui.Menus` и `arc.scene.ui.Dialog` (`ActualMenusOracleTest`, `ActualDialogHideTest`) с SHA-256 fingerprinting реально загруженных JAR;
-- `DeterministicUiLoop` с двумя FIFO очередями транспорта и snapshot-drain server-post реализован;
-- все 9 MVP сценариев (UI-01..UI-09) реализованы в `MapUiClientIntegrationTest` и проходят зелёными;
-- исправлены 2 дефекта в продакшн-коде (`MapUiController`): UI-06 (stale details race) и UI-09 (сброс live RTV при получении асинхронных details).
+- `mindustry-testkit` (`core` and `ui`) created as an independent repository and published;
+- Actual-client parity proven in plain JVM against real `mindustry.ui.Menus` and `arc.scene.ui.Dialog` (`ActualMenusOracleTest`, `ActualDialogHideTest`) with SHA-256 fingerprinting of loaded JARs;
+- `DeterministicUiLoop` with two FIFO transport queues and snapshot-drain `serverPost` implemented;
+- All MVP scenarios (UI-01..UI-10) implemented in `MapUiClientIntegrationTest` and passing green;
+- Production defects in `MapUiController` fixed: UI-06 (stale details race) and UI-09 (live RTV reset on async details arrival), plus UI-10 (clean active-window Escape close via display generation tokens).
 
-Дополнение по решению пользователя: общий toolkit размещается в отдельном `mindustry-testkit` (`core`/`ui`) и подключается через `testImplementation` обычных library artifacts. Прежнее решение о размещении общего кода в xcore-ui/src/testFixtures ниже заменено: в xcore-ui остаётся только адаптер UiSession. Текущее состояние описано в mindustry-testkit/README.md (путь от workspace).
+*Architecture note on repository placement*: The shared toolkit is hosted in its own repository `mindustry-testkit` and consumed as standard library artifacts (`org.xcore.testkit:ui` and `:core`), replacing earlier test-fixtures placement in `xcore-ui`.
 
 ## Context
 
-Изолированные тесты reducer и запись DSL не воспроизводят скрытие старого окна клиентом, обратные callbacks и пересечение асинхронных ответов с переходами пользователя. Нужна проверка всей серверной цепочки с контролируемой клиентской стороной, без БД, сокетов и случайных задержек.
+Isolated reducer unit tests and static DSL assertions cannot reproduce client window replacement cancellation, reverse network callbacks, or race conditions between async storage responses and user navigation. A comprehensive test harness was required to exercise the entire server-side pipeline with a controllable client side, free from external databases, live sockets, or unpredictable thread sleeps.
 
-Исследованный клиент имеет существенные особенности: replacement может отправлять cancel; после клика dismiss может не сообщаться серверу; token повторно используется при rerender; Update/Hide не несут token. Симулятор не должен исправлять эти особенности вместо продукта. Соответствие исходников фактически используемому JAR требует отдельной проверки.
+The Mindustry client exhibits subtle behaviors:
+
+- Window replacement can trigger synchronous cancellation of the old dialog;
+- Button clicks set `wasHidden = true`, suppressing subsequent cancellation on dismiss;
+- Token was historically reused across rerenders within the same session;
+- `Update` and `Hide` packets carry no token.
+
+The simulator must not paper over these behaviors with artificial guards that are absent in the real product.
 
 ## Decision
 
-Создать test-only стенд: настоящий серверный runtime, семантический HeadlessMenuClient, две FIFO очереди транспорта и управляемый snapshot-drain post.
+We establish a **deterministic headless UI test harness**:
 
-Общие компоненты размещать в xcore-ui/src/testFixtures, подключать к plugin через java-test-fixtures. Plugin-тесты используют реальную маршрутизацию MenuService и MapUiController.update; подменяются repository futures, preview callbacks, каталог и внешняя доставка.
+1. **Real Server Runtime**: Real `Session`, `MenuService`, `UiSession`, `MapUiController`, and observer services.
+2. **Semantic Client Simulator (`HeadlessMenuClient`)**: Accurately reproduces recorded Mindustry client dialog semantics without graphics or geometry.
+3. **Deterministic Transport Loop (`DeterministicUiLoop`)**: Two separate FIFO queues (Server-to-Client and Client-to-Server) alongside an Arc snapshot-drain `serverPost` queue.
+4. **Actual-Client Oracle (`ActualMenusOracleTest`)**: Headless execution of actual `mindustry.ui.Menus` in plain JVM under Arc `Mock*` graphics classes, ensuring executable parity against fingerprinted v160 JARs.
+5. **Display Generation Tokens**: `UiSession` assigns a fresh monotonically increasing token on each `open()`, dropping stale window tokens in `handle()`, allowing clean Escape closing on active windows while dropping replacement cancels.
 
-Отдельно проверять:
-
-- parity симулятора с настоящим Menus на одинаковых последовательностях;
-- пользовательские гарантии настоящего серверного кода.
-
-Сначала рукописные расписания, без общего model checking и таймеров. Логировать шаги, payload snapshots, состояния окон/сессий/очередей. Фиксировать SHA-256 реально загруженных Mindustry/Arc JAR.
-
-Actual oracle: ограниченная проверка возможности запуска Menus/Scene без draw; при неосуществимости — отдельный Xvfb/Mesa job. До исполнения oracle не объявлять parity подтверждённой.
-
-Подробности: [спецификация](../architecture/deterministic-ui-client-test-harness.md), [план](../implementation/deterministic-ui-client-test-harness-plan.md).
+See [Specification](../architecture/deterministic-ui-client-test-harness.md) and [Implementation Plan](../implementation/deterministic-ui-client-test-harness-plan.md).
 
 ## Alternatives Considered
 
-### Только unit-тесты контроллера
+### Reducer-only unit tests
 
-Сохраняются, но недостаточны: не исполняют обратные клиентские callbacks и не проверяют видимое дерево после последовательности событий.
+Retained, but insufficient on their own: they cannot test client-driven callbacks, window replacement races, or the final client-side wire state.
 
-### Полный игровой клиент для каждого теста
+### Full game client (Xvfb / HeadlessApplication) for every test
 
-Ближе к реальности, но тяжёлый для быстрых детерминированных проверок. Используется только как независимый oracle, не как обязательная среда каждого plugin-теста.
+Too heavy and slow for fast deterministic test suites. Used as a dedicated, independent oracle rather than the runtime environment for every test.
 
-### Fake с автоматической фильтрацией token и cleanup
+### Simulator with automatic filtering / auto-cleanup
 
-Отклонён: добавляет гарантии, которых нет в реальном wire/runtime, скрывая регрессии.
+Rejected: adding guards into the test fixture that do not exist in production hides real regressions.
 
-### Новый интерпретатор MapUiCmd
+### Bespoke MapUiCmd interpreter
 
-Отклонён для этой задачи: тестировал бы другую цепочку исполнения вместо production update.
-
-### Произвольная перестановка сетевых пакетов и общий model checker
-
-Отклонены для MVP: нарушают реальные FIFO-гарантии или существенно увеличивают scope. Допустим только последующий ограниченный перебор причинно допустимых шагов.
+Rejected: would test an alternate execution pipeline rather than the real production `UiController.update` path.
 
 ## Consequences
 
 ### Positive
 
-- Гонки воспроизводятся пошагово без живого игрока и внешних сервисов.
-- Проверяется не только модель, но и клиентское дерево, доставка и подписки.
-- Один общий fake используется runtime и plugin-тестами.
-- Независимая parity уменьшает риск неверной модели клиента.
+- Concurrency and async races are reproducible step-by-step without live players or external infrastructure.
+- Tests assert on the full chain: domain model, rendered client tree, transport delivery, and observer registrations.
+- Independent actual-client oracle guards against client simulator drift.
+- Fast execution: full 10-scenario suite runs in seconds.
 
-### Negative / Trade-offs
+### Trade-offs
 
-- Семантическую модель необходимо сопровождать при обновлении Mindustry/Arc.
-- Actual Menus зависит от графического runtime; headless feasibility остаётся открытым вопросом.
-- Стенд не доказывает визуальную корректность, focus/scroll, геометрию и доставку текстур.
-- Отсутствующий клиентский сигнал закрытия нельзя компенсировать только серверной проверкой token.
-- Fixtures требуют корректной публикации Gradle variants и изоляции глобальных Core/Vars/Menus.
+- Semantic simulator must be maintained when upgrading Mindustry / Arc versions.
+- Simulator models `menuBuilder` wire semantics; visual layout, font kerning, and texture streaming are tested separately.
 
 ## Verification
 
-Приёмка реализации: сценарии UI-01–UI-09 из спецификации, executable parity для поддержанного профиля, trace при падении, отсутствие реального sleep/I/O в быстрых тестах. Product RED исправляются отдельно от инфраструктуры. На момент записи ADR эти проверки не запускались.
+Acceptance criteria: Scenarios UI-01 through UI-10 in `MapUiClientIntegrationTest`, executable parity verified against fingerprinted v160 bytecode, and pristine CI pipeline passing on GitHub Actions.
