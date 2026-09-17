@@ -529,6 +529,10 @@ class MapUiControllerTest {
         assertThat(details.avgGameTime()).isNotEqualTo("-");
         assertThat(details.maxGameTime()).isNotEqualTo("-");
         assertThat(details.selectedMapId()).isEqualTo("in_research_of_power.msav");
+        assertThat(details.resolvedDetails()).isSameAs(persistedData);
+
+        UpdateResult<MapUiModel> voteResult = controller.update(details, new MapUiEvent.ToggleReputation(true), null);
+        assertThat(voteResult.model().resolvedDetails()).isSameAs(persistedData);
 
         verify(observerService).registerViewing("test-uuid", "in_research_of_power.msav");
         verify(previewService).requestPreview(any(), eq(mindustryMap), any());
