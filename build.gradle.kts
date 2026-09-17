@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "org.xcore.plugin"
-val baseVersion = "4.6.0"
+val baseVersion = "4.7.0"
 version = providers.gradleProperty("xcorePublishVersion").orElse(baseVersion).get()
 val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 val mindustryVersion = libs.versions.mindustry.get()
