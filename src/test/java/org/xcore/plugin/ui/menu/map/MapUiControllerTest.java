@@ -83,6 +83,35 @@ class MapUiControllerTest {
         state = originalState;
     }
 
+    @Test
+    void resolvingMapDefersHashPersistenceUntilFileIsRead() throws Exception {
+        var file = mock(Fi.class);
+        when(file.name()).thenReturn("test.msav");
+        when(file.read()).thenReturn(new java.io.ByteArrayInputStream(new byte[]{97, 98, 99}));
+        var engineMap = new Map(file, 1, 1, new StringMap(), true);
+        var data = new MapData("test", "test.msav", "author", "survival");
+        data.id = new ObjectId();
+        when(mapService.findMapByFileName("test.msav")).thenReturn(engineMap);
+        when(mapDataRepository.findOrCreate(anyString(), eq("test.msav"), anyString(), anyString())).thenReturn(data);
+        var tasks = new java.util.ArrayDeque<Runnable>();
+        var executor = mock(org.xcore.plugin.concurrent.StorageExecutor.class, CALLS_REAL_METHODS);
+        doAnswer(call -> { tasks.add(call.getArgument(0)); return null; }).when(executor).execute(any());
+        var hashService = new org.xcore.plugin.service.map.MapContentHashService(executor);
+        when(mapDataRepository.updateMapContentHashAsync(any(), anyString(), any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session, hashService);
+        var resolve = MapUiController.class.getDeclaredMethod("resolveMapData", String.class);
+        resolve.setAccessible(true);
+
+        assertThat(resolve.invoke(controller, "test.msav")).isSameAs(data);
+        verify(file, never()).read();
+        verify(mapDataRepository, never()).updateMapContentHashAsync(any(), anyString(), any());
+        tasks.remove().run();
+        verify(mapDataRepository).updateMapContentHashAsync(eq(data.id), eq("test.msav"),
+                eq(org.xcore.plugin.map.domain.MapContentHash.fromHex("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")));
+        assertThat(data.contentHash).isNull(); // worker must not mutate shared state
+    }
+
     private MapUiModel createTestBrowserModel() {
         return new MapUiModel(
                 MapUiModel.ViewMode.BROWSER,

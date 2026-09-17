@@ -39,13 +39,26 @@ public class MapMenu extends Menu {
     private final org.xcore.plugin.service.map.MapPreviewService mapPreviewService;
     private final org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService;
 
-    @Inject
+    private final org.xcore.plugin.service.map.MapContentHashService hashService;
+
     public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
                    MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
                    MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService,
                    org.xcore.plugin.service.map.MapPreviewService mapPreviewService,
                    org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService) {
+        this(config, secretsConfig, sessionService, mapDataRepository, eventDataRepository,
+                mapService, eventMenu, menuService, mapPreviewService, mapVoteObserverService, null);
+    }
+
+    @Inject
+    public MapMenu(TomlXcoreConfig config, TomlSecretsConfig secretsConfig, SessionService sessionService,
+                   MapDataRepository mapDataRepository, EventDataRepository eventDataRepository,
+                   MapService mapService, Provider<EventMenu> eventMenu, MenuService menuService,
+                   org.xcore.plugin.service.map.MapPreviewService mapPreviewService,
+                   org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService,
+                   org.xcore.plugin.service.map.MapContentHashService hashService) {
         super(secretsConfig, sessionService);
+        this.hashService = hashService;
         this.config = config;
         this.mapDataRepository = mapDataRepository;
         this.eventDataRepository = eventDataRepository;
@@ -104,7 +117,7 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session);
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService);
         var initialModel = controller.createInitialBrowserModel(session, page);
         menuService.openUi(session, controller, initialModel);
     }
@@ -113,7 +126,7 @@ public class MapMenu extends Menu {
         if (session == null || session.player == null) return;
         session.clear();
 
-        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session);
+        var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService);
         var initialModel = controller.createInitialDetailsModel(session, m);
         menuService.openUi(session, controller, initialModel);
         if (mapVoteObserverService != null) {
