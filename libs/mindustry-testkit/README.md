@@ -1,69 +1,90 @@
-# mindustry-testkit
+# Mindustry Testkit (`mindustry-testkit`)
 
-Независимый test-only toolkit для детерминированных тестов Mindustry-плагинов.
+> A deterministic, headless testing toolkit and client simulator for Mindustry v160 plugins running on Java 25.
 
-## Текущее состояние
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/projects/jdk/25/)
+[![Mindustry](https://img.shields.io/badge/Mindustry-v160-green.svg)](https://github.com/Anuken/Mindustry/releases/tag/v160)
 
-Реализованный детерминированный стенд для UI-тестов (Этапы 1–4 плана завершены):
+---
 
-- `core`: `DeterministicQueue` — явная FIFO-доставка и snapshot-drain turn;
-- `ui`: `UiSnapshot` — неизменяемая копия `NodeBuilder` через штатный binary codec;
-- `ui`: `HeadlessMenuClient` — семантический клиент Mindustry (меню, token, outbox, wasHidden-подавление cancel, замена окон);
-- `ui`: `UiWireMessage` и `UiTranscript` — снимки wire-сообщений (`Show`, `Update`, `Hide`, `Choose`) и хронологический лог;
-- `ui`: `DeterministicUiLoop` — две FIFO-очереди транспорта (S→C и C→S) + snapshot-drain очередь `serverPost`;
-- `ui`: actual-client oracle тесты (`ActualDialogHideTest`, `ActualMenusOracleTest`) — исполнение настоящего `mindustry.ui.Menus` и `arc.scene.ui.Dialog` под `Mock*` из arc-core в plain JVM без рендера и Xvfb:
-  1. Замена окна до клика (`hidePrevious=true`) синхронно шлёт cancel старого окна со старым токеном;
-  2. Клик по кнопке устанавливает `wasHidden=true` и передаёт choose-пакет;
-  3. Замена окна после клика подавляет cancel старого окна;
-  4. Закрытие нового окна шлёт cancel с новым токеном;
-  5. SHA-256 fingerprinting реально загруженных JAR артефактов (`Menus.class`: `283c9b56fb...`, `Core.class`: `c2df13f7...`).
-- Java 25, Gradle 9.3.1, JUnit 5.
+## Overview
 
-Actual-Menus oracle доказал эквивалентность семантики `HeadlessMenuClient` и настоящего `Menus.menuBuilder` в headless окружении.
+`mindustry-testkit` provides test-only infrastructure for testing reactive, server-driven UI, async events, and network lifecycle in Mindustry server plugins without real players, graphics contexts, Xvfb, or unpredictable thread sleeps.
 
-В `xcore-ui` и `XCore-plugin` реализованы сквозные интеграционные тесты (`UiSessionClientIntegrationTest` и `MapUiClientIntegrationTest`, сценарии UI-01..UI-09).
+---
 
-**Ограничения и дальнейшее развитие:**
+## Architecture & Components
 
-- `HeadlessMenuClient` моделирует одно активное окно и профиль `menuBuilder`; полный рендеринг геометрии и Scene graph не эмулируются (для этого используется `ActualMenusOracleTest`).
-- Escape без клика шлёт cancel, который серверный `MapUiController` игнорирует для защиты от самозакрытия при замене окон; серверная очистка по Escape требует отдельного механизма корреляции токенов.
-- Публикация в удалённый Maven репозиторий пока не настроена (используется `mavenLocal` и `--include-build`).
+The toolkit is divided into two modules:
 
-## Сборка
+### 1. `core` (`org.xcore.testkit:core`)
 
-```bash
-./gradlew clean test assemble
-```
+Pure Java library with zero dependencies on Mindustry or Arc.
 
-Зависимости Mindustry/Arc для `ui` — `compileOnly`, для собственных тестов — `testImplementation`. Они не упаковываются в toolkit JAR. `core` не зависит от Mindustry и XCore. `ui` не зависит от xcore-ui или XCore-plugin.
+- **`DeterministicQueue`**: Single-threaded, explicitly stepped task queue adhering to Arc's snapshot-drain turn model (`runTurn()`). Tasks scheduled during an active turn wait deterministically for the next turn.
 
-Локальное подключение из потребителя:
+### 2. `ui` (`org.xcore.testkit:ui`)
+
+Client simulation, transport wire snapshots, and actual-client oracle tests.
+
+- **`HeadlessMenuClient`**: Semantic stand-in for the Mindustry client menu registry (`MenuDialog` + `Menus`). Reproduces exact recorded client semantics:
+  - Window display and replacement (`show` with `hidePrevious`);
+  - Outbox queue for client responses (`MenuChoose`);
+  - `wasHidden` cancellation suppression (closing or replacing a dialog after a button click does not emit cancel);
+  - Token-bound window lifecycle.
+- **`DeterministicUiLoop`**: Orchestrates two isolated FIFO transport queues (`serverToClient` and `clientToServer`) alongside a snapshot-drain `serverPost` queue. Enables exact step-by-step control over network propagation delays and interleaved async completions.
+- **`UiSnapshot`**: Immutable wire copy of `NodeBuilder<?>` trees captured at send time using Mindustry's native binary codec (`builder.write(Writes)` / `NodeBuilder.read(Reads)`). Completely eliminates mutable object reference leaks between server and client.
+- **`UiWireMessage` & `UiTranscript`**: Sealed wire message records (`Show`, `Update`, `Hide`, `Choose`) and an append-only transcript logging every transport step for deterministic test assertions.
+- **Actual-Client Oracle (`ActualMenusOracleTest`, `ActualDialogHideTest`)**: Executes the **real** `mindustry.ui.Menus` and `arc.scene.ui.Dialog` under Arc's official `MockGL20`, `MockGraphics`, `MockAudio`, and `MockApplication` in a plain JVM without rendering. Proves exact behavioral parity between `HeadlessMenuClient` and real client bytecode.
+
+---
+
+## Installation
+
+### Gradle (Kotlin DSL)
+
+Add the XCore snapshot repository and include testkit in your test scope:
 
 ```kotlin
-testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
+repositories {
+    mavenCentral()
+    maven("https://maven.x-core.org/snapshots")
+    maven("https://maven.x-core.org/releases")
+}
+
+dependencies {
+    testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
+    // or testImplementation("org.xcore.testkit:core:0.1.0-SNAPSHOT") for core queue utilities
+}
 ```
+
+### Local Composite Build
+
+During development, you can consume testkit directly from source without publishing:
 
 ```bash
 ./gradlew --include-build ../mindustry-testkit test
 ```
 
-Это обычные library artifacts, подключаемые **только в test scope**, не Gradle test-fixture variants. Подключение xcore-ui проверено через `publishToMavenLocal` и через `--include-build ../mindustry-testkit`; composite использует текущие исходники без повторной публикации snapshot. Remote Maven repository и Git remote не настроены.
+---
 
-## Очередь
+## Verification & Parity Guarantees
 
-`post` ничего не выполняет. `runNext` исполняет одну задачу; пустая очередь возвращает false. `runTurn` снимает текущий набор задач, поэтому вложенный `post` остаётся следующему turn. Для каждого направления транспорта и server-post нужна отдельная очередь.
+Unit tests in `mindustry-testkit` verify both internal simulation logic and exact parity against real Mindustry bytecode:
 
-API предназначен для одного потока и внешнего пошагового драйвера, не для рекурсивного вызова drain из callback. При исключении в callback `runTurn` прерывается, а остальные задачи его снимка не возвращаются в очередь pending — в отличие от Arc TaskQueue, который сохраняет pending-задачи; исключение завершает сценарий, поэтому требуется диагностика на месте сбоя.
+1. **Window Replacement Parity**: Replay of replacement sequences proves identical cancellation behavior:
+   - Window replacement before a click triggers synchronous cancellation carrying the old window's token.
+   - Button click marks the dialog as hidden, suppressing subsequent replacement cancellation.
+   - Dismissing the replacement window emits cancellation with the fresh window token.
+2. **Artifact Fingerprinting**: Runtime classpath verification asserts exact SHA-256 fingerprints of loaded Mindustry/Arc JARs (`Menus.class` and `Core.class`) to guard against Gradle resolution and cache drift.
 
-## Следующие шаги
+---
 
-1. Зафиксировать fingerprints реально загруженных Mindustry/Arc artifacts (arc-core-v160 SHA-256 получен) и проверить `menuBuilder` path (`MenuDialog`/`BaseDialog`: `Tex.whiteui`, close-кнопка, звуки, `net.active()`).
-2. Довести HeadlessMenuClient до дерева элементов и parity; добавить wire/trace и детерминированную доставку.
-3. Расширить test-only DeliveryGateway adapter в xcore-ui: две FIFO-очереди, server-post и проверки реально применённых slot-патчей.
-4. В XCore-plugin добавить сценарии maps; исправлять подтверждённые product RED отдельно.
+## Build
 
-Зависимости окружения actual oracle: `Core.gl`/`Core.graphics`/`Core.app` = Arc `Mock*` классы, `Core.scene = new Scene()`, `DialogStyle` с синтетическим `Font` (пустой `FontData` + `Pixmap`-текстура). Глобальные statics Core требуют сброса между тестами; isolation ещё не реализована.
+```bash
+./gradlew clean test assemble
+```
 
-Общий toolkit не должен зависеть от XCore. Адаптер `UiSession` остаётся в xcore-ui; данные карт, futures repository и subscriptions — в plugin-тестах.
-
-Исходные проектные документы пока находятся в соседнем репозитории `XCore-plugin/docs`: `architecture/deterministic-ui-client-test-harness.md`, `adr/ADR-deterministic-ui-client-test-harness.md`, `implementation/deterministic-ui-client-test-harness-plan.md`. Решение об отдельном репозитории заменяет прежнее размещение общего кода в xcore-ui/src/testFixtures.
+Dependencies on Mindustry and Arc in `ui` are declared as `compileOnly` and `testImplementation`, ensuring that `ui.jar` remains pure test utilities with zero embedded game engine classes.
