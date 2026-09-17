@@ -528,6 +528,57 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     // State Builders & Helpers
     // ==================================================================
 
+    /**
+     * Pure function mapping state and event to side-effect commands (MVI architecture).
+     */
+    public static List<MapUiCmd> evaluateCommands(MapUiState state, MapUiEvent event, long sessionToken) {
+        return switch (event) {
+            case MapUiEvent.SearchChanged(var query) -> List.of(new MapUiCmd.LoadAllSummaries(query, 1));
+            case MapUiEvent.ChangePage(int newPage) -> {
+                String q = (state instanceof MapUiState.Browser b) ? b.searchQuery() : "";
+                yield List.of(new MapUiCmd.LoadAllSummaries(q, newPage));
+            }
+            case MapUiEvent.NextPage() -> {
+                if (state instanceof MapUiState.Browser b) {
+                    yield List.of(new MapUiCmd.LoadAllSummaries(b.searchQuery(), b.page() + 1));
+                }
+                yield List.of();
+            }
+            case MapUiEvent.PrevPage() -> {
+                if (state instanceof MapUiState.Browser b) {
+                    yield List.of(new MapUiCmd.LoadAllSummaries(b.searchQuery(), b.page() - 1));
+                }
+                yield List.of();
+            }
+            case MapUiEvent.OpenMapDetails(var mapId) -> List.of(
+                    new MapUiCmd.LoadMapDetails(mapId),
+                    new MapUiCmd.RequestPreview(mapId),
+                    new MapUiCmd.SubscribeRtv(mapId, sessionToken)
+            );
+            case MapUiEvent.BackToBrowser() -> List.of(new MapUiCmd.UnsubscribeRtv(sessionToken));
+            case MapUiEvent.ToggleReputation(boolean like) -> {
+                String mapId = (state instanceof MapUiState.Details d) ? d.mapId() : "";
+                Boolean currentVote = (state instanceof MapUiState.Details d && d.reputation() != null)
+                        ? d.reputation().playerVote() : null;
+                boolean isRevoking = (currentVote != null && currentVote == like);
+                yield List.of(new MapUiCmd.PersistReputationVote(mapId, like, isRevoking));
+            }
+            case MapUiEvent.TriggerRtv() -> {
+                String mapId = (state instanceof MapUiState.Details d) ? d.mapId() : "";
+                yield List.of(new MapUiCmd.TriggerRtv(mapId, false));
+            }
+            case MapUiEvent.AdminForceRtvClick() -> {
+                String mapId = (state instanceof MapUiState.Details d) ? d.mapId() : "";
+                yield List.of(new MapUiCmd.TriggerRtv(mapId, true));
+            }
+            case MapUiEvent.Close() -> List.of(
+                    new MapUiCmd.UnsubscribeRtv(sessionToken),
+                    new MapUiCmd.CloseSession()
+            );
+            default -> List.of();
+        };
+    }
+
     public MapUiModel createInitialBrowserModel(Session session, int initialPage) {
         String uuid = session.player != null ? session.player.uuid() : "";
         boolean admin = session.player != null && session.player.admin;
