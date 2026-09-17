@@ -178,6 +178,27 @@ public class MapDataRepository extends DataRepository<MapData> {
         );
     }
 
+    /** Write-behind vote persistence; shared state is already mutated on the tick thread. */
+    public java.util.concurrent.CompletionStage<Boolean> applyVoteAsync(
+            ObjectId id, int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta) {
+        if (id == null || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+        if (reactiveCollection == null) {
+            return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException(
+                    "Reactive MongoDB store is required for applyVoteAsync"));
+        }
+        return MongoAsync.first(reactiveCollection.updateOne(
+                eq("_id", id),
+                Updates.combine(
+                        Updates.inc("reputation", reputationDelta),
+                        Updates.inc("popularity", popularityDelta),
+                        Updates.inc("like", likeDelta),
+                        Updates.inc("dislike", dislikeDelta),
+                        Updates.set("updated_at", System.currentTimeMillis())
+                ))).thenApply(result -> result != null && result.getMatchedCount() > 0);
+    }
+
     public boolean applyVote(ObjectId id, int reputationDelta, double popularityDelta, int likeDelta, int dislikeDelta) {
         return updateById(id, Updates.combine(
                 Updates.inc("reputation", reputationDelta),

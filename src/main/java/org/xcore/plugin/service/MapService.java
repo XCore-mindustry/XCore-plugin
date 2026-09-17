@@ -215,7 +215,11 @@ public class MapService {
         session.locale().send(delta.messageKey());
 
         sessionService.putMapVote(session, map.id.toString(), like);
-        mapDataRepository.applyVote(map.id, delta.reputationDelta(), delta.popularityDelta(), delta.likeDelta(), delta.dislikeDelta());
+        mapDataRepository.applyVoteAsync(map.id, delta.reputationDelta(), delta.popularityDelta(), delta.likeDelta(), delta.dislikeDelta())
+                .exceptionally(err -> {
+                    arc.util.Log.err("Failed to persist map vote for @: @", map.id, err.getMessage());
+                    return false;
+                });
     }
 
     private boolean isAllowedEventMap(Map target) {
