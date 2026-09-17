@@ -8,7 +8,10 @@
 
 - `core`: `DeterministicQueue` — явная FIFO-доставка и snapshot-drain turn;
 - `ui`: `UiSnapshot` — неизменяемая копия `NodeBuilder` через штатный binary codec;
+- `ui`: первый actual-client oracle тест — настоящий Arc `Dialog` под `Mock*` из arc-core: `hide(null)` синхронно вызывает `hidden`-callback;
 - Java 25, Gradle 9.3.1, JUnit 5.
+
+Actual-Dialog spike доказал только один момент lifecycle: hide-уведомление синхронно и не требует рендера/Xvfb. Замена окон, show-path, продакшн-стили/шрифты и `menuBuilder` (BaseDialog: иконки, `Tex.whiteui`, звуки) ещё не проверены.
 
 `HeadlessMenuClient`, actual-Menus parity, trace и интеграция с `UiSession` ещё не реализованы. Наличие зелёных unit-тестов не подтверждает fidelity клиента.
 
@@ -40,10 +43,12 @@ API предназначен для одного потока и внешнег�
 
 ## Следующие шаги
 
-1. Зафиксировать fingerprints реально загруженных Mindustry/Arc artifacts и проверить actual Menus oracle.
+1. Зафиксировать fingerprints реально загруженных Mindustry/Arc artifacts (arc-core-v160 SHA-256 получен) и проверить `menuBuilder` path (`MenuDialog`/`BaseDialog`: `Tex.whiteui`, close-кнопка, звуки, `net.active()`).
 2. Реализовать минимальный HeadlessMenuClient и trace через TDD.
 3. В xcore-ui добавить test-only DeliveryGateway adapter и сквозной counter/slot тест.
 4. В XCore-plugin добавить сценарии maps; исправлять подтверждённые product RED отдельно.
+
+Зависимости окружения actual oracle: `Core.gl`/`Core.graphics`/`Core.app` = Arc `Mock*` классы, `Core.scene = new Scene()`, `DialogStyle` с синтетическим `Font` (пустой `FontData` + `Pixmap`-текстура). Глобальные statics Core требуют сброса между тестами; isolation ещё не реализована.
 
 Общий toolkit не должен зависеть от XCore. Адаптер `UiSession` остаётся в xcore-ui; данные карт, futures repository и subscriptions — в plugin-тестах.
 
