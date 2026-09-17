@@ -84,25 +84,30 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             // --- Navigation: Browser -> Details ---
             case MapUiEvent.OpenMapDetails(var mapId) -> {
                 MapUiModel details = loadDetailsModel(model, mapId);
-                observerService.registerViewing(model.playerUuid(), mapId);
-                requestPreviewAsync(session, mapId);
+                String selectedId = details.selectedMapId();
+                if (observerService != null) {
+                    observerService.registerViewing(model.playerUuid(), selectedId);
+                }
+                requestPreviewAsync(session, selectedId);
                 yield UpdateResult.rerender(details);
             }
 
             // --- Navigation: Details -> Browser ---
             case MapUiEvent.BackToBrowser() -> {
-                observerService.unregisterViewing(model.playerUuid());
+                if (observerService != null) {
+                    observerService.unregisterViewing(model.playerUuid());
+                }
                 MapUiModel browser = filterAndPaginate(model.withMode(MapUiModel.ViewMode.BROWSER), model.page());
                 yield UpdateResult.rerender(browser);
             }
 
             // --- Async Preview Callbacks ---
             case MapUiEvent.PreviewReady(var mapId, var region) -> {
-                if (!Objects.equals(mapId, model.selectedMapId())) yield UpdateResult.of(model);
+                if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
                 yield UpdateResult.patch(model.withPreview(region, false), SLOT_PREVIEW);
             }
             case MapUiEvent.PreviewFailed(var mapId) -> {
-                if (!Objects.equals(mapId, model.selectedMapId())) yield UpdateResult.of(model);
+                if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
                 yield UpdateResult.patch(model.withPreview(null, false), SLOT_PREVIEW);
             }
 
@@ -132,16 +137,18 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
                 // Async persistence to MongoDB and session data
                 MapData mapData = resolveMapData(model.selectedMapId());
-                if (mapData != null && session != null && session.player != null) {
+                if (mapData != null && session != null && session.player != null && mapService != null) {
                     mapService.handleReputation(session.player, like, mapData);
                 }
+
+                cachedMapSummaries = null;
 
                 yield UpdateResult.patch(updated, SLOT_REPUTATION);
             }
 
             // --- Live RTV Vote Observer Callbacks ---
             case MapUiEvent.RtvVoteUpdated(var mapId, int votes, int req, int remainingSec) -> {
-                if (!Objects.equals(mapId, model.selectedMapId())) yield UpdateResult.of(model);
+                if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
                 yield UpdateResult.patch(model.withRtvStatus(true, votes, req, remainingSec), SLOT_RTV);
             }
             case MapUiEvent.RtvVoteEnded() ->
@@ -150,7 +157,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             // --- Player Trigger RTV ---
             case MapUiEvent.TriggerRtv() -> {
                 Map mindustryMap = findMindustryMap(model.selectedMapId());
-                if (mindustryMap != null && session != null && session.player != null) {
+                if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                     mapService.startRtvSession(session.player, mindustryMap, true, false);
                 }
                 yield UpdateResult.patch(model.withRtvStatus(true, 1, 1, 30), SLOT_RTV);
@@ -162,10 +169,10 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 long now = System.currentTimeMillis();
                 if (model.adminForceConfirming() && now < model.adminConfirmExpireMillis()) {
                     Map mindustryMap = findMindustryMap(model.selectedMapId());
-                    if (mindustryMap != null && session != null && session.player != null) {
+                    if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                         mapService.startRtvSession(session.player, mindustryMap, true, true);
                     }
-                    ctx.close();
+                    if (ctx != null) ctx.close();
                     yield UpdateResult.close(model);
                 } else {
                     MapUiModel confirming = model.withAdminConfirm(true, now + 3000L);
@@ -177,8 +184,10 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Close ---
             case MapUiEvent.Close() -> {
-                observerService.unregisterViewing(model.playerUuid());
-                ctx.close();
+                if (observerService != null) {
+                    observerService.unregisterViewing(model.playerUuid());
+                }
+                if (ctx != null) ctx.close();
                 yield UpdateResult.close(model);
             }
         };
@@ -502,10 +511,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     public MapUiModel createInitialDetailsModel(Session session, MapData mapData) {
-        String uuid = session.player != null ? session.player.uuid() : "";
-        boolean admin = session.player != null && session.player.admin;
+        String uuid = session != null && session.player != null ? session.player.uuid() : "";
+        boolean admin = session != null && session.player != null && session.player.admin;
 
-        String mapId = mapData != null && mapData.id != null ? mapData.id.toHexString() : "";
+        Map mindustryMap = mapData != null && mapService != null ? mapService.findPersistedMap(mapData) : null;
+        String mapId = mindustryMap != null
+                ? (mindustryMap.file != null ? mindustryMap.file.name() : mindustryMap.plainName())
+                : (mapData != null && mapData.id != null ? mapData.id.toHexString() : "");
+
         MapUiModel base = new MapUiModel(
                 MapUiModel.ViewMode.DETAILS,
                 uuid,
@@ -523,7 +536,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 false, 0, 0, 0,
                 false, 0L
         );
-        return loadDetailsModel(base, mapId);
+        return loadDetailsModel(base, mapId, mapData);
     }
 
     public MapUiModel filterAndPaginate(MapUiModel model, int targetPage) {
@@ -564,7 +577,9 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         }
 
         List<MapUiModel.MapSummary> list = new ArrayList<>();
+        if (mapService == null) return list;
         var available = mapService.getAvailableMaps();
+        if (available == null) return list;
         String currentMapFile = state.map != null && state.map.file != null ? state.map.file.name() : "";
 
         // Single batch fetch of all map stats from repository
@@ -574,11 +589,18 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             String id = m.file != null ? m.file.name() : m.plainName();
             MapData data = null;
             if (allData != null) {
-                String mode = state.rules != null ? state.rules.mode().name() : "survival";
-                data = allData.get(MapDataRepository.genKey(m.name(), m.author(), mode));
+                String mode = (state.rules != null && state.rules.mode() != null) ? state.rules.mode().name() : "survival";
+                data = allData.get(MapDataRepository.genKey(m.plainName(), m.author(), mode));
+                if (data == null) {
+                    data = allData.get(MapDataRepository.genKey(m.plainName(), m.plainAuthor(), mode));
+                }
+                if (data == null) {
+                    data = allData.get(MapDataRepository.genKey(m.name(), m.author(), mode));
+                }
                 if (data == null) {
                     for (MapData md : allData.values()) {
-                        if (id.equalsIgnoreCase(md.fileName)) {
+                        if ((md.fileName != null && id.equalsIgnoreCase(md.fileName))
+                                || (m.plainName().equalsIgnoreCase(md.name) && m.author().equalsIgnoreCase(md.author))) {
                             data = md;
                             break;
                         }
@@ -604,15 +626,24 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
     }
 
     private MapUiModel loadDetailsModel(MapUiModel current, String mapId) {
-        MapData data = resolveMapData(mapId);
+        return loadDetailsModel(current, mapId, null);
+    }
+
+    private MapUiModel loadDetailsModel(MapUiModel current, String mapId, MapData preloadedData) {
+        MapData data = preloadedData != null ? preloadedData : resolveMapData(mapId);
         Map mindustryMap = findMindustryMap(mapId);
+        if (mindustryMap == null && data != null && mapService != null) {
+            mindustryMap = mapService.findPersistedMap(data);
+        }
 
         String name = data != null ? data.name : (mindustryMap != null ? mindustryMap.plainName() : "Unknown");
         String author = data != null ? data.author : (mindustryMap != null ? mindustryMap.author() : "Unknown");
         String desc = mindustryMap != null ? mindustryMap.description() : "";
         int w = mindustryMap != null ? mindustryMap.width : 0;
         int h = mindustryMap != null ? mindustryMap.height : 0;
-        String rawMode = mindustryMap != null && state.rules != null ? state.rules.mode().name() : "Survival";
+        String rawMode = (state.rules != null && state.rules.mode() != null)
+                ? state.rules.mode().name()
+                : (data != null && data.gameMode != null && !data.gameMode.isBlank() ? data.gameMode : "survival");
         String mode = rawMode;
         if (session != null && session.locale() != null) {
             String modeKey = "gamemode-" + rawMode.toLowerCase();
@@ -640,11 +671,15 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         int dislikes = data != null ? data.dislike : 0;
         int approval = (likes + dislikes == 0) ? 0 : (int) Math.round((double) likes * 100 / (likes + dislikes));
 
-        Boolean vote = (session != null && session.data != null && session.data.mapVotes != null && data != null)
+        Boolean vote = (session != null && session.data != null && session.data.mapVotes != null && data != null && data.id != null)
                 ? session.data.mapVotes.get(data.id.toString()) : null;
 
         String cachedRegion = previewService != null ? previewService.getCachedRegionName(mindustryMap) : null;
         boolean loading = (cachedRegion == null && mindustryMap != null);
+
+        String canonicalMapId = mindustryMap != null
+                ? (mindustryMap.file != null ? mindustryMap.file.name() : mindustryMap.plainName())
+                : (data != null && data.id != null ? data.id.toHexString() : mapId);
 
         return new MapUiModel(
                 MapUiModel.ViewMode.DETAILS,
@@ -655,7 +690,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 current.totalPages(),
                 current.displayedMaps(),
                 current.totalMapsCount(),
-                mapId,
+                canonicalMapId,
                 name,
                 author,
                 desc,
@@ -708,20 +743,62 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         });
     }
 
-    private MapData resolveMapData(String mapId) {
-        if (mapId == null || mapId.isBlank()) return null;
-        try {
-            return mapDataRepository.findById(new org.bson.types.ObjectId(mapId));
-        } catch (IllegalArgumentException e) {
-            return mapDataRepository.findByFileName(mapId).orElse(null);
+    private boolean isSameMap(String id1, String id2) {
+        if (Objects.equals(id1, id2)) return true;
+        if (id1 == null || id2 == null) return false;
+        Map m1 = findMindustryMap(id1);
+        Map m2 = findMindustryMap(id2);
+        if (m1 != null && m2 != null) {
+            return Objects.equals(m1.file, m2.file) || m1.plainName().equalsIgnoreCase(m2.plainName());
         }
+        return false;
+    }
+
+    private MapData resolveMapData(String mapId) {
+        if (mapId == null || mapId.isBlank() || mapDataRepository == null) return null;
+        try {
+            MapData byId = mapDataRepository.findById(new org.bson.types.ObjectId(mapId));
+            if (byId != null) return byId;
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        Map mindustryMap = findMindustryMap(mapId);
+        String mode = (state.rules != null && state.rules.mode() != null)
+                ? state.rules.mode().name()
+                : "survival";
+
+        if (mindustryMap != null) {
+            String fileName = mindustryMap.file != null ? mindustryMap.file.name() : mapId;
+            return mapDataRepository.findOrCreate(
+                    mindustryMap.plainName(),
+                    fileName,
+                    mindustryMap.author(),
+                    mode
+            );
+        }
+
+        return mapDataRepository.findByFileName(mapId, mode)
+                .or(() -> mapDataRepository.findByFileName(mapId))
+                .orElse(null);
     }
 
     private Map findMindustryMap(String mapId) {
+        if (mapId == null || mapId.isBlank() || mapService == null) return null;
         Map byFile = mapService.findMapByFileName(mapId);
         if (byFile != null) return byFile;
-        MapData data = resolveMapData(mapId);
-        return data != null ? mapService.findPersistedMap(data) : mapService.findMap(mapId);
+        Map byName = mapService.findMap(mapId);
+        if (byName != null) return byName;
+        try {
+            if (mapDataRepository != null) {
+                MapData data = mapDataRepository.findById(new org.bson.types.ObjectId(mapId));
+                if (data != null) {
+                    Map persisted = mapService.findPersistedMap(data);
+                    if (persisted != null) return persisted;
+                }
+            }
+        } catch (IllegalArgumentException ignored) {
+        }
+        return null;
     }
 
     private String formatDuration(int minutes) {

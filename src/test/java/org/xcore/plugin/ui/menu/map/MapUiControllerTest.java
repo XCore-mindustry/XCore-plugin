@@ -1,10 +1,14 @@
 package org.xcore.plugin.ui.menu.map;
 
 import com.ospx.flubundle.Bundle;
+import arc.files.Fi;
+import arc.struct.ObjectMap;
+import arc.struct.StringMap;
 import mindustry.core.GameState;
 import mindustry.maps.Map;
 import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiDslWriter;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -378,5 +382,98 @@ class MapUiControllerTest {
         assertThat(dsl).contains("👎 Не нравится (2)");
         assertThat(dsl).contains("ГОЛОСОВАНИЕ ЗА СМЕНУ КАРТЫ (RTV)");
         assertThat(dsl).contains("← К списку карт");
+    }
+
+    @Test
+    @DisplayName("OpenMapDetails from browser pulls existing map statistics and populates telemetry")
+    void openMapDetails_fromBrowser_pullsStatisticsAndPopulatesTelemetry() {
+        Map mindustryMap = new Map(
+                new Fi("in_research_of_power.msav"),
+                150,
+                200,
+                StringMap.of("name", "in research of power...", "author", "uylol", "description", "wasnt worth it"),
+                true
+        );
+        when(mapService.findMapByFileName("in_research_of_power.msav")).thenReturn(mindustryMap);
+
+        ObjectId mapObjectId = new ObjectId();
+        MapData persistedData = MapData.builder()
+                .id(mapObjectId)
+                .name("in research of power...")
+                .fileName("in_research_of_power.msav")
+                .author("uylol")
+                .gameMode("survival")
+                .playedTimes(25)
+                .playedTimesYear(10)
+                .like(18)
+                .dislike(2)
+                .reputation(40)
+                .minimumGameTime(300_000L)
+                .averageGameTime(1_200_000L)
+                .maximumGameTime(3_600_000L)
+                .lastPlayedTime(System.currentTimeMillis() - 3600_000L)
+                .build();
+
+        when(mapDataRepository.findOrCreate(eq("in research of power..."), eq("in_research_of_power.msav"), eq("uylol"), anyString()))
+                .thenReturn(persistedData);
+
+        session.player = mindustry.gen.Player.create();
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel browserModel = createTestBrowserModel();
+
+        UpdateResult<MapUiModel> result = controller.update(browserModel, new MapUiEvent.OpenMapDetails("in_research_of_power.msav"), null);
+
+        MapUiModel details = result.model();
+        assertThat(details.mode()).isEqualTo(MapUiModel.ViewMode.DETAILS);
+        assertThat(details.mapName()).isEqualTo("in research of power...");
+        assertThat(details.mapAuthor()).isEqualTo("uylol");
+        assertThat(details.mapDescription()).isEqualTo("wasnt worth it");
+        assertThat(details.width()).isEqualTo(150);
+        assertThat(details.height()).isEqualTo(200);
+        assertThat(details.playedTimes()).isEqualTo(25);
+        assertThat(details.playedTimesYear()).isEqualTo(10);
+        assertThat(details.likes()).isEqualTo(18);
+        assertThat(details.dislikes()).isEqualTo(2);
+        assertThat(details.reputation()).isEqualTo(40);
+        assertThat(details.minGameTime()).isNotEqualTo("-");
+        assertThat(details.avgGameTime()).isNotEqualTo("-");
+        assertThat(details.maxGameTime()).isNotEqualTo("-");
+        assertThat(details.selectedMapId()).isEqualTo("in_research_of_power.msav");
+
+        verify(observerService).registerViewing("test-uuid", "in_research_of_power.msav");
+        verify(previewService).requestPreview(any(), eq(mindustryMap), any());
+    }
+
+    @Test
+    @DisplayName("loadAllMapSummaries resolves likes and dislikes even with color tags in map name")
+    void loadAllMapSummaries_resolvesStatsWithColorTagsInName() {
+        Map mindustryMap = new Map(
+                new Fi("power.msav"),
+                150,
+                200,
+                StringMap.of("name", "[gold]Power Grid[]", "author", "uylol"),
+                true
+        );
+        arc.struct.Seq<Map> available = arc.struct.Seq.with(mindustryMap);
+        when(mapService.getAvailableMaps()).thenReturn(available);
+
+        ObjectMap<String, MapData> allStats = new ObjectMap<>();
+        allStats.put(MapDataRepository.genKey("Power Grid", "uylol", "survival"), MapData.builder()
+                .name("Power Grid")
+                .author("uylol")
+                .gameMode("survival")
+                .like(12)
+                .dislike(3)
+                .build());
+        when(mapDataRepository.findAllAsMap()).thenReturn(allStats);
+
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel browser = controller.createInitialBrowserModel(session, 1);
+
+        assertThat(browser.displayedMaps()).hasSize(1);
+        MapUiModel.MapSummary summary = browser.displayedMaps().get(0);
+        assertThat(summary.name()).isEqualTo("Power Grid");
+        assertThat(summary.likes()).isEqualTo(12);
+        assertThat(summary.dislikes()).isEqualTo(3);
     }
 }
