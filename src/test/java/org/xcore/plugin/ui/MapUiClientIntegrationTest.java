@@ -258,6 +258,257 @@ class MapUiClientIntegrationTest {
     }
 
     @Test
+    @DisplayName("UI-03: Immediate and delayed details yield equivalent model and client wire tree")
+    void ui03_immediateAndDelayedDetailsYieldEquivalentModelAndTree() {
+        var engineMap = new Map(new Fi("canyon.msav"), 120, 120, StringMap.of("name", "Canyon", "author", "Echo"), true);
+        when(mapService.findMapByFileName("canyon.msav")).thenReturn(engineMap);
+        when(mapService.getAvailableMaps()).thenReturn(new Seq<>(new Map[]{engineMap}));
+
+        var savedData = new MapData("Canyon", "canyon.msav", "Echo", "survival");
+        savedData.id = new ObjectId();
+        savedData.playedTimes = 77;
+        savedData.like = 30;
+        savedData.dislike = 3;
+        when(mapService.findPersistedMap(savedData)).thenReturn(engineMap);
+
+        // Path 1: Immediate details
+        mapMenu.openMapDetailsUi(session, savedData);
+        loop.stepServerToClient();
+        var immediateModel = (MapUiModel) session.activeUiSession().model();
+        var immediateShow = lastShowMessage(loop);
+        String immediateDsl = UiDslWriter.write(immediateShow.body().decode());
+
+        // Reset session and client for Path 2
+        int menuId = menuService.getMenuBuilderId();
+        loop.client().hide(menuId);
+        loop.stepClientToServer();
+        session.clearActiveUiSession();
+
+        // Path 2: Delayed details
+        var pendingDetails = new CompletableFuture<MapData>();
+        when(mapDataRepository.findExistingAsync(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(pendingDetails);
+        when(mapService.getAvailableMaps()).thenReturn(new Seq<>(new Map[]{engineMap}));
+
+        mapMenu.openMapBrowserUi(session, 1);
+        loop.stepServerToClient();
+
+        loop.client().click(menuId, "action:select_map:canyon.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1: posts requestDetailsAsync
+        loop.stepServerToClient(); // initial details view with defaults
+
+        // Now async details resolve
+        pendingDetails.complete(savedData);
+        loop.stepServerPost(); // Turn 2: dispatches DetailsReady -> rerenders
+        loop.stepServerToClient(); // delivers rerendered Show to client
+
+        var delayedModel = (MapUiModel) session.activeUiSession().model();
+        var delayedShow = lastShowMessage(loop);
+        String delayedDsl = UiDslWriter.write(delayedShow.body().decode());
+
+        assertThat(delayedModel.selectedMapId()).isEqualTo(immediateModel.selectedMapId());
+        assertThat(delayedModel.playedTimes()).isEqualTo(immediateModel.playedTimes());
+        assertThat(delayedModel.likes()).isEqualTo(immediateModel.likes());
+        assertThat(delayedModel.dislikes()).isEqualTo(immediateModel.dislikes());
+        assertThat(delayedDsl).isEqualTo(immediateDsl);
+    }
+
+    @Test
+    @DisplayName("UI-05: Navigating away to map B discards late details from map A without mutating B")
+    void ui05_navigatingAwayDiscardsLateDetailsFromPreviousMap() {
+        var mapA = new Map(new Fi("mapA.msav"), 100, 100, StringMap.of("name", "MapA", "author", "A"), true);
+        var mapB = new Map(new Fi("mapB.msav"), 150, 150, StringMap.of("name", "MapB", "author", "B"), true);
+        when(mapService.getAvailableMaps()).thenReturn(new Seq<>(new Map[]{mapA, mapB}));
+        when(mapService.findMapByFileName("mapA.msav")).thenReturn(mapA);
+        when(mapService.findMapByFileName("mapB.msav")).thenReturn(mapB);
+
+        var pendingA = new CompletableFuture<MapData>();
+        when(mapDataRepository.findExistingAsync(eq("MapA"), eq("mapA.msav"), anyString(), anyString()))
+                .thenReturn(pendingA);
+
+        var savedB = new MapData("MapB", "mapB.msav", "B", "survival");
+        savedB.id = new ObjectId();
+        savedB.playedTimes = 88;
+        when(mapDataRepository.findExistingAsync(eq("MapB"), eq("mapB.msav"), anyString(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(savedB));
+
+        // 1. Open browser and click map A
+        mapMenu.openMapBrowserUi(session, 1);
+        int menuId = menuService.getMenuBuilderId();
+        loop.stepServerToClient();
+
+        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1: requestDetailsAsync for A pending
+        loop.stepServerToClient(); // details for A (unresolved)
+
+        // 2. User goes back to browser
+        loop.client().click(menuId, "action:back_to_list");
+        loop.stepClientToServer();
+        loop.stepServerToClient(); // browser visible
+
+        // 3. User clicks map B
+        loop.client().click(menuId, "action:select_map:mapB.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1 for B
+        loop.stepServerPost(); // Turn 2 for B (DetailsReady for B)
+        loop.stepServerToClient(); // details for B shown
+
+        var modelB = (MapUiModel) session.activeUiSession().model();
+        assertThat(modelB.selectedMapId()).isEqualTo("mapB.msav");
+        assertThat(modelB.playedTimes()).isEqualTo(88);
+
+        // 4. Stale future for map A completes NOW!
+        var savedA = new MapData("MapA", "mapA.msav", "A", "survival");
+        savedA.id = new ObjectId();
+        savedA.playedTimes = 12;
+        pendingA.complete(savedA);
+
+        // Server-post runs the stale callback for A
+        loop.stepServerPost();
+
+        // Model MUST still be B with B's data!
+        var finalModel = (MapUiModel) session.activeUiSession().model();
+        assertThat(finalModel.selectedMapId()).isEqualTo("mapB.msav");
+        assertThat(finalModel.playedTimes()).isEqualTo(88);
+    }
+
+    @Test
+    @DisplayName("UI-06: A1 -> B -> A2 where A2 resolves before A1: stale A1 does not overwrite newer A2")
+    void ui06_staleResponseDoesNotOverwriteNewerDetailsForSameMap() {
+        var mapA = new Map(new Fi("mapA.msav"), 100, 100, StringMap.of("name", "MapA", "author", "A"), true);
+        var mapB = new Map(new Fi("mapB.msav"), 150, 150, StringMap.of("name", "MapB", "author", "B"), true);
+        when(mapService.getAvailableMaps()).thenReturn(new Seq<>(new Map[]{mapA, mapB}));
+        when(mapService.findMapByFileName("mapA.msav")).thenReturn(mapA);
+        when(mapService.findMapByFileName("mapB.msav")).thenReturn(mapB);
+
+        var pendingA1 = new CompletableFuture<MapData>();
+        var pendingA2 = new CompletableFuture<MapData>();
+
+        // First query for A returns pendingA1, second query returns pendingA2
+        when(mapDataRepository.findExistingAsync(eq("MapA"), eq("mapA.msav"), anyString(), anyString()))
+                .thenReturn(pendingA1)
+                .thenReturn(pendingA2);
+
+        var savedB = new MapData("MapB", "mapB.msav", "B", "survival");
+        when(mapDataRepository.findExistingAsync(eq("MapB"), eq("mapB.msav"), anyString(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(savedB));
+
+        // 1. Open browser -> click A (request A1 begins)
+        mapMenu.openMapBrowserUi(session, 1);
+        int menuId = menuService.getMenuBuilderId();
+        loop.stepServerToClient();
+
+        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1: requestDetailsAsync attaches to pendingA1
+        loop.stepServerToClient();
+
+        // 2. User goes back to browser, then to B, then back to browser
+        loop.client().click(menuId, "action:back_to_list");
+        loop.stepClientToServer();
+        loop.stepServerToClient();
+
+        loop.client().click(menuId, "action:select_map:mapB.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost();
+        loop.stepServerToClient();
+
+        loop.client().click(menuId, "action:back_to_list");
+        loop.stepClientToServer();
+        loop.stepServerToClient();
+
+        // 3. User clicks A again (request A2 begins)
+        loop.client().click(menuId, "action:select_map:mapA.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1: requestDetailsAsync attaches to pendingA2
+        loop.stepServerToClient();
+
+        // 4. Request A2 completes FIRST with updated stats (playedTimes = 100)
+        var freshA = new MapData("MapA", "mapA.msav", "A", "survival");
+        freshA.id = new ObjectId();
+        freshA.playedTimes = 100;
+        pendingA2.complete(freshA);
+
+        loop.stepServerPost(); // Turn 2: dispatches DetailsReady for A2
+        loop.stepServerToClient();
+
+        var modelA2 = (MapUiModel) session.activeUiSession().model();
+        assertThat(modelA2.selectedMapId()).isEqualTo("mapA.msav");
+        assertThat(modelA2.playedTimes()).isEqualTo(100);
+
+        // 5. Stale request A1 completes LATER with old stats (playedTimes = 10)
+        var staleA = new MapData("MapA", "mapA.msav", "A", "survival");
+        staleA.id = new ObjectId();
+        staleA.playedTimes = 10;
+        pendingA1.complete(staleA);
+
+        loop.stepServerPost(); // Stale completion must be ignored!
+
+        // 6. The model MUST still have playedTimes = 100, not 10!
+        var finalModel = (MapUiModel) session.activeUiSession().model();
+        assertThat(finalModel.playedTimes()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("UI-07: Closing before request-post does not leak map events into a subsequent session")
+    void ui07_closingBeforePostDoesNotLeakEventsIntoSubsequentSession() {
+        var mapA = new Map(new Fi("mapA.msav"), 100, 100, StringMap.of("name", "MapA", "author", "A"), true);
+        when(mapService.findMapByFileName("mapA.msav")).thenReturn(mapA);
+
+        var pendingA = new CompletableFuture<MapData>();
+        when(mapDataRepository.findExistingAsync(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(pendingA);
+
+        // Open details
+        var initialA = new MapData("MapA", "mapA.msav", "A", "survival");
+        mapMenu.openMapDetailsUi(session, initialA);
+        int menuId = menuService.getMenuBuilderId();
+        loop.stepServerToClient();
+
+        // Client explicitly closes the menu
+        loop.client().click(menuId, "action:close");
+        loop.stepClientToServer();
+        assertThat(session.hasActiveUiSession()).isFalse();
+
+        // Open a completely new session (e.g. settings or another dialog)
+        record ForeignModel(String value) {}
+        class ForeignController implements org.xcore.ui.runtime.UiController<ForeignModel, Void> {
+            @Override public ForeignModel initialModel(Object ctx) { return new ForeignModel("intact"); }
+            @Override public org.xcore.ui.runtime.UpdateResult<ForeignModel> update(ForeignModel m, Void e, org.xcore.ui.runtime.ControllerContext c) { return org.xcore.ui.runtime.UpdateResult.of(m); }
+            @Override public org.xcore.ui.VNode render(ForeignModel m) { return org.xcore.ui.Ui.table(t -> t.label(org.xcore.ui.Text.raw(m.value()))); }
+            @Override public Void parseEvent(MenuResult r) { return null; }
+        }
+
+        var newController = new ForeignController();
+        var newContext = new org.xcore.ui.runtime.ControllerContext() {
+            @Override public String playerId() { return "test-uuid"; }
+            @Override public void close() {}
+        };
+        var newGateway = new org.xcore.ui.runtime.UiSession.DeliveryGateway() {
+            @Override public void show(String p, long t, NodeBuilder<?> u) {}
+            @Override public void update(String p, long t, String e, NodeBuilder<?> u) {}
+            @Override public void hide(String p) {}
+        };
+        var newSession = org.xcore.ui.runtime.UiSession.start(newController, newController.initialModel(null),
+                newContext, newGateway, org.xcore.ui.LocalizerResolver.IDENTITY);
+        session.setActiveUiSession(newSession);
+
+        // Now map A's async query completes while the new session is active
+        var lateData = new MapData("MapA", "mapA.msav", "A", "survival");
+        lateData.playedTimes = 999;
+        pendingA.complete(lateData);
+
+        // Step server post: target != session.activeUiSession() must suppress dispatch!
+        loop.stepServerPost();
+
+        // The new session is uncorrupted and still has its foreign model
+        assertThat(session.activeUiSession()).isSameAs(newSession);
+        assertThat(newSession.model()).isEqualTo(new ForeignModel("intact"));
+    }
+
+    @Test
     @DisplayName("UI-04: Full rerender replacement cancel does NOT close the details card")
     void ui04_fullRerenderReplacementCancelDoesNotCloseCard() {
         var engineMap = new Map(new Fi("glacier.msav"), 200, 200, StringMap.of("name", "Glacier", "author", "Delta"), true);
@@ -313,5 +564,63 @@ class MapUiClientIntegrationTest {
         // Step server->client: hide delivered to client
         loop.stepServerToClient();
         assertThat(loop.client().isVisible(menuId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("UI-09: Live RTV update is not wiped when delayed DetailsReady arrives")
+    void ui09_liveRtvUpdateNotWipedByDelayedDetailsReady() {
+        var engineMap = new Map(new Fi("arena.msav"), 100, 100, StringMap.of("name", "Arena", "author", "Anuke"), true);
+        when(mapService.findMapByFileName("arena.msav")).thenReturn(engineMap);
+        when(mapService.findPersistedMap(any())).thenReturn(engineMap);
+
+        var pendingDetails = new CompletableFuture<MapData>();
+        when(mapDataRepository.findExistingAsync(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(pendingDetails);
+        when(mapService.getAvailableMaps()).thenReturn(new Seq<>(new Map[]{engineMap}));
+
+        mapMenu.openMapBrowserUi(session, 1);
+        int menuId = menuService.getMenuBuilderId();
+        loop.stepServerToClient();
+
+        // Click map to enter details (triggers requestDetailsAsync)
+        loop.client().click(menuId, "action:select_map:arena.msav");
+        loop.stepClientToServer();
+        loop.stepServerPost(); // Turn 1: requestDetailsAsync starts and attaches to pendingDetails
+        loop.stepServerToClient(); // initial details view rendered
+
+        // 1. Live RTV event arrives while details are still loading
+        @SuppressWarnings("unchecked")
+        var ui = (org.xcore.ui.runtime.UiSession<MapUiModel, org.xcore.plugin.ui.menu.map.MapUiEvent>) session.activeUiSession();
+        ui.dispatch(new org.xcore.plugin.ui.menu.map.MapUiEvent.RtvVoteUpdated("arena.msav", 4, 6, 15));
+        var rtvModel = ui.model();
+        assertThat(rtvModel.rtvActive()).isTrue();
+        assertThat(rtvModel.rtvVotes()).isEqualTo(4);
+        assertThat(rtvModel.rtvVotesRequired()).isEqualTo(6);
+        assertThat(rtvModel.rtvRemainingSeconds()).isEqualTo(15);
+
+        // 2. Now async details arrive with stats
+        var savedData = new MapData("Arena", "arena.msav", "Anuke", "survival");
+        savedData.id = new ObjectId();
+        savedData.playedTimes = 50;
+        pendingDetails.complete(savedData);
+
+        // Turn 2: dispatches DetailsReady
+        loop.stepServerPost();
+
+        // 3. Stats must be updated, BUT live RTV progress must NOT be wiped!
+        var updatedModel = ui.model();
+        assertThat(updatedModel.playedTimes()).isEqualTo(50);
+        assertThat(updatedModel.rtvActive()).isTrue();
+        assertThat(updatedModel.rtvVotes()).isEqualTo(4);
+        assertThat(updatedModel.rtvVotesRequired()).isEqualTo(6);
+        assertThat(updatedModel.rtvRemainingSeconds()).isEqualTo(15);
+    }
+
+    private static UiWireMessage.Show lastShowMessage(DeterministicUiLoop loop) {
+        return loop.transcript().all().stream()
+                .filter(m -> m instanceof UiWireMessage.Show)
+                .map(m -> (UiWireMessage.Show) m)
+                .reduce((first, second) -> second)
+                .orElseThrow(() -> new AssertionError("No Show message in transcript"));
     }
 }

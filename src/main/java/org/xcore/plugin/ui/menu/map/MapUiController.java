@@ -137,6 +137,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
             // --- Navigation: Details -> Browser ---
             case MapUiEvent.BackToBrowser() -> {
+                currentDetailsRequestId++;
                 if (observerService != null) {
                     observerService.unregisterViewing(model.playerUuid());
                 }
@@ -818,6 +819,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 ? (mindustryMap.file != null ? mindustryMap.file.name() : mindustryMap.plainName())
                 : (data != null && data.id != null ? data.id.toHexString() : mapId);
 
+        boolean sameMap = isSameMap(canonicalMapId, current.selectedMapId());
+        boolean rtvActive = sameMap && current.rtvActive();
+        int rtvVotes = sameMap ? current.rtvVotes() : 0;
+        int rtvVotesReq = sameMap ? current.rtvVotesRequired() : 0;
+        int rtvSec = sameMap ? current.rtvRemainingSeconds() : 0;
+        boolean adminConfirming = sameMap && current.adminForceConfirming();
+        long adminExpire = sameMap ? current.adminConfirmExpireMillis() : 0L;
+
         return new MapUiModel(
                 MapUiModel.ViewMode.DETAILS,
                 current.playerUuid(),
@@ -849,8 +858,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 vote,
                 loading,
                 cachedRegion,
-                false, 0, 0, 0,
-                false, 0L,
+                rtvActive, rtvVotes, rtvVotesReq, rtvSec,
+                adminConfirming, adminExpire,
                 data
         );
     }
@@ -889,11 +898,14 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         return false;
     }
 
+    private long currentDetailsRequestId;
+
     private void requestDetailsAsync(String mapId) {
         var target = session == null ? null : session.activeUiSession();
+        long reqId = ++currentDetailsRequestId;
         resolveMapData(mapId).whenComplete((data, error) ->
                 org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
-                    if (target == null || session.activeUiSession() != target) return;
+                    if (target == null || session.activeUiSession() != target || reqId != currentDetailsRequestId) return;
                     @SuppressWarnings("unchecked")
                     var typed = (org.xcore.ui.runtime.UiSession<MapUiModel, MapUiEvent>) target;
                     if (error == null && data != null) {
