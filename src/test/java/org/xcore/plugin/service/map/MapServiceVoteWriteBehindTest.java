@@ -106,4 +106,54 @@ class MapServiceVoteWriteBehindTest {
 
         verify(mapRepository).applyVoteAsync(eq(map.id), anyInt(), anyDouble(), anyInt(), anyInt());
     }
+
+    @Test
+    void handleReputationByPlayerResolvesMapAsynchronouslyWithoutBlockingTick() {
+        var sessionService = mock(SessionService.class);
+        var mapRepository = mock(MapDataRepository.class);
+        var playerRepository = mock(PlayerDataRepository.class);
+
+        var session = new Session(new TomlSecretsConfig(), mock(Bundle.class),
+                null, playerRepository, null, new PlayerData("voter", true));
+        session.data.mapVotes = new HashMap<>();
+        session.localization = mock(org.xcore.plugin.localization.Localization.class);
+        when(sessionService.get(anyString())).thenReturn(session);
+
+        var existingData = new MapData("Arena", "arena.msav", "Author", "survival");
+        existingData.id = new ObjectId();
+        when(mapRepository.findExistingAsync(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(existingData));
+        when(mapRepository.applyVoteAsync(eq(existingData.id), anyInt(), anyDouble(), anyInt(), anyInt()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mapRepository,
+                sessionService,
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(VoteService.class),
+                mock(VoteNewWaveFactory.class),
+                mock(VoteRtvFactory.class),
+                new GameStateService()
+        );
+
+        var oldState = mindustry.Vars.state;
+        mindustry.Vars.state = new mindustry.core.GameState();
+        var map = new mindustry.maps.Map(new arc.files.Fi("arena.msav"), 10, 10,
+                arc.struct.StringMap.of("name", "Arena", "author", "Author"), true);
+        mindustry.Vars.state.map = map;
+        var rules = new mindustry.game.Rules();
+        mindustry.Vars.state.rules = rules;
+
+        try {
+            service.handleReputation(mindustry.gen.Player.create(), true);
+
+            // Verified: findOrCreate is NEVER invoked synchronously on tick!
+            verify(mapRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
+            verify(mapRepository).findExistingAsync(eq("Arena"), eq("arena.msav"), eq("Author"), anyString());
+        } finally {
+            mindustry.Vars.state = oldState;
+        }
+    }
 }
