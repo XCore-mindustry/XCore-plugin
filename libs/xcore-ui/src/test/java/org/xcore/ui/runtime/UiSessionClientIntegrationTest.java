@@ -4,8 +4,10 @@ import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiBuilder;
 import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.Test;
+import org.xcore.testkit.ui.DeterministicUiLoop;
 import org.xcore.testkit.ui.HeadlessMenuClient;
 import org.xcore.testkit.ui.UiSnapshot;
+import org.xcore.testkit.ui.UiWireMessage;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
@@ -149,5 +151,59 @@ class UiSessionClientIntegrationTest {
         assertThat(client.outbox()).isEmpty();
         assertThat(UiDslWriter.write(gateway.lastShow.decode())).contains("rerendered");
         assertThat(session.model().text()).isEqualTo("rerendered");
+    }
+
+    @Test
+    void sessionShowAndClientClickViaDeterministicLoop() {
+        var loop = new DeterministicUiLoop();
+        var gateway = new UiSession.DeliveryGateway() {
+            @Override
+            public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
+                loop.sendServerToClient(new UiWireMessage.Show(MENU, token, true, UiSnapshot.capture(ui)));
+            }
+
+            @Override
+            public void update(String playerId, long token, String elementId, UiBuilder.NodeBuilder<?> ui) {
+                loop.sendServerToClient(new UiWireMessage.Update(MENU, elementId, UiSnapshot.capture(ui)));
+            }
+
+            @Override
+            public void hide(String playerId) {
+                loop.sendServerToClient(new UiWireMessage.Hide(MENU));
+            }
+        };
+
+        var controller = new UiSessionTest.CounterController();
+        var ctx = new RecordingContext();
+        UiSession<UiSessionTest.TestModel, UiSessionTest.TestEvent> session = UiSession.start(
+                controller, controller.initialModel(null), ctx, gateway, LocalizerResolver.IDENTITY);
+
+        loop.onClientMessage(msg -> {
+            if (msg instanceof UiWireMessage.Choose choose) {
+                var result = new MenuResult(choose.action());
+                result.token = choose.token();
+                session.handle(result);
+            }
+        });
+
+        // 1. session.open() emits Show into the wire queue
+        session.open();
+        assertThat(loop.client().isVisible(MENU)).isFalse();
+
+        // 2. Step server->client: dialog becomes visible on client
+        assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().isVisible(MENU)).isTrue();
+
+        // 3. Client clicks "+1": message is queued, server has not received it
+        loop.client().click(MENU, "inc");
+        assertThat(loop.client().lastPatchDsl("slot_counter")).isNull();
+
+        // 4. Step client->server: server processes "inc" and queues Update, but client hasn't received it yet
+        assertThat(loop.stepClientToServer()).isTrue();
+        assertThat(loop.client().lastPatchDsl("slot_counter")).isNull();
+
+        // 5. Step server->client: Update is delivered and client slot is patched
+        assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().lastPatchDsl("slot_counter")).contains("Count: 1");
     }
 }
