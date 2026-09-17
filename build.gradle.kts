@@ -91,6 +91,7 @@ dependencies {
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.assertj.core)
+    testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers)
     testImplementation(libs.avaje.inject.test)

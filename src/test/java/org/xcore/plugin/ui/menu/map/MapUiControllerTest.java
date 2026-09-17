@@ -169,6 +169,47 @@ class MapUiControllerTest {
         verify(mapDataRepository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
     }
 
+    @Test
+    void replacementCancelFromClientDoesNotCloseRealMapController() {
+        var client = new org.xcore.testkit.ui.HeadlessMenuClient();
+        var controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        int menuId = 7;
+        var gateway = new org.xcore.ui.runtime.UiSession.DeliveryGateway() {
+            public void show(String playerId, long token, mindustry.ui.builder.UiBuilder.NodeBuilder<?> body) {
+                client.show(menuId, token, true, org.xcore.testkit.ui.UiSnapshot.capture(body));
+            }
+            public void update(String playerId, long token, String target, mindustry.ui.builder.UiBuilder.NodeBuilder<?> body) {
+                client.update(menuId, target, org.xcore.testkit.ui.UiSnapshot.capture(body));
+            }
+            public void hide(String playerId) { client.hide(menuId); }
+        };
+        var context = new ControllerContext() {
+            public String playerId() { return "test-uuid"; }
+            public void close() { client.hide(menuId); }
+        };
+        var ui = org.xcore.ui.runtime.UiSession.start(controller, createTestBrowserModel(), context,
+                gateway, LocalizerResolver.IDENTITY);
+        session.setActiveUiSession(ui);
+        ui.open();
+        // Same full-show path as rerender, without a prior click on the old instance.
+        ui.open();
+
+        assertThat(client.outbox()).hasSize(1);
+        var cancel = client.outbox().remove();
+        assertThat(cancel.menuId()).isEqualTo(menuId);
+        assertThat(cancel.isCancel()).isTrue();
+        assertThat(cancel.token()).isEqualTo(ui.token());
+        var result = new MenuResult(cancel.action());
+        result.token = cancel.token();
+        var modelBeforeCancel = ui.model();
+
+        ui.handle(result);
+
+        assertThat(client.isVisible(menuId)).isTrue();
+        assertThat(client.outbox()).isEmpty();
+        assertThat(ui.model()).isSameAs(modelBeforeCancel);
+    }
+
     private MapUiModel createTestBrowserModel() {
         return new MapUiModel(
                 MapUiModel.ViewMode.BROWSER,
