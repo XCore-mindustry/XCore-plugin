@@ -24,6 +24,7 @@ Actual-Menus oracle доказал эквивалентность семанти
 В `xcore-ui` и `XCore-plugin` реализованы сквозные интеграционные тесты (`UiSessionClientIntegrationTest` и `MapUiClientIntegrationTest`, сценарии UI-01..UI-09).
 
 **Ограничения и дальнейшее развитие:**
+
 - `HeadlessMenuClient` моделирует одно активное окно и профиль `menuBuilder`; полный рендеринг геометрии и Scene graph не эмулируются (для этого используется `ActualMenusOracleTest`).
 - Escape без клика шлёт cancel, который серверный `MapUiController` игнорирует для защиты от самозакрытия при замене окон; серверная очистка по Escape требует отдельного механизма корреляции токенов.
 - Публикация в удалённый Maven репозиторий пока не настроена (используется `mavenLocal` и `--include-build`).
