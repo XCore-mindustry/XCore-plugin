@@ -73,6 +73,7 @@ public class MapTransportHandler {
             if (map != null) {
                 maps.removeMap(map);
                 maps.reload();
+                onMapsReloaded();
             }
 
             String result = map == null
@@ -95,6 +96,7 @@ public class MapTransportHandler {
 
                             if (counter.incrementAndGet() == e.files().size()) {
                                 maps.reload();
+                                onMapsReloaded();
                                 info("Loaded @ maps.", e.files().size());
                             }
                         });

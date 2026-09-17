@@ -64,4 +64,33 @@ class MapCatalogLifecycleTest {
         assertThat(sources.getFirst().name()).isEqualTo("Arena");
         assertThat(sources.getFirst().open()).isNotNull();
     }
+
+    @Test
+    void postConstructRegistersCatalogTriggers() {
+        arc.Events.clear();
+        var captured = new java.util.ArrayDeque<List<MapIdentityCatalog.Source>>();
+        var catalog = org.mockito.Mockito.mock(MapIdentityCatalog.class);
+        org.mockito.Mockito.doAnswer(call -> {
+            captured.add(call.getArgument(0));
+            return java.util.concurrent.CompletableFuture.completedFuture(true);
+        }).when(catalog).rebuild(any());
+
+        var service = new MapService(
+                mock(org.xcore.plugin.database.repository.EventDataRepository.class),
+                mock(org.xcore.plugin.database.repository.MapDataRepository.class),
+                mock(org.xcore.plugin.session.SessionService.class),
+                new TomlXcoreConfig(),
+                new TomlSecretsConfig(),
+                mock(org.xcore.plugin.vote.VoteService.class),
+                mock(org.xcore.plugin.vote.VoteNewWaveFactory.class),
+                mock(org.xcore.plugin.vote.VoteRtvFactory.class),
+                mock(GameStateService.class),
+                catalog
+        );
+        service.init();
+
+        arc.Events.fire(new mindustry.game.EventType.ServerLoadEvent());
+
+        assertThat(captured).hasSize(1);
+    }
 }
