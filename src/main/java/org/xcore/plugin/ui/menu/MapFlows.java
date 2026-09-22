@@ -65,13 +65,11 @@ final class MapFlows {
                 var pagination = CustomGatherers.calculatePagination(availableMaps.size, menu.secretsConfig.pagination.mapsPerPage);
                 int validPage = pagination.clampPage(page);
                 String gameMode = state.rules.mode().name();
-                List<Map> pageMaps = SeqStream.of(availableMaps)
-                        .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
-                        .flatMap(List::stream)
-                        .toList();
+                List<Map> pageMaps = getPageMaps(availableMaps, validPage);
                 if (index >= 0 && index < pageMaps.size()) {
                     Map map = pageMaps.get(index);
-                    MapData data = mapDataRepository.findOrCreate(map.plainName(), map.file.name(), map.author(), gameMode);
+                    String fileName = map.file != null ? map.file.name() : map.plainName();
+                    MapData data = mapDataRepository.findOrCreate(map.plainName(), fileName, map.author(), gameMode);
                     if (data != null && data.id != null) {
                         ctx.openRoute(MenuRoute.of(ROUTE_MAP).withParam("mapId", data.id.toHexString()));
                     }
@@ -101,10 +99,7 @@ final class MapFlows {
             }
 
             int validPage = pagination.clampPage(page);
-            List<Map> pageMaps = SeqStream.of(availableMaps)
-                    .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
-                    .flatMap(List::stream)
-                    .toList();
+            List<Map> pageMaps = getPageMaps(availableMaps, validPage);
 
             var local = context.locale();
             var grid = new MenuGrid();
@@ -136,6 +131,13 @@ final class MapFlows {
                     )),
                     grid.build()
             );
+        }
+
+        private List<Map> getPageMaps(Seq<Map> availableMaps, int validPage) {
+            return SeqStream.of(availableMaps)
+                    .gather(CustomGatherers.page(menu.secretsConfig.pagination.mapsPerPage, validPage))
+                    .flatMap(List::stream)
+                    .toList();
         }
 
         private String formatMapButton(org.xcore.plugin.localization.Localization local, Map map) {
@@ -236,7 +238,9 @@ final class MapFlows {
             String minDuration = menu.formatPlayTime((int) (mapData.minimumGameTime / 60000), session.locale());
             String averageDuration = menu.formatPlayTime((int) (mapData.averageGameTime / 60000), session.locale());
             String maxDuration = menu.formatPlayTime((int) (mapData.maximumGameTime / 60000), session.locale());
-            Boolean currentVote = session.data.mapVotes.get(mapData.id.toString());
+            Boolean currentVote = (session.data != null && session.data.mapVotes != null && mapData.id != null)
+                    ? session.data.mapVotes.get(mapData.id.toString())
+                    : null;
             String likeTxt = Boolean.TRUE.equals(currentVote) ? session.locale().t("map-vote-like-selected") : session.locale().t("map-vote-like");
             String dislikeTxt = Boolean.FALSE.equals(currentVote) ? session.locale().t("map-vote-dislike-selected") : session.locale().t("map-vote-dislike");
 

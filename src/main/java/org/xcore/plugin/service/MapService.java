@@ -30,6 +30,8 @@ import org.xcore.plugin.vote.VoteRtv;
 import org.xcore.plugin.vote.VoteRtvFactory;
 import org.xcore.plugin.vote.VoteService;
 
+import java.util.Objects;
+
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
 
@@ -40,7 +42,6 @@ public class MapService {
     private static final int NEW_VOTE_REPUTATION_DELTA = 1;
     private static final int CHANGED_VOTE_REPUTATION_DELTA = 2;
     private static final double POPULARITY_PER_REPUTATION = 2.0;
-    private static final double NEGATIVE_POPULARITY_FACTOR = -POPULARITY_PER_REPUTATION;
 
     private final EventDataRepository eventDataRepository;
     private final MapDataRepository mapDataRepository;
@@ -99,14 +100,7 @@ public class MapService {
     }
 
     public Map findMap(String nameOrIndex) {
-        Seq<Map> available = getAvailableMaps();
-
-        int index = Strings.parseInt(nameOrIndex, -1) - 1;
-        if (index >= 0 && index < available.size) {
-            return available.get(index);
-        }
-
-        return available.find(map -> TextUtils.deepEquals(map.name(), nameOrIndex));
+        return findInSeq(nameOrIndex, getAvailableMaps(), map -> TextUtils.deepEquals(map.name(), nameOrIndex));
     }
 
     public Map findPersistedMap(MapData mapData) {
@@ -114,15 +108,21 @@ public class MapService {
             return null;
         }
 
-        Map byFileName = findMapByFileName(mapData.fileName);
-        if (byFileName != null) {
-            return byFileName;
-        }
+        String targetFileName = (mapData.fileName != null && !mapData.fileName.isBlank())
+                ? mapData.fileName.trim()
+                : null;
+        Map fallbackMatch = null;
 
-        return getAvailableMaps().find(map ->
-                map.plainName().equals(mapData.name)
-                        && map.author().equals(mapData.author)
-        );
+        for (Map map : getAvailableMaps()) {
+            if (targetFileName != null && map.file != null && map.file.name().equalsIgnoreCase(targetFileName)) {
+                return map;
+            }
+            if (fallbackMatch == null && Objects.equals(map.plainName(), mapData.name)
+                    && (Objects.equals(map.author(), mapData.author) || Objects.equals(map.plainAuthor(), mapData.author))) {
+                fallbackMatch = map;
+            }
+        }
+        return fallbackMatch;
     }
 
     public Map findMapByFileName(String fileName) {
@@ -268,8 +268,12 @@ public class MapService {
             mapDataRepository.applyVoteAsync(map.id, reputationDelta, popularityDelta, likeDelta, dislikeDelta)
                     .exceptionally(err -> {
                         arc.util.Log.err("Failed to persist vote revocation for @: @", map.id, err.getMessage());
-                        applyVoteDelta(map, new VoteDelta(-reputationDelta, -popularityDelta, -likeDelta, -dislikeDelta, ""));
-                        session.data.mapVotes.put(map.id.toString(), previousVote);
+                        org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                            applyVoteDelta(map, new VoteDelta(-reputationDelta, -popularityDelta, -likeDelta, -dislikeDelta, ""));
+                            if (session.data != null && session.data.mapVotes != null) {
+                                session.data.mapVotes.put(map.id.toString(), previousVote);
+                            }
+                        });
                         return false;
                     });
             return;
@@ -288,12 +292,16 @@ public class MapService {
         mapDataRepository.applyVoteAsync(map.id, delta.reputationDelta(), delta.popularityDelta(), delta.likeDelta(), delta.dislikeDelta())
                 .exceptionally(err -> {
                     arc.util.Log.err("Failed to persist map vote for @: @", map.id, err.getMessage());
-                    applyVoteDelta(map, new VoteDelta(-delta.reputationDelta(), -delta.popularityDelta(), -delta.likeDelta(), -delta.dislikeDelta(), ""));
-                    if (previousVote == null) {
-                        session.data.mapVotes.remove(map.id.toString());
-                    } else {
-                        session.data.mapVotes.put(map.id.toString(), previousVote);
-                    }
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                        applyVoteDelta(map, new VoteDelta(-delta.reputationDelta(), -delta.popularityDelta(), -delta.likeDelta(), -delta.dislikeDelta(), ""));
+                        if (session.data != null && session.data.mapVotes != null) {
+                            if (previousVote == null) {
+                                session.data.mapVotes.remove(map.id.toString());
+                            } else {
+                                session.data.mapVotes.put(map.id.toString(), previousVote);
+                            }
+                        }
+                    });
                     return false;
                 });
     }
@@ -304,13 +312,12 @@ public class MapService {
             return true;
         }
 
-        MapData mapData = mapDataRepository.findOrCreate(
-                target.name(),
-                target.file.name(),
-                target.author(),
-                state.rules.mode().name()
-        );
-        return event.map.equals(mapData.id);
+        Map eventMap = findActiveEventMap();
+        if (eventMap == null || target == null) {
+            return false;
+        }
+        return target == eventMap
+                || (target.file != null && eventMap.file != null && target.file.equals(eventMap.file));
     }
 
     private Map findActiveEventMap() {
@@ -406,7 +413,7 @@ public class MapService {
     private VoteDelta buildVoteDelta(Boolean previousVote, boolean like) {
         int reputationMagnitude = previousVote == null ? NEW_VOTE_REPUTATION_DELTA : CHANGED_VOTE_REPUTATION_DELTA;
         int reputationDelta = like ? reputationMagnitude : -reputationMagnitude;
-        double popularityDelta = reputationMagnitude * (like ? POPULARITY_PER_REPUTATION : NEGATIVE_POPULARITY_FACTOR);
+        double popularityDelta = reputationDelta * POPULARITY_PER_REPUTATION;
         int likeDelta = like ? 1 : previousVote != null ? -1 : 0;
         int dislikeDelta = like ? previousVote != null ? -1 : 0 : 1;
         String messageKey = like

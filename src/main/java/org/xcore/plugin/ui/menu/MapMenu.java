@@ -177,36 +177,46 @@ public class MapMenu extends Menu {
     public void showGameOverMenu(MapData current, MapData next, Team winner) {
         String nextName = next != null ? next.name : "Unknown";
         String nextAuthor = next != null ? next.author : "Unknown";
+        String currentId = current != null && current.id != null ? current.id.toString() : null;
 
         Groups.player.each(player -> {
             Session session = sessionService.get(player.uuid());
             if (session == null || session.data == null) return;
             session.clear();
 
-            Boolean currentVote = session.data.mapVotes.get(current.id.toString());
+            Boolean currentVote = (currentId != null && session.data.mapVotes != null)
+                    ? session.data.mapVotes.get(currentId)
+                    : null;
             String likeButtonText = Boolean.TRUE.equals(currentVote)
-                    ? session.locale().format("map-vote-like-selected", args())
-                    : session.locale().format("map-vote-like", args());
+                    ? session.locale().t("map-vote-like-selected")
+                    : session.locale().t("map-vote-like");
             String dislikeButtonText = Boolean.FALSE.equals(currentVote)
-                    ? session.locale().format("map-vote-dislike-selected", args())
-                    : session.locale().format("map-vote-dislike", args());
+                    ? session.locale().t("map-vote-dislike-selected")
+                    : session.locale().t("map-vote-dislike");
 
-            session.builder().title("map-vote-title")
+            var builder = session.builder().title("map-vote-title")
                     .content("map-vote-content", args(
                             "mapName", nextName,
                             "author", nextAuthor,
                             "seconds", 10
-                    ))
-                    .addButtonText(likeButtonText, () -> mapService.handleReputation(player, true, current))
-                    .addButtonText(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
-                    .end()
-                    .addButtonKey("current-map", () -> {
-                        map(player.uuid(), current);
-                    })
-                    .addButtonKey("next-map", () -> {
-                        map(player.uuid(), next);
-                    })
-                    .addNavigationRow().show();
+                    ));
+
+            if (current != null) {
+                builder.addButtonText(likeButtonText, () -> mapService.handleReputation(player, true, current))
+                       .addButtonText(dislikeButtonText, () -> mapService.handleReputation(player, false, current))
+                       .end();
+            }
+
+            if (current != null) {
+                builder.addButtonKey("current-map", () -> map(player.uuid(), current));
+            }
+            if (next != null) {
+                builder.addButtonKey("next-map", () -> map(player.uuid(), next));
+            }
+            if (current != null || next != null) {
+                builder.end();
+            }
+            builder.addNavigationRow().show();
         });
     }
 }
