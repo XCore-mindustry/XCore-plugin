@@ -30,7 +30,6 @@ public class RuntimeHookRegistrar {
         ArcNetProvider provider = Reflect.get(Vars.net, "provider");
         Server server = Reflect.get(provider, "server");
 
-        server.setConnectFilter(netEvents::connectFilter);
         server.setDiscoveryHandler((_, handler) -> {
             ByteBuffer buffer = ByteBuffer.allocate(500);
             discoveryService.handleDiscovery(buffer);

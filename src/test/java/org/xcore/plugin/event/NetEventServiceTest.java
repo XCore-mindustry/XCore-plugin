@@ -1,6 +1,8 @@
 package org.xcore.plugin.event;
 
 import mindustry.gen.Player;
+import mindustry.gen.AdminRequestCallPacket;
+import mindustry.net.NetConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,7 +11,6 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
 import org.xcore.plugin.event.net.chat.VoteChatInterceptor;
-import org.xcore.plugin.event.net.connect.ConnectionFilterService;
 import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.SecurityService;
@@ -34,7 +35,6 @@ class NetEventServiceTest {
     private SecurityService securityService;
     private ChatFormatService chatFormatService;
     private AdminRequestHandler adminRequestHandler;
-    private ConnectionFilterService connectionFilterService;
     private NetEventService service;
 
     @BeforeEach
@@ -48,7 +48,6 @@ class NetEventServiceTest {
         chatFormatService = mock(ChatFormatService.class);
         adminRequestHandler = mock(AdminRequestHandler.class);
         VoteChatInterceptor voteChatInterceptor = new VoteChatInterceptor(sessionService, voteService);
-        connectionFilterService = new ConnectionFilterService();
 
         ChatMessageHandler chatMessageHandler = new ChatMessageHandler(
                 config,
@@ -61,8 +60,7 @@ class NetEventServiceTest {
 
         service = new NetEventService(
                 chatMessageHandler,
-                adminRequestHandler,
-                connectionFilterService
+                adminRequestHandler
         );
     }
 
@@ -100,50 +98,13 @@ class NetEventServiceTest {
     }
 
     @Test
-    @DisplayName("connect filter accepts allowed ip without changing counters")
-    void connectFilter_acceptsAllowedIp() {
-        service.setIpAcceptor(ip -> true);
+    @DisplayName("adminRequest delegates to adminRequestHandler")
+    void adminRequest_delegatesToHandler() {
+        NetConnection con = mock(NetConnection.class);
+        AdminRequestCallPacket packet = new AdminRequestCallPacket();
 
-        boolean allowed = service.connectFilter("1.2.3.4");
+        service.adminRequest(con, packet);
 
-        assertThat(allowed).isTrue();
-        assertThat(service.getBlockedIPs()).isZero();
-        assertThat(service.getBlockedIPsPerMinute()).isZero();
-    }
-
-    @Test
-    @DisplayName("connect filter rejects blocked ip and increments counters")
-    void connectFilter_rejectsBlockedIpAndIncrementsCounters() {
-        service.setIpAcceptor(ip -> false);
-
-        boolean allowed = service.connectFilter("5.6.7.8");
-
-        assertThat(allowed).isFalse();
-        assertThat(service.getBlockedIPs()).isEqualTo(1);
-        assertThat(service.getBlockedIPsPerMinute()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("connect filter handles null address safely")
-    void connectFilter_handlesNullAddressSafely() {
-        assertThat(service.connectFilter(null)).isFalse();
-    }
-
-    @Test
-    @DisplayName("connect filter catches exceptions safely and fails closed")
-    void connectFilter_catchesExceptionsSafelyAndFailsClosed() {
-        service.setIpAcceptor(ip -> { throw new RuntimeException("Simulated filter error"); });
-
-        boolean allowed = service.connectFilter("1.2.3.4");
-
-        assertThat(allowed).isFalse();
-    }
-
-    @Test
-    @DisplayName("setIpAcceptor with null falls back to default allow-all acceptor")
-    void setIpAcceptor_withNullFallsBackToDefaultAllowAll() {
-        service.setIpAcceptor(null);
-
-        assertThat(service.getIpAcceptor().get("1.2.3.4")).isTrue();
+        verify(adminRequestHandler).handle(con, packet);
     }
 }
