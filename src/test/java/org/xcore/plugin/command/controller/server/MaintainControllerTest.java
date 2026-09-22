@@ -1,7 +1,6 @@
 package org.xcore.plugin.command.controller.server;
 
 import arc.files.Fi;
-import com.google.gson.Gson;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,27 +31,11 @@ class MaintainControllerTest {
     @DisplayName("gcmd parses comma-separated targets from flag value")
     void gcmdParsesCommaSeparatedTargets() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", false);
 
         var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
@@ -68,27 +51,11 @@ class MaintainControllerTest {
     @DisplayName("gcmd sends command to all servers when targets are omitted")
     void gcmdFallsBackToAllServers() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.gcmd(sender, "say hello world", null, false);
 
         var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
@@ -104,27 +71,11 @@ class MaintainControllerTest {
     @DisplayName("gcmd preserves exclusion mode with parsed targets")
     void gcmdPreservesExclusionMode() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.gcmd(sender, "say hello world", "mini-pvp,mini-hexed", true);
 
         var captor = ArgumentCaptor.forClass(ServerCommandExecuteCommandV1.class);
@@ -140,27 +91,11 @@ class MaintainControllerTest {
     @DisplayName("disable-cmd normalizes command and persists config")
     void disableCmd_normalizesCommandAndPersistsConfig() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.disableCmd(sender, " /Help   Me ");
 
         assertThat(serverLocalConfig.runtime.disabledCommands).containsExactly("help me");
@@ -171,27 +106,11 @@ class MaintainControllerTest {
     @DisplayName("disable-cmd does not persist protected commands")
     void disableCmd_doesNotPersistProtectedCommands() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.disableCmd(sender, "disable-cmd nested");
 
         assertThat(serverLocalConfig.runtime.disabledCommands).isEmpty();
@@ -202,28 +121,12 @@ class MaintainControllerTest {
     @DisplayName("enable-feature removes disabled feature and persists config")
     void enableFeature_removesDisabledFeatureAndPersistsConfig() {
         var network = mock(NetworkService.class);
-        var repository = mock(PlayerDataRepository.class);
-        var pluginState = new PluginState();
-        var sessionService = mock(SessionService.class);
-        var auditService = mock(MapIdentityAuditService.class);
         var serverLocalConfig = new TomlXcoreConfig();
         serverLocalConfig.runtime.disabledFeatures.add("rtv");
         var configFile = mock(Fi.class);
-        var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
-        var controller = new MaintainController(
-                network,
-                repository,
-                pluginState,
-                sessionService,
-                auditService,
-                serverLocalConfig,
-                tomlStore,
-                gson
-        );
-
+        var controller = createController(network, serverLocalConfig, configFile);
         controller.enableFeature(sender, "rtv");
 
         assertThat(serverLocalConfig.runtime.disabledFeatures).doesNotContain("rtv");
@@ -243,7 +146,6 @@ class MaintainControllerTest {
         serverLocalConfig.server.name = "alpha";
         var configFile = mock(Fi.class);
         var tomlStore = new ServerLocalConfigTomlStore(configFile);
-        var gson = new Gson();
         var sender = mock(XCoreSender.class);
 
         when(repository.deleteBotsAsync()).thenReturn(CompletableFuture.completedFuture(3L));
@@ -256,8 +158,7 @@ class MaintainControllerTest {
                 auditService,
                 topMenuCacheService,
                 serverLocalConfig,
-                tomlStore,
-                gson
+                tomlStore
         );
 
         controller.deleteBots(sender);
@@ -267,5 +168,17 @@ class MaintainControllerTest {
         var captor = ArgumentCaptor.forClass(PlayerDataCacheReloadCommandV1.class);
         verify(network).post(captor.capture());
         assertThat(captor.getValue().server()).isEqualTo("alpha");
+    }
+
+    private static MaintainController createController(NetworkService network, TomlXcoreConfig serverLocalConfig, Fi configFile) {
+        return new MaintainController(
+                network,
+                mock(PlayerDataRepository.class),
+                new PluginState(),
+                mock(SessionService.class),
+                mock(MapIdentityAuditService.class),
+                serverLocalConfig,
+                new ServerLocalConfigTomlStore(configFile)
+        );
     }
 }

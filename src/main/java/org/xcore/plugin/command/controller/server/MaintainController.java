@@ -3,9 +3,7 @@ package org.xcore.plugin.command.controller.server;
 import arc.Core;
 import arc.struct.Seq;
 import org.xcore.plugin.common.PLog;
-import com.google.gson.Gson;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.game.Gamemode;
@@ -64,7 +62,6 @@ public class MaintainController implements CloudServerController {
                               TopMenuCacheService topMenuCacheService,
                               TomlXcoreConfig serverLocalConfig,
                               ServerLocalConfigTomlStore tomlStore,
-                              @Named("pretty") Gson prettyGson,
                               Async async) {
         this.network = network;
         this.playerDataRepository = playerDataRepository;
@@ -84,9 +81,8 @@ public class MaintainController implements CloudServerController {
                               MapIdentityAuditService mapIdentityAuditService,
                               TopMenuCacheService topMenuCacheService,
                               TomlXcoreConfig serverLocalConfig,
-                              ServerLocalConfigTomlStore tomlStore,
-                              Gson prettyGson) {
-        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, topMenuCacheService, serverLocalConfig, tomlStore, prettyGson, null);
+                              ServerLocalConfigTomlStore tomlStore) {
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, topMenuCacheService, serverLocalConfig, tomlStore, null);
     }
 
     public MaintainController(NetworkService network,
@@ -95,9 +91,8 @@ public class MaintainController implements CloudServerController {
                               SessionService sessionService,
                               MapIdentityAuditService mapIdentityAuditService,
                               TomlXcoreConfig serverLocalConfig,
-                              ServerLocalConfigTomlStore tomlStore,
-                              Gson prettyGson) {
-        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, serverLocalConfig, tomlStore, prettyGson, null);
+                              ServerLocalConfigTomlStore tomlStore) {
+        this(network, playerDataRepository, pluginState, sessionService, mapIdentityAuditService, null, serverLocalConfig, tomlStore, null);
     }
 
     @Command("exit")

@@ -5,7 +5,6 @@ import arc.func.Cons;
 import arc.struct.ObjectMap;
 import org.xcore.plugin.common.PLog;
 import jakarta.inject.Inject;
-import io.avaje.inject.PostConstruct;
 import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
@@ -49,10 +48,6 @@ public class SessionService {
 
     public SessionService(SessionFactory sessionFactory, PlayerDataRepository playerDataRepository) {
         this(sessionFactory, playerDataRepository, null);
-    }
-
-    @PostConstruct
-    void init() {
     }
 
     /**

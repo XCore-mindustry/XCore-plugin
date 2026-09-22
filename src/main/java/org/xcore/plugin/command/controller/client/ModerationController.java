@@ -43,20 +43,13 @@ public class ModerationController implements CloudClientController {
         this.sessionService = sessionService;
     }
 
-    private Session resolveSession(XCoreSender sender) {
-        if (sender == null) return null;
-        Session s = sender.session();
-        if (s != null) return s;
-        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
-    }
-
     @Command("ban <id> <period> [reason]")
     public void ban(XCoreSender sender,
                     @Argument("id") int id,
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
                     @Argument("reason") @Greedy String reason) {
 
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
@@ -74,7 +67,7 @@ public class ModerationController implements CloudClientController {
 
     @Command("unban <id>")
     public void unban(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
@@ -97,7 +90,7 @@ public class ModerationController implements CloudClientController {
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument("reason") @Greedy String reason) {
 
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 
@@ -123,7 +116,7 @@ public class ModerationController implements CloudClientController {
 
     @Command("unmute <id>")
     public void unmute(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         Localization local = session.locale();
 

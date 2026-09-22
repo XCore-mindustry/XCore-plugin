@@ -8,9 +8,16 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 import static com.ospx.flubundle.Bundle.args;
 
 public class Menu {
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
     protected final TomlSecretsConfig secretsConfig;
     protected final SessionService sessionService;
 
@@ -51,9 +58,7 @@ public class Menu {
 
     public String formatTime(long millis, Session session) {
         if (millis <= 0) return session.locale().t("never");
-
-        var df = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
-        return df.format(new java.util.Date(millis));
+        return DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(millis));
     }
 
     public String timeLeft(long endMillis, Session session) {

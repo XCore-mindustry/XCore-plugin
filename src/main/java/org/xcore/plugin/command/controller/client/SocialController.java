@@ -21,7 +21,6 @@ import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.TranslatorService;
@@ -44,13 +43,12 @@ public class SocialController implements CloudClientController {
     @Inject
     public SocialController(SessionService sessionService,
                             NetworkService network,
-                              TomlXcoreConfig config,
-                              TomlSecretsConfig secretsConfig,
-                              TranslatorLanguagesProvider translatorLanguagesProvider,
-                             ChatFormatService chatFormatService,
-                             TranslatorService translatorService,
-                             DiscordLinkService discordLinkService,
-                             DiscordMenu discordMenu) {
+                            TomlXcoreConfig config,
+                            TomlSecretsConfig secretsConfig,
+                            TranslatorLanguagesProvider translatorLanguagesProvider,
+                            TranslatorService translatorService,
+                            DiscordLinkService discordLinkService,
+                            DiscordMenu discordMenu) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
@@ -67,18 +65,11 @@ public class SocialController implements CloudClientController {
         translatorService.translateTeamChat(sender.player(), message);
     }
 
-    private Session resolveSession(XCoreSender sender) {
-        if (sender == null) return null;
-        Session s = sender.session();
-        if (s != null) return s;
-        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
-    }
-
     @RequiresMuteCheck
     @RequiresPlayTime(PlayTimeLimit.GLOBAL_CHAT)
     @Command("g <message>")
     public void globalChat(XCoreSender sender, @Argument("message") @Greedy String message) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         network.post(new ChatGlobalV1(
@@ -102,7 +93,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord link")
     public void discordLink(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -125,7 +116,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord status")
     public void discordStatus(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -143,7 +134,7 @@ public class SocialController implements CloudClientController {
 
     @Command("discord unlink")
     public void discordUnlink(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         Localization local = session.locale();
@@ -157,7 +148,7 @@ public class SocialController implements CloudClientController {
 
     @Command("tr <language>")
     public void translator(XCoreSender sender, @Argument(value = "language", parserName = "language") String language) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         PlayerData data = session.data;
         Localization local = session.locale();

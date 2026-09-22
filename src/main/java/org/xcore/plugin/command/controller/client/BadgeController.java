@@ -39,23 +39,16 @@ public class BadgeController implements CloudClientController {
         this.network = network;
     }
 
-    private Session resolveSession(XCoreSender sender) {
-        if (sender == null) return null;
-        Session s = sender.session();
-        if (s != null) return s;
-        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
-    }
-
     @Command("badge")
     public void badge(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
         playerMenu.badges(sender.player().uuid(), session.data);
     }
 
     @Command("badge clear")
     public void clear(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         sessionService.setActiveBadge(session, "");
@@ -66,7 +59,7 @@ public class BadgeController implements CloudClientController {
 
     @Command("badge set <id>")
     public void set(XCoreSender sender, @Argument("id") String id) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) return;
 
         Badge badge = Badge.byId(id);

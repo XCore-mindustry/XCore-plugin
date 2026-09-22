@@ -33,25 +33,23 @@ public class AuthController implements CloudClientController {
 
     @Command("login <password>")
     public void login(XCoreSender sender, @Argument("password") String password) {
-        if (!sender.isPlayer() || sender.player() == null) return;
-        Session session = sessionService.get(sender.player().uuid());
-        if (session == null) return;
+        Session session = resolveSession(sender, sessionService);
+        if (session == null || session.player == null) return;
         Localization local = session.locale();
 
-        AdminAuthService.AuthResult result = adminAuthService.authenticate(sender.player(), password);
+        AdminAuthService.AuthResult result = adminAuthService.authenticate(session.player, password);
         local.send(result.messageKey(), args());
     }
 
     @Command("logout")
     public void logout(XCoreSender sender) {
-        if (!sender.isPlayer() || sender.player() == null) return;
-        Session session = sessionService.get(sender.player().uuid());
-        if (session == null || session.data == null) return;
+        Session session = resolveSession(sender, sessionService);
+        if (session == null || session.data == null || session.player == null) return;
         Localization local = session.locale();
 
-        if (sender.player().admin) {
-            sender.player().admin(false);
-            netServer.admins.unAdminPlayer(sender.player().uuid());
+        if (session.player.admin) {
+            session.player.admin(false);
+            netServer.admins.unAdminPlayer(session.player.uuid());
             playerDisplayService.refresh(session);
             local.send("commands-logout-successful", args());
         }

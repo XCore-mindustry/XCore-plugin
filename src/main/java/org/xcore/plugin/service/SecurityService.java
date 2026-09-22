@@ -40,25 +40,51 @@ public class SecurityService {
         }
 
         String uuid = player.uuid();
-        CachedMute cached = muteCache.get(uuid);
+        MuteCheckResult cached = evaluateCached(uuid);
         if (cached != null) {
-            if (cached.data == null) {
-                if (System.currentTimeMillis() - cached.cachedAt < UNMUTED_CACHE_TTL_MS) {
-                    return new MuteCheckResult(false, null, Duration.ZERO);
-                }
-            } else {
-                if (!cached.data.expired()) {
-                    Duration remaining = Duration.between(Instant.now(), cached.data.expireDate);
-                    return new MuteCheckResult(true, cached.data, remaining);
-                } else {
-                    muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-                    muteDataRepository.deleteAsync(uuid);
-                    return new MuteCheckResult(false, null, Duration.ZERO);
-                }
-            }
+            return cached;
         }
 
-        MuteData mute = muteDataRepository.findByUuid(uuid);
+        return processMuteResult(uuid, muteDataRepository.findByUuid(uuid));
+    }
+
+    public CompletionStage<MuteCheckResult> checkMuteAsync(Player player) {
+        if (player == null || player.uuid() == null || player.uuid().isBlank()) {
+            return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
+        }
+
+        String uuid = player.uuid();
+        MuteCheckResult cached = evaluateCached(uuid);
+        if (cached != null) {
+            return CompletableFuture.completedFuture(cached);
+        }
+
+        return muteDataRepository.findByUuidAsync(uuid)
+                .thenApply(mute -> processMuteResult(uuid, mute));
+    }
+
+    private MuteCheckResult evaluateCached(String uuid) {
+        CachedMute cached = muteCache.get(uuid);
+        if (cached == null) return null;
+
+        if (cached.data == null) {
+            if (System.currentTimeMillis() - cached.cachedAt < UNMUTED_CACHE_TTL_MS) {
+                return new MuteCheckResult(false, null, Duration.ZERO);
+            }
+            return null;
+        }
+
+        if (!cached.data.expired()) {
+            Duration remaining = Duration.between(Instant.now(), cached.data.expireDate);
+            return new MuteCheckResult(true, cached.data, remaining);
+        } else {
+            muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
+            muteDataRepository.deleteAsync(uuid);
+            return new MuteCheckResult(false, null, Duration.ZERO);
+        }
+    }
+
+    private MuteCheckResult processMuteResult(String uuid, MuteData mute) {
         if (mute == null) {
             muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
             return new MuteCheckResult(false, null, Duration.ZERO);
@@ -72,47 +98,6 @@ public class SecurityService {
         muteCache.put(uuid, new CachedMute(mute, System.currentTimeMillis()));
         Duration remaining = Duration.between(Instant.now(), mute.expireDate);
         return new MuteCheckResult(true, mute, remaining);
-    }
-
-    public CompletionStage<MuteCheckResult> checkMuteAsync(Player player) {
-        if (player == null || player.uuid() == null || player.uuid().isBlank()) {
-            return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
-        }
-
-        String uuid = player.uuid();
-        CachedMute cached = muteCache.get(uuid);
-        if (cached != null) {
-            if (cached.data == null) {
-                if (System.currentTimeMillis() - cached.cachedAt < UNMUTED_CACHE_TTL_MS) {
-                    return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
-                }
-            } else {
-                if (!cached.data.expired()) {
-                    Duration remaining = Duration.between(Instant.now(), cached.data.expireDate);
-                    return CompletableFuture.completedFuture(new MuteCheckResult(true, cached.data, remaining));
-                } else {
-                    muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-                    muteDataRepository.deleteAsync(uuid);
-                    return CompletableFuture.completedFuture(new MuteCheckResult(false, null, Duration.ZERO));
-                }
-            }
-        }
-
-        return muteDataRepository.findByUuidAsync(uuid).thenApply(mute -> {
-            if (mute == null) {
-                muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-                return new MuteCheckResult(false, null, Duration.ZERO);
-            }
-            if (mute.expired()) {
-                muteCache.put(uuid, new CachedMute(null, System.currentTimeMillis()));
-                muteDataRepository.deleteAsync(uuid);
-                return new MuteCheckResult(false, null, Duration.ZERO);
-            }
-
-            muteCache.put(uuid, new CachedMute(mute, System.currentTimeMillis()));
-            Duration remaining = Duration.between(Instant.now(), mute.expireDate);
-            return new MuteCheckResult(true, mute, remaining);
-        });
     }
 
     public void setMuted(String uuid, MuteData muteData) {

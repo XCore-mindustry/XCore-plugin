@@ -10,7 +10,6 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.TranslatorLanguagesProvider;
 import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.service.ChatFormatService;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.TranslatorService;
@@ -45,7 +44,6 @@ class SocialControllerTest {
                 config,
                 new TomlSecretsConfig(),
                 mock(TranslatorLanguagesProvider.class),
-                mock(ChatFormatService.class),
                 mock(TranslatorService.class),
                 mock(DiscordLinkService.class),
                 mock(DiscordMenu.class)

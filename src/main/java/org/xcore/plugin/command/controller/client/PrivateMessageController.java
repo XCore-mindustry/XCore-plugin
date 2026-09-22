@@ -31,19 +31,12 @@ public class PrivateMessageController implements CloudClientController {
         this.messageMenu = messageMenu;
     }
 
-    private Session resolveSession(XCoreSender sender) {
-        if (sender == null) return null;
-        Session s = sender.session();
-        if (s != null) return s;
-        return sender.player() != null ? sessionService.get(sender.player().uuid()) : null;
-    }
-
     @RequiresMuteCheck
     @Command("msg <id> <message>")
     public void msg(XCoreSender sender,
                     @Argument("id") int id,
                     @Argument("message") @Greedy String message) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) {
             return;
         }
@@ -54,7 +47,7 @@ public class PrivateMessageController implements CloudClientController {
     @RequiresMuteCheck
     @Command("reply <message>")
     public void reply(XCoreSender sender, @Argument("message") @Greedy String message) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) {
             return;
         }
@@ -70,7 +63,7 @@ public class PrivateMessageController implements CloudClientController {
 
     @Command("inbox unread")
     public void unread(XCoreSender sender) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) {
             return;
         }
@@ -87,7 +80,7 @@ public class PrivateMessageController implements CloudClientController {
 
     @Command("inbox block <id>")
     public void block(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) {
             return;
         }
@@ -100,7 +93,7 @@ public class PrivateMessageController implements CloudClientController {
 
     @Command("inbox unblock <id>")
     public void unblock(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender);
+        Session session = resolveSession(sender, sessionService);
         if (session == null || session.data == null) {
             return;
         }
