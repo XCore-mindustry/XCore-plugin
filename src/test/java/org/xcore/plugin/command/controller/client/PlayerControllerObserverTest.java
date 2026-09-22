@@ -31,7 +31,6 @@ class PlayerControllerObserverTest {
         SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
         ObserverService observerService = new ObserverService(sessionService, mock(RedisObserverStateStore.class));
         PlayerController controller = new PlayerController(
-                mock(PlayerDataRepository.class),
                 sessionService,
                 observerService,
                 mock(PlayerMenu.class),
@@ -71,7 +70,6 @@ class PlayerControllerObserverTest {
         RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
         ObserverService observerService = new ObserverService(sessionService, observerStateStore);
         PlayerController controller = new PlayerController(
-                mock(PlayerDataRepository.class),
                 sessionService,
                 observerService,
                 mock(PlayerMenu.class),
@@ -112,7 +110,6 @@ class PlayerControllerObserverTest {
         RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
         ObserverService observerService = new ObserverService(sessionService, observerStateStore);
         PlayerController controller = new PlayerController(
-                mock(PlayerDataRepository.class),
                 sessionService,
                 observerService,
                 mock(PlayerMenu.class),
@@ -147,7 +144,6 @@ class PlayerControllerObserverTest {
         RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
         ObserverService observerService = new ObserverService(sessionService, observerStateStore);
         PlayerController controller = new PlayerController(
-                mock(PlayerDataRepository.class),
                 sessionService,
                 observerService,
                 mock(PlayerMenu.class),
@@ -183,7 +179,6 @@ class PlayerControllerObserverTest {
         ObserverService observerService = new ObserverService(sessionService, mock(RedisObserverStateStore.class));
         PlayerMenu menu = mock(PlayerMenu.class);
         PlayerController controller = new PlayerController(
-                repository,
                 sessionService,
                 observerService,
                 menu,
@@ -237,7 +232,6 @@ class PlayerControllerObserverTest {
         ObserverService observerService = new ObserverService(sessionService, mock(RedisObserverStateStore.class));
         PlayerMenu menu = mock(PlayerMenu.class);
         PlayerController controller = new PlayerController(
-                repository,
                 sessionService,
                 observerService,
                 menu,

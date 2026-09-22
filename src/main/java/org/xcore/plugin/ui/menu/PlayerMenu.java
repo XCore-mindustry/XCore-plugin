@@ -134,15 +134,7 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        if (targetData == null) {
-            session.locale().send("error-player-not-found");
-            return;
-        }
-
-        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
-            session.locale().send("error-no-access");
-            return;
-        }
+        if (!canAccessSettings(session, targetData)) return;
 
         if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
             openSettingsUi(session, targetData);
@@ -166,15 +158,7 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        if (targetData == null) {
-            session.locale().send("error-player-not-found");
-            return;
-        }
-
-        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
-            session.locale().send("error-no-access");
-            return;
-        }
+        if (!canAccessSettings(session, targetData)) return;
 
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_CHAT_SETTINGS).withParam("targetUuid", targetData.uuid));
     }
@@ -193,15 +177,7 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        if (targetData == null) {
-            session.locale().send("error-player-not-found");
-            return;
-        }
-
-        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
-            session.locale().send("error-no-access");
-            return;
-        }
+        if (!canAccessSettings(session, targetData)) return;
 
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_BADGES).withParam("targetUuid", targetData.uuid));
     }
@@ -210,15 +186,7 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        if (targetData == null) {
-            session.locale().send("error-player-not-found");
-            return;
-        }
-
-        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
-            session.locale().send("error-no-access");
-            return;
-        }
+        if (!canAccessSettings(session, targetData)) return;
 
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_BADGE_SYMBOL_COLOR).withParam("targetUuid", targetData.uuid));
     }
@@ -227,16 +195,20 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        if (targetData == null) {
-            session.locale().send("error-player-not-found");
-            return;
-        }
-
-        if (!session.data.uuid.equals(targetData.uuid) && !session.player.admin) {
-            session.locale().send("error-no-access");
-            return;
-        }
+        if (!canAccessSettings(session, targetData)) return;
 
         session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_ALL_BADGES).withParam("targetUuid", targetData.uuid));
+    }
+
+    private boolean canAccessSettings(Session session, PlayerData targetData) {
+        if (targetData == null) {
+            session.locale().send("error-player-not-found");
+            return false;
+        }
+        if (!session.data.uuid.equals(targetData.uuid) && (session.player == null || !session.player.admin)) {
+            session.locale().send("error-no-access");
+            return false;
+        }
+        return true;
     }
 }

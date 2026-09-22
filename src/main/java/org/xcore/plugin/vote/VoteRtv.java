@@ -30,7 +30,6 @@ public class VoteRtv extends VoteSession {
     private final MapDataRepository mapDataRepository;
     private final TomlSecretsConfig secretsConfig;
     private final SessionService sessionService;
-    private final VoteService voteService;
     private final GameStateService gameStateService;
     private final GameDataService gameDataService;
     private final org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService;
@@ -47,13 +46,12 @@ public class VoteRtv extends VoteSession {
             GameStateService gameStateService,
             GameDataService gameDataService,
             org.xcore.plugin.service.map.MapVoteObserverService mapVoteObserverService) {
-        super(secretsConfig);
+        super(secretsConfig, voteService);
         this.target = target;
         this.isManualSelection = isManualSelection;
         this.mapDataRepository = mapDataRepository;
         this.secretsConfig = secretsConfig;
         this.sessionService = sessionService;
-        this.voteService = voteService;
         this.gameStateService = gameStateService;
         this.gameDataService = gameDataService;
         this.mapVoteObserverService = mapVoteObserverService;
@@ -172,14 +170,5 @@ public class VoteRtv extends VoteSession {
         sessionService.broadcast("rtv-cancelled", args(
                 "mapName", target.name(),
                 "admin", admin.coloredName()));
-    }
-
-    @Override
-    public void stop() {
-        if (isStopped()) {
-            return;
-        }
-        super.stop();
-        voteService.endVote();
     }
 }

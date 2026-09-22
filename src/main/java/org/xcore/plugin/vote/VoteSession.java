@@ -15,10 +15,16 @@ public abstract class VoteSession {
 
     public final IntIntMap voted = new IntIntMap();
     public final Timer.Task end;
+    protected final VoteService voteService;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
 
+    public VoteSession(TomlSecretsConfig secretsConfig, VoteService voteService) {
+        this.voteService = voteService;
+        this.end = Timer.schedule(this::fail, secretsConfig.moderation.votekick.voteDurationSeconds);
+    }
+
     public VoteSession(TomlSecretsConfig secretsConfig) {
-        end = Timer.schedule(this::fail, secretsConfig.moderation.votekick.voteDurationSeconds);
+        this(secretsConfig, null);
     }
 
     public boolean isStopped() {
@@ -46,10 +52,18 @@ public abstract class VoteSession {
         if (end != null) {
             end.cancel();
         }
+        if (voteService != null) {
+            voteService.endVote();
+        }
     }
 
     public int votes() {
-        return voted.values().toArray().sum();
+        int sum = 0;
+        var values = voted.values();
+        while (values.hasNext()) {
+            sum += values.next();
+        }
+        return sum;
     }
 
     public int votesRequired() {

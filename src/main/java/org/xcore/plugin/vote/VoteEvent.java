@@ -17,7 +17,6 @@ public class VoteEvent extends VoteSession {
 
     private final EventDataRepository eventDataRepository;
     private final SessionService sessionService;
-    private final VoteService voteService;
 
     @Inject
     public VoteEvent(
@@ -26,11 +25,10 @@ public class VoteEvent extends VoteSession {
             TomlSecretsConfig secretsConfig,
             SessionService sessionService,
             VoteService voteService) {
-        super(secretsConfig);
+        super(secretsConfig, voteService);
         this.target = target;
         this.eventDataRepository = eventDataRepository;
         this.sessionService = sessionService;
-        this.voteService = voteService;
     }
 
     @Override
@@ -75,14 +73,5 @@ public class VoteEvent extends VoteSession {
         sessionService.broadcast("vote-event-cancelled", args(
                 "name", target.name,
                 "admin", admin.coloredName()));
-    }
-
-    @Override
-    public void stop() {
-        if (isStopped()) {
-            return;
-        }
-        super.stop();
-        voteService.endVote();
     }
 }

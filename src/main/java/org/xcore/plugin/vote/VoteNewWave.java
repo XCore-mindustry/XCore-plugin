@@ -17,7 +17,6 @@ public class VoteNewWave extends VoteSession {
     public final int sourceWave;
 
     private final SessionService sessionService;
-    private final VoteService voteService;
 
     @Inject
     public VoteNewWave(
@@ -26,10 +25,9 @@ public class VoteNewWave extends VoteSession {
             SessionService sessionService,
             VoteService voteService
     ) {
-        super(secretsConfig);
+        super(secretsConfig, voteService);
         this.sourceWave = sourceWave;
         this.sessionService = sessionService;
-        this.voteService = voteService;
     }
 
     @Override
@@ -78,15 +76,6 @@ public class VoteNewWave extends VoteSession {
         sessionService.broadcast("vnw-cancelled", args(
                 "wave", targetWave(),
                 "admin", admin.coloredName()));
-    }
-
-    @Override
-    public void stop() {
-        if (isStopped()) {
-            return;
-        }
-        super.stop();
-        voteService.endVote();
     }
 
     private int targetWave() {

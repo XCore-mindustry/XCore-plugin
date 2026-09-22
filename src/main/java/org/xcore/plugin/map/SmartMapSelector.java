@@ -84,27 +84,24 @@ public class SmartMapSelector implements MapProvider {
 
         ObjectMap<String, MapData> statsMap = mapDataRepository.findAllAsMap();
 
-        arc.func.Func<Map, MapData> getStat = map -> {
-            String key = MapDataRepository.genKey(map.plainName(), map.author(), mode.name());
-            String fileName = map.file != null ? map.file.name() : map.plainName() + ".msav";
-            return statsMap.get(key, new MapData(map.plainName(), fileName, map.author(), mode.name()));
-        };
-
-        Seq<Map> poolA = candidates.copy().sort(m -> {
-            MapData s = getStat.get(m);
-            return (float) -((double)s.reputation - s.popularity);
+        Seq<Map> poolA = candidates.copy().sort((arc.func.Floatf<Map>) m -> {
+            String key = MapDataRepository.genKey(m.plainName(), m.author(), mode.name());
+            MapData s = statsMap.get(key);
+            return s == null ? 0f : (float) -((double) s.reputation - s.popularity);
         });
         poolA.truncate(Math.min(poolA.size, 10));
 
-        Seq<Map> poolB = candidates.copy().sort(m -> {
-            MapData s = getStat.get(m);
-            return (float) -s.interest;
+        Seq<Map> poolB = candidates.copy().sort((arc.func.Floatf<Map>) m -> {
+            String key = MapDataRepository.genKey(m.plainName(), m.author(), mode.name());
+            MapData s = statsMap.get(key);
+            return s == null ? 0f : (float) -s.interest;
         });
         poolB.truncate(Math.min(poolB.size, 10));
 
-        Seq<Map> poolC = candidates.copy().sort(m -> {
-            MapData s = getStat.get(m);
-            return s.playedTimesYear;
+        Seq<Map> poolC = candidates.copy().sort((arc.func.Floatf<Map>) m -> {
+            String key = MapDataRepository.genKey(m.plainName(), m.author(), mode.name());
+            MapData s = statsMap.get(key);
+            return s == null ? 0 : s.playedTimesYear;
         });
         poolC.truncate(Math.min(poolC.size, 5));
 

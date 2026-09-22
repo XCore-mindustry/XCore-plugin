@@ -41,7 +41,6 @@ public class VoteKick extends VoteSession {
 
     private final SessionService sessionService;
     private final NetworkService network;
-    private final VoteService voteService;
     private final TomlXcoreConfig config;
     private final TomlSecretsConfig secretsConfig;
 
@@ -57,14 +56,13 @@ public class VoteKick extends VoteSession {
             VoteService voteService,
             TomlXcoreConfig config,
             TomlSecretsConfig secretsConfig) {
-        super(secretsConfig);
+        super(secretsConfig, voteService);
         this.starter = starter;
         this.target = target;
         this.reason = reason;
         this.systemLocal = new Localization(bundle);
         this.sessionService = sessionService;
         this.network = network;
-        this.voteService = voteService;
         this.config = config;
         this.secretsConfig = secretsConfig;
     }
@@ -230,15 +228,6 @@ public class VoteKick extends VoteSession {
     public void fail() {
         stop();
         sessionService.broadcast("votekick-fail", args("target", target.coloredName()));
-    }
-
-    @Override
-    public void stop() {
-        if (isStopped()) {
-            return;
-        }
-        super.stop();
-        voteService.endVote();
     }
 
     @Override

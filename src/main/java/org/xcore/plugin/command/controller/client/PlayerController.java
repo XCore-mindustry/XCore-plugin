@@ -27,7 +27,6 @@ import static com.ospx.flubundle.Bundle.args;
 @Singleton
 public class PlayerController implements CloudClientController {
 
-    private final PlayerDataRepository playerDataRepository;
     private final SessionService sessionService;
     private final ObserverService observerService;
     private final PlayerMenu menu;
@@ -35,13 +34,11 @@ public class PlayerController implements CloudClientController {
     private final Async async;
 
     @Inject
-    public PlayerController(PlayerDataRepository playerDataRepository,
-                            SessionService sessionService,
+    public PlayerController(SessionService sessionService,
                             ObserverService observerService,
                             PlayerMenu menu,
                             TopMenu topMenu,
                             Async async) {
-        this.playerDataRepository = playerDataRepository;
         this.sessionService = sessionService;
         this.observerService = observerService;
         this.menu = menu;
@@ -49,12 +46,11 @@ public class PlayerController implements CloudClientController {
         this.async = async;
     }
 
-    public PlayerController(PlayerDataRepository playerDataRepository,
-                            SessionService sessionService,
+    public PlayerController(SessionService sessionService,
                             ObserverService observerService,
                             PlayerMenu menu,
                             TopMenu topMenu) {
-        this(playerDataRepository, sessionService, observerService, menu, topMenu, null);
+        this(sessionService, observerService, menu, topMenu, null);
     }
 
     @Command("player|stats|player-statistics [id]")
@@ -111,7 +107,7 @@ public class PlayerController implements CloudClientController {
     @Command("observer")
     public void observer(XCoreSender sender) {
         var player = sender.player();
-        var session = sessionService.get(player.uuid());
+        var session = resolveSession(sender, sessionService);
 
         if (observerService.isObserving(session)) {
             observerService.exit(session);

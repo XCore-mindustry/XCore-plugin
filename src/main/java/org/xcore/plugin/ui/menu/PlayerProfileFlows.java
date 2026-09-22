@@ -108,10 +108,10 @@ final class PlayerProfileFlows {
 
             var grid = new MenuGrid();
             List<MenuButton> actions = new ArrayList<>();
-            if (isOwner || session.player.admin) {
+            if (isOwner || (session.player != null && session.player.admin)) {
                 actions.add(MenuButton.of(local.t("player-menu-settings"), "settings"));
             }
-            if (session.player.admin) {
+            if (session.player != null && session.player.admin) {
                 actions.add(MenuButton.of(local.t("audit-menu-open"), "audit-history"));
                 actions.add(MenuButton.of(local.t("audit-menu-actions-open"), "audit-actions"));
             }
