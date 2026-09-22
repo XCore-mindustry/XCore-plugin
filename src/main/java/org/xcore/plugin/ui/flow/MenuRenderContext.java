@@ -52,6 +52,10 @@ public class MenuRenderContext<TState> {
         menuService.openRoute(session, route);
     }
 
+    public void renderRoute(MenuRoute route) {
+        menuService.renderRoute(session, route);
+    }
+
     public boolean goBack() {
         return menuService.goBack(session);
     }

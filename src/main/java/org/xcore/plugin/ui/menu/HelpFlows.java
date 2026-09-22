@@ -35,13 +35,11 @@ final class HelpFlows {
 
             action("previous", ctx -> {
                 int currentPage = ctx.route().intParam("page", 1);
-                ctx.session().menuService.renderRoute(ctx.session(),
-                        MenuRoute.of(ROUTE_LIST).withParam("page", String.valueOf(currentPage - 1)));
+                ctx.renderRoute(MenuRoute.of(ROUTE_LIST).withParam("page", String.valueOf(currentPage - 1)));
             });
             action("next", ctx -> {
                 int currentPage = ctx.route().intParam("page", 1);
-                ctx.session().menuService.renderRoute(ctx.session(),
-                        MenuRoute.of(ROUTE_LIST).withParam("page", String.valueOf(currentPage + 1)));
+                ctx.renderRoute(MenuRoute.of(ROUTE_LIST).withParam("page", String.valueOf(currentPage + 1)));
             });
             actionPrefix("cmd:", (ctx, cmdName) -> {
                 int currentPage = ctx.route().intParam("page", 1);
@@ -124,7 +122,7 @@ final class HelpFlows {
                 return MenuScreen.normal(
                         session.locale().t("help-menu-title"),
                         session.locale().t("error-command-not-found"),
-                        List.of(List.of(MenuButton.of(session.locale().t("back"), "back")))
+                        MenuGrid.onlyBack(session.locale())
                 );
             }
 
@@ -144,7 +142,7 @@ final class HelpFlows {
         return MenuScreen.normal(
                 session.locale().t("help-menu-title"),
                 "",
-                List.of(List.of(MenuButton.of(session.locale().t("close"), "close")))
+                MenuGrid.onlyClose(session.locale())
         );
     }
 }

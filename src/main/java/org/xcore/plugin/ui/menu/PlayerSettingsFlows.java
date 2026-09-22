@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -57,16 +59,75 @@ final class PlayerSettingsFlows {
         return resolveTarget(null, session, targetUuid);
     }
 
-    static final class SettingsFlow extends BaseMenuFlow<SettingsState> {
-        private final PlayerProfileSettingsService profileSettings;
+    abstract static class BasePlayerSettingsFlow<T> extends BaseMenuFlow<T> {
+        protected final PlayerProfileSettingsService profileSettings;
+
+        protected BasePlayerSettingsFlow(String routeId, Class<T> stateType, PlayerProfileSettingsService profileSettings) {
+            super(routeId, stateType);
+            this.profileSettings = profileSettings;
+        }
+
+        protected String targetUuid(MenuRenderContext<T> context) {
+            return context.route() != null ? context.route().param("targetUuid") : null;
+        }
+
+        protected PlayerData resolveTargetData(MenuRenderContext<T> context) {
+            return resolveTarget(profileSettings, context.session(), targetUuid(context));
+        }
+
+        protected void targetAction(String id, BiConsumer<MenuRenderContext<T>, PlayerData> handler) {
+            action(id, ctx -> {
+                PlayerData targetData = resolveTargetData(ctx);
+                if (targetData != null) {
+                    handler.accept(ctx, targetData);
+                }
+            });
+        }
+
+        protected void targetActionPrefix(String prefix, TriConsumer<MenuRenderContext<T>, PlayerData, String> handler) {
+            actionPrefix(prefix, (ctx, suffix) -> {
+                PlayerData targetData = resolveTargetData(ctx);
+                if (targetData != null) {
+                    handler.accept(ctx, targetData, suffix);
+                }
+            });
+        }
+
+        /**
+         * Renders the flow with shared target resolution and access gating.
+         * Sends "error-player-not-found" / "error-no-access" to the client and returns
+         * a close-only error screen when the target is missing or the viewer lacks access;
+         * otherwise delegates to the renderer with the resolved target data and locale.
+         */
+        protected MenuScreen renderGuarded(MenuRenderContext<T> context, String titleKey, BiFunction<PlayerData, Localization, MenuScreen> renderer) {
+            Session session = context.session();
+            PlayerData targetData = resolveTargetData(context);
+
+            if (targetData == null) {
+                session.locale().send("error-player-not-found");
+                return errorScreen(session, titleKey, "error-player-not-found");
+            }
+
+            if (!hasAccess(session, targetData)) {
+                session.locale().send("error-no-access");
+                return errorScreen(session, titleKey, "error-no-access");
+            }
+
+            return renderer.apply(targetData, context.locale());
+        }
+    }
+
+    @FunctionalInterface
+    interface TriConsumer<T, U, V> {
+        void accept(T t, U u, V v);
+    }
+
+    static final class SettingsFlow extends BasePlayerSettingsFlow<SettingsState> {
 
         SettingsFlow(PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_SETTINGS, SettingsState.class);
-            this.profileSettings = profileSettings;
+            super(ROUTE_SETTINGS, SettingsState.class, profileSettings);
 
-            action("custom-nickname", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("custom-nickname", (ctx, targetData) -> {
                 ctx.openPrompt(new MenuPrompt(
                         "custom-nickname",
                         ctx.locale().t("player-menu-settings-customNickname-title"),
@@ -76,15 +137,13 @@ final class PlayerSettingsFlows {
                         false
                 ));
             });
-            action("custom-nickname-reset", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+
+            targetAction("custom-nickname-reset", (ctx, targetData) -> {
                 profileSettings.updateCustomNickname(targetData, "", true, true);
                 ctx.render();
             });
-            action("description", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+
+            targetAction("description", (ctx, targetData) -> {
                 ctx.openPrompt(new MenuPrompt(
                         "description",
                         ctx.locale().t("player-menu-settings-description-title"),
@@ -94,16 +153,17 @@ final class PlayerSettingsFlows {
                         false
                 ));
             });
-            action("chat-settings", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_CHAT_SETTINGS).withParam("targetUuid", ctx.state().targetUuid)));
-            action("badges", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_BADGES).withParam("targetUuid", ctx.state().targetUuid)));
-            action("leaderboard", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+
+            action("chat-settings", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_CHAT_SETTINGS).withParam("targetUuid", targetUuid(ctx))));
+            action("badges", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_BADGES).withParam("targetUuid", targetUuid(ctx))));
+
+            targetAction("leaderboard", (ctx, targetData) -> {
                 profileSettings.updateLeaderboard(targetData, !targetData.leaderboard);
                 ctx.render();
             });
+
             action("language", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_LANGUAGE_SELECTION)
-                    .withParam("targetUuid", ctx.state().targetUuid)
+                    .withParam("targetUuid", targetUuid(ctx))
                     .withParam("isTranslator", "false")));
 
             onPrompt("custom-nickname",
@@ -122,8 +182,9 @@ final class PlayerSettingsFlows {
                         profileSettings.updateCustomNickname(targetData, newNick, true, true);
                         ctx.renderContext().render();
                     },
-                    ctx -> ctx.render()
+                    MenuRenderContext::render
             );
+
             onPrompt("description",
                     ctx -> {
                         PlayerData targetData = resolveTargetData(ctx.renderContext());
@@ -131,8 +192,24 @@ final class PlayerSettingsFlows {
                         profileSettings.updateDescription(targetData, ctx.text());
                         ctx.renderContext().render();
                     },
-                    ctx -> ctx.render()
+                    MenuRenderContext::render
             );
+        }
+
+        @Override
+        protected String targetUuid(MenuRenderContext<SettingsState> context) {
+            return context.state() != null && context.state().targetUuid != null
+                    ? context.state().targetUuid
+                    : super.targetUuid(context);
+        }
+
+        @Override
+        protected PlayerData resolveTargetData(MenuRenderContext<SettingsState> context) {
+            SettingsState state = context.state();
+            if (state != null && state.targetData != null) {
+                return state.targetData;
+            }
+            return super.resolveTargetData(context);
         }
 
         @Override
@@ -146,98 +223,73 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<SettingsState> context) {
-            Session session = context.session();
-            SettingsState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
+            return renderGuarded(context, "player-menu-settings-title", (targetData, local) -> {
+                String displayNickname = (targetData.customNickname == null || targetData.customNickname.isEmpty())
+                        ? targetData.nickname : targetData.customNickname;
+                String customNickDisplay = (targetData.customNickname == null || targetData.customNickname.isEmpty())
+                        ? local.t("none") : targetData.customNickname;
+                String descDisplay = (targetData.description == null || targetData.description.isEmpty())
+                        ? local.t("no-description") : targetData.description;
+                String activeBadge = activeBadgeName(local, targetData);
+                String systemBadge = systemBadgeName(local, targetData);
+                String globalChat = targetData.globalChatVisible ? local.t("yes") : local.t("no");
+                String discordRelay = targetData.discordRelayVisible ? local.t("yes") : local.t("no");
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, "player-menu-settings-title", "error-player-not-found");
-            }
+                var grid = new MenuGrid();
+                grid.row(
+                        MenuButton.of(local.t("player-menu-settings-customNickname"), "custom-nickname"),
+                        MenuButton.of(local.t("player-menu-settings-customNickname-reset"), "custom-nickname-reset"),
+                        MenuButton.of(local.t("player-menu-settings-description"), "description")
+                );
+                grid.row(
+                        MenuButton.of(local.t("player-menu-settings-chat"), "chat-settings"),
+                        MenuButton.of(local.t("player-menu-settings-badges"), "badges")
+                );
+                grid.row(MenuButton.of(
+                        local.t(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive"),
+                        "leaderboard"));
+                grid.row(MenuButton.of(
+                        local.t("settings-language-label", args("lang", local.getLanguageName(targetData.language, "auto"))),
+                        "language"));
+                grid.defaultNavigation(context);
 
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, "player-menu-settings-title", "error-no-access");
-            }
-
-            Localization local = context.locale();
-
-            String displayNickname = (targetData.customNickname == null || targetData.customNickname.isEmpty())
-                    ? targetData.nickname : targetData.customNickname;
-            String customNickDisplay = (targetData.customNickname == null || targetData.customNickname.isEmpty())
-                    ? local.t("none") : targetData.customNickname;
-            String descDisplay = (targetData.description == null || targetData.description.isEmpty())
-                    ? local.t("no-description") : targetData.description;
-            String activeBadge = activeBadgeName(local, targetData);
-            String systemBadge = systemBadgeName(local, targetData);
-            String globalChat = targetData.globalChatVisible ? local.t("yes") : local.t("no");
-            String discordRelay = targetData.discordRelayVisible ? local.t("yes") : local.t("no");
-
-            var grid = new MenuGrid();
-            grid.row(
-                    MenuButton.of(local.t("player-menu-settings-customNickname"), "custom-nickname"),
-                    MenuButton.of(local.t("player-menu-settings-customNickname-reset"), "custom-nickname-reset"),
-                    MenuButton.of(local.t("player-menu-settings-description"), "description")
-            );
-            grid.row(
-                    MenuButton.of(local.t("player-menu-settings-chat"), "chat-settings"),
-                    MenuButton.of(local.t("player-menu-settings-badges"), "badges")
-            );
-            grid.row(MenuButton.of(
-                    local.t(targetData.leaderboard ? "player-leaderboard-active" : "player-leaderboard-inactive"),
-                    "leaderboard"));
-            grid.row(MenuButton.of(
-                    local.t("settings-language-label", args("lang", local.getLanguageName(targetData.language, "auto"))),
-                    "language"));
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(
-                    local.t("player-menu-settings-title"),
-                    local.t("player-menu-settings-content", args(
-                            "displayNickname", displayNickname,
-                            "pid", targetData.pid,
-                            "nickname", targetData.nickname,
-                            "customNickname", customNickDisplay,
-                            "activeBadge", activeBadge,
-                            "systemBadge", systemBadge,
-                            "description", descDisplay,
-                            "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
-                            "language", local.getLanguageName(targetData.language, "auto"),
-                            "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off"),
-                            "globalChat", globalChat,
-                            "discordRelay", discordRelay
-                    )),
-                    grid.build()
-            );
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<SettingsState> context) {
-            SettingsState state = context.state();
-            return state.targetData != null ? state.targetData : resolveTarget(profileSettings, context.session(), state.targetUuid);
+                return MenuScreen.normal(
+                        local.t("player-menu-settings-title"),
+                        local.t("player-menu-settings-content", args(
+                                "displayNickname", displayNickname,
+                                "pid", targetData.pid,
+                                "nickname", targetData.nickname,
+                                "customNickname", customNickDisplay,
+                                "activeBadge", activeBadge,
+                                "systemBadge", systemBadge,
+                                "description", descDisplay,
+                                "leaderboard", targetData.leaderboard ? local.t("yes") : local.t("no"),
+                                "language", local.getLanguageName(targetData.language, "auto"),
+                                "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off"),
+                                "globalChat", globalChat,
+                                "discordRelay", discordRelay
+                        )),
+                        grid.build()
+                );
+            });
         }
     }
 
-    static final class ChatSettingsFlow extends BaseMenuFlow<ChatSettingsState> {
-        private final PlayerProfileSettingsService profileSettings;
+    static final class ChatSettingsFlow extends BasePlayerSettingsFlow<ChatSettingsState> {
 
         ChatSettingsFlow(PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_CHAT_SETTINGS, ChatSettingsState.class);
-            this.profileSettings = profileSettings;
+            super(ROUTE_CHAT_SETTINGS, ChatSettingsState.class, profileSettings);
 
-            action("toggle-global-chat", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("toggle-global-chat", (ctx, targetData) -> {
                 profileSettings.updateGlobalChatVisible(targetData, !targetData.globalChatVisible);
                 ctx.render();
             });
-            action("toggle-discord-relay", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("toggle-discord-relay", (ctx, targetData) -> {
                 profileSettings.updateDiscordRelayVisible(targetData, !targetData.discordRelayVisible);
                 ctx.render();
             });
             action("translator-language", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_LANGUAGE_SELECTION)
-                    .withParam("targetUuid", ctx.state().targetUuid)
+                    .withParam("targetUuid", targetUuid(ctx))
                     .withParam("isTranslator", "true")));
         }
 
@@ -252,74 +304,48 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<ChatSettingsState> context) {
-            Session session = context.session();
-            ChatSettingsState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
+            return renderGuarded(context, "player-menu-settings-chat-title", (targetData, local) -> {
+                var grid = new MenuGrid();
+                grid.row(MenuButton.of(
+                        local.t(targetData.globalChatVisible ? "player-menu-settings-global-chat-on" : "player-menu-settings-global-chat-off"),
+                        "toggle-global-chat"));
+                grid.row(MenuButton.of(
+                        local.t(targetData.discordRelayVisible ? "player-menu-settings-discord-relay-on" : "player-menu-settings-discord-relay-off"),
+                        "toggle-discord-relay"));
+                grid.row(MenuButton.of(
+                        local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))),
+                        "translator-language"));
+                grid.defaultNavigation(context);
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, "player-menu-settings-chat-title", "error-player-not-found");
-            }
-
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, "player-menu-settings-chat-title", "error-no-access");
-            }
-
-            Localization local = context.locale();
-
-            var grid = new MenuGrid();
-            grid.row(MenuButton.of(
-                    local.t(targetData.globalChatVisible ? "player-menu-settings-global-chat-on" : "player-menu-settings-global-chat-off"),
-                    "toggle-global-chat"));
-            grid.row(MenuButton.of(
-                    local.t(targetData.discordRelayVisible ? "player-menu-settings-discord-relay-on" : "player-menu-settings-discord-relay-off"),
-                    "toggle-discord-relay"));
-            grid.row(MenuButton.of(
-                    local.t("settings-translator-label", args("lang", local.getLanguageName(targetData.translatorLanguage, "off"))),
-                    "translator-language"));
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(
-                    local.t("player-menu-settings-chat-title"),
-                    local.t("player-menu-settings-chat-content", args(
-                            "globalChat", targetData.globalChatVisible ? local.t("yes") : local.t("no"),
-                            "discordRelay", targetData.discordRelayVisible ? local.t("yes") : local.t("no"),
-                            "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
-                    )),
-                    grid.build()
-            );
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<ChatSettingsState> context) {
-            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
+                return MenuScreen.normal(
+                        local.t("player-menu-settings-chat-title"),
+                        local.t("player-menu-settings-chat-content", args(
+                                "globalChat", targetData.globalChatVisible ? local.t("yes") : local.t("no"),
+                                "discordRelay", targetData.discordRelayVisible ? local.t("yes") : local.t("no"),
+                                "translatorLanguage", local.getLanguageName(targetData.translatorLanguage, "off")
+                        )),
+                        grid.build()
+                );
+            });
         }
     }
 
-    static final class LanguageSelectionFlow extends BaseMenuFlow<LanguageSelectionState> {
+    static final class LanguageSelectionFlow extends BasePlayerSettingsFlow<LanguageSelectionState> {
         private final Bundle bundle;
-        private final PlayerProfileSettingsService profileSettings;
 
         LanguageSelectionFlow(Bundle bundle, PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_LANGUAGE_SELECTION, LanguageSelectionState.class);
+            super(ROUTE_LANGUAGE_SELECTION, LanguageSelectionState.class, profileSettings);
             this.bundle = bundle;
-            this.profileSettings = profileSettings;
 
-            action("auto", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("auto", (ctx, targetData) -> {
                 profileSettings.updateLanguage(targetData, "auto");
                 ctx.goBack();
             });
-            action("default", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("default", (ctx, targetData) -> {
                 profileSettings.updateTranslatorLanguage(targetData, "off");
                 ctx.goBack();
             });
-            actionPrefix(ACTION_LANGUAGE_PREFIX, (ctx, languageCode) -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetActionPrefix(ACTION_LANGUAGE_PREFIX, (ctx, targetData, languageCode) -> {
                 if (ctx.state().isTranslator) {
                     profileSettings.updateTranslatorLanguage(targetData, languageCode);
                 } else {
@@ -341,62 +367,38 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<LanguageSelectionState> context) {
-            Session session = context.session();
             LanguageSelectionState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
-
             String titleKey = state.isTranslator ? "player-menu-settings-translator-title" : "player-menu-settings-language-title";
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, titleKey, "error-player-not-found");
-            }
+            return renderGuarded(context, titleKey, (targetData, local) -> {
+                Seq<Locale> locales = bundle.getAvailableLocales();
+                var grid = new MenuGrid();
+                String firstActionId = state.isTranslator ? "default" : "auto";
+                String firstLabelKey = state.isTranslator ? "default" : "auto";
+                grid.row(MenuButton.of(local.t(firstLabelKey), firstActionId));
 
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, titleKey, "error-no-access");
-            }
+                for (Locale loc : locales) {
+                    String code = "uk".equals(loc.getLanguage()) ? "uk_UA" : loc.getLanguage();
+                    String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
+                    grid.row(MenuButton.of(langName, ACTION_LANGUAGE_PREFIX + code));
+                }
 
-            Localization local = context.locale();
-            Seq<Locale> locales = bundle.getAvailableLocales();
-
-            var grid = new MenuGrid();
-            String firstActionId = state.isTranslator ? "default" : "auto";
-            String firstLabelKey = state.isTranslator ? "default" : "auto";
-            grid.row(MenuButton.of(local.t(firstLabelKey), firstActionId));
-
-            for (Locale loc : locales) {
-                String code = "uk".equals(loc.getLanguage()) ? "uk_UA" : loc.getLanguage();
-                String langName = Strings.capitalize(loc.getDisplayLanguage(loc));
-                grid.row(MenuButton.of(langName, ACTION_LANGUAGE_PREFIX + code));
-            }
-
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(local.t(titleKey), "", grid.build());
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<LanguageSelectionState> context) {
-            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
+                grid.defaultNavigation(context);
+                return MenuScreen.normal(local.t(titleKey), "", grid.build());
+            });
         }
     }
 
-    static final class BadgeSymbolColorModeFlow extends BaseMenuFlow<BadgeSymbolColorModeState> {
-        private final PlayerProfileSettingsService profileSettings;
+    static final class BadgeSymbolColorModeFlow extends BasePlayerSettingsFlow<BadgeSymbolColorModeState> {
 
         BadgeSymbolColorModeFlow(PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_BADGE_SYMBOL_COLOR, BadgeSymbolColorModeState.class);
-            this.profileSettings = profileSettings;
+            super(ROUTE_BADGE_SYMBOL_COLOR, BadgeSymbolColorModeState.class, profileSettings);
 
-            action("set-default-mode", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("set-default-mode", (ctx, targetData) -> {
                 profileSettings.updateBadgeSymbolColorMode(targetData, "default", true, true);
                 ctx.render();
             });
-            action("set-player-color-mode", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetAction("set-player-color-mode", (ctx, targetData) -> {
                 profileSettings.updateBadgeSymbolColorMode(targetData, "player-color", true, true);
                 ctx.render();
             });
@@ -413,57 +415,35 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<BadgeSymbolColorModeState> context) {
-            Session session = context.session();
-            BadgeSymbolColorModeState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
+            return renderGuarded(context, "badge-menu-symbol-color-title", (targetData, local) -> {
+                var grid = new MenuGrid();
+                grid.row(MenuButton.of(local.t("badge-menu-symbol-color-default"), "set-default-mode"));
+                grid.row(MenuButton.of(local.t("badge-menu-symbol-color-player-color"), "set-player-color-mode"));
+                grid.defaultNavigation(context);
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, "badge-menu-symbol-color-title", "error-player-not-found");
-            }
-
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, "badge-menu-symbol-color-title", "error-no-access");
-            }
-
-            Localization local = context.locale();
-
-            var grid = new MenuGrid();
-            grid.row(MenuButton.of(local.t("badge-menu-symbol-color-default"), "set-default-mode"));
-            grid.row(MenuButton.of(local.t("badge-menu-symbol-color-player-color"), "set-player-color-mode"));
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(
-                    local.t("badge-menu-symbol-color-title"),
-                    local.t("badge-menu-symbol-color-content", args("mode", badgeSymbolColorModeLabel(local, targetData))),
-                    grid.build()
-            );
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<BadgeSymbolColorModeState> context) {
-            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
+                return MenuScreen.normal(
+                        local.t("badge-menu-symbol-color-title"),
+                        local.t("badge-menu-symbol-color-content", args("mode", badgeSymbolColorModeLabel(local, targetData))),
+                        grid.build()
+                );
+            });
         }
     }
 
-    static final class BadgesFlow extends BaseMenuFlow<BadgesState> {
-        private final PlayerProfileSettingsService profileSettings;
+    static final class BadgesFlow extends BasePlayerSettingsFlow<BadgesState> {
 
         BadgesFlow(PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_BADGES, BadgesState.class);
-            this.profileSettings = profileSettings;
+            super(ROUTE_BADGES, BadgesState.class, profileSettings);
 
-            action("symbol-color-mode", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_BADGE_SYMBOL_COLOR).withParam("targetUuid", ctx.state().targetUuid)));
-            action("view-all", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_ALL_BADGES).withParam("targetUuid", ctx.state().targetUuid)));
-            action("clear", ctx -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            action("symbol-color-mode", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_BADGE_SYMBOL_COLOR).withParam("targetUuid", targetUuid(ctx))));
+            action("view-all", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_ALL_BADGES).withParam("targetUuid", targetUuid(ctx))));
+
+            targetAction("clear", (ctx, targetData) -> {
                 profileSettings.updateActiveBadge(targetData, "", true, true);
                 ctx.render();
             });
-            actionPrefix(ACTION_BADGE_PREFIX, (ctx, badgeId) -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+
+            targetActionPrefix(ACTION_BADGE_PREFIX, (ctx, targetData, badgeId) -> {
                 Badge badge = Badge.byId(badgeId);
                 if (badge != null) {
                     profileSettings.updateActiveBadge(targetData, badge.id(), true, true);
@@ -483,71 +463,50 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<BadgesState> context) {
-            Session session = context.session();
-            BadgesState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
+            return renderGuarded(context, "badge-menu-title", (targetData, local) -> {
+                List<Badge> badges = unlockedSelectableBadges(targetData);
+                String header = local.t("badge-menu-content", args(
+                        "systemBadge", systemBadgeName(local, targetData),
+                        "activeBadge", activeBadgeName(local, targetData),
+                        "symbolColorMode", badgeSymbolColorModeLabel(local, targetData)
+                ));
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, "badge-menu-title", "error-player-not-found");
-            }
+                var grid = new MenuGrid();
+                for (Badge badge : badges) {
+                    grid.row(MenuButton.of(
+                            local.t("badge-menu-row", args(
+                                    "badge", badgeLabel(local, badge),
+                                    "description", local.t(badge.descriptionKey())
+                            )),
+                            ACTION_BADGE_PREFIX + badge.id()));
+                }
 
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, "badge-menu-title", "error-no-access");
-            }
-
-            Localization local = context.locale();
-            List<Badge> badges = unlockedSelectableBadges(targetData);
-            String header = local.t("badge-menu-content", args(
-                    "systemBadge", systemBadgeName(local, targetData),
-                    "activeBadge", activeBadgeName(local, targetData),
-                    "symbolColorMode", badgeSymbolColorModeLabel(local, targetData)
-            ));
-
-            var grid = new MenuGrid();
-            for (Badge badge : badges) {
                 grid.row(MenuButton.of(
-                        local.t("badge-menu-row", args(
-                                "badge", badgeLabel(local, badge),
-                                "description", local.t(badge.descriptionKey())
-                        )),
-                        ACTION_BADGE_PREFIX + badge.id()));
-            }
+                        local.t("badge-menu-symbol-color-button", args("mode", badgeSymbolColorModeLabel(local, targetData))),
+                        "symbol-color-mode"));
 
-            grid.row(MenuButton.of(
-                    local.t("badge-menu-symbol-color-button", args("mode", badgeSymbolColorModeLabel(local, targetData))),
-                    "symbol-color-mode"));
+                grid.row(
+                        MenuButton.of(local.t("badge-menu-view-all"), "view-all"),
+                        MenuButton.of(local.t("badge-clear-button"), "clear")
+                );
 
-            grid.row(
-                    MenuButton.of(local.t("badge-menu-view-all"), "view-all"),
-                    MenuButton.of(local.t("badge-clear-button"), "clear")
-            );
+                grid.defaultNavigation(context);
 
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(
-                    local.t("badge-menu-title"),
-                    badges.isEmpty() ? header + "\n" + local.t("badge-menu-empty") : header,
-                    grid.build()
-            );
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<BadgesState> context) {
-            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
+                return MenuScreen.normal(
+                        local.t("badge-menu-title"),
+                        badges.isEmpty() ? header + "\n" + local.t("badge-menu-empty") : header,
+                        grid.build()
+                );
+            });
         }
     }
 
-    static final class AllBadgesFlow extends BaseMenuFlow<AllBadgesState> {
-        private final PlayerProfileSettingsService profileSettings;
+    static final class AllBadgesFlow extends BasePlayerSettingsFlow<AllBadgesState> {
 
         AllBadgesFlow(PlayerProfileSettingsService profileSettings) {
-            super(ROUTE_ALL_BADGES, AllBadgesState.class);
-            this.profileSettings = profileSettings;
+            super(ROUTE_ALL_BADGES, AllBadgesState.class, profileSettings);
 
-            actionPrefix(ACTION_BADGE_PREFIX, (ctx, badgeId) -> {
-                PlayerData targetData = resolveTargetData(ctx);
-                if (targetData == null) return;
+            targetActionPrefix(ACTION_BADGE_PREFIX, (ctx, targetData, badgeId) -> {
                 Badge badge = Badge.byId(badgeId);
                 if (badge != null) {
                     if (badge.selectable() && !badge.system() && ownsBadge(targetData, badge)) {
@@ -569,98 +528,62 @@ final class PlayerSettingsFlows {
 
         @Override
         public MenuScreen render(MenuRenderContext<AllBadgesState> context) {
-            Session session = context.session();
-            AllBadgesState state = context.state();
-            PlayerData targetData = resolveTargetData(context);
+            return renderGuarded(context, "badge-menu-all-title", (targetData, local) -> {
+                var grid = new MenuGrid();
+                for (Badge badge : Badge.values()) {
+                    grid.row(MenuButton.of(
+                            local.t("badge-menu-all-row", args(
+                                    "badge", badgeLabel(local, badge),
+                                    "state", badgeState(local, targetData, badge),
+                                    "description", local.t(badge.descriptionKey())
+                            )),
+                            ACTION_BADGE_PREFIX + badge.id()));
+                }
 
-            if (targetData == null) {
-                session.locale().send("error-player-not-found");
-                return errorScreen(session, "badge-menu-all-title", "error-player-not-found");
-            }
+                grid.defaultNavigation(context);
 
-            if (!hasAccess(session, targetData)) {
-                session.locale().send("error-no-access");
-                return errorScreen(session, "badge-menu-all-title", "error-no-access");
-            }
-
-            Localization local = context.locale();
-            var grid = new MenuGrid();
-
-            for (Badge badge : Badge.values()) {
-                grid.row(MenuButton.of(
-                        local.t("badge-menu-all-row", args(
-                                "badge", badgeLabel(local, badge),
-                                "state", badgeState(local, targetData, badge),
-                                "description", local.t(badge.descriptionKey())
-                        )),
-                        ACTION_BADGE_PREFIX + badge.id()));
-            }
-
-            grid.defaultNavigation(session, local);
-
-            return MenuScreen.normal(
-                    local.t("badge-menu-all-title"),
-                    local.t("badge-menu-all-content"),
-                    grid.build()
-            );
-        }
-
-        private PlayerData resolveTargetData(MenuRenderContext<AllBadgesState> context) {
-            return resolveTarget(profileSettings, context.session(), context.state().targetUuid);
+                return MenuScreen.normal(
+                        local.t("badge-menu-all-title"),
+                        local.t("badge-menu-all-content"),
+                        grid.build()
+                );
+            });
         }
     }
 
     static final class ChatSettingsState {
         public String targetUuid;
 
-        ChatSettingsState() {
-        }
-
-        ChatSettingsState(String targetUuid) {
-            this.targetUuid = targetUuid;
-        }
+        ChatSettingsState() {}
+        ChatSettingsState(String targetUuid) { this.targetUuid = targetUuid; }
     }
 
     static final class BadgeSymbolColorModeState {
         public String targetUuid;
 
-        BadgeSymbolColorModeState() {
-        }
-
-        BadgeSymbolColorModeState(String targetUuid) {
-            this.targetUuid = targetUuid;
-        }
+        BadgeSymbolColorModeState() {}
+        BadgeSymbolColorModeState(String targetUuid) { this.targetUuid = targetUuid; }
     }
 
     static final class BadgesState {
         public String targetUuid;
 
-        BadgesState() {
-        }
-
-        BadgesState(String targetUuid) {
-            this.targetUuid = targetUuid;
-        }
+        BadgesState() {}
+        BadgesState(String targetUuid) { this.targetUuid = targetUuid; }
     }
 
     static final class AllBadgesState {
         public String targetUuid;
 
-        AllBadgesState() {
-        }
-
-        AllBadgesState(String targetUuid) {
-            this.targetUuid = targetUuid;
-        }
+        AllBadgesState() {}
+        AllBadgesState(String targetUuid) { this.targetUuid = targetUuid; }
     }
 
     static final class LanguageSelectionState {
         public String targetUuid;
         public boolean isTranslator;
 
-        LanguageSelectionState() {
-        }
-
+        LanguageSelectionState() {}
         LanguageSelectionState(String targetUuid, boolean isTranslator) {
             this.targetUuid = targetUuid;
             this.isTranslator = isTranslator;
@@ -669,16 +592,10 @@ final class PlayerSettingsFlows {
 
     static final class SettingsState {
         public String targetUuid;
-
         public PlayerData targetData;
 
-        SettingsState() {
-        }
-
-        SettingsState(String targetUuid) {
-            this.targetUuid = targetUuid;
-        }
-
+        SettingsState() {}
+        SettingsState(String targetUuid) { this.targetUuid = targetUuid; }
         SettingsState(String targetUuid, PlayerData targetData) {
             this.targetUuid = targetUuid;
             this.targetData = targetData;
@@ -690,12 +607,14 @@ final class PlayerSettingsFlows {
         return MenuScreen.normal(
                 local.t(titleKey),
                 local.t(messageKey),
-                new MenuGrid().row(MenuButton.of(local.t("close"), "close")).build()
+                MenuGrid.onlyClose(local)
         );
     }
 
     private static boolean hasAccess(Session session, PlayerData targetData) {
-        return session.data.uuid.equals(targetData.uuid) || session.player.admin;
+        if (session == null || targetData == null) return false;
+        return (session.player != null && session.player.admin)
+                || (session.data != null && Objects.equals(session.data.uuid, targetData.uuid));
     }
 
     static String activeBadgeName(Localization local, PlayerData targetData) {

@@ -22,6 +22,8 @@ import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static com.ospx.flubundle.Bundle.args;
 
@@ -124,26 +126,12 @@ final class EventDraftFlows {
                 eventEditorService.toggleTemporary(ctx.session().getDraft(EventData.class));
                 ctx.render();
             });
-            action("edit-planned-start", ctx -> {
-                Session session = ctx.session();
-                EventData draft = session.getDraft(EventData.class);
-                session.setDraft(DateTimePickerFlows.PickerState.class, DateTimePickerFlows.state(
-                        "event-menu-edit-planned-start",
-                        draft.plannedStartTime,
-                        value -> eventEditorService.updatePlannedStartTime(session.getDraft(EventData.class), value)
-                ));
-                ctx.openRoute(MenuRoute.of(DateTimePickerFlows.ROUTE_PICKER));
-            });
-            action("edit-planned-end", ctx -> {
-                Session session = ctx.session();
-                EventData draft = session.getDraft(EventData.class);
-                session.setDraft(DateTimePickerFlows.PickerState.class, DateTimePickerFlows.state(
-                        "event-menu-edit-planned-end",
-                        draft.plannedEndTime,
-                        value -> eventEditorService.updatePlannedEndTime(session.getDraft(EventData.class), value)
-                ));
-                ctx.openRoute(MenuRoute.of(DateTimePickerFlows.ROUTE_PICKER));
-            });
+            registerTimePickerAction("edit-planned-start", "event-menu-edit-planned-start",
+                    draft -> draft.plannedStartTime,
+                    (session, val) -> eventEditorService.updatePlannedStartTime(session.getDraft(EventData.class), val));
+            registerTimePickerAction("edit-planned-end", "event-menu-edit-planned-end",
+                    draft -> draft.plannedEndTime,
+                    (session, val) -> eventEditorService.updatePlannedEndTime(session.getDraft(EventData.class), val));
             action("save", ctx -> {
                 if (eventEditorService.saveDraft(ctx.session())) {
                     menu.events(menu.getUuid(ctx.session()), 1);
@@ -166,6 +154,23 @@ final class EventDraftFlows {
                 eventEditorService.updateDescription(ctx.renderContext().session().getDraft(EventData.class), ctx.text());
                 ctx.renderContext().render();
             }, ctx -> ctx.render());
+        }
+
+        private void registerTimePickerAction(String actionId, String titleKey,
+                                             Function<EventData, Long> timeGetter,
+                                             BiConsumer<Session, Long> timeSetter) {
+            action(actionId, ctx -> {
+                // Session identity is stable for the player's lifetime, so capturing it here
+                // is safe for the deferred picker callback.
+                Session session = ctx.session();
+                EventData draft = session.getDraft(EventData.class);
+                session.setDraft(DateTimePickerFlows.PickerState.class, DateTimePickerFlows.state(
+                        titleKey,
+                        timeGetter.apply(draft),
+                        value -> timeSetter.accept(session, value)
+                ));
+                ctx.openRoute(MenuRoute.of(DateTimePickerFlows.ROUTE_PICKER));
+            });
         }
 
         @Override
@@ -240,15 +245,18 @@ final class EventDraftFlows {
             this.eventEditorService = eventEditorService;
             this.mapService = mapService;
 
-            action("prev", ctx -> {
+            // "prev" and "previous" are both registered: "prev" keeps the existing
+            // pagination action id, "previous" aligns MapSelectionFlow with the
+            // standard action id used by MapFlows/HelpFlows/MenuGrid.pagination.
+            java.util.function.Consumer<MenuRenderContext<MapSelectionState>> prevHandler = ctx -> {
                 int currentPage = Math.max(1, ctx.state().page);
-                ctx.session().menuService.renderRoute(ctx.session(),
-                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage - 1)));
-            });
+                ctx.renderRoute(MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage - 1)));
+            };
+            action("prev", prevHandler);
+            action("previous", prevHandler);
             action("next", ctx -> {
                 int currentPage = Math.max(1, ctx.state().page);
-                ctx.session().menuService.renderRoute(ctx.session(),
-                        MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage + 1)));
+                ctx.renderRoute(MenuRoute.of(ROUTE_MAP_SELECTION).withParam("page", String.valueOf(currentPage + 1)));
             });
             actionPrefix("map:", (ctx, indexStr) -> {
                 int index;
@@ -291,18 +299,8 @@ final class EventDraftFlows {
                     .flatMap(List::stream)
                     .toList();
 
-            var grid = new MenuGrid();
-
-            List<MenuButton> paginationRow = new ArrayList<>();
-            if (validPage > 1) {
-                paginationRow.add(MenuButton.of(session.locale().t("previous"), "prev"));
-            }
-            if (validPage < pagination.totalPages()) {
-                paginationRow.add(MenuButton.of(session.locale().t("next"), "next"));
-            }
-            if (!paginationRow.isEmpty()) {
-                grid.row(paginationRow.toArray(new MenuButton[0]));
-            }
+            var grid = new MenuGrid()
+                    .pagination(validPage, pagination.totalPages(), "prev", "next", session.locale());
 
             for (int i = 0; i < pagedMaps.size(); i++) {
                 Map map = pagedMaps.get(i);
@@ -330,6 +328,6 @@ final class EventDraftFlows {
     }
 
     private static MenuScreen placeholderScreen() {
-        return MenuScreen.normal("", "", List.of());
+        return MenuScreen.normal("", "", MenuGrid.empty());
     }
 }
