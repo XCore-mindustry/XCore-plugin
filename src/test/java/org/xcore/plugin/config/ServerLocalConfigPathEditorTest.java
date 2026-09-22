@@ -1,5 +1,6 @@
 package org.xcore.plugin.config;
 
+import com.google.gson.JsonSyntaxException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,15 +15,6 @@ class ServerLocalConfigPathEditorTest {
     @DisplayName("update supports TomlXcoreConfig directly")
     void update_supportsTomlXcoreConfigDirectly() {
         TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "server.player_limit", "64");
-
-        assertThat(updated).isNotNull();
-        assertThat(updated.server.playerLimit).isEqualTo(64);
-    }
-
-    @Test
-    @DisplayName("update supports legacy alias paths")
-    void update_supportsLegacyAliasPaths() {
-        TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "playerLimit", "64");
 
         assertThat(updated).isNotNull();
         assertThat(updated.server.playerLimit).isEqualTo(64);
@@ -80,7 +72,7 @@ class ServerLocalConfigPathEditorTest {
         assertThat(updated).isNotNull();
         assertThat(updated.server.autoStart).isTrue();
 
-        updated = editor.update(updated, "autoStart", "false");
+        updated = editor.update(updated, "server.auto_start", "false");
         assertThat(updated).isNotNull();
         assertThat(updated.server.autoStart).isFalse();
 
@@ -88,7 +80,7 @@ class ServerLocalConfigPathEditorTest {
         assertThat(updated).isNotNull();
         assertThat(updated.server.autoStartGamemode).isEqualTo("pvp");
 
-        updated = editor.update(updated, "autoStartGamemode", "attack");
+        updated = editor.update(updated, "server.auto_start_gamemode", "attack");
         assertThat(updated).isNotNull();
         assertThat(updated.server.autoStartGamemode).isEqualTo("attack");
     }
@@ -104,7 +96,7 @@ class ServerLocalConfigPathEditorTest {
     @Test
     @DisplayName("update throws friendly exception for invalid boolean value")
     void update_throwsFriendlyExceptionForInvalidBooleanValue() {
-        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "gameStartedTimer", "maybe"))
+        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "server.game_started_timer", "maybe"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid value 'maybe' for 'game_started_timer' (expected true or false).");
     }
@@ -112,7 +104,7 @@ class ServerLocalConfigPathEditorTest {
     @Test
     @DisplayName("update throws friendly exception for invalid integer value")
     void update_throwsFriendlyExceptionForInvalidIntegerValue() {
-        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "playerLimit", "not-a-number"))
+        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "server.player_limit", "not-a-number"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid value 'not-a-number' for 'player_limit' (expected integer number).")
                 .cause()
@@ -122,7 +114,7 @@ class ServerLocalConfigPathEditorTest {
     @Test
     @DisplayName("update writes Discord channel id as string snowflake")
     void update_writesDiscordChannelIdAsStringSnowflake() {
-        TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "discordChannelId", "1099650307396476958");
+        TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "discord.channel_id", "1099650307396476958");
 
         assertThat(updated).isNotNull();
         assertThat(updated.discord.channelId).isEqualTo("1099650307396476958");
@@ -131,7 +123,7 @@ class ServerLocalConfigPathEditorTest {
     @Test
     @DisplayName("update throws friendly exception for invalid Discord snowflake")
     void update_throwsFriendlyExceptionForInvalidDiscordSnowflake() {
-        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "discordChannelId", "not-a-long"))
+        assertThatThrownBy(() -> editor.update(new TomlXcoreConfig(), "discord.channel_id", "not-a-long"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid value 'not-a-long' for 'channel_id' (expected decimal digits).");
     }
@@ -143,6 +135,6 @@ class ServerLocalConfigPathEditorTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid value '[\"google\",' for 'translation.pipeline' (expected a comma-separated list or JSON string array).")
                 .cause()
-                .isNotNull();
+                .isInstanceOf(JsonSyntaxException.class);
     }
 }

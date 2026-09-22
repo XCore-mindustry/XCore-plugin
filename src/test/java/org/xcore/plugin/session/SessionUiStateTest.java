@@ -71,7 +71,7 @@ class SessionUiStateTest {
         Session session = session();
         session.pushHistory(() -> {});
         session.pushRouteHistory(MenuRoute.of("player.profile"));
-        session.setDraft("draft");
+        session.setDraft(String.class, "draft");
         session.sortStatus.put("key", StatusEnum.Active);
 
         session.clearUiState();

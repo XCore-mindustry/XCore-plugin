@@ -212,7 +212,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Old";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
 
         eventMenu.edit(session.data.uuid);
         menuService.onMenuOption(session, 0);
@@ -237,7 +237,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
 
         eventMenu.edit(session.data.uuid);
         menuService.onMenuOption(session, 1);
@@ -259,7 +259,7 @@ class EventMenuTest {
         draft.name = "Event";
         draft.author = session.data.id;
         draft.plannedEndTime = 999L;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
 
         eventMenu.edit(session.data.uuid);
 
@@ -478,7 +478,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
 
         eventMenu.edit(session.data.uuid);
 
@@ -494,7 +494,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
         when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
 
         eventMenu.edit(session.data.uuid);
@@ -514,7 +514,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
 
         MapData selectedMap = new MapData("Map1", "Map1.msav", "author", "pvp");
         selectedMap.id = new ObjectId();
@@ -539,7 +539,7 @@ class EventMenuTest {
         EventData draft = new EventData();
         draft.name = "Event";
         draft.author = session.data.id;
-        session.setDraft(draft);
+        session.setDraft(EventData.class, draft);
         when(mapService.getAvailableMaps()).thenReturn(Seq.with(createMap("Map1")));
 
         eventMenu.edit(session.data.uuid);

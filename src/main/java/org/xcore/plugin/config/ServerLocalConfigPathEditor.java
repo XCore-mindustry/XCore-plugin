@@ -11,8 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Updates server-local config values using either legacy flat field names or
- * TOML-oriented dotted paths.
+ * Updates server-local config values using TOML-oriented dotted paths.
  */
 public final class ServerLocalConfigPathEditor {
     private static final Map<String, PathBinding> PATH_BINDINGS = createPathBindings();
@@ -83,28 +82,28 @@ public final class ServerLocalConfigPathEditor {
     private static Map<String, PathBinding> createPathBindings() {
         Map<String, PathBinding> bindings = new LinkedHashMap<>();
 
-        bind(bindings, "server.name", ValueType.STRING, "server");
-        bind(bindings, "server.public_host_override", ValueType.STRING, "public_host_override", "publicHostOverride");
-        bind(bindings, "server.player_limit", ValueType.INT, "player_limit", "playerLimit");
-        bind(bindings, "server.game_started_timer", ValueType.BOOLEAN, "game_started_timer", "gameStartedTimer");
-        bind(bindings, "server.auto_start", ValueType.BOOLEAN, "auto_start", "autoStart");
-        bind(bindings, "server.auto_start_gamemode", ValueType.STRING, "auto_start_gamemode", "autoStartGamemode");
+        bind(bindings, "server.name", ValueType.STRING);
+        bind(bindings, "server.public_host_override", ValueType.STRING);
+        bind(bindings, "server.player_limit", ValueType.INT);
+        bind(bindings, "server.game_started_timer", ValueType.BOOLEAN);
+        bind(bindings, "server.auto_start", ValueType.BOOLEAN);
+        bind(bindings, "server.auto_start_gamemode", ValueType.STRING);
 
-        bind(bindings, "paths.global_config_directory", ValueType.STRING, "global_config_directory", "globalConfigDirectory");
-        bind(bindings, "discord.channel_id", ValueType.DISCORD_SNOWFLAKE, "discord_channel_id", "discordChannelId");
+        bind(bindings, "paths.global_config_directory", ValueType.STRING);
+        bind(bindings, "discord.channel_id", ValueType.DISCORD_SNOWFLAKE);
 
-        bind(bindings, "transport.redis.url", ValueType.STRING, "redis_url", "redisUrl");
-        bind(bindings, "transport.redis.group_prefix", ValueType.STRING, "redis_group_prefix", "redisGroupPrefix");
-        bind(bindings, "transport.redis.consumer_name", ValueType.STRING, "redis_consumer_name", "redisConsumerName");
-        bind(bindings, "transport.redis.reclaim.enabled", ValueType.BOOLEAN, "redis_reclaim_enabled", "redisReclaimEnabled");
-        bind(bindings, "transport.redis.reclaim.min_idle_ms", ValueType.LONG, "redis_reclaim_min_idle_ms", "redisReclaimMinIdleMs");
-        bind(bindings, "transport.redis.reclaim.batch", ValueType.INT, "redis_reclaim_batch", "redisReclaimBatch");
-        bind(bindings, "transport.redis.dlq.enabled", ValueType.BOOLEAN, "redis_dlq_enabled", "redisDlqEnabled");
-        bind(bindings, "transport.redis.dlq.max_delivery_attempts", ValueType.INT, "redis_max_delivery_attempts", "redisMaxDeliveryAttempts");
-        bind(bindings, "transport.redis.dlq.prefix", ValueType.STRING, "redis_dlq_prefix", "redisDlqPrefix");
+        bind(bindings, "transport.redis.url", ValueType.STRING);
+        bind(bindings, "transport.redis.group_prefix", ValueType.STRING);
+        bind(bindings, "transport.redis.consumer_name", ValueType.STRING);
+        bind(bindings, "transport.redis.reclaim.enabled", ValueType.BOOLEAN);
+        bind(bindings, "transport.redis.reclaim.min_idle_ms", ValueType.LONG);
+        bind(bindings, "transport.redis.reclaim.batch", ValueType.INT);
+        bind(bindings, "transport.redis.dlq.enabled", ValueType.BOOLEAN);
+        bind(bindings, "transport.redis.dlq.max_delivery_attempts", ValueType.INT);
+        bind(bindings, "transport.redis.dlq.prefix", ValueType.STRING);
 
-        bind(bindings, "event_hub.enabled", ValueType.BOOLEAN, "is_event_hub_map", "isEventHubMap");
-        bind(bindings, "event_hub.map_id", ValueType.STRING, "event_hub_map_id", "eventHubMapID");
+        bind(bindings, "event_hub.enabled", ValueType.BOOLEAN);
+        bind(bindings, "event_hub.map_id", ValueType.STRING);
 
         bind(bindings, "translation.enabled", ValueType.BOOLEAN);
         bind(bindings, "translation.pipeline", ValueType.STRING_LIST);
@@ -124,12 +123,8 @@ public final class ServerLocalConfigPathEditor {
         return bindings;
     }
 
-    private static void bind(Map<String, PathBinding> bindings, String canonicalPath, ValueType type, String... aliases) {
-        PathBinding binding = new PathBinding(canonicalPath, type);
-        bindings.put(canonicalPath, binding);
-        for (String alias : aliases) {
-            bindings.put(alias, binding);
-        }
+    private static void bind(Map<String, PathBinding> bindings, String canonicalPath, ValueType type) {
+        bindings.put(canonicalPath, new PathBinding(canonicalPath, type));
     }
 
     private record PathBinding(String canonicalPath, ValueType valueType) {

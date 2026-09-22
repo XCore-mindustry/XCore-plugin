@@ -191,20 +191,4 @@ public class PlayerData extends ModelData {
             deviceTokenHashes.clear();
         }
     }
-
-    public void addDeviceTokenHash(String hash) {
-        addDeviceToken(hash, System.currentTimeMillis() + 60L * 24 * 3600 * 1000L);
-    }
-
-    public boolean hasDeviceTokenHash(String hash) {
-        return hasDeviceToken(hash);
-    }
-
-    public void removeDeviceTokenHash(String hash) {
-        removeDeviceToken(hash);
-    }
-
-    public void clearDeviceTokenHashes() {
-        clearDeviceTokens();
-    }
 }

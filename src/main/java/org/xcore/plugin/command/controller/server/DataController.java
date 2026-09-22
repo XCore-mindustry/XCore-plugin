@@ -73,9 +73,9 @@ public class DataController implements CloudServerController {
     }
 
     @Command("xconfig <field> <value>")
-    @CommandDescription("Modifies a server-local XCore config value by legacy field name or TOML path. Lists may use comma-separated or JSON-array syntax.")
+    @CommandDescription("Modifies a server-local XCore config value by TOML path. Lists may use comma-separated or JSON-array syntax.")
     public void xconfigEdit(XCoreSender sender,
-                            @Argument(value = "field", description = "Legacy field name or TOML-style dotted path") String field,
+                            @Argument(value = "field", description = "TOML-style dotted path (e.g. 'server.player_limit' or 'transport.redis.url')") String field,
                             @Argument(value = "value", description = "The new value (for example true, 64, redis://..., google,openai, or [\"google\",\"openai\"])") @Greedy String value) {
         if (isDedicatedRuntimeTogglePath(field)) {
             Log.err("Path '@' is managed by dedicated toggle commands. Use disable-cmd/enable-cmd or disable-feature/enable-feature.", field);

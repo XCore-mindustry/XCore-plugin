@@ -237,7 +237,7 @@ public class MaintainController implements CloudServerController {
     }
 
     @Command("gcmd <command>")
-    @CommandDescription("Executes a command on remote servers via socket. Example: gcmd --targets mini-pvp,mini-hexed -- say hello world")
+    @CommandDescription("Executes a command on remote servers via Redis transport. Example: gcmd --targets mini-pvp,mini-hexed -- say hello world")
     public void gcmd(XCoreSender sender,
                      @Argument(value = "command", description = "Command to execute on remote servers") @Greedy String command,
                      @Flag(value = "targets", description = "Comma-separated target server names") String targetsCsv,

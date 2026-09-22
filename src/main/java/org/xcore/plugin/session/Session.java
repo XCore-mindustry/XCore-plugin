@@ -196,13 +196,6 @@ public class Session {
         });
     }
 
-    @Deprecated
-    public void setDraft(Object draft) {
-        if (draft != null) {
-            drafts.put(draft.getClass(), draft);
-        }
-    }
-
     public <T> void setDraft(Class<T> clazz, T draft) {
         if (clazz != null && draft != null) {
             drafts.put(clazz, draft);

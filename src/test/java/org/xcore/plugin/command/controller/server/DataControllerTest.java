@@ -38,7 +38,7 @@ class DataControllerTest {
         var tomlRenderer = new ServerLocalConfigTomlRenderer();
 
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
-        controller.xconfigEdit(sender, "playerLimit", "64");
+        controller.xconfigEdit(sender, "server.player_limit", "64");
 
         var configCaptor = ArgumentCaptor.forClass(TomlXcoreConfig.class);
         verify(tomlStore).write(configCaptor.capture());
@@ -145,7 +145,7 @@ class DataControllerTest {
         var tomlRenderer = new ServerLocalConfigTomlRenderer();
 
         var controller = new DataController(repository, config, gson, find, pathEditor, tomlRenderer, tomlStore);
-        controller.xconfigEdit(sender, "playerLimit", "not-a-number");
+        controller.xconfigEdit(sender, "server.player_limit", "not-a-number");
 
         verify(tomlStore, never()).write(any(TomlXcoreConfig.class));
         assertThat(config.server.playerLimit).isEqualTo(30);

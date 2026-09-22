@@ -43,7 +43,7 @@ class MenuServiceFlowTest {
         MenuScreen screen = MenuScreen.normal("Title", "Content", List.of(List.of(MenuButton.of("Btn", "btn1"))));
         when(flow.render(any(MenuRenderContext.class))).thenReturn(screen);
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
 
         assertThat(session.activeScreen()).isNotNull();
@@ -59,7 +59,7 @@ class MenuServiceFlowTest {
         MenuScreen screen = MenuScreen.followUp("Title", "Content", List.of(List.of(MenuButton.of("Btn", "btn1"))));
         when(flow.render(any(MenuRenderContext.class))).thenReturn(screen);
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
 
         assertThat(session.activeScreen()).isNotNull();
@@ -89,7 +89,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
 
         menuService.onMenuOption(session, 0);
@@ -119,7 +119,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
 
         menuService.onMenuOption(session, -1);
@@ -155,7 +155,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
         ActiveMenuScreen original = session.activeScreen();
 
@@ -188,7 +188,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
 
         menuService.close(session);
@@ -224,7 +224,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.renderFlow(session, flow);
         ActiveMenuScreen original = session.activeScreen();
 
@@ -257,7 +257,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.openPrompt(session, flow, "state", new MenuPrompt("p1", "Title", "Content", 50, "def", false));
 
         menuService.onTextInput(session, "hello");
@@ -288,7 +288,7 @@ class MenuServiceFlowTest {
             }
         };
 
-        session.setDraft("state");
+        session.setDraft(String.class, "state");
         menuService.openPrompt(session, flow, "state", new MenuPrompt("p1", "Title", "Content", 50, "def", false));
 
         menuService.onTextInput(session, null);

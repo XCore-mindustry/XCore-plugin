@@ -162,7 +162,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `enable-feature <feature>` | Re-enable a disabled feature. |
 | `disabled-features` | List disabled features. |
 | `xconfig` | Show current server-local XCore configuration. |
-| `xconfig <field> <value>` | Edit a server-local config value by TOML path or legacy field alias. |
+| `xconfig <field> <value>` | Edit a server-local config value by TOML path. |
 | `edit-data <player> <field> <value>` | Edit a player's database entry. |
 | `dbinfo <player>` | Show raw player database JSON. |
 | `players` | List online players with IDs and IPs. |
@@ -185,11 +185,9 @@ Configuration is split into two TOML files:
 - **Server-local**: `<server>/config/xcore.toml` — created automatically on first start if missing.
 - **Global/shared**: `secrets.toml` — created automatically in the user's home directory if missing, or in the directory configured by `paths.global_config_directory`.
 
-If legacy `xcconfig.json` or `secrets.json` files are present, XCore migrates them to TOML on startup and keeps backup copies automatically.
-
 ### `xcore.toml` (server-local)
 
-`xconfig` reads and writes this file. Prefer TOML-style dotted paths such as `transport.redis.url` or `translation.pipeline`; legacy flat field aliases are still accepted for compatibility. Runtime toggle paths under `runtime.disabled_commands` and `runtime.disabled_features` are intentionally managed by `disable-cmd` / `enable-cmd` and `disable-feature` / `enable-feature` instead of `xconfig`.
+`xconfig` reads and writes this file using TOML-style dotted paths such as `transport.redis.url` or `translation.pipeline`. Runtime toggle paths under `runtime.disabled_commands` and `runtime.disabled_features` are intentionally managed by `disable-cmd` / `enable-cmd` and `disable-feature` / `enable-feature` instead of `xconfig`.
 
 | Field | Default | Description |
 |-------|---------|-------------|
