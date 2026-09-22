@@ -23,17 +23,25 @@ public class MapController implements CloudClientController {
 
     private final MapDataRepository mapDataRepository;
     private final MapService mapService;
-    private final Provider<MapMenu> menu;
+    private final MapMenu menu;
 
     @Inject
     public MapController(
             MapDataRepository mapDataRepository,
             MapService mapService,
-            Provider<MapMenu> menu
+            MapMenu menu
     ) {
         this.mapDataRepository = mapDataRepository;
         this.mapService = mapService;
         this.menu = menu;
+    }
+
+    public MapController(
+            MapDataRepository mapDataRepository,
+            MapService mapService,
+            Provider<MapMenu> menuProvider
+    ) {
+        this(mapDataRepository, mapService, menuProvider != null ? menuProvider.get() : null);
     }
 
     @Command("map|map-stats|map-statistics")
@@ -52,12 +60,12 @@ public class MapController implements CloudClientController {
                 map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name()
         );
 
-        menu.get().map(menu.get().getUuid(sender), data);
+        menu.map(menu.getUuid(sender), data);
     }
 
     @Command("maps|map-ui [page]")
     public void maps(XCoreSender sender, @Argument("page") @Default("1") int page) {
-        menu.get().maps(menu.get().getUuid(sender), page);
+        menu.maps(menu.getUuid(sender), page);
     }
 
     @Command("rtv [map]")

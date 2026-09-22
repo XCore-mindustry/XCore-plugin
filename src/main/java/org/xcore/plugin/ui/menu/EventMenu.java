@@ -25,13 +25,12 @@ public class EventMenu extends Menu {
     private final EventEditorService eventEditorService;
     private final EventViewService eventViewService;
     private final VoteService voteService;
-    private final Provider<MapMenu> mapMenu;
     private final MenuService menuService;
 
     @Inject
     public EventMenu(TomlSecretsConfig secretsConfig, SessionService sessionService,
                      MapService mapService, EventService eventService, EventEditorService eventEditorService,
-                     EventViewService eventViewService, VoteService voteService, Provider<MapMenu> mapMenu,
+                     EventViewService eventViewService, VoteService voteService,
                      MenuService menuService) {
         super(secretsConfig, sessionService);
         this.mapService = mapService;
@@ -39,8 +38,14 @@ public class EventMenu extends Menu {
         this.eventEditorService = eventEditorService;
         this.eventViewService = eventViewService;
         this.voteService = voteService;
-        this.mapMenu = mapMenu;
         this.menuService = menuService;
+    }
+
+    public EventMenu(TomlSecretsConfig secretsConfig, SessionService sessionService,
+                     MapService mapService, EventService eventService, EventEditorService eventEditorService,
+                     EventViewService eventViewService, VoteService voteService, Provider<MapMenu> mapMenu,
+                     MenuService menuService) {
+        this(secretsConfig, sessionService, mapService, eventService, eventEditorService, eventViewService, voteService, menuService);
     }
 
     @PostConstruct

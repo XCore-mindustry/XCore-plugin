@@ -19,7 +19,6 @@ public class InformationController implements CloudClientController {
 
     @Command("main|xcore|m")
     public void mainXCore(XCoreSender sender) {
-        menu.sender(sender);
         menu.main(menu.getUuid(sender));
     }
 
