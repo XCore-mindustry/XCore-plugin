@@ -66,6 +66,8 @@ public class TomlXcoreConfig {
         public String publicHostOverride = "";
         public int playerLimit = 30;
         public boolean gameStartedTimer = true;
+        public boolean autoStart = false;
+        public String autoStartGamemode = "survival";
 
         public void normalize() {
             if (name == null || name.isBlank()) {
@@ -73,6 +75,11 @@ public class TomlXcoreConfig {
             }
             if (publicHostOverride != null && publicHostOverride.isBlank()) {
                 publicHostOverride = null;
+            }
+            if (autoStartGamemode == null || autoStartGamemode.isBlank()) {
+                autoStartGamemode = "survival";
+            } else {
+                autoStartGamemode = autoStartGamemode.trim().toLowerCase();
             }
         }
     }

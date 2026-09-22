@@ -74,6 +74,26 @@ class ServerLocalConfigPathEditorTest {
     }
 
     @Test
+    @DisplayName("update supports auto_start and auto_start_gamemode")
+    void update_supportsAutoStartAndGamemode() {
+        TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "server.auto_start", "true");
+        assertThat(updated).isNotNull();
+        assertThat(updated.server.autoStart).isTrue();
+
+        updated = editor.update(updated, "autoStart", "false");
+        assertThat(updated).isNotNull();
+        assertThat(updated.server.autoStart).isFalse();
+
+        updated = editor.update(updated, "server.auto_start_gamemode", "pvp");
+        assertThat(updated).isNotNull();
+        assertThat(updated.server.autoStartGamemode).isEqualTo("pvp");
+
+        updated = editor.update(updated, "autoStartGamemode", "attack");
+        assertThat(updated).isNotNull();
+        assertThat(updated.server.autoStartGamemode).isEqualTo("attack");
+    }
+
+    @Test
     @DisplayName("update returns null for unsupported path on TomlXcoreConfig")
     void update_returnsNullForUnsupportedPathOnTomlXcoreConfig() {
         TomlXcoreConfig updated = editor.update(new TomlXcoreConfig(), "missing.path", "value");

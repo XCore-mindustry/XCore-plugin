@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.migration.MigrationService;
 import org.xcore.plugin.metrics.MainThreadMetricSampler;
 import org.xcore.plugin.metrics.MetricsSnapshotPublisher;
+import org.xcore.plugin.service.AutoHostService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
@@ -25,6 +26,7 @@ class PluginStartupCoordinatorTest {
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
+        AutoHostService autoHostService = mock(AutoHostService.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -33,17 +35,19 @@ class PluginStartupCoordinatorTest {
                 mapSelectorInstaller,
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
-                metricsSnapshotPublisher
+                metricsSnapshotPublisher,
+                autoHostService
         );
 
         boolean started = coordinator.start();
 
         assertThat(started).isTrue();
-        var startupOrder = inOrder(migrationService, mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar);
+        var startupOrder = inOrder(migrationService, mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, autoHostService);
         startupOrder.verify(migrationService).run();
         startupOrder.verify(mapDecayScheduler).initialize();
         startupOrder.verify(mapSelectorInstaller).install();
         startupOrder.verify(runtimeHookRegistrar).register();
+        startupOrder.verify(autoHostService).initialize();
     }
 
     @Test
@@ -55,6 +59,7 @@ class PluginStartupCoordinatorTest {
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
+        AutoHostService autoHostService = mock(AutoHostService.class);
         when(migrationService.run()).thenReturn(false);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -63,13 +68,14 @@ class PluginStartupCoordinatorTest {
                 mapSelectorInstaller,
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
-                metricsSnapshotPublisher
+                metricsSnapshotPublisher,
+                autoHostService
         );
 
         boolean started = coordinator.start();
 
         assertThat(started).isFalse();
-        verifyNoInteractions(mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar);
+        verifyNoInteractions(mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, autoHostService);
     }
 
     @Test
@@ -81,6 +87,7 @@ class PluginStartupCoordinatorTest {
         RuntimeHookRegistrar runtimeHookRegistrar = mock(RuntimeHookRegistrar.class);
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
+        AutoHostService autoHostService = mock(AutoHostService.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -89,7 +96,8 @@ class PluginStartupCoordinatorTest {
                 mapSelectorInstaller,
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
-                metricsSnapshotPublisher
+                metricsSnapshotPublisher,
+                autoHostService
         );
 
         boolean started = coordinator.start();
@@ -99,5 +107,6 @@ class PluginStartupCoordinatorTest {
         verify(mapDecayScheduler, times(1)).initialize();
         verify(mapSelectorInstaller, times(1)).install();
         verify(runtimeHookRegistrar, times(1)).register();
+        verify(autoHostService, times(1)).initialize();
     }
 }

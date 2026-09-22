@@ -107,6 +107,28 @@ class ConfigTomlLoaderTest {
         assertThat(result.file.exists()).isTrue();
         assertThat(result.config.server.name).isEqualTo("server");
         assertThat(result.config.server.playerLimit).isEqualTo(30);
+        assertThat(result.config.server.autoStart).isFalse();
+        assertThat(result.config.server.autoStartGamemode).isEqualTo("survival");
+    }
+
+    @Test
+    @DisplayName("loadXcoreConfig reads auto_start and auto_start_gamemode from TOML")
+    void loadXcoreConfig_readsAutoStartFromToml() throws IOException {
+        Path tomlPath = tempDir.resolve("xcore.toml");
+        Files.writeString(tomlPath, """
+                version = 1
+
+                [server]
+                auto_start = true
+                auto_start_gamemode = "pvp"
+                """);
+
+        Fi dataDir = new Fi(tempDir.toFile());
+        ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(dataDir, gson);
+
+        assertThat(result.source).isEqualTo(ConfigTomlLoader.Source.TOML);
+        assertThat(result.config.server.autoStart).isTrue();
+        assertThat(result.config.server.autoStartGamemode).isEqualTo("pvp");
     }
 
     @Test

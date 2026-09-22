@@ -26,6 +26,8 @@ public class Config {
     public int playerLimit = 30;
     public String globalConfigDirectory = null;
     public boolean gameStartedTimer = true;
+    public boolean autoStart = false;
+    public String autoStartGamemode = "survival";
     public Set<String> disabledCommands = new HashSet<>();
     public Set<String> disabledFeatures = new HashSet<>();
 
@@ -76,6 +78,12 @@ public class Config {
 
         if (translation == null) {
             translation = new TranslationConfig();
+        }
+
+        if (autoStartGamemode == null || autoStartGamemode.isBlank()) {
+            autoStartGamemode = "survival";
+        } else {
+            autoStartGamemode = autoStartGamemode.trim().toLowerCase();
         }
 
         translation.normalize();

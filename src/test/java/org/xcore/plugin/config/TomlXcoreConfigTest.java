@@ -17,6 +17,8 @@ class TomlXcoreConfigTest {
         assertThat(toml.server.publicHostOverride).isEqualTo("");
         assertThat(toml.server.playerLimit).isEqualTo(30);
         assertThat(toml.server.gameStartedTimer).isTrue();
+        assertThat(toml.server.autoStart).isFalse();
+        assertThat(toml.server.autoStartGamemode).isEqualTo("survival");
 
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("");
 
@@ -102,6 +104,23 @@ class TomlXcoreConfigTest {
 
         assertThat(toml.server.publicHostOverride).isNull();
         assertThat(toml.paths.globalConfigDirectory).isNull();
+    }
+
+    @Test
+    @DisplayName("normalize repairs autoStartGamemode when null or blank and normalizes case")
+    void normalize_repairsAutoStartGamemode() {
+        TomlXcoreConfig toml = new TomlXcoreConfig();
+        toml.server.autoStartGamemode = null;
+        toml.normalize();
+        assertThat(toml.server.autoStartGamemode).isEqualTo("survival");
+
+        toml.server.autoStartGamemode = "   ";
+        toml.normalize();
+        assertThat(toml.server.autoStartGamemode).isEqualTo("survival");
+
+        toml.server.autoStartGamemode = "  PVP  ";
+        toml.normalize();
+        assertThat(toml.server.autoStartGamemode).isEqualTo("pvp");
     }
 
     @Test

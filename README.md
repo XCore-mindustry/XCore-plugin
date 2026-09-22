@@ -199,6 +199,8 @@ If legacy `xcconfig.json` or `secrets.json` files are present, XCore migrates th
 | `server.player_limit` | `30` | Base player slot limit. Admin players do not count toward this limit. |
 | `server.console_enabled` | `true` | Whether the server console is enabled. |
 | `server.game_started_timer` | `true` | Whether the game-start timer is active. |
+| `server.auto_start` | `false` | Automatically host a random map when the server finishes loading. |
+| `server.auto_start_gamemode` | `survival` | Gamemode for auto-start (`survival`, `attack`, `pvp`, `sandbox`). |
 | `paths.global_config_directory` | `""` | Override directory for `secrets.toml`. Leave blank to use the user's home directory. |
 | `discord.channel_id` | `0` | Discord channel ID for server relay output. |
 | `transport.redis.url` | `redis://127.0.0.1:6379` | Redis connection URI for the transport backend. |

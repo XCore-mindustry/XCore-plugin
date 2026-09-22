@@ -56,6 +56,8 @@ class ConfigTomlMapperTest {
         assertThat(config.publicHostOverride).isNull();
         assertThat(config.playerLimit).isEqualTo(30);
         assertThat(config.gameStartedTimer).isTrue();
+        assertThat(config.autoStart).isFalse();
+        assertThat(config.autoStartGamemode).isEqualTo("survival");
 
         assertThat(config.globalConfigDirectory).isNull();
 
@@ -101,6 +103,8 @@ class ConfigTomlMapperTest {
         toml.server.publicHostOverride = "192.168.1.1";
         toml.server.playerLimit = 50;
         toml.server.gameStartedTimer = false;
+        toml.server.autoStart = true;
+        toml.server.autoStartGamemode = "pvp";
 
         toml.paths.globalConfigDirectory = "/opt/xcore/global";
 
@@ -143,6 +147,8 @@ class ConfigTomlMapperTest {
         assertThat(config.publicHostOverride).isEqualTo("192.168.1.1");
         assertThat(config.playerLimit).isEqualTo(50);
         assertThat(config.gameStartedTimer).isFalse();
+        assertThat(config.autoStart).isTrue();
+        assertThat(config.autoStartGamemode).isEqualTo("pvp");
 
         assertThat(config.globalConfigDirectory).isEqualTo("/opt/xcore/global");
 
@@ -408,6 +414,8 @@ class ConfigTomlMapperTest {
         config.publicHostOverride = null;
         config.playerLimit = 64;
         config.gameStartedTimer = false;
+        config.autoStart = true;
+        config.autoStartGamemode = "attack";
         config.globalConfigDirectory = "/srv/xcore/global";
         config.discordChannelId = 55L;
         config.redisUrl = "redis://prod:6379";
@@ -444,6 +452,8 @@ class ConfigTomlMapperTest {
         assertThat(toml.server.publicHostOverride).isNull();
         assertThat(toml.server.playerLimit).isEqualTo(64);
         assertThat(toml.server.gameStartedTimer).isFalse();
+        assertThat(toml.server.autoStart).isTrue();
+        assertThat(toml.server.autoStartGamemode).isEqualTo("attack");
         assertThat(toml.paths.globalConfigDirectory).isEqualTo("/srv/xcore/global");
         assertThat(toml.discord.channelId).isEqualTo("55");
         assertThat(toml.transport.redis.url).isEqualTo("redis://prod:6379");

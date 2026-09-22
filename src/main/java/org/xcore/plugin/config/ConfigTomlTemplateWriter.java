@@ -54,6 +54,10 @@ public final class ConfigTomlTemplateWriter {
         public_host_override = ""
         player_limit = 30
         game_started_timer = true
+        # Automatically host a random map when the server finishes loading.
+        auto_start = false
+        # Gamemode for auto-start: survival, attack, pvp, sandbox
+        auto_start_gamemode = "survival"
 
         [paths]
         # Directory for shared secrets.toml. Blank defaults to user home.

@@ -87,6 +87,8 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "server.public_host_override", ValueType.STRING, "public_host_override", "publicHostOverride");
         bind(bindings, "server.player_limit", ValueType.INT, "player_limit", "playerLimit");
         bind(bindings, "server.game_started_timer", ValueType.BOOLEAN, "game_started_timer", "gameStartedTimer");
+        bind(bindings, "server.auto_start", ValueType.BOOLEAN, "auto_start", "autoStart");
+        bind(bindings, "server.auto_start_gamemode", ValueType.STRING, "auto_start_gamemode", "autoStartGamemode");
 
         bind(bindings, "paths.global_config_directory", ValueType.STRING, "global_config_directory", "globalConfigDirectory");
         bind(bindings, "discord.channel_id", ValueType.DISCORD_SNOWFLAKE, "discord_channel_id", "discordChannelId");
