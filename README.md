@@ -85,7 +85,7 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
    ./gradlew shadowJar
    ```
 4. Copy the resulting `.jar` file from `build/libs/` to your Mindustry server's `config/mods` folder.
-5. Configure your MongoDB and Redis connections in `<server>/config/xcore.toml` (server-local) and `secrets.toml` (global/shared, in your home directory by default). If legacy `xcconfig.json` or `secrets.json` files already exist, XCore migrates them to TOML automatically on startup and keeps backup copies.
+5. Configure your MongoDB and Redis connections in `<server>/config/xcore.toml` (server-local) and `secrets.toml` (global/shared, in your home directory by default). Default templates are automatically generated on first startup.
 
 ## Commands
 

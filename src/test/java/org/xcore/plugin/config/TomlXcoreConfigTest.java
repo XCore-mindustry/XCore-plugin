@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TomlXcoreConfigTest {
 
     @Test
-    @DisplayName("fresh instance has defaults matching legacy Config")
-    void freshInstance_hasDefaultsMatchingLegacyConfig() {
+    @DisplayName("fresh instance has expected default values")
+    void freshInstance_hasExpectedDefaults() {
         TomlXcoreConfig toml = new TomlXcoreConfig();
 
         assertThat(toml.version).isEqualTo(1);

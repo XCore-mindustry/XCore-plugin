@@ -91,7 +91,7 @@ public class DataController implements CloudServerController {
         }
 
         if (updated == null) {
-            Log.err("Field '@' not found in Config. Use legacy aliases or TOML-style dotted paths such as 'server.player_limit' or 'transport.redis.url'.", field);
+            Log.err("Field '@' not found in config. Use TOML-style dotted paths such as 'server.player_limit' or 'transport.redis.url'.", field);
             return;
         }
 

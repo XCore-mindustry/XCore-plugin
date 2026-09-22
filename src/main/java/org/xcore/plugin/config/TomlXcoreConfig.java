@@ -7,14 +7,13 @@ import java.util.Set;
 
 /**
  * Pure-data DTO for the server-local {@code xcore.toml} configuration.
- * Mirrors the TOML section structure and preserves default values that match
- * the legacy {@link Config} runtime model for the first adapter slice.
+ * Mirrors the TOML section structure with sane defaults.
  *
  * <p>Normalization repairs null nested objects and collections, converts blank
- * optional strings back to {@code null} where the legacy API expects it, and
- * enforces positive numeric defaults.</p>
+ * optional strings to defaults or null where appropriate, and enforces positive
+ * numeric defaults.</p>
  */
-public class TomlXcoreConfig {
+public class TomlXcoreConfig implements SelfNormalizing {
 
     public int version = 1;
     public ServerConfig server = new ServerConfig();

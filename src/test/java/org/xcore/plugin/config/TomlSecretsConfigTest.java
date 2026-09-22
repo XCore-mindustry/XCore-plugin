@@ -1,14 +1,22 @@
 package org.xcore.plugin.config;
 
+import arc.files.Fi;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TomlSecretsConfigTest {
+
+    @TempDir
+    Path tempDir;
 
     @Test
     @DisplayName("fresh instance has defaults matching legacy GlobalConfig")
@@ -132,8 +140,8 @@ class TomlSecretsConfigTest {
     }
 
     @Test
-    @DisplayName("normalize preserves blank optional strings; blank-to-null conversion happens in mapper")
-    void normalize_preservesBlankOptionalStrings_forLaterMapperConversion() {
+    @DisplayName("normalize preserves blank optional strings")
+    void normalize_preservesBlankOptionalStrings() {
         TomlSecretsConfig toml = new TomlSecretsConfig();
         TomlSecretsConfig.TranslationSection.ProviderConfig provider = toml.translation.providers.get("google");
         provider.apiKey = "";
@@ -147,5 +155,30 @@ class TomlSecretsConfigTest {
         assertThat(provider.apiMode).isEqualTo("   ");
         assertThat(provider.organization).isEqualTo("\t");
         assertThat(provider.project).isEqualTo("");
+    }
+
+    @Test
+    @DisplayName("validate throws clear error when required fields are missing")
+    void validate_throwsClearErrorWhenRequiredFieldsAreMissing() {
+        TomlSecretsConfig toml = new TomlSecretsConfig();
+        Fi secretsConfigFile = new Fi(tempDir.resolve("secrets.toml").toFile());
+
+        assertThatThrownBy(() -> toml.validate(secretsConfigFile))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("secrets.toml")
+                .hasMessageContaining("database.mongo_connection_string")
+                .hasMessageContaining("database.name");
+    }
+
+    @Test
+    @DisplayName("validate accepts valid configuration")
+    void validate_acceptsValidConfiguration() {
+        TomlSecretsConfig toml = new TomlSecretsConfig();
+        toml.database.mongoConnectionString = "mongodb://localhost:27017";
+        toml.database.name = "xcore";
+        Fi secretsConfigFile = new Fi(tempDir.resolve("secrets.toml").toFile());
+
+        assertThatCode(() -> toml.validate(secretsConfigFile))
+                .doesNotThrowAnyException();
     }
 }

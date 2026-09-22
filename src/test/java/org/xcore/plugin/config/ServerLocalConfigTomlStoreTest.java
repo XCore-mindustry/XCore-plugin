@@ -47,8 +47,7 @@ class ServerLocalConfigTomlStoreTest {
                 .doesNotContain("runtime.disabled_commands =");
 
         ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(
-                new Fi(tempDir.toFile()),
-                new SerializationFactory().prettyGson()
+                new Fi(tempDir.toFile())
         );
         assertThat(result.config.server.name).isEqualTo("test-server");
         assertThat(result.config.server.playerLimit).isEqualTo(42);
@@ -72,8 +71,7 @@ class ServerLocalConfigTomlStoreTest {
         store.write(config);
 
         ConfigTomlLoader.LoadResult<TomlXcoreConfig> result = ConfigTomlLoader.loadXcoreConfig(
-                new Fi(tempDir.toFile()),
-                new SerializationFactory().prettyGson()
+                new Fi(tempDir.toFile())
         );
         assertThat(result.config.server.name).isEqualTo("server");
         assertThat(result.config.runtime.disabledCommands).isNotNull().isEmpty();

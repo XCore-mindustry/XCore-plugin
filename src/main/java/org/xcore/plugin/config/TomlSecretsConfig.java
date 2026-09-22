@@ -1,12 +1,16 @@
 package org.xcore.plugin.config;
 
+import arc.files.Fi;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.xcore.plugin.common.PLog;
+
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class TomlSecretsConfig {
+public class TomlSecretsConfig implements SelfNormalizing {
     public int version = 1;
 
     public DatabaseConfig database = new DatabaseConfig();
@@ -48,6 +52,38 @@ public class TomlSecretsConfig {
             translation = new TranslationSection();
         }
         translation.normalize();
+    }
+
+    public void validate(Fi secretsFile) {
+        normalize();
+
+        var errors = new ArrayList<String>();
+
+        if (database.mongoConnectionString == null || database.mongoConnectionString.isBlank()) {
+            errors.add("database.mongo_connection_string");
+        }
+        if (database.name == null || database.name.isBlank()) {
+            errors.add("database.name");
+        }
+
+        if (!errors.isEmpty()) {
+            String fileName = secretsFile != null ? secretsFile.name() : "secrets.toml";
+            PLog.err("===========================================");
+            PLog.err("  INVALID CONFIGURATION: @", fileName);
+            PLog.err("  Missing or invalid required fields:");
+            errors.forEach(key -> PLog.err("    - @", key));
+            PLog.err("");
+            PLog.err("  Example secrets.toml:");
+            PLog.err("  [database]");
+            PLog.err("  mongo_connection_string = \"mongodb://localhost:27017\"");
+            PLog.err("  name = \"xcore\"");
+            PLog.err("");
+            PLog.err("  Fix @ and restart.", fileName);
+            PLog.err("===========================================");
+            throw new IllegalStateException(
+                    "Missing required config in " + fileName + ": " + String.join(", ", errors)
+            );
+        }
     }
 
     public static class DatabaseConfig {
