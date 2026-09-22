@@ -16,6 +16,7 @@ import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.BanCommand;
 import org.xcore.plugin.service.moderation.ModerationActor;
+import org.xcore.plugin.service.moderation.ModerationResult;
 import org.xcore.plugin.service.moderation.ModerationService;
 import org.xcore.plugin.service.moderation.MuteCommand;
 import org.xcore.plugin.service.moderation.UnbanCommand;
@@ -49,12 +50,12 @@ public class ModerationController implements CloudClientController {
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
                     @Argument("reason") @Greedy String reason) {
 
-        Session session = resolveSession(sender, sessionService);
-        if (session == null || session.data == null) return;
+        Session session = resolveActiveSession(sender);
+        if (session == null) return;
         Localization local = session.locale();
 
         var result = moderationService.ban(BanCommand.byId(id, ModerationActor.of(session), period)
-                .reason(reason == null || reason.isBlank() ? null : reason)
+                .reason(reason)
                 .kickOnline(true)
                 .build());
 
@@ -67,8 +68,8 @@ public class ModerationController implements CloudClientController {
 
     @Command("unban <id>")
     public void unban(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender, sessionService);
-        if (session == null || session.data == null) return;
+        Session session = resolveActiveSession(sender);
+        if (session == null) return;
         Localization local = session.locale();
 
         var result = moderationService.unban(UnbanCommand.byId(id, ModerationActor.of(session)));
@@ -90,12 +91,12 @@ public class ModerationController implements CloudClientController {
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument("reason") @Greedy String reason) {
 
-        Session session = resolveSession(sender, sessionService);
-        if (session == null || session.data == null) return;
+        Session session = resolveActiveSession(sender);
+        if (session == null) return;
         Localization local = session.locale();
 
         var result = moderationService.mute(MuteCommand.byId(id, ModerationActor.of(session), period)
-                .reason(reason == null || reason.isBlank() ? null : reason)
+                .reason(reason)
                 .build());
 
         if (result.isSuccess()) {
@@ -116,8 +117,8 @@ public class ModerationController implements CloudClientController {
 
     @Command("unmute <id>")
     public void unmute(XCoreSender sender, @Argument("id") int id) {
-        Session session = resolveSession(sender, sessionService);
-        if (session == null || session.data == null) return;
+        Session session = resolveActiveSession(sender);
+        if (session == null) return;
         Localization local = session.locale();
 
         var result = moderationService.unmute(UnmuteCommand.byId(id, ModerationActor.of(session)));
@@ -130,9 +131,14 @@ public class ModerationController implements CloudClientController {
         }
     }
 
-    private static void sendModerationFailure(Localization local, org.xcore.plugin.service.moderation.ModerationResult<?> result) {
+    private Session resolveActiveSession(XCoreSender sender) {
+        Session session = resolveSession(sender, sessionService);
+        return (session != null && session.data != null) ? session : null;
+    }
+
+    private static void sendModerationFailure(Localization local, ModerationResult<?> result) {
         var message = result.getMessage().orElse(null);
-        if ("Player not found".equals(message)) {
+        if (ModerationService.PLAYER_NOT_FOUND_MESSAGE.equals(message)) {
             local.send("error-player-not-found", args());
             return;
         }

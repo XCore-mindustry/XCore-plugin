@@ -49,11 +49,8 @@ public class ServerModerationController implements CloudServerController {
         String name = "Unknown";
 
         if (arg.startsWith("#")) {
-            var target = moderationService.findPlayerData(arg);
-            if (target == null) {
-                Log.err("Player not found");
-                return;
-            }
+            var target = requirePlayerData(arg);
+            if (target == null) return;
             uuid = target.uuid;
             name = target.nickname;
             var info = netServer.admins.getInfoOptional(uuid);
@@ -69,8 +66,7 @@ public class ServerModerationController implements CloudServerController {
             }
         }
 
-        String effectiveReason = reason == null || reason.isBlank() ? null : reason;
-        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, effectiveReason, "console", null);
+        var result = moderationService.tempBanByUuidOrIp(uuid, ip, name, period, reason, "console", null);
 
         if (result.isSuccess()) {
             var ban = result.getData().get();
@@ -114,7 +110,7 @@ public class ServerModerationController implements CloudServerController {
             bans.select(b -> deepEquals(b.name, q) || equalsNonEmpty(b.ip, q) || equalsNonEmpty(b.uuid, q));
         }
         bans.each(b -> Log.info("Ban: @ (@) until @. Reason: @", b.name, b.uuid,
-                b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime(), b.reason));
+                b.expireDate != null ? b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime() : "Permanent", b.reason));
     }
 
     @Command("mute <target> <period> [reason]")
@@ -127,8 +123,7 @@ public class ServerModerationController implements CloudServerController {
         PlayerData data = requirePlayerData(target);
         if (data == null) return;
 
-        String effectiveReason = reason == null || reason.isBlank() ? null : reason;
-        var result = moderationService.muteById(data.pid, "console", null, effectiveReason, period);
+        var result = moderationService.muteById(data.pid, "console", null, reason, period);
 
         if (result.isSuccess()) {
             Log.info("Muted @ for @ minutes.", data.nickname, period.toMinutes());

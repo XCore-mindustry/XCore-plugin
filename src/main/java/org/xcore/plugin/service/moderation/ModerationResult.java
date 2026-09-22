@@ -1,27 +1,28 @@
 package org.xcore.plugin.service.moderation;
 
-import lombok.Builder;
-import lombok.Getter;
-
 import java.util.Optional;
 
 /**
  * Result of a moderation operation.
  * @param <T> The type of data returned (PlayerData, BanData, MuteData, etc.)
  */
-@Getter
-@Builder
 public class ModerationResult<T> {
     private final boolean success;
     private final String message;
     private final T data;
 
+    public ModerationResult(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
     public static <T> ModerationResult<T> success(String message, T data) {
-        return ModerationResult.<T>builder()
-                .success(true)
-                .message(message)
-                .data(data)
-                .build();
+        return new ModerationResult<>(true, message, data);
     }
 
     public static <T> ModerationResult<T> success(T data) {
@@ -29,11 +30,7 @@ public class ModerationResult<T> {
     }
 
     public static <T> ModerationResult<T> failure(String message) {
-        return ModerationResult.<T>builder()
-                .success(false)
-                .message(message)
-                .data(null)
-                .build();
+        return new ModerationResult<>(false, message, null);
     }
 
     public Optional<T> getData() {
