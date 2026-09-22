@@ -10,7 +10,6 @@ import mindustry.gen.Player;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
-import org.xcore.plugin.database.repository.AdminDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.NetworkService;
@@ -26,13 +25,11 @@ import org.xcore.plugin.vote.VoteService;
 import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
-import static mindustry.Vars.netServer;
 
 @Singleton
 public class ConnectionHandler {
 
     private final SessionService sessionService;
-    private final AdminDataRepository adminDataRepository;
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final TomlSecretsConfig secretsConfig;
@@ -45,7 +42,6 @@ public class ConnectionHandler {
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
-                             AdminDataRepository adminDataRepository,
                              NetworkService network,
                              TomlXcoreConfig config,
                              TomlSecretsConfig secretsConfig,
@@ -56,7 +52,6 @@ public class ConnectionHandler {
                              ObserverService observerService,
                              MapVoteObserverService mapVoteObserverService) {
         this.sessionService = sessionService;
-        this.adminDataRepository = adminDataRepository;
         this.network = network;
         this.config = config;
         this.secretsConfig = secretsConfig;
@@ -69,6 +64,7 @@ public class ConnectionHandler {
     }
 
     public void onPlayerJoin(PlayerJoin event) {
+        if (event == null || event.player == null) return;
         var player = event.player;
 
         Session session = sessionService.registerLogin(player);
@@ -83,36 +79,49 @@ public class ConnectionHandler {
         PlayerData data = session.data;
         Localization locale = session.locale();
 
-        locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
+        if (locale != null) {
+            locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
+        }
 
-        data.nickname = player.coloredName();
+        String currentIp = player.ip();
+        String currentName = player.coloredName();
+        boolean ipChanged = !Objects.equals(data.ip, currentIp);
+        boolean nameChanged = !Objects.equals(data.nickname, currentName);
+
+        data.nickname = currentName;
         data.player = player;
 
-        Call.clientPacketReliable(player.con, "adm_mod_begin", "");
+        if (player.con != null) {
+            Call.clientPacketReliable(player.con, "adm_mod_begin", "");
+        }
 
-        if (data.exists && !java.util.Objects.equals(data.ip, player.ip())) {
-            if (player.admin) {
+        if (data.exists && (ipChanged || nameChanged)) {
+            if (ipChanged && player.admin) {
                 discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
-                locale.send("error-ip-changed", args());
+                if (locale != null) {
+                    locale.send("error-ip-changed", args());
+                }
             }
 
-            sessionService.updateConnectionData(session, player.ip(), player.coloredName());
+            sessionService.updateConnectionData(session, currentIp, currentName);
         }
 
         if (!data.exists) {
-            data.ip = player.ip();
+            data.ip = currentIp;
             data.exists = true;
             sessionService.persistPlayer(session);
         }
 
         playerDisplayService.refresh(session);
 
-        if (player.getInfo().timesJoined < 5) {
-            Call.openURI(player.con, secretsConfig.externalLinks.discordUrl);
+        if (player.con != null && player.getInfo() != null && player.getInfo().timesJoined < 5) {
+            if (secretsConfig.externalLinks != null && secretsConfig.externalLinks.discordUrl != null) {
+                Call.openURI(player.con, secretsConfig.externalLinks.discordUrl);
+            }
         }
 
         long unreadMessages = privateMessageService.countUnread(data.uuid);
-        if (unreadMessages > 0) {
+        if (unreadMessages > 0 && locale != null) {
             locale.send("private-message-join-notification", args("count", unreadMessages));
         }
 
@@ -128,13 +137,14 @@ public class ConnectionHandler {
     }
 
     public void onPlayerLeave(PlayerLeave event) {
+        if (event == null || event.player == null) return;
         Player player = event.player;
 
         mapVoteObserverService.unregisterViewing(player.uuid());
-        Session session = sessionService.registerLogout(event.player);
+        Session session = sessionService.registerLogout(player);
         PlayerData data = session != null ? session.data : null;
 
-        voteService.handleLeave(event.player);
+        voteService.handleLeave(player);
 
         if (data != null) {
             Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());

@@ -41,9 +41,16 @@ public class PluginEventService {
         Events.on(EventType.ConnectPacketEvent.class, event -> {
             connectionAccessHandler.allow(event.connection, event.packet);
         });
-        
-        Events.on(PlayerJoin.class, connectionHandler::onPlayerJoin);
-        Events.on(PlayerLeave.class, connectionHandler::onPlayerLeave);
+
+        Events.on(PlayerJoin.class, event -> {
+            connectionHandler.onPlayerJoin(event);
+            gameDataHandler.onPlayerJoin(event);
+        });
+
+        Events.on(PlayerLeave.class, event -> {
+            connectionHandler.onPlayerLeave(event);
+            gameDataHandler.onPlayerLeave(event);
+        });
 
         Events.on(PlayEvent.class, gameLifecycleHandler::onPlayEvent);
         Events.on(GameOverEvent.class, gameLifecycleHandler::onGameOver);
@@ -51,11 +58,10 @@ public class PluginEventService {
 
         Events.on(BlockBuildBeginEvent.class, gameDataHandler::onBlockBuildBegin);
         Events.on(BlockBuildEndEvent.class, gameDataHandler::onBlockBuild);
-        Events.on(BlockDestroyEvent.class, gameDataHandler::onBlockDestroy);
         Events.on(PickupEvent.class, gameDataHandler::onPickup);
-        Events.on(PlayerJoin.class, gameDataHandler::onPlayerJoin);
-        Events.on(PlayerLeave.class, gameDataHandler::onPlayerLeave);
 
-        ServerControl.instance.gameOverListener = mapVoteHandler.getGameOverListener();
+        if (ServerControl.instance != null) {
+            ServerControl.instance.gameOverListener = mapVoteHandler.getGameOverListener();
+        }
     }
 }

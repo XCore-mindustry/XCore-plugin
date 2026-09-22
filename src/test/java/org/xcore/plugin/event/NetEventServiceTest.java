@@ -122,4 +122,28 @@ class NetEventServiceTest {
         assertThat(service.getBlockedIPs()).isEqualTo(1);
         assertThat(service.getBlockedIPsPerMinute()).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("connect filter handles null address safely")
+    void connectFilter_handlesNullAddressSafely() {
+        assertThat(service.connectFilter(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("connect filter catches exceptions safely and fails closed")
+    void connectFilter_catchesExceptionsSafelyAndFailsClosed() {
+        service.setIpAcceptor(ip -> { throw new RuntimeException("Simulated filter error"); });
+
+        boolean allowed = service.connectFilter("1.2.3.4");
+
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
+    @DisplayName("setIpAcceptor with null falls back to default allow-all acceptor")
+    void setIpAcceptor_withNullFallsBackToDefaultAllowAll() {
+        service.setIpAcceptor(null);
+
+        assertThat(service.getIpAcceptor().get("1.2.3.4")).isTrue();
+    }
 }

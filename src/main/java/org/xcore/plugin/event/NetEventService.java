@@ -1,12 +1,9 @@
 package org.xcore.plugin.event;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import arc.Events;
 import arc.func.Boolf;
+import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import lombok.Getter;
-import lombok.Setter;
 import mindustry.gen.AdminRequestCallPacket;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
@@ -14,13 +11,22 @@ import org.xcore.plugin.event.net.admin.AdminRequestHandler;
 import org.xcore.plugin.event.net.chat.ChatMessageHandler;
 import org.xcore.plugin.event.net.connect.ConnectionFilterService;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Singleton
 public class NetEventService {
 
-    @Getter @Setter
-    public Boolf<String> ipAcceptor = (ip) -> true;
+    private volatile Boolf<String> ipAcceptor = (ip) -> true;
     private final AtomicInteger blockedIPs = new AtomicInteger();
     private final AtomicInteger blockedIPsPerMinute = new AtomicInteger();
+
+    public Boolf<String> getIpAcceptor() {
+        return ipAcceptor;
+    }
+
+    public void setIpAcceptor(Boolf<String> ipAcceptor) {
+        this.ipAcceptor = ipAcceptor != null ? ipAcceptor : (ip) -> true;
+    }
 
     public int getBlockedIPs() {
         return blockedIPs.get();
@@ -49,10 +55,16 @@ public class NetEventService {
     }
 
     public boolean connectFilter(String address) {
-        var result = connectionFilterService.filter(address, ipAcceptor);
-        blockedIPs.addAndGet(result.blockedIpDelta());
-        blockedIPsPerMinute.addAndGet(result.blockedIpsPerMinuteDelta());
-        return result.allowed();
+        if (address == null) return false;
+        try {
+            var result = connectionFilterService.filter(address, ipAcceptor);
+            blockedIPs.addAndGet(result.blockedIpDelta());
+            blockedIPsPerMinute.addAndGet(result.blockedIpsPerMinuteDelta());
+            return result.allowed();
+        } catch (Throwable t) {
+            Log.err("Error evaluating connectFilter for " + address, t);
+            return false;
+        }
     }
 
     public void adminRequest(NetConnection con, AdminRequestCallPacket packet) {

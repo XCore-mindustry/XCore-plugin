@@ -17,8 +17,9 @@ public class GameStateService {
     }
 
     public void reloadWorld(Runnable loadAction, Runnable afterLoadAction) {
+        if (loadAction == null) return;
+        WorldReloader reloader = new WorldReloader();
         try {
-            WorldReloader reloader = new WorldReloader();
             reloader.begin();
 
             loadAction.run();
@@ -38,12 +39,27 @@ public class GameStateService {
     }
 
     public void loadMap(Map map) {
-        loadMap(map, Gamemode.valueOf(Core.settings.getString("lastServerMode", "survival")));
+        loadMap(map, resolveCurrentGamemode());
     }
 
     public void loadMap(Map map, Gamemode mode) {
-        reloadWorld(() -> {
-            Vars.world.loadMap(map, map.applyRules(mode));
-        });
+        if (map == null) {
+            Log.err("Cannot load null map");
+            return;
+        }
+        Gamemode resolvedMode = mode != null ? mode : resolveCurrentGamemode();
+        reloadWorld(() -> Vars.world.loadMap(map, map.applyRules(resolvedMode)));
+    }
+
+    private Gamemode resolveCurrentGamemode() {
+        String modeName = Core.settings != null ? Core.settings.getString("lastServerMode", "survival") : "survival";
+        if (modeName == null || modeName.isBlank()) {
+            return Gamemode.survival;
+        }
+        try {
+            return Gamemode.valueOf(modeName.trim().toLowerCase(java.util.Locale.ROOT));
+        } catch (Exception ignored) {
+            return Gamemode.survival;
+        }
     }
 }

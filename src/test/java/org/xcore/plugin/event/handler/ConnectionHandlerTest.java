@@ -67,7 +67,6 @@ class ConnectionHandlerTest {
     @DisplayName("onPlayerJoin persists nickname with changed ip and revokes unconfirmed admin")
     void onPlayerJoin_persistsNicknameWithChangedIp_andRevokesUnconfirmedAdmin() {
         SessionService sessionService = mock(SessionService.class);
-        AdminDataRepository adminDataRepository = mock(AdminDataRepository.class);
         NetworkService networkService = mock(NetworkService.class);
         VoteService voteService = mock(VoteService.class);
         PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
@@ -81,7 +80,6 @@ class ConnectionHandlerTest {
 
         ConnectionHandler handler = new ConnectionHandler(
                 sessionService,
-                adminDataRepository,
                 networkService,
                 config,
                 secretsConfig,
@@ -135,11 +133,76 @@ class ConnectionHandlerTest {
     }
 
     @Test
+    @DisplayName("onPlayerJoin persists nickname when ip is unchanged but nickname changed")
+    void onPlayerJoin_persistsNicknameWhenIpUnchangedButNicknameChanged() {
+        SessionService sessionService = mock(SessionService.class);
+        NetworkService networkService = mock(NetworkService.class);
+        VoteService voteService = mock(VoteService.class);
+        PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
+        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
+        ObserverService observerService = mock(ObserverService.class);
+
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        TomlSecretsConfig secretsConfig = new TomlSecretsConfig();
+
+        ConnectionHandler handler = new ConnectionHandler(
+                sessionService,
+                networkService,
+                config,
+                secretsConfig,
+                voteService,
+                privateMessageService,
+                playerDisplayService,
+                discordAdminAccessService,
+                observerService,
+                mock(MapVoteObserverService.class)
+        );
+
+        Player player = Player.create();
+        player.name = "[blue]NewName[]";
+        player.admin = false;
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-1";
+        player.con.usid = "usid-1";
+        player.con.player = player;
+
+        Administration.PlayerInfo info = new Administration.PlayerInfo();
+        info.timesJoined = 5;
+        when(admins.getInfo("uuid-1")).thenReturn(info);
+        when(privateMessageService.countUnread("uuid-1")).thenReturn(0L);
+
+        PlayerData data = new PlayerData("uuid-1", true);
+        data.pid = 8;
+        data.ip = "1.1.1.1";
+        data.nickname = "OldName";
+        data.admin = false;
+        data.exists = true;
+
+        Session session = mock(Session.class);
+        session.data = data;
+        Localization localization = mock(Localization.class);
+        when(session.locale()).thenReturn(localization);
+        when(sessionService.registerLogin(player)).thenReturn(session);
+
+        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
+             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
+            handler.onPlayerJoin(new EventType.PlayerJoin(player));
+        }
+
+        verify(observerService).restore(player);
+        verify(sessionService).updateConnectionData(session, "1.1.1.1", "[#00000000][blue]NewName[]");
+        verify(playerDisplayService).refresh(session);
+        verify(discordAdminAccessService, never()).deactivateRuntimeAdmin(any(), any());
+    }
+
+    @Test
     void onPlayerLeaveUnregistersMapObserverEvenWithoutPlayerData() {
         SessionService sessionService = mock(SessionService.class);
         MapVoteObserverService mapObserver = mock(MapVoteObserverService.class);
         VoteService voteService = mock(VoteService.class);
-        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(AdminDataRepository.class),
+        ConnectionHandler handler = new ConnectionHandler(sessionService,
                 mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(), voteService,
                 mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
                 mock(DiscordAdminAccessService.class), mock(ObserverService.class), mapObserver);
