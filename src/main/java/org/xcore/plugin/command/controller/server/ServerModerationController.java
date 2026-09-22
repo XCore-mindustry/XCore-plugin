@@ -124,17 +124,14 @@ public class ServerModerationController implements CloudServerController {
                      @Argument(value = "period", description = "Duration (e.g. 1h, 30m)") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument(value = "reason", description = "Reason for the mute") @Greedy String reason) {
 
-        PlayerData data = moderationService.findPlayerData(target);
-        if (data == null) {
-            Log.err("Player not found");
-            return;
-        }
+        PlayerData data = requirePlayerData(target);
+        if (data == null) return;
 
         String effectiveReason = reason == null || reason.isBlank() ? null : reason;
         var result = moderationService.muteById(data.pid, "console", null, effectiveReason, period);
 
         if (result.isSuccess()) {
-            Log.info("Muted @ for @ minutes.", data.nickname, Duration.ofMillis(period.toMillis()).toMinutes());
+            Log.info("Muted @ for @ minutes.", data.nickname, period.toMinutes());
         } else {
             Log.err(result.getMessage().orElse("Mute failed"));
         }
@@ -145,11 +142,8 @@ public class ServerModerationController implements CloudServerController {
     public void unmute(XCoreSender sender,
                        @Argument(value = "target", description = "Player #ID/UUID") String target) {
 
-        PlayerData data = moderationService.findPlayerData(target);
-        if (data == null) {
-            Log.err("Player not found");
-            return;
-        }
+        PlayerData data = requirePlayerData(target);
+        if (data == null) return;
 
         var result = moderationService.unmuteById(data.pid, "console", null);
         if (result.isSuccess()) {
@@ -157,5 +151,13 @@ public class ServerModerationController implements CloudServerController {
         } else {
             Log.err(result.getMessage().orElse("Unmute failed"));
         }
+    }
+
+    private PlayerData requirePlayerData(String target) {
+        PlayerData data = moderationService.findPlayerData(target);
+        if (data == null) {
+            Log.err("Player not found");
+        }
+        return data;
     }
 }

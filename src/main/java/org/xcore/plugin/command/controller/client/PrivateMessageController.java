@@ -57,7 +57,6 @@ public class PrivateMessageController implements CloudClientController {
 
     @Command("inbox")
     public void inbox(XCoreSender sender) {
-        messageMenu.sender(sender);
         messageMenu.inbox(sender.player().uuid(), 1);
     }
 
@@ -74,7 +73,6 @@ public class PrivateMessageController implements CloudClientController {
 
     @Command("inbox blocked")
     public void blocked(XCoreSender sender) {
-        messageMenu.sender(sender);
         messageMenu.blocked(sender.player().uuid(), 1);
     }
 
@@ -86,7 +84,6 @@ public class PrivateMessageController implements CloudClientController {
         }
 
         if (privateMessageService.block(session, id)) {
-            messageMenu.sender(sender);
             messageMenu.blocked(sender.player().uuid(), 1);
         }
     }
@@ -99,7 +96,6 @@ public class PrivateMessageController implements CloudClientController {
         }
 
         if (privateMessageService.unblock(session, id)) {
-            messageMenu.sender(sender);
             messageMenu.blocked(sender.player().uuid(), 1);
         }
     }

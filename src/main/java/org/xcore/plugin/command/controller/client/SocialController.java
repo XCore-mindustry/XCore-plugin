@@ -87,7 +87,6 @@ public class SocialController implements CloudClientController {
 
     @Command("discord")
     public void discord(XCoreSender sender) {
-        discordMenu.sender(sender);
         discordMenu.main(discordMenu.getUuid(sender));
     }
 

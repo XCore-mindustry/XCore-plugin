@@ -61,17 +61,6 @@ public class Menu {
         return DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(millis));
     }
 
-    public String timeLeft(long endMillis, Session session) {
-        long remaining = endMillis - System.currentTimeMillis();
-        if (remaining <= 0) return session.locale().t("finished");
-
-        long mins = (remaining / 60000) % 60;
-        long hours = (remaining / 3600000);
-
-        if (hours > 0) return hours + "h " + mins + "m";
-        return mins + "m";
-    }
-
     public String formatPlayTime(int totalMinutes, Localization local) {
         if (totalMinutes <= 0) {
             return local.t("player-menu-time-minutes", args("value", 0));
