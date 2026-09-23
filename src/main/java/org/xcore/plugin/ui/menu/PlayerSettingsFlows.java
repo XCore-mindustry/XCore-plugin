@@ -55,10 +55,6 @@ final class PlayerSettingsFlows {
                 : null;
     }
 
-    static PlayerData resolveTarget(Session session, String targetUuid) {
-        return resolveTarget(null, session, targetUuid);
-    }
-
     abstract static class BasePlayerSettingsFlow<T> extends BaseMenuFlow<T> {
         protected final PlayerProfileSettingsService profileSettings;
 

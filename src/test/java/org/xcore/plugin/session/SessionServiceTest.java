@@ -160,6 +160,93 @@ class SessionServiceTest {
     }
 
     @Test
+    @DisplayName("incrementPlayTimeAsync applies delta only after successful persistence")
+    void incrementPlayTimeAsync_appliesDeltaOnlyAfterSuccessfulPersistence() throws Exception {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        when(playerDataRepository.incrementPlayTimeAsync("uuid-1", 5))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository,
+                mock(TopMenuCacheService.class)
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+
+        boolean result = service.incrementPlayTimeAsync(session, 5).toCompletableFuture().get();
+
+        assertThat(result).isTrue();
+        assertThat(session.data.totalPlayTime).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("incrementPlayTimeAsync does not apply delta on failed persistence")
+    void incrementPlayTimeAsync_doesNotApplyDeltaOnFailedPersistence() throws Exception {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        when(playerDataRepository.incrementPlayTimeAsync("uuid-1", 5))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(false));
+
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                playerDataRepository,
+                mock(TopMenuCacheService.class)
+        );
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+
+        boolean result = service.incrementPlayTimeAsync(session, 5).toCompletableFuture().get();
+
+        assertThat(result).isFalse();
+        assertThat(session.data.totalPlayTime).isZero();
+    }
+
+    @Test
+    @DisplayName("getActive returns session only when fully active")
+    void getActive_returnsSessionOnlyWhenFullyActive() {
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                mock(PlayerDataRepository.class)
+        );
+
+        assertThat(service.getActive("missing")).isNull();
+        assertThat(service.getActive((mindustry.gen.Player) null)).isNull();
+
+        mindustry.gen.Player player = mock(mindustry.gen.Player.class);
+        when(player.uuid()).thenReturn("uuid-1");
+
+        Session session = mock(Session.class);
+        session.data = new PlayerData("uuid-1", true);
+        service.update(session);
+        assertThat(service.getActive("uuid-1")).isSameAs(session);
+        assertThat(service.getActive(player)).isSameAs(session);
+
+        // When data becomes null, getActive returns null
+        session.data = null;
+        assertThat(service.getActive("uuid-1")).isNull();
+        assertThat(service.getActive(player)).isNull();
+    }
+
+    @Test
+    @DisplayName("update with null or invalid session does not throw")
+    void update_withInvalidData_doesNotThrow() {
+        SessionService service = new SessionService(
+                mock(SessionFactory.class),
+                mock(PlayerDataRepository.class)
+        );
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> service.update((Session) null))
+                .doesNotThrowAnyException();
+
+        Session empty = mock(Session.class);
+        empty.data = null;
+        org.assertj.core.api.Assertions.assertThatCode(() -> service.update(empty))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("persistPlayer invalidates top cache after successful save")
     void persistPlayer_invalidatesTopCacheAfterSuccessfulSave() {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);

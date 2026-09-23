@@ -75,6 +75,19 @@ public class SessionService {
     }
 
     /**
+     * Returns the session only when it is fully active (non-null session AND data).
+     * Consolidates the ubiquitous {@code session == null || session.data == null} guard.
+     */
+    public Session getActive(String uuid) {
+        Session session = sessionCache.get(uuid);
+        return (session != null && session.data != null) ? session : null;
+    }
+
+    public Session getActive(Player player) {
+        return player != null ? getActive(player.uuid()) : null;
+    }
+
+    /**
      * Gets cached player data by UUID, with database fallback.
      * <p>
      * If player is not in cache, attempts to load from database.
@@ -197,7 +210,11 @@ public class SessionService {
      * @param data session data to cache
      */
     public void update(Session data) {
-        sessionCache.put(data.data.uuid, data);
+        if (data != null && data.data != null && data.data.uuid != null) {
+            sessionCache.put(data.data.uuid, data);
+        } else {
+            PLog.warn("Attempted to update session with invalid data: @", data);
+        }
     }
 
     /**
@@ -323,18 +340,23 @@ public class SessionService {
             return CompletableFuture.completedFuture(false);
         }
 
-        session.data.totalPlayTime += delta;
+        // Optimistic update is applied inside the async callback only on confirmed success,
+        // so a racing callback or DB failure can never double-increment the counter.
         var stage = playerDataRepository.incrementPlayTimeAsync(session.data.uuid, delta);
         if (stage != null) {
             return stage.thenApply(updated -> {
                 if (Boolean.TRUE.equals(updated)) {
-                    invalidateLeaderboardCache();
+                    org.xcore.plugin.concurrent.MainThreadDispatcher.mindustry().execute(() -> {
+                        session.data.totalPlayTime += delta;
+                        invalidateLeaderboardCache();
+                    });
                 }
                 return updated;
             });
         }
         boolean updated = playerDataRepository.incrementPlayTime(session.data.uuid, delta);
         if (updated) {
+            session.data.totalPlayTime += delta;
             invalidateLeaderboardCache();
         }
         return CompletableFuture.completedFuture(updated);
@@ -450,14 +472,14 @@ public class SessionService {
 
     public void broadcast(String key, Map<String, Object> args) {
         for (Session session : getAllCachedSnapshot()) {
-            if (session == null || session.data == null) continue;
+            if (session.data == null) continue;
             session.locale().send(key, args);
         }
     }
 
     public void broadcastFiltered(String key, Map<String, Object> args, Predicate<Session> filter) {
         for (Session session : getAllCachedSnapshot()) {
-            if (session == null || session.data == null) continue;
+            if (session.data == null) continue;
             if (filter != null && !filter.test(session)) continue;
             session.locale().send(key, args);
         }
