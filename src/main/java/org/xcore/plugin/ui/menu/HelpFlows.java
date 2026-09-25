@@ -52,7 +52,7 @@ final class HelpFlows {
         @Override
         public MenuScreen render(MenuRenderContext<NoState> context) {
             Session session = context.session();
-            XCoreSender sender = session.sender;
+            XCoreSender sender = menu.resolveSender(session);
             if (sender == null) {
                 return errorScreen(session);
             }
@@ -105,7 +105,7 @@ final class HelpFlows {
         @Override
         public MenuScreen render(MenuRenderContext<NoState> context) {
             Session session = context.session();
-            XCoreSender sender = session.sender;
+            XCoreSender sender = menu.resolveSender(session);
             String cmdName = context.route().param("cmd");
 
             if (sender == null || cmdName == null) {

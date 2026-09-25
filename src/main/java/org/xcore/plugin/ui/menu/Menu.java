@@ -27,9 +27,13 @@ public class Menu {
     }
 
     public void sender(XCoreSender sender) {
-        var session = sessionService.get(sender.player().uuid());
-        if (session != null) {
-            session.sender = sender;
+        if (sender == null) return;
+        String uuid = getUuid(sender);
+        if (!uuid.isEmpty()) {
+            var session = sessionService.get(uuid);
+            if (session != null) {
+                session.sender = sender;
+            }
         }
     }
 
@@ -49,7 +53,15 @@ public class Menu {
     }
 
     public String getUuid(XCoreSender sender) {
-        return sender.player().uuid();
+        if (sender == null) return "";
+        var s = sender.session();
+        if (s != null && s.data != null && s.data.uuid != null && !s.data.uuid.isEmpty()) {
+            return s.data.uuid;
+        }
+        if (sender.player() != null && sender.player().uuid() != null) {
+            return sender.player().uuid();
+        }
+        return "";
     }
 
     public String getUuid(Session session) {

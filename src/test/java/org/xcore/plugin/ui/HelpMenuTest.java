@@ -97,6 +97,24 @@ class HelpMenuTest {
     }
 
     @Test
+    @DisplayName("help with sender sets session sender and renders menu")
+    void helpWithSender_setsSessionSenderAndRendersMenu() {
+        registerLegacyCommands("help", "info", "rules");
+        session.sender = null;
+
+        XCoreSender sender = mock(XCoreSender.class);
+        Player mockPlayer = session.player;
+        when(sender.player()).thenReturn(mockPlayer);
+        when(sender.session()).thenReturn(session);
+
+        helpMenu.help(sender, 1);
+
+        assertThat(session.sender).isEqualTo(sender);
+        assertThat(session.activeScreen()).isNotNull();
+        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "1"));
+    }
+
+    @Test
     @DisplayName("first page render shows commands and pagination")
     void firstPageRender_showsCommandsAndPagination() {
         registerLegacyCommands("help", "info", "rules");

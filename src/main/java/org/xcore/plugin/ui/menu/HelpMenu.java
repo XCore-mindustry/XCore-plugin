@@ -10,6 +10,7 @@ import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.help.HelpHandler;
 import org.incendo.cloud.help.result.CommandEntry;
 import org.xcore.cloud.mindustry.MindustryCloudCommand;
+import org.xcore.cloud.mindustry.MindustrySender;
 import org.xcore.plugin.cloud.CloudService;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -49,11 +50,18 @@ public class HelpMenu extends Menu {
         menuService.registerRoute(new HelpFlows.HelpDetailsFlow(this));
     }
 
+    public void help(XCoreSender sender, int page) {
+        if (sender != null) {
+            sender(sender);
+            help(getUuid(sender), page);
+        }
+    }
+
     public void help(String uuid, int page) {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        XCoreSender sender = session.sender;
+        XCoreSender sender = resolveSender(session);
 
         if (sender == null) {
             session.locale().send("error-internal");
@@ -69,6 +77,23 @@ public class HelpMenu extends Menu {
         }
 
         session.menuService.renderRoute(session, MenuRoute.of(HelpFlows.ROUTE_LIST).withParam("page", String.valueOf(page)));
+    }
+
+    public XCoreSender resolveSender(Session session) {
+        if (session == null) return null;
+        if (session.sender != null) return session.sender;
+        if (session.player != null) {
+            CloudService cloudService = cloud != null ? cloud.get() : null;
+            if (cloudService != null && cloudService.getClientManager() != null) {
+                var manager = cloudService.getClientManager();
+                if (manager.senderMapper() != null) {
+                    XCoreSender sender = manager.senderMapper().map(new MindustrySender.PlayerSender(session.player));
+                    session.sender = sender;
+                    return sender;
+                }
+            }
+        }
+        return null;
     }
 
     String buildCommandContent(Session session, UnifiedCommand cmd) {

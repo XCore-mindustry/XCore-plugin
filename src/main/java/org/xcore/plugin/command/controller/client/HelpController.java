@@ -21,6 +21,6 @@ public class HelpController implements CloudClientController {
 
     @Command("help [page]")
     public void help(XCoreSender sender, @Argument("page") @Default("1") int page) {
-        menu.help(menu.getUuid(sender), page);
+        menu.help(sender, page);
     }
 }
