@@ -176,7 +176,7 @@ class PlayerSettingsUiClientIntegrationTest {
 
         // Verify mobile responsiveness: ScrollPane exists with constrained maxHeight
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 280");
+        assertThat(dsl).contains("maxHeight: 360");
 
         // Verify top-right quick close button and footer cancel button both exist
         assertThat(dsl).contains("action:close");

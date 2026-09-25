@@ -250,7 +250,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         return Ui.table(t -> {
             t.background("pane");
             t.margin(14f);
-            t.layout(l -> l.width(520f).pad(6f));
+            t.layout(l -> l.width(580f).pad(6f));
 
             // 1. Header with Accent title, underline, and close button
             t.add(Ui.table(h -> {
@@ -258,13 +258,13 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 h.label(Text.t("player-menu-settings-title"), l -> l.align("left").growX());
                 h.button(Text.raw(" [scarlet]✕[] "), "action:close", b -> b
                         .style("cleart")
-                        .layout(l -> l.height(28f)));
+                        .layout(l -> l.size(34f)));
             })).row();
             t.image("whiteui", l -> l.growX().height(3f).padBottom(8f).color("ffd37f")).row();
 
             // 2. Scrollable Body (prevents overflow and allows vertical scrolling on mobile landscape)
             t.pane(p -> {
-                p.layout(l -> l.growX().maxHeight(280f));
+                p.layout(l -> l.growX().maxHeight(360f));
                 p.table(body -> {
                     body.layout(l -> l.growX().fillX());
 
@@ -279,7 +279,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                     l -> l.align("left").growX());
                             row.button(Text.t("player-settings-reset-nick-btn"), "action:reset_nick", b -> b
                                     .style("cleart")
-                                    .layout(l -> l.height(24f)));
+                                    .layout(l -> l.height(34f).padLeft(8f)));
                         })).row();
 
                         String rawHint = session != null && session.locale() != null
@@ -292,14 +292,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                 .value(model.customNickname())
                                 .hint(cleanHint)
                                 .maxLength(40)
-                                .layout(l -> l.growX().padBottom(8f))).row();
+                                .layout(l -> l.growX().height(40f).padBottom(8f))).row();
 
                         // Description
                         prof.label(Text.t("player-menu-settings-description"), l -> l.align("left").padBottom(2f)).row();
                         prof.field("field_description", f -> f
                                 .value(model.description())
                                 .maxLength(200)
-                                .layout(l -> l.growX()));
+                                .layout(l -> l.growX().height(40f)));
                     })).row();
 
                     // Divider line
@@ -312,12 +312,12 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                         toggles.check(Text.t("player-settings-global-chat"), c -> c
                                 .id("check_global_chat")
                                 .checked(model.globalChatVisible())
-                                .layout(l -> l.align("left").padBottom(6f))).row();
+                                .layout(l -> l.align("left").padBottom(8f))).row();
 
                         toggles.check(Text.t("player-settings-discord-relay"), c -> c
                                 .id("check_discord_relay")
                                 .checked(model.discordRelayVisible())
-                                .layout(l -> l.align("left").padBottom(6f))).row();
+                                .layout(l -> l.align("left").padBottom(8f))).row();
 
                         toggles.check(Text.t("player-settings-leaderboard"), c -> c
                                 .id("check_leaderboard")
@@ -339,7 +339,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                             inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
                             inner.button(Text.t("player-settings-edit-badges"), "action:badges", b -> b
                                     .style("cleart")
-                                    .layout(l -> l.height(28f)));
+                                    .layout(l -> l.height(36f).padLeft(8f)));
                         })).row();
 
                         // Language Combobox Slot inside section
@@ -354,7 +354,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                 btnRow.label(Text.t("player-settings-language"), l -> l.align("left").growX());
                                 btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
                                         .style("cleart")
-                                        .layout(l -> l.height(30f)));
+                                        .layout(l -> l.height(38f).padLeft(8f)));
                             })).row();
 
                             if (model.langDropdownOpen()) {
@@ -366,7 +366,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                         opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
                                                 .style("togglet")
                                                 .checked(isSel)
-                                                .layout(l -> l.uniform().growX().height(32f).pad(2f)));
+                                                .layout(l -> l.uniform().growX().height(38f).pad(3f)));
                                         col++;
                                         if (col % 2 == 0) {
                                             opts.row();
@@ -395,10 +395,10 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 actions.layout(l -> l.growX().padTop(6f));
                 actions.button(Text.t("cancel"), "action:close", b -> b
                         .style("cleart")
-                        .layout(l -> l.growX().uniform().height(42f)));
+                        .layout(l -> l.growX().uniform().height(48f)));
                 actions.button(Text.join(Text.raw("[accent]"), Text.t("save")), "action:save", b -> b
                         .style("cleart")
-                        .layout(l -> l.growX().uniform().height(42f)));
+                        .layout(l -> l.growX().uniform().height(48f)));
             })).row();
         });
     }

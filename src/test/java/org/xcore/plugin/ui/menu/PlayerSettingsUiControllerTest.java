@@ -78,12 +78,13 @@ class PlayerSettingsUiControllerTest {
         VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
         String dsl = UiDslWriter.write(compiler.compile(root));
 
-        // Background
+        // Background and width
         assertThat(dsl).contains("background: pane");
+        assertThat(dsl).contains("width: 580");
 
         // Mobile responsiveness: ScrollPane with max height ceiling
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 280");
+        assertThat(dsl).contains("maxHeight: 360");
 
         // Profile fields
         assertThat(dsl).contains("id: field_nickname");
