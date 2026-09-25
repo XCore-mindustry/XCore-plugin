@@ -24,7 +24,25 @@ public final class SelectorResolutionBridge {
         if (sim != null) {
             return Thread.currentThread() == sim;
         }
-        return Core.app == null || Thread.currentThread().getName().contains("main");
+        if (Core.app == null) {
+            return true;
+        }
+        String name = Thread.currentThread().getName();
+        if (name.equalsIgnoreCase("HeadlessApplication") || name.contains("main") || name.equals("Server")) {
+            simulationThread = Thread.currentThread();
+            return true;
+        }
+        try {
+            java.lang.reflect.Field f = Core.app.getClass().getDeclaredField("mainLoopThread");
+            f.setAccessible(true);
+            Thread t = (Thread) f.get(Core.app);
+            if (t != null) {
+                simulationThread = t;
+                return Thread.currentThread() == t;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
     }
 
     /**
@@ -39,6 +57,7 @@ public final class SelectorResolutionBridge {
 
         CompletableFuture<T> future = new CompletableFuture<>();
         Core.app.post(() -> {
+            simulationThread = Thread.currentThread();
             try {
                 future.complete(supplier.get());
             } catch (Throwable t) {

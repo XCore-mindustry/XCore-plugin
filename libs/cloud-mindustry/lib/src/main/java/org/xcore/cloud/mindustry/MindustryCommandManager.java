@@ -43,6 +43,8 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
         registerCapability(CloudCapability.StandardCapabilities.ROOT_COMMAND_DELETION);
 
+        org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.setSimulationThread(Thread.currentThread());
+
         ArcCommandRegistrationHandler<C> regHandler = new ArcCommandRegistrationHandler<>(this, handler);
         this.commandRegistrationHandler(regHandler);
 
