@@ -20,28 +20,25 @@ public class EntityAdminController implements CloudClientController {
     @Inject
     public EntityAdminController() {}
 
-    @Command("heal")
-    @CommandDescription("Heals your current unit.")
+    @Command("heal [targets]")
+    @CommandDescription("Heals target units (or self if unspecified).")
     @Permission("xcore.admin.heal")
-    public void healSelf(XCoreSender sender) {
-        if (!sender.isPlayer() || sender.player().unit() == null) {
-            sender.sendMessage("[scarlet]You must have an active unit to heal.");
-            return;
-        }
-
-        Unit u = sender.player().unit();
-        u.health(u.maxHealth);
-        u.clearStatuses();
-        sender.sendMessage("[accent]Your unit was fully healed.");
-    }
-
-    @Command("heal <targets>")
-    @CommandDescription("Heals target units.")
-    @Permission("xcore.admin.heal")
-    public void healUnits(
+    public void heal(
             XCoreSender sender,
             @Argument("targets") MultipleUnitSelector targets
     ) {
+        if (targets == null) {
+            if (!sender.isPlayer() || sender.player().unit() == null) {
+                sender.sendMessage("[scarlet]You must have an active unit to heal.");
+                return;
+            }
+            Unit u = sender.player().unit();
+            u.health(u.maxHealth);
+            u.clearStatuses();
+            sender.sendMessage("[accent]Your unit was fully healed.");
+            return;
+        }
+
         Seq<Unit> list = targets.resolve(sender.getHandle());
         int count = 0;
         for (Unit u : list) {

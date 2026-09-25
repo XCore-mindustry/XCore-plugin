@@ -15,7 +15,7 @@ import static org.mockito.Mockito.*;
 class EntityAdminControllerTest {
 
     @Test
-    @DisplayName("healSelf restores full health and clears statuses")
+    @DisplayName("heal with null targets restores full health and clears statuses on self")
     void healSelf_restoresHealth() {
         EntityAdminController controller = new EntityAdminController();
 
@@ -28,7 +28,7 @@ class EntityAdminControllerTest {
         when(player.unit()).thenReturn(unit);
         when(sender.player()).thenReturn(player);
 
-        controller.healSelf(sender);
+        controller.heal(sender, null);
 
         verify(unit).health(250f);
         verify(unit).clearStatuses();
@@ -36,7 +36,7 @@ class EntityAdminControllerTest {
     }
 
     @Test
-    @DisplayName("healUnits heals all resolved units")
+    @DisplayName("heal with targets heals all resolved units")
     void healUnits_healsTargets() {
         EntityAdminController controller = new EntityAdminController();
 
@@ -55,7 +55,7 @@ class EntityAdminControllerTest {
         MultipleUnitSelector selector = mock(MultipleUnitSelector.class);
         when(selector.resolve(handle)).thenReturn(Seq.with(u1, u2));
 
-        controller.healUnits(sender, selector);
+        controller.heal(sender, selector);
 
         verify(u1).health(100f);
         verify(u1).clearStatuses();

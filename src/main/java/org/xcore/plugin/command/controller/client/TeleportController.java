@@ -19,7 +19,7 @@ public class TeleportController implements CloudClientController {
     @Inject
     public TeleportController() {}
 
-    @Command("tp|teleport <destination>")
+    @Command("tp|teleport|goto <destination>")
     @CommandDescription("Teleports yourself to a destination player.")
     @Permission("xcore.admin.tp")
     public void teleportSelf(
@@ -43,7 +43,36 @@ public class TeleportController implements CloudClientController {
         sender.sendMessage("[accent]Teleported to [white]" + dest.plainName());
     }
 
-    @Command("tp|teleport <targets> <destination>")
+    @Command("bring <targets>")
+    @CommandDescription("Teleports target players to your position.")
+    @Permission("xcore.admin.tp")
+    public void bring(
+            XCoreSender sender,
+            @Argument("targets") MultiplePlayerSelector targets
+    ) {
+        if (!sender.isPlayer() || sender.player().unit() == null) {
+            sender.sendMessage("[scarlet]You must be an active in-game player to bring targets.");
+            return;
+        }
+
+        Player self = sender.player();
+        float sx = self.unit().x;
+        float sy = self.unit().y;
+
+        var resolved = targets.resolve(sender.getHandle());
+        int count = 0;
+        for (Player p : resolved) {
+            if (p != self && p.unit() != null) {
+                p.unit().set(sx, sy);
+                p.snapInterpolation();
+                count++;
+            }
+        }
+
+        sender.sendMessage("[accent]Brought [green]" + count + " [accent]player(s) to your location.");
+    }
+
+    @Command("tpto <targets> <destination>")
     @CommandDescription("Teleports target players to a destination player.")
     @Permission("xcore.admin.tp")
     public void teleportTargetsToDestination(
@@ -73,7 +102,7 @@ public class TeleportController implements CloudClientController {
         sender.sendMessage("[accent]Teleported [green]" + count + " [accent]player(s) to [white]" + dest.plainName());
     }
 
-    @Command("tp|teleport <targets> <x> <y>")
+    @Command("tppos <targets> <x> <y>")
     @CommandDescription("Teleports target players to tile coordinates.")
     @Permission("xcore.admin.tp")
     public void teleportTargetsToCoords(
@@ -107,45 +136,6 @@ public class TeleportController implements CloudClientController {
 
         sender.sendMessage("[accent]Teleported [green]" + count + " [accent]player(s) to ([white]"
                 + (int) (targetX / Vars.tilesize) + ", " + (int) (targetY / Vars.tilesize) + "[accent]).");
-    }
-
-    @Command("bring <targets>")
-    @CommandDescription("Teleports target players to your position.")
-    @Permission("xcore.admin.tp")
-    public void bring(
-            XCoreSender sender,
-            @Argument("targets") MultiplePlayerSelector targets
-    ) {
-        if (!sender.isPlayer() || sender.player().unit() == null) {
-            sender.sendMessage("[scarlet]You must be an active in-game player to bring targets.");
-            return;
-        }
-
-        Player self = sender.player();
-        float sx = self.unit().x;
-        float sy = self.unit().y;
-
-        var resolved = targets.resolve(sender.getHandle());
-        int count = 0;
-        for (Player p : resolved) {
-            if (p != self && p.unit() != null) {
-                p.unit().set(sx, sy);
-                p.snapInterpolation();
-                count++;
-            }
-        }
-
-        sender.sendMessage("[accent]Brought [green]" + count + " [accent]player(s) to your location.");
-    }
-
-    @Command("goto <destination>")
-    @CommandDescription("Teleports yourself to a destination player.")
-    @Permission("xcore.admin.tp")
-    public void gotoPlayer(
-            XCoreSender sender,
-            @Argument("destination") SinglePlayerSelector destination
-    ) {
-        teleportSelf(sender, destination);
     }
 
     private float parseCoord(String val, float origin) {
