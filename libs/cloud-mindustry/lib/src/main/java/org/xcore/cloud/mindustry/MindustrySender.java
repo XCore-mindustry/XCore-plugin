@@ -4,7 +4,7 @@ import arc.util.Log;
 import arc.util.Nullable;
 import mindustry.gen.Player;
 
-public sealed interface MindustrySender {
+public interface MindustrySender {
     void sendMessage(String message);
     String name();
     boolean isPlayer();

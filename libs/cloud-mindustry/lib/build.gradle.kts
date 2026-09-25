@@ -34,11 +34,16 @@ dependencies {
     compileOnly(libs.arc.core)
 
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mindustry.core)
+    testImplementation(libs.arc.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+    }
 }
 
 publishing {

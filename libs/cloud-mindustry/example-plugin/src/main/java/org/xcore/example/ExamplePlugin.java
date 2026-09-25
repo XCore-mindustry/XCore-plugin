@@ -7,6 +7,8 @@ import org.incendo.cloud.parser.standard.IntegerParser;
 import org.xcore.cloud.mindustry.ConflictStrategy;
 import org.xcore.cloud.mindustry.MindustryCommandManager;
 import org.xcore.cloud.mindustry.MindustrySender;
+import org.xcore.cloud.mindustry.selector.TargetSelector.SinglePlayerSelector;
+import org.xcore.cloud.mindustry.selector.parser.TargetSelectorParsers;
 
 public class ExamplePlugin extends Plugin {
 
@@ -59,6 +61,20 @@ public class ExamplePlugin extends Plugin {
                 .argument(a)
                 .handler(ctx -> {
                     ctx.sender().sendMessage("Admin passed! a=" + ctx.get("a"));
+                })
+        );
+
+        // /heal <target> - Demonstrates target selector (@p, @s, #id, or PlayerName)
+        mgr.command(mgr.commandBuilder("heal")
+                .permission("example.heal")
+                .argument(CommandComponent.<MindustrySender, SinglePlayerSelector>builder("target", TargetSelectorParsers.singlePlayerSelector(mgr.selectorEngine())).build())
+                .handler(ctx -> {
+                    SinglePlayerSelector selector = ctx.get("target");
+                    var targetPlayer = selector.resolve(ctx.sender());
+                    if (targetPlayer.unit() != null) {
+                        targetPlayer.unit().heal();
+                    }
+                    ctx.sender().sendMessage("Healed " + targetPlayer.plainName());
                 })
         );
     }
