@@ -135,6 +135,29 @@ class AdminCog(commands.Cog):
     async def cmd_unmute(self, interaction: Interaction, player_id: int) -> None:
         await handlers_moderation.cmd_unmute(self.bot, interaction, player_id)
 
+    @app_commands.command(
+        name="merge_player",
+        description="Merge a player account into another account (admin)",
+    )
+    @app_commands.describe(
+        source_pid="Source player ID (account to close and merge FROM)",
+        target_pid="Target player ID (account to keep active and merge INTO)",
+        reason="Reason for account merge",
+    )
+    @app_commands.autocomplete(source_pid=_autocomplete_player_id)
+    @app_commands.autocomplete(target_pid=_autocomplete_player_id)
+    @admin_check()
+    async def cmd_merge_player(
+        self,
+        interaction: Interaction,
+        source_pid: int,
+        target_pid: int,
+        reason: str = "Admin merge",
+    ) -> None:
+        await handlers_moderation.cmd_merge_player(
+            self.bot, interaction, source_pid, target_pid, reason
+        )
+
     @admin_group.command(
         name="add", description="Grant admin to a player (general admin)"
     )

@@ -80,3 +80,16 @@ class AuditRecordSummary:
 
     def get(self, key: str, default: object = None) -> object:
         return getattr(self, key, default)
+
+
+@dataclass(frozen=True, kw_only=True)
+class AccountMergeResult:
+    success: bool
+    error: str | None = None
+    source_before: PlayerRecord | None = None
+    target_before: PlayerRecord | None = None
+    target_after: PlayerRecord | None = None
+    games_transferred: int = 0
+    ban_transferred: bool = False
+    mute_transferred: bool = False
+    audit_id: str | None = None

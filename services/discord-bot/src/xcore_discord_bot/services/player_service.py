@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..dto import PlayerRecord
+from ..dto import AccountMergeResult, PlayerRecord
 from ..mongo_store import MongoStore
 from ..redis_bus import RedisBus
 
@@ -28,6 +28,29 @@ class PlayerService:
 
     async def find_player_by_pid(self, pid: int) -> PlayerRecord | None:
         return await self._store.find_player_by_pid(pid)
+
+    async def merge_player_accounts(
+        self,
+        *,
+        source_pid: int,
+        target_pid: int,
+        actor_name: str,
+        actor_discord_id: str | None,
+        reason: str,
+    ) -> AccountMergeResult:
+        result = await self._store.merge_player_accounts(
+            source_pid=source_pid,
+            target_pid=target_pid,
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            reason=reason,
+        )
+        if result.success and result.source_before and result.source_before.uuid:
+            await self._bus.publish_kick_banned(
+                uuid_value=result.source_before.uuid,
+                ip=None,
+            )
+        return result
 
     async def find_player_by_uuid(self, uuid: str) -> PlayerRecord | None:
         return await self._store.find_player_by_uuid(uuid)

@@ -12,7 +12,13 @@ from pydantic import BaseModel, ConfigDict
 from pymongo import DESCENDING
 from pymongo.errors import PyMongoError
 
-from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
+from .dto import (
+    AccountMergeResult,
+    AuditRecordSummary,
+    BanRecord,
+    MuteRecord,
+    PlayerRecord,
+)
 from .settings import Settings
 from .store_mappers import (
     ban_record_from_doc,
@@ -21,6 +27,16 @@ from .store_mappers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _to_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
 
 
 class _MongoDoc(BaseModel):
@@ -230,11 +246,14 @@ class MongoStore:
         return [record for record in records if record.pid >= 0]
 
     async def count_players_by_name(self, query: str) -> int:
-        return int(
-            await self._db_required()["players"].count_documents(
-                {"nickname": {"$regex": re.escape(query), "$options": "i"}}
+        try:
+            return _to_int(
+                await self._db_required()["players"].count_documents(
+                    {"nickname": {"$regex": re.escape(query), "$options": "i"}}
+                )
             )
-        )
+        except PyMongoError:
+            return 0
 
     async def list_bans(
         self, name_filter: str | None = None, limit: int = 6, page: int = 0
@@ -309,7 +328,10 @@ class MongoStore:
         query: dict[str, Any] = {}
         if name_filter:
             query["name"] = {"$regex": re.escape(name_filter), "$options": "i"}
-        return int(await self._db_required()["bans"].count_documents(query))
+        try:
+            return _to_int(await self._db_required()["bans"].count_documents(query))
+        except PyMongoError:
+            return 0
 
     async def upsert_ban(
         self,
@@ -424,11 +446,14 @@ class MongoStore:
     async def count_audit_for_player(self, *, uuid: str) -> int:
         if not uuid.strip():
             return 0
-        return int(
-            await self._db_required()["moderation_audit"].count_documents(
-                {"target.uuid": uuid}
+        try:
+            return _to_int(
+                await self._db_required()["moderation_audit"].count_documents(
+                    {"target.uuid": uuid}
+                )
             )
-        )
+        except PyMongoError:
+            return 0
 
     async def list_audit_for_actor(
         self,
@@ -481,9 +506,12 @@ class MongoStore:
         )
         if actor_filter is None:
             return 0
-        return int(
-            await self._db_required()["moderation_audit"].count_documents(actor_filter)
-        )
+        try:
+            return _to_int(
+                await self._db_required()["moderation_audit"].count_documents(actor_filter)
+            )
+        except PyMongoError:
+            return 0
 
     async def find_audit_by_id(self, *, audit_id: str) -> AuditRecordSummary | None:
         if not audit_id.strip():
@@ -535,7 +563,7 @@ class MongoStore:
             if occurred_at.tzinfo is None
             else occurred_at.astimezone(UTC)
         )
-        created_at_epoch_ms = int(occurred.timestamp() * 1000)
+        created_at_epoch_ms = _to_int(occurred.timestamp() * 1000)
 
         document = {
             "audit_id": audit_id,
@@ -645,6 +673,249 @@ class MongoStore:
             raise RuntimeError("MongoStore is not connected")
         return self._db
 
+    async def merge_player_accounts(
+        self,
+        *,
+        source_pid: int,
+        target_pid: int,
+        actor_name: str,
+        actor_discord_id: str | None,
+        reason: str,
+    ) -> AccountMergeResult:
+        if source_pid == target_pid:
+            return AccountMergeResult(
+                success=False,
+                error=f"Cannot merge account into itself (PID #{source_pid})",
+            )
+
+        db = self._db_required()
+        source_raw = await db["players"].find_one({"pid": source_pid})
+        if source_raw is None:
+            return AccountMergeResult(
+                success=False,
+                error=f"Source player #{source_pid} not found in database",
+            )
+
+        target_raw = await db["players"].find_one({"pid": target_pid})
+        if target_raw is None:
+            return AccountMergeResult(
+                success=False,
+                error=f"Target player #{target_pid} not found in database",
+            )
+
+        source_uuid = str(source_raw.get("uuid") or "").strip()
+        target_uuid = str(target_raw.get("uuid") or "").strip()
+
+        if source_uuid and target_uuid and source_uuid == target_uuid:
+            return AccountMergeResult(
+                success=False,
+                error="Source and target have the same UUID.",
+            )
+
+        if source_uuid.startswith("merged:"):
+            return AccountMergeResult(
+                success=False,
+                error=f"Source player #{source_pid} was already merged into another account.",
+            )
+
+        source_before = player_record_from_doc(
+            PlayerDoc.model_validate(source_raw).model_dump(mode="python")
+        )
+        target_before = player_record_from_doc(
+            PlayerDoc.model_validate(target_raw).model_dump(mode="python")
+        )
+
+        # Consolidate stats
+        total_play_time = _to_int(target_raw.get("total_play_time")) + _to_int(
+            source_raw.get("total_play_time")
+        )
+        pvp_rating = max(
+            _to_int(target_raw.get("pvp_rating")),
+            _to_int(source_raw.get("pvp_rating")),
+        )
+        hexed_points = _to_int(target_raw.get("hexed_points")) + _to_int(
+            source_raw.get("hexed_points")
+        )
+
+        hexed_rank_reqs = [0, 3, 10, 20, 25, 30]
+        hexed_rank = 0
+        for idx, req in enumerate(hexed_rank_reqs):
+            if hexed_points >= req:
+                hexed_rank = idx
+
+        # Badges
+        unlocked_badges = sorted(
+            set(
+                (target_raw.get("unlocked_badges") or [])
+                + (source_raw.get("unlocked_badges") or [])
+            )
+        )
+        active_badge = (
+            target_raw.get("active_badge")
+            or source_raw.get("active_badge")
+            or ""
+        )
+
+        # Profile fields
+        custom_nickname = (
+            target_raw.get("custom_nickname")
+            or source_raw.get("custom_nickname")
+            or ""
+        )
+        description = (
+            target_raw.get("description")
+            or source_raw.get("description")
+            or ""
+        )
+
+        # Discord linkage
+        discord_id = (
+            target_raw.get("discord_id")
+            or source_raw.get("discord_id")
+            or ""
+        )
+        discord_username = (
+            target_raw.get("discord_username")
+            or source_raw.get("discord_username")
+            or ""
+        )
+        discord_linked_at = (
+            target_raw.get("discord_linked_at")
+            or source_raw.get("discord_linked_at")
+            or 0
+        )
+
+        # Device tokens & hashes
+        device_tokens = {
+            **(source_raw.get("device_tokens") or {}),
+            **(target_raw.get("device_tokens") or {}),
+        }
+        device_token_hashes = sorted(
+            set(
+                (target_raw.get("device_token_hashes") or [])
+                + (source_raw.get("device_token_hashes") or [])
+            )
+        )
+
+        # Blocked UUIDs
+        blocked_private_uuids = sorted(
+            set(
+                (target_raw.get("blocked_private_uuids") or [])
+                + (source_raw.get("blocked_private_uuids") or [])
+            )
+        )
+
+        # Admin
+        is_admin = bool(
+            target_raw.get("is_admin") or source_raw.get("is_admin")
+        )
+        admin_source = (
+            target_raw.get("admin_source")
+            or source_raw.get("admin_source")
+            or "NONE"
+        )
+
+        target_updates: dict[str, Any] = {
+            "total_play_time": total_play_time,
+            "pvp_rating": pvp_rating,
+            "hexed_points": hexed_points,
+            "hexed_rank": hexed_rank,
+            "unlocked_badges": unlocked_badges,
+            "active_badge": active_badge,
+            "custom_nickname": custom_nickname,
+            "description": description,
+            "discord_id": discord_id,
+            "discord_username": discord_username,
+            "discord_linked_at": discord_linked_at,
+            "device_tokens": device_tokens,
+            "device_token_hashes": device_token_hashes,
+            "blocked_private_uuids": blocked_private_uuids,
+            "is_admin": is_admin,
+            "admin_source": admin_source,
+        }
+
+        # Update target
+        await db["players"].update_one(
+            {"_id": target_raw["_id"]}, {"$set": target_updates}
+        )
+
+        # Update source (mark as merged)
+        source_updates = {
+            "uuid": f"merged:{source_uuid}",
+            "total_play_time": 0,
+            "description": f"Merged into PID #{target_pid} ({target_raw.get('nickname')})",
+        }
+        await db["players"].update_one(
+            {"_id": source_raw["_id"]}, {"$set": source_updates}
+        )
+
+        # Reassign games in games_v2
+        games_transferred = 0
+        if source_uuid and target_uuid:
+            match_res = await db["games_v2"].update_many(
+                {"player_stats.uuid": source_uuid},
+                {"$set": {"player_stats.$[elem].uuid": target_uuid}},
+                array_filters=[{"elem.uuid": source_uuid}],
+            )
+            games_transferred = _to_int(match_res.modified_count)
+
+        # Punishments transfer
+        ban_transferred = False
+        mute_transferred = False
+        if source_uuid and target_uuid:
+            source_ban = await db["bans"].find_one({"uuid": source_uuid})
+            if source_ban:
+                target_ban = await db["bans"].find_one({"uuid": target_uuid})
+                if not target_ban:
+                    new_ban = dict(source_ban)
+                    new_ban.pop("_id", None)
+                    new_ban["uuid"] = target_uuid
+                    new_ban["name"] = target_raw.get("nickname") or "Unknown"
+                    new_ban["reason"] = f"[Merged from #{source_pid}] {source_ban.get('reason', '')}"
+                    await db["bans"].insert_one(new_ban)
+                    ban_transferred = True
+
+            source_mute = await db["mutes"].find_one({"uuid": source_uuid})
+            if source_mute:
+                target_mute = await db["mutes"].find_one({"uuid": target_uuid})
+                if not target_mute:
+                    new_mute = dict(source_mute)
+                    new_mute.pop("_id", None)
+                    new_mute["uuid"] = target_uuid
+                    new_mute["name"] = target_raw.get("nickname") or "Unknown"
+                    new_mute["reason"] = f"[Merged from #{source_pid}] {source_mute.get('reason', '')}"
+                    await db["mutes"].insert_one(new_mute)
+                    mute_transferred = True
+
+        # Audit record
+        audit_id = await self.append_moderation_audit(
+            action="MERGE",
+            target_uuid=target_uuid,
+            target_pid=target_pid,
+            target_name=str(target_raw.get("nickname") or "Unknown"),
+            target_ip=str(target_raw.get("ip") or ""),
+            actor_discord_id=actor_discord_id,
+            actor_name=actor_name,
+            reason=reason,
+            occurred_at=datetime.now(UTC),
+        )
+
+        updated_target_raw = await db["players"].find_one({"_id": target_raw["_id"]})
+        target_after = player_record_from_doc(
+            PlayerDoc.model_validate(updated_target_raw).model_dump(mode="python")
+        )
+
+        return AccountMergeResult(
+            success=True,
+            source_before=source_before,
+            target_before=target_before,
+            target_after=target_after,
+            games_transferred=games_transferred,
+            ban_transferred=ban_transferred,
+            mute_transferred=mute_transferred,
+            audit_id=audit_id,
+        )
+
     @staticmethod
     def _audit_record_from_doc(raw: dict[str, Any]) -> AuditRecordSummary:
         validated = AuditDoc.model_validate(raw).model_dump(mode="python")
@@ -663,7 +934,7 @@ class MongoStore:
             duration_ms=details.get("duration_ms"),
             expires_at=details.get("expires_at"),
             occurred_at=validated.get("occurred_at"),
-            created_at_epoch_ms=int(validated.get("created_at_epoch_ms") or 0),
+            created_at_epoch_ms=_to_int(validated.get("created_at_epoch_ms")),
         )
 
     @staticmethod

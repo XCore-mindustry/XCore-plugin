@@ -8,8 +8,8 @@ from discord import Interaction
 from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickParticipantV1
 
 from .dto import PlayerRecord
-from .moderation_views import BanConfirmView, MuteUndoView
-from .presentation import format_ban_expire_date
+from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
+from .presentation import format_ban_expire_date, format_minutes
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -116,7 +116,10 @@ async def _append_discord_moderation_audit(
 ) -> str:
     request_id = str(getattr(interaction, "id", "") or "").strip() or None
     occurred_at = await bot.now_utc()
-    duration_ms = int(duration.total_seconds() * 1000) if duration is not None else None
+    try:
+        duration_ms = int(duration.total_seconds() * 1000) if duration is not None else None
+    except (ValueError, TypeError, OverflowError):
+        duration_ms = None
     uuid_value, ip_value = bot._player_identifiers(player)
     return await bot.append_moderation_audit(
         action=action,
@@ -674,9 +677,14 @@ async def cmd_list_admins(bot: XCoreDiscordBot, interaction: Interaction) -> Non
 
 async def cmd_sync_admins(bot: XCoreDiscordBot, interaction: Interaction) -> None:
     result = await bot.reconcile_discord_admin_access()
-    applied_count = int(cast(int, result["applied"]))
-    revoked_count = int(cast(int, result["revoked"]))
-    discord_admin_count = int(cast(int, result["discord_admins"]))
+    try:
+        applied_count = int(cast(int, result["applied"]))
+        revoked_count = int(cast(int, result["revoked"]))
+        discord_admin_count = int(cast(int, result["discord_admins"]))
+    except (ValueError, TypeError):
+        applied_count = 0
+        revoked_count = 0
+        discord_admin_count = 0
     embed = discord.Embed(
         title="Admin Reconcile Complete",
         color=discord.Color.blurple(),
@@ -929,3 +937,101 @@ async def post_vote_kick_log(
 def _format_admin_value(*, admin_name: str, admin_discord_id: str | None) -> str:
     discord_id = str(admin_discord_id or "").strip()
     return f"{admin_name} (<@{discord_id}>)" if discord_id else admin_name
+
+
+async def cmd_merge_player(
+    bot: XCoreDiscordBot,
+    interaction: Interaction,
+    source_pid: int,
+    target_pid: int,
+    reason: str = "Admin merge",
+) -> None:
+    if source_pid == target_pid:
+        await interaction.response.send_message(
+            "Нельзя объединить аккаунт сам с собой.",
+            ephemeral=True,
+        )
+        return
+
+    source = await bot._get_player_or_reply(interaction, source_pid)
+    if source is None:
+        return
+
+    target = await bot._get_player_or_reply(interaction, target_pid)
+    if target is None:
+        return
+
+    if source.uuid and source.uuid.startswith("merged:"):
+        await interaction.response.send_message(
+            f"Исходный аккаунт #{source.pid} уже был объединен ранее.",
+            ephemeral=True,
+        )
+        return
+
+    embed = discord.Embed(
+        title="🔄 Подтверждение слияния аккаунтов",
+        description=(
+            f"Вы собираетесь объединить аккаунт **#{source.pid} ({source.nickname})** "
+            f"в целевой аккаунт **#{target.pid} ({target.nickname})**.\n\n"
+            f"**Причина:** `{reason}`\n\n"
+            f"⚠️ **Внимание:** После подтверждения исходный аккаунт будет закрыт, "
+            f"а вся статистика и матчи перенесены. Действие необратимо!"
+        ),
+        color=discord.Color.gold(),
+    )
+
+    embed.add_field(
+        name=f"Исходный аккаунт (Закроется) • #{source.pid}",
+        value=(
+            f"Никнейм: `{source.nickname}`\n"
+            f"Время: `{format_minutes(source.total_play_time)}`\n"
+            f"PvP Рейтинг: `{source.pvp_rating}`\n"
+            f"Hexed очки: `{source.hexed_points}`\n"
+            f"Бейджи: `{len(source.unlocked_badges)}`\n"
+            f"Discord: `{source.discord_username or 'не привязан'}`"
+        ),
+        inline=True,
+    )
+
+    embed.add_field(
+        name=f"Целевой аккаунт (Активен) • #{target.pid}",
+        value=(
+            f"Никнейм: `{target.nickname}`\n"
+            f"Время: `{format_minutes(target.total_play_time)}`\n"
+            f"PvP Рейтинг: `{target.pvp_rating}`\n"
+            f"Hexed очки: `{target.hexed_points}`\n"
+            f"Бейджи: `{len(target.unlocked_badges)}`\n"
+            f"Discord: `{target.discord_username or 'не привязан'}`"
+        ),
+        inline=True,
+    )
+
+    combined_time = source.total_play_time + target.total_play_time
+    max_rating = max(source.pvp_rating, target.pvp_rating)
+    combined_points = source.hexed_points + target.hexed_points
+    combined_badges = len(set(source.unlocked_badges + target.unlocked_badges))
+
+    embed.add_field(
+        name="📊 Итог после слияния",
+        value=(
+            f"Суммарное время: `{format_minutes(combined_time)}`\n"
+            f"PvP Рейтинг: `{max_rating}`\n"
+            f"Hexed очки: `{combined_points}`\n"
+            f"Бейджи (всего): `{combined_badges}`"
+        ),
+        inline=False,
+    )
+
+    view = AccountMergeConfirmView(
+        requester_id=interaction.user.id,
+        source_pid=source_pid,
+        target_pid=target_pid,
+        source_player=source,
+        target_player=target,
+        reason=reason,
+        perform_merge=lambda **kwargs: bot.merge_player_accounts(**kwargs),
+    )
+
+    await interaction.response.send_message(embed=embed, view=view)
+    view.message = await interaction.original_response()
+

@@ -15,7 +15,13 @@ from discord.ext import commands
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SubnetCog
-from .dto import AuditRecordSummary, BanRecord, MuteRecord, PlayerRecord
+from .dto import (
+    AccountMergeResult,
+    AuditRecordSummary,
+    BanRecord,
+    MuteRecord,
+    PlayerRecord,
+)
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .moderation_views import (
     BanConfirmView,
@@ -336,6 +342,29 @@ class XCoreDiscordBot(commands.Bot):
     async def reset_password(self, *, uuid: str) -> bool:
         return await self._store.reset_password(uuid=uuid)
 
+    async def merge_player_accounts(
+        self,
+        *,
+        source_pid: int,
+        target_pid: int,
+        actor_name: str,
+        actor_discord_id: str | None,
+        reason: str,
+    ) -> AccountMergeResult:
+        result = await self._store.merge_player_accounts(
+            source_pid=source_pid,
+            target_pid=target_pid,
+            actor_name=actor_name,
+            actor_discord_id=actor_discord_id,
+            reason=reason,
+        )
+        if result.success and result.source_before and result.source_before.uuid:
+            await self._bus.publish_kick_banned(
+                uuid_value=result.source_before.uuid,
+                ip=None,
+            )
+        return result
+
     async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
         return await self._store.grant_badge(uuid=uuid, badge_id=badge_id)
 
@@ -472,9 +501,14 @@ class XCoreDiscordBot(commands.Bot):
         if guild is None:
             guild = await self.fetch_guild(guild_id)
 
-        member = guild.get_member(int(discord_id))
+        try:
+            member_id = int(discord_id)
+        except (ValueError, TypeError):
+            raise RuntimeError(f"Invalid discord_id: {discord_id}")
+
+        member = guild.get_member(member_id)
         if member is None:
-            member = await guild.fetch_member(int(discord_id))
+            member = await guild.fetch_member(member_id)
 
         role = guild.get_role(self._settings.discord_admin_role_id)
         if role is None:
@@ -661,17 +695,23 @@ class XCoreDiscordBot(commands.Bot):
                         }
                     )
 
+        def _safe_sort_pid(val: object) -> int:
+            try:
+                return int(str(val))
+            except (ValueError, TypeError):
+                return 0
+
         applied_players.sort(
             key=lambda item: (
                 str(item["discord_id"]),
-                int(item["pid"]),
+                _safe_sort_pid(item["pid"]),
                 str(item["nickname"]),
             )
         )
         revoked_players.sort(
             key=lambda item: (
                 str(item["discord_id"]),
-                int(item["pid"]),
+                _safe_sort_pid(item["pid"]),
                 str(item["nickname"]),
             )
         )
