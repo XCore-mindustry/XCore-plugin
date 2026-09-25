@@ -77,7 +77,7 @@ publishing {
 
             groupId = "org.xcore"
             artifactId = "cloud-mindustry"
-            version = version
+            version = project.version.toString()
         }
     }
 }
