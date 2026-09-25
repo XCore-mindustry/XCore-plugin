@@ -77,6 +77,7 @@ class CloudCommandPipelineIntegrationTest {
         );
         manager = factory.createManager(handler);
         parser = new AnnotationParser<>(manager, XCoreSender.class);
+        manager.registerSelectorAnnotations(parser);
 
         DisabledCommandPolicy policy = new DisabledCommandPolicy(config);
         CloudGuardConfigurer guardConfigurer = new CloudGuardConfigurer(
@@ -198,6 +199,28 @@ class CloudCommandPipelineIntegrationTest {
         var duration = sample(samples, XcoreMetrics.COMMAND_DURATION_SECONDS.name(), "server-metrics", "server");
         assertThat(duration.count()).isEqualTo(1L);
         assertThat(duration.sum()).isNotNull().isGreaterThanOrEqualTo(0.0d);
+    }
+
+    @Test
+    @DisplayName("@DenySelectors blocks selector input before command execution")
+    void denySelectors_blocksSelectorExecution() {
+        AtomicBoolean handlerCalled = new AtomicBoolean(false);
+
+        parser.parse(new Object() {
+            @org.xcore.cloud.mindustry.selector.annotation.DenySelectors
+            @Command("test-deny <target>")
+            public void handle(XCoreSender sender, @Argument("target") mindustry.gen.Player target) {
+                handlerCalled.set(true);
+            }
+        });
+
+        try {
+            manager.commandExecutor().executeCommand(sender, "test-deny @s").toCompletableFuture().get();
+        } catch (Exception ignored) {
+            // expected
+        }
+
+        assertThat(handlerCalled).isFalse();
     }
 
     private org.xcore.protocol.generated.shared.MetricSampleV1 sample(List<org.xcore.protocol.generated.shared.MetricSampleV1> samples,

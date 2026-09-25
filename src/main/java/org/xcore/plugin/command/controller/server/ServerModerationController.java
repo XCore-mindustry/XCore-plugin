@@ -19,6 +19,7 @@ import org.xcore.plugin.service.moderation.ModerationService;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
+import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 
 import static mindustry.Vars.netServer;
 import static org.xcore.plugin.common.TextUtils.deepEquals;
@@ -37,6 +38,7 @@ public class ServerModerationController implements CloudServerController {
         this.banDataRepository = banDataRepository;
     }
 
+    @DenySelectors
     @Command("tempban <target> <period> [reason]")
     @CommandDescription("Temporarily bans a player by Name, UUID, IP, or #ID.")
     public void tempBan(XCoreSender sender,
@@ -113,6 +115,7 @@ public class ServerModerationController implements CloudServerController {
                 b.expireDate != null ? b.expireDate.atZone(ZoneId.systemDefault()).toLocalDateTime() : "Permanent", b.reason));
     }
 
+    @DenySelectors
     @Command("mute <target> <period> [reason]")
     @CommandDescription("Mutes a player by #ID or UUID.")
     public void mute(XCoreSender sender,
@@ -132,6 +135,7 @@ public class ServerModerationController implements CloudServerController {
         }
     }
 
+    @DenySelectors
     @Command("unmute <target>")
     @CommandDescription("Unmutes a player by #ID or UUID.")
     public void unmute(XCoreSender sender,

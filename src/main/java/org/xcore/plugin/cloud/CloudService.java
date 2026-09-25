@@ -62,6 +62,9 @@ public class CloudService {
         this.clientAnnotationParser = new AnnotationParser<>(clientManager, XCoreSender.class);
         this.serverAnnotationParser = new AnnotationParser<>(serverManager, XCoreSender.class);
 
+        clientManager.registerSelectorAnnotations(clientAnnotationParser);
+        serverManager.registerSelectorAnnotations(serverAnnotationParser);
+
         configureAnnotationGuards(clientAnnotationParser);
         configureAnnotationGuards(serverAnnotationParser);
     }

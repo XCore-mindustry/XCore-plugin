@@ -12,6 +12,7 @@ import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
+import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.config.ServerLocalConfigPathEditor;
@@ -106,6 +107,7 @@ public class DataController implements CloudServerController {
         Log.info("Config field '@' updated.", field);
     }
 
+    @DenySelectors
     @Command("edit-data <player> <field> <value>")
     @CommandDescription("Directly modifies a field in a player's database entry.")
     public void editData(XCoreSender sender,
@@ -147,6 +149,7 @@ public class DataController implements CloudServerController {
         };
     }
 
+    @DenySelectors
     @Command("dbinfo <player>")
     @CommandDescription("Displays raw database information (JSON) for a player.")
     public void dbInfo(XCoreSender sender,

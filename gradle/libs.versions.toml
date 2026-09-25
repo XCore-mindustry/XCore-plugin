@@ -7,7 +7,7 @@ toxopid = "4.2.0"
 shadow = "9.3.0"
 
 # Dependencies
-cloud-mindustry = "0.2.0-SNAPSHOT"
+cloud-mindustry = "0.2.0"
 mongodb = "5.9.1"
 gson = "2.12.1"
 jbcrypt = "0.4"

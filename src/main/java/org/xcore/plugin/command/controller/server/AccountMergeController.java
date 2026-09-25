@@ -8,6 +8,7 @@ import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.CommandDescription;
+import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudServerController;
 import org.xcore.plugin.common.PLog;
@@ -25,6 +26,7 @@ public class AccountMergeController implements CloudServerController {
         this.accountMergeService = accountMergeService;
     }
 
+    @DenySelectors
     @Command("merge-player <source> <target> [reason]")
     @CommandDescription("Merges the source player account into the target player account (playtime, ratings, points, badges, matches).")
     public void mergePlayer(
@@ -36,6 +38,7 @@ public class AccountMergeController implements CloudServerController {
         executeMerge(source, target, reason);
     }
 
+    @DenySelectors
     @Command("merge-account <source> <target> [reason]")
     @CommandDescription("Alias for merge-player. Merges the source player account into the target player account.")
     public void mergeAccount(

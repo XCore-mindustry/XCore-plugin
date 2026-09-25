@@ -6,6 +6,7 @@ import mindustry.gen.Player;
 import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
+import org.xcore.cloud.mindustry.selector.annotation.DenySelectors;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.PlayTimeLimit;
 import org.xcore.plugin.cloud.annotation.RequiresPlayTime;
@@ -35,6 +36,7 @@ public class VoteController implements CloudClientController {
     }
 
     @RequiresPlayTime(PlayTimeLimit.VOTE_KICK)
+    @DenySelectors
     @Command("votekick <target> <reason>")
     public void votekick(XCoreSender sender, @Argument("target") Player target, @Argument("reason") @Greedy String reason) {
         Session session = resolveSession(sender, sessionService);
