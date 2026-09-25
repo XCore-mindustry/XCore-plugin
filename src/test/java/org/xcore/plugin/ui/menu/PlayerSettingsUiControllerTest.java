@@ -81,6 +81,10 @@ class PlayerSettingsUiControllerTest {
         // Background
         assertThat(dsl).contains("background: pane");
 
+        // Mobile responsiveness: ScrollPane with max height ceiling
+        assertThat(dsl).contains("pane{");
+        assertThat(dsl).contains("maxHeight: 280");
+
         // Profile fields
         assertThat(dsl).contains("id: field_nickname");
         assertThat(dsl).contains("id: field_description");
@@ -92,6 +96,7 @@ class PlayerSettingsUiControllerTest {
 
         // Actions
         assertThat(dsl).contains("action:save");
+        assertThat(dsl).contains("action:close");
         assertThat(dsl).contains("action:reset_nick");
 
         // Language Combobox slot
@@ -277,5 +282,8 @@ class PlayerSettingsUiControllerTest {
 
         MenuResult closeRes = new MenuResult("action:close");
         assertThat(controller.parseEvent(closeRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.Close.class);
+
+        MenuResult cancelledRes = new MenuResult((String) null);
+        assertThat(controller.parseEvent(cancelledRes)).isInstanceOf(PlayerSettingsUiController.SettingsEvent.Close.class);
     }
 }

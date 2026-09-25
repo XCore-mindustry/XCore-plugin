@@ -252,143 +252,161 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             t.margin(14f);
             t.layout(l -> l.width(520f).pad(6f));
 
-            // 1. Centered Header with Accent title and underline
+            // 1. Header with Accent title, underline, and close button
             t.add(Ui.table(h -> {
                 h.layout(l -> l.growX().padBottom(4f));
-                h.label(Text.t("player-menu-settings-title"), l -> l.align("center").growX());
+                h.label(Text.t("player-menu-settings-title"), l -> l.align("left").growX());
+                h.button(Text.raw(" [scarlet]✕[] "), "action:close", b -> b
+                        .style("cleart")
+                        .layout(l -> l.height(28f)));
             })).row();
-            t.image("whiteui", l -> l.growX().height(3f).padBottom(10f).color("ffd37f")).row();
+            t.image("whiteui", l -> l.growX().height(3f).padBottom(8f).color("ffd37f")).row();
 
-            // 2. Profile input section
-            t.add(Ui.table(p -> {
-                p.layout(l -> l.growX());
+            // 2. Scrollable Body (prevents overflow and allows vertical scrolling on mobile landscape)
+            t.pane(p -> {
+                p.layout(l -> l.growX().maxHeight(280f));
+                p.table(body -> {
+                    body.layout(l -> l.growX().fillX());
 
-                // Vanilla Name info row with inline Reset button
-                p.add(Ui.table(row -> {
-                    row.layout(l -> l.growX().padBottom(4f));
-                    row.label(Text.join(Text.t("player-settings-player-label"), Text.raw("  [white]" + model.nickname() + "[]")),
-                            l -> l.align("left").growX());
-                    row.button(Text.t("player-settings-reset-nick-btn"), "action:reset_nick", b -> b
-                            .style("cleart")
-                            .layout(l -> l.height(24f)));
-                })).row();
+                    // Profile input section
+                    body.add(Ui.table(prof -> {
+                        prof.layout(l -> l.growX());
 
-                String rawHint = session != null && session.locale() != null
-                        ? session.locale().t("player-menu-settings-customNickname-message")
-                        : "Leave blank to reset";
-                String cleanHint = Strings.stripColors(rawHint);
+                        // Vanilla Name info row with inline Reset button
+                        prof.add(Ui.table(row -> {
+                            row.layout(l -> l.growX().padBottom(4f));
+                            row.label(Text.join(Text.t("player-settings-player-label"), Text.raw("  [white]" + model.nickname() + "[]")),
+                                    l -> l.align("left").growX());
+                            row.button(Text.t("player-settings-reset-nick-btn"), "action:reset_nick", b -> b
+                                    .style("cleart")
+                                    .layout(l -> l.height(24f)));
+                        })).row();
 
-                p.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").padBottom(2f)).row();
-                p.field("field_nickname", f -> f
-                        .value(model.customNickname())
-                        .hint(cleanHint)
-                        .maxLength(40)
-                        .layout(l -> l.growX().padBottom(8f))).row();
+                        String rawHint = session != null && session.locale() != null
+                                ? session.locale().t("player-menu-settings-customNickname-message")
+                                : "Leave blank to reset";
+                        String cleanHint = Strings.stripColors(rawHint);
 
-                // Description
-                p.label(Text.t("player-menu-settings-description"), l -> l.align("left").padBottom(2f)).row();
-                p.field("field_description", f -> f
-                        .value(model.description())
-                        .maxLength(200)
-                        .layout(l -> l.growX()));
-            })).row();
+                        prof.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").padBottom(2f)).row();
+                        prof.field("field_nickname", f -> f
+                                .value(model.customNickname())
+                                .hint(cleanHint)
+                                .maxLength(40)
+                                .layout(l -> l.growX().padBottom(8f))).row();
 
-            // Divider line
-            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
-
-            // 3. Toggles section (clean left-aligned checkboxes directly on pane)
-            t.add(Ui.table(toggles -> {
-                toggles.layout(l -> l.align("left").growX());
-
-                toggles.check(Text.t("player-settings-global-chat"), c -> c
-                        .id("check_global_chat")
-                        .checked(model.globalChatVisible())
-                        .layout(l -> l.align("left").padBottom(6f))).row();
-
-                toggles.check(Text.t("player-settings-discord-relay"), c -> c
-                        .id("check_discord_relay")
-                        .checked(model.discordRelayVisible())
-                        .layout(l -> l.align("left").padBottom(6f))).row();
-
-                toggles.check(Text.t("player-settings-leaderboard"), c -> c
-                        .id("check_leaderboard")
-                        .checked(model.leaderboard())
-                        .layout(l -> l.align("left")));
-            })).row();
-
-            // Divider line
-            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
-
-            // 4. Preferences & Language Section
-            t.add(Ui.table(pref -> {
-                pref.layout(l -> l.growX());
-
-                // Badges row
-                pref.add(Ui.table(inner -> {
-                    inner.layout(l -> l.growX().padBottom(6f));
-                    String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
-                    inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
-                    inner.button(Text.t("player-settings-edit-badges"), "action:badges", b -> b
-                            .style("cleart")
-                            .layout(l -> l.height(28f)));
-                })).row();
-
-                // Language Combobox Slot inside section
-                pref.slot("slot_lang", langSlot -> {
-                    langSlot.layout(l -> l.growX());
-
-                    String currentLang = resolveLanguageDisplay(model.language());
-                    String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
-
-                    langSlot.add(Ui.table(btnRow -> {
-                        btnRow.layout(l -> l.growX());
-                        btnRow.label(Text.t("player-settings-language"), l -> l.align("left").growX());
-                        btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
-                                .style("cleart")
-                                .layout(l -> l.height(30f)));
+                        // Description
+                        prof.label(Text.t("player-menu-settings-description"), l -> l.align("left").padBottom(2f)).row();
+                        prof.field("field_description", f -> f
+                                .value(model.description())
+                                .maxLength(200)
+                                .layout(l -> l.growX()));
                     })).row();
 
-                    if (model.langDropdownOpen()) {
-                        langSlot.add(Ui.table(opts -> {
-                            opts.layout(l -> l.growX().padTop(6f));
-                            int col = 0;
-                            for (LanguageOption opt : AVAILABLE_LANGUAGES) {
-                                boolean isSel = opt.code().equals(model.language());
-                                opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
-                                        .style("togglet")
-                                        .checked(isSel)
-                                        .layout(l -> l.uniform().growX().height(32f).pad(2f)));
-                                col++;
-                                if (col % 2 == 0) {
-                                    opts.row();
-                                }
-                            }
+                    // Divider line
+                    body.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
+
+                    // 3. Toggles section (clean left-aligned checkboxes directly on pane)
+                    body.add(Ui.table(toggles -> {
+                        toggles.layout(l -> l.align("left").growX());
+
+                        toggles.check(Text.t("player-settings-global-chat"), c -> c
+                                .id("check_global_chat")
+                                .checked(model.globalChatVisible())
+                                .layout(l -> l.align("left").padBottom(6f))).row();
+
+                        toggles.check(Text.t("player-settings-discord-relay"), c -> c
+                                .id("check_discord_relay")
+                                .checked(model.discordRelayVisible())
+                                .layout(l -> l.align("left").padBottom(6f))).row();
+
+                        toggles.check(Text.t("player-settings-leaderboard"), c -> c
+                                .id("check_leaderboard")
+                                .checked(model.leaderboard())
+                                .layout(l -> l.align("left")));
+                    })).row();
+
+                    // Divider line
+                    body.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(10f).color("454545")).row();
+
+                    // 4. Preferences & Language Section
+                    body.add(Ui.table(pref -> {
+                        pref.layout(l -> l.growX());
+
+                        // Badges row
+                        pref.add(Ui.table(inner -> {
+                            inner.layout(l -> l.growX().padBottom(6f));
+                            String badgeTag = !model.activeBadge().isBlank() ? "  [gold][" + model.activeBadge() + "][]" : "  [gray][None][]";
+                            inner.label(Text.join(Text.t("player-menu-settings-badges"), Text.raw(badgeTag)), l -> l.align("left").growX());
+                            inner.button(Text.t("player-settings-edit-badges"), "action:badges", b -> b
+                                    .style("cleart")
+                                    .layout(l -> l.height(28f)));
                         })).row();
-                    }
+
+                        // Language Combobox Slot inside section
+                        pref.slot("slot_lang", langSlot -> {
+                            langSlot.layout(l -> l.growX());
+
+                            String currentLang = resolveLanguageDisplay(model.language());
+                            String arrow = model.langDropdownOpen() ? "  ▲" : "  ▼";
+
+                            langSlot.add(Ui.table(btnRow -> {
+                                btnRow.layout(l -> l.growX());
+                                btnRow.label(Text.t("player-settings-language"), l -> l.align("left").growX());
+                                btnRow.button(Text.raw(currentLang + arrow), "action:toggle_lang", b -> b
+                                        .style("cleart")
+                                        .layout(l -> l.height(30f)));
+                            })).row();
+
+                            if (model.langDropdownOpen()) {
+                                langSlot.add(Ui.table(opts -> {
+                                    opts.layout(l -> l.growX().padTop(6f));
+                                    int col = 0;
+                                    for (LanguageOption opt : AVAILABLE_LANGUAGES) {
+                                        boolean isSel = opt.code().equals(model.language());
+                                        opts.button(Text.raw(opt.displayName()), "action:select_lang:" + opt.code(), b -> b
+                                                .style("togglet")
+                                                .checked(isSel)
+                                                .layout(l -> l.uniform().growX().height(32f).pad(2f)));
+                                        col++;
+                                        if (col % 2 == 0) {
+                                            opts.row();
+                                        }
+                                    }
+                                })).row();
+                            }
+                        });
+                    })).row();
+
+                    // Divider line
+                    body.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(8f).color("454545")).row();
+
+                    // 5. Dynamic Feedback Slot
+                    body.slot("slot_feedback", fb -> {
+                        fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
+                        if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
+                            fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
+                        }
+                    }).row();
                 });
-            })).row();
-
-            // Divider line
-            t.image("whiteui", l -> l.growX().height(2f).padTop(10f).padBottom(8f).color("454545")).row();
-
-            // 5. Dynamic Feedback Slot
-            t.slot("slot_feedback", fb -> {
-                fb.layout(l -> l.growX().minHeight(20f).padBottom(4f));
-                if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                    fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
-                }
             }).row();
 
-            // 6. Action: Save (full-width borderless hitbox)
-            t.button(Text.join(Text.raw("[accent]"), Text.t("save")), "action:save", b -> b
-                    .style("cleart")
-                    .layout(l -> l.growX().fillX().height(44f).padTop(2f)));
+            // 6. Action: Cancel + Save buttons
+            t.add(Ui.table(actions -> {
+                actions.layout(l -> l.growX().padTop(6f));
+                actions.button(Text.t("cancel"), "action:close", b -> b
+                        .style("cleart")
+                        .layout(l -> l.growX().uniform().height(42f)));
+                actions.button(Text.join(Text.raw("[accent]"), Text.t("save")), "action:save", b -> b
+                        .style("cleart")
+                        .layout(l -> l.growX().uniform().height(42f)));
+            })).row();
         });
     }
 
     @Override
     public SettingsEvent parseEvent(MenuResult result) {
-        if (result == null || result.result == null) return null;
+        if (result == null) return null;
+        if (result.wasCancelled()) return new SettingsEvent.Close();
         if ("action:save".equals(result.result)) return new SettingsEvent.Save(result);
         if ("action:reset_nick".equals(result.result)) return new SettingsEvent.ResetNickname();
         if ("action:badges".equals(result.result)) return new SettingsEvent.OpenBadges();
