@@ -53,6 +53,8 @@ public class CloudService {
 
     @PostConstruct
     public void init() {
+        org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.setSimulationThread(Thread.currentThread());
+
         this.clientManager = cloudManagerFactory.createManager(Vars.netServer.clientCommands);
         this.serverManager = cloudManagerFactory.createManager(ServerControl.instance.handler);
 
