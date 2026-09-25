@@ -49,7 +49,9 @@ public final class SingleUnitSelectorImpl implements SingleUnitSelector {
 
     @Override
     public @NonNull Unit resolve(@NonNull MindustrySender sender) {
-        Seq<Unit> list = engine.resolveUnits(sender, spec);
+        Seq<Unit> list = org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.resolveSync(
+                () -> engine.resolveUnits(sender, spec)
+        );
         if (list.isEmpty()) {
             throw new NoSuchTargetException(rawInput);
         }

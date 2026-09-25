@@ -8,10 +8,14 @@ plugins {
 
 group = "org.xcore"
 
-val xcoreSnapshotsRepositoryUrl = providers.gradleProperty("xcoreMavenSnapshotsUrl")
-    .orElse("https://maven.x-core.org/snapshots")
-val xcoreReleasesRepositoryUrl = providers.gradleProperty("xcoreMavenReleasesUrl")
-    .orElse("https://maven.x-core.org/releases")
+val xcoreSnapshotsRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenSnapshotsUrl")
+        .orElse("https://maven.x-core.org/snapshots")
+val xcoreReleasesRepositoryUrl =
+    providers
+        .gradleProperty("xcoreMavenReleasesUrl")
+        .orElse("https://maven.x-core.org/releases")
 val isSnapshotVersion = version.toString().endsWith("-SNAPSHOT")
 
 java {

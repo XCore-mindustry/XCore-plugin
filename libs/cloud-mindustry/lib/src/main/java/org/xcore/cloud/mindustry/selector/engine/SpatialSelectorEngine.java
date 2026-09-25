@@ -293,9 +293,9 @@ public final class SpatialSelectorEngine {
         } else if (sort == SortOrder.RANDOM) {
             players.shuffle();
         } else if (sort == SortOrder.HEALTH_ASC) {
-            players.sort(p -> (p.unit() != null ? p.unit().health / p.unit().maxHealth : 0f));
+            players.sort(p -> (p.unit() != null && p.unit().maxHealth > 0f ? p.unit().health / p.unit().maxHealth : 0f));
         } else if (sort == SortOrder.HEALTH_DESC) {
-            players.sort(p -> -(p.unit() != null ? p.unit().health / p.unit().maxHealth : 0f));
+            players.sort(p -> -(p.unit() != null && p.unit().maxHealth > 0f ? p.unit().health / p.unit().maxHealth : 0f));
         }
     }
 
@@ -307,9 +307,9 @@ public final class SpatialSelectorEngine {
         } else if (sort == SortOrder.RANDOM) {
             units.shuffle();
         } else if (sort == SortOrder.HEALTH_ASC) {
-            units.sort(u -> u.health / u.maxHealth);
+            units.sort(u -> u.maxHealth > 0f ? u.health / u.maxHealth : 0f);
         } else if (sort == SortOrder.HEALTH_DESC) {
-            units.sort(u -> -(u.health / u.maxHealth));
+            units.sort(u -> -(u.maxHealth > 0f ? u.health / u.maxHealth : 0f));
         }
     }
 }

@@ -151,48 +151,9 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         exceptionController().registerHandler(
                 org.incendo.cloud.exception.ArgumentParseException.class,
                 context -> {
-                    Throwable cause = context.exception().getCause();
                     MindustrySender sender = senderMapper.reverse(context.context().sender());
-
-                    if (cause instanceof SelectorSyntaxException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
-                                CaptionVariable.of("input", ex.input()),
-                                CaptionVariable.of("reason", ex.reason())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof NoSuchTargetException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof TooManyTargetsException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof SelectorDeniedException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
-                                CaptionVariable.of("reason", ex.getMessage())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof SelectorSenderRequirementException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED,
-                                CaptionVariable.of("kind", ex.kind().token())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof SelectorLimitExceededException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED,
-                                CaptionVariable.of("count", String.valueOf(ex.count())),
-                                CaptionVariable.of("limit", String.valueOf(ex.limit()))
-                        );
-                        sender.sendMessage(msg);
-                    } else {
+                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
+                        Throwable cause = context.exception().getCause();
                         String msg = cause != null && cause.getMessage() != null
                                 ? cause.getMessage()
                                 : context.exception().getMessage();
@@ -204,38 +165,13 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         exceptionController().registerHandler(
                 org.incendo.cloud.services.PipelineException.class,
                 context -> {
-                    Throwable cause = context.exception().getCause();
                     MindustrySender sender = senderMapper.reverse(context.context().sender());
-
-                    if (cause instanceof SelectorDeniedException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
-                                CaptionVariable.of("reason", ex.getMessage())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof SelectorSyntaxException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
-                                CaptionVariable.of("input", ex.input()),
-                                CaptionVariable.of("reason", ex.reason())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof NoSuchTargetException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof TooManyTargetsException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause != null && cause.getMessage() != null) {
-                        sender.sendMessage("[scarlet]Error: " + cause.getMessage());
-                    } else {
-                        sender.sendMessage("[scarlet]Error: " + context.exception().getMessage());
+                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
+                        Throwable cause = context.exception().getCause();
+                        String msg = cause != null && cause.getMessage() != null
+                                ? cause.getMessage()
+                                : context.exception().getMessage();
+                        sender.sendMessage("[scarlet]Error: " + msg);
                     }
                 }
         );
@@ -243,35 +179,9 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
         exceptionController().registerHandler(
                 org.incendo.cloud.exception.CommandExecutionException.class,
                 context -> {
-                    Throwable cause = context.exception().getCause();
                     MindustrySender sender = senderMapper.reverse(context.context().sender());
-
-                    if (cause instanceof SelectorDeniedException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
-                                CaptionVariable.of("reason", ex.getMessage())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof SelectorSyntaxException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
-                                CaptionVariable.of("input", ex.input()),
-                                CaptionVariable.of("reason", ex.reason())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof NoSuchTargetException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else if (cause instanceof TooManyTargetsException ex) {
-                        String msg = context.context().formatCaption(
-                                SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
-                                CaptionVariable.of("input", ex.selectorInput())
-                        );
-                        sender.sendMessage(msg);
-                    } else {
+                    if (!handleSelectorException(context.exception(), context.context(), sender)) {
+                        Throwable cause = context.exception().getCause();
                         String msg = cause != null && cause.getMessage() != null
                                 ? cause.getMessage()
                                 : context.exception().getMessage();
@@ -282,82 +192,86 @@ public class MindustryCommandManager<C> extends CommandManager<C> {
 
         exceptionController().registerHandler(
                 SelectorSyntaxException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
-                            CaptionVariable.of("input", ex.input()),
-                            CaptionVariable.of("reason", ex.reason())
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
 
         exceptionController().registerHandler(
                 NoSuchTargetException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
-                            CaptionVariable.of("input", ex.selectorInput())
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
 
         exceptionController().registerHandler(
                 TooManyTargetsException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
-                            CaptionVariable.of("input", ex.selectorInput())
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
 
         exceptionController().registerHandler(
                 SelectorDeniedException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
-                            CaptionVariable.of("reason", ex.getMessage())
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
 
         exceptionController().registerHandler(
                 SelectorSenderRequirementException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED,
-                            CaptionVariable.of("kind", ex.kind().token())
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
 
         exceptionController().registerHandler(
                 SelectorLimitExceededException.class,
-                context -> {
-                    var ex = context.exception();
-                    MindustrySender sender = senderMapper.reverse(context.context().sender());
-                    String msg = context.context().formatCaption(
-                            SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED,
-                            CaptionVariable.of("count", String.valueOf(ex.count())),
-                            CaptionVariable.of("limit", String.valueOf(ex.limit()))
-                    );
-                    sender.sendMessage(msg);
-                }
+                context -> handleSelectorException(context.exception(), context.context(), senderMapper.reverse(context.context().sender()))
         );
+    }
+
+    private boolean handleSelectorException(Throwable ex, org.incendo.cloud.context.CommandContext<C> context, MindustrySender sender) {
+        if (ex == null) return false;
+        Throwable target = ex;
+        while (target.getCause() != null && !(target instanceof SelectorSyntaxException
+                || target instanceof NoSuchTargetException
+                || target instanceof TooManyTargetsException
+                || target instanceof SelectorDeniedException
+                || target instanceof SelectorSenderRequirementException
+                || target instanceof SelectorLimitExceededException)) {
+            target = target.getCause();
+        }
+
+        if (target instanceof SelectorSyntaxException syntaxEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SYNTAX,
+                    CaptionVariable.of("input", syntaxEx.input()),
+                    CaptionVariable.of("reason", syntaxEx.reason())
+            ));
+            return true;
+        } else if (target instanceof NoSuchTargetException noTargetEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_NO_SUCH_TARGET,
+                    CaptionVariable.of("input", noTargetEx.selectorInput())
+            ));
+            return true;
+        } else if (target instanceof TooManyTargetsException tooManyEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_TOO_MANY_TARGETS,
+                    CaptionVariable.of("input", tooManyEx.selectorInput())
+            ));
+            return true;
+        } else if (target instanceof SelectorDeniedException deniedEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_DENIED,
+                    CaptionVariable.of("reason", deniedEx.getMessage())
+            ));
+            return true;
+        } else if (target instanceof SelectorSenderRequirementException reqEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_SENDER_REQUIRED,
+                    CaptionVariable.of("kind", reqEx.kind().token())
+            ));
+            return true;
+        } else if (target instanceof SelectorLimitExceededException limitEx) {
+            sender.sendMessage(context.formatCaption(
+                    SelectorCaptionKeys.ARGUMENT_PARSE_FAILURE_SELECTOR_LIMIT_EXCEEDED,
+                    CaptionVariable.of("count", String.valueOf(limitEx.count())),
+                    CaptionVariable.of("limit", String.valueOf(limitEx.limit()))
+            ));
+            return true;
+        }
+        return false;
     }
 }

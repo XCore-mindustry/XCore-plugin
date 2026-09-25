@@ -121,7 +121,13 @@ public final class SelectorSyntaxParser {
                     }
                     case "admin" -> {
                         String val = scanner.parseValue();
-                        admin = Boolean.parseBoolean(val);
+                        if (val.equalsIgnoreCase("true")) {
+                            admin = true;
+                        } else if (val.equalsIgnoreCase("false")) {
+                            admin = false;
+                        } else {
+                            throw scanner.error("Expected 'true' or 'false' for admin filter: '" + val + "'");
+                        }
                     }
                     case "name" -> {
                         String val = scanner.parseValue();
@@ -210,7 +216,10 @@ public final class SelectorSyntaxParser {
         }
         try {
             int id = Integer.parseInt(name);
-            return Team.get(id);
+            Team t = Team.get(id);
+            if (t != null) {
+                return t;
+            }
         } catch (NumberFormatException ignored) {}
 
         throw new SelectorSyntaxException(input, "Unknown team: '" + name + "'", cursor);

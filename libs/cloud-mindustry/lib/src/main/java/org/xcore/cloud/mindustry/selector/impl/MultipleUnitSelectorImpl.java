@@ -45,6 +45,8 @@ public final class MultipleUnitSelectorImpl implements MultipleUnitSelector {
 
     @Override
     public @NonNull Seq<Unit> resolve(@NonNull MindustrySender sender) {
-        return engine.resolveUnits(sender, spec);
+        return org.xcore.cloud.mindustry.selector.engine.SelectorResolutionBridge.resolveSync(
+                () -> engine.resolveUnits(sender, spec)
+        );
     }
 }
