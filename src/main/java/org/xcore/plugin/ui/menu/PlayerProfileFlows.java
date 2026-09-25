@@ -47,7 +47,13 @@ final class PlayerProfileFlows {
             this.gameDataRepository = gameDataRepository;
             this.auditHistoryMenu = auditHistoryMenu;
 
-            action("settings", ctx -> ctx.openRoute(MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", ctx.state().targetUuid)));
+            action("settings", ctx -> {
+                if (ctx.session() != null && ctx.session().menuService != null && ctx.session().menuService.hasMenuBuilder() && ctx.session().player != null && ctx.session().player.con != null) {
+                    menu.openSettingsUi(ctx.session(), resolveTargetData(ctx));
+                } else {
+                    ctx.openRoute(MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", ctx.state().targetUuid));
+                }
+            });
             action("audit-history", ctx -> auditHistoryMenu.history(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("audit-actions", ctx -> auditHistoryMenu.actions(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("players", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_PLAYERS).withParam("page", "1")));
