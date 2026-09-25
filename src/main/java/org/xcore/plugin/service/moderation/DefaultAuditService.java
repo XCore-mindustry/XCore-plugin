@@ -127,7 +127,7 @@ public class DefaultAuditService implements AuditService {
 
     private static String categoryFor(AuditAction action) {
         return switch (action) {
-            case NOTE -> "NOTE";
+            case NOTE, MERGE -> "NOTE";
             case WARN, KICK -> "CONTROL";
             default -> "SANCTION";
         };

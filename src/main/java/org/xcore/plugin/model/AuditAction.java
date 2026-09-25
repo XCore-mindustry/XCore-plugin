@@ -9,5 +9,6 @@ public enum AuditAction {
     QUARANTINE,
     UNQUARANTINE,
     KICK,
-    NOTE
+    NOTE,
+    MERGE
 }

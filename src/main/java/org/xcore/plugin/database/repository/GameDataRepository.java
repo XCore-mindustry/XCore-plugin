@@ -4,6 +4,8 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoDatabase;
 import jakarta.inject.Inject;
@@ -210,5 +212,15 @@ public class GameDataRepository extends DataRepository<GameData> {
         }
 
         return result;
+    }
+
+    public long reassignPlayerMatches(String oldUuid, String newUuid) {
+        if (oldUuid == null || newUuid == null || oldUuid.isBlank() || newUuid.isBlank() || isReadOnly()) {
+            return 0;
+        }
+        var filter = Filters.eq("player_stats.uuid", oldUuid);
+        var update = Updates.set("player_stats.$[elem].uuid", newUuid);
+        var options = new UpdateOptions().arrayFilters(List.of(Filters.eq("elem.uuid", oldUuid)));
+        return collection.updateMany(filter, update, options).getModifiedCount();
     }
 }
