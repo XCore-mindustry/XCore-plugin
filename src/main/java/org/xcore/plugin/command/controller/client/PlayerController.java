@@ -53,7 +53,7 @@ public class PlayerController implements CloudClientController {
         this(sessionService, observerService, menu, topMenu, null);
     }
 
-    @Command("player|stats|player-statistics [id]")
+    @Command("player|stats|me|player-statistics [id]")
     public void player(XCoreSender sender, @Argument("id") @Default("-1") int id) {
         openForTarget(sender.player(), id, (p, data) -> menu.player(p.uuid(), data));
     }
