@@ -291,7 +291,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                         prof.field("field_nickname", f -> f
                                 .value(model.customNickname())
                                 .hint(cleanHint)
-                                .maxLength(40)
+                                .maxLength(256)
                                 .layout(l -> l.growX().height(40f).padBottom(8f))).row();
 
                         // Description
