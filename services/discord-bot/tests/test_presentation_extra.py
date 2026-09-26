@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from xcore_discord_bot.presentation import (
     as_int,
+    build_servers_embed,
     format_ban_expire_date_from_millis,
     format_epoch_millis,
     format_hexed_rank_block,
     format_minutes,
     format_size,
 )
+from xcore_discord_bot.registry import ServerInfo
 
 
 def test_format_size_covers_bytes_kb_and_mb() -> None:
@@ -45,3 +47,40 @@ def test_format_hexed_rank_block_clamps_rank_bounds() -> None:
 
 def test_format_ban_expire_date_from_millis_handles_lower_bound() -> None:
     assert format_ban_expire_date_from_millis(-62135596800001) == "Before year 1"
+
+
+def test_build_servers_embed_with_rich_details() -> None:
+    servers = [
+        ServerInfo(
+            name="mini-pvp",
+            channel_id=123456,
+            players=12,
+            max_players=20,
+            version="v160",
+            host="play.xcore.top",
+            port=7001,
+            last_seen_ts=0.0,
+            description="[lightgray]Fast PvP battles on [scarlet]compact maps[]!",
+            map_name="[orange]Bridge [yellow]& Swamps",
+            wave=15,
+            mode="PVP",
+            tps=60,
+        ),
+    ]
+
+    embed = build_servers_embed(servers, sort_mode="players")
+    assert len(embed.fields) == 1
+    field = embed.fields[0]
+    assert field.name == "mini-pvp"
+    val = field.value or ""
+    assert "👥 `12/20` `[■■■□□]`" in val
+    assert "💬 <#123456>" in val
+    assert "*Fast PvP battles on compact maps!*" in val
+    assert "🗺 `Bridge & Swamps`" in val
+    assert "🌊 Wave `15`" in val
+    assert "⚔ `PVP`" in val
+    assert "⚡ `60 TPS`" in val
+    assert "Address: `play.xcore.top:7001`" in val
+    assert "📦 `v160`" in val
+    footer_text = embed.footer.text or ""
+    assert footer_text == "Sort: players • Servers: 1 • Players online: 12"

@@ -319,10 +319,10 @@ class RedisBus:
             if not data:
                 continue
 
-            for found_stream, messages in data:
-                for message_id, fields in messages:
+            for found_stream, messages in cast(Any, data):
+                for message_id, fields in cast(Any, messages):
                     await self._process_event_message(
-                        stream=found_stream,
+                        stream=cast(Any, found_stream),
                         group=group,
                         message_id=message_id,
                         fields=fields,
@@ -482,6 +482,11 @@ class RedisBus:
             event.version,
             event.host,
             event.port,
+            description=event.description,
+            map_name=event.map,
+            wave=event.wave,
+            mode=event.mode,
+            tps=event.tps,
         )
 
     async def _route_to_dlq(
@@ -967,15 +972,15 @@ class RedisBus:
                 raise TimeoutError(f"RPC timeout for {rpc_type} ({server})")
 
             response = await redis.xread(
-                streams={reply_stream: cursor},
+                streams=cast(Any, {reply_stream: cursor}),
                 count=100,
                 block=min(1000, remaining_ms),
             )
             if not response:
                 continue
 
-            for _stream_name, messages in response:
-                for message_id, body in messages:
+            for _stream_name, messages in cast(Any, response):
+                for message_id, body in cast(Any, messages):
                     cursor = message_id
                     if body.get("correlation_id") != correlation_id:
                         continue

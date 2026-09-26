@@ -13,6 +13,11 @@ class ServerInfo:
     host: str | None
     port: int | None
     last_seen_ts: float
+    description: str | None = None
+    map_name: str | None = None
+    wave: int | None = None
+    mode: str | None = None
+    tps: int | None = None
 
 
 class LiveServerRegistry:
@@ -30,6 +35,11 @@ class LiveServerRegistry:
         version: str,
         host: str | None = None,
         port: int | None = None,
+        description: str | None = None,
+        map_name: str | None = None,
+        wave: int | None = None,
+        mode: str | None = None,
+        tps: int | None = None,
     ) -> None:
         with self._lock:
             self._servers[name] = ServerInfo(
@@ -41,6 +51,11 @@ class LiveServerRegistry:
                 host=host,
                 port=port,
                 last_seen_ts=time.time(),
+                description=description,
+                map_name=map_name,
+                wave=wave,
+                mode=mode,
+                tps=tps,
             )
 
     def prune(self) -> None:
