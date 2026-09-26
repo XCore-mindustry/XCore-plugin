@@ -20,7 +20,7 @@ import java.util.Objects;
  */
 public sealed interface VNode permits
         VTable, VPane, VStack, VLabel, VImage, VButton, VImageButton,
-        VField, VCheck, VSlider, VSpace, VSlot, VComponentNode {
+        VField, VCheck, VSlider, VSpace, VSlot, VComponentNode, VButtonTable {
 
     /** Layout properties for a node's parent cell. Immutable; use {@link UiLayout#mutate()} to derive. */
     UiLayout layout();
@@ -30,7 +30,7 @@ public sealed interface VNode permits
 
     /** Node kinds recognized by the runtime. Mirrors {@code mindustry.ui.builder.UiKey} node types. */
     enum Kind {
-        TABLE, PANE, STACK, LABEL, IMAGE, BUTTON, IMAGE_BUTTON, FIELD, CHECK, SLIDER, SPACE, SLOT, COMPONENT
+        TABLE, PANE, STACK, LABEL, IMAGE, BUTTON, IMAGE_BUTTON, FIELD, CHECK, SLIDER, SPACE, SLOT, COMPONENT, BUTTON_TABLE
     }
 
     Kind kind();

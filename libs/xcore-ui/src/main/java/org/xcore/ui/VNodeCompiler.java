@@ -75,6 +75,7 @@ public final class VNodeCompiler {
             case VSlider sl -> parent.add(compileSlider(sl));
             case VSpace sp -> compileSpace(parent, sp);
             case VSlot slot -> compileSlot(parent, slot);
+            case VButtonTable bt -> compileButtonTable(parent, bt);
             case VComponentNode comp -> compileChildren(parent, comp.children());
             case null -> throw new IllegalArgumentException("null node");
         }
@@ -94,14 +95,14 @@ public final class VNodeCompiler {
         attach(parent, builder);
     }
 
-    private void compileEntries(UiBuilder.TableBuilder builder, List<Object> entries) {
+    private void compileEntries(UiBuilder.ContainerBuilder<?> builder, List<Object> entries) {
         for (Object entry : entries) {
             if (entry instanceof VTable.RowMarker) {
                 builder.row();
             } else if (entry instanceof VNode node) {
                 compileNode(builder, node);
             } else if (entry != null) {
-                throw new IllegalStateException("Unknown table entry: " + entry);
+                throw new IllegalStateException("Unknown container entry: " + entry);
             }
         }
     }
@@ -127,6 +128,19 @@ public final class VNodeCompiler {
         builder.id(slot.slotKey());
         applyCommon(builder, slot);
         compileChildren(builder, slot.children());
+        attach(parent, builder);
+    }
+
+    private void compileButtonTable(UiBuilder.ContainerBuilder<?> parent, VButtonTable bt) {
+        UiBuilder.ButtonTableBuilder builder = UiBuilder.buttonTable();
+        if (bt.style() != null) builder.style(bt.style());
+        if (bt.clicked() != null) builder.clicked(bt.clicked());
+        if (bt.margin() != null) builder.margin(bt.margin());
+        if (Boolean.TRUE.equals(bt.disabled())) builder.disabled(true);
+        if (bt.group() != null) builder.group(bt.group());
+        if (Boolean.TRUE.equals(bt.checked())) builder.checked(true);
+        applyCommon(builder, bt);
+        compileEntries(builder, bt.entries());
         attach(parent, builder);
     }
 

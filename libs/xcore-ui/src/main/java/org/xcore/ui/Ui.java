@@ -51,6 +51,13 @@ public final class Ui {
         return b.build();
     }
 
+    /** Builds a clickable container button (buttonTable). */
+    public static VButtonTable buttonTable(String clicked, Consumer<ButtonTableBuilder> consumer) {
+        ButtonTableBuilder b = new ButtonTableBuilder(clicked);
+        if (consumer != null) consumer.accept(b);
+        return b.build();
+    }
+
     // ------------------------------------------------------------------
     // Leaves
     // ------------------------------------------------------------------
@@ -160,6 +167,10 @@ public final class Ui {
 
         public TableBuilder button(Text text, String clicked, Consumer<ButtonSpec> spec) {
             return add(Ui.button(text, clicked, spec));
+        }
+
+        public TableBuilder buttonTable(String clicked, Consumer<ButtonTableBuilder> consumer) {
+            return add(Ui.buttonTable(clicked, consumer));
         }
 
         public TableBuilder field(String id, Consumer<FieldSpec> spec) {
@@ -373,6 +384,89 @@ public final class Ui {
 
         VSlider toNode(float min, float max, float step) {
             return new VSlider(id, layout.build(), min, max, step, defaultValue, style, disabled);
+        }
+    }
+
+    /** Fluent builder for clickable container buttons (buttonTable). */
+    public static final class ButtonTableBuilder {
+        private String id;
+        private String style;
+        private String clicked;
+        private Float margin;
+        private Boolean disabled;
+        private String group;
+        private Boolean checked;
+        private final UiLayout.Builder layout = new UiLayout.Builder();
+        private final List<Object> entries = new ArrayList<>();
+
+        public ButtonTableBuilder(String clicked) {
+            this.clicked = clicked;
+        }
+
+        public ButtonTableBuilder id(String id) { this.id = id; return this; }
+        public ButtonTableBuilder style(String style) { this.style = style; return this; }
+        public ButtonTableBuilder clicked(String clicked) { this.clicked = clicked; return this; }
+        public ButtonTableBuilder margin(float margin) { this.margin = margin; return this; }
+        public ButtonTableBuilder disabled(boolean disabled) { this.disabled = disabled; return this; }
+        public ButtonTableBuilder disabled() { this.disabled = true; return this; }
+        public ButtonTableBuilder group(String group) { this.group = group; return this; }
+        public ButtonTableBuilder checked(boolean checked) { this.checked = checked; return this; }
+        public ButtonTableBuilder layout(Consumer<UiLayout.Builder> l) { l.accept(layout); return this; }
+        public ButtonTableBuilder growX() { layout.growX(); return this; }
+        public ButtonTableBuilder growY() { layout.growY(); return this; }
+        public ButtonTableBuilder pad(float p) { layout.pad(p); return this; }
+        public ButtonTableBuilder pad(float top, float left, float bottom, float right) {
+            layout.padTop(top).padLeft(left).padBottom(bottom).padRight(right);
+            return this;
+        }
+        public ButtonTableBuilder padTop(float p) { layout.padTop(p); return this; }
+        public ButtonTableBuilder padBottom(float p) { layout.padBottom(p); return this; }
+        public ButtonTableBuilder padLeft(float p) { layout.padLeft(p); return this; }
+        public ButtonTableBuilder padRight(float p) { layout.padRight(p); return this; }
+        public ButtonTableBuilder height(float h) { layout.height(h); return this; }
+        public ButtonTableBuilder size(float w, float h) { layout.width(w); layout.height(h); return this; }
+        public ButtonTableBuilder uniform() { layout.uniform(); return this; }
+
+        public ButtonTableBuilder row() {
+            entries.add(VTable.RowMarker.ROW);
+            return this;
+        }
+
+        public ButtonTableBuilder add(VNode node) {
+            entries.add(node);
+            return this;
+        }
+
+        public ButtonTableBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
+            return add(Ui.label(text, layout));
+        }
+
+        public ButtonTableBuilder label(Text text) {
+            return add(Ui.label(text));
+        }
+
+        public ButtonTableBuilder image(String region, Consumer<UiLayout.Builder> layout) {
+            return add(Ui.image(region, layout));
+        }
+
+        public ButtonTableBuilder image(String region) {
+            return add(Ui.image(region));
+        }
+
+        public ButtonTableBuilder table(Consumer<TableBuilder> consumer) {
+            return add(Ui.table(consumer));
+        }
+
+        public ButtonTableBuilder stack(Consumer<StackBuilder> consumer) {
+            return add(Ui.stack(consumer));
+        }
+
+        public ButtonTableBuilder space(Consumer<UiLayout.Builder> layout) {
+            return add(Ui.space(layout));
+        }
+
+        VButtonTable build() {
+            return new VButtonTable(id, layout.build(), style, clicked, margin, disabled, group, checked, entries);
         }
     }
 }

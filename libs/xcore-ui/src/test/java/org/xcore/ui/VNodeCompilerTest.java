@@ -75,6 +75,33 @@ class VNodeCompilerTest {
     }
 
     @Test
+    void compilesButtonTableWithNestedLayoutAndClickAction() {
+        VNode root = Ui.table(t -> {
+            t.buttonTable("action:connect:pvp", card -> {
+                card.style("default");
+                card.margin(6f);
+                card.growX();
+                card.table(inner -> {
+                    inner.label(Text.raw("Mini-PvP"));
+                    inner.label(Text.raw("Online: 10/20"));
+                });
+            });
+        });
+
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        UiBuilder.TableBuilder compiled = compiler.compile(root);
+        String dsl = UiDslWriter.write(compiled);
+
+        assertThat(dsl).contains("buttonTable{");
+        assertThat(dsl).contains("clicked: \"action:connect:pvp\"");
+        assertThat(dsl).contains("style: default");
+        assertThat(dsl).contains("margin: 6");
+        assertThat(dsl).contains("growX: true");
+        assertThat(dsl).contains("label: Mini-PvP");
+        assertThat(dsl).contains("label: \"Online: 10/20\"");
+    }
+
+    @Test
     void compilesSlotBodySeparatelyForPatching() {
         VSlot slot = new VSlot("my_slot", UiLayout.DEFAULT, java.util.List.of(
                 Ui.label(Text.raw("Patched Content"))
