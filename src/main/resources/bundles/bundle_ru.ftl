@@ -1123,6 +1123,7 @@ player-servers-not-found = [scarlet]Сервер '{ $server }' не найден
 player-servers-empty-category = [lightgray]В этой категории нет доступных серверов.[]
 player-servers-online-summary = [green]● { $players } [gray]в игре[] [darkgray]|[] [sky]{ $servers } [gray]онлайн[]
 player-servers-badge-current = [gold]● ВЫ ЗДЕСЬ[]
+player-servers-offline-badge = [darkgray]● ОФФЛАЙН[]
 player-servers-capacity-full = [scarlet]● { $players }/{ $max } МЕСТ НЕТ[]
 player-servers-capacity-normal = [green]● { $players }/{ $max } { $bar }
 player-servers-card-current = [lightgray]Вы подключены к этому серверу[]

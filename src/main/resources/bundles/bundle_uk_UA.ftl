@@ -1101,6 +1101,7 @@ player-servers-not-found = [scarlet]Сервер '{ $server }' не знайде
 player-servers-empty-category = [lightgray]У цій категорії немає доступних серверів.[]
 player-servers-online-summary = [green]● { $players } [gray]у грі[] [darkgray]|[] [sky]{ $servers } [gray]онлайн[]
 player-servers-badge-current = [gold]● ВИ ТУТ[]
+player-servers-offline-badge = [darkgray]● ОФЛАЙН[]
 player-servers-capacity-full = [scarlet]● { $players }/{ $max } МІСЦЬ НЕМАЄ[]
 player-servers-capacity-normal = [green]● { $players }/{ $max } { $bar }
 player-servers-card-current = [lightgray]Ви підключені до цього сервера[]

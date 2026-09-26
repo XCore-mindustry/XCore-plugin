@@ -90,7 +90,7 @@ class ServerSelectorUiControllerTest {
         ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
 
         VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         // Background and width

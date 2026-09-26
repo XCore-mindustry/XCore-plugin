@@ -1099,6 +1099,7 @@ player-servers-not-found = [scarlet]Server '{ $server }' not found.
 player-servers-empty-category = [lightgray]No available servers in this category.[]
 player-servers-online-summary = [green]● { $players } [gray]playing[] [darkgray]|[] [sky]{ $servers } [gray]online[]
 player-servers-badge-current = [gold]● YOU ARE HERE[]
+player-servers-offline-badge = [darkgray]● OFFLINE[]
 player-servers-capacity-full = [scarlet]● { $players }/{ $max } FULL[]
 player-servers-capacity-normal = [green]● { $players }/{ $max } { $bar }
 player-servers-card-current = [lightgray]You are connected to this server[]
