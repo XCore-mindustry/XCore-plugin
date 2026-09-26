@@ -1098,4 +1098,15 @@ player-servers-transferring = [accent]Перемикання на сервер [
 player-servers-full = [scarlet]Сервер { $server } заповнений! Зачекайте на звільнення слота.
 player-servers-offline = [scarlet]Сервер { $server } зараз офлайн.
 player-servers-not-found = [scarlet]Сервер '{ $server }' не знайдено.
+player-servers-empty-category = [lightgray]У цій категорії немає доступних серверів.[]
+player-servers-online-summary = [green]● { $players } [gray]у грі[] [darkgray]|[] [sky]{ $servers } [gray]онлайн[]
+player-servers-badge-current = [gold]● ВИ ТУТ[]
+player-servers-capacity-full = [scarlet]● { $players }/{ $max } МІСЦЬ НЕМАЄ[]
+player-servers-capacity-normal = [green]● { $players }/{ $max } { $bar }
+player-servers-card-current = [lightgray]Ви підключені до цього сервера[]
+player-servers-card-wave = [darkgray]|[] [accent]Хвиля { $wave }[]
+player-servers-card-empty = [sky]Будьте першим! Запустіть сесію[]
+player-servers-card-map = [gray]Мапа:[] [white]{ $map }[]
+player-servers-card-mode = [gray]Режим:[] [white]{ $mode }[]
+
 

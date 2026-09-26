@@ -65,6 +65,17 @@ public class TransportService {
 
             Timer.schedule(() -> {
                 try {
+                    String desc = Administration.Config.desc.string();
+                    if ("off".equalsIgnoreCase(desc) || desc == null) {
+                        desc = "";
+                    }
+                    String mapName = mindustry.Vars.state.map != null ? mindustry.Vars.state.map.name() : "-";
+                    int wave = mindustry.Vars.state.wave;
+                    String modeName = mindustry.Vars.state.rules.modeName != null && !mindustry.Vars.state.rules.modeName.isEmpty()
+                            ? mindustry.Vars.state.rules.modeName
+                            : mindustry.Vars.state.rules.mode().name();
+                    int tps = (arc.Core.graphics != null ? arc.Core.graphics.getFramesPerSecond() : 60);
+
                     network.post(new ServerHeartbeatV1(
                             config.server.name,
                             config.discord.channelIdAsLong(),
@@ -72,7 +83,12 @@ public class TransportService {
                             config.server.playerLimit + Groups.player.count(p -> p.admin),
                             Version.buildString(),
                             resolveHostAddress(),
-                            Administration.Config.port.num()
+                            Administration.Config.port.num(),
+                            desc,
+                            mapName,
+                            wave,
+                            modeName,
+                            tps
                     ));
                 } catch (Exception ex) {
                     Log.err("Failed to publish heartbeat", ex);

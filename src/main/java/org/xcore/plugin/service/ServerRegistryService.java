@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
 import mindustry.gen.Groups;
+import mindustry.net.Administration;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
@@ -47,7 +48,6 @@ public class ServerRegistryService {
             String icon,
             String accentColor,
             String badge,
-            String modeDescription,
             int port,
             int defaultMaxPlayers
     ) {}
@@ -58,8 +58,10 @@ public class ServerRegistryService {
             int maxPlayers,
             boolean online,
             boolean isCurrent,
+            String description,
             String currentMap,
             Integer wave,
+            String mode,
             int tps,
             int pingMs,
             String host,
@@ -84,15 +86,15 @@ public class ServerRegistryService {
     }
 
     private static final List<ServerTemplate> TEMPLATES = List.of(
-            new ServerTemplate("mini-pvp", "Mini-PvP", Category.PVP, "⚔", "ff5555", "PVP", "Командное PvP сражение", 7001, 25),
-            new ServerTemplate("hexedcore", "HexedCore", Category.PVP, "👑", "bd93f9", "HEXED", "Battle Royale на гексах", 7005, 16),
-            new ServerTemplate("rvsb", "RVSB", Category.PVP, "🚀", "50fa7b", "RVSB", "Red vs Blue (быстрые раунды)", 7006, 16),
-            new ServerTemplate("mini-surv", "Mini-Surv", Category.SURVIVAL, "🛡", "50fa7b", "SURVIVAL", "Классическое выживание", 7002, 20),
-            new ServerTemplate("towerdefence", "Tower Defence", Category.SURVIVAL, "👾", "50fa7b", "TD", "Оборона баз от волн", 7009, 12),
-            new ServerTemplate("asthosus", "Asthosus", Category.SURVIVAL, "☄", "50fa7b", "SURVIVAL", "Кастомная планета Asthosus", 7008, 16),
-            new ServerTemplate("mini-attack", "Mini-Attack", Category.SPECIAL, "💥", "ffb86c", "ATTACK", "Штурм вражеских секторов", 7003, 20),
-            new ServerTemplate("siege", "The Siege", Category.SPECIAL, "🏰", "ffb86c", "SIEGE", "Осада баз и защита ядра", 7007, 20),
-            new ServerTemplate("event", "Event", Category.SPECIAL, "⭐", "bd93f9", "EVENT", "Особые серверные ивенты", 7004, 30)
+            new ServerTemplate("mini-pvp", "Mini-PvP", Category.PVP, "⚔", "ff5555", "PVP", 7001, 25),
+            new ServerTemplate("hexedcore", "HexedCore", Category.PVP, "👑", "bd93f9", "HEXED", 7005, 16),
+            new ServerTemplate("rvsb", "RVSB", Category.PVP, "🚀", "50fa7b", "RVSB", 7006, 16),
+            new ServerTemplate("mini-surv", "Mini-Surv", Category.SURVIVAL, "🛡", "50fa7b", "SURVIVAL", 7002, 20),
+            new ServerTemplate("towerdefence", "Tower Defence", Category.SURVIVAL, "👾", "50fa7b", "TD", 7009, 12),
+            new ServerTemplate("asthosus", "Asthosus", Category.SURVIVAL, "☄", "50fa7b", "SURVIVAL", 7008, 16),
+            new ServerTemplate("mini-attack", "Mini-Attack", Category.SPECIAL, "💥", "ffb86c", "ATTACK", 7003, 20),
+            new ServerTemplate("siege", "The Siege", Category.SPECIAL, "🏰", "ffb86c", "SIEGE", 7007, 20),
+            new ServerTemplate("event", "Event", Category.SPECIAL, "⭐", "bd93f9", "EVENT", 7004, 30)
     );
 
     private static final long HEARTBEAT_EXPIRATION_MS = 75_000L;
@@ -102,6 +104,11 @@ public class ServerRegistryService {
             int maxPlayers,
             String host,
             int port,
+            String description,
+            String map,
+            Integer wave,
+            String mode,
+            int tps,
             long receivedAtMs
     ) {}
 
@@ -130,7 +137,13 @@ public class ServerRegistryService {
         String id = normalizeId(hb.serverName());
         int port = hb.port() != null ? hb.port() : resolveDefaultPort(id);
         String host = (hb.host() != null && !hb.host().isBlank()) ? hb.host() : "play.xcore.top";
-        heartbeats.put(id, new HeartbeatEntry(hb.players(), hb.maxPlayers(), host, port, System.currentTimeMillis()));
+        String desc = hb.description() != null ? hb.description().trim() : "";
+        String map = (hb.map() != null && !hb.map().isBlank()) ? hb.map() : "-";
+        Integer wave = hb.wave();
+        String mode = (hb.mode() != null && !hb.mode().isBlank()) ? hb.mode() : "";
+        int tps = (hb.tps() != null && hb.tps() > 0) ? hb.tps() : 60;
+
+        heartbeats.put(id, new HeartbeatEntry(hb.players(), hb.maxPlayers(), host, port, desc, map, wave, mode, tps, System.currentTimeMillis()));
     }
 
     public List<ServerStatus> snapshot() {
@@ -143,10 +156,20 @@ public class ServerRegistryService {
             if (isCurrent) {
                 int onlinePlayers = Groups.player != null ? Groups.player.size() : 0;
                 int maxPlayers = config.server.playerLimit > 0 ? config.server.playerLimit : tmpl.defaultMaxPlayers();
+                String desc = "";
+                try {
+                    if (Administration.Config.desc != null && Administration.Config.desc.string() != null && !"off".equalsIgnoreCase(Administration.Config.desc.string())) {
+                        desc = Administration.Config.desc.string().trim();
+                    }
+                } catch (Throwable ignored) {
+                }
                 String mapName = (Vars.state != null && Vars.state.map != null) ? Vars.state.map.plainName() : "-";
                 Integer wave = (Vars.state != null && Vars.state.rules != null && Vars.state.rules.waves) ? Vars.state.wave : null;
+                String mode = (Vars.state != null && Vars.state.rules != null)
+                        ? (Vars.state.rules.modeName != null && !Vars.state.rules.modeName.isEmpty() ? Vars.state.rules.modeName : Vars.state.rules.mode().name())
+                        : "";
                 int tps = Core.graphics != null ? Core.graphics.getFramesPerSecond() : 60;
-                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, true, true, mapName, wave, tps, 0, "play.xcore.top", now));
+                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, true, true, desc, mapName, wave, mode, tps, 0, "play.xcore.top", now));
             } else {
                 HeartbeatEntry hb = heartbeats.get(tmpl.id());
                 boolean isOnline = hb != null && (now - hb.receivedAtMs() < HEARTBEAT_EXPIRATION_MS);
@@ -157,9 +180,9 @@ public class ServerRegistryService {
                 int onlinePlayers = hb.players();
                 int maxPlayers = hb.maxPlayers() > 0 ? hb.maxPlayers() : tmpl.defaultMaxPlayers();
                 String host = (hb.host() != null && !hb.host().isBlank()) ? hb.host() : "play.xcore.top";
-                int tps = 60;
+                int tps = hb.tps() > 0 ? hb.tps() : 60;
                 int pingMs = 35;
-                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, true, false, "-", null, tps, pingMs, host, hb.receivedAtMs()));
+                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, true, false, hb.description(), hb.map(), hb.wave(), hb.mode(), tps, pingMs, host, hb.receivedAtMs()));
             }
         }
 

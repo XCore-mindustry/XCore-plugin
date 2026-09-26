@@ -1096,4 +1096,15 @@ player-servers-transferring = [accent]Transferring to server [white]{ $server }[
 player-servers-full = [scarlet]Server { $server } is full! Please wait for an open slot.
 player-servers-offline = [scarlet]Server { $server } is currently offline.
 player-servers-not-found = [scarlet]Server '{ $server }' not found.
+player-servers-empty-category = [lightgray]No available servers in this category.[]
+player-servers-online-summary = [green]● { $players } [gray]playing[] [darkgray]|[] [sky]{ $servers } [gray]online[]
+player-servers-badge-current = [gold]● YOU ARE HERE[]
+player-servers-capacity-full = [scarlet]● { $players }/{ $max } FULL[]
+player-servers-capacity-normal = [green]● { $players }/{ $max } { $bar }
+player-servers-card-current = [lightgray]You are connected to this server[]
+player-servers-card-wave = [darkgray]|[] [accent]Wave { $wave }[]
+player-servers-card-empty = [sky]Be the first! Start a session[]
+player-servers-card-map = [gray]Map:[] [white]{ $map }[]
+player-servers-card-mode = [gray]Mode:[] [white]{ $mode }[]
+
 

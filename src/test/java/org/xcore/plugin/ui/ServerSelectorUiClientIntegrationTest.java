@@ -73,8 +73,20 @@ class ServerSelectorUiClientIntegrationTest {
         Bundle bundle = mock(Bundle.class);
         com.ospx.flubundle.Localizer localizer = mock(com.ospx.flubundle.Localizer.class);
         when(localizer.locale()).thenReturn(Locale.ENGLISH);
-        when(localizer.format(anyString())).thenAnswer(i -> i.getArgument(0));
-        when(localizer.format(anyString(), anyMap())).thenAnswer(i -> i.getArgument(0));
+        when(localizer.format(anyString())).thenAnswer(i -> {
+            String key = i.getArgument(0);
+            return switch (key) {
+                case "player-servers-badge-current" -> "ВЫ ЗДЕСЬ";
+                default -> key;
+            };
+        });
+        when(localizer.format(anyString(), anyMap())).thenAnswer(i -> {
+            String key = i.getArgument(0);
+            return switch (key) {
+                case "player-servers-badge-current" -> "ВЫ ЗДЕСЬ";
+                default -> key;
+            };
+        });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
 
         sessionService = mock(SessionService.class);
@@ -135,15 +147,15 @@ class ServerSelectorUiClientIntegrationTest {
         NetworkService network = mock(NetworkService.class);
         registryService = new ServerRegistryService(config, network);
 
-        // Heartbeat for surv and siege
+        // Heartbeat for surv, hexed and siege
         registryService.handleHeartbeat(new ServerHeartbeatV1(
-                "mini-surv", 1L, 12, 20, "v160", "play.xcore.top", 7002
+                "mini-surv", 1L, 12, 20, "v160", "play.xcore.top", 7002, "Survival", "Islands", 1, "survival", 60
         ));
         registryService.handleHeartbeat(new ServerHeartbeatV1(
-                "hexedcore", 3L, 8, 16, "v160", "play.xcore.top", 7005
+                "hexedcore", 3L, 8, 16, "v160", "play.xcore.top", 7005, "Battle Royale", "Hexed", 1, "hexed", 60
         ));
         registryService.handleHeartbeat(new ServerHeartbeatV1(
-                "siege", 2L, 5, 20, "v160", "play.xcore.top", 7007
+                "siege", 2L, 5, 20, "v160", "play.xcore.top", 7007, "Siege defense", "Citadel", 1, "siege", 60
         ));
 
         serverMenu = new ServerMenu(registryService, menuService);

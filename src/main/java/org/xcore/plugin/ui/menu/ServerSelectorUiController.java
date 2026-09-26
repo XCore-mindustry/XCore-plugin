@@ -15,7 +15,9 @@ import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -103,9 +105,15 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             // 1. Header: title, network status summary, and close button
             root.add(Ui.table(header -> {
                 header.layout(l -> l.growX().padBottom(4f));
-                header.label(Text.raw("[white] ИГРОВЫЕ СЕРВЕРЫ[] [gold]XCORE[]"), l -> l.align("left").growX());
-                header.label(Text.raw("[green]● " + model.totalOnlinePlayers() + " [gray]в игре[] [darkgray]|[] [sky]"
-                        + model.totalOnlineServers() + " [gray]онлайн[]"), l -> l.align("right").padRight(8f));
+                String title = tr("player-servers-title", "[white] ИГРОВЫЕ СЕРВЕРЫ[] [gold]XCORE[]");
+                String summary = tr("player-servers-online-summary",
+                        "[green]● " + model.totalOnlinePlayers() + " [gray]в игре[] [darkgray]|[] [sky]"
+                                + model.totalOnlineServers() + " [gray]онлайн[]",
+                        "players", model.totalOnlinePlayers(),
+                        "servers", model.totalOnlineServers());
+
+                header.label(Text.raw(title), l -> l.align("left").growX());
+                header.label(Text.raw(summary), l -> l.align("right").padRight(8f));
                 header.button(Text.raw(" [scarlet]✕[] "), "action:close", b -> b
                         .style("cleart")
                         .layout(l -> l.size(34f)));
@@ -119,7 +127,8 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 tabs.layout(l -> l.growX().padBottom(6f));
                 for (Category cat : Category.values()) {
                     boolean checked = model.selectedCategory() == cat;
-                    String labelText = (checked ? "[accent]" : "[lightgray]") + cat.fallbackName()
+                    String catName = tr(cat.bundleKey(), cat.fallbackName());
+                    String labelText = (checked ? "[accent]" : "[lightgray]") + catName
                             + " [gray]" + model.countForCategory(cat) + "[]";
                     tabs.button(Text.raw(labelText), "action:tab:" + cat.name().toLowerCase(), b -> b
                             .style(checked ? "togglet" : "cleart")
@@ -146,8 +155,11 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             // 4. Split Footer: Hint and Refresh Button
             root.add(Ui.table(footer -> {
                 footer.layout(l -> l.growX().padTop(2f));
-                footer.label(Text.raw("[gray]ℹ Нажмите на карточку сервера для мгновенного входа[]"), l -> l.align("left").growX());
-                footer.button(Text.raw("[accent]⟳ Обновить[]"), "action:refresh", b -> b
+                String hint = tr("player-servers-hint", "ℹ Нажмите на карточку сервера для мгновенного входа");
+                String refresh = tr("player-servers-refresh", "⟳ Обновить");
+
+                footer.label(Text.raw("[gray]" + hint + "[]"), l -> l.align("left").growX());
+                footer.button(Text.raw("[accent]" + refresh + "[]"), "action:refresh", b -> b
                         .style("cleart")
                         .layout(l -> l.height(32f).width(120f)));
             })).row();
@@ -159,7 +171,8 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         List<ServerStatus> servers = model.filteredServers();
 
         if (servers.isEmpty()) {
-            table.label(Text.raw("[lightgray]В этой категории нет доступных серверов.[]"), l -> l.align("center").pad(20f)).row();
+            String emptyText = tr("player-servers-empty-category", "[lightgray]В этой категории нет доступных серверов.[]");
+            table.label(Text.raw(emptyText), l -> l.align("center").pad(20f)).row();
             return;
         }
 
@@ -192,36 +205,56 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                         // Top line: Name, Badge, "ВЫ ЗДЕСЬ", and Capacity
                         col.add(Ui.table(top -> {
                             top.layout(l -> l.growX());
+                            String currentBadge = server.isCurrent()
+                                    ? " " + tr("player-servers-badge-current", "[gold]● ВЫ ЗДЕСЬ[]")
+                                    : "";
                             String title = server.template().icon() + " [white]" + server.template().name() + "[]"
                                     + "  [#" + server.template().accentColor() + "]" + server.template().badge() + "[]"
-                                    + (server.isCurrent() ? " [gold]● ВЫ ЗДЕСЬ[]" : "");
+                                    + currentBadge;
                             top.label(Text.raw(title), l -> l.align("left").growX());
 
                             String capacity;
                             if (!server.online()) {
                                 capacity = "[darkgray]● ОФФЛАЙН[]";
                             } else if (server.isFull()) {
-                                capacity = "[scarlet]● " + server.onlinePlayers() + "/" + server.maxPlayers() + " [scarlet]МЕСТ НЕТ[]";
+                                capacity = tr("player-servers-capacity-full",
+                                        "[scarlet]● " + server.onlinePlayers() + "/" + server.maxPlayers() + " МЕСТ НЕТ[]",
+                                        "players", server.onlinePlayers(),
+                                        "max", server.maxPlayers());
                             } else {
-                                capacity = "[green]● " + server.onlinePlayers() + "/" + server.maxPlayers() + " " + server.capacityBar();
+                                capacity = tr("player-servers-capacity-normal",
+                                        "[green]● " + server.onlinePlayers() + "/" + server.maxPlayers() + " " + server.capacityBar(),
+                                        "players", server.onlinePlayers(),
+                                        "max", server.maxPlayers(),
+                                        "bar", server.capacityBar());
                             }
                             top.label(Text.raw(capacity), l -> l.align("right"));
                         })).row();
 
-                        // Bottom line: Map/Mode info and Telemetry
+                        // Bottom line: Dynamic description from server/heartbeat, Map/Mode info and Telemetry
                         col.add(Ui.table(bottom -> {
                             bottom.layout(l -> l.growX());
                             String desc;
                             if (server.isCurrent()) {
-                                desc = "[lightgray]Вы подключены к этому серверу[]"
-                                        + (server.wave() != null ? " [darkgray]|[] [accent]Волна " + server.wave() + "[]" : "");
+                                String currentText = tr("player-servers-card-current", "[lightgray]Вы подключены к этому серверу[]");
+                                String waveText = server.wave() != null
+                                        ? " " + tr("player-servers-card-wave", "[darkgray]|[] [accent]Волна " + server.wave() + "[]", "wave", server.wave())
+                                        : "";
+                                desc = currentText + waveText;
                             } else if (server.onlinePlayers() == 0) {
-                                desc = "[sky]Будьте первым! " + server.template().modeDescription() + "[]";
+                                desc = tr("player-servers-card-empty", "[sky]Будьте первым! Запустите сессию[]");
+                            } else if (server.description() != null && !server.description().isBlank()) {
+                                desc = server.description();
                             } else if (!"-".equals(server.currentMap())) {
-                                desc = "[gray]Карта:[] [white]" + server.currentMap() + "[]"
-                                        + (server.wave() != null ? " [darkgray]|[] [accent]Волна " + server.wave() + "[]" : "");
+                                String mapText = tr("player-servers-card-map", "[gray]Карта:[] [white]" + server.currentMap() + "[]", "map", server.currentMap());
+                                String waveText = server.wave() != null
+                                        ? " " + tr("player-servers-card-wave", "[darkgray]|[] [accent]Волна " + server.wave() + "[]", "wave", server.wave())
+                                        : "";
+                                desc = mapText + waveText;
+                            } else if (server.mode() != null && !server.mode().isBlank()) {
+                                desc = tr("player-servers-card-mode", "[gray]Режим:[] [white]" + server.mode() + "[]", "mode", server.mode());
                             } else {
-                                desc = "[gray]Режим:[] [white]" + server.template().modeDescription() + "[]";
+                                desc = "";
                             }
                             bottom.label(Text.raw(desc), l -> l.align("left").growX());
 
@@ -235,6 +268,20 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             });
             table.row();
         }
+    }
+
+    private String tr(String key, String fallback, Object... args) {
+        if (session == null || session.locale() == null) return fallback;
+        if (args.length == 0) {
+            return session.locale().format(key);
+        }
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 0; i < args.length; i += 2) {
+            if (i + 1 < args.length) {
+                map.put(String.valueOf(args[i]), args[i + 1]);
+            }
+        }
+        return session.locale().format(key, map);
     }
 
     @Override

@@ -53,7 +53,12 @@ class ServerRegistryServiceTest {
                 20,
                 "v160",
                 "45.136.205.10",
-                7002
+                7002,
+                "Survival server",
+                "Islands",
+                10,
+                "survival",
+                60
         );
         service.handleHeartbeat(hb);
 
@@ -66,6 +71,10 @@ class ServerRegistryServiceTest {
         assertThat(surv.maxPlayers()).isEqualTo(20);
         assertThat(surv.host()).isEqualTo("45.136.205.10");
         assertThat(surv.template().port()).isEqualTo(7002);
+        assertThat(surv.description()).isEqualTo("Survival server");
+        assertThat(surv.currentMap()).isEqualTo("Islands");
+        assertThat(surv.wave()).isEqualTo(10);
+        assertThat(surv.mode()).isEqualTo("survival");
         assertThat(surv.isFull()).isFalse();
 
         // Verify capacity bar
@@ -76,18 +85,18 @@ class ServerRegistryServiceTest {
     @DisplayName("capacityBar returns appropriate color and block counts")
     void capacityBar_calculatesBlocks() {
         ServerRegistryService.ServerTemplate tmpl = new ServerRegistryService.ServerTemplate(
-                "test", "Test", Category.PVP, "⚔", "ff5555", "PVP", "Test Mode", 7001, 20
+                "test", "Test", Category.PVP, "⚔", "ff5555", "PVP", 7001, 20
         );
 
-        ServerStatus half = new ServerStatus(tmpl, 10, 20, true, false, "-", null, 60, 20, "host", System.currentTimeMillis());
+        ServerStatus half = new ServerStatus(tmpl, 10, 20, true, false, "", "-", null, "pvp", 60, 20, "host", System.currentTimeMillis());
         assertThat(half.capacityBar()).contains("■■■");
         assertThat(half.capacityBar()).contains("[#50fa7b]");
 
-        ServerStatus full = new ServerStatus(tmpl, 20, 20, true, false, "-", null, 60, 20, "host", System.currentTimeMillis());
+        ServerStatus full = new ServerStatus(tmpl, 20, 20, true, false, "", "-", null, "pvp", 60, 20, "host", System.currentTimeMillis());
         assertThat(full.capacityBar()).contains("[#e55454]");
         assertThat(full.capacityBar()).contains("■■■■■");
 
-        ServerStatus offline = new ServerStatus(tmpl, 0, 20, false, false, "-", null, 0, 0, "host", 0);
+        ServerStatus offline = new ServerStatus(tmpl, 0, 20, false, false, "", "-", null, "pvp", 0, 0, "host", 0);
         assertThat(offline.capacityBar()).isEqualTo("[darkgray]□□□□□[]");
     }
 
@@ -99,10 +108,10 @@ class ServerRegistryServiceTest {
         ServerRegistryService service = new ServerRegistryService(config, network);
 
         service.handleHeartbeat(new ServerHeartbeatV1(
-                "mini-attack", 1L, 5, 20, "v160", "play.xcore.top", 7003
+                "mini-attack", 1L, 5, 20, "v160", "play.xcore.top", 7003, null, null, null, null, null
         ));
         service.handleHeartbeat(new ServerHeartbeatV1(
-                "siege", 2L, 8, 20, "v160", "play.xcore.top", 7007
+                "siege", 2L, 8, 20, "v160", "play.xcore.top", 7007, null, null, null, null, null
         ));
 
         assertThat(service.findServer("mini-attack")).isPresent();

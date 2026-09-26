@@ -37,8 +37,24 @@ class ServerSelectorUiControllerTest {
         Bundle bundle = mock(Bundle.class);
         com.ospx.flubundle.Localizer localizer = mock(com.ospx.flubundle.Localizer.class);
         when(localizer.locale()).thenReturn(Locale.ENGLISH);
-        when(localizer.format(anyString())).thenAnswer(i -> i.getArgument(0));
-        when(localizer.format(anyString(), anyMap())).thenAnswer(i -> i.getArgument(0));
+        when(localizer.format(anyString())).thenAnswer(i -> {
+            String key = i.getArgument(0);
+            return switch (key) {
+                case "player-servers-title" -> "[white] ИГРОВЫЕ СЕРВЕРЫ[] [gold]XCORE[]";
+                case "player-servers-refresh" -> "⟳ Обновить";
+                case "player-servers-badge-current" -> "[gold]● ВЫ ЗДЕСЬ[]";
+                default -> key;
+            };
+        });
+        when(localizer.format(anyString(), anyMap())).thenAnswer(i -> {
+            String key = i.getArgument(0);
+            return switch (key) {
+                case "player-servers-title" -> "[white] ИГРОВЫЕ СЕРВЕРЫ[] [gold]XCORE[]";
+                case "player-servers-refresh" -> "⟳ Обновить";
+                case "player-servers-badge-current" -> "[gold]● ВЫ ЗДЕСЬ[]";
+                default -> key;
+            };
+        });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
 
         return new Session(
@@ -60,7 +76,7 @@ class ServerSelectorUiControllerTest {
 
         // Heartbeat for surv
         service.handleHeartbeat(new ServerHeartbeatV1(
-                "mini-surv", 1L, 10, 20, "v160", "play.xcore.top", 7002
+                "mini-surv", 1L, 10, 20, "v160", "play.xcore.top", 7002, "Survival server", "Islands", 5, "survival", 60
         ));
         return service;
     }
