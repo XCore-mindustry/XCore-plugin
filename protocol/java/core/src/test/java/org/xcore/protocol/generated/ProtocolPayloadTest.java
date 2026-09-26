@@ -131,8 +131,8 @@ class ProtocolPayloadTest {
 
     @Test
     void serverHeartbeatPayloadIncludesMessageIdentity() {
-        // ServerHeartbeatV1(serverName, discordChannelId:long, players, maxPlayers, version, host, port)
-        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null);
+        // ServerHeartbeatV1(serverName, discordChannelId:long, players, maxPlayers, version, host, port, description, map, wave, mode, tps)
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null, null, null, null, null, null);
         var payload = event.toPayload();
 
         assertEquals("server.heartbeat", payload.get("messageType"));
@@ -146,20 +146,30 @@ class ProtocolPayloadTest {
 
     @Test
     void serverHeartbeatOmitsNullHostAndPort() {
-        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null);
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", null, null, null, null, null, null, null);
         var payload = event.toPayload();
 
         assertFalse(payload.containsKey("host"));
         assertFalse(payload.containsKey("port"));
+        assertFalse(payload.containsKey("description"));
+        assertFalse(payload.containsKey("map"));
+        assertFalse(payload.containsKey("wave"));
+        assertFalse(payload.containsKey("mode"));
+        assertFalse(payload.containsKey("tps"));
     }
 
     @Test
     void serverHeartbeatIncludesHostAndPortWhenSet() {
-        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", "127.0.0.1", 6567);
+        var event = new ServerHeartbeatV1("alpha", 0L, 5, 20, "v7", "127.0.0.1", 6567, "Fast PvP", "Sand Dunes", 12, "pvp", 60);
         var payload = event.toPayload();
 
         assertEquals("127.0.0.1", payload.get("host"));
         assertEquals(6567, payload.get("port"));
+        assertEquals("Fast PvP", payload.get("description"));
+        assertEquals("Sand Dunes", payload.get("map"));
+        assertEquals(12, payload.get("wave"));
+        assertEquals("pvp", payload.get("mode"));
+        assertEquals(60, payload.get("tps"));
     }
 
     // ── Telemetry messages ───────────────────────────────────────────

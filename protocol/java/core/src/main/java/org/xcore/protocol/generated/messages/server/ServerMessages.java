@@ -102,7 +102,12 @@ public final class ServerMessages {
             int maxPlayers,
             String version,
             String host,
-            Integer port
+            Integer port,
+            String description,
+            String map,
+            Integer wave,
+            String mode,
+            Integer tps
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "server.heartbeat";
     public static final int MESSAGE_VERSION = 1;
@@ -136,6 +141,25 @@ public final class ServerMessages {
                     throw new IllegalArgumentException("port must be >= 0");
                 }
             }
+            if (description != null) {
+                Objects.requireNonNull(description, "description must not be null");
+            }
+            if (map != null) {
+                Objects.requireNonNull(map, "map must not be null");
+            }
+            if (wave != null) {
+                if (wave < 0) {
+                    throw new IllegalArgumentException("wave must be >= 0");
+                }
+            }
+            if (mode != null) {
+                Objects.requireNonNull(mode, "mode must not be null");
+            }
+            if (tps != null) {
+                if (tps < 0) {
+                    throw new IllegalArgumentException("tps must be >= 0");
+                }
+            }
         }
 
         @Override
@@ -153,6 +177,21 @@ public final class ServerMessages {
             }
             if (port != null) {
                 payload.put("port", port);
+            }
+            if (description != null) {
+                payload.put("description", description);
+            }
+            if (map != null) {
+                payload.put("map", map);
+            }
+            if (wave != null) {
+                payload.put("wave", wave);
+            }
+            if (mode != null) {
+                payload.put("mode", mode);
+            }
+            if (tps != null) {
+                payload.put("tps", tps);
             }
             return payload;
         }

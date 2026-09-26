@@ -48,6 +48,23 @@
     "port": {
       "type": "integer",
       "minimum": 0
+    },
+    "description": {
+      "type": "string"
+    },
+    "map": {
+      "type": "string"
+    },
+    "wave": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mode": {
+      "type": "string"
+    },
+    "tps": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

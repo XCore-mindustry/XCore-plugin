@@ -232,6 +232,11 @@ class ServerHeartbeatV1:
     version: str
     host: str | None = None
     port: int | None = None
+    description: str | None = None
+    map: str | None = None
+    wave: int | None = None
+    mode: str | None = None
+    tps: int | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'server.heartbeat'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -245,6 +250,16 @@ class ServerHeartbeatV1:
             _expect_str(self.host, 'host')
         if self.port is not None:
             _expect_int(self.port, 'port')
+        if self.description is not None:
+            _expect_str(self.description, 'description')
+        if self.map is not None:
+            _expect_str(self.map, 'map')
+        if self.wave is not None:
+            _expect_int(self.wave, 'wave')
+        if self.mode is not None:
+            _expect_str(self.mode, 'mode')
+        if self.tps is not None:
+            _expect_int(self.tps, 'tps')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "ServerHeartbeatV1":
@@ -252,7 +267,7 @@ class ServerHeartbeatV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'serverName', 'discordChannelId', 'players', 'maxPlayers', 'version')),
-            allowed=frozenset(('messageType', 'messageVersion', 'serverName', 'discordChannelId', 'players', 'maxPlayers', 'version', 'host', 'port')),
+            allowed=frozenset(('messageType', 'messageVersion', 'serverName', 'discordChannelId', 'players', 'maxPlayers', 'version', 'host', 'port', 'description', 'map', 'wave', 'mode', 'tps')),
             model_name="ServerHeartbeatV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -267,6 +282,11 @@ class ServerHeartbeatV1:
             version=_expect_str(mapping['version'], 'version'),
             host=(_expect_str(mapping['host'], 'host') if 'host' in mapping else None),
             port=(_expect_int(mapping['port'], 'port') if 'port' in mapping else None),
+            description=(_expect_str(mapping['description'], 'description') if 'description' in mapping else None),
+            map=(_expect_str(mapping['map'], 'map') if 'map' in mapping else None),
+            wave=(_expect_int(mapping['wave'], 'wave') if 'wave' in mapping else None),
+            mode=(_expect_str(mapping['mode'], 'mode') if 'mode' in mapping else None),
+            tps=(_expect_int(mapping['tps'], 'tps') if 'tps' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -283,6 +303,16 @@ class ServerHeartbeatV1:
             payload['host'] = self.host
         if self.port is not None:
             payload['port'] = self.port
+        if self.description is not None:
+            payload['description'] = self.description
+        if self.map is not None:
+            payload['map'] = self.map
+        if self.wave is not None:
+            payload['wave'] = self.wave
+        if self.mode is not None:
+            payload['mode'] = self.mode
+        if self.tps is not None:
+            payload['tps'] = self.tps
         return payload
 
 __all__ = [
