@@ -110,12 +110,6 @@ public class PlayerMenu extends Menu {
             }, (player, bundle) -> {
                 Session current = sessionService.get(uuid);
                 if (current == null) return;
-
-                if (current.menuService != null && current.menuService.hasMenuBuilder() && current.player != null && current.player.con != null) {
-                    openPlayerProfileUi(current, targetData, bundle.stats(), bundle.hexedTop());
-                    return;
-                }
-
                 current.setDraft(PlayerProfileFlows.PlayerState.class,
                         new PlayerProfileFlows.PlayerState(targetData.uuid, targetData, bundle.stats(), bundle.hexedTop()));
                 current.menuService.renderRoute(current, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
@@ -123,20 +117,8 @@ public class PlayerMenu extends Menu {
             return;
         }
 
-        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
-            openPlayerProfileUi(session, targetData, null, null);
-            return;
-        }
-
         session.setDraft(PlayerProfileFlows.PlayerState.class, new PlayerProfileFlows.PlayerState(targetData.uuid, targetData));
         session.menuService.renderRoute(session, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
-    }
-
-    public void openPlayerProfileUi(Session session, PlayerData targetData, PlayerStatsOverview stats, Integer hexedTop) {
-        if (session == null || session.player == null) return;
-        var controller = new PlayerProfileUiController(this, auditHistoryMenu, session, targetData);
-        var initialModel = PlayerProfileUiController.createModel(session, targetData, stats, hexedTop, this, playerDataRepository);
-        menuService.openUi(session, controller, initialModel);
     }
 
     private record ProfileDataBundle(PlayerStatsOverview stats, Integer hexedTop) {}
