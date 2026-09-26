@@ -203,7 +203,9 @@ async def test_mongo_store_merge_player_accounts_logic() -> None:
     assert set_fields["total_play_time"] == 150
     assert set_fields["pvp_rating"] == 1600
     assert set_fields["hexed_points"] == 20
-    assert "b1" in set_fields["unlocked_badges"] and "b2" in set_fields["unlocked_badges"]
+    assert (
+        "b1" in set_fields["unlocked_badges"] and "b2" in set_fields["unlocked_badges"]
+    )
     assert set_fields["discord_id"] == "disc-1"
 
     # Verify source closed

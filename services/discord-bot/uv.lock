@@ -1354,7 +1354,7 @@ dev = [
 [[package]]
 name = "xcore-protocol"
 version = "0.6.2"
-source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main#7c5242bdb235b738cc04d672cc6232a08eb0f3f2" }
+source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main#cb9e2b8210945aa31048587a73630780ecd245ae" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },

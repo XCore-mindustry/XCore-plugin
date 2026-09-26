@@ -116,9 +116,17 @@ class AccountMergeConfirmView(discord.ui.View):
             inline=False,
         )
         if result.ban_transferred:
-            embed.add_field(name="⚠️ Бан", value="Активный бан перенесен на целевой аккаунт", inline=False)
+            embed.add_field(
+                name="⚠️ Бан",
+                value="Активный бан перенесен на целевой аккаунт",
+                inline=False,
+            )
         if result.mute_transferred:
-            embed.add_field(name="⚠️ Мут", value="Активный мут перенесен на целевой аккаунт", inline=False)
+            embed.add_field(
+                name="⚠️ Мут",
+                value="Активный мут перенесен на целевой аккаунт",
+                inline=False,
+            )
 
         embed.set_footer(text=f"Audit ID: {result.audit_id or 'n/a'}")
         await interaction.response.edit_message(embed=embed, view=self)

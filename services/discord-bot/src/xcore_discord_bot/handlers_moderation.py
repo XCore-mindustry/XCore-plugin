@@ -117,7 +117,9 @@ async def _append_discord_moderation_audit(
     request_id = str(getattr(interaction, "id", "") or "").strip() or None
     occurred_at = await bot.now_utc()
     try:
-        duration_ms = int(duration.total_seconds() * 1000) if duration is not None else None
+        duration_ms = (
+            int(duration.total_seconds() * 1000) if duration is not None else None
+        )
     except (ValueError, TypeError, OverflowError):
         duration_ms = None
     uuid_value, ip_value = bot._player_identifiers(player)
@@ -1034,4 +1036,3 @@ async def cmd_merge_player(
 
     await interaction.response.send_message(embed=embed, view=view)
     view.message = await interaction.original_response()
-

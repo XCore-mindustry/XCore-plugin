@@ -38,7 +38,6 @@ def _to_int(value: Any, default: int = 0) -> int:
         return default
 
 
-
 class _MongoDoc(BaseModel):
     model_config = ConfigDict(extra="allow", frozen=True, arbitrary_types_allowed=True)
 
@@ -508,7 +507,9 @@ class MongoStore:
             return 0
         try:
             return _to_int(
-                await self._db_required()["moderation_audit"].count_documents(actor_filter)
+                await self._db_required()["moderation_audit"].count_documents(
+                    actor_filter
+                )
             )
         except PyMongoError:
             return 0
@@ -751,29 +752,19 @@ class MongoStore:
             )
         )
         active_badge = (
-            target_raw.get("active_badge")
-            or source_raw.get("active_badge")
-            or ""
+            target_raw.get("active_badge") or source_raw.get("active_badge") or ""
         )
 
         # Profile fields
         custom_nickname = (
-            target_raw.get("custom_nickname")
-            or source_raw.get("custom_nickname")
-            or ""
+            target_raw.get("custom_nickname") or source_raw.get("custom_nickname") or ""
         )
         description = (
-            target_raw.get("description")
-            or source_raw.get("description")
-            or ""
+            target_raw.get("description") or source_raw.get("description") or ""
         )
 
         # Discord linkage
-        discord_id = (
-            target_raw.get("discord_id")
-            or source_raw.get("discord_id")
-            or ""
-        )
+        discord_id = target_raw.get("discord_id") or source_raw.get("discord_id") or ""
         discord_username = (
             target_raw.get("discord_username")
             or source_raw.get("discord_username")
@@ -806,13 +797,9 @@ class MongoStore:
         )
 
         # Admin
-        is_admin = bool(
-            target_raw.get("is_admin") or source_raw.get("is_admin")
-        )
+        is_admin = bool(target_raw.get("is_admin") or source_raw.get("is_admin"))
         admin_source = (
-            target_raw.get("admin_source")
-            or source_raw.get("admin_source")
-            or "NONE"
+            target_raw.get("admin_source") or source_raw.get("admin_source") or "NONE"
         )
 
         target_updates: dict[str, Any] = {
@@ -871,7 +858,9 @@ class MongoStore:
                     new_ban.pop("_id", None)
                     new_ban["uuid"] = target_uuid
                     new_ban["name"] = target_raw.get("nickname") or "Unknown"
-                    new_ban["reason"] = f"[Merged from #{source_pid}] {source_ban.get('reason', '')}"
+                    new_ban["reason"] = (
+                        f"[Merged from #{source_pid}] {source_ban.get('reason', '')}"
+                    )
                     await db["bans"].insert_one(new_ban)
                     ban_transferred = True
 
@@ -883,7 +872,9 @@ class MongoStore:
                     new_mute.pop("_id", None)
                     new_mute["uuid"] = target_uuid
                     new_mute["name"] = target_raw.get("nickname") or "Unknown"
-                    new_mute["reason"] = f"[Merged from #{source_pid}] {source_mute.get('reason', '')}"
+                    new_mute["reason"] = (
+                        f"[Merged from #{source_pid}] {source_mute.get('reason', '')}"
+                    )
                     await db["mutes"].insert_one(new_mute)
                     mute_transferred = True
 
