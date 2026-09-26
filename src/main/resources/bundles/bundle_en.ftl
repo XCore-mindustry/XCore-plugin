@@ -1082,3 +1082,18 @@ error-command-disabled = [scarlet]⚠ Command [accent]/{ $command }[scarlet] is 
 error-feature-disabled = [scarlet]⚠ This feature is disabled on this server.
 none = None
 error-nickname-badge-glyph = [scarlet]⚠ Custom nickname cannot contain reserved badge icons.
+
+# Server browser (/servers)
+player-servers-title =  XCORE SERVER NETWORK
+player-servers-cat-all = All
+player-servers-cat-pvp = ⚔ PvP
+player-servers-cat-survival = 🛡 Survival
+player-servers-cat-special = ⭐ Special
+player-servers-hint = ℹ Click any server card to connect instantly
+player-servers-refresh = ⟳ Refresh
+player-servers-already-connected = [gold]● You are already connected to this server!
+player-servers-transferring = [accent]Transferring to server [white]{ $server }[]...
+player-servers-full = [scarlet]Server { $server } is full! Please wait for an open slot.
+player-servers-offline = [scarlet]Server { $server } is currently offline.
+player-servers-not-found = [scarlet]Server '{ $server }' not found.
+
