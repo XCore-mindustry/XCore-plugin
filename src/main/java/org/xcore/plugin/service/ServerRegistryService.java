@@ -47,6 +47,7 @@ public class ServerRegistryService {
             String icon,
             String accentColor,
             String badge,
+            String modeDescription,
             int port,
             int defaultMaxPlayers
     ) {}
@@ -71,7 +72,7 @@ public class ServerRegistryService {
         public String capacityBar() {
             if (!online || maxPlayers <= 0) return "[darkgray]□□□□□[]";
             int filled = Math.min(5, Math.max(0, (int) Math.round((double) onlinePlayers / maxPlayers * 5.0)));
-            String filledColor = filled >= 5 ? "scarlet" : (filled >= 4 ? "ffb86c" : "50fa7b");
+            String filledColor = filled >= 5 ? "#e55454" : (filled >= 4 ? "#ffb86c" : "#50fa7b");
             StringBuilder sb = new StringBuilder();
             sb.append("[").append(filledColor).append("]");
             for (int i = 0; i < filled; i++) sb.append("■");
@@ -83,18 +84,15 @@ public class ServerRegistryService {
     }
 
     private static final List<ServerTemplate> TEMPLATES = List.of(
-            new ServerTemplate("mini-pvp", "Mini-PvP", Category.PVP, "⚔", "ff5555", "PVP", 7001, 25),
-            new ServerTemplate("hexedcore", "HexedCore", Category.PVP, "👑", "bd93f9", "HEXED", 7005, 16),
-            new ServerTemplate("rvsb", "RVSB", Category.PVP, "🚀", "50fa7b", "RVSB", 7006, 16),
-            new ServerTemplate("mini-surv", "Mini-Surv", Category.SURVIVAL, "🛡", "50fa7b", "SURVIVAL", 7002, 20),
-            new ServerTemplate("towerdefence", "Tower Defence", Category.SURVIVAL, "👾", "50fa7b", "TD", 7009, 12),
-            new ServerTemplate("asthosus", "Asthosus", Category.SURVIVAL, "☄", "50fa7b", "SURVIVAL", 7008, 16),
-            new ServerTemplate("mini-attack", "Mini-Attack", Category.SPECIAL, "💥", "ffb86c", "ATTACK", 7003, 20),
-            new ServerTemplate("siege", "The Siege", Category.SPECIAL, "🏰", "ffb86c", "SIEGE", 7007, 20),
-            new ServerTemplate("event", "Event", Category.SPECIAL, "⭐", "bd93f9", "EVENT", 7004, 30),
-            new ServerTemplate("test", "Test Server", Category.SPECIAL, "🧪", "6272a4", "TEST", 7010, 10),
-            new ServerTemplate("zm", "Zombie Mode", Category.SPECIAL, "🧟", "50fa7b", "ZM", 7011, 20),
-            new ServerTemplate("mothership", "Mothership", Category.SPECIAL, "🛸", "bd93f9", "MOTHERSHIP", 7012, 16)
+            new ServerTemplate("mini-pvp", "Mini-PvP", Category.PVP, "⚔", "ff5555", "PVP", "Командное PvP сражение", 7001, 25),
+            new ServerTemplate("hexedcore", "HexedCore", Category.PVP, "👑", "bd93f9", "HEXED", "Battle Royale на гексах", 7005, 16),
+            new ServerTemplate("rvsb", "RVSB", Category.PVP, "🚀", "50fa7b", "RVSB", "Red vs Blue (быстрые раунды)", 7006, 16),
+            new ServerTemplate("mini-surv", "Mini-Surv", Category.SURVIVAL, "🛡", "50fa7b", "SURVIVAL", "Классическое выживание", 7002, 20),
+            new ServerTemplate("towerdefence", "Tower Defence", Category.SURVIVAL, "👾", "50fa7b", "TD", "Оборона баз от волн", 7009, 12),
+            new ServerTemplate("asthosus", "Asthosus", Category.SURVIVAL, "☄", "50fa7b", "SURVIVAL", "Кастомная планета Asthosus", 7008, 16),
+            new ServerTemplate("mini-attack", "Mini-Attack", Category.SPECIAL, "💥", "ffb86c", "ATTACK", "Штурм вражеских секторов", 7003, 20),
+            new ServerTemplate("siege", "The Siege", Category.SPECIAL, "🏰", "ffb86c", "SIEGE", "Осада баз и защита ядра", 7007, 20),
+            new ServerTemplate("event", "Event", Category.SPECIAL, "⭐", "bd93f9", "EVENT", "Особые серверные ивенты", 7004, 30)
     );
 
     private static final long HEARTBEAT_EXPIRATION_MS = 75_000L;
@@ -152,12 +150,16 @@ public class ServerRegistryService {
             } else {
                 HeartbeatEntry hb = heartbeats.get(tmpl.id());
                 boolean isOnline = hb != null && (now - hb.receivedAtMs() < HEARTBEAT_EXPIRATION_MS);
-                int onlinePlayers = isOnline ? hb.players() : 0;
-                int maxPlayers = (isOnline && hb.maxPlayers() > 0) ? hb.maxPlayers() : tmpl.defaultMaxPlayers();
-                String host = (hb != null && hb.host() != null) ? hb.host() : "play.xcore.top";
-                int tps = isOnline ? 60 : 0;
-                int pingMs = isOnline ? 35 : 0;
-                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, isOnline, false, "-", null, tps, pingMs, host, isOnline ? hb.receivedAtMs() : 0));
+                if (!isOnline) {
+                    // Filter out offline/inactive servers so they do not clutter the browser
+                    continue;
+                }
+                int onlinePlayers = hb.players();
+                int maxPlayers = hb.maxPlayers() > 0 ? hb.maxPlayers() : tmpl.defaultMaxPlayers();
+                String host = (hb.host() != null && !hb.host().isBlank()) ? hb.host() : "play.xcore.top";
+                int tps = 60;
+                int pingMs = 35;
+                list.add(new ServerStatus(tmpl, onlinePlayers, maxPlayers, true, false, "-", null, tps, pingMs, host, hb.receivedAtMs()));
             }
         }
 
@@ -189,7 +191,7 @@ public class ServerRegistryService {
     }
 
     public int totalServersCount() {
-        return TEMPLATES.size();
+        return snapshot().size();
     }
 
     public static String normalizeId(String name) {

@@ -105,7 +105,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 header.layout(l -> l.growX().padBottom(4f));
                 header.label(Text.raw("[white] ИГРОВЫЕ СЕРВЕРЫ[] [gold]XCORE[]"), l -> l.align("left").growX());
                 header.label(Text.raw("[green]● " + model.totalOnlinePlayers() + " [gray]в игре[] [darkgray]|[] [sky]"
-                        + model.totalOnlineServers() + "/" + model.totalServersCount() + " [gray]сеть[]"), l -> l.align("right").padRight(8f));
+                        + model.totalOnlineServers() + " [gray]онлайн[]"), l -> l.align("right").padRight(8f));
                 header.button(Text.raw(" [scarlet]✕[] "), "action:close", b -> b
                         .style("cleart")
                         .layout(l -> l.size(34f)));
@@ -215,13 +215,13 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                             if (server.isCurrent()) {
                                 desc = "[lightgray]Вы подключены к этому серверу[]"
                                         + (server.wave() != null ? " [darkgray]|[] [accent]Волна " + server.wave() + "[]" : "");
-                            } else if (!server.online()) {
-                                desc = "[darkgray]Сервер временно недоступен • Скоро открытие[]";
                             } else if (server.onlinePlayers() == 0) {
-                                desc = "[sky]Будьте первым! Запустите сессию[]";
-                            } else {
+                                desc = "[sky]Будьте первым! " + server.template().modeDescription() + "[]";
+                            } else if (!"-".equals(server.currentMap())) {
                                 desc = "[gray]Карта:[] [white]" + server.currentMap() + "[]"
                                         + (server.wave() != null ? " [darkgray]|[] [accent]Волна " + server.wave() + "[]" : "");
+                            } else {
+                                desc = "[gray]Режим:[] [white]" + server.template().modeDescription() + "[]";
                             }
                             bottom.label(Text.raw(desc), l -> l.align("left").growX());
 

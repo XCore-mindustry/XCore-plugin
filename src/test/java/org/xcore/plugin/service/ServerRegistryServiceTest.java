@@ -76,14 +76,15 @@ class ServerRegistryServiceTest {
     @DisplayName("capacityBar returns appropriate color and block counts")
     void capacityBar_calculatesBlocks() {
         ServerRegistryService.ServerTemplate tmpl = new ServerRegistryService.ServerTemplate(
-                "test", "Test", Category.PVP, "⚔", "ff5555", "PVP", 7001, 20
+                "test", "Test", Category.PVP, "⚔", "ff5555", "PVP", "Test Mode", 7001, 20
         );
 
         ServerStatus half = new ServerStatus(tmpl, 10, 20, true, false, "-", null, 60, 20, "host", System.currentTimeMillis());
         assertThat(half.capacityBar()).contains("■■■");
+        assertThat(half.capacityBar()).contains("[#50fa7b]");
 
         ServerStatus full = new ServerStatus(tmpl, 20, 20, true, false, "-", null, 60, 20, "host", System.currentTimeMillis());
-        assertThat(full.capacityBar()).contains("[scarlet]");
+        assertThat(full.capacityBar()).contains("[#e55454]");
         assertThat(full.capacityBar()).contains("■■■■■");
 
         ServerStatus offline = new ServerStatus(tmpl, 0, 20, false, false, "-", null, 0, 0, "host", 0);
@@ -96,6 +97,13 @@ class ServerRegistryServiceTest {
         TomlXcoreConfig config = createConfig("mini-pvp");
         NetworkService network = mock(NetworkService.class);
         ServerRegistryService service = new ServerRegistryService(config, network);
+
+        service.handleHeartbeat(new ServerHeartbeatV1(
+                "mini-attack", 1L, 5, 20, "v160", "play.xcore.top", 7003
+        ));
+        service.handleHeartbeat(new ServerHeartbeatV1(
+                "siege", 2L, 8, 20, "v160", "play.xcore.top", 7007
+        ));
 
         assertThat(service.findServer("mini-attack")).isPresent();
         assertThat(service.findServer("MINI-ATTACK")).isPresent();

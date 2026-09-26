@@ -140,6 +140,9 @@ class ServerSelectorUiClientIntegrationTest {
                 "mini-surv", 1L, 12, 20, "v160", "play.xcore.top", 7002
         ));
         registryService.handleHeartbeat(new ServerHeartbeatV1(
+                "hexedcore", 3L, 8, 16, "v160", "play.xcore.top", 7005
+        ));
+        registryService.handleHeartbeat(new ServerHeartbeatV1(
                 "siege", 2L, 5, 20, "v160", "play.xcore.top", 7007
         ));
 
