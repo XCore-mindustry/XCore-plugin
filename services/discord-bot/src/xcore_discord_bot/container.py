@@ -15,7 +15,7 @@ from .services.player_service import PlayerService
 from .settings import Settings
 
 if TYPE_CHECKING:
-    from .core.bot import XCoreDiscordBot
+    from .bot import XCoreDiscordBot
 
 
 @dataclass(slots=True)
@@ -32,9 +32,16 @@ class ServiceContainer:
     stream_supervisor: StreamSupervisor
 
     @classmethod
-    def create(cls, settings: Settings, bot: XCoreDiscordBot) -> ServiceContainer:
-        bus = RedisBus(settings)
-        store = MongoStore(settings)
+    def create(
+        cls,
+        settings: Settings,
+        bot: XCoreDiscordBot,
+        *,
+        store: MongoStore | None = None,
+        bus: RedisBus | None = None,
+    ) -> ServiceContainer:
+        bus = bus if bus is not None else RedisBus(settings)
+        store = store if store is not None else MongoStore(settings)
         rpc = MindustryRpcClient(bus)
 
         players = PlayerService(store=store, bus=bus)

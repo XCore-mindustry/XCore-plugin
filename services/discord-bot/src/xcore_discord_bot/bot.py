@@ -101,7 +101,9 @@ class XCoreDiscordBot(commands.Bot):
         self._settings = settings
         self._bus = bus
         self._store = store
-        self.container = ServiceContainer.create(settings, self)
+        self.container = ServiceContainer.create(
+            settings, self, store=self._store, bus=self._bus
+        )
         self._chat_consumer_task: asyncio.Task[None] | None = None
         self._global_chat_consumer_task: asyncio.Task[None] | None = None
         self._join_leave_consumer_task: asyncio.Task[None] | None = None
@@ -119,7 +121,9 @@ class XCoreDiscordBot(commands.Bot):
         if not hasattr(self, "container"):
             settings = getattr(self, "_settings", None)
             if settings is not None:
-                self.container = ServiceContainer.create(settings, self)
+                self.container = ServiceContainer.create(
+                    settings, self, store=self._store, bus=self._bus
+                )
         return self.container
 
     @property
