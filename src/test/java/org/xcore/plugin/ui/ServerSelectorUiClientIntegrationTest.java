@@ -188,7 +188,7 @@ class ServerSelectorUiClientIntegrationTest {
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 350");
+        assertThat(dsl).contains("maxHeight: 340");
         assertThat(dsl).contains("action:close");
         assertThat(dsl).contains("action:tab:all");
         assertThat(dsl).contains("action:tab:pvp");

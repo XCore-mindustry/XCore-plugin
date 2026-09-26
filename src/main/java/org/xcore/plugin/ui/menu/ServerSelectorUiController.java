@@ -93,16 +93,20 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
         return createModel(registryService, category);
     }
 
+    private static final float DIALOG_WIDTH = 540f;
+    private static final float CARD_WIDTH = 525f;
+    private static final float CARD_CONTENT_WIDTH = 500f;
+
     @Override
     public VNode render(ServerSelectorModel model) {
         return Ui.table(root -> {
             root.background("pane");
-            root.margin(14f);
-            root.layout(l -> l.width(580f).pad(6f));
+            root.margin(12f);
+            root.layout(l -> l.width(DIALOG_WIDTH).pad(4f));
 
             // 1. Header: title, network status summary, and close button
             root.add(Ui.table(header -> {
-                header.layout(l -> l.growX().padBottom(4f));
+                header.layout(l -> l.width(DIALOG_WIDTH).padBottom(4f));
                 header.label(Text.t("player-servers-title"), l -> l.align("left").growX());
                 header.label(Text.t("player-servers-online-summary",
                         Text.args("players", model.totalOnlinePlayers(), "servers", model.totalOnlineServers())),
@@ -113,11 +117,11 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             })).row();
 
             // Divider
-            root.image("whiteui", l -> l.height(2f).padTop(4f).padBottom(6f).growX().color("3b4252")).row();
+            root.image("whiteui", l -> l.width(DIALOG_WIDTH).height(2f).padTop(4f).padBottom(6f).color("3b4252")).row();
 
             // 2. Category Filter Tabs
             root.add(Ui.table(tabs -> {
-                tabs.layout(l -> l.growX().padBottom(6f));
+                tabs.layout(l -> l.width(DIALOG_WIDTH).padBottom(6f));
                 for (Category cat : Category.values()) {
                     boolean checked = model.selectedCategory() == cat;
                     Text tabText = Text.join(
@@ -133,23 +137,23 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             })).row();
 
             // Divider
-            root.image("whiteui", l -> l.height(2f).padTop(2f).padBottom(6f).growX().color("3b4252")).row();
+            root.image("whiteui", l -> l.width(DIALOG_WIDTH).height(2f).padTop(2f).padBottom(6f).color("3b4252")).row();
 
             // 3. Dynamic Server List Slot inside ScrollPane
             root.slot(SLOT_SERVERS.path(), slot -> {
-                slot.layout(l -> l.growX());
+                slot.layout(l -> l.width(DIALOG_WIDTH));
                 slot.pane(pane -> {
-                    pane.layout(l -> l.maxHeight(350f).growX());
+                    pane.layout(l -> l.width(DIALOG_WIDTH).maxHeight(340f));
                     pane.table(serversTable -> renderServerList(serversTable, model));
                 });
             }).row();
 
             // Divider
-            root.image("whiteui", l -> l.height(2f).padTop(6f).padBottom(4f).growX().color("3b4252")).row();
+            root.image("whiteui", l -> l.width(DIALOG_WIDTH).height(2f).padTop(6f).padBottom(4f).color("3b4252")).row();
 
             // 4. Split Footer: Hint and Refresh Button
             root.add(Ui.table(footer -> {
-                footer.layout(l -> l.growX().padTop(2f));
+                footer.layout(l -> l.width(DIALOG_WIDTH).padTop(2f));
                 footer.label(Text.t("player-servers-hint"), l -> l.align("left").growX());
                 footer.button(Text.t("player-servers-refresh"), "action:refresh", b -> b
                         .style("cleart")
@@ -171,7 +175,8 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             String clickAction = "action:connect:" + server.template().id();
 
             table.buttonTable(clickAction, card -> {
-                card.growX().padBottom(4f).margin(6f);
+                card.layout(l -> l.width(CARD_WIDTH).padBottom(4f));
+                card.margin(6f);
 
                 if (server.isCurrent()) {
                     card.style("togglet");
@@ -184,7 +189,7 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                 }
 
                 card.table(inner -> {
-                    inner.layout(l -> l.growX());
+                    inner.layout(l -> l.width(CARD_CONTENT_WIDTH));
 
                     // Left vertical accent stripe
                     inner.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(server.template().accentColor()));
@@ -229,11 +234,12 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
                             } else if (server.onlinePlayers() == 0) {
                                 desc = Text.t("player-servers-card-empty");
                             } else if (server.description() != null && !server.description().isBlank()) {
-                                desc = Text.raw(server.description());
+                                desc = Text.raw(formatDescription(server.description(), 42));
                             } else if (!"-".equals(server.currentMap())) {
+                                String cleanMap = formatDescription(server.currentMap(), 22);
                                 desc = server.wave() != null
-                                        ? Text.join(Text.t("player-servers-card-map", Text.args("map", server.currentMap())), Text.raw(" "), Text.t("player-servers-card-wave", Text.args("wave", server.wave())))
-                                        : Text.t("player-servers-card-map", Text.args("map", server.currentMap()));
+                                        ? Text.join(Text.t("player-servers-card-map", Text.args("map", cleanMap)), Text.raw(" "), Text.t("player-servers-card-wave", Text.args("wave", server.wave())))
+                                        : Text.t("player-servers-card-map", Text.args("map", cleanMap));
                             } else if (server.mode() != null && !server.mode().isBlank()) {
                                 desc = Text.t("player-servers-card-mode", Text.args("mode", server.mode()));
                             } else {
@@ -251,6 +257,38 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
             });
             table.row();
         }
+    }
+
+    public static String formatDescription(String raw, int maxPlainLength) {
+        if (raw == null || raw.isBlank()) return "";
+        String singleLine = raw.replace('\n', ' ').replace('\r', ' ').trim();
+        if (arc.util.Strings.stripColors(singleLine).length() <= maxPlainLength) {
+            return singleLine;
+        }
+        StringBuilder sb = new StringBuilder();
+        int visibleCount = 0;
+        boolean inTag = false;
+        for (int i = 0; i < singleLine.length(); i++) {
+            char c = singleLine.charAt(i);
+            if (c == '[') {
+                inTag = true;
+                sb.append(c);
+            } else if (c == ']' && inTag) {
+                inTag = false;
+                sb.append(c);
+            } else if (inTag) {
+                sb.append(c);
+            } else {
+                if (visibleCount >= maxPlainLength) {
+                    sb.append("...[]");
+                    return sb.toString();
+                }
+                sb.append(c);
+                visibleCount++;
+            }
+        }
+        sb.append("[]");
+        return sb.toString();
     }
 
     @Override

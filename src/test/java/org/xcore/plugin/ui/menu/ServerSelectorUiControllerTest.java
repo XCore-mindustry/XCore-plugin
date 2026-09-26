@@ -82,7 +82,7 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles VNode tree with 580 width, maxHeight 350 pane, tabs, and buttonTable cards")
+    @DisplayName("render compiles VNode tree with 540 width, maxHeight 340 pane, tabs, and buttonTable cards")
     void render_compilesVNodeTreeWithResponsiveCards() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
@@ -95,7 +95,7 @@ class ServerSelectorUiControllerTest {
 
         // Background and width
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 580");
+        assertThat(dsl).contains("width: 540");
 
         // Header
         assertThat(dsl).contains("ИГРОВЫЕ СЕРВЕРЫ");
@@ -111,7 +111,7 @@ class ServerSelectorUiControllerTest {
         // Dynamic slot
         assertThat(dsl).contains("id: slot_servers");
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 350");
+        assertThat(dsl).contains("maxHeight: 340");
 
         // Card buttonTables
         assertThat(dsl).contains("buttonTable{");
