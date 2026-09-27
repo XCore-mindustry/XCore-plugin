@@ -263,7 +263,7 @@ public class MapService {
             int dislikeDelta = previousVote ? 0 : -1;
 
             applyVoteDelta(map, new VoteDelta(reputationDelta, popularityDelta, likeDelta, dislikeDelta, "like-map-revoked"));
-            if (session.locale() != null) session.locale().send("like-map-revoked");
+            session.locale().send("like-map-revoked");
             session.data.mapVotes.remove(map.id.toString());
             mapDataRepository.applyVoteAsync(map.id, reputationDelta, popularityDelta, likeDelta, dislikeDelta)
                     .exceptionally(err -> {

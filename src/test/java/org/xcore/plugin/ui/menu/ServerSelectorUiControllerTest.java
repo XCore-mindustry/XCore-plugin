@@ -1,6 +1,8 @@
 package org.xcore.plugin.ui.menu;
 
 import com.ospx.flubundle.Bundle;
+import com.ospx.flubundle.BundleContext;
+import mindustry.gen.Player;
 import mindustry.ui.builder.MenuResult;
 import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +33,11 @@ class ServerSelectorUiControllerTest {
 
     @SuppressWarnings("unchecked")
     private Session createTestSession(String uuid) {
+        return createTestSession(uuid, null, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Session createTestSession(String uuid, Player player, BundleContext context) {
         PlayerData data = new PlayerData(uuid, true);
         data.nickname = "TestUser";
 
@@ -56,13 +63,16 @@ class ServerSelectorUiControllerTest {
             };
         });
         when(bundle.localizer(any(java.util.function.Supplier.class))).thenReturn(localizer);
+        if (context != null) {
+            when(bundle.context(any(Player.class), any(java.util.function.Supplier.class))).thenReturn(context);
+        }
 
         return new Session(
                 new TomlSecretsConfig(),
                 bundle,
                 null,
                 mock(PlayerDataRepository.class),
-                null,
+                player,
                 data
         );
     }
@@ -197,5 +207,41 @@ class ServerSelectorUiControllerTest {
 
         var connectRes = new MenuResult("action:connect:mini-surv");
         assertThat(controller.parseEvent(connectRes)).isEqualTo(new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-surv"));
+    }
+
+    @Test
+    @DisplayName("connect to unknown server sends player-servers-not-found via locale.send")
+    void connect_unknownServer_sendsNotFound() {
+        ServerRegistryService registry = createRegistry();
+        Player player = mock(Player.class);
+        BundleContext context = mock(BundleContext.class);
+        Session session = createTestSession("uuid-1", player, context);
+
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
+        ControllerContext ctx = mock(ControllerContext.class);
+
+        controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("unknown-server"), ctx);
+
+        verify(context).send(eq("player-servers-not-found"), anyMap());
+        verify(ctx).close();
+    }
+
+    @Test
+    @DisplayName("connect to current server sends player-servers-already-connected via locale.send")
+    void connect_currentServer_sendsAlreadyConnected() {
+        ServerRegistryService registry = createRegistry();
+        Player player = mock(Player.class);
+        BundleContext context = mock(BundleContext.class);
+        Session session = createTestSession("uuid-1", player, context);
+
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
+        ControllerContext ctx = mock(ControllerContext.class);
+
+        controller.update(model, new ServerSelectorUiController.ServerSelectorEvent.Connect("mini-pvp"), ctx);
+
+        verify(context).send(eq("player-servers-already-connected"), anyMap());
+        verify(ctx).close();
     }
 }

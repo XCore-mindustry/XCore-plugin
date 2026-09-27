@@ -784,7 +784,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 ? state.rules.mode().name()
                 : (data != null && data.gameMode != null && !data.gameMode.isBlank() ? data.gameMode : "survival");
         String mode = rawMode;
-        if (session != null && session.locale() != null) {
+        if (session != null) {
             String modeKey = "gamemode-" + rawMode.toLowerCase();
             String localizedMode = session.locale().t(modeKey);
             if (localizedMode != null && !localizedMode.equals(modeKey)) {
@@ -796,7 +796,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
         long plays = data != null ? data.playedTimes : 0L;
         long playsYear = data != null ? data.playedTimesYear : 0L;
         String last = (data == null || data.playedTimes == 0)
-                ? (session != null && session.locale() != null ? session.locale().t("never") : "Never")
+                ? (session != null ? session.locale().t("never") : "")
                 : formatDuration((int) ((System.currentTimeMillis() - data.lastPlayedTime) / 60000));
 
         String minTime = data != null ? formatDuration((int) (data.minimumGameTime / 60000)) : "-";
@@ -973,7 +973,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     private String formatDuration(int minutes) {
         if (minutes < 0) return "-";
-        if (session != null && session.locale() != null) {
+        if (session != null) {
             if (minutes <= 0) {
                 return session.locale().t("player-menu-time-minutes", args("value", 0));
             }

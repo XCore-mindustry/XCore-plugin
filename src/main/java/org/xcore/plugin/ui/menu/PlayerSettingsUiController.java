@@ -192,7 +192,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     var validation = profileSettings.validateCustomNickname(newNick);
                     if (!validation.valid()) {
                         String errKey = validation.errorKey() != null ? validation.errorKey() : "error-nickname-invalid";
-                        String localizedErr = session != null && session.locale() != null
+                        String localizedErr = session != null
                                 ? session.locale().t(errKey, Map.of("max", validation.maxBytes()))
                                 : errKey;
                         yield UpdateResult.patch(model.withFeedback("[scarlet]⚠ " + localizedErr + "[]", false), SLOT_FEEDBACK);
@@ -208,9 +208,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                     profileSettings.updateLanguage(targetData, updated.language());
                 }
 
-                String successMsg = session != null && session.locale() != null
+                String successMsg = session != null
                         ? session.locale().t("player-settings-saved")
-                        : "Settings saved!";
+                        : "";
                 yield UpdateResult.patch(updated.withFeedback(successMsg, true), SLOT_FEEDBACK);
             }
 
@@ -218,9 +218,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 if (profileSettings != null) {
                     profileSettings.updateCustomNickname(targetData, "", true, true);
                 }
-                String resetMsg = session != null && session.locale() != null
+                String resetMsg = session != null
                         ? session.locale().t("player-settings-reset-feedback")
-                        : "Custom nickname reset.";
+                        : "";
                 yield UpdateResult.rerender(model.withCustomNickname("").withFeedback(resetMsg, true));
             }
 
@@ -282,9 +282,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                     .layout(l -> l.height(34f).padLeft(8f)));
                         })).row();
 
-                        String rawHint = session != null && session.locale() != null
+                        String rawHint = session != null
                                 ? session.locale().t("player-menu-settings-customNickname-message")
-                                : "Leave blank to reset";
+                                : "";
                         String cleanHint = Strings.stripColors(rawHint);
 
                         prof.label(Text.t("player-menu-settings-customNickname"), l -> l.align("left").padBottom(2f)).row();

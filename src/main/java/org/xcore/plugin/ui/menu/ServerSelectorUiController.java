@@ -1,6 +1,7 @@
 package org.xcore.plugin.ui.menu;
 
 import arc.util.Log;
+import com.ospx.flubundle.Bundle;
 import mindustry.gen.Call;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.service.ServerRegistryService;
@@ -322,54 +323,35 @@ public class ServerSelectorUiController implements UiController<ServerSelectorUi
     }
 
     private void handleConnect(String serverId) {
+        if (session == null || session.player == null) {
+            return;
+        }
+
         Optional<ServerStatus> opt = registryService.findServer(serverId);
         if (opt.isEmpty()) {
-            if (session != null && session.player != null) {
-                String msg = session.locale() != null
-                        ? session.locale().format("player-servers-not-found", com.ospx.flubundle.Bundle.args("server", serverId))
-                        : "[scarlet]Сервер '" + serverId + "' не найден.";
-                session.player.sendMessage(msg);
-            }
+            session.locale().send("player-servers-not-found", Bundle.args("server", serverId));
             return;
         }
 
         ServerStatus target = opt.get();
         if (target.isCurrent()) {
-            if (session != null && session.player != null) {
-                String msg = session.locale() != null
-                        ? session.locale().format("player-servers-already-connected", com.ospx.flubundle.Bundle.args())
-                        : "[gold]● Вы уже подключены к этому серверу!";
-                session.player.sendMessage(msg);
-            }
+            session.locale().send("player-servers-already-connected");
             return;
         }
 
         if (!target.online()) {
-            if (session != null && session.player != null) {
-                String msg = session.locale() != null
-                        ? session.locale().format("player-servers-offline", com.ospx.flubundle.Bundle.args("server", target.template().name()))
-                        : "[scarlet]Сервер " + target.template().name() + " сейчас оффлайн.";
-                session.player.sendMessage(msg);
-            }
+            session.locale().send("player-servers-offline", Bundle.args("server", target.template().name()));
             return;
         }
 
-        boolean isAdmin = session != null && session.data != null && session.data.admin;
+        boolean isAdmin = session.data != null && session.data.admin;
         if (target.isFull() && !isAdmin) {
-            if (session != null && session.player != null) {
-                String msg = session.locale() != null
-                        ? session.locale().format("player-servers-full", com.ospx.flubundle.Bundle.args("server", target.template().name()))
-                        : "[scarlet]Сервер " + target.template().name() + " заполнен! Подождите освобождения слота.";
-                session.player.sendMessage(msg);
-            }
+            session.locale().send("player-servers-full", Bundle.args("server", target.template().name()));
             return;
         }
 
-        if (session != null && session.player != null && session.player.con != null) {
-            String msg = session.locale() != null
-                    ? session.locale().format("player-servers-transferring", com.ospx.flubundle.Bundle.args("server", target.template().name()))
-                    : "[accent]Переключение на сервер [white]" + target.template().name() + "[]...";
-            session.player.sendMessage(msg);
+        if (session.player.con != null) {
+            session.locale().send("player-servers-transferring", Bundle.args("server", target.template().name()));
             Log.info("Transferring player @ to @ (@:@)", session.player.plainName(), target.template().name(), target.host(), target.template().port());
             Call.connect(session.player.con, target.host(), target.template().port());
         }
