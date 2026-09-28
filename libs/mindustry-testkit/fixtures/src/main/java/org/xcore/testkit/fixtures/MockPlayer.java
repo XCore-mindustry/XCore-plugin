@@ -128,11 +128,21 @@ public final class MockPlayer {
     }
 
     public List<String> infoPopups() {
-        return connection.infoMessages();
+        return connection.infoPopupTexts();
     }
 
     public String lastInfoPopup() {
-        return connection.lastInfoMessage();
+        return connection.lastInfoPopup() != null ? connection.lastInfoPopup().message() : null;
+    }
+
+    /** Typed transcript of the most recent popup, carrying duration, alignment, and key. */
+    public MockNetConnection.InfoPopup lastInfoPopupPacket() {
+        return connection.lastInfoPopup();
+    }
+
+    /** Popup texts sent via {@code Call.infoMessage} only, excluding positioned {@code Call.infoPopup}. */
+    public List<String> infoMessages() {
+        return connection.infoMessages();
     }
 
     public List<String> warningToasts() {

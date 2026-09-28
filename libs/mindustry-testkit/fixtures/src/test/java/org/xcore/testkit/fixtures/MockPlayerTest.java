@@ -1,5 +1,6 @@
 package org.xcore.testkit.fixtures;
 
+import arc.util.Align;
 import mindustry.content.UnitTypes;
 import mindustry.game.Team;
 import mindustry.gen.Call;
@@ -59,6 +60,35 @@ class MockPlayerTest {
 
         assertThat(player.warningToasts()).containsExactly("Warning: Low power!");
         assertThat(player.lastWarningToast()).isEqualTo("Warning: Low power!");
+    }
+
+    @Test
+    @DisplayName("Should capture positioned Call.infoPopup renderings")
+    void shouldCapturePositionedInfoPopup() {
+        MockPlayer player = world.addPlayer("Hud", Team.sharded);
+
+        Call.infoPopup(player.con(), "Round 3 starting", 6f, Align.left, 0, 0, 0, 0);
+
+        assertThat(player.lastInfoPopup()).isEqualTo("Round 3 starting");
+        assertThat(player.lastInfoPopupPacket()).isNotNull();
+        assertThat(player.lastInfoPopupPacket().duration()).isEqualTo(6f);
+        assertThat(player.lastInfoPopupPacket().align()).isEqualTo(Align.left);
+    }
+
+    @Test
+    @DisplayName("Should capture every Call.infoPopup variant including empty clears")
+    void shouldCaptureAllInfoPopupVariants() {
+        MockPlayer player = world.addPlayer("Hud2", Team.sharded);
+
+        Call.infoPopup("Broadcast popup", 4f, Align.left, 0, 0, 0, 0);
+        Call.infoPopupReliable("Reliable popup", 4f, Align.left, 0, 0, 0, 0);
+        Call.infoPopup("Keyed popup", "hud", 4f, Align.left, 0, 0, 0, 0);
+        Call.infoPopup(player.con(), "", 0.1f, Align.left, 0, 0, 0, 0);
+
+        assertThat(player.infoPopups())
+                .containsExactly("Broadcast popup", "Reliable popup", "Keyed popup", "");
+        assertThat(player.lastInfoPopup()).isEqualTo("");
+        assertThat(player.con().infoPopups()).hasSize(4);
     }
 
     @Test

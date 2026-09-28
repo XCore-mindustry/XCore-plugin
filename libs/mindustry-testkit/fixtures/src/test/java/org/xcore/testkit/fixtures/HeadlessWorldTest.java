@@ -29,6 +29,39 @@ class HeadlessWorldTest {
     }
 
     @Test
+    @DisplayName("Should default to a non-generating world and support generating mode")
+    void shouldExposeGeneratingMode() {
+        try (HeadlessWorld world = HeadlessWorld.create(8, 8)) {
+            assertThat(world.world().isGenerating()).isFalse();
+        }
+
+        try (HeadlessWorld world = HeadlessWorld.builder()
+                .dimensions(8, 8)
+                .generating(true)
+                .build()) {
+            assertThat(world.world().isGenerating()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("Should allow tile mutation in generating mode without a live net layer")
+    void shouldMutateTilesWhileGenerating() {
+        try (HeadlessWorld world = HeadlessWorld.builder()
+                .dimensions(8, 8)
+                .generating(true)
+                .defaultFloor(Blocks.stone)
+                .build()) {
+            // Tile.setFloor consults Vars.world.isGenerating(); generating mode must
+            // permit bulk map-authoring writes without event/group side effects.
+            world.setFloor(3, 3, Blocks.sand);
+            world.setBlock(4, 4, Blocks.coreShard, Team.green);
+
+            assertThat(world.tile(3, 3).floor()).isEqualTo(Blocks.sand);
+            assertThat(world.tile(4, 4).block()).isEqualTo(Blocks.coreShard);
+        }
+    }
+
+    @Test
     @DisplayName("Should support setting floors, blocks, and air")
     void shouldModifyTiles() {
         try (HeadlessWorld world = HeadlessWorld.create(16, 16)) {

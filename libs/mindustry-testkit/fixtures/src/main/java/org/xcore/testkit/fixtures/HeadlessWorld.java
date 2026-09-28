@@ -66,6 +66,11 @@ public final class HeadlessWorld implements AutoCloseable {
         Vars.world.resize(width, height);
         Vars.world.tiles.fill();
 
+        // Generating mode suppresses tile-change event/group side effects, which is
+        // required for bulk map-authoring writes (Tile.setFloor consults
+        // World.isGenerating()). Must be set before any tile mutation.
+        Vars.world.setGenerating(builder.generating);
+
         if (builder.defaultFloor != null && builder.defaultFloor != Blocks.air) {
             fillFloor(builder.defaultFloor);
         }
@@ -182,6 +187,9 @@ public final class HeadlessWorld implements AutoCloseable {
         configurator.accept(b);
         MockPlayer player = b.build();
         players.add(player);
+        if (Vars.net instanceof MockNet net) {
+            net.register(player.con());
+        }
         return player;
     }
 
@@ -281,6 +289,7 @@ public final class HeadlessWorld implements AutoCloseable {
         private int height = 32;
         private Block defaultFloor = Blocks.air;
         private GameState.State initialState = GameState.State.playing;
+        private boolean generating = false;
 
         public Builder dimensions(int width, int height) {
             this.width = width;
@@ -295,6 +304,20 @@ public final class HeadlessWorld implements AutoCloseable {
 
         public Builder state(GameState.State state) {
             this.initialState = state;
+            return this;
+        }
+
+        /**
+         * Enables world generation mode, mirroring {@code World.setGenerating(true)}.
+         *
+         * <p>Map generators, terrain painters, and layout planners call
+         * {@code Tile.setFloor} / {@code Tile.setBlock}, which consult
+         * {@code Vars.world.isGenerating()}. In generating mode Mindustry skips
+         * per-tile {@code TileChange} event emission and group bookkeeping, so
+         * bulk world authoring works without a live net layer or entity groups.
+         */
+        public Builder generating(boolean generating) {
+            this.generating = generating;
             return this;
         }
 

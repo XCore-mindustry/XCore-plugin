@@ -2,6 +2,10 @@ package org.xcore.testkit.fixtures;
 
 import mindustry.gen.AnnounceCallPacket;
 import mindustry.gen.InfoMessageCallPacket;
+import mindustry.gen.InfoPopupCallPacket;
+import mindustry.gen.InfoPopupCallPacket2;
+import mindustry.gen.InfoPopupReliableCallPacket;
+import mindustry.gen.InfoPopupReliableCallPacket2;
 import mindustry.gen.KickCallPacket;
 import mindustry.gen.KickCallPacket2;
 import mindustry.gen.SendMessageCallPacket;
@@ -19,13 +23,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Headless in-memory {@link NetConnection} recording sent packets, chat messages,
- * toasts, announcements, kicks, and byte streams without socket I/O.
+ * toasts, announcements, positioned HUD popups, kicks, and byte streams without socket I/O.
  */
 public class MockNetConnection extends NetConnection {
+    /** Which {@code Call} overload produced a popup, so assertions can target one variant. */
+    public enum PopupVariant { MESSAGE, POPUP, RELIABLE, KEYED, KEYED_RELIABLE }
+
+    /** Common shape of every {@code Call.infoMessage}/{@code Call.infoPopup*} variant. */
+    public record InfoPopup(String message, float duration, int align, String id, PopupVariant variant) {}
+
     private final List<Object> sentPackets = new ArrayList<>();
     private final List<String> messages = new ArrayList<>();
     private final List<String> announcements = new ArrayList<>();
     private final List<String> infoMessages = new ArrayList<>();
+    private final List<InfoPopup> infoPopups = new ArrayList<>();
     private final List<String> warningToasts = new ArrayList<>();
     private final Map<Integer, Integer> streamTotals = new ConcurrentHashMap<>();
     private final Map<Integer, ByteArrayOutputStream> activeStreams = new ConcurrentHashMap<>();
@@ -52,6 +63,15 @@ public class MockNetConnection extends NetConnection {
             announcements.add(ann.message);
         } else if (object instanceof InfoMessageCallPacket info) {
             infoMessages.add(info.message);
+            infoPopups.add(new InfoPopup(info.message, 0f, -1, null, PopupVariant.MESSAGE));
+        } else if (object instanceof InfoPopupCallPacket popup) {
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.POPUP));
+        } else if (object instanceof InfoPopupReliableCallPacket popup) {
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, null, PopupVariant.RELIABLE));
+        } else if (object instanceof InfoPopupCallPacket2 popup) {
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED));
+        } else if (object instanceof InfoPopupReliableCallPacket2 popup) {
+            infoPopups.add(new InfoPopup(popup.message, popup.duration, popup.align, popup.id, PopupVariant.KEYED_RELIABLE));
         } else if (object instanceof WarningToastCallPacket toast) {
             warningToasts.add(toast.text);
         } else if (object instanceof KickCallPacket kp) {
@@ -108,6 +128,23 @@ public class MockNetConnection extends NetConnection {
         return infoMessages.isEmpty() ? null : infoMessages.get(infoMessages.size() - 1);
     }
 
+    public synchronized List<InfoPopup> infoPopups() {
+        return Collections.unmodifiableList(new ArrayList<>(infoPopups));
+    }
+
+    public synchronized InfoPopup lastInfoPopup() {
+        return infoPopups.isEmpty() ? null : infoPopups.get(infoPopups.size() - 1);
+    }
+
+    /** Popup texts in wire order, spanning every {@code Call.infoMessage}/{@code Call.infoPopup*} variant. */
+    public synchronized List<String> infoPopupTexts() {
+        List<String> texts = new ArrayList<>(infoPopups.size());
+        for (InfoPopup popup : infoPopups) {
+            texts.add(popup.message);
+        }
+        return Collections.unmodifiableList(texts);
+    }
+
     public synchronized List<String> warningToasts() {
         return Collections.unmodifiableList(new ArrayList<>(warningToasts));
     }
@@ -133,6 +170,7 @@ public class MockNetConnection extends NetConnection {
         messages.clear();
         announcements.clear();
         infoMessages.clear();
+        infoPopups.clear();
         warningToasts.clear();
         streamTotals.clear();
         activeStreams.clear();
