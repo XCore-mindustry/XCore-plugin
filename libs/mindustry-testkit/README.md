@@ -16,7 +16,7 @@
 
 ## Architecture & Components
 
-The toolkit is divided into two modules:
+The toolkit is divided into three modules:
 
 ### 1. `core` (`org.xcore.testkit:core`)
 
@@ -24,7 +24,17 @@ Pure Java library with zero dependencies on Mindustry or Arc.
 
 - **`DeterministicQueue`**: Single-threaded, explicitly stepped task queue adhering to Arc's snapshot-drain turn model (`runTurn()`). Tasks scheduled during an active turn wait deterministically for the next turn.
 
-### 2. `ui` (`org.xcore.testkit:ui`)
+### 2. `fixtures` (`org.xcore.testkit:fixtures`)
+
+Headless World and Entity simulation fixtures for server-side plugin tests (commands, anti-grief action filters, spatial queries, team cores, and packet verification) without launching live server sockets or graphics contexts:
+
+- **`HeadlessWorld`**: Managed, `AutoCloseable` environment providing an initialized `Vars.world` grid, `GameState`, `NetServer`, and `Groups`. Supports spatial queries, floor and block mutation, team cores with multi-tile footprint linking, command routing, and action filtering.
+- **`MockPlayer`**: Simulated player entity wrapping `mindustry.gen.Player` backed by an in-memory `MockNetConnection`. Features builders, coordinate/tile positioning, chat, and command dispatch.
+- **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O.
+- **`HeadlessContent`**: Thread-safe base content loader caching vanilla blocks, units, and items once per JVM to guarantee sub-millisecond test fixture setup.
+- **`HeadlessWorldExtension` & `@WithHeadlessWorld`**: JUnit 5 Jupiter extension for automated fixture lifecycle management and parameter resolution.
+
+### 3. `ui` (`org.xcore.testkit:ui`)
 
 Client simulation, transport wire snapshots, and actual-client oracle tests.
 
