@@ -244,6 +244,68 @@ public class SessionService {
     }
 
     /**
+     * Flags the cached player data as online and persists the flag.
+     * <p>
+     * Called when a player joins the server.
+     *
+     * @param data player data
+     * @param serverName current server name
+     */
+    public void markOnline(PlayerData data, String serverName) {
+        if (data == null || data.uuid == null || data.uuid.isBlank()) {
+            return;
+        }
+
+        data.online = true;
+        data.onlineSince = System.currentTimeMillis();
+        data.onlineServer = serverName == null ? "" : serverName;
+
+        playerDataRepository.updateOnlineAsync(data.uuid, true, serverName)
+                .exceptionally(error -> {
+                    PLog.warn("Failed to mark player @ online: @", data.uuid, error);
+                    return false;
+                });
+    }
+
+    /**
+     * Flags the cached player data as offline and persists the flag.
+     * <p>
+     * Called when a player leaves the server.
+     *
+     * @param data player data
+     */
+    public void markOffline(PlayerData data) {
+        if (data == null || data.uuid == null || data.uuid.isBlank()) {
+            return;
+        }
+
+        data.online = false;
+        data.onlineSince = 0L;
+        data.onlineServer = "";
+
+        playerDataRepository.updateOnlineAsync(data.uuid, false, null)
+                .exceptionally(error -> {
+                    PLog.warn("Failed to mark player @ offline: @", data.uuid, error);
+                    return false;
+                });
+    }
+
+    /**
+     * Clears stale {@code online} flags left behind by a previous server process.
+     * <p>
+     * Must run before the first session is registered, otherwise players from a crashed
+     * server would stay flagged as online forever.
+     */
+    public void clearStalePresenceFlags() {
+        playerDataRepository.clearOnlineFlagsAsync()
+                .thenAccept(cleared -> PLog.info("Cleared stale online flags: @", cleared))
+                .exceptionally(error -> {
+                    PLog.warn("Failed to clear stale online flags: @", error);
+                    return null;
+                });
+    }
+
+    /**
      * Reloads cache from currently online players.
      * <p>
      * Clears cache and rebuilds from Groups.player.

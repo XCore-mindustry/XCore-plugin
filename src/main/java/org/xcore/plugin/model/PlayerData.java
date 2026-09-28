@@ -89,6 +89,13 @@ public class PlayerData extends ModelData {
     @BsonProperty("discord_linked_at")
     @Builder.Default public long discordLinkedAt = 0L;
 
+    @BsonProperty("online")
+    @Builder.Default public boolean online = false;
+    @BsonProperty("online_since")
+    @Builder.Default public long onlineSince = 0L;
+    @BsonProperty("online_server")
+    @Builder.Default public String onlineServer = "";
+
     @Builder.Default @BsonIgnore public transient Player player = null;
     @Builder.Default @BsonIgnore public String adminModVersion = null;
     @Builder.Default @BsonIgnore public long historySize = 0L;

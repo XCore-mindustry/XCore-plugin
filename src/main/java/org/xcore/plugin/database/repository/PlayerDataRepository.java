@@ -180,6 +180,41 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return MongoAsync.first(reactiveCollection.find(eq("pid", id)));
     }
 
+    /**
+     * Marks a player as online (or offline) so external services - such as the Discord
+     * bot account merge - can refuse to touch an account that is currently in a game.
+     */
+    public java.util.concurrent.CompletionStage<Boolean> updateOnlineAsync(String uuid, boolean online, String server) {
+        if (uuid == null || uuid.isBlank() || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(false);
+        }
+
+        return updateByUuidAsync(uuid, Updates.combine(
+                Updates.set("online", online),
+                Updates.set("online_since", online ? System.currentTimeMillis() : 0L),
+                Updates.set("online_server", online && server != null ? server : "")
+        ));
+    }
+
+    /**
+     * Clears every {@code online} flag left behind by a previous server process.
+     * Called once on plugin startup, before any session is registered.
+     */
+    public java.util.concurrent.CompletionStage<Long> clearOnlineFlagsAsync() {
+        if (reactiveCollection == null || isReadOnly()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(0L);
+        }
+
+        return MongoAsync.first(reactiveCollection.updateMany(
+                eq("online", true),
+                Updates.combine(
+                        Updates.set("online", false),
+                        Updates.set("online_since", 0L),
+                        Updates.set("online_server", "")
+                )
+        )).thenApply(result -> result == null ? 0L : result.getModifiedCount());
+    }
+
     public List<PlayerData> findByDiscordId(String discordId) {
         if (discordId == null || discordId.isBlank()) {
             return List.of();

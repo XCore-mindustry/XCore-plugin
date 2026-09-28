@@ -113,6 +113,7 @@ public class ConnectionHandler {
         }
 
         playerDisplayService.refresh(session);
+        sessionService.markOnline(data, config.server.name);
 
         if (player.con != null && player.getInfo() != null && player.getInfo().timesJoined < 5) {
             if (secretsConfig.externalLinks != null && secretsConfig.externalLinks.discordUrl != null) {
@@ -147,6 +148,7 @@ public class ConnectionHandler {
         voteService.handleLeave(player);
 
         if (data != null) {
+            sessionService.markOffline(data);
             Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
             sessionService.broadcast("player-left", args(
                     "nickname", player.coloredName(),

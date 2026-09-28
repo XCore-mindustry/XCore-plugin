@@ -6,6 +6,7 @@ import org.xcore.plugin.database.migration.MigrationService;
 import org.xcore.plugin.metrics.MainThreadMetricSampler;
 import org.xcore.plugin.metrics.MetricsSnapshotPublisher;
 import org.xcore.plugin.service.AutoHostService;
+import org.xcore.plugin.session.SessionService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
@@ -27,6 +28,7 @@ class PluginStartupCoordinatorTest {
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         AutoHostService autoHostService = mock(AutoHostService.class);
+        SessionService sessionService = mock(SessionService.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -36,14 +38,16 @@ class PluginStartupCoordinatorTest {
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
-                autoHostService
+                autoHostService,
+                sessionService
         );
 
         boolean started = coordinator.start();
 
         assertThat(started).isTrue();
-        var startupOrder = inOrder(migrationService, mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, autoHostService);
+        var startupOrder = inOrder(migrationService, mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, sessionService, autoHostService);
         startupOrder.verify(migrationService).run();
+        startupOrder.verify(sessionService).clearStalePresenceFlags();
         startupOrder.verify(mapDecayScheduler).initialize();
         startupOrder.verify(mapSelectorInstaller).install();
         startupOrder.verify(runtimeHookRegistrar).register();
@@ -60,6 +64,7 @@ class PluginStartupCoordinatorTest {
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         AutoHostService autoHostService = mock(AutoHostService.class);
+        SessionService sessionService = mock(SessionService.class);
         when(migrationService.run()).thenReturn(false);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -69,13 +74,14 @@ class PluginStartupCoordinatorTest {
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
-                autoHostService
+                autoHostService,
+                sessionService
         );
 
         boolean started = coordinator.start();
 
         assertThat(started).isFalse();
-        verifyNoInteractions(mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, autoHostService);
+        verifyNoInteractions(mapDecayScheduler, mapSelectorInstaller, runtimeHookRegistrar, autoHostService, sessionService);
     }
 
     @Test
@@ -88,6 +94,7 @@ class PluginStartupCoordinatorTest {
         MainThreadMetricSampler mainThreadMetricSampler = mock(MainThreadMetricSampler.class);
         MetricsSnapshotPublisher metricsSnapshotPublisher = mock(MetricsSnapshotPublisher.class);
         AutoHostService autoHostService = mock(AutoHostService.class);
+        SessionService sessionService = mock(SessionService.class);
         when(migrationService.run()).thenReturn(true);
 
         PluginStartupCoordinator coordinator = new PluginStartupCoordinator(
@@ -97,13 +104,15 @@ class PluginStartupCoordinatorTest {
                 runtimeHookRegistrar,
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
-                autoHostService
+                autoHostService,
+                sessionService
         );
 
         boolean started = coordinator.start();
 
         assertThat(started).isTrue();
         verify(migrationService, times(1)).run();
+        verify(sessionService, times(1)).clearStalePresenceFlags();
         verify(mapDecayScheduler, times(1)).initialize();
         verify(mapSelectorInstaller, times(1)).install();
         verify(runtimeHookRegistrar, times(1)).register();

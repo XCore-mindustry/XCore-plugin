@@ -125,6 +125,7 @@ class ConnectionHandlerTest {
 
         verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-1");
         verify(observerService).restore(player);
+        verify(sessionService).markOnline(data, "mini-pvp");
         verify(sessionService).updateConnectionData(session, "2.2.2.2", "[#00000000][red]Renamed[]");
         verify(localization).send(eq("error-ip-changed"), anyMap());
         verify(playerDisplayService).refresh(session);
@@ -214,6 +215,35 @@ class ConnectionHandlerTest {
 
         verify(mapObserver).unregisterViewing("uuid-left");
         verify(voteService).handleLeave(player);
+    }
+
+    @Test
+    @DisplayName("onPlayerLeave flags the player as offline")
+    void onPlayerLeave_marksPlayerOffline() {
+        SessionService sessionService = mock(SessionService.class);
+        NetworkService networkService = mock(NetworkService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService,
+                networkService, new TomlXcoreConfig(), new TomlSecretsConfig(),
+                mock(VoteService.class), mock(PrivateMessageService.class),
+                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class),
+                mock(ObserverService.class), mock(MapVoteObserverService.class));
+
+        Player player = Player.create();
+        player.name = "Leaver";
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-left";
+
+        PlayerData data = new PlayerData("uuid-left", true);
+        data.pid = 42;
+        data.online = true;
+        Session session = mock(Session.class);
+        session.data = data;
+        when(sessionService.registerLogout(player)).thenReturn(session);
+
+        handler.onPlayerLeave(new EventType.PlayerLeave(player));
+
+        verify(sessionService).markOffline(data);
+        verify(networkService).post(any(PlayerJoinLeaveV1.class));
     }
 
     private static final class DummyNetConnection extends NetConnection {
