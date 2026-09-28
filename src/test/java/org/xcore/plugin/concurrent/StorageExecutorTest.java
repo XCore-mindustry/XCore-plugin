@@ -127,6 +127,10 @@ class StorageExecutorTest {
 
         assertThat(callerBlockedMillis).isLessThan(1_000);
         assertThat(slow.get(3, TimeUnit.SECONDS)).isEqualTo("stored");
+        long deadline = System.currentTimeMillis() + 1_000;
+        while (System.currentTimeMillis() < deadline && executor.activeTasks() > 0) {
+            Thread.sleep(10);
+        }
         assertThat(executor.activeTasks()).isZero();
     }
 
