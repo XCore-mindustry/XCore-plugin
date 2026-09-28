@@ -1,9 +1,9 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.xpdustry.toxopid.Toxopid
 import com.xpdustry.toxopid.extension.anukeXpdustry
 import com.xpdustry.toxopid.spec.ModPlatform
-import com.xpdustry.toxopid.Toxopid
-import java.util.Locale
 import org.gradle.nativeplatform.tasks.LinkSharedLibrary
+import java.util.Locale
 
 plugins {
     java
@@ -13,7 +13,13 @@ plugins {
 }
 
 java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(libs.versions.java.get().toInt()))
+    toolchain.languageVersion.set(
+        JavaLanguageVersion.of(
+            libs.versions.java
+                .get()
+                .toInt(),
+        ),
+    )
 }
 
 toxopid {
@@ -46,6 +52,14 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation(libs.flubundle)
+    testImplementation(libs.xcore.plugin)
+    testImplementation("org.assertj:assertj-core:3.27.3")
+    testImplementation("org.mockito:mockito-core:5.23.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.23.0")
+    testImplementation("org.xcore.testkit:fixtures:0.1.0-SNAPSHOT")
+    testImplementation(toxopid.dependencies.arcCore)
+    testImplementation(toxopid.dependencies.mindustryCore)
+    testImplementation(toxopid.dependencies.mindustryHeadless)
 }
 
 tasks.withType<Test> {
@@ -66,6 +80,7 @@ tasks.named<Jar>("jar") {
     archiveFileName.set("${project.name}.jar")
     from(rootDir) { include("plugin.json") }
 }
+
 fun ShadowJar.applyCommonSettings() {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
@@ -74,12 +89,17 @@ fun ShadowJar.applyCommonSettings() {
     from(rootDir) { include("plugin.json") }
 
     configurations = listOf(project.configurations.runtimeClasspath.get())
-    from(project.sourceSets.main.get().output)
+    from(
+        project.sourceSets.main
+            .get()
+            .output,
+    )
 }
 tasks.named<ShadowJar>("shadowJar") {
     applyCommonSettings()
     archiveFileName.set("${project.name}.jar")
 }
+
 fun registerNativeJar(variant: String) {
     tasks.register<ShadowJar>("jar$variant") {
         group = "build"
@@ -95,4 +115,19 @@ registerNativeJar("Release")
 registerNativeJar("Debug")
 tasks.named("build") {
     dependsOn("jarRelease")
+}
+
+gradle.projectsEvaluated {
+    tasks.named<Test>("test") {
+        val linkDebug = project(":native").tasks.named<LinkSharedLibrary>("linkDebug")
+        dependsOn(linkDebug)
+        classpath +=
+            files(
+                linkDebug.map {
+                    it.linkedFile
+                        .get()
+                        .asFile.parentFile
+                },
+            )
+    }
 }
