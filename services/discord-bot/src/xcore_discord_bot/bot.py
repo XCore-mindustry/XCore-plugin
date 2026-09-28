@@ -16,6 +16,7 @@ from xcore_protocol.generated.shared import ActorRefV1ActorType
 
 from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SubnetCog
 from .dto import (
+    MERGE_KEEP_PID_TARGET,
     AccountMergeResult,
     AuditRecordSummary,
     BanRecord,
@@ -354,6 +355,7 @@ class XCoreDiscordBot(commands.Bot):
         actor_name: str,
         actor_discord_id: str | None,
         reason: str,
+        keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> AccountMergeResult:
         result = await self._store.merge_player_accounts(
             source_pid=source_pid,
@@ -361,6 +363,7 @@ class XCoreDiscordBot(commands.Bot):
             actor_name=actor_name,
             actor_discord_id=actor_discord_id,
             reason=reason,
+            keep_pid=keep_pid,
         )
         if result.success and result.source_before and result.source_before.uuid:
             await self._bus.publish_kick_banned(

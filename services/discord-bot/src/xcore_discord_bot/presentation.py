@@ -6,6 +6,7 @@ from typing import Literal
 import discord
 from bson.datetime_ms import DatetimeMS
 
+from .dto import MERGE_KEEP_PID_SOURCE, AccountMergeResult, PlayerRecord
 from .utils.mindustry_colors import strip_mindustry_colors
 
 DISCORD_EMBED_TITLE_MAX = 256
@@ -142,6 +143,148 @@ def format_ban_expire_date_from_millis(millis: int) -> str:
         f"{discord.utils.format_dt(expire_dt, style='f')} "
         f"({discord.utils.format_dt(expire_dt, style='R')})"
     )
+
+
+def _merge_account_summary(player: PlayerRecord) -> str:
+    return (
+        f"Nickname: `{player.nickname}`\n"
+        f"Playtime: `{format_minutes(player.total_play_time)}`\n"
+        f"PvP rating: `{player.pvp_rating}`\n"
+        f"Hexed points: `{player.hexed_points}`\n"
+        f"Badges: `{len(player.unlocked_badges)}`\n"
+        f"Discord: `{player.discord_username or 'not linked'}`"
+    )
+
+
+def surviving_pid_for(source: PlayerRecord, target: PlayerRecord, keep_pid: str) -> int:
+    """Resolve which PID the merged (surviving) account ends up with."""
+    return source.pid if keep_pid == MERGE_KEEP_PID_SOURCE else target.pid
+
+
+def build_merge_preview_embed(
+    *,
+    source: PlayerRecord,
+    target: PlayerRecord,
+    keep_pid: str,
+    reason: str,
+) -> discord.Embed:
+    keeps_source_pid = keep_pid == MERGE_KEEP_PID_SOURCE
+    surviving_pid = surviving_pid_for(source, target, keep_pid)
+    previous_pid = target.pid if keeps_source_pid else source.pid
+    pid_origin = "source" if keeps_source_pid else "target"
+
+    embed = discord.Embed(
+        title="🔄 Confirm account merge",
+        description=(
+            f"Merging **#{source.pid} ({source.nickname})** "
+            f"into **#{target.pid} ({target.nickname})**.\n\n"
+            f"**Reason:** `{reason}`\n\n"
+            "⚠️ The source account is closed after the merge and cannot be reopened. "
+            "This action is not reversible."
+        ),
+        color=discord.Color.gold(),
+    )
+
+    embed.add_field(
+        name=f"Source account (closes) • #{source.pid}",
+        value=_merge_account_summary(source),
+        inline=True,
+    )
+    embed.add_field(
+        name=f"Target account (survives) • #{target.pid}",
+        value=_merge_account_summary(target),
+        inline=True,
+    )
+    embed.add_field(
+        name="🆔 Surviving identity",
+        value=(
+            f"UUID: from #{target.pid} (always)\n"
+            f"PID: `#{surviving_pid}` (kept from {pid_origin}, was #{previous_pid})"
+        ),
+        inline=False,
+    )
+
+    combined_badges = len(set(source.unlocked_badges) | set(target.unlocked_badges))
+    embed.add_field(
+        name="📊 Result after merge",
+        value=(
+            f"Total playtime: `{format_minutes(source.total_play_time + target.total_play_time)}`\n"
+            f"PvP rating: `{max(source.pvp_rating, target.pvp_rating)}`\n"
+            f"Hexed points: `{source.hexed_points + target.hexed_points}`\n"
+            f"Badges: `{combined_badges}`"
+        ),
+        inline=False,
+    )
+
+    return embed
+
+
+def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
+    embed = discord.Embed(title="✅ Accounts merged", color=discord.Color.green())
+
+    source = result.source_before
+    target_before = result.target_before
+    target_after = result.target_after
+
+    if source is not None:
+        embed.add_field(
+            name="Source account (closed)",
+            value=(
+                f"PID: `#{result.tombstone_pid or source.pid}`\n"
+                f"Nickname: `{source.nickname}`\n"
+                f"UUID: `{source.uuid}`"
+            ),
+            inline=True,
+        )
+
+    if target_after is not None:
+        pid_note = ""
+        surviving_pid = result.surviving_pid or target_after.pid
+        if target_before is not None and target_before.pid != surviving_pid:
+            pid_note = f" (was #{target_before.pid})"
+        embed.add_field(
+            name="Surviving account",
+            value=(
+                f"PID: `#{surviving_pid}`{pid_note}\n"
+                f"Nickname: `{target_after.nickname}`\n"
+                f"UUID: `{target_after.uuid}`"
+            ),
+            inline=True,
+        )
+
+    if source is not None and target_before is not None and target_after is not None:
+        embed.add_field(
+            name="Transferred data",
+            value=(
+                f"Playtime: `{format_minutes(source.total_play_time)}` "
+                f"(total `{format_minutes(target_after.total_play_time)}`)\n"
+                f"PvP rating: `{source.pvp_rating}` vs `{target_before.pvp_rating}` "
+                f"-> `{target_after.pvp_rating}`\n"
+                f"Hexed points: `+{source.hexed_points}` "
+                f"(total `{target_after.hexed_points}`)\n"
+                f"Badges: `{len(target_after.unlocked_badges)}` unlocked\n"
+                f"Games reassigned: `{result.games_transferred}`"
+            ),
+            inline=False,
+        )
+
+    warnings: list[str] = []
+    if result.ban_transferred:
+        warnings.append("Active ban moved to the surviving account.")
+    if result.mute_transferred:
+        warnings.append("Active mute moved to the surviving account.")
+    if result.discord_link_moved:
+        warnings.append("Discord link moved from the source to the surviving account.")
+    if result.discord_link_conflict:
+        warnings.append(
+            "Both accounts were linked to a different Discord user; "
+            "the surviving account kept its own link."
+        )
+    if warnings:
+        embed.add_field(name="⚠️ Notes", value="\n".join(warnings), inline=False)
+
+    embed.set_footer(text=f"Audit ID: {result.audit_id or 'n/a'}")
+    return embed
 
 
 def build_servers_embed(

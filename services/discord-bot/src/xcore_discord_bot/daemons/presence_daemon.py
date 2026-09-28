@@ -10,7 +10,7 @@ from ..presentation import build_servers_embed
 from ..registry import server_registry
 
 if TYPE_CHECKING:
-    from ..core.bot import XCoreDiscordBot
+    from ..bot import XCoreDiscordBot
 
 logger = logging.getLogger(__name__)
 

@@ -6,10 +6,15 @@ from datetime import timedelta
 import discord
 from discord import Interaction
 
-from .dto import AccountMergeResult, PlayerRecord
+from .dto import (
+    MERGE_KEEP_PID_SOURCE,
+    MERGE_KEEP_PID_TARGET,
+    AccountMergeResult,
+    PlayerRecord,
+)
 from .moderation_modals import StatsBanModal, StatsMuteModal
 from .permissions import admin_role_ids, ensure_any_role
-from .presentation import format_minutes
+from .presentation import build_merge_preview_embed, build_merge_result_embed
 from .settings import Settings
 from .ui_helpers import (
     disable_view_buttons,
@@ -39,6 +44,7 @@ class AccountMergeConfirmView(discord.ui.View):
         target_player: PlayerRecord,
         reason: str,
         perform_merge: PerformMergeFn,
+        keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> None:
         super().__init__(timeout=120)
         self._requester_id = requester_id
@@ -48,16 +54,31 @@ class AccountMergeConfirmView(discord.ui.View):
         self._target_player = target_player
         self._reason = reason
         self._perform_merge = perform_merge
+        self._keep_pid = (
+            MERGE_KEEP_PID_SOURCE
+            if keep_pid == MERGE_KEEP_PID_SOURCE
+            else MERGE_KEEP_PID_TARGET
+        )
         self.message: discord.Message | None = None
 
-    @discord.ui.button(label="Подтвердить слияние", style=discord.ButtonStyle.danger)
+    def _build_preview_embed(self) -> discord.Embed:
+        return build_merge_preview_embed(
+            source=self._source_player,
+            target=self._target_player,
+            keep_pid=self._keep_pid,
+            reason=self._reason,
+        )
+
+    @discord.ui.button(label="Confirm merge", style=discord.ButtonStyle.danger)
     async def _confirm(
         self, interaction: Interaction, button: discord.ui.Button
     ) -> None:
         if not await ensure_requester_action_allowed(
             interaction,
             requester_id=self._requester_id,
-            denied_message="Только администратор, вызвавший команду, может подтвердить слияние.",
+            denied_message=(
+                "Only the admin who ran the command can confirm this merge."
+            ),
         ):
             return
 
@@ -67,85 +88,57 @@ class AccountMergeConfirmView(discord.ui.View):
             actor_name=interaction.user.display_name,
             actor_discord_id=str(interaction.user.id),
             reason=self._reason,
+            keep_pid=self._keep_pid,
         )
         self._disable_all()
         if not result.success:
             embed = discord.Embed(
-                title="❌ Ошибка слияния аккаунтов",
+                title="❌ Account merge failed",
                 description=result.error or "Unknown error",
                 color=discord.Color.red(),
             )
             await interaction.response.edit_message(embed=embed, view=self)
             return
 
-        s = result.source_before
-        t_before = result.target_before
-        t_after = result.target_after
+        await interaction.response.edit_message(
+            embed=build_merge_result_embed(result), view=self
+        )
 
-        if s is None or t_before is None or t_after is None:
-            embed = discord.Embed(
-                title="✅ Аккаунты успешно объединены!",
-                color=discord.Color.green(),
-            )
-            await interaction.response.edit_message(embed=embed, view=self)
+    @discord.ui.button(label="Swap PID", style=discord.ButtonStyle.secondary)
+    async def _swap_pid(
+        self, interaction: Interaction, button: discord.ui.Button
+    ) -> None:
+        if not await ensure_requester_action_allowed(
+            interaction,
+            requester_id=self._requester_id,
+            denied_message="Only the admin who ran the command can change the merge.",
+        ):
             return
 
-        embed = discord.Embed(
-            title="✅ Аккаунты успешно объединены!",
-            color=discord.Color.green(),
+        self._keep_pid = (
+            MERGE_KEEP_PID_TARGET
+            if self._keep_pid == MERGE_KEEP_PID_SOURCE
+            else MERGE_KEEP_PID_SOURCE
         )
-        embed.add_field(
-            name="Исходный аккаунт (Закрыт)",
-            value=f"PID: `#{s.pid}`\nНикнейм: `{s.nickname}`\nUUID: `{s.uuid}`",
-            inline=True,
+        await interaction.response.edit_message(
+            embed=self._build_preview_embed(), view=self
         )
-        embed.add_field(
-            name="Целевой аккаунт (Активен)",
-            value=f"PID: `#{t_after.pid}`\nНикнейм: `{t_after.nickname}`\nUUID: `{t_after.uuid}`",
-            inline=True,
-        )
-        embed.add_field(
-            name="Перенесенные данные",
-            value=(
-                f"Время игры: `{format_minutes(s.total_play_time)}` (Итог: `{format_minutes(t_after.total_play_time)}`)\n"
-                f"PvP Рейтинг: `{s.pvp_rating}` vs `{t_before.pvp_rating}` -> `{t_after.pvp_rating}`\n"
-                f"Hexed очки: `+{s.hexed_points}` (Итог: `{t_after.hexed_points}`)\n"
-                f"Бейджи: `{len(t_after.unlocked_badges)}` открыто\n"
-                f"Матчей переназначено: `{result.games_transferred}`"
-            ),
-            inline=False,
-        )
-        if result.ban_transferred:
-            embed.add_field(
-                name="⚠️ Бан",
-                value="Активный бан перенесен на целевой аккаунт",
-                inline=False,
-            )
-        if result.mute_transferred:
-            embed.add_field(
-                name="⚠️ Мут",
-                value="Активный мут перенесен на целевой аккаунт",
-                inline=False,
-            )
 
-        embed.set_footer(text=f"Audit ID: {result.audit_id or 'n/a'}")
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Отмена", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def _cancel(
         self, interaction: Interaction, button: discord.ui.Button
     ) -> None:
         if not await ensure_requester_action_allowed(
             interaction,
             requester_id=self._requester_id,
-            denied_message="Только администратор, вызвавший команду, может отменить слияние.",
+            denied_message="Only the admin who ran the command can cancel this merge.",
         ):
             return
 
         self._disable_all()
         embed = discord.Embed(
-            title="Слияние отменено",
-            description="Операция слияния аккаунтов была отменена.",
+            title="Merge cancelled",
+            description="The account merge was cancelled. No data was changed.",
             color=discord.Color.light_grey(),
         )
         await interaction.response.edit_message(embed=embed, view=self)

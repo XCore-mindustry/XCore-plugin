@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..dto import AccountMergeResult, PlayerRecord
+from ..dto import MERGE_KEEP_PID_TARGET, AccountMergeResult, PlayerRecord
 from ..mongo_store import MongoStore
 from ..redis_bus import RedisBus
 
@@ -37,6 +37,7 @@ class PlayerService:
         actor_name: str,
         actor_discord_id: str | None,
         reason: str,
+        keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> AccountMergeResult:
         result = await self._store.merge_player_accounts(
             source_pid=source_pid,
@@ -44,6 +45,7 @@ class PlayerService:
             actor_name=actor_name,
             actor_discord_id=actor_discord_id,
             reason=reason,
+            keep_pid=keep_pid,
         )
         if result.success and result.source_before and result.source_before.uuid:
             await self._bus.publish_kick_banned(

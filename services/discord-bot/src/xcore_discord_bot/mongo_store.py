@@ -13,6 +13,9 @@ from pymongo import DESCENDING
 from pymongo.errors import PyMongoError
 
 from .dto import (
+    MERGE_KEEP_PID_CHOICES,
+    MERGE_KEEP_PID_SOURCE,
+    MERGE_KEEP_PID_TARGET,
     AccountMergeResult,
     AuditRecordSummary,
     BanRecord,
@@ -36,6 +39,18 @@ def _to_int(value: Any, default: int = 0) -> int:
         return int(value)
     except (ValueError, TypeError):
         return default
+
+
+def _to_bool(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "online"}
+    return default
 
 
 class _MongoDoc(BaseModel):
@@ -64,6 +79,9 @@ class PlayerDoc(_MongoDoc):
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None
+    online: bool | None = None
+    online_since: int | None = None
+    online_server: str | None = None
     password_hash: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -113,6 +131,7 @@ class AuditDoc(_MongoDoc):
     actor: AuditActorDoc | dict[str, Any] | None = None
     reason: str | None = None
     details: AuditDetailsDoc | dict[str, Any] | None = None
+    extra: dict[str, Any] | None = None
     occurred_at: Any | None = None
     created_at_epoch_ms: int | None = None
 
@@ -552,6 +571,7 @@ class MongoStore:
         related_audit_id: str | None = None,
         supersedes_audit_id: str | None = None,
         request_id: str | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> str:
         audit_id = str(uuid.uuid4())
         normalized_reason = str(reason or "Not Specified").strip() or "Not Specified"
@@ -601,7 +621,7 @@ class MongoStore:
                 "expires_at": expires_at,
                 "visibility": None,
                 "tags": [],
-                "extra": {},
+                "extra": dict(extra) if extra else {},
             },
             "related_audit_id": related_audit_id,
             "supersedes_audit_id": supersedes_audit_id,
@@ -682,7 +702,18 @@ class MongoStore:
         actor_name: str,
         actor_discord_id: str | None,
         reason: str,
+        keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> AccountMergeResult:
+        normalized_keep_pid = str(keep_pid or MERGE_KEEP_PID_TARGET).strip().lower()
+        if normalized_keep_pid not in MERGE_KEEP_PID_CHOICES:
+            return AccountMergeResult(
+                success=False,
+                error=(
+                    f"Unknown keep_pid value '{keep_pid}'. "
+                    f"Expected one of: {', '.join(MERGE_KEEP_PID_CHOICES)}."
+                ),
+            )
+
         if source_pid == target_pid:
             return AccountMergeResult(
                 success=False,
@@ -718,6 +749,38 @@ class MongoStore:
                 success=False,
                 error=f"Source player #{source_pid} was already merged into another account.",
             )
+
+        if target_uuid.startswith("merged:"):
+            return AccountMergeResult(
+                success=False,
+                error=(
+                    f"Target player #{target_pid} is a closed account "
+                    "and cannot receive a merge."
+                ),
+            )
+
+        online_pids = [
+            pid
+            for pid, doc in ((source_pid, source_raw), (target_pid, target_raw))
+            if _to_bool(doc.get("online"))
+        ]
+        if online_pids:
+            online_list = ", ".join(f"#{pid}" for pid in online_pids)
+            return AccountMergeResult(
+                success=False,
+                error=(
+                    f"Cannot merge while {online_list} is online. "
+                    "Ask the player to disconnect, then retry."
+                ),
+            )
+
+        # The UUID always comes from the merge target; only the PID is selectable.
+        if normalized_keep_pid == MERGE_KEEP_PID_SOURCE:
+            surviving_pid = source_pid
+            tombstone_pid = target_pid
+        else:
+            surviving_pid = target_pid
+            tombstone_pid = source_pid
 
         source_before = player_record_from_doc(
             PlayerDoc.model_validate(source_raw).model_dump(mode="python")
@@ -764,7 +827,15 @@ class MongoStore:
         )
 
         # Discord linkage
-        discord_id = target_raw.get("discord_id") or source_raw.get("discord_id") or ""
+        source_discord_id = str(source_raw.get("discord_id") or "").strip()
+        target_discord_id = str(target_raw.get("discord_id") or "").strip()
+        discord_id = target_discord_id or source_discord_id
+        discord_link_moved = bool(source_discord_id) and not target_discord_id
+        discord_link_conflict = (
+            bool(source_discord_id)
+            and bool(target_discord_id)
+            and source_discord_id != target_discord_id
+        )
         discord_username = (
             target_raw.get("discord_username")
             or source_raw.get("discord_username")
@@ -803,6 +874,7 @@ class MongoStore:
         )
 
         target_updates: dict[str, Any] = {
+            "pid": surviving_pid,
             "total_play_time": total_play_time,
             "pvp_rating": pvp_rating,
             "hexed_points": hexed_points,
@@ -827,11 +899,18 @@ class MongoStore:
         )
 
         # Update source (mark as merged)
-        source_updates = {
+        source_updates: dict[str, Any] = {
+            "pid": tombstone_pid,
             "uuid": f"merged:{source_uuid}",
             "total_play_time": 0,
-            "description": f"Merged into PID #{target_pid} ({target_raw.get('nickname')})",
+            "description": f"Merged into PID #{surviving_pid} ({target_raw.get('nickname')})",
         }
+        if source_discord_id:
+            # The closed account must not keep a live Discord link, otherwise admin
+            # sync and link lookups would resolve to a dead player.
+            source_updates["discord_id"] = ""
+            source_updates["discord_username"] = ""
+            source_updates["discord_linked_at"] = 0
         await db["players"].update_one(
             {"_id": source_raw["_id"]}, {"$set": source_updates}
         )
@@ -847,48 +926,67 @@ class MongoStore:
             games_transferred = _to_int(match_res.modified_count)
 
         # Punishments transfer
-        ban_transferred = False
-        mute_transferred = False
+        punishment_transfers: dict[str, bool] = {"bans": False, "mutes": False}
         if source_uuid and target_uuid:
-            source_ban = await db["bans"].find_one({"uuid": source_uuid})
-            if source_ban:
-                target_ban = await db["bans"].find_one({"uuid": target_uuid})
-                if not target_ban:
-                    new_ban = dict(source_ban)
-                    new_ban.pop("_id", None)
-                    new_ban["uuid"] = target_uuid
-                    new_ban["name"] = target_raw.get("nickname") or "Unknown"
-                    new_ban["reason"] = (
-                        f"[Merged from #{source_pid}] {source_ban.get('reason', '')}"
+            for collection in ("bans", "mutes"):
+                source_punishment = await db[collection].find_one({"uuid": source_uuid})
+                if source_punishment is not None:
+                    await db[collection].update_one(
+                        {"_id": source_punishment["_id"]},
+                        {"$set": {"pid": tombstone_pid}},
                     )
-                    await db["bans"].insert_one(new_ban)
-                    ban_transferred = True
 
-            source_mute = await db["mutes"].find_one({"uuid": source_uuid})
-            if source_mute:
-                target_mute = await db["mutes"].find_one({"uuid": target_uuid})
-                if not target_mute:
-                    new_mute = dict(source_mute)
-                    new_mute.pop("_id", None)
-                    new_mute["uuid"] = target_uuid
-                    new_mute["name"] = target_raw.get("nickname") or "Unknown"
-                    new_mute["reason"] = (
-                        f"[Merged from #{source_pid}] {source_mute.get('reason', '')}"
+                target_punishment = await db[collection].find_one({"uuid": target_uuid})
+                if target_punishment is not None:
+                    await db[collection].update_one(
+                        {"_id": target_punishment["_id"]},
+                        {"$set": {"pid": surviving_pid}},
                     )
-                    await db["mutes"].insert_one(new_mute)
-                    mute_transferred = True
+                    continue
+
+                if source_punishment is None:
+                    continue
+
+                transferred = dict(source_punishment)
+                transferred.pop("_id", None)
+                transferred["uuid"] = target_uuid
+                transferred["pid"] = surviving_pid
+                transferred["name"] = target_raw.get("nickname") or "Unknown"
+                transferred["reason"] = (
+                    f"[Merged from #{source_pid}] {source_punishment.get('reason', '')}"
+                )
+                await db[collection].insert_one(transferred)
+                punishment_transfers[collection] = True
+
+        ban_transferred = punishment_transfers["bans"]
+        mute_transferred = punishment_transfers["mutes"]
 
         # Audit record
         audit_id = await self.append_moderation_audit(
             action="MERGE",
             target_uuid=target_uuid,
-            target_pid=target_pid,
+            target_pid=surviving_pid,
             target_name=str(target_raw.get("nickname") or "Unknown"),
             target_ip=str(target_raw.get("ip") or ""),
             actor_discord_id=actor_discord_id,
             actor_name=actor_name,
             reason=reason,
             occurred_at=datetime.now(UTC),
+            extra={
+                "merge": {
+                    "keep_pid": normalized_keep_pid,
+                    "source_pid": source_pid,
+                    "source_uuid": source_uuid,
+                    "source_name": str(source_raw.get("nickname") or "Unknown"),
+                    "tombstone_pid": tombstone_pid,
+                    "surviving_pid": surviving_pid,
+                    "games_transferred": games_transferred,
+                    "ban_transferred": ban_transferred,
+                    "mute_transferred": mute_transferred,
+                    "discord_link_moved": discord_link_moved,
+                    "discord_link_conflict": discord_link_conflict,
+                }
+            },
         )
 
         updated_target_raw = await db["players"].find_one({"_id": target_raw["_id"]})
@@ -905,6 +1003,11 @@ class MongoStore:
             ban_transferred=ban_transferred,
             mute_transferred=mute_transferred,
             audit_id=audit_id,
+            keep_pid=normalized_keep_pid,
+            surviving_pid=surviving_pid,
+            tombstone_pid=tombstone_pid,
+            discord_link_moved=discord_link_moved,
+            discord_link_conflict=discord_link_conflict,
         )
 
     @staticmethod

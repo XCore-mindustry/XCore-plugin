@@ -14,15 +14,19 @@ def _normalized_optional_str(value: object) -> str | None:
 
 def _int_or_default(value: object, *, default: int = 0) -> int:
     if isinstance(value, bool):
-        return int(value)
+        return 1 if value else 0
     if isinstance(value, int):
         return value
     if isinstance(value, str):
         normalized = value.strip()
-        if normalized.isdigit() or (
-            normalized.startswith("-") and normalized[1:].isdigit()
+        if (
+            normalized
+            and (normalized[1:] if normalized[0] == "-" else normalized).isdigit()
         ):
-            return int(normalized)
+            try:
+                return int(normalized)
+            except ValueError:
+                return default
     return default
 
 
@@ -84,6 +88,13 @@ def player_record_from_doc(doc: Mapping[str, object]) -> PlayerRecord:
             if doc.get("discord_linked_at") is not None
             else None
         ),
+        online=bool(doc.get("online") or False),
+        online_since=(
+            _int_or_default(doc.get("online_since"), default=0)
+            if doc.get("online_since") is not None
+            else None
+        ),
+        online_server=_normalized_optional_str(doc.get("online_server")),
         created_at=doc.get("created_at"),
         updated_at=doc.get("updated_at"),
     )

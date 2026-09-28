@@ -7,9 +7,9 @@ import discord
 from discord import Interaction
 from xcore_protocol.generated.shared import ActorRefV1ActorType, VoteKickParticipantV1
 
-from .dto import PlayerRecord
+from .dto import MERGE_KEEP_PID_TARGET, PlayerRecord
 from .moderation_views import AccountMergeConfirmView, BanConfirmView, MuteUndoView
-from .presentation import format_ban_expire_date, format_minutes
+from .presentation import build_merge_preview_embed, format_ban_expire_date
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
@@ -947,10 +947,11 @@ async def cmd_merge_player(
     source_pid: int,
     target_pid: int,
     reason: str = "Admin merge",
+    keep_pid: str = MERGE_KEEP_PID_TARGET,
 ) -> None:
     if source_pid == target_pid:
         await interaction.response.send_message(
-            "Нельзя объединить аккаунт сам с собой.",
+            "Cannot merge an account into itself.",
             ephemeral=True,
         )
         return
@@ -965,63 +966,36 @@ async def cmd_merge_player(
 
     if source.uuid and source.uuid.startswith("merged:"):
         await interaction.response.send_message(
-            f"Исходный аккаунт #{source.pid} уже был объединен ранее.",
+            f"Source account #{source.pid} was already merged into another account.",
             ephemeral=True,
         )
         return
 
-    embed = discord.Embed(
-        title="🔄 Подтверждение слияния аккаунтов",
-        description=(
-            f"Вы собираетесь объединить аккаунт **#{source.pid} ({source.nickname})** "
-            f"в целевой аккаунт **#{target.pid} ({target.nickname})**.\n\n"
-            f"**Причина:** `{reason}`\n\n"
-            f"⚠️ **Внимание:** После подтверждения исходный аккаунт будет закрыт, "
-            f"а вся статистика и матчи перенесены. Действие необратимо!"
-        ),
-        color=discord.Color.gold(),
-    )
+    if target.uuid and target.uuid.startswith("merged:"):
+        await interaction.response.send_message(
+            f"Target account #{target.pid} is closed and cannot receive a merge.",
+            ephemeral=True,
+        )
+        return
 
-    embed.add_field(
-        name=f"Исходный аккаунт (Закроется) • #{source.pid}",
-        value=(
-            f"Никнейм: `{source.nickname}`\n"
-            f"Время: `{format_minutes(source.total_play_time)}`\n"
-            f"PvP Рейтинг: `{source.pvp_rating}`\n"
-            f"Hexed очки: `{source.hexed_points}`\n"
-            f"Бейджи: `{len(source.unlocked_badges)}`\n"
-            f"Discord: `{source.discord_username or 'не привязан'}`"
-        ),
-        inline=True,
-    )
+    online = [
+        f"#{player.pid} ({player.nickname})"
+        for player in (source, target)
+        if player.online
+    ]
+    if online:
+        await interaction.response.send_message(
+            "Cannot merge while an account is online: "
+            f"{', '.join(online)}. Ask the player to disconnect, then retry.",
+            ephemeral=True,
+        )
+        return
 
-    embed.add_field(
-        name=f"Целевой аккаунт (Активен) • #{target.pid}",
-        value=(
-            f"Никнейм: `{target.nickname}`\n"
-            f"Время: `{format_minutes(target.total_play_time)}`\n"
-            f"PvP Рейтинг: `{target.pvp_rating}`\n"
-            f"Hexed очки: `{target.hexed_points}`\n"
-            f"Бейджи: `{len(target.unlocked_badges)}`\n"
-            f"Discord: `{target.discord_username or 'не привязан'}`"
-        ),
-        inline=True,
-    )
-
-    combined_time = source.total_play_time + target.total_play_time
-    max_rating = max(source.pvp_rating, target.pvp_rating)
-    combined_points = source.hexed_points + target.hexed_points
-    combined_badges = len(set(source.unlocked_badges + target.unlocked_badges))
-
-    embed.add_field(
-        name="📊 Итог после слияния",
-        value=(
-            f"Суммарное время: `{format_minutes(combined_time)}`\n"
-            f"PvP Рейтинг: `{max_rating}`\n"
-            f"Hexed очки: `{combined_points}`\n"
-            f"Бейджи (всего): `{combined_badges}`"
-        ),
-        inline=False,
+    embed = build_merge_preview_embed(
+        source=source,
+        target=target,
+        keep_pid=keep_pid,
+        reason=reason,
     )
 
     view = AccountMergeConfirmView(
@@ -1032,6 +1006,7 @@ async def cmd_merge_player(
         target_player=target,
         reason=reason,
         perform_merge=lambda **kwargs: bot.merge_player_accounts(**kwargs),
+        keep_pid=keep_pid,
     )
 
     await interaction.response.send_message(embed=embed, view=view)

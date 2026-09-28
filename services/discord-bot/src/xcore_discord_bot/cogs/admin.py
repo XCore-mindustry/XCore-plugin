@@ -6,6 +6,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from .. import handlers_badges, handlers_misc, handlers_moderation
+from ..dto import MERGE_KEEP_PID_SOURCE, MERGE_KEEP_PID_TARGET
 from .autocomplete import _autocomplete_badge_id, _autocomplete_player_id
 from .checks import admin_check, general_admin_check
 
@@ -142,20 +143,35 @@ class AdminCog(commands.Cog):
     @app_commands.describe(
         source_pid="Source player ID (account to close and merge FROM)",
         target_pid="Target player ID (account to keep active and merge INTO)",
+        keep_pid="Which PID the surviving account keeps (UUID always comes from the target)",
         reason="Reason for account merge",
     )
     @app_commands.autocomplete(source_pid=_autocomplete_player_id)
     @app_commands.autocomplete(target_pid=_autocomplete_player_id)
+    @app_commands.choices(
+        keep_pid=[
+            app_commands.Choice(
+                name="Target PID (default)", value=MERGE_KEEP_PID_TARGET
+            ),
+            app_commands.Choice(name="Source PID", value=MERGE_KEEP_PID_SOURCE),
+        ]
+    )
     @admin_check()
     async def cmd_merge_player(
         self,
         interaction: Interaction,
         source_pid: int,
         target_pid: int,
+        keep_pid: str = MERGE_KEEP_PID_TARGET,
         reason: str = "Admin merge",
     ) -> None:
         await handlers_moderation.cmd_merge_player(
-            self.bot, interaction, source_pid, target_pid, reason
+            self.bot,
+            interaction,
+            source_pid,
+            target_pid,
+            reason,
+            keep_pid,
         )
 
     @admin_group.command(

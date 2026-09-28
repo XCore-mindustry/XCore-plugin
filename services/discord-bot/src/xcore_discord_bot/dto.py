@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Which account PID survives a merge. The UUID always comes from the merge target.
+MERGE_KEEP_PID_TARGET = "target"
+MERGE_KEEP_PID_SOURCE = "source"
+MERGE_KEEP_PID_CHOICES: tuple[str, ...] = (MERGE_KEEP_PID_TARGET, MERGE_KEEP_PID_SOURCE)
+
 
 @dataclass(frozen=True)
 class PlayerRecord:
@@ -27,6 +32,9 @@ class PlayerRecord:
     discord_id: str | None = None
     discord_username: str | None = None
     discord_linked_at: int | None = None
+    online: bool = False
+    online_since: int | None = None
+    online_server: str | None = None
     created_at: object = None
     updated_at: object = None
 
@@ -93,3 +101,8 @@ class AccountMergeResult:
     ban_transferred: bool = False
     mute_transferred: bool = False
     audit_id: str | None = None
+    keep_pid: str = MERGE_KEEP_PID_TARGET
+    surviving_pid: int | None = None
+    tombstone_pid: int | None = None
+    discord_link_moved: bool = False
+    discord_link_conflict: bool = False
