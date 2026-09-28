@@ -39,6 +39,11 @@ public class DefaultAuditService implements AuditService {
 
     @Override
     public AuditAppendResult append(AuditAppendCommand command) {
+        return append(null, command);
+    }
+
+    @Override
+    public AuditAppendResult append(com.mongodb.client.ClientSession session, AuditAppendCommand command) {
         if (command == null || command.action() == null || command.target() == null) {
             return AuditAppendResult.failure("Invalid audit command");
         }
@@ -67,7 +72,8 @@ public class DefaultAuditService implements AuditService {
         record.integrity.dedupeKey = buildDedupeKey(command);
         record.integrity.hash = null;
 
-        if (!repository.save(record)) {
+        boolean saved = session != null ? repository.save(session, record) : repository.save(record);
+        if (!saved) {
             return AuditAppendResult.failure("Failed to append audit record");
         }
 

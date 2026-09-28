@@ -215,12 +215,19 @@ public class GameDataRepository extends DataRepository<GameData> {
     }
 
     public long reassignPlayerMatches(String oldUuid, String newUuid) {
+        return reassignPlayerMatches(null, oldUuid, newUuid);
+    }
+
+    public long reassignPlayerMatches(com.mongodb.client.ClientSession session, String oldUuid, String newUuid) {
         if (oldUuid == null || newUuid == null || oldUuid.isBlank() || newUuid.isBlank() || isReadOnly()) {
             return 0;
         }
         var filter = Filters.eq("player_stats.uuid", oldUuid);
         var update = Updates.set("player_stats.$[elem].uuid", newUuid);
         var options = new UpdateOptions().arrayFilters(List.of(Filters.eq("elem.uuid", oldUuid)));
+        if (session != null) {
+            return collection.updateMany(session, filter, update, options).getModifiedCount();
+        }
         return collection.updateMany(filter, update, options).getModifiedCount();
     }
 }

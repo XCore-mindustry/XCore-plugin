@@ -67,18 +67,23 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
 
     @Override
     public boolean save(PlayerData data) {
+        return save(null, data);
+    }
+
+    @Override
+    public boolean save(com.mongodb.client.ClientSession session, PlayerData data) {
         if (data.pid == -1 && !isReadOnly()) {
-            data.pid = generatePid();
+            data.pid = generatePid(session);
         }
 
         if (data.id == null && data.uuid != null && !data.uuid.isBlank()) {
-            PlayerData existing = findByUuid(data.uuid);
+            PlayerData existing = findByUuid(session, data.uuid);
             if (existing != null && existing.id != null) {
                 data.id = existing.id;
             }
         }
 
-        return super.save(data);
+        return super.save(session, data);
     }
 
     @Override
@@ -120,11 +125,17 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     }
 
     private int generatePid() {
+        return generatePid(null);
+    }
+
+    private int generatePid(com.mongodb.client.ClientSession session) {
         Document find = new Document("_id", "player_id");
         Document update = new Document("$inc", new Document("seq", 1));
         var options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER);
 
-        Document result = counters.findOneAndUpdate(find, update, options);
+        Document result = session != null
+                ? counters.findOneAndUpdate(session, find, update, options)
+                : counters.findOneAndUpdate(find, update, options);
         return result != null ? result.getInteger("seq") : 1;
     }
 
@@ -133,6 +144,16 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     }
 
     public PlayerData findByUuid(String uuid) {
+        return findByUuid(null, uuid);
+    }
+
+    public PlayerData findByUuid(com.mongodb.client.ClientSession session, String uuid) {
+        if (uuid == null || uuid.isBlank()) {
+            return null;
+        }
+        if (session != null) {
+            return collection.find(session, eq("uuid", uuid)).first();
+        }
         return collection.find(eq("uuid", uuid)).first();
     }
 

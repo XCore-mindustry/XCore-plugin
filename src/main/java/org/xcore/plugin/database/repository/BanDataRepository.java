@@ -32,9 +32,16 @@ public class BanDataRepository extends DataRepository<BanData> {
     }
 
     public BanData find(String uuid, String ip) {
+        return find(null, uuid, ip);
+    }
+
+    public BanData find(com.mongodb.client.ClientSession session, String uuid, String ip) {
         var filter = identifierFilter(uuid, ip);
         if (filter == null) {
             return null;
+        }
+        if (session != null) {
+            return collection.find(session, filter).first();
         }
         return collection.find(filter).first();
     }
@@ -53,6 +60,10 @@ public class BanDataRepository extends DataRepository<BanData> {
 
     @Override
     public boolean save(BanData data) {
+        return save(null, data);
+    }
+
+    public boolean save(com.mongodb.client.ClientSession session, BanData data) {
         if (data == null) {
             return false;
         }
@@ -66,7 +77,11 @@ public class BanDataRepository extends DataRepository<BanData> {
             return false;
         }
 
-        collection.replaceOne(filter, data, new ReplaceOptions().upsert(true));
+        if (session != null) {
+            collection.replaceOne(session, filter, data, new ReplaceOptions().upsert(true));
+        } else {
+            collection.replaceOne(filter, data, new ReplaceOptions().upsert(true));
+        }
         return true;
     }
 

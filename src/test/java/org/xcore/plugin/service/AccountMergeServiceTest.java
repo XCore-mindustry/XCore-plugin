@@ -1,5 +1,13 @@
 package org.xcore.plugin.service;
 
+import com.mongodb.MongoCommandException;
+import com.mongodb.ServerAddress;
+import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.TransactionBody;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,6 +63,8 @@ class AccountMergeServiceTest {
         config.server.name = "test-server";
 
         when(playerDataRepository.save(any(PlayerData.class))).thenReturn(true);
+        when(banDataRepository.save(any(BanData.class))).thenReturn(true);
+        when(muteDataRepository.save(any(MuteData.class))).thenReturn(true);
 
         service = new AccountMergeService(
                 playerDataRepository,
@@ -205,5 +215,166 @@ class AccountMergeServiceTest {
 
         verify(banDataRepository).save(argThat(b -> b.uuid.equals("uuid-target") && b.reason.contains("Griefing")));
         verify(muteDataRepository).save(argThat(m -> m.uuid.equals("uuid-target") && m.reason.contains("Spam")));
+    }
+
+    @Test
+    @DisplayName("Transactional merge executes all mutations within MongoDB ClientSession boundary")
+    void merge_withMongoClientTransaction_executesWithinSession() {
+        MongoClient mongoClient = mock(MongoClient.class);
+        ClientSession session = mock(ClientSession.class);
+        when(mongoClient.startSession()).thenReturn(session);
+        when(session.withTransaction(any())).thenAnswer(invocation -> {
+            TransactionBody<?> body = invocation.getArgument(0);
+            return body.execute();
+        });
+
+        when(playerDataRepository.save(eq(session), any(PlayerData.class))).thenReturn(true);
+        when(banDataRepository.save(eq(session), any(BanData.class))).thenReturn(true);
+        when(muteDataRepository.save(eq(session), any(MuteData.class))).thenReturn(true);
+        when(gameDataRepository.reassignPlayerMatches(eq(session), anyString(), anyString())).thenReturn(3L);
+
+        AccountMergeService txService = new AccountMergeService(
+                mongoClient,
+                playerDataRepository,
+                gameDataRepository,
+                banDataRepository,
+                muteDataRepository,
+                auditService,
+                sessionService,
+                playerDisplayService,
+                networkService,
+                findService,
+                topMenuCacheService,
+                config
+        );
+
+        PlayerData source = createPlayer(10, "uuid-source", "SourcePlayer", 100, 1500, 10);
+        PlayerData target = createPlayer(20, "uuid-target", "TargetPlayer", 50, 1600, 20);
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+
+        var result = txService.merge(new AccountMergeService.MergeRequest("10", "20", "Admin merge", null));
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.gamesTransferred()).isEqualTo(3L);
+
+        // Verify session passed to repositories
+        verify(playerDataRepository, times(2)).save(eq(session), any(PlayerData.class));
+        verify(gameDataRepository).reassignPlayerMatches(eq(session), eq("uuid-source"), eq("uuid-target"));
+        verify(auditService).append(eq(session), any(AuditAppendCommand.class));
+        verify(session).close();
+    }
+
+    @Test
+    @DisplayName("Transaction rollback on failure aborts and preserves original player data in memory")
+    void merge_transactionFailure_rollsBackAndPreservesMemoryState() {
+        MongoClient mongoClient = mock(MongoClient.class);
+        ClientSession session = mock(ClientSession.class);
+        when(mongoClient.startSession()).thenReturn(session);
+        when(session.withTransaction(any())).thenAnswer(invocation -> {
+            TransactionBody<?> body = invocation.getArgument(0);
+            return body.execute();
+        });
+
+        // Simulate target save failure in transaction
+        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 10))).thenReturn(true);
+        when(playerDataRepository.save(eq(session), argThat(p -> p.pid == 20))).thenReturn(false);
+
+        AccountMergeService txService = new AccountMergeService(
+                mongoClient,
+                playerDataRepository,
+                gameDataRepository,
+                banDataRepository,
+                muteDataRepository,
+                auditService,
+                sessionService,
+                playerDisplayService,
+                networkService,
+                findService,
+                topMenuCacheService,
+                config
+        );
+
+        PlayerData source = createPlayer(10, "uuid-source", "SourcePlayer", 100, 1500, 10);
+        PlayerData target = createPlayer(20, "uuid-target", "TargetPlayer", 50, 1600, 20);
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+
+        var result = txService.merge(new AccountMergeService.MergeRequest("10", "20", "Admin merge", null));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("Transaction aborted");
+
+        // Verify source in-memory data was NOT corrupted
+        assertThat(source.uuid).isEqualTo("uuid-source");
+        assertThat(source.totalPlayTime).isEqualTo(100);
+
+        // Verify target in-memory data was NOT modified
+        assertThat(target.totalPlayTime).isEqualTo(50);
+        assertThat(target.hexedPoints).isEqualTo(20);
+
+        // Verify external notifications were NOT sent
+        verifyNoInteractions(networkService);
+        verifyNoInteractions(topMenuCacheService);
+    }
+
+    @Test
+    @DisplayName("Standalone MongoDB fallback gracefully merges when transactions are unsupported")
+    void merge_standaloneFallback_mergesWithoutTransaction() {
+        MongoClient mongoClient = mock(MongoClient.class);
+        ClientSession session = mock(ClientSession.class);
+        when(mongoClient.startSession()).thenReturn(session);
+
+        BsonDocument response = new BsonDocument("ok", new BsonInt32(0))
+                .append("code", new BsonInt32(20))
+                .append("errmsg", new BsonString("Transaction numbers are only allowed on a replica set member or mongos"));
+        MongoCommandException standaloneEx = new MongoCommandException(response, new ServerAddress("localhost", 27017));
+
+        when(session.withTransaction(any())).thenThrow(standaloneEx);
+        when(gameDataRepository.reassignPlayerMatches("uuid-source", "uuid-target")).thenReturn(2L);
+
+        AccountMergeService txService = new AccountMergeService(
+                mongoClient,
+                playerDataRepository,
+                gameDataRepository,
+                banDataRepository,
+                muteDataRepository,
+                auditService,
+                sessionService,
+                playerDisplayService,
+                networkService,
+                findService,
+                topMenuCacheService,
+                config
+        );
+
+        PlayerData source = createPlayer(10, "uuid-source", "SourcePlayer", 60, 1300, 5);
+        PlayerData target = createPlayer(20, "uuid-target", "TargetPlayer", 40, 1500, 10);
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+
+        var result = txService.merge(new AccountMergeService.MergeRequest("10", "20", "Standalone fallback merge", null));
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.targetAfter().totalPlayTime).isEqualTo(100);
+        verify(networkService).post(any(PlayerDataCacheReloadCommandV1.class));
+    }
+
+    @Test
+    @DisplayName("mergeAccounts convenience method merges via console actor")
+    void mergeAccounts_delegatesToMerge() {
+        PlayerData source = createPlayer(10, "uuid-source", "SourcePlayer", 30, 1200, 0);
+        PlayerData target = createPlayer(20, "uuid-target", "TargetPlayer", 30, 1200, 0);
+
+        when(findService.playerData("uuid-source")).thenReturn(source);
+        when(findService.playerData("uuid-target")).thenReturn(target);
+
+        var result = service.mergeAccounts("uuid-source", "uuid-target");
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.targetAfter().totalPlayTime).isEqualTo(60);
     }
 }

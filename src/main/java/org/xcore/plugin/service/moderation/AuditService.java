@@ -14,6 +14,10 @@ public interface AuditService {
 
     AuditAppendResult append(AuditAppendCommand command);
 
+    default AuditAppendResult append(com.mongodb.client.ClientSession session, AuditAppendCommand command) {
+        return append(command);
+    }
+
     Slice<AuditRecord> findByTargetUuid(String targetUuid, AuditCursor cursor, int limit);
 
     Slice<AuditRecordSummary> findSummaryByTargetUuid(String targetUuid, AuditCursor cursor, int limit);

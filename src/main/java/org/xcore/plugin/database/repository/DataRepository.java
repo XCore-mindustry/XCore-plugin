@@ -42,6 +42,10 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public boolean save(T data) {
+        return save(null, data);
+    }
+
+    public boolean save(com.mongodb.client.ClientSession session, T data) {
         if (data == null) return false;
 
         if (isReadOnly()) {
@@ -56,9 +60,17 @@ public abstract class DataRepository<T extends ModelData> {
         data.editModelTime = System.currentTimeMillis();
 
         if (data.id == null) {
-            collection.insertOne(data);
+            if (session != null) {
+                collection.insertOne(session, data);
+            } else {
+                collection.insertOne(data);
+            }
         } else {
-            collection.replaceOne(eq("_id", data.id), data, new ReplaceOptions().upsert(true));
+            if (session != null) {
+                collection.replaceOne(session, eq("_id", data.id), data, new ReplaceOptions().upsert(true));
+            } else {
+                collection.replaceOne(eq("_id", data.id), data, new ReplaceOptions().upsert(true));
+            }
         }
         return true;
     }
@@ -92,6 +104,14 @@ public abstract class DataRepository<T extends ModelData> {
     }
 
     public T findById(ObjectId id) {
+        return findById(null, id);
+    }
+
+    public T findById(com.mongodb.client.ClientSession session, ObjectId id) {
+        if (id == null) return null;
+        if (session != null) {
+            return collection.find(session, eq("_id", id)).first();
+        }
         return collection.find(eq("_id", id)).first();
     }
 

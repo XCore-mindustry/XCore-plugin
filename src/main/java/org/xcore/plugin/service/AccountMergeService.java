@@ -2,10 +2,17 @@ package org.xcore.plugin.service;
 
 import arc.Core;
 import arc.util.Log;
+import com.mongodb.MongoClientException;
+import com.mongodb.MongoCommandException;
+import com.mongodb.MongoException;
+import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoClient;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.jspecify.annotations.Nullable;
+import org.xcore.plugin.common.PLog;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.database.repository.GameDataRepository;
@@ -24,6 +31,8 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Administrative utility service for merging a source player account into a target player account.
  * Consolidates playtime, ratings, points, badges, linkage, device tokens, and match history.
+ * Performs atomic multi-entity merging via MongoDB ClientSession transactions when available,
+ * falling back cleanly to non-transactional mode for standalone MongoDB instances.
  * Intended ONLY for Server Console and Discord Bot administration.
  */
 @Singleton
@@ -51,6 +60,19 @@ public class AccountMergeService {
         }
     }
 
+    private record MergeExecutionOutcome(
+            boolean success,
+            String errorMessage,
+            long gamesTransferred,
+            boolean banTransferred,
+            boolean muteTransferred
+    ) {
+        public static MergeExecutionOutcome failure(String message) {
+            return new MergeExecutionOutcome(false, message, 0, false, false);
+        }
+    }
+
+    private final @Nullable MongoClient mongoClient;
     private final PlayerDataRepository playerDataRepository;
     private final GameDataRepository gameDataRepository;
     private final BanDataRepository banDataRepository;
@@ -65,6 +87,7 @@ public class AccountMergeService {
 
     @Inject
     public AccountMergeService(
+            @Nullable MongoClient mongoClient,
             PlayerDataRepository playerDataRepository,
             GameDataRepository gameDataRepository,
             BanDataRepository banDataRepository,
@@ -77,6 +100,7 @@ public class AccountMergeService {
             TopMenuCacheService topMenuCacheService,
             TomlXcoreConfig config
     ) {
+        this.mongoClient = mongoClient;
         this.playerDataRepository = playerDataRepository;
         this.gameDataRepository = gameDataRepository;
         this.banDataRepository = banDataRepository;
@@ -90,8 +114,37 @@ public class AccountMergeService {
         this.config = config;
     }
 
+    public AccountMergeService(
+            PlayerDataRepository playerDataRepository,
+            GameDataRepository gameDataRepository,
+            BanDataRepository banDataRepository,
+            MuteDataRepository muteDataRepository,
+            AuditService auditService,
+            SessionService sessionService,
+            PlayerDisplayService playerDisplayService,
+            NetworkService networkService,
+            FindService findService,
+            TopMenuCacheService topMenuCacheService,
+            TomlXcoreConfig config
+    ) {
+        this(null, playerDataRepository, gameDataRepository, banDataRepository, muteDataRepository, auditService, sessionService, playerDisplayService, networkService, findService, topMenuCacheService, config);
+    }
+
     public CompletableFuture<MergeResult> mergeAsync(MergeRequest request) {
         return CompletableFuture.supplyAsync(() -> merge(request));
+    }
+
+    public CompletableFuture<MergeResult> mergeAccountsAsync(String sourceUuid, String targetUuid) {
+        return CompletableFuture.supplyAsync(() -> mergeAccounts(sourceUuid, targetUuid));
+    }
+
+    public MergeResult mergeAccounts(String sourceUuid, String targetUuid) {
+        AuditActor actor = AuditActor.builder()
+                .type(AuditActorType.SERVER_CONSOLE)
+                .nameSnapshot("Console")
+                .id("console")
+                .build();
+        return merge(new MergeRequest(sourceUuid, targetUuid, "Account merge", actor));
     }
 
     public MergeResult merge(MergeRequest request) {
@@ -127,7 +180,59 @@ public class AccountMergeService {
         PlayerData sourceBefore = clonePlayerData(source);
         PlayerData targetBefore = clonePlayerData(target);
 
+        // Working copies for atomic persistence
+        PlayerData sourceWorking = clonePlayerData(source);
+        PlayerData targetWorking = clonePlayerData(target);
+
         // 1. Data consolidation
+        consolidateData(sourceWorking, targetWorking);
+
+        String oldSourceUuid = sourceBefore.uuid;
+        sourceWorking.uuid = "merged:" + oldSourceUuid;
+        sourceWorking.totalPlayTime = 0;
+        sourceWorking.description = "Merged into PID #" + targetWorking.pid + " (" + targetWorking.nickname + ")";
+
+        AuditActor actor = request.actor() != null ? request.actor() : AuditActor.builder()
+                .type(AuditActorType.SERVER_CONSOLE)
+                .nameSnapshot("Console")
+                .id("console")
+                .build();
+
+        // 2. Execute atomic transactional merge with MongoDB ClientSession
+        MergeExecutionOutcome outcome = executeAtomicMerge(oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+        if (!outcome.success()) {
+            return MergeResult.failure(outcome.errorMessage());
+        }
+
+        // 3. Reflect successful merge in in-memory objects (e.g. session cache references)
+        applyMergedState(source, sourceWorking);
+        applyMergedState(target, targetWorking);
+
+        // 4. Handle online sessions on this server
+        handleOnlinePlayers(oldSourceUuid, targetWorking);
+
+        // 5. Sync cluster via Redis
+        if (networkService != null) {
+            try {
+                networkService.post(new PlayerDataCacheReloadCommandV1(config != null && config.server != null ? config.server.name : "server"));
+            } catch (Exception e) {
+                Log.warn("Failed to publish PlayerDataCacheReloadCommandV1: @", e.getMessage());
+            }
+        }
+
+        // 6. Invalidate top menu cache
+        if (topMenuCacheService != null) {
+            topMenuCacheService.invalidateAllAsync();
+        }
+
+        PlayerData targetAfter = clonePlayerData(targetWorking);
+        String successMsg = String.format("Successfully merged player #%d (%s) into #%d (%s). Transferred: %d min playtime, %d matches.",
+                sourceBefore.pid, sourceBefore.nickname, targetWorking.pid, targetWorking.nickname, sourceBefore.totalPlayTime, outcome.gamesTransferred());
+
+        return new MergeResult(true, successMsg, sourceBefore, targetBefore, targetAfter, outcome.gamesTransferred(), outcome.banTransferred(), outcome.muteTransferred());
+    }
+
+    private void consolidateData(PlayerData source, PlayerData target) {
         target.totalPlayTime += source.totalPlayTime;
         target.pvpRating = Math.max(target.pvpRating, source.pvpRating);
         target.hexedPoints += source.hexedPoints;
@@ -186,117 +291,210 @@ public class AccountMergeService {
         if (target.admin && "NONE".equals(target.adminSource) && !"NONE".equals(source.adminSource)) {
             target.adminSource = source.adminSource;
         }
+    }
 
-        // 2. Punishments transfer
+    private MergeExecutionOutcome executeAtomicMerge(
+            String oldSourceUuid,
+            PlayerData sourceBefore,
+            PlayerData sourceWorking,
+            PlayerData targetWorking,
+            MergeRequest request,
+            AuditActor actor
+    ) {
+        if (mongoClient != null) {
+            try (ClientSession session = mongoClient.startSession()) {
+                try {
+                    return session.withTransaction(() -> executeMergeInSession(session, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor));
+                } catch (MongoException ex) {
+                    if (isTransactionUnsupportedException(ex)) {
+                        Log.warn("[AccountMerge] MongoDB transactions unsupported (standalone mode?); falling back to non-transactional merge: @", ex.getMessage());
+                        return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+                    }
+                    PLog.errTag("AccountMerge", "Failed to merge accounts @ -> @. Transaction aborted: @", oldSourceUuid, targetWorking.uuid, ex.getMessage(), ex);
+                    return MergeExecutionOutcome.failure("Transaction aborted: " + ex.getMessage());
+                } catch (Exception ex) {
+                    PLog.errTag("AccountMerge", "Failed to merge accounts @ -> @. Transaction aborted: @", oldSourceUuid, targetWorking.uuid, ex.getMessage(), ex);
+                    return MergeExecutionOutcome.failure("Transaction aborted: " + ex.getMessage());
+                }
+            } catch (MongoException ex) {
+                if (isTransactionUnsupportedException(ex)) {
+                    Log.warn("[AccountMerge] MongoDB sessions unsupported; falling back to non-transactional merge: @", ex.getMessage());
+                    return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+                }
+                PLog.errTag("AccountMerge", "Failed to start MongoDB session for @ -> @: @", oldSourceUuid, targetWorking.uuid, ex.getMessage(), ex);
+                return MergeExecutionOutcome.failure("Failed to start MongoDB session: " + ex.getMessage());
+            }
+        }
+
+        return executeMergeInSession(null, oldSourceUuid, sourceBefore, sourceWorking, targetWorking, request, actor);
+    }
+
+    private MergeExecutionOutcome executeMergeInSession(
+            @Nullable ClientSession session,
+            String oldSourceUuid,
+            PlayerData sourceBefore,
+            PlayerData sourceWorking,
+            PlayerData targetWorking,
+            MergeRequest request,
+            AuditActor actor
+    ) {
+        // 1. Transfer active punishments
         boolean banTransferred = false;
         boolean muteTransferred = false;
 
-        BanData sourceBan = banDataRepository.find(source.uuid, null);
+        BanData sourceBan = (session != null)
+                ? banDataRepository.find(session, oldSourceUuid, null)
+                : banDataRepository.find(oldSourceUuid, null);
+
         if (sourceBan != null && !sourceBan.expired()) {
-            BanData targetBan = banDataRepository.find(target.uuid, null);
+            BanData targetBan = (session != null)
+                    ? banDataRepository.find(session, targetWorking.uuid, null)
+                    : banDataRepository.find(targetWorking.uuid, null);
+
             if (targetBan == null || targetBan.expired()) {
                 BanData newBan = BanData.builder()
-                        .uuid(target.uuid)
-                        .ip(target.ip)
-                        .name(target.nickname)
+                        .uuid(targetWorking.uuid)
+                        .ip(targetWorking.ip)
+                        .name(targetWorking.nickname)
                         .adminName(sourceBan.adminName)
                         .adminDiscordId(sourceBan.adminDiscordId)
-                        .reason("[Merged from #" + source.pid + "] " + sourceBan.reason)
+                        .reason("[Merged from #" + sourceBefore.pid + "] " + sourceBan.reason)
                         .expireDate(sourceBan.expireDate)
                         .build();
-                banDataRepository.save(newBan);
+
+                boolean saved = (session != null)
+                        ? banDataRepository.save(session, newBan)
+                        : banDataRepository.save(newBan);
+                if (!saved) {
+                    throw new IllegalStateException("Failed to persist transferred ban for target account");
+                }
                 banTransferred = true;
             }
         }
 
-        MuteData sourceMute = muteDataRepository.findByUuid(source.uuid);
+        MuteData sourceMute = (session != null)
+                ? muteDataRepository.findByUuid(session, oldSourceUuid)
+                : muteDataRepository.findByUuid(oldSourceUuid);
+
         if (sourceMute != null && !sourceMute.expired()) {
-            MuteData targetMute = muteDataRepository.findByUuid(target.uuid);
+            MuteData targetMute = (session != null)
+                    ? muteDataRepository.findByUuid(session, targetWorking.uuid)
+                    : muteDataRepository.findByUuid(targetWorking.uuid);
+
             if (targetMute == null || targetMute.expired()) {
                 MuteData newMute = MuteData.builder()
-                        .uuid(target.uuid)
-                        .name(target.nickname)
+                        .uuid(targetWorking.uuid)
+                        .name(targetWorking.nickname)
                         .adminName(sourceMute.adminName)
                         .adminDiscordId(sourceMute.adminDiscordId)
-                        .reason("[Merged from #" + source.pid + "] " + sourceMute.reason)
+                        .reason("[Merged from #" + sourceBefore.pid + "] " + sourceMute.reason)
                         .expireDate(sourceMute.expireDate)
                         .build();
-                muteDataRepository.save(newMute);
+
+                boolean saved = (session != null)
+                        ? muteDataRepository.save(session, newMute)
+                        : muteDataRepository.save(newMute);
+                if (!saved) {
+                    throw new IllegalStateException("Failed to persist transferred mute for target account");
+                }
                 muteTransferred = true;
             }
         }
 
-        // 3. Mark source account as merged and free original UUID from uniqueness constraint
-        String oldSourceUuid = source.uuid;
-        source.uuid = "merged:" + oldSourceUuid;
-        source.totalPlayTime = 0;
-        source.description = "Merged into PID #" + target.pid + " (" + target.nickname + ")";
+        // 2. Persist PlayerData
+        boolean sourceSaved = (session != null)
+                ? playerDataRepository.save(session, sourceWorking)
+                : playerDataRepository.save(sourceWorking);
 
-        // 4. Persist to MongoDB
-        boolean sourceSaved = playerDataRepository.save(source);
-        boolean targetSaved = playerDataRepository.save(target);
+        boolean targetSaved = (session != null)
+                ? playerDataRepository.save(session, targetWorking)
+                : playerDataRepository.save(targetWorking);
 
         if (!sourceSaved || !targetSaved) {
-            return MergeResult.failure("Failed to persist merged player data to database.");
+            throw new IllegalStateException("Failed to persist merged player data to database.");
         }
 
-        // 5. Reassign matches in games_v2
-        long gamesTransferred = gameDataRepository.reassignPlayerMatches(oldSourceUuid, target.uuid);
+        // 3. Reassign matches in games_v2
+        long gamesTransferred = (session != null)
+                ? gameDataRepository.reassignPlayerMatches(session, oldSourceUuid, targetWorking.uuid)
+                : gameDataRepository.reassignPlayerMatches(oldSourceUuid, targetWorking.uuid);
 
-        // 6. Audit record
+        // 4. Record AuditRecord within same transaction boundary
         Map<String, String> auditDetails = new HashMap<>();
         auditDetails.put("source_pid", String.valueOf(sourceBefore.pid));
         auditDetails.put("source_uuid", oldSourceUuid);
         auditDetails.put("source_nickname", sourceBefore.nickname);
-        auditDetails.put("target_pid", String.valueOf(target.pid));
-        auditDetails.put("target_uuid", target.uuid);
-        auditDetails.put("target_nickname", target.nickname);
+        auditDetails.put("target_pid", String.valueOf(targetWorking.pid));
+        auditDetails.put("target_uuid", targetWorking.uuid);
+        auditDetails.put("target_nickname", targetWorking.nickname);
         auditDetails.put("playtime_added_minutes", String.valueOf(sourceBefore.totalPlayTime));
         auditDetails.put("hexed_points_added", String.valueOf(sourceBefore.hexedPoints));
         auditDetails.put("games_transferred", String.valueOf(gamesTransferred));
         auditDetails.put("ban_transferred", String.valueOf(banTransferred));
         auditDetails.put("mute_transferred", String.valueOf(muteTransferred));
+        auditDetails.put("atomic_transaction", String.valueOf(session != null));
 
-        AuditActor actor = request.actor() != null ? request.actor() : AuditActor.builder()
-                .type(AuditActorType.SERVER_CONSOLE)
-                .nameSnapshot("Console")
-                .id("console")
-                .build();
-
-        auditService.append(AuditAppendCommand.builder()
+        AuditAppendCommand appendCommand = AuditAppendCommand.builder()
                 .action(AuditAction.MERGE)
                 .actor(actor)
                 .target(AuditTarget.builder()
-                        .uuid(target.uuid)
-                        .pid(target.pid)
-                        .nameSnapshot(target.nickname)
+                        .uuid(targetWorking.uuid)
+                        .pid(targetWorking.pid)
+                        .nameSnapshot(targetWorking.nickname)
                         .build())
                 .reason(request.reason() != null && !request.reason().isBlank() ? request.reason() : "Account merge")
                 .details(AuditDetails.builder().extra(auditDetails).build())
-                .build());
+                .build();
 
-        // 7. Handle online sessions on this server
-        handleOnlinePlayers(oldSourceUuid, target);
+        AuditAppendResult auditResult = (session != null)
+                ? auditService.append(session, appendCommand)
+                : auditService.append(appendCommand);
 
-        // 8. Sync cluster via Redis
-        if (networkService != null) {
-            try {
-                networkService.post(new PlayerDataCacheReloadCommandV1(config != null && config.server != null ? config.server.name : "server"));
-            } catch (Exception e) {
-                Log.warn("Failed to publish PlayerDataCacheReloadCommandV1: @", e.getMessage());
+        if (auditResult != null && !auditResult.isSuccess()) {
+            throw new IllegalStateException("Failed to append audit record: " + auditResult.getMessage().orElse("unknown error"));
+        }
+
+        return new MergeExecutionOutcome(true, null, gamesTransferred, banTransferred, muteTransferred);
+    }
+
+    private boolean isTransactionUnsupportedException(MongoException ex) {
+        if (ex instanceof MongoCommandException cmdEx) {
+            if (cmdEx.getErrorCode() == 20) {
+                return true;
             }
         }
+        String msg = ex.getMessage();
+        if (msg == null) return false;
+        String lower = msg.toLowerCase();
+        return lower.contains("standalone")
+                || lower.contains("transaction numbers are only allowed on a replica set member or mongos")
+                || lower.contains("sessions are not supported")
+                || lower.contains("replica set")
+                || ex instanceof MongoClientException;
+    }
 
-        // 9. Invalidate top menu cache
-        if (topMenuCacheService != null) {
-            topMenuCacheService.invalidateAllAsync();
-        }
-
-        PlayerData targetAfter = clonePlayerData(target);
-        String successMsg = String.format("Successfully merged player #%d (%s) into #%d (%s). Transferred: %d min playtime, %d matches.",
-                sourceBefore.pid, sourceBefore.nickname, target.pid, target.nickname, sourceBefore.totalPlayTime, gamesTransferred);
-
-        return new MergeResult(true, successMsg, sourceBefore, targetBefore, targetAfter, gamesTransferred, banTransferred, muteTransferred);
+    private void applyMergedState(PlayerData dest, PlayerData src) {
+        if (dest == null || src == null || dest == src) return;
+        dest.uuid = src.uuid;
+        dest.pid = src.pid;
+        dest.totalPlayTime = src.totalPlayTime;
+        dest.pvpRating = src.pvpRating;
+        dest.hexedPoints = src.hexedPoints;
+        dest.hexedRank = src.hexedRank;
+        dest.unlockedBadges = src.unlockedBadges != null ? new HashSet<>(src.unlockedBadges) : new HashSet<>();
+        dest.activeBadge = src.activeBadge;
+        dest.customNickname = src.customNickname;
+        dest.description = src.description;
+        dest.discordId = src.discordId;
+        dest.discordUsername = src.discordUsername;
+        dest.discordLinkedAt = src.discordLinkedAt;
+        dest.deviceTokens = src.deviceTokens != null ? new HashMap<>(src.deviceTokens) : new HashMap<>();
+        dest.deviceTokenHashes = src.deviceTokenHashes != null ? new HashSet<>(src.deviceTokenHashes) : new HashSet<>();
+        dest.mapVotes = src.mapVotes != null ? new HashMap<>(src.mapVotes) : new HashMap<>();
+        dest.eventVotes = src.eventVotes != null ? new HashMap<>(src.eventVotes) : new HashMap<>();
+        dest.blockedPrivateUuids = src.blockedPrivateUuids != null ? new HashSet<>(src.blockedPrivateUuids) : new HashSet<>();
+        dest.admin = src.admin;
+        dest.adminSource = src.adminSource;
     }
 
     private void handleOnlinePlayers(String oldSourceUuid, PlayerData targetData) {

@@ -28,6 +28,14 @@ public class MuteDataRepository extends DataRepository<MuteData> {
     }
 
     public MuteData findByUuid(String uuid) {
+        return findByUuid(null, uuid);
+    }
+
+    public MuteData findByUuid(com.mongodb.client.ClientSession session, String uuid) {
+        if (uuid == null) return null;
+        if (session != null) {
+            return collection.find(session, eq("uuid", uuid)).first();
+        }
         return collection.find(eq("uuid", uuid)).first();
     }
 
@@ -42,6 +50,10 @@ public class MuteDataRepository extends DataRepository<MuteData> {
 
     @Override
     public boolean save(MuteData data) {
+        return save(null, data);
+    }
+
+    public boolean save(com.mongodb.client.ClientSession session, MuteData data) {
         if (data == null) {
             return false;
         }
@@ -49,7 +61,11 @@ public class MuteDataRepository extends DataRepository<MuteData> {
             Log.warn("[XCore-DB] Database is in Read-Only mode. Save ignored for @", data.getClass().getSimpleName());
             return false;
         }
-        collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+        if (session != null) {
+            collection.replaceOne(session, eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+        } else {
+            collection.replaceOne(eq("uuid", data.uuid), data, new ReplaceOptions().upsert(true));
+        }
         return true;
     }
 
