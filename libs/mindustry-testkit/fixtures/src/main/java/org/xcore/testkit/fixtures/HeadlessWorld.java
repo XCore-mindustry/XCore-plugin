@@ -197,6 +197,9 @@ public final class HeadlessWorld implements AutoCloseable {
         checkNotClosed();
         player.remove();
         players.remove(player);
+        if (Vars.net instanceof MockNet net) {
+            net.unregister(player.con());
+        }
     }
 
     public List<MockPlayer> players() {

@@ -1,7 +1,9 @@
 package org.xcore.testkit.fixtures;
 
+import arc.util.Align;
 import mindustry.content.Blocks;
 import mindustry.game.Team;
+import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.junit.jupiter.api.DisplayName;
@@ -131,6 +133,22 @@ class HeadlessWorldTest {
             assertThat(world.players()).containsExactly(bob);
             assertThat(Groups.player.size()).isEqualTo(1);
             assertThat(Groups.player.getByID(alice.id())).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("Should stop delivering broadcasts to a removed player")
+    void shouldUnregisterRemovedPlayerFromBroadcasts() {
+        try (HeadlessWorld world = HeadlessWorld.create(16, 16)) {
+            MockPlayer alice = world.addPlayer("Alice", Team.sharded);
+            MockPlayer bob = world.addPlayer("Bob", Team.crux);
+
+            world.removePlayer(alice);
+
+            Call.infoPopup("Round 3 starting", 4f, Align.left, 0, 0, 0, 0);
+
+            assertThat(alice.infoPopups()).isEmpty();
+            assertThat(bob.infoPopups()).containsExactly("Round 3 starting");
         }
     }
 
