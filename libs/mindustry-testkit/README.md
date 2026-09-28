@@ -28,11 +28,55 @@ Pure Java library with zero dependencies on Mindustry or Arc.
 
 Headless World and Entity simulation fixtures for server-side plugin tests (commands, anti-grief action filters, spatial queries, team cores, and packet verification) without launching live server sockets or graphics contexts:
 
-- **`HeadlessWorld`**: Managed, `AutoCloseable` environment providing an initialized `Vars.world` grid, `GameState`, `NetServer`, and `Groups`. Supports spatial queries, floor and block mutation, team cores with multi-tile footprint linking, command routing, and action filtering.
+- **`HeadlessWorld`**: Managed, `AutoCloseable` environment providing an initialized `Vars.world` grid, `GameState`, `NetServer`, and `Groups`. Supports spatial queries, floor and block mutation, team cores with multi-tile footprint linking, command routing, and action filtering. Use `builder().generating(true)` for map generation, terrain painting, and layout planning (see below).
 - **`MockPlayer`**: Simulated player entity wrapping `mindustry.gen.Player` backed by an in-memory `MockNetConnection`. Features builders, coordinate/tile positioning, chat, and command dispatch.
-- **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O.
+- **`MockNetConnection`**: Headless `NetConnection` recording all outgoing `Call.*` RPC packets (`sendMessage`, `announce`, `infoMessage`, every `infoPopup` variant, `warningToast`), player kicks (`kick(String)` / `kick(KickReason)`), and stream chunks without socket I/O.
+- **`MockNet`**: Headless `Net` reporting `server()`/`active()`. Holds a connection registry, so broadcast `Call.*` overloads (the ones taking no `NetConnection`) reach every registered `MockPlayer` exactly as they would on a live server.
 - **`HeadlessContent`**: Thread-safe base content loader caching vanilla blocks, units, and items once per JVM to guarantee sub-millisecond test fixture setup.
 - **`HeadlessWorldExtension` & `@WithHeadlessWorld`**: JUnit 5 Jupiter extension for automated fixture lifecycle management and parameter resolution.
+
+#### World generation mode
+
+`Tile.setFloor` and `Tile.setBlock` consult `Vars.world.isGenerating()`. Without generation mode, any map generator, terrain painter, or layout planner throws a `NullPointerException` on a fixture world. Enable it explicitly:
+
+```java
+try (HeadlessWorld world = HeadlessWorld.builder()
+        .dimensions(512, 512)
+        .generating(true)
+        .defaultFloor(Blocks.stone)
+        .build()) {
+    // bulk authoring writes now succeed without emitting TileChange events
+    world.fillFloor(Blocks.sand);
+}
+```
+
+When the world is created by `@WithHeadlessWorld` (annotation-driven lifecycle) there is no builder to configure, so flip the flag in `@BeforeEach`:
+
+```java
+@ExtendWith(HeadlessWorldExtension.class)
+@WithHeadlessWorld
+class GeneratorTest {
+    @BeforeEach
+    void enterGeneratingMode(HeadlessWorld world) {
+        world.world().setGenerating(true);
+    }
+}
+```
+
+#### Popup transcripts
+
+Mindustry splits informational popups across five packets, and `Call.infoPopup(con, ...)` sends a *different* one than `Call.infoMessage(con, ...)`. `MockNetConnection` records all of them into a single ordered transcript, so assertions no longer need to reflect into private packet fields:
+
+```java
+Call.infoPopup(player.con(), "Round 3 starting", 6f, Align.left, 0, 0, 0, 0);
+
+player.infoPopups();          // ["Round 3 starting"] - every variant, in wire order
+player.lastInfoPopup();       // "Round 3 starting"
+player.lastInfoPopupPacket(); // InfoPopup record: message, duration, align, id, variant
+player.infoMessages();        // InfoMessageCallPacket texts only
+```
+
+`MockNetConnection.InfoPopup` is a record shared by all variants; `MockNetConnection.PopupVariant` distinguishes `MESSAGE`, `POPUP`, `RELIABLE`, `KEYED`, and `KEYED_RELIABLE`. Popups sent with an empty message are recorded too, which is how services signal "clear this popup".
 
 ### 3. `ui` (`org.xcore.testkit:ui`)
 
@@ -64,17 +108,39 @@ repositories {
 }
 
 dependencies {
+    testImplementation("org.xcore.testkit:fixtures:0.1.0-SNAPSHOT")
     testImplementation("org.xcore.testkit:ui:0.1.0-SNAPSHOT")
     // or testImplementation("org.xcore.testkit:core:0.1.0-SNAPSHOT") for core queue utilities
 }
 ```
 
+`fixtures` pulls in `core` transitively and declares Mindustry/Arc as `compileOnly`, so it never
+embeds game engine classes. Pair it with AssertJ:
+
+```kotlin
+testImplementation("org.assertj:assertj-core:3.27.7")
+```
+
 ### Local Composite Build
 
-During development, you can consume testkit directly from source without publishing:
+During development, you can consume testkit directly from source without publishing.
+
+Ad-hoc, without touching the consumer's build files:
 
 ```bash
 ./gradlew --include-build ../mindustry-testkit test
+```
+
+For a permanent, opt-in switch, add a property-guarded `includeBuild` to the consumer's `settings.gradle.kts` so CI keeps resolving published artifacts by default:
+
+```kotlin
+if (providers.gradleProperty("xcoreTestkitFromSource").orNull.toBoolean()) {
+    includeBuild(file("../mindustry-testkit"))
+}
+```
+
+```bash
+./gradlew test -PxcoreTestkitFromSource=true
 ```
 
 ---
