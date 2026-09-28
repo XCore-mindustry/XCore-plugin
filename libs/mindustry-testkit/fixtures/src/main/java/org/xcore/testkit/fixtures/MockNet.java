@@ -21,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class MockNet extends Net {
 
-    private final List<NetConnection> connections;
+    private final CopyOnWriteArrayList<NetConnection> connections;
 
     /**
      * {@code Net.send(Object, boolean)} reads the private {@code server} field directly
@@ -52,7 +52,7 @@ public class MockNet extends Net {
      * {@link NetProvider} closes over it; passing it in as a constructor parameter keeps
      * that reference legal (a field reference in a {@code super()} argument is not).
      */
-    private MockNet(List<NetConnection> connections) {
+    private MockNet(CopyOnWriteArrayList<NetConnection> connections) {
         super(new NetProvider() {
             @Override public void connectClient(String ip, int port, Runnable success) {}
             @Override public void sendClient(Object object, boolean reliable) {}
@@ -77,10 +77,15 @@ public class MockNet extends Net {
         }
     }
 
-    /** Registers a connection to receive broadcast packets. */
+    /**
+     * Registers a connection to receive broadcast packets.
+     *
+     * <p>Idempotent: {@link #addPlayer} registers each connection it creates, and a test that
+     * also calls this directly must not cause {@code sendAllServer} to deliver twice.
+     */
     public void register(NetConnection connection) {
         if (connection != null) {
-            connections.add(connection);
+            connections.addIfAbsent(connection);
         }
     }
     /** Stops delivering broadcast packets to a connection. */

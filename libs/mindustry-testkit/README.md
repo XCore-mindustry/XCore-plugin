@@ -37,7 +37,9 @@ Headless World and Entity simulation fixtures for server-side plugin tests (comm
 
 #### World generation mode
 
-`Tile.setFloor` and `Tile.setBlock` consult `Vars.world.isGenerating()`. Without generation mode, any map generator, terrain painter, or layout planner throws a `NullPointerException` on a fixture world. Enable it explicitly:
+`Tile.setFloor` and `Tile.setBlock` fire a `TileFloorChangeEvent` / `TileChangeEvent` and update the pathfinder unless the world is generating. Bulk map authoring (map generators, terrain painters, layout planners) should run in generating mode so that hundreds of tile writes do not flood the event bus or wake the pathfinder.
+
+Inside a `HeadlessWorld` a *single* write in non-generating mode is already safe — `Vars.headless` is `true`, so the `Vars.renderer` branch that would throw `NullPointerException` is skipped, and `Vars.pathfinder` is `null`. This option is about event and pathfinder suppression, not about making writes possible:
 
 ```java
 try (HeadlessWorld world = HeadlessWorld.builder()
@@ -45,7 +47,7 @@ try (HeadlessWorld world = HeadlessWorld.builder()
         .generating(true)
         .defaultFloor(Blocks.stone)
         .build()) {
-    // bulk authoring writes now succeed without emitting TileChange events
+    // bulk authoring writes no longer emit TileChange events
     world.fillFloor(Blocks.sand);
 }
 ```

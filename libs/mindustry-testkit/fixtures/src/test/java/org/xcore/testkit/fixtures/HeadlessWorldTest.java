@@ -5,6 +5,7 @@ import mindustry.content.Blocks;
 import mindustry.game.Team;
 import mindustry.gen.Call;
 import mindustry.gen.Groups;
+import mindustry.Vars;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -149,6 +150,37 @@ class HeadlessWorldTest {
 
             assertThat(alice.infoPopups()).isEmpty();
             assertThat(bob.infoPopups()).containsExactly("Round 3 starting");
+        }
+    }
+
+    @Test
+    @DisplayName("Should stop delivering broadcasts to a closed connection")
+    void shouldStopDeliveringToClosedConnection() {
+        try (HeadlessWorld world = HeadlessWorld.create(16, 16)) {
+            MockPlayer alice = world.addPlayer("Alice", Team.sharded);
+            MockPlayer bob = world.addPlayer("Bob", Team.crux);
+
+            alice.con().close();
+
+            Call.infoPopup("Still here", 4f, Align.left, 0, 0, 0, 0);
+
+            assertThat(alice.infoPopups()).isEmpty();
+            assertThat(bob.infoPopups()).containsExactly("Still here");
+        }
+    }
+
+    @Test
+    @DisplayName("Should not deliver a broadcast twice when a connection is registered twice")
+    void shouldRegisterConnectionOnlyOnce() {
+        try (HeadlessWorld world = HeadlessWorld.create(16, 16)) {
+            MockPlayer alice = world.addPlayer("Alice", Team.sharded);
+            MockNet net = (MockNet) Vars.net;
+            net.register(alice.con());
+
+            Call.infoPopup("Only once", 4f, Align.left, 0, 0, 0, 0);
+
+            assertThat(alice.infoPopups()).containsExactly("Only once");
+            assertThat(net.connections()).hasSize(1);
         }
     }
 

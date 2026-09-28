@@ -132,7 +132,8 @@ public final class MockPlayer {
     }
 
     public String lastInfoPopup() {
-        return connection.lastInfoPopup() != null ? connection.lastInfoPopup().message() : null;
+        MockNetConnection.InfoPopup popup = connection.lastInfoPopup();
+        return popup != null ? popup.message() : null;
     }
 
     /** Typed transcript of the most recent popup, carrying duration, alignment, and key. */

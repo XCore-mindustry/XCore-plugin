@@ -53,6 +53,10 @@ public class MockNetConnection extends NetConnection {
 
     @Override
     public synchronized void send(Object object, boolean reliable) {
+        // A closed connection is detached: MockNet still holds the reference in its registry
+        // (nothing unregisters on close), but nothing sent to it may reach the transcript.
+        if (closed) return;
+
         sentPackets.add(object);
 
         if (object instanceof SendMessageCallPacket2 msg) {

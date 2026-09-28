@@ -313,11 +313,14 @@ public final class HeadlessWorld implements AutoCloseable {
         /**
          * Enables world generation mode, mirroring {@code World.setGenerating(true)}.
          *
-         * <p>Map generators, terrain painters, and layout planners call
-         * {@code Tile.setFloor} / {@code Tile.setBlock}, which consult
-         * {@code Vars.world.isGenerating()}. In generating mode Mindustry skips
-         * per-tile {@code TileChange} event emission and group bookkeeping, so
-         * bulk world authoring works without a live net layer or entity groups.
+         * <p>{@code Tile.setFloor} and {@code Tile.setBlock} fire an {@code EventType.TileFloorChangeEvent}
+         * / {@code TileChangeEvent} and update the pathfinder unless the world is generating. Inside a
+         * {@link HeadlessWorld} direct writes are otherwise safe: {@code Vars.headless} is true, so the
+         * {@code Vars.renderer} branch that would NPE is skipped, and {@code Vars.pathfinder} is null.
+         *
+         * <p>Use this for bulk map authoring (map generators, terrain painters, layout planners) so
+         * hundreds of tile writes do not flood the event bus or wake the pathfinder. Single writes
+         * in a non-generating world are fine and do not need it.
          */
         public Builder generating(boolean generating) {
             this.generating = generating;
