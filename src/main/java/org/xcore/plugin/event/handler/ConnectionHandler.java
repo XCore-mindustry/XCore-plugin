@@ -83,6 +83,26 @@ public class ConnectionHandler {
                 player
         );
 
+        // Quarantine the runtime admin flag before anything can be slow.
+        //
+        // Mindustry sets player.admin during connectConfirm, before this event fires, so the
+        // player is already privileged for the whole storage phase - 50-200ms normally, and
+        // seconds when Mongo is struggling. Every admin permission check reads this field
+        // (see CloudPermissionPolicy), so clearing it here closes that window instead of
+        // merely narrowing it.
+        //
+        // Only the transient Player flag is cleared. netServer.admins is deliberately left
+        // alone: it is the persistent registry, mutating it would revoke the account rather
+        // than pause the session, and restoring a real admin after an IP change is a
+        // separate decision made below once the stored IP is known.
+        //
+        // The flag is restored in completeJoin, which runs whenever the player is still here
+        // and the load succeeded. Every path that skips it also removes the player, so there
+        // is no way to strand a legitimate admin without their privileges.
+        if (join.admin()) {
+            player.admin(false);
+        }
+
         // The four Mongo round-trips this method used to make - load, connection-data
         // update, first-save and the unread count - now run together on the storage
         // executor, and the session is registered once in a single step on the game thread.
@@ -149,6 +169,16 @@ public class ConnectionHandler {
 
     /** Runs on the game thread. Publishes the session and performs the game-state steps. */
     private void completeJoin(Player player, JoinSnapshot join, PreparedJoin prepared) {
+        // Resolve the quarantined admin flag first, before any step that can throw. Every
+        // continuation that does not reach this line also removes the player, so restoring
+        // here is the difference between "reconnect to get your admin back" and a session
+        // that silently runs deprivileged for as long as the player stays.
+        boolean admin = join.admin();
+        boolean revokeAdmin = admin && prepared.ipChanged();
+        if (admin && !revokeAdmin) {
+            player.admin(true);
+        }
+
         Session session = sessionService.registerLogin(player, prepared.data());
         if (session == null || session.data == null) {
             Log.err("Session is null! Player: @", player);
@@ -171,7 +201,12 @@ public class ConnectionHandler {
 
         // Revoked here rather than beside the write above: it is game state, and the
         // storage write landing first does not affect what the player is told.
-        if (prepared.ipChanged() && player.admin) {
+        //
+        // This tests join.admin(), not player.admin: the flag was cleared at the top of
+        // onPlayerJoin to quarantine it, so testing the live field would report "no change
+        // needed" and leave the revocation to the disconnect path - which never fires while
+        // the player stays online. The snapshot is the record of what they connected with.
+        if (revokeAdmin) {
             discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
             if (locale != null) {
                 locale.send("error-ip-changed", args());

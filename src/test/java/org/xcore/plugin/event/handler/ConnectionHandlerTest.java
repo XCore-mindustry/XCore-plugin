@@ -419,6 +419,144 @@ class ConnectionHandlerTest {
     }
 
     @Test
+    @DisplayName("an admin's runtime flag is cleared before the storage phase runs")
+    void onPlayerJoin_quarantinesAdminUntilTheIpIsChecked() {
+        SessionService sessionService = mock(SessionService.class);
+        java.util.List<Runnable> queued = new java.util.ArrayList<>();
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
+                new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
+                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class),
+                new Async(org.xcore.plugin.concurrent.InlineStorageExecutor.create(), queued::add));
+
+        Player player = onlinePlayer();
+        player.name = "Boss";
+        player.admin = true;
+        player.con = new DummyNetConnection("2.2.2.2");
+        player.con.uuid = "uuid-admin";
+        player.con.player = player;
+        when(sessionService.loadPlayerData("uuid-admin")).thenReturn(storedData("uuid-admin", "1.1.1.1"));
+
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
+
+        // The storage phase has already run, but the game thread has not. Every admin
+        // permission check reads player.admin, so if it is still true here, the player can
+        // act as admin for as long as Mongo takes.
+        verify(player).admin(false);
+        assertThat(queued).as("the restore is still pending").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("an admin from the same ip gets the flag back")
+    void onPlayerJoin_restoresAdminWhenTheIpIsUnchanged() {
+        SessionService sessionService = mock(SessionService.class);
+        PrivateMessageService privateMessageService = mock(PrivateMessageService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
+                new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                privateMessageService, mock(PlayerDisplayService.class),
+                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async);
+
+        Player player = onlinePlayer();
+        player.name = "Boss";
+        player.admin = true;
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-admin";
+        player.con.player = player;
+
+        PlayerData data = new PlayerData("uuid-admin", true);
+        data.pid = 9;
+        data.ip = "1.1.1.1";
+        data.nickname = "Boss";
+        data.exists = true;
+        Session session = mock(Session.class);
+        session.data = data;
+        when(session.locale()).thenReturn(mock(Localization.class));
+        when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
+        when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
+
+        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
+             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
+            handler.onPlayerJoin(new EventType.PlayerJoin(player));
+        }
+
+        verify(player).admin(false);
+        verify(player).admin(true);
+    }
+
+    @Test
+    @DisplayName("an admin from a new ip never gets the flag back")
+    void onPlayerJoin_doesNotRestoreAdminWhenTheIpChanged() {
+        SessionService sessionService = mock(SessionService.class);
+        DiscordAdminAccessService discordAdminAccessService = mock(DiscordAdminAccessService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
+                new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
+                discordAdminAccessService, mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async);
+
+        Player player = onlinePlayer();
+        player.name = "Boss";
+        player.admin = true;
+        player.con = new DummyNetConnection("9.9.9.9");
+        player.con.uuid = "uuid-admin";
+        player.con.player = player;
+
+        PlayerData data = new PlayerData("uuid-admin", true);
+        data.pid = 9;
+        data.ip = "1.1.1.1";
+        data.nickname = "Boss";
+        data.exists = true;
+        Session session = mock(Session.class);
+        session.data = data;
+        when(session.locale()).thenReturn(mock(Localization.class));
+        when(sessionService.loadPlayerData("uuid-admin")).thenReturn(data);
+        when(sessionService.registerLogin(eq(player), same(data))).thenReturn(session);
+
+        try (MockedStatic<Time> time = org.mockito.Mockito.mockStatic(Time.class);
+             MockedStatic<Call> call = org.mockito.Mockito.mockStatic(Call.class)) {
+            handler.onPlayerJoin(new EventType.PlayerJoin(player));
+        }
+
+        verify(player).admin(false);
+        verify(player, never()).admin(true);
+        verify(discordAdminAccessService).deactivateRuntimeAdmin(player, "uuid-admin");
+    }
+
+    @Test
+    @DisplayName("a non-admin never has the flag touched")
+    void onPlayerJoin_leavesNonAdminFlagAlone() {
+        SessionService sessionService = mock(SessionService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService, mock(NetworkService.class),
+                new TomlXcoreConfig(), new TomlSecretsConfig(), mock(VoteService.class),
+                mock(PrivateMessageService.class), mock(PlayerDisplayService.class),
+                mock(DiscordAdminAccessService.class), mock(ObserverService.class),
+                mock(MapVoteObserverService.class), async);
+
+        Player player = onlinePlayer();
+        player.name = "Rando";
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-plain";
+        player.con.player = player;
+        when(sessionService.loadPlayerData("uuid-plain")).thenReturn(storedData("uuid-plain", "1.1.1.1"));
+
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
+
+        verify(player, never()).admin(org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    /** A stored row with a known IP, so the join has something to compare against. */
+    private static PlayerData storedData(String uuid, String ip) {
+        PlayerData data = new PlayerData(uuid, true);
+        data.pid = 5;
+        data.ip = ip;
+        data.nickname = "Someone";
+        data.exists = true;
+        return data;
+    }
+
+    @Test
     @DisplayName("onPlayerJoin kicks the player when the storage phase fails")
     void onPlayerJoin_kicksThePlayerWhenStorageFails() {
         SessionService sessionService = mock(SessionService.class);
