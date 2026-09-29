@@ -10,6 +10,7 @@ import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -581,6 +582,9 @@ public class SessionService {
     }
 
     public void broadcastFiltered(String key, Map<String, Object> args, Predicate<Session> filter) {
+        // Every chat relay funnels through here, so this is the cheapest place to notice a
+        // caller that reached the game thread over a listener, an executor or a UDP reader.
+        GameThread.report("SessionService.broadcastFiltered:" + key);
         for (Session session : getAllCachedSnapshot()) {
             if (session.data == null) continue;
             if (filter != null && !filter.test(session)) continue;

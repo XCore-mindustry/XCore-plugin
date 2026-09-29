@@ -7,6 +7,7 @@ import mindustry.core.Version;
 import mindustry.gen.Groups;
 import mindustry.net.Administration;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
@@ -44,6 +45,7 @@ public class ServerDiscoveryService {
     }
 
     private DiscoverySnapshot capture() {
+        GameThread.report("ServerDiscoveryService.capture");
         var map = state.map;
         return new DiscoverySnapshot(
                 Administration.Config.serverName.string(),
