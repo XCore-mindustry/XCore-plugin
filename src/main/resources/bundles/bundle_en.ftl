@@ -1111,5 +1111,15 @@ player-servers-card-empty = [sky]Be the first! Start a session[]
 player-servers-card-map = [gray]Map:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Mode:[] [white]{ $mode }[]
 
+announcement-hub =
+    [gold]★ [accent]XCore Servers [lightgray]» [white]Bored with this match?
+    [lightgray]Explore other servers anytime with [accent]/hub[lightgray]!
+announcement-discord =
+    [gold]★ [accent]XCore Community [lightgray]» [white]Looking for teammates and updates?
+    [lightgray]Join our Discord server using [accent]/discord[lightgray]!
+announcement-help =
+    [gold]★ [accent]XCore Help [lightgray]» [white]Need assistance or command list?
+    [lightgray]Type [accent]/help[lightgray] to view all available commands!
+
 
 error-only-players = [scarlet]⚠ This command can only be used by a player.

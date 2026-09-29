@@ -62,6 +62,11 @@ class TomlXcoreConfigTest {
         assertThat(toml.translation.llm.maxInputChars).isEqualTo(500);
         assertThat(toml.translation.llm.maxOutputChars).isEqualTo(1200);
         assertThat(toml.translation.llm.stripControlCharacters).isTrue();
+
+        assertThat(toml.announcements.enabled).isTrue();
+        assertThat(toml.announcements.intervalSeconds).isEqualTo(360);
+        assertThat(toml.announcements.firstDelaySeconds).isEqualTo(120);
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub");
     }
 
     @Test
@@ -76,6 +81,7 @@ class TomlXcoreConfigTest {
         toml.eventHub = null;
         toml.telemetry = null;
         toml.translation = null;
+        toml.announcements = null;
 
         toml.normalize();
 
@@ -87,10 +93,12 @@ class TomlXcoreConfigTest {
         assertThat(toml.eventHub).isNotNull();
         assertThat(toml.telemetry).isNotNull();
         assertThat(toml.translation).isNotNull();
+        assertThat(toml.announcements).isNotNull();
 
         assertThat(toml.server.name).isEqualTo("server");
         assertThat(toml.transport.redis.url).isEqualTo("redis://127.0.0.1:6379");
         assertThat(toml.translation.pipeline).containsExactly("google");
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub");
     }
 
     @Test

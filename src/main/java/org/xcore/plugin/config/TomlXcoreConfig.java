@@ -24,6 +24,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
     public EventHubConfig eventHub = new EventHubConfig();
     public TelemetryConfig telemetry = new TelemetryConfig();
     public TranslationConfig translation = new TranslationConfig();
+    public AnnouncementConfig announcements = new AnnouncementConfig();
 
     public void normalize() {
         if (server == null) {
@@ -50,6 +51,9 @@ public class TomlXcoreConfig implements SelfNormalizing {
         if (translation == null) {
             translation = new TranslationConfig();
         }
+        if (announcements == null) {
+            announcements = new AnnouncementConfig();
+        }
 
         server.normalize();
         paths.normalize();
@@ -58,6 +62,7 @@ public class TomlXcoreConfig implements SelfNormalizing {
         runtime.normalize();
         telemetry.normalize();
         translation.normalize();
+        announcements.normalize();
     }
 
     public static class ServerConfig {
@@ -308,6 +313,27 @@ public class TomlXcoreConfig implements SelfNormalizing {
             }
             if (maxTextLength <= 0) {
                 maxTextLength = 500;
+            }
+        }
+    }
+
+    public static class AnnouncementConfig {
+        public boolean enabled = true;
+        public int intervalSeconds = 360;
+        public int firstDelaySeconds = 120;
+        public List<String> messages = new ArrayList<>(List.of(
+                "announcement-hub"
+        ));
+
+        public void normalize() {
+            if (intervalSeconds <= 0) {
+                intervalSeconds = 360;
+            }
+            if (firstDelaySeconds < 0) {
+                firstDelaySeconds = 120;
+            }
+            if (messages == null || messages.isEmpty()) {
+                messages = new ArrayList<>(List.of("announcement-hub"));
             }
         }
     }

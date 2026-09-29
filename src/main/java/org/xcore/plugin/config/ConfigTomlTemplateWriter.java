@@ -125,6 +125,17 @@ public final class ConfigTomlTemplateWriter {
         max_input_chars = 500
         max_output_chars = 1200
         strip_control_characters = true
+
+        [announcements]
+        enabled = true
+        interval_seconds = 360
+        first_delay_seconds = 120
+        # Fluent localization keys from bundle_*.ftl to rotate through
+        messages = [
+            "announcement-hub",
+            # "announcement-discord",
+            # "announcement-help",
+        ]
         """;
     }
 

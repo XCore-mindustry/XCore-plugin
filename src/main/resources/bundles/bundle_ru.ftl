@@ -1135,5 +1135,15 @@ player-servers-card-empty = [sky]Будьте первым! Запустите �
 player-servers-card-map = [gray]Карта:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Режим:[] [white]{ $mode }[]
 
+announcement-hub =
+    [gold]★ [accent]Серверы XCore [lightgray]» [white]Наскучила эта игра?
+    [lightgray]Откройте навигатор серверов командой [accent]/hub[lightgray]!
+announcement-discord =
+    [gold]★ [accent]Сообщество XCore [lightgray]» [white]Хотите общаться и следить за новостями?
+    [lightgray]Присоединяйтесь к нашему Discord: [accent]/discord[lightgray]!
+announcement-help =
+    [gold]★ [accent]Помощь XCore [lightgray]» [white]Ищете доступные команды и возможности?
+    [lightgray]Используйте [accent]/help[lightgray], чтобы ознакомиться со всеми командами!
+
 
 error-only-players = [scarlet]⚠ Эту команду могут использовать только игроки.

@@ -120,6 +120,11 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "translation.llm.max_output_chars", ValueType.INT);
         bind(bindings, "translation.llm.strip_control_characters", ValueType.BOOLEAN);
 
+        bind(bindings, "announcements.enabled", ValueType.BOOLEAN);
+        bind(bindings, "announcements.interval_seconds", ValueType.INT);
+        bind(bindings, "announcements.first_delay_seconds", ValueType.INT);
+        bind(bindings, "announcements.messages", ValueType.STRING_LIST);
+
         return bindings;
     }
 
