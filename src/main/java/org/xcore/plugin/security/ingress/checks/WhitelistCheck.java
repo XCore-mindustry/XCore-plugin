@@ -8,6 +8,7 @@ import mindustry.net.NetConnection;
 import mindustry.net.Packets;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.security.ingress.AccessResult;
+import org.xcore.plugin.security.ingress.FailureMode;
 import org.xcore.plugin.security.ingress.IngressCheck;
 
 import static mindustry.Vars.netServer;
@@ -40,6 +41,12 @@ public class WhitelistCheck implements IngressCheck {
     @Override
     public int priority() {
         return -40;
+    }
+
+    /** Local and pure: no I/O, no shared state, so a defect here is not a security event. */
+    @Override
+    public FailureMode failureMode() {
+        return FailureMode.FAIL_OPEN;
     }
 
     @Override

@@ -195,6 +195,9 @@ commands-login-admin-password-created =
     [green]Пароль адміністратора створено.
     [red]Не забудьте свій пароль! Якщо ви його забудете, вам доведеться просити головного адміністратора скинути його.
 commands-login-request-approval-discord = [accent]Ваш акаунт не має Discord-доступу адміністратора. Отримайте admin role у Discord і спробуйте знову.
+commands-login-verifying = [lightgray]Перевірка пароля адміністратора...
+commands-login-already-processing = [scarlet]⚠ Запит на вхід уже обробляється. Зачекайте.
+commands-login-rate-limited = [scarlet]⚠ Забагато невдалих спроб входу. Зачекайте перед наступною спробою.
 commands-discord-link-created =
     [green]Код привʼязки Discord створено: [accent]{ $code }[]
     [lightgray]На нашому Discord сервері викличте slash-команду бота [accent]/link { $code }[] протягом [accent]{ $expireMinutes }[] хв.
@@ -760,7 +763,7 @@ error-wrong-number = [scarlet]⚠ Неправильний формат числ
 error-wrong-period-format = [scarlet]⚠ Неправильний формат періоду. Приклад: 1h 30m, 30 ({ hours })
 error-invalid-id = [scarlet]⚠ Невірний ID гравця.
 error-spectator = [scarlet]⚠ Ви спостерігач і не можете використовувати цю команду.
-error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора має бути не коротшим за 4 символи.
+error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора має бути не коротшим за 8 символів.
 error-wrong-admin-password = [scarlet]⚠ Невірний пароль адміністратора.
 error-internal = [scarlet]Внутрішня помилка сервера.
 error-processing-request = [scarlet]Виникла помилка під час обробки запиту.

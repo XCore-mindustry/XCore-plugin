@@ -5,6 +5,7 @@ import io.avaje.inject.PreDestroy;
 import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
+import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.metrics.Tags;
 import org.xcore.plugin.metrics.XcoreMetrics;
@@ -24,19 +25,30 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Singleton
 public class IngressService {
 
+    /**
+     * Sent when a check could not reach a verdict. Silent, because a connection that never
+     * completed validation has nobody to explain itself to.
+     */
+    private static final String UNAVAILABLE_REASON = "Security check unavailable";
+
     private final List<IngressCheck> fastChecks = new CopyOnWriteArrayList<>();
     private final List<IngressCheck> slowChecks = new CopyOnWriteArrayList<>();
     private final ExecutorService virtualExecutor;
     private final MetricsService metricsService;
+    private final TomlXcoreConfig config;
+    private final long handshakeBudgetNanos;
 
-    public IngressService(List<IngressCheck> checks, MetricsService metricsService) {
+    public IngressService(List<IngressCheck> checks, MetricsService metricsService, TomlXcoreConfig config) {
         this.virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.metricsService = metricsService;
+        this.config = config;
+        this.handshakeBudgetNanos = TimeUnit.MILLISECONDS.toNanos(config.server.ingressHandshakeBudgetMillis);
 
         checks.forEach(this::attach);
 
-        PLog.infoTag("Ingress", "Ready: @ fast checks, @ slow checks",
-                fastChecks.size(), slowChecks.size());
+        PLog.infoTag("Ingress", "Ready: @ fast checks, @ slow checks (budget @ms, failure-mode @)",
+                fastChecks.size(), slowChecks.size(),
+                config.server.ingressHandshakeBudgetMillis, config.server.ingressFailureMode);
     }
 
     /**
@@ -81,8 +93,11 @@ public class IngressService {
                 }
             } catch (Exception e) {
                 recordCheckError(check, "fast");
-                PLog.errTag("Ingress", "'@' error", check.name());
+                PLog.errTag("Ingress", "'@' error, failure-mode=@", check.name(), failureMode(check));
                 PLog.errTag("Ingress", e);
+                if (failsClosed(check)) {
+                    return recordFailure(check);
+                }
             }
         }
 
@@ -105,27 +120,37 @@ public class IngressService {
                     return new CheckOutcome(check, check.check(con, packet));
                 } catch (Exception e) {
                     recordCheckError(check, "slow");
-                    PLog.err("[Ingress] '@' error", check.name());
-                    PLog.err(e);
-                    return new CheckOutcome(check, AccessResult.Allowed.INSTANCE);
+                    PLog.errTag("Ingress", "'@' error, failure-mode=@", check.name(), failureMode(check));
+                    PLog.errTag("Ingress", e);
+                    return new CheckOutcome(check, failsClosed(check)
+                            ? recordFailure(check)
+                            : AccessResult.Allowed.INSTANCE);
                 }
             }));
         }
 
+        // One absolute deadline for the whole handshake. A per-check timeout, multiplied by the
+        // check count and re-entered once per connecting client, let a connection wave hold the
+        // tick thread for as long as the wave kept arriving.
+        final long deadline = System.nanoTime() + handshakeBudgetNanos;
+        boolean budgetExceeded = false;
+
         try {
             for (int i = 0; i < checks.size(); i++) {
-                Future<CheckOutcome> completedFuture = completionService.poll(5, TimeUnit.SECONDS);
+                long remaining = deadline - System.nanoTime();
+                Future<CheckOutcome> completedFuture = remaining > 0
+                        ? completionService.poll(remaining, TimeUnit.NANOSECONDS)
+                        : null;
 
-                if (completedFuture != null) {
-                    CheckOutcome outcome = completedFuture.get();
-                    if (outcome.result() instanceof AccessResult.Denied denied) {
-                        if (deniedResult == null) {
-                            recordDenied(outcome.check(), denied);
-                            deniedResult = outcome;
-                        }
-                    }
-                } else {
-                    PLog.warnTag("Ingress", "A parallel check timed out");
+                if (completedFuture == null) {
+                    budgetExceeded = true;
+                    break;
+                }
+
+                CheckOutcome outcome = completedFuture.get();
+                if (outcome.result() instanceof AccessResult.Denied denied && deniedResult == null) {
+                    recordDenied(outcome.check(), denied);
+                    deniedResult = outcome;
                 }
             }
         } catch (InterruptedException e) {
@@ -137,11 +162,48 @@ public class IngressService {
             cancelRemaining(futures);
         }
 
+        // A verdict we did receive outranks the budget: a definitive deny must not be softened
+        // into an allow just because a sibling check overran.
         if (deniedResult != null) {
             return deniedResult.result();
         }
 
+        if (budgetExceeded) {
+            return onBudgetExceeded();
+        }
+
         return AccessResult.Allowed.INSTANCE;
+    }
+
+    /**
+     * Resolved posture for a check. The operator's global override wins outright, so a server
+     * that prefers availability can opt out of fail-closed without touching every check.
+     */
+    private FailureMode failureMode(IngressCheck check) {
+        return config.server.ingressFailsOpen() ? FailureMode.FAIL_OPEN : check.failureMode();
+    }
+
+    private boolean failsClosed(IngressCheck check) {
+        return failureMode(check) == FailureMode.FAIL_CLOSED;
+    }
+
+    private AccessResult recordFailure(IngressCheck check) {
+        AccessResult.Denied denied = new AccessResult.Denied(UNAVAILABLE_REASON, true);
+        recordDenied(check, denied);
+        return denied;
+    }
+
+    private AccessResult onBudgetExceeded() {
+        metricsService.increment(
+                XcoreMetrics.INGRESS_HANDSHAKE_BUDGET_EXCEEDED_TOTAL,
+                Tags.empty()
+        );
+        if (config.server.ingressFailsOpen()) {
+            PLog.warnTag("Ingress", "Handshake budget exceeded, admitting connection (failure-mode=open)");
+            return AccessResult.Allowed.INSTANCE;
+        }
+        PLog.warnTag("Ingress", "Handshake budget exceeded, denying connection (failure-mode=closed)");
+        return new AccessResult.Denied(UNAVAILABLE_REASON, true);
     }
 
     private void cancelRemaining(List<Future<CheckOutcome>> futures) {

@@ -13,16 +13,19 @@ import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
+import org.xcore.plugin.security.MapFileNameSanitizer;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.network.MapsProtocolMapper;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static mindustry.Vars.customMapDirectory;
 import static mindustry.Vars.maps;
 import static mindustry.Vars.state;
+import static org.xcore.plugin.common.PLog.err;
 import static org.xcore.plugin.common.PLog.info;
 
 @Singleton
@@ -87,17 +90,35 @@ public class MapTransportHandler {
         network.subscribe(MapsLoadCommandV1.class, e -> {
             if (!config.server.name.equals(e.server())) return;
 
-            AtomicInteger counter = new AtomicInteger();
+            // The peer chooses the name, and Fi.child() does not stop "../" from escaping
+            // customMapDirectory. Validate before the name reaches the filesystem.
+            List<MapFileSourceV1> accepted = new ArrayList<>();
             for (MapFileSourceV1 file : e.files()) {
+                try {
+                    MapFileNameSanitizer.requireSafeName(file.fileName());
+                    accepted.add(file);
+                } catch (IllegalArgumentException ex) {
+                    err("[Maps] Rejected unsafe map file name '@' from @", file.fileName(), e.server());
+                }
+            }
+
+            if (accepted.isEmpty()) {
+                err("[Maps] No usable map files in load command from @", e.server());
+                return;
+            }
+
+            AtomicInteger counter = new AtomicInteger();
+            for (MapFileSourceV1 file : accepted) {
+                String safeName = MapFileNameSanitizer.requireSafeName(file.fileName());
                 Http.get(file.url())
                         .error(Log::err)
                         .submit(result -> {
-                            customMapDirectory.child(file.fileName()).writeBytes(result.getResult());
+                            customMapDirectory.child(safeName).writeBytes(result.getResult());
 
-                            if (counter.incrementAndGet() == e.files().size()) {
+                            if (counter.incrementAndGet() == accepted.size()) {
                                 maps.reload();
                                 onMapsReloaded();
-                                info("Loaded @ maps.", e.files().size());
+                                info("Loaded @ maps.", accepted.size());
                             }
                         });
             }

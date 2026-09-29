@@ -67,6 +67,18 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public boolean gameStartedTimer = true;
         public boolean autoStart = false;
         public String autoStartGamemode = "survival";
+        /**
+         * Hard ceiling on how long one connection handshake may hold the tick thread while slow
+         * ingress checks run. It is per connection, so a connection wave multiplies the cost;
+         * keep it well under a second and raise it only against measured check latency.
+         */
+        public int ingressHandshakeBudgetMillis = 2000;
+        /**
+         * Operator override for the per-check failure posture. {@code "closed"} honours each
+         * check's own declared {@code failureMode()}; {@code "open"} makes every failed check admit
+         * the connection, trading moderation integrity for availability.
+         */
+        public String ingressFailureMode = "closed";
 
         public void normalize() {
             if (name == null || name.isBlank()) {
@@ -80,6 +92,25 @@ public class TomlXcoreConfig implements SelfNormalizing {
             } else {
                 autoStartGamemode = autoStartGamemode.trim().toLowerCase();
             }
+            if (ingressHandshakeBudgetMillis <= 0) {
+                ingressHandshakeBudgetMillis = 2000;
+            }
+            if (ingressFailureMode == null || ingressFailureMode.isBlank()) {
+                ingressFailureMode = "closed";
+            } else {
+                ingressFailureMode = ingressFailureMode.trim().toLowerCase();
+                if (!ingressFailureMode.equals("closed") && !ingressFailureMode.equals("open")) {
+                    ingressFailureMode = "closed";
+                }
+            }
+        }
+
+        /**
+         * Whether the operator has explicitly chosen availability over moderation integrity.
+         * When false, each check's own {@code failureMode()} decides.
+         */
+        public boolean ingressFailsOpen() {
+            return "open".equals(ingressFailureMode);
         }
     }
 

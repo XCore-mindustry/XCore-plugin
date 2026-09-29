@@ -141,6 +141,49 @@ public class AdminAuthService {
         return authenticate(player, password, false);
     }
 
+    public record PasswordVerificationResult(boolean success, boolean created, String messageKey) {}
+
+    /**
+     * Performs password hashing or verification (CPU-intensive BCrypt operation) and saves updated
+     * password data. This method contains NO Mindustry main-thread mutations and is safe to run
+     * on a background executor.
+     */
+    public PasswordVerificationResult verifyOrSetPassword(PlayerData data, String password) {
+        boolean created = false;
+        if (data.password == null || data.password.isEmpty()) {
+            data.hashPassword(password);
+            adminDataRepository.save(data);
+            created = true;
+        }
+
+        if (data.verifyPassword(password)) {
+            return new PasswordVerificationResult(
+                true,
+                created,
+                created ? "commands-login-admin-password-created" : "commands-login-success"
+            );
+        } else {
+            return new PasswordVerificationResult(false, false, "error-wrong-admin-password");
+        }
+    }
+
+    /**
+     * Checks if player data has Discord admin role access.
+     */
+    public boolean hasDiscordAdminAccess(PlayerData data) {
+        return discordAdminAccessService.hasDiscordAdminAccess(data);
+    }
+
+    /**
+     * Applies admin privileges to a player and updates server state on the Mindustry tick thread.
+     */
+    public void grantAdmin(Player player, Session session) {
+        player.admin(true);
+        String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
+        netServer.admins.adminPlayer(player.uuid(), usid);
+        playerDisplayService.refresh(session);
+    }
+
     public AuthResult authenticate(Player player, String password, boolean rememberDevice) {
         if (player == null) {
             return new AuthResult(AuthResultStatus.SESSION_NOT_FOUND, "error-processing-request");
@@ -164,24 +207,16 @@ public class AdminAuthService {
         PlayerData data = session.data;
 
         // Security check: Only players with Discord admin role can authenticate or set an admin password
-        if (!discordAdminAccessService.hasDiscordAdminAccess(data)) {
+        if (!hasDiscordAdminAccess(data)) {
             return new AuthResult(AuthResultStatus.DISCORD_APPROVAL_REQUIRED, "commands-login-request-approval-discord");
         }
 
-        boolean created = false;
-        if (data.password == null || data.password.isEmpty()) {
-            data.hashPassword(password);
-            adminDataRepository.save(data);
-            created = true;
-        }
+        PasswordVerificationResult verification = verifyOrSetPassword(data, password);
 
-        if (data.verifyPassword(password)) {
+        if (verification.success()) {
             rateLimits.remove(player.uuid());
 
-            player.admin(true);
-            String usid = player.getInfo() != null ? player.getInfo().adminUsid : null;
-            netServer.admins.adminPlayer(player.uuid(), usid);
-            playerDisplayService.refresh(session);
+            grantAdmin(player, session);
 
             String mintedToken = null;
             if (rememberDevice) {
@@ -193,12 +228,12 @@ public class AdminAuthService {
             }
 
             return new AuthResult(
-                created ? AuthResultStatus.PASSWORD_CREATED : AuthResultStatus.SUCCESS,
-                created ? "commands-login-admin-password-created" : "commands-login-success",
+                verification.created() ? AuthResultStatus.PASSWORD_CREATED : AuthResultStatus.SUCCESS,
+                verification.messageKey(),
                 mintedToken
             );
         } else {
-            return new AuthResult(AuthResultStatus.WRONG_PASSWORD, "error-wrong-admin-password");
+            return new AuthResult(AuthResultStatus.WRONG_PASSWORD, verification.messageKey());
         }
     }
 
