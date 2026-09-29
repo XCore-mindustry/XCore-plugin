@@ -1089,13 +1089,13 @@ badge-veteran-description = Надається шанованим досвідч
 none = Немає
 
 # Серверний браузер (/servers)
-player-servers-title =  ІГРОВІ СЕРВЕРИ XCORE
+player-servers-title = ІГРОВІ СЕРВЕРИ XCORE
 player-servers-cat-all = Всі
-player-servers-cat-pvp = ⚔ PvP
-player-servers-cat-survival = 🛡 Виживання
-player-servers-cat-special = ⭐ Спец
-player-servers-hint = ℹ Натисніть на картку сервера для миттєвого входу
-player-servers-refresh = ⟳ Оновити
+player-servers-cat-pvp = PvP
+player-servers-cat-survival = Виживання
+player-servers-cat-special = Спец
+player-servers-hint = Натисніть на сервер для підключення
+player-servers-refresh = Оновити
 player-servers-already-connected = [gold]● Ви вже підключені до цього сервера!
 player-servers-transferring = [accent]Перемикання на сервер [white]{ $server }[]...
 player-servers-full = [scarlet]Сервер { $server } заповнений! Зачекайте на звільнення слота.

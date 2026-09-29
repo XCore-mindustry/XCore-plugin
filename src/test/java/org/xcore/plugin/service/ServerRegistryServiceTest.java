@@ -119,4 +119,20 @@ class ServerRegistryServiceTest {
         assertThat(service.findServer("The Siege")).isPresent();
         assertThat(service.findServer("unknown-server-xyz")).isEmpty();
     }
+
+    @Test
+    @DisplayName("populateDevMockServers fills all 15 mock servers with realistic stats")
+    void populateDevMockServers_fillsMockServers() {
+        TomlXcoreConfig config = createConfig("xcore-dev-server");
+        NetworkService network = mock(NetworkService.class);
+        ServerRegistryService service = new ServerRegistryService(config, network);
+
+        assertThat(service.isDevEnvironment()).isTrue();
+        service.populateDevMockServers();
+
+        List<ServerStatus> snapshot = service.snapshot();
+        assertThat(snapshot).hasSize(15);
+        assertThat(service.totalOnlineServers()).isEqualTo(15);
+        assertThat(service.totalOnlinePlayers()).isGreaterThan(100);
+    }
 }

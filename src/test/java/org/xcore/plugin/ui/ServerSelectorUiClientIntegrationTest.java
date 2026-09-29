@@ -188,7 +188,7 @@ class ServerSelectorUiClientIntegrationTest {
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 340");
+        assertThat(dsl).contains("maxHeight: 520");
         assertThat(dsl).contains("action:close");
         assertThat(dsl).contains("action:tab:all");
         assertThat(dsl).contains("action:tab:pvp");
@@ -199,7 +199,7 @@ class ServerSelectorUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Selecting PvP tab triggers partial update targeting slot_servers")
+    @DisplayName("Selecting PvP tab triggers full rerender with updated active tab and filtered list")
     void selectTab_triggersPartialUpdate() {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
@@ -209,20 +209,18 @@ class ServerSelectorUiClientIntegrationTest {
         loop.client().click(menuId, "action:tab:pvp");
         assertThat(loop.stepClientToServer()).isTrue();
 
-        // Server processes event and emits Update wire message targeting slot_servers
+        // Server processes event and emits Show wire message with new active tab and filtered servers
         assertThat(loop.stepServerToClient()).isTrue();
 
-        var updateMsg = (UiWireMessage.Update) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Update)
+        var showMsg = (UiWireMessage.Show) loop.transcript().all().stream()
+                .filter(m -> m instanceof UiWireMessage.Show)
                 .reduce((first, second) -> second)
                 .orElseThrow();
 
-        assertThat(updateMsg.targetId()).isEqualTo("slot_servers");
-
-        String updateDsl = UiDslWriter.write((NodeBuilder<?>) updateMsg.body().decode());
-        assertThat(updateDsl).contains("Mini-PvP");
-        assertThat(updateDsl).contains("HexedCore");
-        assertThat(updateDsl).doesNotContain("Mini-Surv");
+        String showDsl = UiDslWriter.write((NodeBuilder<?>) showMsg.body().decode());
+        assertThat(showDsl).contains("Mini-PvP");
+        assertThat(showDsl).contains("HexedCore");
+        assertThat(showDsl).doesNotContain("Mini-Surv");
     }
 
     @Test

@@ -1111,13 +1111,13 @@ none = Нет
 error-nickname-badge-glyph = [scarlet]⚠ Пользовательский ник не может содержать зарезервированные иконки бейджей.
 
 # Серверный браузер (/servers)
-player-servers-title =  ИГРОВЫЕ СЕРВЕРЫ XCORE
+player-servers-title = ИГРОВЫЕ СЕРВЕРЫ XCORE
 player-servers-cat-all = Все
-player-servers-cat-pvp = ⚔ PvP
-player-servers-cat-survival = 🛡 Выживание
-player-servers-cat-special = ⭐ Спец
-player-servers-hint = ℹ Нажмите на карточку сервера для мгновенного входа
-player-servers-refresh = ⟳ Обновить
+player-servers-cat-pvp = PvP
+player-servers-cat-survival = Выживание
+player-servers-cat-special = Спец
+player-servers-hint = Нажмите на сервер для подключения
+player-servers-refresh = Обновить
 player-servers-already-connected = [gold]● Вы уже подключены к этому серверу!
 player-servers-transferring = [accent]Переключение на сервер [white]{ $server }[]...
 player-servers-full = [scarlet]Сервер { $server } заполнен! Подождите освобождения слота.

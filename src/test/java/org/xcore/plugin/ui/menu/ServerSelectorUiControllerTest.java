@@ -22,6 +22,7 @@ import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -92,7 +93,7 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles VNode tree with 540 width, maxHeight 340 pane, tabs, and buttonTable cards")
+    @DisplayName("render compiles VNode tree with 740 width, maxHeight 520 pane, tabs, and buttonTable cards")
     void render_compilesVNodeTreeWithResponsiveCards() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
@@ -105,7 +106,7 @@ class ServerSelectorUiControllerTest {
 
         // Background and width
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 540");
+        assertThat(dsl).contains("width: 740");
 
         // Header
         assertThat(dsl).contains("ИГРОВЫЕ СЕРВЕРЫ");
@@ -121,7 +122,7 @@ class ServerSelectorUiControllerTest {
         // Dynamic slot
         assertThat(dsl).contains("id: slot_servers");
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 340");
+        assertThat(dsl).contains("maxHeight: 520");
 
         // Card buttonTables
         assertThat(dsl).contains("buttonTable{");
@@ -135,8 +136,44 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("SelectCategory patches slot_servers with filtered list")
-    void selectCategory_patchesSlotServers() {
+    @DisplayName("render compiles responsive mobile layout when isMobile is true")
+    void render_compilesMobileLayout() {
+        ServerRegistryService registry = createRegistry();
+        Session session = createTestSession("uuid-1");
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL, true);
+
+        VNode root = controller.render(model);
+        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
+        String dsl = UiDslWriter.write(compiler.compile(root));
+
+        assertThat(dsl).contains("background: pane");
+        assertThat(dsl).contains("width: 680");
+        assertThat(dsl).contains("maxHeight: 600");
+        assertThat(dsl).contains("size: 32");
+        assertThat(dsl).contains("action:connect:mini-pvp");
+    }
+
+    @Test
+    @DisplayName("render compiles centered info message when category is empty")
+    void render_compilesEmptyCategoryMessage() {
+        ServerRegistryService registry = createRegistry();
+        Session session = createTestSession("uuid-1");
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        ServerSelectorUiController.ServerSelectorModel model = new ServerSelectorUiController.ServerSelectorModel(
+                "none", Category.ALL, List.of(), 0, 0, 0, false
+        );
+
+        VNode root = controller.render(model);
+        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
+        String dsl = UiDslWriter.write(compiler.compile(root));
+
+        assertThat(dsl).contains("player-servers-empty-category");
+    }
+
+    @Test
+    @DisplayName("SelectCategory rerenders with filtered list")
+    void selectCategory_rerenders() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
@@ -147,14 +184,14 @@ class ServerSelectorUiControllerTest {
                 model, new ServerSelectorUiController.ServerSelectorEvent.SelectCategory(Category.PVP), ctx
         );
 
-        assertThat(result.dirtySlots()).containsExactly(ServerSelectorUiController.SLOT_SERVERS);
+        assertThat(result.fullRerender()).isTrue();
         assertThat(result.model().selectedCategory()).isEqualTo(Category.PVP);
         assertThat(result.model().filteredServers()).allMatch(s -> s.template().category() == Category.PVP);
     }
 
     @Test
-    @DisplayName("Refresh patches slot_servers with fresh snapshot")
-    void refresh_patchesSlotServers() {
+    @DisplayName("Refresh rerenders with fresh snapshot")
+    void refresh_rerenders() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
@@ -165,7 +202,7 @@ class ServerSelectorUiControllerTest {
                 model, new ServerSelectorUiController.ServerSelectorEvent.Refresh(), ctx
         );
 
-        assertThat(result.dirtySlots()).containsExactly(ServerSelectorUiController.SLOT_SERVERS);
+        assertThat(result.fullRerender()).isTrue();
     }
 
     @Test
