@@ -27,12 +27,28 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class GameThread {
 
-    /** Set {@code -Dxcore.strictThreads=true} to turn reports into failures. */
-    public static final boolean STRICT = Boolean.getBoolean("xcore.strictThreads");
+    /**
+     * The value {@code -Dxcore.strictThreads} was set to at startup. Tests override it
+     * through {@link #setStrictOverride} so both policies are covered on either build.
+     */
+    public static final boolean STRICT_DEFAULT = Boolean.getBoolean("xcore.strictThreads");
 
     private static final Set<String> REPORTED = ConcurrentHashMap.newKeySet();
 
+    private static volatile Boolean strictOverride;
+
     private GameThread() {
+    }
+
+    /** Whether a {@link #report} violation throws instead of logging. */
+    public static boolean isStrict() {
+        Boolean override = strictOverride;
+        return override != null ? override : STRICT_DEFAULT;
+    }
+
+    /** Overrides strict mode for the current JVM. Pass {@code null} to restore the default. */
+    static void setStrictOverride(Boolean strict) {
+        strictOverride = strict;
     }
 
     /**
@@ -74,7 +90,7 @@ public final class GameThread {
         if (isGameThread()) {
             return;
         }
-        if (STRICT) {
+        if (isStrict()) {
             require(site);
         }
         if (REPORTED.add(site)) {

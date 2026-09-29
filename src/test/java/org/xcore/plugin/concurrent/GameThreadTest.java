@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,6 +35,13 @@ class GameThreadTest {
     void tearDown() {
         Core.app = previousApp;
         GameThread.resetReported();
+        GameThread.setStrictOverride(null);
+    }
+
+    /** Runs {@code body} with strict reporting explicitly off, whatever the build default. */
+    private void nonStrictly(Runnable body) {
+        GameThread.setStrictOverride(false);
+        body.run();
     }
 
     /**
@@ -125,17 +133,46 @@ class GameThreadTest {
     @DisplayName("report does not throw when strict mode is off, and logs a site only once")
     void report_logsOnceWithoutThrowing() throws Exception {
         bootWithGameThread(Thread.currentThread());
-        // Mirrors the production default: report, do not abort the caller.
-        assertFalse(GameThread.STRICT, "this test assumes xcore.strictThreads is not set");
 
+        // Production default: report, do not abort the caller.
+        nonStrictly(() -> {
+            Thread other = new Thread(() -> {
+                GameThread.report("repeated-site");
+                GameThread.report("repeated-site");
+            }, "redis-sub-test");
+            other.start();
+            try {
+                other.join();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(ex);
+            }
+        });
+
+        assertTrue(GameThread.hasReported("repeated-site"));
+    }
+
+    @Test
+    @DisplayName("report turns into a failure under -Dxcore.strictThreads")
+    void report_throwsUnderStrictMode() throws Exception {
+        bootWithGameThread(Thread.currentThread());
+        GameThread.setStrictOverride(true);
+
+        var failure = new AtomicReference<Throwable>();
         Thread other = new Thread(() -> {
-            GameThread.report("repeated-site");
-            GameThread.report("repeated-site");
+            try {
+                GameThread.report("strict-site");
+            } catch (Throwable ex) {
+                failure.set(ex);
+            }
         }, "redis-sub-test");
         other.start();
         other.join();
 
-        assertTrue(GameThread.hasReported("repeated-site"));
+        assertInstanceOf(IllegalStateException.class, failure.get());
+        assertTrue(failure.get().getMessage().contains("strict-site"), failure.get().getMessage());
+        // The throw happens before the site is recorded as reported.
+        assertFalse(GameThread.hasReported("strict-site"));
     }
 
     @Test
@@ -144,7 +181,7 @@ class GameThreadTest {
         bootWithGameThread(Thread.currentThread());
 
         AtomicReference<String> ran = new AtomicReference<>();
-        GameThread.report("test-site", () -> ran.set("yes"));
+        nonStrictly(() -> GameThread.report("test-site", () -> ran.set("yes")));
 
         assertEquals("yes", ran.get());
     }
@@ -156,9 +193,16 @@ class GameThreadTest {
         Player player = Mockito.mock(Player.class);
         player.con = Mockito.mock(mindustry.net.NetConnection.class);
 
-        Thread other = new Thread(() -> GameThread.report("send-to:" + player, () -> player.sendMessage("hi")), "redis-sub-test");
-        other.start();
-        other.join();
+        nonStrictly(() -> {
+            Thread other = new Thread(() -> GameThread.report("send-to:" + player, () -> player.sendMessage("hi")), "redis-sub-test");
+            other.start();
+            try {
+                other.join();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(ex);
+            }
+        });
 
         assertTrue(GameThread.hasReported("send-to:" + player));
     }
@@ -188,9 +232,16 @@ class GameThreadTest {
     @DisplayName("logging a violation does not itself throw when the logger is unset")
     void report_isSafeWithDefaultLogger() throws Exception {        bootWithGameThread(Thread.currentThread());
 
-        Thread other = new Thread(() -> GameThread.report("logger-site"), "redis-sub-test");
-        other.start();
-        other.join();
+        nonStrictly(() -> {
+            Thread other = new Thread(() -> GameThread.report("logger-site"), "redis-sub-test");
+            other.start();
+            try {
+                other.join();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(ex);
+            }
+        });
 
         assertTrue(GameThread.hasReported("logger-site"));
     }
