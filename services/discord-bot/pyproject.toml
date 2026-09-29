@@ -19,7 +19,11 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", branch = "main" }
+# Pinned to a release tag, not a branch: a branch pin makes every build resolve a different
+# commit of the protocol. v0.7.0 is the first tag carrying the chat-domain decomposition this
+# bot imports (v0.6.2 predates it and fails collection). The tag is annotated, so uv records
+# the commit it peels to and the build stays reproducible.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.7.0" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
