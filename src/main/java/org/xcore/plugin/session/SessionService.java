@@ -9,6 +9,7 @@ import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -311,15 +312,55 @@ public class SessionService {
      * Clears cache and rebuilds from Groups.player.
      * Useful for manual cache refresh.
      */
-    public void reloadCache() {
-        sessionCache.clear();
+    /**
+     * Rebuilds the session cache from the authoritative repository.
+     *
+     * <p>This replaces a reload that walked {@link mindustry.gen.Groups#player} from
+     * the Redis subscriber thread while issuing one blocking Mongo query per player.
+     * The list was mutated under iteration, and a reconnect during the reload left a
+     * half-populated cache. The player snapshot is now taken on the game thread, the
+     * queries run on the storage executor, and the rebuilt cache is installed back on
+     * the game thread in a single swap.
+     */
+    public void reloadCacheAsync(Async async) {
+        async.main(() -> {
+            List<Player> online = new ArrayList<>();
+            Groups.player.each(online::add);
 
-        Groups.player.each(player -> {
-            Session session = createSession(player, loadOrCreatePlayerData(player));
-            sessionCache.put(player.uuid(), session);
+            async.supply(() -> {
+                    ObjectMap<String, PlayerData> reloaded = new ObjectMap<>();
+                    for (Player player : online) {
+                        PlayerData data = playerDataRepository.findByPlayer(player);
+                        reloaded.put(player.uuid(), data != null ? data : new PlayerData(player.uuid(), false));
+                    }
+                    return reloaded;
+                })
+                .thenMain((reloaded, error) -> {
+                    if (error != null) {
+                        PLog.err("Failed to reload player data cache", error);
+                        return;
+                    }
+
+                    // A player who disconnected while the queries ran must not be
+                    // resurrected in the cache, and the cache is left untouched on
+                    // failure so a bad reload cannot log everyone out.
+                    ObjectMap<String, Session> rebuilt = new ObjectMap<>();
+                    for (Player player : online) {
+                        if (!Async.isPlayerOnline(player)) {
+                            continue;
+                        }
+                        PlayerData data = reloaded.get(player.uuid());
+                        if (data == null) {
+                            continue;
+                        }
+                        rebuilt.put(player.uuid(), createSession(player, data));
+                    }
+
+                    sessionCache.clear();
+                    sessionCache.putAll(rebuilt);
+                    PLog.info("Player cache reloaded: @ players", sessionCache.size);
+                });
         });
-
-        PLog.info("Player cache reloaded: @ players", sessionCache.size);
     }
 
     /**

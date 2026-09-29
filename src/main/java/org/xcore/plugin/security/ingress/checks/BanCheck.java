@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 import mindustry.net.NetConnection;
 import mindustry.net.Packets.ConnectPacket;
 import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.BanDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.BanData;
@@ -21,6 +22,12 @@ import static mindustry.Vars.netServer;
 /**
  * Checks if player is banned (temporary or permanent).
  * Priority 0: Database lookup, runs in parallel.
+ *
+ * <p>This check runs on an ingress executor, never on the game thread, so the MongoDB
+ * lookup is correctly off-thread. The expired-ban cleanup below is the exception: it
+ * writes to the administration registry, which is game-thread state, so it is marshalled
+ * rather than applied inline. The registry is a plain hash map, and unbanning a player
+ * while the game thread reads the same map is a data race, not just a style violation.
  */
 @Singleton
 public class BanCheck implements IngressCheck {
@@ -28,11 +35,13 @@ public class BanCheck implements IngressCheck {
     private final BanDataRepository banDataRepository;
     private final Bundle bundle;
     private final TomlSecretsConfig secretsConfig;
+    private final Async async;
 
-    public BanCheck(BanDataRepository banDataRepository, Bundle bundle, TomlSecretsConfig secretsConfig) {
+    public BanCheck(BanDataRepository banDataRepository, Bundle bundle, TomlSecretsConfig secretsConfig, Async async) {
         this.banDataRepository = banDataRepository;
         this.bundle = bundle;
         this.secretsConfig = secretsConfig;
+        this.async = async;
     }
 
     @Override
@@ -46,8 +55,14 @@ public class BanCheck implements IngressCheck {
 
         if (ban != null) {
             if (ban.expired()) {
-                netServer.admins.unbanPlayerID(uuid);
-                netServer.admins.unbanPlayerIP(ip);
+                // Expired bans are lifted asynchronously: the connection is allowed either
+                // way, so there is nothing to wait for and the registry write belongs on
+                // the game thread. The row delete stays here so it happens even if the
+                // player disconnects before the game thread next drains.
+                async.main(() -> {
+                    netServer.admins.unbanPlayerID(uuid);
+                    netServer.admins.unbanPlayerIP(ip);
+                });
                 banDataRepository.delete(ban.uuid, ip);
                 return AccessResult.Allowed.INSTANCE;
             }

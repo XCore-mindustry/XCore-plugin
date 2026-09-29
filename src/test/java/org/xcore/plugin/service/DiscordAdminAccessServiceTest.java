@@ -8,12 +8,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,12 +30,19 @@ class DiscordAdminAccessServiceTest {
 
     private NetServer previousNetServer;
 
+    /**
+     * Runs the queued game-state tail inline. The marshalling itself is asserted
+     * separately, with a dispatcher that defers.
+     */
+    private Async async;
+
     @BeforeEach
     void setUp() {
         previousNetServer = Vars.netServer;
         NetServer netServer = mock(NetServer.class);
         netServer.admins = mock(Administration.class);
         Vars.netServer = netServer;
+        async = new Async(new StorageExecutor(4), Runnable::run);
     }
 
     @AfterEach
@@ -43,7 +57,8 @@ class DiscordAdminAccessServiceTest {
                 mock(PlayerDataRepository.class),
                 mock(SessionService.class),
                 mock(PlayerDisplayService.class),
-                mock(AuthStatusBroadcaster.class)
+                mock(AuthStatusBroadcaster.class),
+                async
         );
 
         assertThat(service.hasDiscordAdminAccess(PlayerData.builder().admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build())).isTrue();
@@ -57,7 +72,7 @@ class DiscordAdminAccessServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class), async);
 
         PlayerData stored = PlayerData.builder().uuid("uuid-1").admin(false).adminSource(DiscordAdminAccessService.SOURCE_NONE).build();
         Session session = mock(Session.class);
@@ -85,7 +100,7 @@ class DiscordAdminAccessServiceTest {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class), async);
 
         Player player = Player.create();
         player.admin = true;
@@ -112,12 +127,60 @@ class DiscordAdminAccessServiceTest {
     }
 
     @Test
+    @DisplayName("revokeDiscordAdminAccess defers game-state changes to the main thread but runs the repository inline")
+    void revokeDiscordAdminAccess_splitsStorageFromGameState() {
+        PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
+        SessionService sessionService = mock(SessionService.class);
+        PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
+
+        // Stands in for a Redis subscriber thread that is not the game thread.
+        List<Runnable> marshalled = new ArrayList<>();
+        DiscordAdminAccessService service = new DiscordAdminAccessService(
+                playerDataRepository, sessionService, playerDisplayService,
+                mock(AuthStatusBroadcaster.class), new Async(new StorageExecutor(4), marshalled::add));
+
+        Player player = Player.create();
+        player.admin = true;
+
+        PlayerData stored = PlayerData.builder().uuid("uuid-1").admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build();
+        Session session = mock(Session.class);
+        session.player = player;
+        session.data = PlayerData.builder().uuid("uuid-1").admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build();
+
+        when(playerDataRepository.findByUuid("uuid-1")).thenReturn(stored);
+        when(playerDataRepository.clearAdminAccess("uuid-1")).thenReturn(true);
+        when(sessionService.get("uuid-1")).thenReturn(session);
+
+        boolean result = service.revokeDiscordAdminAccess("uuid-1");
+
+        assertThat(result).isTrue();
+        // The persisted flags are storage, not game state: they must not wait for the
+        // game thread, or the database write would be gated on a frame.
+        assertThat(stored.admin).isFalse();
+        verify(playerDataRepository).clearAdminAccess("uuid-1");
+
+        // Player.admin, the admin registry, Player.name and the client packet must not
+        // have been touched from the subscriber thread.
+        assertThat(player.admin).as("Player.admin is game state").isTrue();
+        verify(Vars.netServer.admins, never()).unAdminPlayer(anyString());
+        verify(playerDisplayService, never()).refresh(any());
+        assertThat(marshalled).hasSize(1);
+
+        marshalled.forEach(Runnable::run);
+
+        assertThat(player.admin).isFalse();
+        assertThat(session.data.admin).isFalse();
+        verify(Vars.netServer.admins).unAdminPlayer("uuid-1");
+        verify(playerDisplayService).refresh(session);
+    }
+
+    @Test
     @DisplayName("revokeDiscordAdminAccess clears repository for offline player without refresh")
     void revokeDiscordAdminAccess_clearsRepositoryForOfflinePlayerWithoutRefresh() {
         PlayerDataRepository playerDataRepository = mock(PlayerDataRepository.class);
         SessionService sessionService = mock(SessionService.class);
         PlayerDisplayService playerDisplayService = mock(PlayerDisplayService.class);
-        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class));
+        DiscordAdminAccessService service = new DiscordAdminAccessService(playerDataRepository, sessionService, playerDisplayService, mock(AuthStatusBroadcaster.class), async);
 
         PlayerData stored = PlayerData.builder().uuid("uuid-1").admin(true).adminSource(DiscordAdminAccessService.SOURCE_DISCORD_ROLE).build();
 

@@ -21,7 +21,11 @@ public class Async {
         this(storageExecutor, MainThreadDispatcher.mindustry());
     }
 
-    Async(StorageExecutor storageExecutor, MainThreadDispatcher mainThread) {
+    /**
+     * Explicit composition root, used by tests that need to control the main-thread hop.
+     * Prefer the single-argument constructor in production wiring.
+     */
+    public Async(StorageExecutor storageExecutor, MainThreadDispatcher mainThread) {
         this.storageExecutor = Objects.requireNonNull(storageExecutor, "storageExecutor");
         this.mainThread = Objects.requireNonNull(mainThread, "mainThread");
     }
@@ -29,6 +33,18 @@ public class Async {
     /** Starts a fire-and-forget task on the bounded storage executor. */
     public void run(Runnable task) {
         storageExecutor.execute(task);
+    }
+
+    /**
+     * Marshals a task onto Mindustry's main thread.
+     *
+     * <p>Use this when work is already off-thread — a Redis subscriber callback, a
+     * completed future, a virtual thread — and only the game-state mutation needs to
+     * move. Do not wrap a blocking operation in it: that just moves the stall onto the
+     * game loop. For that, use {@link #supply(Callable)} and hop only for the result.
+     */
+    public void main(Runnable task) {
+        mainThread.execute(task);
     }
 
     /** Starts a background query and returns a fluent main-thread stage. */

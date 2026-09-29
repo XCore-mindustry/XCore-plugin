@@ -8,6 +8,7 @@ import mindustry.net.Administration;
 import mindustry.net.Packets;
 import mindustry.server.ServerControl;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
@@ -38,30 +39,46 @@ public class ModerationTransportHandler {
     private final TomlXcoreConfig config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
+    private final Async async;
 
     @Inject
     public ModerationTransportHandler(NetworkService network,
                                       SessionService sessionService,
                                       TomlXcoreConfig config,
                                       PlayerDisplayService playerDisplayService,
-                                      DiscordAdminAccessService discordAdminAccessService) {
+                                      DiscordAdminAccessService discordAdminAccessService,
+                                      Async async) {
         this.network = network;
         this.sessionService = sessionService;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
+        this.async = async;
     }
 
+    /**
+     * Registers moderation listeners.
+     *
+     * <p>Every listener here runs on a Redis subscriber virtual thread, never on the game
+     * thread. Handlers that touch Mindustry state are marshalled through {@link Async#main}
+     * explicitly. Handlers that only touch plugin-owned data are deliberately left on the
+     * subscriber thread, because their database calls must not stall the game loop.
+     */
     public void registerListeners() {
-        network.subscribe(ModerationKickBannedCommandV1.class, e -> Groups.player.each(
-                p -> {
-                    var target = e.target();
-                    return p.uuid().equals(target.playerUuid())
-                            || (target.ip() != null && target.ip().equals(p.ip()));
-                },
-                p -> p.kick(Packets.KickReason.banned)
-        ));
+        // Groups.player and Player.kick are game state.
+        network.subscribe(ModerationKickBannedCommandV1.class, e -> async.main(() -> {
+            var target = e.target();
+            Groups.player.each(
+                    p -> p.uuid().equals(target.playerUuid())
+                            || (target.ip() != null && target.ip().equals(p.ip())),
+                    p -> p.kick(Packets.KickReason.banned)
+            );
+        }));
 
+        // The repository round trips must not run on the game thread, so the handler does
+        // not marshal. DiscordAdminAccessService owns that decision: it keeps its Mongo
+        // work inline and queues only the game-state tail (Player.admin, the admin
+        // registry, Player.name, client packets). See its javadoc.
         network.subscribe(DiscordAdminAccessChangedCommandV1.class, e -> {
             if (e.admin()) {
                 if (discordAdminAccessService.applyDiscordAdminAccess(
@@ -79,7 +96,9 @@ public class ModerationTransportHandler {
             }
         });
 
-        network.subscribe(ModerationPardonCommandV1.class, e -> {
+        // Administration is main-thread state: the admin registry is read during auth
+        // and the kick list is scanned on every connection.
+        network.subscribe(ModerationPardonCommandV1.class, e -> async.main(() -> {
             Administration.PlayerInfo info = netServer.admins.getInfoOptional(e.target().playerUuid());
 
             if (info != null) {
@@ -87,30 +106,30 @@ public class ModerationTransportHandler {
                 netServer.admins.kickedIPs.remove(info.lastIP);
                 info("Pardoned player: @", info.plainLastName());
             }
-        });
+        }));
 
-        network.subscribe(PlayerCustomNicknameChangedCommandV1.class, e -> updatePlayerSession(
+        network.subscribe(PlayerCustomNicknameChangedCommandV1.class, e -> async.main(() -> updatePlayerSession(
                 e.playerUuid(),
                 data -> data.customNickname = e.customNickname(),
                 false,
                 "custom nickname"
-        ));
+        )));
 
-        network.subscribe(PlayerActiveBadgeChangedCommandV1.class, e -> updatePlayerSession(
+        network.subscribe(PlayerActiveBadgeChangedCommandV1.class, e -> async.main(() -> updatePlayerSession(
                 e.playerUuid(),
                 data -> data.activeBadge = e.activeBadge(),
                 true,
                 "active badge"
-        ));
+        )));
 
-        network.subscribe(PlayerBadgeSymbolColorModeChangedCommandV1.class, e -> updatePlayerSession(
+        network.subscribe(PlayerBadgeSymbolColorModeChangedCommandV1.class, e -> async.main(() -> updatePlayerSession(
                 e.playerUuid(),
                 data -> data.badgeSymbolColorMode = e.badgeSymbolColorMode(),
                 true,
                 "badge symbol color mode"
-        ));
+        )));
 
-        network.subscribe(PlayerBadgeInventoryChangedCommandV1.class, e -> updatePlayerSession(
+        network.subscribe(PlayerBadgeInventoryChangedCommandV1.class, e -> async.main(() -> updatePlayerSession(
                 e.playerUuid(),
                 data -> {
                     data.activeBadge = e.activeBadge();
@@ -118,20 +137,20 @@ public class ModerationTransportHandler {
                 },
                 true,
                 "badge inventory"
-        ));
+        )));
 
-        network.subscribe(PlayerPasswordResetCommandV1.class, e -> updatePlayerSession(
+        network.subscribe(PlayerPasswordResetCommandV1.class, e -> async.main(() -> updatePlayerSession(
                 e.playerUuid(),
                 data -> data.password = "",
                 false,
                 "password reset"
-        ));
+        )));
 
-        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> {
-            sessionService.reloadCache();
-            info("Reloaded player data cache.");
-        });
+        // The cache rebuild walks Groups.player and queries MongoDB per player, so it
+        // takes its own snapshot on the game thread and installs the result back onto it.
+        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> sessionService.reloadCacheAsync(async));
 
+        // handleCommandString runs game logic, including player and world mutation.
         network.subscribe(ServerCommandExecuteCommandV1.class, e -> {
             if (!e.targetServers().isEmpty()) {
                 if (e.exclusion()) {
@@ -141,11 +160,20 @@ public class ModerationTransportHandler {
                 }
             }
 
-            Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
-            ServerControl.instance.handleCommandString(e.command());
+            async.main(() -> {
+                Log.infoTag("ExecuteCommandEvent", "Executing command: " + e.command());
+                ServerControl.instance.handleCommandString(e.command());
+            });
         });
     }
 
+    /**
+     * Applies a moderation field change to a cached session.
+     *
+     * <p>Mutates {@code Player.name} and the administration registry through
+     * {@link PlayerDisplayService#refresh}, so it must not run on a subscriber thread.
+     * Callers are already inside an {@link Async#main} hop.
+     */
     private void updatePlayerSession(String uuid,
                                      Consumer<PlayerData> updater,
                                      boolean refreshDisplay,
