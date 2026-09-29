@@ -58,6 +58,8 @@ class IngressServiceFailureModeTest {
     @Test
     @DisplayName("a definite deny is returned even when a sibling check crashes")
     void denyOutranksLaterCrash() {
+        // The crash is delayed so it is polled second, and the deny is instant so it is
+        // polled first - the ordering that a naive implementation happens to get right.
         IngressCheck denying = new StubCheck("denying", FailureMode.FAIL_CLOSED) {
             @Override
             public AccessResult check(NetConnection con, ConnectPacket packet) {
@@ -77,6 +79,50 @@ class IngressServiceFailureModeTest {
 
         assertThat(result).isInstanceOf(AccessResult.Denied.class);
         assertThat(((AccessResult.Denied) result).reason()).isEqualTo("banned");
+    }
+
+    @Test
+    @DisplayName("a definite deny still wins when the crash is polled first")
+    void denyOutranksCrashPolledBeforeIt() {
+        // The original test only ever produced the ordering a naive implementation gets
+        // right by luck: whichever of the two instantaneous tasks finished first was the
+        // deny, so the crash was never seen before the verdict was returned. This is the
+        // ordering that actually raced in CI.
+        //
+        // A NoClassDefFoundError is an Error, not an Exception, so the worker's catch
+        // (Exception) does not see it and the task completes exceptionally. Resolving the
+        // verdict at that moment would report "unavailable" from the first submitted check
+        // and lose the real reason - purely by scheduling.
+        //
+        // The deny is delayed rather than the crash being instant, because two instant
+        // tasks are themselves unordered: holding back a third check would not pin these
+        // two against each other.
+        IngressCheck exploding = new StubCheck("exploding", FailureMode.FAIL_CLOSED) {
+            @Override
+            public AccessResult check(NetConnection con, ConnectPacket packet) {
+                throw new NoClassDefFoundError("boom");
+            }
+        };
+        IngressCheck denying = new StubCheck("denying", FailureMode.FAIL_CLOSED) {
+            @Override
+            public AccessResult check(NetConnection con, ConnectPacket packet) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+                return new AccessResult.Denied("banned", false);
+            }
+        };
+
+        IngressService service = new IngressService(List.of(exploding, denying), metrics(), config());
+
+        AccessResult result = service.validate(connection(), packet());
+
+        assertThat(result).isInstanceOf(AccessResult.Denied.class);
+        assertThat(((AccessResult.Denied) result).reason())
+                .as("a real deny must not be replaced by an \"unavailable\" verdict")
+                .isEqualTo("banned");
     }
 
     @Test

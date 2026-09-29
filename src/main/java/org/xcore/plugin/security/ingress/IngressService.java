@@ -134,6 +134,11 @@ public class IngressService {
         // tick thread for as long as the wave kept arriving.
         final long deadline = System.nanoTime() + handshakeBudgetNanos;
         boolean budgetExceeded = false;
+        // A check that died with an Error rather than an Exception never produced a verdict.
+        // Its posture verdict is kept here rather than returned on the spot, because a
+        // sibling may still be about to produce a real deny, and "unavailable" would
+        // replace a known reason with a vague one.
+        AccessResult pendingFailure = null;
 
         try {
             for (int i = 0; i < checks.size(); i++) {
@@ -147,7 +152,25 @@ public class IngressService {
                     break;
                 }
 
-                CheckOutcome outcome = completedFuture.get();
+                CheckOutcome outcome;
+                try {
+                    outcome = completedFuture.get();
+                } catch (ExecutionException e) {
+                    // Treating this as Allowed is exactly the fail-open hole the posture
+                    // exists to close, so resolve it by the check's own posture - but keep
+                    // polling. Returning here would make the verdict depend on which task
+                    // happened to finish first, so a genuine deny could be reported as
+                    // "unavailable" purely by scheduling.
+                    PLog.errTag("Ingress", "Check execution failed", e);
+                    if (pendingFailure == null) {
+                        IngressCheck failed = firstSubmitted(checks);
+                        pendingFailure = failed == null || failsClosed(failed)
+                                ? recordFailure(failed)
+                                : AccessResult.Allowed.INSTANCE;
+                    }
+                    continue;
+                }
+
                 if (outcome.result() instanceof AccessResult.Denied denied) {
                     if (deniedResult == null) {
                         recordDenied(outcome.check(), denied);
@@ -164,28 +187,19 @@ public class IngressService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new AccessResult.Denied("Interrupted", true);
-        } catch (ExecutionException e) {
-            // A check that died with an Error rather than an Exception escaped whatever it
-            // declared, and we never saw a verdict for it. Letting this fall through would
-            // return Allowed, which is exactly the fail-open hole this posture exists to
-            // close. Treat it by the check's own posture instead.
-            PLog.errTag("Ingress", "Check execution failed", e);
-            // A verdict that already landed still wins: a definite deny is a fact, and
-            // replacing it with "unavailable" would both weaken the reason and hide which
-            // check actually rejected the connection.
-            if (deniedResult != null) {
-                return deniedResult.result();
-            }
-            IngressCheck failed = firstSubmitted(checks);
-            return failed == null || failsClosed(failed) ? recordFailure(failed) : AccessResult.Allowed.INSTANCE;
         } finally {
             cancelRemaining(futures);
         }
 
-        // A verdict we did receive outranks the budget: a definitive deny must not be softened
-        // into an allow just because a sibling check overran.
+        // A verdict we did receive outranks both the budget and a sibling's crash: a
+        // definitive deny is a fact, and softening it into "unavailable" would both weaken
+        // the reason and hide which check actually rejected the connection.
         if (deniedResult != null) {
             return deniedResult.result();
+        }
+
+        if (pendingFailure != null) {
+            return pendingFailure;
         }
 
         if (budgetExceeded) {
