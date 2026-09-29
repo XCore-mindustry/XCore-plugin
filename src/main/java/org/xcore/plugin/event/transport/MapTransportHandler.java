@@ -80,13 +80,31 @@ public class MapTransportHandler {
             async.supply(() -> {
                     List<MapData> persisted = new ArrayList<>(snapshot.size());
                     for (MapIdentity identity : snapshot) {
-                        persisted.add(mapDataRepository
-                                .find(identity.plainName(), identity.author(), currentGameMode)
-                                .orElse(null));
+                        // One unreachable map must not cost the peer the whole list. A map
+                        // with no persisted record already serialises as a null MapData, so
+                        // a failed lookup produces the same answer a missing one does.
+                        try {
+                            persisted.add(mapDataRepository
+                                    .find(identity.plainName(), identity.author(), currentGameMode)
+                                    .orElse(null));
+                        } catch (RuntimeException lookupFailure) {
+                            Log.err("[Maps] Lookup failed for map '@'; replying without its metadata",
+                                    identity.plainName(), lookupFailure);
+                            persisted.add(null);
+                        }
                     }
                     return persisted;
                 })
-                .thenMain(persisted -> {
+                .thenMain((persisted, error) -> {
+                    // thenMain completes exceptionally on a storage failure or a dispatch
+                    // failure, and nobody observes that future. Swallowing it here would
+                    // leave the peer waiting out its timeout with no answer and nothing in
+                    // the log, which is the failure mode this handler is supposed to avoid.
+                    // Fall back to entries built from the engine snapshot alone.
+                    if (error != null) {
+                        Log.err("[Maps] Map list lookup failed; replying with engine data only", error);
+                        persisted = java.util.Collections.nCopies(snapshot.size(), (MapData) null);
+                    }
                     List<MapEntryV1> mapsList = new ArrayList<>(snapshot.size());
                     for (int i = 0; i < snapshot.size(); i++) {
                         MapIdentity identity = snapshot.get(i);

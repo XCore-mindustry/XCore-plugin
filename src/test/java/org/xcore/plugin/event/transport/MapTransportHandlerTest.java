@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -32,6 +33,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -120,6 +122,100 @@ class MapTransportHandlerTest {
                 .get(new MapsListRequestV1("mini-pvp"));
 
         verify(network).respond(any(), any());
+    }
+
+    @Test
+    @DisplayName("a failed map lookup still answers the peer")
+    void mapsListRequest_respondsEvenWhenTheRepositoryFails() {
+        NetworkService network = mock(NetworkService.class);
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        MapService mapService = mock(MapService.class);
+        MapDataRepository mapDataRepository = mock(MapDataRepository.class);
+        // thenMain completes exceptionally when the storage stage throws, and nothing
+        // observes that future. Swallowing it would leave the peer waiting out its timeout
+        // with no answer and nothing in the log.
+        when(mapDataRepository.find(anyString(), anyString(), anyString()))
+                .thenThrow(new IllegalStateException("mongodb is unreachable"));
+
+        Maps maps = mock(Maps.class);
+        Vars.maps = maps;
+        // A real map, not an empty list: with no maps the repository is never consulted, so
+        // the test would pass whether or not the failure path works. Built into a local
+        // first, because realMap stubs a mock and nesting that inside an unfinished when()
+        // corrupts the stubbing.
+        mindustry.maps.Map alpha = realMap("Alpha");
+        when(maps.customMaps()).thenReturn(Seq.with(alpha));
+
+        Vars.state = new mindustry.core.GameState();
+        Vars.state.rules = mock(Rules.class);
+        when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
+
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
+
+        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+        captureListeners(network, listeners);
+        handler.registerListeners();
+
+        listener(listeners, MapsListRequestV1.class).get(new MapsListRequestV1("mini-pvp"));
+
+        verify(mapDataRepository).find(anyString(), anyString(), anyString());
+        verify(network).respond(any(), any());
+    }
+
+    @Test
+    @DisplayName("one unreachable map does not cost the peer the rest of the list")
+    void mapsListRequest_isolatesAFailingLookupPerMap() {
+        NetworkService network = mock(NetworkService.class);
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        MapService mapService = mock(MapService.class);
+        MapDataRepository mapDataRepository = mock(MapDataRepository.class);
+        when(mapDataRepository.find(anyString(), anyString(), anyString()))
+                .thenThrow(new IllegalStateException("mongodb is unreachable"));
+
+        mindustry.maps.Map first = realMap("Alpha");
+        mindustry.maps.Map second = realMap("Beta");
+        Maps maps = mock(Maps.class);
+        Vars.maps = maps;
+        Seq<mindustry.maps.Map> bothMaps = Seq.with(first, second);
+        when(maps.customMaps()).thenReturn(bothMaps);
+
+        Vars.state = new mindustry.core.GameState();
+        Vars.state.rules = mock(Rules.class);
+        when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
+
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
+
+        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+        captureListeners(network, listeners);
+        handler.registerListeners();
+
+        listener(listeners, MapsListRequestV1.class).get(new MapsListRequestV1("mini-pvp"));
+
+        ArgumentCaptor<Object> response = ArgumentCaptor.forClass(Object.class);
+        verify(network).respond(any(), response.capture());
+        // Both maps still appear, without metadata. A map with no persisted record already
+        // serialises this way, so a failed lookup is the same answer a missing one gives.
+        assertThat(response.getValue().toString()).contains("Alpha", "Beta");
+    }
+
+    /**
+     * A real Map, not a mock: {@code file} is a final field, so Mockito cannot populate it
+     * and the mapper would dereference null while reading the file name.
+     */
+    private static mindustry.maps.Map realMap(String name) {
+        StringMap tags = new StringMap();
+        tags.put("name", name);
+        tags.put("author", "somebody");
+        tags.put("description", "a test map");
+
+        Fi file = mock(Fi.class);
+        when(file.name()).thenReturn(name.toLowerCase(java.util.Locale.ROOT) + ".msav");
+        // java.util.Map is imported in this file, so the constructor needs qualifying too.
+        return new mindustry.maps.Map(file, 10, 10, tags, true);
     }
 
     @Test

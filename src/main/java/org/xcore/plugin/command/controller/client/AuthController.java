@@ -144,8 +144,21 @@ public class AuthController implements CloudClientController {
         local.send("commands-login-verifying", args());
 
         // 5. Offload CPU-intensive BCrypt hashing / verification to StorageExecutor
+        //
+        // verifyOrSetPassword mutates and saves the PlayerData it is handed, and
+        // session.data is live state: the tick loop and every command read it, and
+        // SessionService can replace it wholesale while a reload is in flight. Hashing
+        // into the live object from a storage thread is a cross-thread write to shared
+        // state, and if the session's data was swapped meanwhile the new hash would be
+        // written to an object nothing reads any more. So the storage stage gets a
+        // detached copy carrying only the two fields it needs, and the result is applied
+        // back on the game thread.
+        PlayerData authSnapshot = PlayerData.builder()
+                .uuid(data.uuid)
+                .password(data.password)
+                .build();
         try {
-            storageExecutor.supply(() -> adminAuthService.verifyOrSetPassword(data, password))
+            storageExecutor.supply(() -> adminAuthService.verifyOrSetPassword(authSnapshot, password))
                     .whenComplete((result, error) -> {
                         mainThread.execute(() -> {
                             try {
@@ -163,6 +176,16 @@ public class AuthController implements CloudClientController {
                                 if (result.success()) {
                                     tracker.reset();
                                     bruteForceMap.remove(uuid);
+
+                                    // A newly created password lives on the snapshot, since
+                                    // that is the object the storage stage was allowed to
+                                    // write. Copy it onto the live session before granting
+                                    // admin, or the grant would outlive a password that was
+                                    // never recorded against this session.
+                                    if (result.created()) {
+                                        session.data.password = authSnapshot.password;
+                                        storageExecutor.supply(() -> sessionService.persistData(session.data));
+                                    }
 
                                     // Mutate Mindustry state on the tick thread
                                     adminAuthService.grantAdmin(player, session);
