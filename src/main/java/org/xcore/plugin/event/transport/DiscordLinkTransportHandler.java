@@ -2,6 +2,7 @@ package org.xcore.plugin.event.transport;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.SessionService;
@@ -16,17 +17,24 @@ public class DiscordLinkTransportHandler {
     private final NetworkService network;
     private final DiscordLinkService discordLinkService;
     private final SessionService sessionService;
+    private final Async async;
 
     @Inject
     public DiscordLinkTransportHandler(NetworkService network,
                                        DiscordLinkService discordLinkService,
-                                       SessionService sessionService) {
+                                       SessionService sessionService,
+                                       Async async) {
         this.network = network;
         this.discordLinkService = discordLinkService;
         this.sessionService = sessionService;
+        this.async = async;
     }
 
     public void registerListeners() {
+        // confirmLink and unlink are database work and must stay on the Redis subscriber
+        // thread; the confirmation and unlink messages below are chat packets and must not.
+        // DiscordLinkService applies its own game-state changes through Async, so only the
+        // locale send is left to marshal here.
         network.subscribe(DiscordLinkConfirmCommandV1.class, e -> {
             Integer playerPid = e.player().playerPid();
             if (playerPid == null) {
@@ -46,9 +54,9 @@ public class DiscordLinkTransportHandler {
 
             var session = sessionService.get(e.player().playerUuid());
             if (session != null) {
-                session.locale().send("commands-discord-link-confirmed", args(
+                async.main(() -> session.locale().send("commands-discord-link-confirmed", args(
                         "discordUsername", e.discord().discordUsername()
-                ));
+                )));
             }
         });
 
@@ -56,7 +64,7 @@ public class DiscordLinkTransportHandler {
             String playerUuid = e.player().playerUuid();
             var session = sessionService.get(playerUuid);
             if (discordLinkService.unlink(playerUuid) && session != null) {
-                session.locale().send("commands-discord-unlink-success", args());
+                async.main(() -> session.locale().send("commands-discord-unlink-success", args()));
             }
         });
     }

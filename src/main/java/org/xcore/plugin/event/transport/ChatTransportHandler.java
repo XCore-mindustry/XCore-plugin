@@ -8,6 +8,7 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.PrivateMessage;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PrivateMessageService;
@@ -23,29 +24,37 @@ public class ChatTransportHandler {
     private final SessionService sessionService;
     private final PrivateMessageService privateMessageService;
     private final TomlXcoreConfig config;
+    private final Async async;
 
     @Inject
     public ChatTransportHandler(NetworkService network,
                                 SessionService sessionService,
                                 PrivateMessageService privateMessageService,
-                                TomlXcoreConfig config) {
+                                TomlXcoreConfig config,
+                                Async async) {
         this.network = network;
         this.sessionService = sessionService;
         this.privateMessageService = privateMessageService;
         this.config = config;
+        this.async = async;
     }
 
+    /**
+     * Every listener here runs on a Redis subscriber thread and every one of them writes
+     * chat packets to player connections, so all three bodies are marshalled. They are
+     * otherwise pure — a cached session lookup and a message send — so nothing waits.
+     */
     public void registerListeners() {
-        network.subscribe(ChatGlobalV1.class, e -> {
+        network.subscribe(ChatGlobalV1.class, e -> async.main(() -> {
             sessionService.broadcastFiltered("global-chat-format", args(
                     "server", e.server(),
                     "author", e.authorName(),
                     "message", e.message()
             ), session -> !Boolean.FALSE.equals(session.data.globalChatVisible));
             Log.infoTag("GLOBAL-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
-        });
+        }));
 
-        network.subscribe(ChatDiscordIngressCommandV1.class, e -> {
+        network.subscribe(ChatDiscordIngressCommandV1.class, e -> async.main(() -> {
             if (!config.server.name.equals(e.server())) {
                 return;
             }
@@ -55,9 +64,9 @@ public class ChatTransportHandler {
                     "message", e.message()
             ), session -> !Boolean.FALSE.equals(session.data.discordRelayVisible));
             Log.infoTag("DISCORD-" + e.server(), Strings.stripColors(e.authorName()) + ": " + e.message());
-        });
+        }));
 
-        network.subscribe(ChatPrivateV1.class, e -> {
+        network.subscribe(ChatPrivateV1.class, e -> async.main(() -> {
             if (config.server.name.equals(e.server())) {
                 return;
             }
@@ -78,6 +87,6 @@ public class ChatTransportHandler {
 
             privateMessageService.deliverIncoming(message, recipientSession);
             recipientSession.lastPrivateTargetPid = e.fromPid();
-        });
+        }));
     }
 }

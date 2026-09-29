@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.NetworkService;
@@ -26,6 +28,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -39,10 +45,17 @@ class MapTransportHandlerTest {
     private Maps originalMaps;
     private mindustry.core.GameState originalState;
 
+    /**
+     * Runs the marshalled game-thread work inline so the existing behavioural assertions
+     * stay synchronous. The marshalling itself is asserted separately, below.
+     */
+    private Async async;
+
     @BeforeEach
     void setUp() {
         originalMaps = Vars.maps;
         originalState = Vars.state;
+        async = new Async(new StorageExecutor(4), Runnable::run);
     }
 
     @AfterEach
@@ -60,7 +73,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -92,7 +105,12 @@ class MapTransportHandlerTest {
         Vars.state.rules = mock(Rules.class);
         when(Vars.state.rules.mode()).thenReturn(Gamemode.pvp);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
+                // The list path reads the engine on the game thread, queries Mongo on the
+                // storage executor, then builds the response back on the game thread. Running
+                // the executor inline is the only way to observe the end of that chain from
+                // a test without sleeping.
+                new Async(inlineStorageExecutor(), Runnable::run));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -114,7 +132,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -149,7 +167,7 @@ class MapTransportHandlerTest {
         Maps maps = mock(Maps.class);
         Vars.maps = maps;
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -165,6 +183,54 @@ class MapTransportHandlerTest {
     }
 
     @Test
+    @DisplayName("map registry mutations are deferred off the subscriber thread until the game thread runs them")
+    void mapRegistryMutations_areMarshalledToMainThread() {
+        NetworkService network = mock(NetworkService.class);
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.server.name = "mini-pvp";
+        MapService mapService = mock(MapService.class);
+        MapDataRepository mapDataRepository = mock(MapDataRepository.class);
+
+        mindustry.maps.Map map = new mindustry.maps.Map(
+                new Fi("test.msav"),
+                100,
+                100,
+                StringMap.of("name", "Test", "author", "author"),
+                true
+        );
+        when(mapService.findMapByFileName("test.msav")).thenReturn(map);
+
+        Maps maps = mock(Maps.class);
+        Vars.maps = maps;
+
+        // Stands in for a game thread that has not come back around yet.
+        java.util.List<Runnable> marshalled = new java.util.ArrayList<>();
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository,
+                new Async(new StorageExecutor(4), marshalled::add));
+
+        Map<Class<?>, Cons<?>> listeners = new HashMap<>();
+        captureListeners(network, listeners);
+
+        handler.registerListeners();
+
+        listener(listeners, MapsRemoveRequestV1.class)
+                .get(new MapsRemoveRequestV1("mini-pvp", "test.msav"));
+
+        // maps.reload() rebuilds the engine's map index; applying it from the Redis
+        // subscriber thread races the tick loop reading the same registry.
+        verify(maps, never()).removeMap(any());
+        verify(maps, never()).reload();
+        verify(mapService, never()).findMapByFileName(any());
+        assertThat(marshalled).hasSize(1);
+
+        marshalled.forEach(Runnable::run);
+
+        verify(maps).removeMap(map);
+        verify(maps).reload();
+        verify(network).respond(any(), any());
+    }
+
+    @Test
     @DisplayName("maps load command is ignored for other servers")
     void mapsLoadCommand_isIgnoredForOtherServers() {
         NetworkService network = mock(NetworkService.class);
@@ -173,7 +239,7 @@ class MapTransportHandlerTest {
         MapService mapService = mock(MapService.class);
         MapDataRepository mapDataRepository = mock(MapDataRepository.class);
 
-        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository);
+        MapTransportHandler handler = new MapTransportHandler(network, config, mapService, mapDataRepository, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -189,8 +255,26 @@ class MapTransportHandlerTest {
         verifyNoInteractions(mapDataRepository);
     }
 
-    private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {
-        doAnswer(invocation -> {
+    /**
+     * A {@link StorageExecutor} that runs each callable on the calling thread and hands back
+     * an already-completed future, so {@code Async.supply} chains stay observable in tests.
+     */
+    private static StorageExecutor inlineStorageExecutor() {
+        StorageExecutor executor = mock(StorageExecutor.class);
+        when(executor.supply(ArgumentMatchers.<java.util.concurrent.Callable<Object>>any())).thenAnswer(call -> {
+            java.util.concurrent.Callable<Object> task = call.getArgument(0);
+            try {
+                return java.util.concurrent.CompletableFuture.completedFuture(task.call());
+            } catch (RuntimeException | Error ex) {
+                throw ex;
+            } catch (Exception ex) {
+                return java.util.concurrent.CompletableFuture.failedFuture(ex);
+            }
+        });
+        return executor;
+    }
+
+    private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {        doAnswer(invocation -> {
             listeners.put(invocation.getArgument(0), invocation.getArgument(1));
             return mock(RedisNetworkBackend.Subscription.class);
         }).when(network).subscribe(any(), any());

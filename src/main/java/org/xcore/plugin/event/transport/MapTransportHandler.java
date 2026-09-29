@@ -11,6 +11,7 @@ import org.xcore.protocol.generated.messages.maps.MapsMessages.MapsRemoveRequest
 import org.xcore.protocol.generated.shared.MapFileSourceV1;
 import org.xcore.protocol.generated.shared.MapEntryV1;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.security.MapFileNameSanitizer;
@@ -35,16 +36,23 @@ public class MapTransportHandler {
     private final TomlXcoreConfig config;
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
+    private final Async async;
 
     @Inject
     public MapTransportHandler(NetworkService network,
                                TomlXcoreConfig config,
                                MapService mapService,
-                               MapDataRepository mapDataRepository) {
+                               MapDataRepository mapDataRepository,
+                               Async async) {
         this.network = network;
         this.config = config;
         this.mapService = mapService;
         this.mapDataRepository = mapDataRepository;
+        this.async = async;
+    }
+
+    /** A map plus the identity fields read from the engine, captured on the game thread. */
+    private record MapIdentity(Map map, String plainName, String author) {
     }
 
     /** Re-captures map identity after any engine maps.reload() (upload/remove paths). */
@@ -53,25 +61,48 @@ public class MapTransportHandler {
     }
 
     public void registerListeners() {
-        network.subscribe(MapsListRequestV1.class, request -> {
+        // The map registry, the active ruleset and the engine's Map objects are all game
+        // state, and NetworkService.subscribe invokes this on a redis-sub-* virtual thread.
+        // The per-map repository lookups are MongoDB round trips, so only those run off
+        // the game thread: the engine reads are snapshotted first and the protocol entries
+        // are built last, both on the game thread.
+        network.subscribe(MapsListRequestV1.class, request -> async.main(() -> {
             if (!request.server().equals(config.server.name)) return;
 
-            var customMaps = maps.customMaps();
             String currentGameMode = state.rules.mode().name();
-            var mapsList = new ArrayList<MapEntryV1>(customMaps.size);
+            var customMaps = maps.customMaps();
+            List<MapIdentity> snapshot = new ArrayList<>(customMaps.size);
             for (int i = 0; i < customMaps.size; i++) {
                 Map map = customMaps.get(i);
-                MapData persistedMap = mapDataRepository.find(map.plainName(), map.author(), currentGameMode)
-                        .orElse(null);
-                mapsList.add(MapsProtocolMapper.toMapEntry(map, currentGameMode, persistedMap));
+                snapshot.add(new MapIdentity(map, map.plainName(), map.author()));
             }
 
-            network.respond(request, MapsProtocolMapper.toMapsListResponse(request.server(), mapsList));
-        });
+            async.supply(() -> {
+                    List<MapData> persisted = new ArrayList<>(snapshot.size());
+                    for (MapIdentity identity : snapshot) {
+                        persisted.add(mapDataRepository
+                                .find(identity.plainName(), identity.author(), currentGameMode)
+                                .orElse(null));
+                    }
+                    return persisted;
+                })
+                .thenMain(persisted -> {
+                    List<MapEntryV1> mapsList = new ArrayList<>(snapshot.size());
+                    for (int i = 0; i < snapshot.size(); i++) {
+                        MapIdentity identity = snapshot.get(i);
+                        mapsList.add(MapsProtocolMapper.toMapEntry(
+                                identity.map(), currentGameMode, persisted.get(i)));
+                    }
+                    network.respond(request,
+                            MapsProtocolMapper.toMapsListResponse(request.server(), mapsList));
+                });
+        }));
 
-        network.subscribe(MapsRemoveRequestV1.class, request -> {
+        network.subscribe(MapsRemoveRequestV1.class, request -> async.main(() -> {
             if (!request.server().equals(config.server.name)) return;
 
+            // findMapByFileName reads the engine map registry and removeMap/reload write
+            // it, so the whole decision belongs on the game thread. There is no I/O here.
             var map = mapService.findMapByFileName(request.fileName());
             if (map != null) {
                 maps.removeMap(map);
@@ -85,7 +116,7 @@ public class MapTransportHandler {
             network.respond(request, MapsProtocolMapper.toMapsRemoveResponse(request.server(), result));
 
             if (map != null) info("Removed map @", map.plainName());
-        });
+        }));
 
         network.subscribe(MapsLoadCommandV1.class, e -> {
             if (!config.server.name.equals(e.server())) return;
@@ -113,12 +144,18 @@ public class MapTransportHandler {
                 Http.get(file.url())
                         .error(Log::err)
                         .submit(result -> {
+                            // The download and the file write are I/O and belong off the game
+                            // thread. The registry reload does not: maps.reload() rebuilds the
+                            // engine's map index, and the counter fires on whichever Arc HTTP
+                            // worker finished last, which is never the game thread.
                             customMapDirectory.child(safeName).writeBytes(result.getResult());
 
                             if (counter.incrementAndGet() == accepted.size()) {
-                                maps.reload();
-                                onMapsReloaded();
-                                info("Loaded @ maps.", accepted.size());
+                                async.main(() -> {
+                                    maps.reload();
+                                    onMapsReloaded();
+                                    info("Loaded @ maps.", accepted.size());
+                                });
                             }
                         });
             }
