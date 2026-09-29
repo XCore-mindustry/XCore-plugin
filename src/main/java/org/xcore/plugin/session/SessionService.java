@@ -177,13 +177,35 @@ public class SessionService {
      * @param player the player instance
      * @return loaded PlayerData (newly created if player is new)
      */
-    public Session registerLogin(Player player) {
-        Session session = createSession(player, loadOrCreatePlayerData(player));
+    /**
+     * Registers a session around data that has already been loaded and settled.
+     *
+     * <p>There is deliberately no {@code registerLogin(Player)} convenience overload: it
+     * would hide a Mongo read behind a call that looks game-thread safe, which is the
+     * mistake this split exists to prevent. Callers load first, then register.
+     *
+     * <p>Game thread only, and deliberately the point at which the session becomes visible
+     * to {@link #get(String)}: the caller has finished writing by then, so no other thread
+     * can observe a half-populated {@link PlayerData}.
+     */
+    public Session registerLogin(Player player, PlayerData data) {
+        Session session = createSession(player, data);
 
         sessionCache.put(player.uuid(), session);
 
         PLog.debug("Player session registered: @ (@)", session.data.nickname, player.uuid());
         return session;
+    }
+
+    /**
+     * Reads the stored data for a uuid, or returns a fresh record for an unknown player.
+     *
+     * <p>Hits Mongo, so it belongs on the storage executor. The result is not published to
+     * any other thread.
+     */
+    public PlayerData loadPlayerData(String uuid) {
+        var data = playerDataRepository.findByUuid(uuid);
+        return data != null ? data : new PlayerData(uuid, false);
     }
 
     /**
@@ -477,6 +499,37 @@ public class SessionService {
             data.ip = ip;
             data.nickname = nickname;
         }, () -> playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname));
+    }
+
+    /**
+     * Applies the join-time ip/nickname to data that is not published yet, then persists.
+     *
+     * <p>Storage phase only. Because the {@code PlayerData} is still private to the caller,
+     * mutating it here cannot race a gameplay write; a session-scoped caller must go
+     * through {@link #updateConnectionData(Session, String, String)} instead, because there
+     * the cached record is shared with the game thread.
+     */
+    public boolean updateConnectionData(PlayerData data, String ip, String nickname) {
+        if (data == null) {
+            return false;
+        }
+
+        data.ip = ip;
+        data.nickname = nickname;
+        return playerDataRepository.updateConnectionData(data.uuid, ip, nickname);
+    }
+
+    /** Persists data that is not published yet. Storage phase only. */
+    public boolean persistData(PlayerData data) {
+        if (data == null) {
+            return false;
+        }
+
+        boolean persisted = playerDataRepository.save(data);
+        if (persisted) {
+            invalidateLeaderboardCache();
+        }
+        return persisted;
     }
 
     public boolean updateAdminStatus(Session session, boolean admin, String adminSource) {

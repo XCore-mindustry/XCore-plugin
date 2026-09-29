@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.service.MapService;
@@ -28,8 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -110,7 +109,7 @@ class MapTransportHandlerTest {
                 // storage executor, then builds the response back on the game thread. Running
                 // the executor inline is the only way to observe the end of that chain from
                 // a test without sleeping.
-                new Async(inlineStorageExecutor(), Runnable::run));
+                new Async(InlineStorageExecutor.create(), Runnable::run));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -253,25 +252,6 @@ class MapTransportHandlerTest {
 
         verifyNoInteractions(mapService);
         verifyNoInteractions(mapDataRepository);
-    }
-
-    /**
-     * A {@link StorageExecutor} that runs each callable on the calling thread and hands back
-     * an already-completed future, so {@code Async.supply} chains stay observable in tests.
-     */
-    private static StorageExecutor inlineStorageExecutor() {
-        StorageExecutor executor = mock(StorageExecutor.class);
-        when(executor.supply(ArgumentMatchers.<java.util.concurrent.Callable<Object>>any())).thenAnswer(call -> {
-            java.util.concurrent.Callable<Object> task = call.getArgument(0);
-            try {
-                return java.util.concurrent.CompletableFuture.completedFuture(task.call());
-            } catch (RuntimeException | Error ex) {
-                throw ex;
-            } catch (Exception ex) {
-                return java.util.concurrent.CompletableFuture.failedFuture(ex);
-            }
-        });
-        return executor;
     }
 
     private static void captureListeners(NetworkService network, Map<Class<?>, Cons<?>> listeners) {        doAnswer(invocation -> {
