@@ -27,6 +27,12 @@ public class AnnouncementService {
     private final AtomicInteger currentIndex = new AtomicInteger(0);
     private Timer.Task scheduledTask;
 
+    public static final List<String> DEFAULT_ANNOUNCEMENTS = List.of(
+            "announcement-hub",
+            "announcement-discord",
+            "announcement-help"
+    );
+
     @Inject
     public AnnouncementService(TomlXcoreConfig config, SessionService sessionService) {
         this.config = Objects.requireNonNull(config, "config");
@@ -64,7 +70,7 @@ public class AnnouncementService {
         if (!config.announcements.enabled) {
             return null;
         }
-        List<String> messages = config.announcements.messages;
+        List<String> messages = getActiveMessages();
         if (messages == null || messages.isEmpty()) {
             return null;
         }
@@ -80,6 +86,24 @@ public class AnnouncementService {
 
         broadcast(messageKey);
         return messageKey;
+    }
+
+    /**
+     * Resolves the list of active announcement keys based on configuration.
+     * If {@code useCustomList} is enabled and {@code messages} is non-empty, uses the custom list;
+     * otherwise, uses {@link #DEFAULT_ANNOUNCEMENTS}.
+     */
+    public List<String> getActiveMessages() {
+        if (config.announcements.useCustomList
+                && config.announcements.messages != null
+                && !config.announcements.messages.isEmpty()) {
+            return config.announcements.messages;
+        }
+        return DEFAULT_ANNOUNCEMENTS;
+    }
+
+    public boolean isCustomListEnabled() {
+        return config.announcements.useCustomList;
     }
 
     /**

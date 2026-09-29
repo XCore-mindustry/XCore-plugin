@@ -89,9 +89,10 @@ class AnnouncementServiceTest {
     }
 
     @Test
-    @DisplayName("broadcastNext rotates across configured messages sequentially")
+    @DisplayName("broadcastNext rotates across configured messages sequentially when useCustomList is true")
     void broadcastNext_rotatesAcrossMessages() {
         TomlXcoreConfig config = new TomlXcoreConfig();
+        config.announcements.useCustomList = true;
         config.announcements.messages = List.of("msg-1", "msg-2", "msg-3");
 
         Player player = mock(Player.class);
@@ -119,6 +120,32 @@ class AnnouncementServiceTest {
 
         assertThat(service.broadcastNext()).isEqualTo("msg-1");
         verify(locale, times(2)).send("msg-1");
+    }
+
+    @Test
+    @DisplayName("getActiveMessages returns DEFAULT_ANNOUNCEMENTS when useCustomList is false")
+    void getActiveMessages_defaultsToBuiltin() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.announcements.useCustomList = false;
+        config.announcements.messages = List.of("custom-only");
+
+        SessionService sessionService = mock(SessionService.class);
+        AnnouncementService service = new AnnouncementService(config, sessionService);
+
+        assertThat(service.getActiveMessages()).isEqualTo(AnnouncementService.DEFAULT_ANNOUNCEMENTS);
+    }
+
+    @Test
+    @DisplayName("getActiveMessages returns custom messages when useCustomList is true")
+    void getActiveMessages_returnsCustomWhenEnabled() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.announcements.useCustomList = true;
+        config.announcements.messages = List.of("custom-1", "custom-2");
+
+        SessionService sessionService = mock(SessionService.class);
+        AnnouncementService service = new AnnouncementService(config, sessionService);
+
+        assertThat(service.getActiveMessages()).containsExactly("custom-1", "custom-2");
     }
 
     @Test

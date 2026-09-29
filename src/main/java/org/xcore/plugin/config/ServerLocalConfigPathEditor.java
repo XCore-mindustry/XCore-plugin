@@ -123,6 +123,7 @@ public final class ServerLocalConfigPathEditor {
         bind(bindings, "announcements.enabled", ValueType.BOOLEAN);
         bind(bindings, "announcements.interval_seconds", ValueType.INT);
         bind(bindings, "announcements.first_delay_seconds", ValueType.INT);
+        bind(bindings, "announcements.use_custom_list", ValueType.BOOLEAN);
         bind(bindings, "announcements.messages", ValueType.STRING_LIST);
 
         return bindings;

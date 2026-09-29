@@ -4,6 +4,7 @@ import arc.struct.Seq;
 import arc.util.Nullable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.incendo.cloud.annotation.specifier.Greedy;
@@ -81,8 +82,17 @@ public class BroadcastController implements CloudClientController {
         }
 
         if (key != null && !key.isBlank()) {
-            int sent = announcementService.broadcast(key);
-            sender.sendMessage("[accent]Announcement [white]'" + key + "'[accent] sent to [green]" + sent + " [accent]player(s).");
+            if ("list".equalsIgnoreCase(key.trim())) {
+                List<String> active = announcementService.getActiveMessages();
+                sender.sendMessage("[accent]Active announcements ([gold]" + active.size() + "[accent]): [white]" +
+                        String.join(", ", active) + " [gray](use_custom_list=" +
+                        announcementService.isCustomListEnabled() + ")");
+                return;
+            }
+
+            String resolvedKey = key.startsWith("announcement-") ? key : "announcement-" + key;
+            int sent = announcementService.broadcast(resolvedKey);
+            sender.sendMessage("[accent]Announcement [white]'" + resolvedKey + "'[accent] sent to [green]" + sent + " [accent]player(s).");
         } else {
             String sentKey = announcementService.broadcastNext();
             if (sentKey != null) {

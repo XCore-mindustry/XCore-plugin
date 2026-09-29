@@ -130,11 +130,14 @@ public final class ConfigTomlTemplateWriter {
         enabled = true
         interval_seconds = 360
         first_delay_seconds = 120
+        # When false, cycles through all built-in announcements automatically.
+        # When true, cycles only through the keys specified in 'messages'.
+        use_custom_list = false
         # Fluent localization keys from bundle_*.ftl to rotate through
         messages = [
             "announcement-hub",
-            # "announcement-discord",
-            # "announcement-help",
+            "announcement-discord",
+            "announcement-help",
         ]
         """;
     }

@@ -66,7 +66,7 @@ class TomlXcoreConfigTest {
         assertThat(toml.announcements.enabled).isTrue();
         assertThat(toml.announcements.intervalSeconds).isEqualTo(360);
         assertThat(toml.announcements.firstDelaySeconds).isEqualTo(120);
-        assertThat(toml.announcements.messages).containsExactly("announcement-hub");
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help");
     }
 
     @Test
@@ -98,7 +98,7 @@ class TomlXcoreConfigTest {
         assertThat(toml.server.name).isEqualTo("server");
         assertThat(toml.transport.redis.url).isEqualTo("redis://127.0.0.1:6379");
         assertThat(toml.translation.pipeline).containsExactly("google");
-        assertThat(toml.announcements.messages).containsExactly("announcement-hub");
+        assertThat(toml.announcements.messages).containsExactly("announcement-hub", "announcement-discord", "announcement-help");
     }
 
     @Test

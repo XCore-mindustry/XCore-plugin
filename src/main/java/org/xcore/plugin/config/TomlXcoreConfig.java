@@ -321,8 +321,11 @@ public class TomlXcoreConfig implements SelfNormalizing {
         public boolean enabled = true;
         public int intervalSeconds = 360;
         public int firstDelaySeconds = 120;
+        public boolean useCustomList = false;
         public List<String> messages = new ArrayList<>(List.of(
-                "announcement-hub"
+                "announcement-hub",
+                "announcement-discord",
+                "announcement-help"
         ));
 
         public void normalize() {
@@ -333,7 +336,11 @@ public class TomlXcoreConfig implements SelfNormalizing {
                 firstDelaySeconds = 120;
             }
             if (messages == null || messages.isEmpty()) {
-                messages = new ArrayList<>(List.of("announcement-hub"));
+                messages = new ArrayList<>(List.of(
+                        "announcement-hub",
+                        "announcement-discord",
+                        "announcement-help"
+                ));
             }
         }
     }
