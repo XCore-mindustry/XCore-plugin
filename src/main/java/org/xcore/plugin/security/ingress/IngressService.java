@@ -148,16 +148,36 @@ public class IngressService {
                 }
 
                 CheckOutcome outcome = completedFuture.get();
-                if (outcome.result() instanceof AccessResult.Denied denied && deniedResult == null) {
-                    recordDenied(outcome.check(), denied);
-                    deniedResult = outcome;
+                if (outcome.result() instanceof AccessResult.Denied denied) {
+                    if (deniedResult == null) {
+                        recordDenied(outcome.check(), denied);
+                        deniedResult = outcome;
+                    }
+                    // Stop here. The handshake runs on the game thread, so continuing to
+                    // poll siblings after we already know the answer is pure stall: a
+                    // banned client would hold the tick loop for the rest of the budget
+                    // instead of being rejected immediately. The finally block cancels
+                    // whatever is still in flight.
+                    break;
                 }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new AccessResult.Denied("Interrupted", true);
         } catch (ExecutionException e) {
+            // A check that died with an Error rather than an Exception escaped whatever it
+            // declared, and we never saw a verdict for it. Letting this fall through would
+            // return Allowed, which is exactly the fail-open hole this posture exists to
+            // close. Treat it by the check's own posture instead.
             PLog.errTag("Ingress", "Check execution failed", e);
+            // A verdict that already landed still wins: a definite deny is a fact, and
+            // replacing it with "unavailable" would both weaken the reason and hide which
+            // check actually rejected the connection.
+            if (deniedResult != null) {
+                return deniedResult.result();
+            }
+            IngressCheck failed = firstSubmitted(checks);
+            return failed == null || failsClosed(failed) ? recordFailure(failed) : AccessResult.Allowed.INSTANCE;
         } finally {
             cancelRemaining(futures);
         }
@@ -192,7 +212,6 @@ public class IngressService {
         recordDenied(check, denied);
         return denied;
     }
-
     private AccessResult onBudgetExceeded() {
         metricsService.increment(
                 XcoreMetrics.INGRESS_HANDSHAKE_BUDGET_EXCEEDED_TOTAL,
@@ -206,6 +225,16 @@ public class IngressService {
         return new AccessResult.Denied(UNAVAILABLE_REASON, true);
     }
 
+    /**
+     * Best-effort subject for a crash we cannot attribute. If the crash happened before any
+     * verdict landed we do not know which check died, so the first submitted one stands in
+     * as the subject for the metric and the posture. A null result means "unknown", which
+     * the caller treats as fail-closed.
+     */
+    private IngressCheck firstSubmitted(List<IngressCheck> checks) {
+        return checks == null || checks.isEmpty() ? null : checks.get(0);
+    }
+
     private void cancelRemaining(List<Future<CheckOutcome>> futures) {
         for (Future<CheckOutcome> future : futures) {
             if (!future.isDone()) {
@@ -215,9 +244,12 @@ public class IngressService {
     }
 
     private void recordDenied(IngressCheck check, AccessResult.Denied denied) {
+        // A check that crashed with an Error can be unattributable, so the subject is
+        // nullable here. Losing the metric would be worse than an "unknown" label.
+        String name = check != null ? check.name() : "unknown";
         metricsService.increment(
                 XcoreMetrics.INGRESS_DENIALS_TOTAL,
-                Tags.of("check", check.name(), "silent", Boolean.toString(denied.silent()))
+                Tags.of("check", name, "silent", Boolean.toString(denied.silent()))
         );
     }
 

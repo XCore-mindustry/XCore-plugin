@@ -217,3 +217,4 @@ commands-login-rate-limited = [scarlet]⚠ Занадта шмат няўдал�
 commands-login-request-approval-discord = [accent]Ваш акаунт не мае Discord-доступу адміністратара. Атрымайце роль адміністратара ў Discord і паспрабуйце зноў.
 error-admin-password-too-short = [scarlet]⚠ Пароль адміністратора павін быць не карочкі за 8 сімвалаў.
 error-processing-request = [scarlet]Адбылася памылка пры апрацоўкі запыту.
+error-only-players = [scarlet]⚠ Гэтая каманда даступная толькі гульцам.

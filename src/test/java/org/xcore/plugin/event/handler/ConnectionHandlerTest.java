@@ -47,6 +47,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.concurrent.Callable;
 
 class ConnectionHandlerTest {
 
@@ -417,6 +418,44 @@ class ConnectionHandlerTest {
         verify(networkService).post(any(PlayerJoinLeaveV1.class));
     }
 
+    @Test
+    @DisplayName("onPlayerJoin kicks the player when the storage phase fails")
+    void onPlayerJoin_kicksThePlayerWhenStorageFails() {
+        SessionService sessionService = mock(SessionService.class);
+        ConnectionHandler handler = new ConnectionHandler(sessionService,
+                mock(NetworkService.class), new TomlXcoreConfig(), new TomlSecretsConfig(),
+                mock(VoteService.class), mock(PrivateMessageService.class),
+                mock(PlayerDisplayService.class), mock(DiscordAdminAccessService.class),
+                mock(ObserverService.class), mock(MapVoteObserverService.class),
+                new Async(failingStorage(), Runnable::run));
+
+        Player player = onlinePlayer();
+        player.name = "Unlucky";
+        player.con = new DummyNetConnection("1.1.1.1");
+        player.con.uuid = "uuid-mongo-down";
+        player.con.player = player;
+
+        handler.onPlayerJoin(new EventType.PlayerJoin(player));
+
+        // The player is already in the world at this point, so leaving them there with no
+        // session is the failure: session-backed guards read null and pass them through,
+        // and onPlayerLeave finds nothing to clear.
+        verify(sessionService, never()).registerLogin(any(), any());
+        // The player is a mock, so the real kick body does not run; what matters is that
+        // it was asked to leave.
+        verify(player).kick(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    /** A storage executor whose task fails, the way an unreachable Mongo would. */
+    private static org.xcore.plugin.concurrent.StorageExecutor failingStorage() {
+        org.xcore.plugin.concurrent.StorageExecutor executor =
+                Mockito.mock(org.xcore.plugin.concurrent.StorageExecutor.class);
+        when(executor.supply(Mockito.<Callable<Object>>any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.failedFuture(
+                        new java.util.concurrent.TimeoutException("mongo unreachable")));
+        return executor;
+    }
+
     /**
      * A player that reports itself as added, which is the state NetServer.connectConfirm has
      * already put it in by the time it fires PlayerJoin. The join continuation drops its work
@@ -430,6 +469,9 @@ class ConnectionHandlerTest {
 
     private static final class DummyNetConnection extends NetConnection {
 
+        boolean closed;
+        String kickReason;
+
         private DummyNetConnection(String address) {
             super(address);
             this.lastReceivedClientSnapshot = 0;
@@ -441,6 +483,14 @@ class ConnectionHandlerTest {
 
         @Override
         public void close() {
+            closed = true;
+        }
+
+        /** Player.kick(String, long) routes here rather than through close(). */
+        @Override
+        public void kick(String reason, long duration) {
+            kickReason = reason;
+            closed = true;
         }
 
         @Override

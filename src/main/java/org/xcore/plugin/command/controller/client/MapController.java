@@ -61,6 +61,13 @@ public class MapController implements CloudClientController {
             return;
         }
 
+        // The continuation is scoped to a connected player, and forPlayer requires one.
+        // The console is a legitimate caller of this command and has no player.
+        if (!sender.isPlayer()) {
+            sender.send("error-only-players", args());
+            return;
+        }
+
         // Commands are dispatched from the game thread, and findOrCreate both reads and can
         // write the map row, so it must not run here. Everything the lookup needs is read
         // from live game state first: a map can be swapped or deleted while the round trip

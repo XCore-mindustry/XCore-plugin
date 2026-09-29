@@ -1114,3 +1114,4 @@ player-servers-card-map = [gray]Мапа:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Режим:[] [white]{ $mode }[]
 
 
+error-only-players = [scarlet]⚠ Цю команду можуть використовувати лише гравці.

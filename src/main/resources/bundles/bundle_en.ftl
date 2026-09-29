@@ -1112,3 +1112,4 @@ player-servers-card-map = [gray]Map:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Mode:[] [white]{ $mode }[]
 
 
+error-only-players = [scarlet]⚠ This command can only be used by a player.

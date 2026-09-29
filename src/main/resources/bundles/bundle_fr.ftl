@@ -9,3 +9,4 @@ commands-login-request-approval-discord = [accent]Votre compte n'a pas l'accès 
 error-admin-password-too-short = [scarlet]⚠ Le mot de passe administrateur doit comporter au moins 8 caractères.
 error-processing-request = [scarlet]Une erreur s'est produite lors du traitement de la requête.
 
+error-only-players = [scarlet]⚠ Cette commande ne peut être utilisée que par les joueurs.

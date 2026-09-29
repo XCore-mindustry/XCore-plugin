@@ -138,25 +138,45 @@ public class MapTransportHandler {
                 return;
             }
 
-            AtomicInteger counter = new AtomicInteger();
+            AtomicInteger completed = new AtomicInteger();
+            AtomicInteger written = new AtomicInteger();
+            // Both the success and the error handler have to count, or a single 404 leaves
+            // the counter short and the reload never happens: the maps that did download
+            // would sit on disk unindexed until some later command or a restart.
+            Runnable finishIfDone = () -> {
+                if (completed.incrementAndGet() != accepted.size()) {
+                    return;
+                }
+                int loaded = written.get();
+                if (loaded == 0) {
+                    return;
+                }
+                async.main(() -> {
+                    maps.reload();
+                    onMapsReloaded();
+                    if (loaded == accepted.size()) {
+                        info("Loaded @ maps.", loaded);
+                    } else {
+                        info("Loaded @ of @ maps; the rest failed to download.", loaded, accepted.size());
+                    }
+                });
+            };
+
             for (MapFileSourceV1 file : accepted) {
                 String safeName = MapFileNameSanitizer.requireSafeName(file.fileName());
                 Http.get(file.url())
-                        .error(Log::err)
+                        .error(error -> {
+                            Log.err("Failed to download map @", file.fileName(), error);
+                            finishIfDone.run();
+                        })
                         .submit(result -> {
                             // The download and the file write are I/O and belong off the game
                             // thread. The registry reload does not: maps.reload() rebuilds the
                             // engine's map index, and the counter fires on whichever Arc HTTP
                             // worker finished last, which is never the game thread.
                             customMapDirectory.child(safeName).writeBytes(result.getResult());
-
-                            if (counter.incrementAndGet() == accepted.size()) {
-                                async.main(() -> {
-                                    maps.reload();
-                                    onMapsReloaded();
-                                    info("Loaded @ maps.", accepted.size());
-                                });
-                            }
+                            written.incrementAndGet();
+                            finishIfDone.run();
                         });
             }
         });

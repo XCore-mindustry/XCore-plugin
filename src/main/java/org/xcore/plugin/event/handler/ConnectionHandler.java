@@ -92,7 +92,17 @@ public class ConnectionHandler {
         // The data writes still happen, which is correct: the new IP and nickname are real
         // regardless of how long the connection lasted, and markOnline is never reached so
         // there is no online flag for onPlayerLeave to clear.
-        async.forPlayer(player, () -> prepareJoin(join), (p, prepared) -> completeJoin(p, join, prepared));
+        //
+        // The failure path matters just as much. This player is already in Groups.player, so
+        // a storage error that only logged would leave someone in the world with no session:
+        // every session-backed guard then reads null and passes them through, and
+        // onPlayerLeave finds no session so it clears nothing. Evict them instead.
+        async.forPlayer(
+                player,
+                () -> prepareJoin(join),
+                (p, prepared) -> completeJoin(p, join, prepared),
+                (p, error) -> p.kick("Failed to load player data. Please reconnect.")
+        );
     }
 
     /**

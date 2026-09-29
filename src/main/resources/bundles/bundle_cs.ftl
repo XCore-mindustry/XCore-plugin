@@ -9,3 +9,4 @@ commands-login-request-approval-discord = [accent]Váš účet nemá přístup a
 error-admin-password-too-short = [scarlet]⚠ Heslo administrátora musí mít alespoň 8 znaků.
 error-processing-request = [scarlet]Při zpracování požadavku došlo k chybě.
 
+error-only-players = [scarlet]⚠ Tento příkaz mohou používat pouze hráči.

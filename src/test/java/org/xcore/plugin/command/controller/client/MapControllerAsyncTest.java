@@ -114,6 +114,27 @@ class MapControllerAsyncTest {
     }
 
     @Test
+    @DisplayName("/map from the console is refused instead of throwing on a null player")
+    void map_consoleSenderIsRefused() {
+        Deque<Runnable> pending = new ArrayDeque<>();
+        MapDataRepository repository = mock(MapDataRepository.class);
+        MapController controller = controller(repository, mock(MapMenu.class), pending);
+
+        // The console has no player, and forPlayer requires one. Before the guard this was
+        // an NPE thrown into the command dispatcher.
+        XCoreSender console = mock(XCoreSender.class);
+        when(console.isPlayer()).thenReturn(false);
+        when(console.player()).thenReturn(null);
+
+        controller.map(console, mockMap());
+
+        assertThat(pending).isEmpty();
+        assertThat(STORAGE).isEmpty();
+        verify(repository, never()).findOrCreate(anyString(), anyString(), anyString(), anyString());
+        verify(console).send(eq("error-only-players"), any());
+    }
+
+    @Test
     @DisplayName("/map rejects a missing map without scheduling anything")
     void map_missingMap_schedulesNothing() {
         Deque<Runnable> pending = new ArrayDeque<>();
@@ -144,6 +165,9 @@ class MapControllerAsyncTest {
 
     private static XCoreSender senderOf(Player player) {
         XCoreSender sender = mock(XCoreSender.class);
+        // Mockito defaults booleans to false, and the controller now rejects non-player
+        // senders before doing any work, so this has to be stated explicitly.
+        when(sender.isPlayer()).thenReturn(true);
         when(sender.player()).thenReturn(player);
         return sender;
     }

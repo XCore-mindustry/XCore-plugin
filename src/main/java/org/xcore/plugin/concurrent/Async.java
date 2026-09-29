@@ -120,31 +120,58 @@ public class Async {
      * thread only while the same player is still connected and in Groups.player.
      */
     public <T> void forPlayer(Player player, Callable<T> task, BiConsumer<Player, T> continuation) {
+        forPlayer(player, task, continuation, (failedPlayer, error) ->
+                arc.util.Log.err("Storage task for player @ failed", failedPlayer.plainName(), error));
+    }
+
+    /**
+     * Player-scoped query with an explicit failure path.
+     *
+     * <p>The failure continuation runs on the main thread, and only while the player is
+     * still online. Callers that admit a player into the world <em>before</em> the query
+     * completes must use this: a player left in the world with no session is neither
+     * protected by session-backed guards nor cleaned up on disconnect, because
+     * {@code onPlayerLeave} looks the session up to decide what to clear.
+     */
+    public <T> void forPlayer(
+            Player player,
+            Callable<T> task,
+            BiConsumer<Player, T> continuation,
+            BiConsumer<Player, Throwable> onFailure
+    ) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(task, "task");
         Objects.requireNonNull(continuation, "continuation");
+        Objects.requireNonNull(onFailure, "onFailure");
 
         storageExecutor.supply(task).whenComplete((value, error) -> {
             if (error != null) {
                 arc.util.Log.err("Storage task for player @ failed", player.plainName(), error);
+                // Same liveness rule as the success path: only tell someone to reconnect
+                // while they are actually here to read it.
+                dispatch(player, () -> onFailure.accept(player, error), "storage failure handler");
                 return;
             }
 
-            try {
-                mainThread.execute(() -> {
-                    if (!isPlayerOnline(player)) {
-                        return;
-                    }
-                    try {
-                        continuation.accept(player, value);
-                    } catch (Throwable callbackError) {
-                        arc.util.Log.err("Error executing continuation for player @", player.plainName(), callbackError);
-                    }
-                });
-            } catch (Throwable dispatchError) {
-                arc.util.Log.err("Failed to dispatch storage result to main thread for player @", player.plainName(), dispatchError);
-            }
+            dispatch(player, () -> continuation.accept(player, value), "continuation");
         });
+    }
+
+    private void dispatch(Player player, Runnable action, String what) {
+        try {
+            mainThread.execute(() -> {
+                if (!isPlayerOnline(player)) {
+                    return;
+                }
+                try {
+                    action.run();
+                } catch (Throwable callbackError) {
+                    arc.util.Log.err("Error executing @ for player @", what, player.plainName(), callbackError);
+                }
+            });
+        } catch (Throwable dispatchError) {
+            arc.util.Log.err("Failed to dispatch @ to main thread for player @", what, player.plainName(), dispatchError);
+        }
     }
 
     public static boolean isPlayerOnline(Player player) {
