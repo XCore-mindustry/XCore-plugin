@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -36,6 +37,104 @@ class GameThreadTest {
         Core.app = previousApp;
         GameThread.resetReported();
         GameThread.setStrictOverride(null);
+        GameThread.setGameThreadOverride(null);
+        GameThread.setViolationListener(null);
+    }
+
+    @Test
+    @DisplayName("an explicit game-thread designation is honoured without Arc")
+    void designatedGameThread_isRecognised() {
+        // With no Arc booted, isGameThread() answers true on any thread and the check proves
+        // nothing. Tests that actually assert affinity designate the thread themselves
+        // instead of relying on that fallback.
+        GameThread.setGameThreadOverride(Thread.currentThread());
+        assertTrue(GameThread.isGameThread());
+
+        AtomicBoolean backgroundSawItselfAsGameThread = new AtomicBoolean();
+        onBackgroundThread(() -> backgroundSawItselfAsGameThread.set(GameThread.isGameThread()));
+
+        assertFalse(backgroundSawItselfAsGameThread.get(),
+                "a background thread must not be mistaken for the game thread");
+    }
+
+    @Test
+    @DisplayName("repeats at one site are counted, not just logged once")
+    void report_countsEveryRepeatNotOnlyTheFirst() {
+        GameThread.setGameThreadOverride(Thread.currentThread());
+        assertEquals(0, GameThread.violationCount("session.broadcast"));
+        assertFalse(GameThread.hasReported("session.broadcast"));
+
+        onBackgroundThread(() -> nonStrictly(() -> {
+            GameThread.report("session.broadcast");
+            assertTrue(GameThread.hasReported("session.broadcast"),
+                    "the first violation is logged with a stack trace");
+            assertEquals(1, GameThread.violationCount("session.broadcast"));
+
+            for (int i = 0; i < 250; i++) {
+                GameThread.report("session.broadcast");
+            }
+
+            // Log-once is right for a person reading a log and wrong for a dashboard: a
+            // site firing once at startup looks identical to one firing under load unless
+            // the repeats are counted somewhere.
+            assertEquals(251, GameThread.violationCount("session.broadcast"),
+                    "repeats must be visible even though the log stays quiet");
+        }));
+    }
+
+    @Test
+    @DisplayName("the violation listener sees every violation, not just the first")
+    void report_notifiesTheListenerOnEveryViolation() {
+        GameThread.setGameThreadOverride(Thread.currentThread());
+        java.util.List<String> seen = new java.util.ArrayList<>();
+        GameThread.setViolationListener((site, threadName) -> seen.add(site + "@" + threadName));
+
+        onBackgroundThread(() -> nonStrictly(() -> {
+            GameThread.report("discovery.capture");
+            GameThread.report("discovery.capture");
+        }));
+
+        assertEquals(2, seen.size());
+        assertTrue(seen.get(0).startsWith("discovery.capture@"), seen.get(0));
+    }
+
+    @Test
+    @DisplayName("a broken violation listener does not propagate into the caller")
+    void report_survivesAFailingListener() {
+        GameThread.setGameThreadOverride(Thread.currentThread());
+        GameThread.setViolationListener((site, threadName) -> {
+            throw new IllegalStateException("metrics backend is down");
+        });
+
+        onBackgroundThread(() -> assertDoesNotThrow(() -> nonStrictly(() -> GameThread.report("broadcast"))));
+
+        assertEquals(1, GameThread.violationCount("broadcast"),
+                "the counter is incremented before the listener is consulted");
+    }
+
+    /**
+     * Runs {@code body} on a dedicated thread that is not the designated game thread, and
+     * rethrows anything it threw so a failure inside the body cannot pass silently.
+     */
+    private void onBackgroundThread(Runnable body) {
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread background = new Thread(() -> {
+            try {
+                body.run();
+            } catch (Throwable ex) {
+                failure.set(ex);
+            }
+        }, "not-the-game-thread");
+        background.start();
+        try {
+            background.join();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while waiting for the background thread", ex);
+        }
+        if (failure.get() != null) {
+            throw new AssertionError("the background thread failed", failure.get());
+        }
     }
 
     /** Runs {@code body} with strict reporting explicitly off, whatever the build default. */

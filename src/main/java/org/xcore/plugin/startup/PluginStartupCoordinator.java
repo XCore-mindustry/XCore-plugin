@@ -4,7 +4,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.xcore.plugin.database.migration.MigrationService;
 import org.xcore.plugin.metrics.MainThreadMetricSampler;
+import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.metrics.MetricsSnapshotPublisher;
+import org.xcore.plugin.metrics.Tags;
+import org.xcore.plugin.metrics.XcoreMetrics;
 import org.xcore.plugin.service.AutoHostService;
 import org.xcore.plugin.session.SessionService;
 
@@ -19,6 +22,7 @@ public class PluginStartupCoordinator {
     private final MetricsSnapshotPublisher metricsSnapshotPublisher;
     private final AutoHostService autoHostService;
     private final SessionService sessionService;
+    private final MetricsService metricsService;
 
     @Inject
     public PluginStartupCoordinator(MigrationService migrationService,
@@ -28,7 +32,8 @@ public class PluginStartupCoordinator {
                                     MainThreadMetricSampler mainThreadMetricSampler,
                                     MetricsSnapshotPublisher metricsSnapshotPublisher,
                                     AutoHostService autoHostService,
-                                    SessionService sessionService) {
+                                    SessionService sessionService,
+                                    MetricsService metricsService) {
         this.migrationService = migrationService;
         this.mapDecayScheduler = mapDecayScheduler;
         this.mapSelectorInstaller = mapSelectorInstaller;
@@ -37,6 +42,7 @@ public class PluginStartupCoordinator {
         this.metricsSnapshotPublisher = metricsSnapshotPublisher;
         this.autoHostService = autoHostService;
         this.sessionService = sessionService;
+        this.metricsService = metricsService;
     }
 
     public boolean start() {
@@ -45,6 +51,15 @@ public class PluginStartupCoordinator {
         }
 
         sessionService.clearStalePresenceFlags();
+
+        // Log-once is right for a person reading a log and wrong for a dashboard: a site
+        // that fires once at startup looks identical to one firing thousands of times under
+        // load. GameThread counts repeats internally; this is what makes that count visible.
+        org.xcore.plugin.concurrent.GameThread.setViolationListener((site, threadName) ->
+                metricsService.increment(
+                        XcoreMetrics.THREAD_AFFINITY_VIOLATIONS_TOTAL,
+                        Tags.of("site", site, "thread", threadName)
+                ));
 
         mapDecayScheduler.initialize();
         mapSelectorInstaller.install();

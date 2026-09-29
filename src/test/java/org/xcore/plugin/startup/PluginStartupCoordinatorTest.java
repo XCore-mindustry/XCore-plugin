@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.database.migration.MigrationService;
 import org.xcore.plugin.metrics.MainThreadMetricSampler;
+import org.xcore.plugin.metrics.MetricsService;
 import org.xcore.plugin.metrics.MetricsSnapshotPublisher;
 import org.xcore.plugin.service.AutoHostService;
 import org.xcore.plugin.session.SessionService;
@@ -39,7 +40,8 @@ class PluginStartupCoordinatorTest {
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
                 autoHostService,
-                sessionService
+                sessionService,
+                mock(MetricsService.class)
         );
 
         boolean started = coordinator.start();
@@ -75,7 +77,8 @@ class PluginStartupCoordinatorTest {
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
                 autoHostService,
-                sessionService
+                sessionService,
+                mock(MetricsService.class)
         );
 
         boolean started = coordinator.start();
@@ -105,7 +108,8 @@ class PluginStartupCoordinatorTest {
                 mainThreadMetricSampler,
                 metricsSnapshotPublisher,
                 autoHostService,
-                sessionService
+                sessionService,
+                mock(MetricsService.class)
         );
 
         boolean started = coordinator.start();

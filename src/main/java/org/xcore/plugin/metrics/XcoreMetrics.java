@@ -64,6 +64,13 @@ public final class XcoreMetrics {
             LabelSchema.empty()
     );
 
+    public static final CounterDef THREAD_AFFINITY_VIOLATIONS_TOTAL = new CounterDef(
+            "xcore_thread_affinity_violations_total",
+            "Total detected accesses of Mindustry state from outside the game thread",
+            "events",
+            LabelSchema.of("site", "thread")
+    );
+
     public static final CounterDef COMMANDS_TOTAL = new CounterDef(
             "xcore_commands_total",
             "Total executed commands",
