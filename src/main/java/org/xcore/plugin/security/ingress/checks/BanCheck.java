@@ -81,6 +81,22 @@ public class BanCheck implements IngressCheck {
             return new AccessResult.Denied(reason, false, 0);
         }
 
+        // The registry reads below are the one piece of game state left on this thread, and
+        // they are deliberately not marshalled.
+        //
+        // check() is synchronous by contract: IngressService collects the checks as futures
+        // against server.ingressHandshakeBudgetMillis, but a per-check game-thread round trip
+        // would put a tick-bound wait in front of every connection, and on a headless server
+        // the game loop is also the netty reader. A stall there would turn this fail-closed
+        // check into a connection denial.
+        //
+        // The exposure is bounded and does not grow: Administration is rebuilt on load and its
+        // only concurrent writer is the expired-ban unban marshalled above, so the worst case
+        // is this check missing an unban that lands a frame later - the player is admitted
+        // and unbanned instead of being denied, which is the non-fatal direction. Tightening
+        // it properly means snapshotting the admin rules onto the game thread and reading
+        // that copy here; that is a deliberate change to a fail-closed security path and
+        // should be reviewed on its own rather than folded into a thread-safety sweep.
         if (netServer.admins.isIPBanned(ip) ||
                 netServer.admins.isSubnetBanned(ip) ||
                 netServer.admins.isIDBanned(uuid)) {
