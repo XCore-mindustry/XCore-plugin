@@ -1142,7 +1142,7 @@ announcement-discord =
     [gold]★ [accent]Сообщество XCore [lightgray]» [white]Хотите общаться и следить за новостями?
     [lightgray]Присоединяйтесь к нашему Discord: [accent]/discord[lightgray]!
 announcement-help =
-    [gold]★ [accent]Помощь XCore [lightgray]» [white]Ищете доступные команды и возможности?
+    [gold]★ [accent]Помощь XCore [lightgray]» [white]Нужны все доступные команды?
     [lightgray]Используйте [accent]/help[lightgray], чтобы ознакомиться со всеми командами!
 
 
