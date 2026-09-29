@@ -76,6 +76,79 @@ class ServerDiscoveryServiceTest {
     }
 
     @Test
+    @DisplayName("only the first query is deferred; later ones answer without touching the game thread")
+    void handleDiscovery_answersSubsequentQueriesWithoutTheGameThread() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        ServerDiscoveryService service = new ServerDiscoveryService(config(), new Async(new StorageExecutor(4), pending::add));
+
+        AtomicBoolean firstAnswered = new AtomicBoolean();
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> firstAnswered.set(true));
+        assertThat(firstAnswered).as("the first query has no snapshot to answer from").isFalse();
+        assertThat(pending).hasSize(1);
+        pending.remove(0).run();
+        assertThat(firstAnswered).isTrue();
+
+        // From here on the packet is written and answered on the UDP thread. A discovery
+        // flood is unauthenticated, so anything that made it wait on the tick loop would let
+        // a stranger throttle the server.
+        AtomicBoolean secondAnswered = new AtomicBoolean();
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> secondAnswered.set(true));
+
+        assertThat(secondAnswered).isTrue();
+        assertThat(pending).as("no work queued for a query inside the refresh interval").isEmpty();
+    }
+
+    @Test
+    @DisplayName("a burst of queries costs at most one queued refresh, not one per query")
+    void handleDiscovery_coalescesRefreshesUnderLoad() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        // A zero interval means every snapshot is immediately stale, which is the worst case
+        // a flood can produce. The queue must still grow by at most one.
+        ServerDiscoveryService service = new ServerDiscoveryService(
+                config(), new Async(new StorageExecutor(4), pending::add), 0L);
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        pending.remove(0).run();
+
+        for (int i = 0; i < 200; i++) {
+            service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+            });
+        }
+
+        assertThat(pending).hasSizeLessThanOrEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("the refresh is released after it runs, so later queries can refresh again")
+    void handleDiscovery_refreshesAgainAfterTheIntervalPasses() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        ServerDiscoveryService service = new ServerDiscoveryService(
+                config(), new Async(new StorageExecutor(4), pending::add), 0L);
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        pending.remove(0).run();
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        assertThat(pending).hasSize(1);
+        pending.remove(0).run();
+
+        // If the in-flight flag were not cleared, this query would queue nothing at all and
+        // the cache would be frozen for the rest of the process lifetime.
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        assertThat(pending).hasSize(1);
+    }
+
+    private static TomlXcoreConfig config() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.normalize();
+        return config;
+    }
+
+    @Test
     @DisplayName("handleDiscovery writes configured description")
     void handleDiscoveryWritesConfiguredDescription() {
         var service = new ServerDiscoveryService(config(10), async);

@@ -35,8 +35,9 @@ public class RuntimeHookRegistrar {
 
         server.setDiscoveryHandler((_, handler) -> {
             ByteBuffer buffer = ByteBuffer.allocate(500);
-            // The handler runs on a UDP thread; discoveryService hops to the game thread
-            // to sample the state and then calls back here to answer.
+            // The handler runs on a UDP thread. Discovery answers from a snapshot that the
+            // service keeps refreshed on the game thread, so a query flood cannot turn this
+            // endpoint into a way to flood the tick loop. See ServerDiscoveryService.
             discoveryService.handleDiscovery(buffer, () -> {
                 try {
                     handler.respond(buffer);
