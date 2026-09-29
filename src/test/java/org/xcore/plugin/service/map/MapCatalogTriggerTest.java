@@ -77,7 +77,9 @@ class MapCatalogTriggerTest {
                 mock(org.xcore.plugin.service.NetworkService.class),
                 new org.xcore.plugin.config.TomlXcoreConfig(),
                 serviceWithTracingCatalog(),
-                mock(org.xcore.plugin.database.repository.MapDataRepository.class)
+                mock(org.xcore.plugin.database.repository.MapDataRepository.class),
+                new org.xcore.plugin.concurrent.Async(
+                        new org.xcore.plugin.concurrent.StorageExecutor(4), Runnable::run)
         );
         transport.registerListeners();
         Events.fire(new EventType.ServerLoadEvent());
@@ -105,7 +107,9 @@ class MapCatalogTriggerTest {
                 network,
                 config,
                 mapService,
-                mock(org.xcore.plugin.database.repository.MapDataRepository.class)
+                mock(org.xcore.plugin.database.repository.MapDataRepository.class),
+                new org.xcore.plugin.concurrent.Async(
+                        new org.xcore.plugin.concurrent.StorageExecutor(4), Runnable::run)
         );
         transport.registerListeners();
         CAPTURED.clear();

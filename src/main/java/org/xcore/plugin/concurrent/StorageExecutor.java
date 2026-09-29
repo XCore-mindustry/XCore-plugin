@@ -151,8 +151,17 @@ public class StorageExecutor {
         }
     }
 
+    /**
+     * Checks whether the backing executor service has been shut down.
+     *
+     * @return true if the executor is shut down
+     */
+    public boolean isShutdown() {
+        return executor.isShutdown();
+    }
+
     @PreDestroy
-    void shutdown() {
+    public void shutdown() {
         executor.shutdown();
         try {
             if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.xcore.plugin.event.TransportEvents;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.DiscordLinkService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.session.Session;
@@ -29,6 +31,12 @@ import static org.mockito.Mockito.when;
 
 class DiscordLinkTransportHandlerTest {
 
+    /**
+     * Runs the marshalled game-thread work inline so the existing assertions stay
+     * synchronous; the marshalling itself is asserted separately.
+     */
+    private final Async async = new Async(new StorageExecutor(4), Runnable::run);
+
     @Test
     @DisplayName("discord link confirm command confirms link and notifies online player")
     void discordLinkConfirmCommand_confirmsLinkAndNotifiesOnlinePlayer() {
@@ -36,7 +44,7 @@ class DiscordLinkTransportHandlerTest {
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {
@@ -73,7 +81,7 @@ class DiscordLinkTransportHandlerTest {
         DiscordLinkService discordLinkService = mock(DiscordLinkService.class);
         SessionService sessionService = mock(SessionService.class);
 
-        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService);
+        DiscordLinkTransportHandler handler = new DiscordLinkTransportHandler(network, discordLinkService, sessionService, async);
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
 
         doAnswer(invocation -> {

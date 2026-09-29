@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.TranslationProvider;
 import org.xcore.plugin.localization.TranslationResult;
@@ -28,6 +29,7 @@ public class TranslatorService {
     private final TranslationFallbackService translationFallbackService;
     private final TranslationCacheService translationCacheService;
     private final TranslationMetricsService translationMetricsService;
+    private final Async async;
 
     @Inject
     public TranslatorService(TomlXcoreConfig config,
@@ -36,7 +38,8 @@ public class TranslatorService {
                              ClientCompatibilityService clientCompatibilityService,
                              TranslationFallbackService translationFallbackService,
                              TranslationCacheService translationCacheService,
-                             TranslationMetricsService translationMetricsService) {
+                             TranslationMetricsService translationMetricsService,
+                             Async async) {
         this.config = config;
         this.sessionService = sessionService;
         this.chatFormatService = chatFormatService;
@@ -44,6 +47,7 @@ public class TranslatorService {
         this.translationFallbackService = translationFallbackService;
         this.translationCacheService = translationCacheService;
         this.translationMetricsService = translationMetricsService;
+        this.async = async;
     }
 
     public void translate(String text, String from, String to, Cons<String> result, Runnable error) {
@@ -126,26 +130,22 @@ public class TranslatorService {
             String targetLang = entry.getKey();
             List<Player> recipients = entry.getValue();
 
-            translate(text, "auto", targetLang, result -> {
+            // The recipients were resolved on the game thread but these callbacks fire on a
+            // translation completion thread, so both the send and the liveness check hop back.
+            translate(text, "auto", targetLang, result -> async.main(() -> {
                 if (!hasMeaningfulTranslation(text, result)) {
-                    for (Player player : recipients) {
-                        player.sendMessage(message, author, text);
-                    }
+                    sendToOnline(recipients, player -> player.sendMessage(message, author, text));
                     return;
                 }
 
                 String formattedTranslation = message + " [white]([lightgray]" + result + "[])";
                 String compatText = buildCompatibilityText(text, result);
-                for (Player player : recipients) {
-                    player.sendMessage(formattedTranslation, author, compatText);
-                }
-            }, () -> {
+                sendToOnline(recipients, player -> player.sendMessage(formattedTranslation, author, compatText));
+            }), () -> async.main(() -> {
                 if (config.translation.preserveOriginalMessageOnFailure) {
-                    for (Player player : recipients) {
-                        player.sendMessage(message, author, text);
-                    }
+                    sendToOnline(recipients, player -> player.sendMessage(message, author, text));
                 }
-            });
+            }));
         }
     }
 
@@ -181,29 +181,49 @@ public class TranslatorService {
             String targetLang = entry.getKey();
             List<TeamRecipient> recipients = entry.getValue();
 
-            translate(text, "auto", targetLang, result -> {
+            // Same completion-thread boundary as the global path above.
+            translate(text, "auto", targetLang, result -> async.main(() -> {
                 if (!hasMeaningfulTranslation(text, result)) {
                     for (var recipient : recipients) {
-                        sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                        if (Async.isPlayerOnline(recipient.player)) {
+                            sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                        }
                     }
                     return;
                 }
 
                 String compatText = buildCompatibilityText(text, result);
                 for (var recipient : recipients) {
-                    sendTeamChat(recipient.player,
-                            appendTranslation(recipient.message, result),
-                            author,
-                            compatText,
-                            recipient.foosCompatible);
-                }
-            }, () -> {
-                if (config.translation.preserveOriginalMessageOnFailure) {
-                    for (var recipient : recipients) {
-                        sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                    if (Async.isPlayerOnline(recipient.player)) {
+                        sendTeamChat(recipient.player,
+                                appendTranslation(recipient.message, result),
+                                author,
+                                compatText,
+                                recipient.foosCompatible);
                     }
                 }
-            });
+            }), () -> async.main(() -> {
+                if (config.translation.preserveOriginalMessageOnFailure) {
+                    for (var recipient : recipients) {
+                        if (Async.isPlayerOnline(recipient.player)) {
+                            sendTeamChat(recipient.player, recipient.message, author, text, recipient.foosCompatible);
+                        }
+                    }
+                }
+            }));
+        }
+    }
+
+    /**
+     * Sends to each recipient that is still connected. A translation can take long enough
+     * that a recipient leaves before the completion callback lands, and the {@code Player}
+     * references in these lists were captured on the game thread.
+     */
+    private void sendToOnline(List<Player> recipients, java.util.function.Consumer<Player> action) {
+        for (Player player : recipients) {
+            if (Async.isPlayerOnline(player)) {
+                action.accept(player);
+            }
         }
     }
 

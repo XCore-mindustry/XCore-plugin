@@ -11,6 +11,7 @@ import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.command.controller.CloudClientController;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.MapDataRepository;
 import org.xcore.plugin.model.MapData;
 import org.xcore.plugin.service.MapService;
@@ -24,24 +25,28 @@ public class MapController implements CloudClientController {
     private final MapDataRepository mapDataRepository;
     private final MapService mapService;
     private final MapMenu menu;
+    private final Async async;
 
     @Inject
     public MapController(
             MapDataRepository mapDataRepository,
             MapService mapService,
-            MapMenu menu
+            MapMenu menu,
+            Async async
     ) {
         this.mapDataRepository = mapDataRepository;
         this.mapService = mapService;
         this.menu = menu;
+        this.async = async;
     }
 
     public MapController(
             MapDataRepository mapDataRepository,
             MapService mapService,
-            Provider<MapMenu> menuProvider
+            Provider<MapMenu> menuProvider,
+            Async async
     ) {
-        this(mapDataRepository, mapService, menuProvider != null ? menuProvider.get() : null);
+        this(mapDataRepository, mapService, menuProvider != null ? menuProvider.get() : null, async);
     }
 
     @Command("map|map-stats|map-statistics")
@@ -56,11 +61,26 @@ public class MapController implements CloudClientController {
             return;
         }
 
-        MapData data = mapDataRepository.findOrCreate(
-                map.plainName(), map.file.name(), map.author(), Vars.state.rules.mode().name()
-        );
+        // The continuation is scoped to a connected player, and forPlayer requires one.
+        // The console is a legitimate caller of this command and has no player.
+        if (!sender.isPlayer()) {
+            sender.send("error-only-players", args());
+            return;
+        }
 
-        menu.map(menu.getUuid(sender), data);
+        // Commands are dispatched from the game thread, and findOrCreate both reads and can
+        // write the map row, so it must not run here. Everything the lookup needs is read
+        // from live game state first: a map can be swapped or deleted while the round trip
+        // is in flight, and Vars.state.rules is not safe to read from the storage thread.
+        String plainName = map.plainName();
+        String fileName = map.file.name();
+        String author = map.author();
+        String mode = Vars.state.rules.mode().name();
+
+        // forPlayer drops the continuation if the player left while the lookup ran, which
+        // is the right outcome: there is no menu left to show.
+        async.forPlayer(sender.player(), () -> mapDataRepository.findOrCreate(plainName, fileName, author, mode),
+                (player, data) -> menu.map(menu.getUuid(sender), data));
     }
 
     @Command("maps|map-ui [page]")

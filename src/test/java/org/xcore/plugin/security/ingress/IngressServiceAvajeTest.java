@@ -11,6 +11,7 @@ import org.xcore.plugin.metrics.DefaultMetricsService;
 import org.xcore.plugin.metrics.LocalMetricRegistry;
 import org.xcore.plugin.metrics.XcoreMetrics;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -88,21 +89,111 @@ class IngressServiceAvajeTest {
     }
 
     @Test
-    @DisplayName("exception in check does not fail validation and processing continues")
-    void exceptionInCheckDoesNotFailValidation() {
+    @DisplayName("a check that throws denies by default: one that never ran has not cleared the connection")
+    void throwingCheckDeniesByDefault() {
         var fastThrows = StubIngressCheck.throwing("fast-throws", -20);
         var fastAllow = StubIngressCheck.allow("fast-allow", -10);
         var service = buildService(fastThrows, fastAllow);
 
         var result = service.validate(null, null);
 
-        assertThat(result).isSameAs(AccessResult.Allowed.INSTANCE);
+        assertThat(result).isInstanceOfSatisfying(AccessResult.Denied.class, denied -> {
+            assertThat(denied.reason()).isEqualTo("Security check unavailable");
+            assertThat(denied.silent()).isTrue();
+        });
         assertThat(fastThrows.calls).isEqualTo(1);
-        assertThat(fastAllow.calls).isEqualTo(1);
+        assertThat(fastAllow.calls).isZero();
         assertThat(sample(XcoreMetrics.INGRESS_CHECK_ERRORS_TOTAL.name(), "check", "fast-throws", "phase", "fast"))
                 .get()
                 .extracting(MetricSampleV1::value)
                 .isEqualTo(1d);
+    }
+
+    @Test
+    @DisplayName("a check that declares FAIL_OPEN is skipped, and validation continues")
+    void failOpenCheckIsSkipped() {
+        var openThrows = StubIngressCheck.throwing("open-throws", -20);
+        openThrows.mode = FailureMode.FAIL_OPEN;
+        var fastAllow = StubIngressCheck.allow("fast-allow", -10);
+        var service = buildService(openThrows, fastAllow);
+
+        var result = service.validate(null, null);
+
+        assertThat(result).isSameAs(AccessResult.Allowed.INSTANCE);
+        assertThat(openThrows.calls).isEqualTo(1);
+        assertThat(fastAllow.calls).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("ingressFailureMode=open makes every failed check fail open, overriding per-check posture")
+    void operatorOverrideFailsOpen() {
+        var config = new TomlXcoreConfig();
+        config.server.ingressFailureMode = "open";
+        var fastThrows = StubIngressCheck.throwing("fast-throws", -20);
+        var service = buildService(config, fastThrows);
+
+        assertThat(service.validate(null, null)).isSameAs(AccessResult.Allowed.INSTANCE);
+    }
+
+    @Test
+    @DisplayName("a throwing parallel check denies instead of silently admitting")
+    void throwingParallelCheckDenies() {
+        var slowThrows = StubIngressCheck.throwing("slow-throws", 0);
+        var service = buildService(slowThrows);
+
+        var result = service.validate(null, null);
+
+        assertThat(result).isInstanceOfSatisfying(AccessResult.Denied.class, denied -> {
+            assertThat(denied.reason()).isEqualTo("Security check unavailable");
+            assertThat(denied.silent()).isTrue();
+        });
+        assertThat(sample(XcoreMetrics.INGRESS_CHECK_ERRORS_TOTAL.name(), "check", "slow-throws", "phase", "slow"))
+                .get()
+                .extracting(MetricSampleV1::value)
+                .isEqualTo(1d);
+    }
+
+    @Test
+    @DisplayName("a check overrunning the handshake budget is bounded, denied, and counted")
+    void budgetExceededIsBoundedAndDenied() {
+        var slowHang = StubIngressCheck.slow("slow-hang", 0, Duration.ofSeconds(30));
+        var service = buildService(slowHang);
+
+        long startNanos = System.nanoTime();
+        var result = service.validate(null, null);
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+
+        assertThat(result).isInstanceOfSatisfying(AccessResult.Denied.class, denied ->
+                assertThat(denied.reason()).isEqualTo("Security check unavailable"));
+        // The old per-check 5s poll would have burned the full 5s here.
+        assertThat(elapsedMillis).isLessThan(2_000);
+        assertThat(registry.snapshot().stream()
+                .filter(s -> s.name().equals(XcoreMetrics.INGRESS_HANDSHAKE_BUDGET_EXCEEDED_TOTAL.name()))
+                .findFirst())
+                .isPresent();
+    }
+
+    @Test
+    @DisplayName("budget overrun admits the connection when the operator chose availability")
+    void budgetExceededFailsOpenOnOperatorOverride() {
+        var config = new TomlXcoreConfig();
+        config.server.ingressFailureMode = "open";
+        var slowHang = StubIngressCheck.slow("slow-hang", 0, Duration.ofSeconds(30));
+        var service = buildService(config, slowHang);
+
+        assertThat(service.validate(null, null)).isSameAs(AccessResult.Allowed.INSTANCE);
+    }
+
+    @Test
+    @DisplayName("a definite deny outranks a sibling check overrunning the budget")
+    void definiteDenyOutranksBudget() {
+        var slowDeny = StubIngressCheck.deny("slow-deny", 0, "banned");
+        var slowHang = StubIngressCheck.slow("slow-hang", 1, Duration.ofSeconds(30));
+        var service = buildService(slowDeny, slowHang);
+
+        assertThat(service.validate(null, null))
+                .isInstanceOfSatisfying(AccessResult.Denied.class, denied ->
+                        assertThat(denied.reason()).isEqualTo("banned"));
     }
 
     @Test
@@ -121,10 +212,16 @@ class IngressServiceAvajeTest {
     }
 
     private IngressService buildService(IngressCheck... checks) {
+        return buildService(new TomlXcoreConfig(), checks);
+    }
+
+    private IngressService buildService(TomlXcoreConfig config, IngressCheck... checks) {
         registry = new LocalMetricRegistry();
-        TomlXcoreConfig config = new TomlXcoreConfig();
         config.telemetry.enabled = true;
-        service = new IngressService(List.of(checks), new DefaultMetricsService(registry, config));
+        // Short enough to keep the overrun test fast, long enough that healthy checks win.
+        config.server.ingressHandshakeBudgetMillis = 200;
+        config.server.normalize();
+        service = new IngressService(List.of(checks), new DefaultMetricsService(registry, config), config);
         return service;
     }
 
@@ -144,6 +241,7 @@ class IngressServiceAvajeTest {
         private final String name;
         private final int priority;
         private final CheckBehavior behavior;
+        private FailureMode mode = FailureMode.FAIL_CLOSED;
         private int calls;
 
         private StubIngressCheck(String name, int priority, CheckBehavior behavior) {
@@ -166,6 +264,17 @@ class IngressServiceAvajeTest {
             });
         }
 
+        static StubIngressCheck slow(String name, int priority, Duration duration) {
+            return new StubIngressCheck(name, priority, (con, packet) -> {
+                try {
+                    Thread.sleep(duration.toMillis());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return AccessResult.Allowed.INSTANCE;
+            });
+        }
+
         @Override
         public AccessResult check(NetConnection con, Packets.ConnectPacket packet) {
             calls++;
@@ -175,6 +284,11 @@ class IngressServiceAvajeTest {
         @Override
         public int priority() {
             return priority;
+        }
+
+        @Override
+        public FailureMode failureMode() {
+            return mode;
         }
 
         @Override

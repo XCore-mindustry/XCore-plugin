@@ -8,6 +8,7 @@ import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
 import mindustry.gen.Player;
 import org.xcore.protocol.generated.messages.identity.IdentityMessages.PlayerJoinLeaveV1;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
@@ -39,6 +40,7 @@ public class ConnectionHandler {
     private final DiscordAdminAccessService discordAdminAccessService;
     private final ObserverService observerService;
     private final MapVoteObserverService mapVoteObserverService;
+    private final Async async;
 
     @Inject
     public ConnectionHandler(SessionService sessionService,
@@ -50,7 +52,8 @@ public class ConnectionHandler {
                              PlayerDisplayService playerDisplayService,
                              DiscordAdminAccessService discordAdminAccessService,
                              ObserverService observerService,
-                             MapVoteObserverService mapVoteObserverService) {
+                             MapVoteObserverService mapVoteObserverService,
+                             Async async) {
         this.sessionService = sessionService;
         this.network = network;
         this.config = config;
@@ -61,13 +64,122 @@ public class ConnectionHandler {
         this.discordAdminAccessService = discordAdminAccessService;
         this.observerService = observerService;
         this.mapVoteObserverService = mapVoteObserverService;
+        this.async = async;
     }
 
     public void onPlayerJoin(PlayerJoin event) {
         if (event == null || event.player == null) return;
         var player = event.player;
 
-        Session session = sessionService.registerLogin(player);
+        // Snapshot the join-time facts the later steps need. These are cheap reads of live
+        // game state, so they belong here on the game thread; everything downstream is
+        // either Mongo or a packet.
+        var join = new JoinSnapshot(
+                player.uuid(),
+                player.ip(),
+                player.coloredName(),
+                player.admin,
+                player.con != null && player.getInfo() != null && player.getInfo().timesJoined < 5,
+                player
+        );
+
+        // Quarantine the runtime admin flag before anything can be slow.
+        //
+        // Mindustry sets player.admin during connectConfirm, before this event fires, so the
+        // player is already privileged for the whole storage phase - 50-200ms normally, and
+        // seconds when Mongo is struggling. Every admin permission check reads this field
+        // (see CloudPermissionPolicy), so clearing it here closes that window instead of
+        // merely narrowing it.
+        //
+        // Only the transient Player flag is cleared. netServer.admins is deliberately left
+        // alone: it is the persistent registry, mutating it would revoke the account rather
+        // than pause the session, and restoring a real admin after an IP change is a
+        // separate decision made below once the stored IP is known.
+        //
+        // The flag is restored in completeJoin, which runs whenever the player is still here
+        // and the load succeeded. Every path that skips it also removes the player, so there
+        // is no way to strand a legitimate admin without their privileges.
+        if (join.admin()) {
+            player.admin(false);
+        }
+
+        // The four Mongo round-trips this method used to make - load, connection-data
+        // update, first-save and the unread count - now run together on the storage
+        // executor, and the session is registered once in a single step on the game thread.
+        //
+        // forPlayer drops the continuation when the player left while the load was in
+        // flight, so a join-then-immediately-quit no longer registers an orphaned session.
+        // The data writes still happen, which is correct: the new IP and nickname are real
+        // regardless of how long the connection lasted, and markOnline is never reached so
+        // there is no online flag for onPlayerLeave to clear.
+        //
+        // The failure path matters just as much. This player is already in Groups.player, so
+        // a storage error that only logged would leave someone in the world with no session:
+        // every session-backed guard then reads null and passes them through, and
+        // onPlayerLeave finds no session so it clears nothing. Evict them instead.
+        async.forPlayer(
+                player,
+                () -> prepareJoin(join),
+                (p, prepared) -> completeJoin(p, join, prepared),
+                (p, error) -> p.kick("Failed to load player data. Please reconnect.")
+        );
+    }
+
+    /**
+     * Runs on the storage executor. Loads the player row, applies the join-time changes and
+     * writes them back, so the game thread never waits on Mongo and the session is only
+     * published once the data is already settled.
+     *
+     * <p>Safe to touch {@code PlayerData} here: it was loaded by this thread and is not
+     * reachable from {@code sessionCache} until the continuation registers it, so no later
+     * gameplay mutation can race this phase.
+     *
+     * <p>{@link JoinSnapshot} carries the player only so the transient
+     * {@code PlayerData.player} back-reference can be set before publication, and
+     * {@code loadPlayerData} reads its uuid. No live game state is called here.
+     */
+    private PreparedJoin prepareJoin(JoinSnapshot join) {
+        PlayerData data = sessionService.loadPlayerData(join.uuid());
+
+        String currentIp = join.ip();
+        String currentName = join.name();
+        boolean ipChanged = !Objects.equals(data.ip, currentIp);
+        boolean nameChanged = !Objects.equals(data.nickname, currentName);
+
+        // Both are transient/BsonIgnore, so they never reach the repository. data.player is
+        // set before publication so the game thread sees it fully initialised.
+        data.nickname = currentName;
+        data.player = join.player();
+
+        boolean connectionDataChanged = data.exists && (ipChanged || nameChanged);
+        if (connectionDataChanged) {
+            sessionService.updateConnectionData(data, currentIp, currentName);
+        }
+
+        if (!data.exists) {
+            data.ip = currentIp;
+            data.exists = true;
+            sessionService.persistData(data);
+        }
+
+        long unreadMessages = privateMessageService.countUnread(data.uuid);
+
+        return new PreparedJoin(data, ipChanged, unreadMessages);
+    }
+
+    /** Runs on the game thread. Publishes the session and performs the game-state steps. */
+    private void completeJoin(Player player, JoinSnapshot join, PreparedJoin prepared) {
+        // Resolve the quarantined admin flag first, before any step that can throw. Every
+        // continuation that does not reach this line also removes the player, so restoring
+        // here is the difference between "reconnect to get your admin back" and a session
+        // that silently runs deprivileged for as long as the player stays.
+        boolean admin = join.admin();
+        boolean revokeAdmin = admin && prepared.ipChanged();
+        if (admin && !revokeAdmin) {
+            player.admin(true);
+        }
+
+        Session session = sessionService.registerLogin(player, prepared.data());
         if (session == null || session.data == null) {
             Log.err("Session is null! Player: @", player);
             player.kick("Session is null! Write to us on Discord to resolve issues.");
@@ -83,47 +195,35 @@ public class ConnectionHandler {
             locale.send("welcome", args("serverName", mindustry.net.Administration.Config.serverName.string()));
         }
 
-        String currentIp = player.ip();
-        String currentName = player.coloredName();
-        boolean ipChanged = !Objects.equals(data.ip, currentIp);
-        boolean nameChanged = !Objects.equals(data.nickname, currentName);
-
-        data.nickname = currentName;
-        data.player = player;
-
         if (player.con != null) {
             Call.clientPacketReliable(player.con, "adm_mod_begin", "");
         }
 
-        if (data.exists && (ipChanged || nameChanged)) {
-            if (ipChanged && player.admin) {
-                discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
-                if (locale != null) {
-                    locale.send("error-ip-changed", args());
-                }
+        // Revoked here rather than beside the write above: it is game state, and the
+        // storage write landing first does not affect what the player is told.
+        //
+        // This tests join.admin(), not player.admin: the flag was cleared at the top of
+        // onPlayerJoin to quarantine it, so testing the live field would report "no change
+        // needed" and leave the revocation to the disconnect path - which never fires while
+        // the player stays online. The snapshot is the record of what they connected with.
+        if (revokeAdmin) {
+            discordAdminAccessService.deactivateRuntimeAdmin(player, player.uuid());
+            if (locale != null) {
+                locale.send("error-ip-changed", args());
             }
-
-            sessionService.updateConnectionData(session, currentIp, currentName);
-        }
-
-        if (!data.exists) {
-            data.ip = currentIp;
-            data.exists = true;
-            sessionService.persistPlayer(session);
         }
 
         playerDisplayService.refresh(session);
         sessionService.markOnline(data, config.server.name);
 
-        if (player.con != null && player.getInfo() != null && player.getInfo().timesJoined < 5) {
+        if (join.firstJoin() && player.con != null) {
             if (secretsConfig.externalLinks != null && secretsConfig.externalLinks.discordUrl != null) {
                 Call.openURI(player.con, secretsConfig.externalLinks.discordUrl);
             }
         }
 
-        long unreadMessages = privateMessageService.countUnread(data.uuid);
-        if (unreadMessages > 0 && locale != null) {
-            locale.send("private-message-join-notification", args("count", unreadMessages));
+        if (prepared.unreadMessages() > 0 && locale != null) {
+            locale.send("private-message-join-notification", args("count", prepared.unreadMessages()));
         }
 
         Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
@@ -135,6 +235,24 @@ public class ConnectionHandler {
                 config.server.name,
                 true)
         );
+    }
+
+    /**
+     * The game-thread facts a join needs, read once so the storage phase never touches
+     * {@code Player}.
+     */
+    private record JoinSnapshot(
+            String uuid,
+            String ip,
+            String name,
+            boolean admin,
+            boolean firstJoin,
+            Player player
+    ) {
+    }
+
+    /** The result of the storage phase: settled data plus the decisions it implies. */
+    private record PreparedJoin(PlayerData data, boolean ipChanged, long unreadMessages) {
     }
 
     public void onPlayerLeave(PlayerLeave event) {

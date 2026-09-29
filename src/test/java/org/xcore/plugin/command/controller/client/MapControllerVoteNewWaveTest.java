@@ -20,7 +20,8 @@ class MapControllerVoteNewWaveTest {
         MapController controller = new MapController(
                 mock(MapDataRepository.class),
                 mapService,
-                provider()
+                provider(),
+                async()
         );
 
         XCoreSender sender = mock(XCoreSender.class);
@@ -39,7 +40,8 @@ class MapControllerVoteNewWaveTest {
         MapController controller = new MapController(
                 mock(MapDataRepository.class),
                 mapService,
-                provider()
+                provider(),
+                async()
         );
 
         XCoreSender sender = mock(XCoreSender.class);
@@ -54,5 +56,11 @@ class MapControllerVoteNewWaveTest {
     @SuppressWarnings("unchecked")
     private static Provider<MapMenu> provider() {
         return mock(Provider.class);
+    }
+
+    /** Not exercised by these cases, but the constructor requires one. */
+    private static org.xcore.plugin.concurrent.Async async() {
+        return new org.xcore.plugin.concurrent.Async(
+                new org.xcore.plugin.concurrent.StorageExecutor(1), Runnable::run);
     }
 }

@@ -9,6 +9,8 @@ import jakarta.inject.Singleton;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.GameThread;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.TopMenuCacheService;
@@ -175,13 +177,35 @@ public class SessionService {
      * @param player the player instance
      * @return loaded PlayerData (newly created if player is new)
      */
-    public Session registerLogin(Player player) {
-        Session session = createSession(player, loadOrCreatePlayerData(player));
+    /**
+     * Registers a session around data that has already been loaded and settled.
+     *
+     * <p>There is deliberately no {@code registerLogin(Player)} convenience overload: it
+     * would hide a Mongo read behind a call that looks game-thread safe, which is the
+     * mistake this split exists to prevent. Callers load first, then register.
+     *
+     * <p>Game thread only, and deliberately the point at which the session becomes visible
+     * to {@link #get(String)}: the caller has finished writing by then, so no other thread
+     * can observe a half-populated {@link PlayerData}.
+     */
+    public Session registerLogin(Player player, PlayerData data) {
+        Session session = createSession(player, data);
 
         sessionCache.put(player.uuid(), session);
 
         PLog.debug("Player session registered: @ (@)", session.data.nickname, player.uuid());
         return session;
+    }
+
+    /**
+     * Reads the stored data for a uuid, or returns a fresh record for an unknown player.
+     *
+     * <p>Hits Mongo, so it belongs on the storage executor. The result is not published to
+     * any other thread.
+     */
+    public PlayerData loadPlayerData(String uuid) {
+        var data = playerDataRepository.findByUuid(uuid);
+        return data != null ? data : new PlayerData(uuid, false);
     }
 
     /**
@@ -311,15 +335,55 @@ public class SessionService {
      * Clears cache and rebuilds from Groups.player.
      * Useful for manual cache refresh.
      */
-    public void reloadCache() {
-        sessionCache.clear();
+    /**
+     * Rebuilds the session cache from the authoritative repository.
+     *
+     * <p>This replaces a reload that walked {@link mindustry.gen.Groups#player} from
+     * the Redis subscriber thread while issuing one blocking Mongo query per player.
+     * The list was mutated under iteration, and a reconnect during the reload left a
+     * half-populated cache. The player snapshot is now taken on the game thread, the
+     * queries run on the storage executor, and the rebuilt cache is installed back on
+     * the game thread in a single swap.
+     */
+    public void reloadCacheAsync(Async async) {
+        async.main(() -> {
+            List<Player> online = new ArrayList<>();
+            Groups.player.each(online::add);
 
-        Groups.player.each(player -> {
-            Session session = createSession(player, loadOrCreatePlayerData(player));
-            sessionCache.put(player.uuid(), session);
+            async.supply(() -> {
+                    ObjectMap<String, PlayerData> reloaded = new ObjectMap<>();
+                    for (Player player : online) {
+                        PlayerData data = playerDataRepository.findByPlayer(player);
+                        reloaded.put(player.uuid(), data != null ? data : new PlayerData(player.uuid(), false));
+                    }
+                    return reloaded;
+                })
+                .thenMain((reloaded, error) -> {
+                    if (error != null) {
+                        PLog.err("Failed to reload player data cache", error);
+                        return;
+                    }
+
+                    // A player who disconnected while the queries ran must not be
+                    // resurrected in the cache, and the cache is left untouched on
+                    // failure so a bad reload cannot log everyone out.
+                    ObjectMap<String, Session> rebuilt = new ObjectMap<>();
+                    for (Player player : online) {
+                        if (!Async.isPlayerOnline(player)) {
+                            continue;
+                        }
+                        PlayerData data = reloaded.get(player.uuid());
+                        if (data == null) {
+                            continue;
+                        }
+                        rebuilt.put(player.uuid(), createSession(player, data));
+                    }
+
+                    sessionCache.clear();
+                    sessionCache.putAll(rebuilt);
+                    PLog.info("Player cache reloaded: @ players", sessionCache.size);
+                });
         });
-
-        PLog.info("Player cache reloaded: @ players", sessionCache.size);
     }
 
     /**
@@ -437,6 +501,37 @@ public class SessionService {
         }, () -> playerDataRepository.updateConnectionData(session.data.uuid, ip, nickname));
     }
 
+    /**
+     * Applies the join-time ip/nickname to data that is not published yet, then persists.
+     *
+     * <p>Storage phase only. Because the {@code PlayerData} is still private to the caller,
+     * mutating it here cannot race a gameplay write; a session-scoped caller must go
+     * through {@link #updateConnectionData(Session, String, String)} instead, because there
+     * the cached record is shared with the game thread.
+     */
+    public boolean updateConnectionData(PlayerData data, String ip, String nickname) {
+        if (data == null) {
+            return false;
+        }
+
+        data.ip = ip;
+        data.nickname = nickname;
+        return playerDataRepository.updateConnectionData(data.uuid, ip, nickname);
+    }
+
+    /** Persists data that is not published yet. Storage phase only. */
+    public boolean persistData(PlayerData data) {
+        if (data == null) {
+            return false;
+        }
+
+        boolean persisted = playerDataRepository.save(data);
+        if (persisted) {
+            invalidateLeaderboardCache();
+        }
+        return persisted;
+    }
+
     public boolean updateAdminStatus(Session session, boolean admin, String adminSource) {
         return mutateSession(session, data -> {
             data.admin = admin;
@@ -540,6 +635,9 @@ public class SessionService {
     }
 
     public void broadcastFiltered(String key, Map<String, Object> args, Predicate<Session> filter) {
+        // Every chat relay funnels through here, so this is the cheapest place to notice a
+        // caller that reached the game thread over a listener, an executor or a UDP reader.
+        GameThread.report("SessionService.broadcastFiltered:" + key);
         for (Session session : getAllCachedSnapshot()) {
             if (session.data == null) continue;
             if (filter != null && !filter.test(session)) continue;

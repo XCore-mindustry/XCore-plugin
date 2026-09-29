@@ -7,6 +7,8 @@ import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatDiscordIngres
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatGlobalV1;
 import org.xcore.protocol.generated.messages.chat.ChatMessages.ChatPrivateV1;
 import org.xcore.plugin.config.TomlXcoreConfig;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.service.NetworkService;
@@ -29,6 +31,12 @@ import static org.mockito.Mockito.when;
 
 class ChatTransportHandlerTest {
 
+    /**
+     * Runs the marshalled game-thread work inline so the existing assertions stay
+     * synchronous; the marshalling itself is asserted separately.
+     */
+    private final Async async = new Async(new StorageExecutor(4), Runnable::run);
+
     @Test
     @DisplayName("global chat event is broadcast only to players with global chat enabled")
     void globalChatEvent_isBroadcastOnlyToPlayersWithGlobalChatEnabled() {
@@ -38,7 +46,7 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -68,7 +76,7 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -90,7 +98,7 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -118,7 +126,7 @@ class ChatTransportHandlerTest {
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
 
-        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config);
+        ChatTransportHandler handler = new ChatTransportHandler(network, sessionService, privateMessageService, config, async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);

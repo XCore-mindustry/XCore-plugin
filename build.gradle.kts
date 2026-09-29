@@ -251,4 +251,10 @@ tasks.named<MindustryExec>("runServer") {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+
+    // GameThread reports violations by default so a production server keeps serving.
+    // Tests run it strict, so a thread-affinity regression fails the build instead of
+    // reaching a deployment. Overridable with -PxcoreStrictThreads=false.
+    val strictThreads = providers.gradleProperty("xcoreStrictThreads").orElse("true").get()
+    systemProperty("xcore.strictThreads", strictThreads)
 }

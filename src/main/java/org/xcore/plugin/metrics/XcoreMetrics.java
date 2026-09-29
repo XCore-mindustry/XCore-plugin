@@ -57,6 +57,20 @@ public final class XcoreMetrics {
             LabelSchema.of("check", "phase")
     );
 
+    public static final CounterDef INGRESS_HANDSHAKE_BUDGET_EXCEEDED_TOTAL = new CounterDef(
+            "xcore_ingress_handshake_budget_exceeded_total",
+            "Total handshakes resolved by policy because the ingress time budget ran out",
+            "events",
+            LabelSchema.empty()
+    );
+
+    public static final CounterDef THREAD_AFFINITY_VIOLATIONS_TOTAL = new CounterDef(
+            "xcore_thread_affinity_violations_total",
+            "Total detected accesses of Mindustry state from outside the game thread",
+            "events",
+            LabelSchema.of("site", "thread")
+    );
+
     public static final CounterDef COMMANDS_TOTAL = new CounterDef(
             "xcore_commands_total",
             "Total executed commands",

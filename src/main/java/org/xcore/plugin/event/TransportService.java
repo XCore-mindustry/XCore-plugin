@@ -17,6 +17,7 @@ import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.NetworkService;
 
 import java.io.InputStream;
@@ -24,6 +25,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Singleton
 public class TransportService {
@@ -37,8 +39,10 @@ public class TransportService {
     private final MapTransportHandler mapTransportHandler;
     private final NetworkService network;
     private final TomlXcoreConfig config;
+    private final StorageExecutor storageExecutor;
     private volatile String cachedPublicHost;
     private volatile long nextPublicHostResolveAttemptAtMs;
+    private final AtomicBoolean hostResolveInFlight = new AtomicBoolean();
 
     @Inject
     public TransportService(ChatTransportHandler chatTransportHandler,
@@ -46,13 +50,15 @@ public class TransportService {
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
                             NetworkService network,
-                            TomlXcoreConfig config) {
+                            TomlXcoreConfig config,
+                            StorageExecutor storageExecutor) {
         this.chatTransportHandler = chatTransportHandler;
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
         this.mapTransportHandler = mapTransportHandler;
         this.network = network;
         this.config = config;
+        this.storageExecutor = storageExecutor;
     }
 
     @PostConstruct
@@ -104,6 +110,15 @@ public class TransportService {
         mapTransportHandler.registerListeners();
     }
 
+    /**
+     * Returns the cached public host, or {@code null} if it has not been resolved yet.
+     *
+     * <p>This used to perform the lookup inline, which meant a heartbeat could block the
+     * game thread for the full connect plus read timeout — up to four seconds — every time
+     * the resolver was slow or unreachable. The lookup now runs on the storage executor
+     * and this only reads the cache; a heartbeat published before the first resolution
+     * succeeds simply carries no host, and picks it up on the next one.
+     */
     protected String resolveHostAddress() {
         String configuredHost = configuredPublicHostOverride();
         if (configuredHost != null) {
@@ -117,11 +132,52 @@ public class TransportService {
             return cached;
         }
 
+        schedulePublicHostResolution();
+        return null;
+    }
+
+    /** Starts at most one background resolution, subject to the failure backoff. */
+    private void schedulePublicHostResolution() {
         long now = currentTimeMillis();
         if (now < nextPublicHostResolveAttemptAtMs) {
-            return null;
+            return;
+        }
+        if (!hostResolveInFlight.compareAndSet(false, true)) {
+            return;
         }
 
+        try {
+            dispatchPublicHostResolution();
+        } catch (RuntimeException rejected) {
+            hostResolveInFlight.set(false);
+            Log.warn("Could not schedule public host resolution: @", rejected.toString());
+        }
+    }
+
+    /**
+     * Hands the lookup to the storage executor and clears the in-flight flag when it ends.
+     *
+     * <p>Protected so tests can run the lookup deterministically; production always goes
+     * through the storage executor. The guards above it must stay in place, so they are not
+     * part of this seam.
+     */
+    protected void dispatchPublicHostResolution() {
+        storageExecutor.execute(this::runPublicHostResolution);
+    }
+
+    /**
+     * The lookup body, with the in-flight bookkeeping kept in one place so a test seam
+     * cannot leave the flag set and silently suppress every later retry.
+     */
+    protected void runPublicHostResolution() {
+        try {
+            fetchPublicHost();
+        } finally {
+            hostResolveInFlight.set(false);
+        }
+    }
+
+    protected void fetchPublicHost() {
         try {
             HttpURLConnection connection = openPublicHostConnection();
             connection.setRequestMethod("GET");
@@ -133,15 +189,12 @@ public class TransportService {
                 if (!host.isBlank()) {
                     cachedPublicHost = host;
                     nextPublicHostResolveAttemptAtMs = 0L;
-                    return host;
                 }
             }
         } catch (Exception ex) {
             Log.warn("Failed to resolve public host via api.ipify.org: @", ex.toString());
-            nextPublicHostResolveAttemptAtMs = now + hostResolutionFailureBackoffMs();
+            nextPublicHostResolveAttemptAtMs = currentTimeMillis() + hostResolutionFailureBackoffMs();
         }
-
-        return null;
     }
 
     protected HttpURLConnection openPublicHostConnection() throws Exception {

@@ -220,6 +220,9 @@ commands-login-admin-password-created =
     [green]Пароль админа создан
     [red]Не забудьте свой пароль! Если Вы его забудете, Вам придется обратиться к главному администратору с просьбой сбросить его.
 commands-login-request-approval-discord = [accent]У вашего аккаунта нет Discord-доступа администратора. Получите admin role в Discord и попробуйте снова.
+commands-login-verifying = [lightgray]Проверка пароля администратора...
+commands-login-already-processing = [scarlet]⚠ Запрос на вход уже обрабатывается. Подождите.
+commands-login-rate-limited = [scarlet]⚠ Слишком много неудачных попыток входа. Подождите перед повторной попыткой.
 commands-discord-link-created =
     [green]Код привязки Discord создан: [accent]{ $code }[]
     [lightgray]На нашем Discord сервере вызовите slash-команду бота [accent]/link { $code }[] в течение [accent]{ $expireMinutes }[] мин.
@@ -944,7 +947,7 @@ error-wrong-number = [scarlet]⚠ Неправильный формат числ
 error-wrong-period-format = [scarlet]⚠ Неправильный формат периода. Пример: 1h 30m, 30 ({ hours })
 error-invalid-id = [scarlet]⚠ Некорректный ID игрока.
 error-spectator = [scarlet]⚠ Вы наблюдатель и не можете использовать эту команду.
-error-admin-password-too-short = [scarlet]⚠ Пароль должен быть длиннее 4 символов
+error-admin-password-too-short = [scarlet]⚠ Пароль должен быть длиннее 8 символов
 error-wrong-admin-password = [scarlet]⚠ Неправильный пароль
 error-internal = [scarlet]Внутренняя ошибка сервера
 error-processing-request = [scarlet]Произошла ошибка при обработке запроса.
@@ -1133,3 +1136,4 @@ player-servers-card-map = [gray]Карта:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Режим:[] [white]{ $mode }[]
 
 
+error-only-players = [scarlet]⚠ Эту команду могут использовать только игроки.

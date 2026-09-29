@@ -216,6 +216,9 @@ commands-login-admin-password-created =
     [green]Admin password created.
     [red]Don't forget your password! If you forget it, you will need to ask a general administrator to reset it.
 commands-login-request-approval-discord = [accent]Your account does not have Discord admin access. Get the admin role in Discord and try again.
+commands-login-verifying = [lightgray]Verifying admin password...
+commands-login-already-processing = [scarlet]⚠ A login request is already being processed. Please wait.
+commands-login-rate-limited = [scarlet]⚠ Too many failed login attempts. Please wait before trying again.
 commands-discord-link-created =
     [green]Discord link code created: [accent]{ $code }[]
     [lightgray]On our Discord server, run the bot slash command [accent]/link { $code }[] within [accent]{ $expireMinutes }[] min.
@@ -976,7 +979,7 @@ error-wrong-number = [scarlet]⚠ Wrong number format.
 error-wrong-period-format = [scarlet]⚠ Wrong period format- Example: 1h 30m, 30 ({ hours })
 error-invalid-id = [scarlet]⚠ Invalid player-id.
 error-spectator = [scarlet]⚠ You are a spectator and cannot use this command.
-error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 4 characters long.
+error-admin-password-too-short = [scarlet]⚠ Admin password must be at least 8 characters long.
 error-wrong-admin-password = [scarlet]⚠ Incorrect admin password.
 error-internal = [scarlet]Internal error.
 error-processing-request = [scarlet]An error occurred while processing the request.
@@ -1109,3 +1112,4 @@ player-servers-card-map = [gray]Map:[] [white]{ $map }[]
 player-servers-card-mode = [gray]Mode:[] [white]{ $mode }[]
 
 
+error-only-players = [scarlet]⚠ This command can only be used by a player.

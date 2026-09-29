@@ -14,9 +14,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +27,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ServerDiscoveryServiceTest {
+
+    /**
+     * Inline dispatcher: discovery is now sampled on the game thread, so the existing
+     * assertions can keep reading the buffer straight after the call.
+     */
+    private final Async async = new Async(new StorageExecutor(4), Runnable::run);
+
+    private final java.util.List<Runnable> queued = new java.util.ArrayList<>();
 
     private GameState previousState;
     private EntityGroup<Player> previousPlayers;
@@ -65,12 +76,85 @@ class ServerDiscoveryServiceTest {
     }
 
     @Test
+    @DisplayName("only the first query is deferred; later ones answer without touching the game thread")
+    void handleDiscovery_answersSubsequentQueriesWithoutTheGameThread() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        ServerDiscoveryService service = new ServerDiscoveryService(config(), new Async(new StorageExecutor(4), pending::add));
+
+        AtomicBoolean firstAnswered = new AtomicBoolean();
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> firstAnswered.set(true));
+        assertThat(firstAnswered).as("the first query has no snapshot to answer from").isFalse();
+        assertThat(pending).hasSize(1);
+        pending.remove(0).run();
+        assertThat(firstAnswered).isTrue();
+
+        // From here on the packet is written and answered on the UDP thread. A discovery
+        // flood is unauthenticated, so anything that made it wait on the tick loop would let
+        // a stranger throttle the server.
+        AtomicBoolean secondAnswered = new AtomicBoolean();
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> secondAnswered.set(true));
+
+        assertThat(secondAnswered).isTrue();
+        assertThat(pending).as("no work queued for a query inside the refresh interval").isEmpty();
+    }
+
+    @Test
+    @DisplayName("a burst of queries costs at most one queued refresh, not one per query")
+    void handleDiscovery_coalescesRefreshesUnderLoad() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        // A zero interval means every snapshot is immediately stale, which is the worst case
+        // a flood can produce. The queue must still grow by at most one.
+        ServerDiscoveryService service = new ServerDiscoveryService(
+                config(), new Async(new StorageExecutor(4), pending::add), 0L);
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        pending.remove(0).run();
+
+        for (int i = 0; i < 200; i++) {
+            service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+            });
+        }
+
+        assertThat(pending).hasSizeLessThanOrEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("the refresh is released after it runs, so later queries can refresh again")
+    void handleDiscovery_refreshesAgainAfterTheIntervalPasses() {
+        java.util.List<Runnable> pending = new java.util.ArrayList<>();
+        ServerDiscoveryService service = new ServerDiscoveryService(
+                config(), new Async(new StorageExecutor(4), pending::add), 0L);
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        pending.remove(0).run();
+
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        assertThat(pending).hasSize(1);
+        pending.remove(0).run();
+
+        // If the in-flight flag were not cleared, this query would queue nothing at all and
+        // the cache would be frozen for the rest of the process lifetime.
+        service.handleDiscovery(ByteBuffer.allocate(500), () -> {
+        });
+        assertThat(pending).hasSize(1);
+    }
+
+    private static TomlXcoreConfig config() {
+        TomlXcoreConfig config = new TomlXcoreConfig();
+        config.normalize();
+        return config;
+    }
+
+    @Test
     @DisplayName("handleDiscovery writes configured description")
     void handleDiscoveryWritesConfiguredDescription() {
-        var service = new ServerDiscoveryService(config(10));
+        var service = new ServerDiscoveryService(config(10), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.description()).isEqualTo("Server description");
@@ -79,10 +163,10 @@ class ServerDiscoveryServiceTest {
     @Test
     @DisplayName("handleDiscovery writes zero player limit when disabled")
     void handleDiscoveryWritesZeroPlayerLimitWhenDisabled() {
-        var service = new ServerDiscoveryService(config(0));
+        var service = new ServerDiscoveryService(config(0), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         assertThat(buffer.position()).isZero();
         DiscoveryPacket packet = readPacket(buffer);
@@ -101,13 +185,46 @@ class ServerDiscoveryServiceTest {
         Groups.player.add(player(false));
         Groups.player.add(player(false));
 
-        var service = new ServerDiscoveryService(config(3));
+        var service = new ServerDiscoveryService(config(3), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.playerLimit()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("handleDiscovery defers the snapshot to the game thread before answering")
+    void handleDiscoveryDefersSnapshotToGameThread() {
+        var service = new ServerDiscoveryService(config(10), new Async(new StorageExecutor(4), queued::add));
+
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        var responded = new AtomicBoolean();
+        service.handleDiscovery(buffer, () -> responded.set(true));
+
+        // Discovery is served on an ArcNet UDP thread. Reading state.map and Groups.player
+        // there races a map reload or a player join happening on the tick loop.
+        assertThat(queued).hasSize(1);
+        assertThat(responded).isFalse();
+        assertThat(buffer.position()).isZero();
+
+        queued.forEach(Runnable::run);
+
+        assertThat(responded).isTrue();
+        assertThat(readPacket(buffer).map()).isEqualTo("Test Map");
+    }
+
+    @Test
+    @DisplayName("handleDiscovery falls back to an empty map name before the world loads")
+    void handleDiscoveryFallsBackToEmptyMapName() {
+        Vars.state.map = null;
+
+        var service = new ServerDiscoveryService(config(10), async);
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        service.handleDiscovery(buffer, () -> {});
+
+        assertThat(readPacket(buffer).map()).isEmpty();
     }
 
     @Test
@@ -115,10 +232,10 @@ class ServerDiscoveryServiceTest {
     void handleDiscoveryUsesEmptyDescriptionWhenAdministrationDescriptionOff() {
         configuredDescription = "off";
 
-        var service = new ServerDiscoveryService(config(10));
+        var service = new ServerDiscoveryService(config(10), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.description()).isEmpty();

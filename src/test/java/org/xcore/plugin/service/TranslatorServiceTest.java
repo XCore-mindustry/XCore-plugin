@@ -5,10 +5,13 @@ import mindustry.entities.EntityGroup;
 import mindustry.game.Team;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
+import mindustry.net.NetConnection;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.localization.TranslationFailure;
@@ -31,6 +34,11 @@ import static org.mockito.Mockito.when;
 
 class TranslatorServiceTest {
 
+    /**
+     * Runs the marshalled game-thread work inline; marshalling is asserted separately.
+     */
+    private final Async async = new Async(new StorageExecutor(4), Runnable::run);
+
     private EntityGroup<Player> previousPlayerGroup;
 
     @BeforeEach
@@ -44,6 +52,20 @@ class TranslatorServiceTest {
     @AfterEach
     void tearDown() {
         Groups.player = previousPlayerGroup;
+    }
+
+    /**
+     * A player that {@link Async#isPlayerOnline} accepts. The translation completion
+     * callbacks now re-check that a recipient is still connected before sending, so a
+     * bare mock (not added, no connection) would be skipped.
+     */
+    private static Player connectedPlayer() {
+        Player player = mock(Player.class);
+        when(player.isAdded()).thenReturn(true);
+        NetConnection connection = mock(NetConnection.class);
+        when(connection.isConnected()).thenReturn(true);
+        player.con = connection;
+        return player;
     }
 
     @Test
@@ -63,11 +85,12 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(recipient.uuid()).thenReturn("recipient-uuid");
 
         Session recipientSession = mock(Session.class);
@@ -109,11 +132,12 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(recipient.uuid()).thenReturn("recipient-uuid");
 
         Session recipientSession = mock(Session.class);
@@ -152,7 +176,8 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
         AtomicReference<String> translated = new AtomicReference<>();
 
@@ -185,11 +210,12 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(recipient.uuid()).thenReturn("recipient-uuid");
 
         Session recipientSession = mock(Session.class);
@@ -232,11 +258,12 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(recipient.uuid()).thenReturn("recipient-uuid");
 
         Session recipientSession = mock(Session.class);
@@ -280,11 +307,12 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(recipient.uuid()).thenReturn("recipient-uuid");
 
         Session recipientSession = mock(Session.class);
@@ -327,12 +355,13 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -387,13 +416,14 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player firstRecipient = mock(Player.class);
-        Player secondRecipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player firstRecipient = connectedPlayer();
+        Player secondRecipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -459,12 +489,13 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -519,12 +550,13 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -580,12 +612,13 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -640,12 +673,13 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
         Team team = mock(Team.class);
-        Player author = mock(Player.class);
-        Player recipient = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient = connectedPlayer();
         when(author.team()).thenReturn(team);
 
         Localization authorLocalization = mock(Localization.class);
@@ -699,13 +733,14 @@ class TranslatorServiceTest {
                 clientCompatibilityService,
                 translationFallbackService,
                 translationCacheService,
-                translationMetricsService
+                translationMetricsService,
+                async
         );
 
-        Player author = mock(Player.class);
-        Player recipient1 = mock(Player.class);
+        Player author = connectedPlayer();
+        Player recipient1 = connectedPlayer();
         when(recipient1.uuid()).thenReturn("rec1");
-        Player recipient2 = mock(Player.class);
+        Player recipient2 = connectedPlayer();
         when(recipient2.uuid()).thenReturn("rec2");
 
         Session s1 = mock(Session.class);

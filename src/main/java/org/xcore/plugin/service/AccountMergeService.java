@@ -498,26 +498,36 @@ public class AccountMergeService {
     }
 
     private void handleOnlinePlayers(String oldSourceUuid, PlayerData targetData) {
-        if (Core.app == null) return;
+        // Read once: Core.app is cleared during shutdown, so re-reading it after the null
+        // check could hand the task to a dead application.
+        var app = Core.app;
+        if (app == null) return;
 
-        // Kick source if currently connected
-        Player sourcePlayer = Groups.player.find(p -> oldSourceUuid.equals(p.uuid()));
-        if (sourcePlayer != null && sourcePlayer.con != null) {
-            Core.app.post(() -> sourcePlayer.con.kick(
-                    "Ваш аккаунт был объединен с аккаунтом #" + targetData.pid + ". Пожалуйста, перезайдите с нового аккаунта."));
-        }
+        // This is reached from mergeAsync, which runs on a plain CompletableFuture pool.
+        // Groups.player, the session cache and session.data all belong to the game thread,
+        // so the whole method is marshalled rather than just the two calls that already
+        // were - the Groups lookups and the session.data swap above used to happen on the
+        // merge thread while the tick loop was reading them.
+        app.post(() -> {
+            // Kick source if currently connected
+            Player sourcePlayer = Groups.player.find(p -> oldSourceUuid.equals(p.uuid()));
+            if (sourcePlayer != null && sourcePlayer.con != null) {
+                sourcePlayer.con.kick(
+                        "Ваш аккаунт был объединен с аккаунтом #" + targetData.pid + ". Пожалуйста, перезайдите с нового аккаунта.");
+            }
 
-        // Refresh target if currently connected
-        Player targetPlayer = Groups.player.find(p -> targetData.uuid.equals(p.uuid()));
-        if (targetPlayer != null) {
-            Session targetSession = sessionService.get(targetData.uuid);
-            if (targetSession != null) {
-                targetSession.data = targetData;
-                if (playerDisplayService != null) {
-                    Core.app.post(() -> playerDisplayService.refresh(targetSession));
+            // Refresh target if currently connected
+            Player targetPlayer = Groups.player.find(p -> targetData.uuid.equals(p.uuid()));
+            if (targetPlayer != null) {
+                Session targetSession = sessionService.get(targetData.uuid);
+                if (targetSession != null) {
+                    targetSession.data = targetData;
+                    if (playerDisplayService != null) {
+                        playerDisplayService.refresh(targetSession);
+                    }
                 }
             }
-        }
+        });
     }
 
     private HexedRanks.HexedRank computeHexedRank(int points) {

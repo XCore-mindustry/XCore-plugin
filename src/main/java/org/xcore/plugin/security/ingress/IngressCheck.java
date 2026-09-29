@@ -44,6 +44,24 @@ public interface IngressCheck {
         return priority() >= 0;
     }
 
+    /**
+     * Posture to adopt when {@link #check} itself throws.<br>
+     * <br>
+     * Defaults to {@link FailureMode#FAIL_CLOSED}. An exception means the check reached no
+     * verdict, so it never cleared the connection — treating that as "allowed" turns a broken
+     * dependency into a moderation bypass, precisely when the server is most likely to be under
+     * attack.<br>
+     * <br>
+     * Override to {@link FailureMode#FAIL_OPEN} only for checks that are local and pure — no
+     * I/O and no shared mutable state — where a defect in the check itself is a correctness bug
+     * rather than a security event, and locking every player out would be the worse outcome.
+     *
+     * @return how this check behaves when it throws (fail-closed by default)
+     */
+    default FailureMode failureMode() {
+        return FailureMode.FAIL_CLOSED;
+    }
+
     default String name() {
         return getClass().getSimpleName();
     }
