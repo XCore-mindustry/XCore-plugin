@@ -1339,7 +1339,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main" },
+    { name = "xcore-protocol", git = "https://github.com/XCore-mindustry/xcore-protocol.git?rev=cb9e2b8210945aa31048587a73630780ecd245ae" },
 ]
 
 [package.metadata.requires-dev]
@@ -1354,7 +1354,7 @@ dev = [
 [[package]]
 name = "xcore-protocol"
 version = "0.6.2"
-source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?branch=main#cb9e2b8210945aa31048587a73630780ecd245ae" }
+source = { git = "https://github.com/XCore-mindustry/xcore-protocol.git?rev=cb9e2b8210945aa31048587a73630780ecd245ae#cb9e2b8210945aa31048587a73630780ecd245ae" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pyyaml" },

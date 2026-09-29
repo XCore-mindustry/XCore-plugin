@@ -19,7 +19,11 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", branch = "main" }
+# Pinned to an immutable revision, not a branch: a branch pin makes every build resolve a
+# different commit of the protocol. The newest release tag (v0.6.2) predates the chat-domain
+# decomposition this bot already imports, so it cannot be used until a new tag is cut on
+# xcore-protocol @ main. Bump this rev when that tag exists.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "cb9e2b8210945aa31048587a73630780ecd245ae" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
