@@ -213,6 +213,10 @@ public class AuthController implements CloudClientController {
         if (session == null || session.data == null || session.player == null) return;
         Localization local = session.locale();
 
+        // The unAdminPlayer call is not a leftover and not a stray write to the persistent
+        // registry: /login is the admin path for players without the admin mod, so this
+        // grant is a real registration and logging out is meant to take it back out. The
+        // password is untouched, so /login restores it. See AdminAuthService#grantAdmin.
         if (session.player.admin) {
             session.player.admin(false);
             netServer.admins.unAdminPlayer(session.player.uuid());

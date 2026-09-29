@@ -176,6 +176,20 @@ public class AdminAuthService {
 
     /**
      * Applies admin privileges to a player and updates server state on the Mindustry tick thread.
+     *
+     * <p>This is the admin path for people who do not have the admin mod, so unlike the
+     * Discord-admin grant it is a real registration rather than a revocable session overlay.
+     * That is why {@code logout} takes it back out again: the point of logout is to drop the
+     * privileges, and the password stays in {@code PlayerData.password} so the holder can
+     * grant themselves admin again.
+     *
+     * <p>Note what it deliberately does <em>not</em> do: it never writes
+     * {@code PlayerData.admin}. That flag is the Discord-admin grant, which is a different
+     * source with different rules, and overwriting it here would conflate the two. The
+     * consequence is that this grant lives only in the in-memory {@code netServer.admins}
+     * registry, so it does not survive a reconnect or a restart and the player grants it to
+     * themselves again by logging in. That is the intended trade - the credential is
+     * remembered, the privilege is not.
      */
     public void grantAdmin(Player player, Session session) {
         player.admin(true);
