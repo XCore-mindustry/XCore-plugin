@@ -1,7 +1,9 @@
 package org.xcore.plugin.startup;
 
 import arc.net.Server;
+import arc.util.Log;
 import arc.util.Reflect;
+import arc.util.Strings;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import mindustry.Vars;
@@ -10,6 +12,7 @@ import mindustry.net.ArcNetProvider;
 import org.xcore.plugin.event.NetEventService;
 import org.xcore.plugin.service.ServerDiscoveryService;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static mindustry.Vars.netServer;
@@ -32,8 +35,15 @@ public class RuntimeHookRegistrar {
 
         server.setDiscoveryHandler((_, handler) -> {
             ByteBuffer buffer = ByteBuffer.allocate(500);
-            discoveryService.handleDiscovery(buffer);
-            handler.respond(buffer);
+            // The handler runs on a UDP thread; discoveryService hops to the game thread
+            // to sample the state and then calls back here to answer.
+            discoveryService.handleDiscovery(buffer, () -> {
+                try {
+                    handler.respond(buffer);
+                } catch (IOException ex) {
+                    Log.err("[Discovery] Failed to send server list response: @", Strings.getSimpleMessage(ex));
+                }
+            });
         });
 
         netServer.admins.addChatFilter(netEvents::chat);

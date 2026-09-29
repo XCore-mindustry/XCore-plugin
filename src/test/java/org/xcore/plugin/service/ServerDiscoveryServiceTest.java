@@ -14,9 +14,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.config.TomlXcoreConfig;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +27,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ServerDiscoveryServiceTest {
+
+    /**
+     * Inline dispatcher: discovery is now sampled on the game thread, so the existing
+     * assertions can keep reading the buffer straight after the call.
+     */
+    private final Async async = new Async(new StorageExecutor(4), Runnable::run);
+
+    private final java.util.List<Runnable> queued = new java.util.ArrayList<>();
 
     private GameState previousState;
     private EntityGroup<Player> previousPlayers;
@@ -67,10 +78,10 @@ class ServerDiscoveryServiceTest {
     @Test
     @DisplayName("handleDiscovery writes configured description")
     void handleDiscoveryWritesConfiguredDescription() {
-        var service = new ServerDiscoveryService(config(10));
+        var service = new ServerDiscoveryService(config(10), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.description()).isEqualTo("Server description");
@@ -79,10 +90,10 @@ class ServerDiscoveryServiceTest {
     @Test
     @DisplayName("handleDiscovery writes zero player limit when disabled")
     void handleDiscoveryWritesZeroPlayerLimitWhenDisabled() {
-        var service = new ServerDiscoveryService(config(0));
+        var service = new ServerDiscoveryService(config(0), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         assertThat(buffer.position()).isZero();
         DiscoveryPacket packet = readPacket(buffer);
@@ -101,13 +112,46 @@ class ServerDiscoveryServiceTest {
         Groups.player.add(player(false));
         Groups.player.add(player(false));
 
-        var service = new ServerDiscoveryService(config(3));
+        var service = new ServerDiscoveryService(config(3), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.playerLimit()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("handleDiscovery defers the snapshot to the game thread before answering")
+    void handleDiscoveryDefersSnapshotToGameThread() {
+        var service = new ServerDiscoveryService(config(10), new Async(new StorageExecutor(4), queued::add));
+
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        var responded = new AtomicBoolean();
+        service.handleDiscovery(buffer, () -> responded.set(true));
+
+        // Discovery is served on an ArcNet UDP thread. Reading state.map and Groups.player
+        // there races a map reload or a player join happening on the tick loop.
+        assertThat(queued).hasSize(1);
+        assertThat(responded).isFalse();
+        assertThat(buffer.position()).isZero();
+
+        queued.forEach(Runnable::run);
+
+        assertThat(responded).isTrue();
+        assertThat(readPacket(buffer).map()).isEqualTo("Test Map");
+    }
+
+    @Test
+    @DisplayName("handleDiscovery falls back to an empty map name before the world loads")
+    void handleDiscoveryFallsBackToEmptyMapName() {
+        Vars.state.map = null;
+
+        var service = new ServerDiscoveryService(config(10), async);
+        ByteBuffer buffer = ByteBuffer.allocate(512);
+        service.handleDiscovery(buffer, () -> {});
+
+        assertThat(readPacket(buffer).map()).isEmpty();
     }
 
     @Test
@@ -115,10 +159,10 @@ class ServerDiscoveryServiceTest {
     void handleDiscoveryUsesEmptyDescriptionWhenAdministrationDescriptionOff() {
         configuredDescription = "off";
 
-        var service = new ServerDiscoveryService(config(10));
+        var service = new ServerDiscoveryService(config(10), async);
 
         ByteBuffer buffer = ByteBuffer.allocate(512);
-        service.handleDiscovery(buffer);
+        service.handleDiscovery(buffer, () -> {});
 
         DiscoveryPacket packet = readPacket(buffer);
         assertThat(packet.description()).isEmpty();
