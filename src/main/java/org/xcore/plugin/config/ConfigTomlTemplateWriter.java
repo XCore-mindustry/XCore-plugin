@@ -59,6 +59,20 @@ public final class ConfigTomlTemplateWriter {
         # Gamemode for auto-start: survival, attack, pvp, sandbox
         auto_start_gamemode = "survival"
 
+        # Ingress posture when a check cannot answer. "closed" honours each check's own
+        # failure mode: a check that only inspects local state fails open, and a check that
+        # needs the database (the ban check) fails the connection closed. "open" ignores
+        # every check's posture and admits whenever the whole ingress budget is exhausted,
+        # which trades the fail-closed guarantee for availability. Only use it to recover
+        # from a database outage you would rather serve through than refuse.
+        ingress_failure_mode = "closed"
+
+        # Wall-clock budget for the whole connection handshake, not per check. The budget is
+        # absolute: once it is spent the remaining checks are cancelled, and definite denies
+        # that already arrived are still honoured. Keep it well under the client's connect
+        # timeout so a slow database produces a clean refusal rather than a client-side hang.
+        ingress_handshake_budget_millis = 2000
+
         [paths]
         # Directory for shared secrets.toml. Blank defaults to user home.
         global_config_directory = ""
