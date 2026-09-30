@@ -14,6 +14,8 @@ import org.xcore.plugin.metrics.XcoreMetrics;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,9 +72,20 @@ class IngressServiceAvajeTest {
     @Test
     @DisplayName("slow check deny returns Denied")
     void slowCheckDenyReturnsDenied() {
+        var allowLatch = new CountDownLatch(1);
         var fastAllow = StubIngressCheck.allow("fast-a", -10);
-        var slowAllow = StubIngressCheck.allow("slow-a", 0);
-        var slowDeny = StubIngressCheck.deny("slow-deny", 5, "slow blocked");
+        var slowAllow = new StubIngressCheck("slow-a", 0, (con, packet) -> {
+            allowLatch.countDown();
+            return AccessResult.Allowed.INSTANCE;
+        });
+        var slowDeny = new StubIngressCheck("slow-deny", 5, (con, packet) -> {
+            try {
+                allowLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return new AccessResult.Denied("slow blocked");
+        });
         var service = buildService(fastAllow, slowAllow, slowDeny);
 
         var result = service.validate(null, null);
@@ -86,6 +99,39 @@ class IngressServiceAvajeTest {
                 .get()
                 .extracting(MetricSampleV1::value)
                 .isEqualTo(1d);
+    }
+
+    @Test
+    @DisplayName("slow check deny cancels in-flight sibling checks")
+    void slowCheckDenyCancelsInFlightSiblings() throws Exception {
+        var startedLatch = new CountDownLatch(1);
+        var cancelledLatch = new CountDownLatch(1);
+        var slowCancelled = new StubIngressCheck("slow-cancelled", 0, (con, packet) -> {
+            startedLatch.countDown();
+            try {
+                Thread.sleep(10_000);
+            } catch (InterruptedException e) {
+                cancelledLatch.countDown();
+                Thread.currentThread().interrupt();
+            }
+            return AccessResult.Allowed.INSTANCE;
+        });
+        var slowDeny = new StubIngressCheck("slow-deny", 5, (con, packet) -> {
+            try {
+                startedLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return new AccessResult.Denied("banned");
+        });
+        var service = buildService(slowCancelled, slowDeny);
+
+        var result = service.validate(null, null);
+
+        assertThat(result).isInstanceOf(AccessResult.Denied.class);
+        assertThat(cancelledLatch.await(2, TimeUnit.SECONDS))
+                .as("in-flight sibling check must be cancelled on early deny")
+                .isTrue();
     }
 
     @Test
