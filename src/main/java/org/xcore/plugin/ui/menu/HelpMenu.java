@@ -1,7 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
 import arc.util.CommandHandler;
-import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -17,10 +16,11 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.plugin.ui.MenuService;
-import org.xcore.plugin.ui.route.MenuRoute;
+import org.xcore.plugin.ui.menu.help.HelpCategory;
+import org.xcore.plugin.ui.menu.help.HelpCommandItem;
+import org.xcore.plugin.ui.menu.help.HelpUiController;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -29,10 +29,25 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import static com.ospx.flubundle.Bundle.args;
-
 @Singleton
 public class HelpMenu extends Menu {
+
+    private static final Set<String> ADMIN_COMMANDS = Set.of(
+            "ban", "unban", "kick", "mute", "unmute", "warn", "kill", "spawn",
+            "fillitems", "broadcast", "alert", "toast", "announcement", "a", "admin",
+            "pause", "stop", "exit", "reload", "syncauth", "ipban", "whitelist", "host"
+    );
+    private static final Set<String> VOTE_COMMANDS = Set.of(
+            "vote", "votekick", "rtv", "surrender", "skip", "vk"
+    );
+    private static final Set<String> SOCIAL_COMMANDS = Set.of(
+            "msg", "m", "tell", "whisper", "r", "reply", "profile", "p",
+            "settings", "badge", "badges", "ignore", "unignore", "discord", "t", "team", "g", "global"
+    );
+    private static final Set<String> GAME_COMMANDS = Set.of(
+            "hub", "servers", "play", "maps", "map", "nominate", "sync",
+            "top", "leaderboard", "stats", "rank", "spectate", "join"
+    );
 
     private final Provider<CloudService> cloud;
     private final MenuService menuService;
@@ -44,10 +59,25 @@ public class HelpMenu extends Menu {
         this.menuService = menuService;
     }
 
-    @PostConstruct
-    public void init() {
-        menuService.registerRoute(new HelpFlows.HelpListFlow(this));
-        menuService.registerRoute(new HelpFlows.HelpDetailsFlow(this));
+    public void open(Session session) {
+        if (session == null || session.data == null) return;
+        session.clear();
+        XCoreSender sender = resolveSender(session);
+
+        if (sender == null) {
+            session.locale().send("error-internal");
+            return;
+        }
+
+        var controller = new HelpUiController(session, this);
+        var initialModel = controller.initialModel(null);
+
+        if (initialModel.allCommands().isEmpty()) {
+            session.locale().send("empty");
+            return;
+        }
+
+        menuService.openUi(session, controller, initialModel);
     }
 
     public void help(XCoreSender sender, int page) {
@@ -59,24 +89,98 @@ public class HelpMenu extends Menu {
 
     public void help(String uuid, int page) {
         Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-        XCoreSender sender = resolveSender(session);
+        open(session);
+    }
 
-        if (sender == null) {
-            session.locale().send("error-internal");
-            return;
+    public static HelpCategory resolveCategory(UnifiedCommand cmd) {
+        String name = cmd.name().toLowerCase(Locale.ROOT);
+        if (cmd.isCloudCommand() && cmd.primaryCloudEntry() != null) {
+            var entry = cmd.primaryCloudEntry();
+            var perm = entry.command().commandPermission();
+            if (perm != null && perm.toString().toLowerCase(Locale.ROOT).contains("admin")) {
+                return HelpCategory.ADMIN;
+            }
         }
-
-        List<UnifiedCommand> allCommands = collectAllCommands(sender);
-        allCommands.sort(java.util.Comparator.comparing(UnifiedCommand::name));
-
-        if (allCommands.isEmpty()) {
-            session.locale().send("empty");
-            return;
+        if (ADMIN_COMMANDS.contains(name)) {
+            return HelpCategory.ADMIN;
         }
+        if (VOTE_COMMANDS.contains(name)) {
+            return HelpCategory.VOTES;
+        }
+        if (SOCIAL_COMMANDS.contains(name)) {
+            return HelpCategory.SOCIAL;
+        }
+        if (GAME_COMMANDS.contains(name)) {
+            return HelpCategory.GAME;
+        }
+        return HelpCategory.GENERAL;
+    }
 
-        session.menuService.renderRoute(session, MenuRoute.of(HelpFlows.ROUTE_LIST).withParam("page", String.valueOf(page)));
+    public List<HelpCommandItem.ArgumentInfo> extractArgumentInfos(Session session, UnifiedCommand cmd) {
+        Map<String, HelpCommandItem.ArgumentInfo> argsByName = new LinkedHashMap<>();
+        if (cmd.isCloudCommand() && cmd.primaryCloudEntry() != null) {
+            var command = cmd.primaryCloudEntry().command();
+            for (var comp : command.components()) {
+                if (comp.type() == CommandComponent.ComponentType.LITERAL || comp.type() == CommandComponent.ComponentType.FLAG) continue;
+                boolean required = comp.required();
+                String name = comp.name();
+                String key = "commands-" + cmd.name() + "-" + comp.name() + "-description";
+                String desc = session.locale().t(key);
+                if (desc.equals(key)) {
+                    var compDesc = comp.description().textDescription();
+                    desc = (!compDesc.isEmpty()) ? compDesc : session.locale().t("help-no-arg-description");
+                }
+                argsByName.putIfAbsent(name, new HelpCommandItem.ArgumentInfo(name, required, desc));
+            }
+        } else {
+            for (var variant : cmd.legacyVariants()) {
+                String params = variant.params();
+                if (params != null && !params.isBlank()) {
+                    for (String token : params.split("\\s+")) {
+                        if (token.isBlank()) continue;
+                        boolean required = token.startsWith("<") && token.endsWith(">");
+                        String cleanName = token.replaceAll("[<>\\[\\]]", "");
+                        String key = "commands-" + cmd.name() + "-" + cleanName + "-description";
+                        String desc = session.locale().t(key);
+                        if (desc.equals(key)) desc = session.locale().t("help-no-arg-description");
+                        argsByName.putIfAbsent(cleanName, new HelpCommandItem.ArgumentInfo(cleanName, required, desc));
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(argsByName.values());
+    }
+
+    public List<HelpCommandItem> buildHelpCommandItems(Session session, XCoreSender sender) {
+        boolean isAdmin = (session != null && session.player != null && session.player.admin)
+                || (sender != null && (!sender.isPlayer() || (sender.player() != null && sender.player().admin)));
+
+        List<UnifiedCommand> unified = collectAllCommands(sender);
+        unified.sort(java.util.Comparator.comparing(UnifiedCommand::name));
+        List<HelpCommandItem> items = new ArrayList<>();
+        for (UnifiedCommand cmd : unified) {
+            HelpCategory category = resolveCategory(cmd);
+            boolean isAdminOnly = category == HelpCategory.ADMIN;
+            if (isAdminOnly && !isAdmin) {
+                continue; // Do not expose admin commands to regular players!
+            }
+            String rawDesc = resolveDescription(session, cmd);
+            List<String> aliases = extractVisibleAliases(cmd);
+            List<HelpCommandItem.ArgumentInfo> args = extractArgumentInfos(session, cmd);
+            boolean hasNoRequiredArgs = args.stream().noneMatch(HelpCommandItem.ArgumentInfo::required);
+            items.add(new HelpCommandItem(
+                    cmd.name(),
+                    category,
+                    cmd.primarySyntax(),
+                    cmd.syntaxes(),
+                    aliases,
+                    rawDesc,
+                    args,
+                    isAdminOnly,
+                    hasNoRequiredArgs
+            ));
+        }
+        return items;
     }
 
     public XCoreSender resolveSender(Session session) {
@@ -94,66 +198,6 @@ public class HelpMenu extends Menu {
             }
         }
         return null;
-    }
-
-    String buildCommandContent(Session session, UnifiedCommand cmd) {
-        boolean hasCloud = cmd.isCloudCommand();
-        boolean hasLegacy = !cmd.legacyVariants().isEmpty();
-
-        if (hasCloud && hasLegacy) {
-            return buildCloudContent(session, cmd) + "\n\n" + buildLegacyContent(session, cmd);
-        }
-        if (hasCloud) return buildCloudContent(session, cmd);
-        return buildLegacyContent(session, cmd);
-    }
-
-    private String buildCloudContent(Session session, UnifiedCommand cmd) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(session.locale().t("help-command-header", args(
-                "syntax", cmd.primarySyntax(),
-                "description", resolveDescription(session, cmd)
-        )));
-
-        if (cmd.syntaxes().size() > 1) {
-            appendUsages(session, sb, cmd.syntaxes());
-        }
-
-        if (cmd.primaryCloudEntry() != null) {
-            var aliases = extractVisibleAliases(cmd);
-            if (!aliases.isEmpty()) {
-                sb.append("\n").append(session.locale().t("help-aliases", args("aliases", formatAliases(aliases))));
-            }
-        }
-
-        var cloudVariants = cmd.cloudVariants();
-        appendCloudArguments(session, sb, cmd.name(), cloudVariants);
-
-        return sb.toString().trim();
-    }
-
-    private String buildLegacyContent(Session session, UnifiedCommand cmd) {
-        List<CommandVariant> legacyVariants = cmd.legacyVariants();
-        if (legacyVariants.size() != 1) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(session.locale().t("help-command-header", args(
-                    "syntax", cmd.primarySyntax(),
-                    "description", resolveDescription(session, cmd)
-            )));
-            appendUsages(session, sb, legacyVariants.stream().map(CommandVariant::syntax).toList());
-            return sb.toString().trim();
-        }
-
-        CommandVariant legacy = legacyVariants.getFirst();
-        String params = legacy.params();
-        String key = (params == null || params.isBlank())
-                ? "help-legacy-command-content-no-params"
-                : "help-legacy-command-content";
-
-        return session.locale().t(key, args(
-                "name", cmd.name(),
-                "params", params,
-                "description", resolveDescription(session, cmd)
-        ));
     }
 
     List<UnifiedCommand> collectAllCommands(XCoreSender sender) {
@@ -201,25 +245,7 @@ public class HelpMenu extends Menu {
         return (cmd.rawDescription() != null && !cmd.rawDescription().isEmpty()) ? cmd.rawDescription() : session.locale().t("help-no-description");
     }
 
-    private List<String> extractArgs(Session session, String commandName, CommandEntry<XCoreSender> commandEntry) {
-        List<String> lines = new ArrayList<>();
-        var command = commandEntry.command();
-        for (var comp : command.components()) {
-            if (comp.type() == CommandComponent.ComponentType.LITERAL || comp.type() == CommandComponent.ComponentType.FLAG) continue;
-            String display = comp.required() ? "[white]<" + comp.name() + ">[]" : "[white][" + comp.name() + "][]";
-            String key = "commands-" + commandName + "-" + comp.name() + "-description";
-            String desc = session.locale().t(key);
-            if (desc.equals(key)) desc = session.locale().t("help-no-arg-description");
-            lines.add(session.locale().t("help-arg-entry", args("arg", display, "description", desc)));
-        }
-        return lines;
-    }
-
-    private String formatAliases(Collection<String> aliases) {
-        return aliases.stream().map(a -> "[white]/" + a + "[]").collect(java.util.stream.Collectors.joining("[gray], []"));
-    }
-
-    private List<String> extractVisibleAliases(UnifiedCommand cmd) {
+    List<String> extractVisibleAliases(UnifiedCommand cmd) {
         CommandEntry<XCoreSender> entry = cmd.primaryCloudEntry();
         if (entry == null) return List.of();
 
@@ -232,88 +258,35 @@ public class HelpMenu extends Menu {
         return new ArrayList<>(uniqueAliases);
     }
 
-    String formatCommandLabel(Session session, UnifiedCommand cmd) {
-        int overloads = cmd.syntaxes().size();
-        if (overloads <= 1) return cmd.name();
-        return session.locale().t("help-command-with-overload-count", args(
-                "name", cmd.name(),
-                "count", overloads
-        ));
-    }
-
-    private void appendCloudArguments(Session session, StringBuilder sb, String commandName, List<CommandVariant> variants) {
-        List<UsageArgs> usageArgs = collectUsageArgs(session, commandName, variants);
-        if (usageArgs.isEmpty()) {
-            return;
-        }
-
-        sb.append("\n\n").append(session.locale().t("help-args-title"));
-
-        if (usageArgs.size() == 1 && variants.size() == 1) {
-            usageArgs.getFirst().args().forEach(line -> sb.append("\n").append(line));
-            return;
-        }
-
-        for (int i = 0; i < usageArgs.size(); i++) {
-            UsageArgs usage = usageArgs.get(i);
-            sb.append("\n").append(session.locale().t("help-usage-args-title", args("syntax", usage.syntax())));
-            usage.args().forEach(line -> sb.append("\n").append(line));
-            if (i < usageArgs.size() - 1) sb.append("\n");
-        }
-    }
-
-    private List<UsageArgs> collectUsageArgs(Session session, String commandName, List<CommandVariant> variants) {
-        List<UsageArgs> result = new ArrayList<>();
-        for (CommandVariant variant : variants) {
-            List<String> args = extractArgs(session, commandName, variant.cloudEntry());
-            if (!args.isEmpty()) {
-                result.add(new UsageArgs(variant.syntax(), args));
-            }
-        }
-        return result;
-    }
-
-    private void appendUsages(Session session, StringBuilder sb, List<String> syntaxes) {
-        sb.append("\n\n").append(session.locale().t("help-usages-title"));
-        for (String syntax : syntaxes) {
-            sb.append("\n").append(session.locale().t("help-usage-entry", args("syntax", syntax)));
-        }
-    }
-
-    String truncate(String text, int max) {
-        if (text == null) return "";
-        return text.length() <= max ? text : text.substring(0, max - 3) + "...";
-    }
-
-    record UnifiedCommand(String name, List<CommandVariant> variants) {
-        List<String> syntaxes() {
+    public record UnifiedCommand(String name, List<CommandVariant> variants) {
+        public List<String> syntaxes() {
             return variants.stream().map(CommandVariant::syntax).toList();
         }
 
-        String primarySyntax() {
+        public String primarySyntax() {
             return variants.isEmpty() ? name : variants.getFirst().syntax();
         }
 
-        String rawDescription() {
+        public String rawDescription() {
             for (CommandVariant variant : variants) {
                 if (variant.rawDescription() != null && !variant.rawDescription().isBlank()) return variant.rawDescription();
             }
             return "";
         }
 
-        boolean isCloudCommand() {
+        public boolean isCloudCommand() {
             return variants.stream().anyMatch(CommandVariant::isCloud);
         }
 
-        List<CommandVariant> cloudVariants() {
+        public List<CommandVariant> cloudVariants() {
             return variants.stream().filter(CommandVariant::isCloud).toList();
         }
 
-        List<CommandVariant> legacyVariants() {
+        public List<CommandVariant> legacyVariants() {
             return variants.stream().filter(variant -> !variant.isCloud()).toList();
         }
 
-        CommandEntry<XCoreSender> primaryCloudEntry() {
+        public CommandEntry<XCoreSender> primaryCloudEntry() {
             for (CommandVariant variant : variants) {
                 if (variant.cloudEntry() != null) return variant.cloudEntry();
             }
@@ -321,21 +294,23 @@ public class HelpMenu extends Menu {
         }
     }
 
-    private record CommandVariant(String syntax, String rawDescription, CommandEntry<XCoreSender> cloudEntry,
-                                  CommandHandler.Command legacyCommand) {
+    public record CommandVariant(String syntax, String rawDescription, CommandEntry<XCoreSender> cloudEntry,
+                                 CommandHandler.Command legacyCommand) {
         static CommandVariant fromCloud(CommandEntry<XCoreSender> entry) {
-            return new CommandVariant(entry.syntax(), extractDesc(entry), entry, null);
+            String clean = entry.syntax().replaceAll("^/+", "").trim();
+            return new CommandVariant(clean, extractDesc(entry), entry, null);
         }
 
         static CommandVariant fromLegacy(CommandHandler.Command cmd) {
-            return new CommandVariant("/" + cmd.text + (cmd.paramText.isEmpty() ? "" : " " + cmd.paramText), cmd.description, null, cmd);
+            String clean = (cmd.text + (cmd.paramText.isEmpty() ? "" : " " + cmd.paramText)).replaceAll("^/+", "").trim();
+            return new CommandVariant(clean, cmd.description, null, cmd);
         }
 
-        boolean isCloud() {
+        public boolean isCloud() {
             return cloudEntry != null;
         }
 
-        String params() {
+        public String params() {
             return legacyCommand != null ? legacyCommand.paramText : "";
         }
 
@@ -347,9 +322,6 @@ public class HelpMenu extends Menu {
         }
     }
 
-    private record UsageArgs(String syntax, List<String> args) {
-    }
-
     private static final class UnifiedCommandBuilder {
         private final String name;
         private final Map<String, CommandVariant> variantsBySyntax = new LinkedHashMap<>();
@@ -358,8 +330,9 @@ public class HelpMenu extends Menu {
             this.name = name;
         }
 
-        private void addVariant(CommandVariant variant) {
+        private UnifiedCommandBuilder addVariant(CommandVariant variant) {
             variantsBySyntax.putIfAbsent(variant.syntax(), variant);
+            return this;
         }
 
         private UnifiedCommand build() {

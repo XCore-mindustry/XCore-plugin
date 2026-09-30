@@ -42,6 +42,34 @@ help-legacy-command-content-no-params =
     { "" }
     [gray](This is a legacy command with limited info)
 help-back = [lightgray]« Back
+
+# ==============================================================================
+# Modern Reactive Help & Commands Guide (xcore-ui)
+# ==============================================================================
+help-ui-title = COMMANDS GUIDE
+help-ui-summary = [gray]{ $count } commands available
+help-ui-empty-category = [lightgray]No commands available in this category.[]
+help-ui-overloads = ({ $count } variants)
+help-ui-back = « Back to list
+help-ui-aliases = [orange]» [accent]Aliases: [white]{ $aliases }
+help-ui-syntax-title = [orange]» [accent]Syntax:
+help-ui-args-title = [orange]» [accent]Parameters:
+help-ui-arg-required = [scarlet]Required
+help-ui-arg-optional = [sky]Optional
+help-ui-btn-run = Run
+help-ui-btn-copy = To Chat
+help-ui-btn-back = Back
+help-ui-hint = Click a command card for detailed syntax and parameters
+help-ui-copied = [accent]Command: [white]/{ $syntax }
+help-ui-executed = [accent]Executing command: [white]/{ $syntax }
+
+# Categories
+help-cat-all = All
+help-cat-general = General
+help-cat-game = Game
+help-cat-social = Chat
+help-cat-votes = Votes
+help-cat-admin = Admin
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================

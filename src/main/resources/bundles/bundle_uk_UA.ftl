@@ -39,6 +39,34 @@ help-legacy-command-content-no-params =
     { "" }
     [gray](Це застаріла команда з обмеженою інформацією)
 help-back = [lightgray]« Назад
+
+# ==============================================================================
+# Modern Reactive Help & Commands Guide (xcore-ui)
+# ==============================================================================
+help-ui-title = ДОВІДНИК КОМАНД
+help-ui-summary = [gray]{ $count } команд доступно
+help-ui-empty-category = [lightgray]У цій категорії немає доступних команд.[]
+help-ui-overloads = ({ $count } вар.)
+help-ui-back = « Назад до списку
+help-ui-aliases = [orange]» [accent]Псевдоніми: [white]{ $aliases }
+help-ui-syntax-title = [orange]» [accent]Синтаксис:
+help-ui-args-title = [orange]» [accent]Параметри:
+help-ui-arg-required = [scarlet]Обов'язковий
+help-ui-arg-optional = [sky]Опціональний
+help-ui-btn-run = Виконати
+help-ui-btn-copy = В чат
+help-ui-btn-back = Назад
+help-ui-hint = Натисніть на команду для перегляду детального синтаксису
+help-ui-copied = [accent]Команда: [white]/{ $syntax }
+help-ui-executed = [accent]Виконується команда: [white]/{ $syntax }
+
+# Categories
+help-cat-all = Всі
+help-cat-general = Загальні
+help-cat-game = Гра
+help-cat-social = Чат
+help-cat-votes = Голоси
+help-cat-admin = Адмін
 commands-information-description = Показати інформацію про сервер.
 commands-info-title = [orange]{ -xcore } — Назва сервера: [orange]{ $server-name }
 commands-info-text =

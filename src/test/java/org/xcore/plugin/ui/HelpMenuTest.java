@@ -69,7 +69,6 @@ class HelpMenuTest {
         when(cloudProvider.get()).thenReturn(cloudService);
 
         helpMenu = new HelpMenu(secretsConfig, sessionService, cloudProvider, menuService);
-        helpMenu.init();
 
         previousNetServer = Vars.netServer;
         NetServer netServer = mock(NetServer.class);
@@ -92,13 +91,12 @@ class HelpMenuTest {
 
         helpMenu.help("viewer-1", 1);
 
-        assertThat(session.activeScreen()).isNull();
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), anyString(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("help with sender sets session sender and renders menu")
-    void helpWithSender_setsSessionSenderAndRendersMenu() {
+    @DisplayName("help with sender sets session sender and opens UI")
+    void helpWithSender_setsSessionSenderAndOpensUi() {
         registerLegacyCommands("help", "info", "rules");
         session.sender = null;
 
@@ -110,83 +108,31 @@ class HelpMenuTest {
         helpMenu.help(sender, 1);
 
         assertThat(session.sender).isEqualTo(sender);
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "1"));
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), nullable(String.class), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("first page render shows commands and pagination")
-    void firstPageRender_showsCommandsAndPagination() {
-        registerLegacyCommands("help", "info", "rules");
+    @DisplayName("commands are categorized correctly and admin commands are hidden for non-admin players")
+    void commandsCategorization_hidesAdminCommandsForRegularPlayers() {
+        registerLegacyCommands("help", "votekick", "msg", "hub", "ban");
 
-        helpMenu.help("viewer-1", 1);
+        // Non-admin player
+        session.player.admin = false;
+        when(session.sender.isPlayer()).thenReturn(true);
+        when(session.sender.player()).thenReturn(session.player);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().mode()).isEqualTo(MenuMode.NORMAL);
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "1"));
-        assertThat(session.activeScreen().actionCount()).isEqualTo(4);
-        verify(gateway).menu(eq(session.player), eq(0), eq("help-menu-title"), eq("help-menu-content"), any());
-    }
+        var nonAdminItems = helpMenu.buildHelpCommandItems(session, session.sender);
+        assertThat(nonAdminItems).anyMatch(c -> c.name().equals("help") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.GENERAL);
+        assertThat(nonAdminItems).anyMatch(c -> c.name().equals("votekick") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.VOTES);
+        assertThat(nonAdminItems).anyMatch(c -> c.name().equals("msg") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.SOCIAL);
+        assertThat(nonAdminItems).anyMatch(c -> c.name().equals("hub") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.GAME);
+        // ban must be excluded!
+        assertThat(nonAdminItems).noneMatch(c -> c.name().equals("ban"));
 
-    @Test
-    @DisplayName("next page navigation renders second page")
-    void nextPageNavigation_rendersSecondPage() {
-        registerLegacyCommands("help", "info", "rules");
-        helpMenu.help("viewer-1", 1);
-
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "2"));
-        assertThat(session.activeScreen().actionCount()).isEqualTo(3);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("help-menu-title"), eq("help-menu-content"), any());
-    }
-
-    @Test
-    @DisplayName("previous page navigation renders first page")
-    void previousPageNavigation_rendersFirstPage() {
-        registerLegacyCommands("help", "info", "rules");
-        helpMenu.help("viewer-1", 2);
-
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "1"));
-        assertThat(session.activeScreen().actionCount()).isEqualTo(4);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("help-menu-title"), eq("help-menu-content"), any());
-    }
-
-    @Test
-    @DisplayName("opening command details renders details route")
-    void openingCommandDetails_rendersDetailsRoute() {
-        registerLegacyCommands("help", "info", "rules");
-        helpMenu.help("viewer-1", 1);
-
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route()).isEqualTo(
-                MenuRoute.of("help.details").withParam("cmd", "help").withParam("returnPage", "1")
-        );
-        assertThat(session.activeScreen().actionCount()).isEqualTo(3);
-        verify(gateway).menu(eq(session.player), eq(0), eq("help-command-title"), anyString(), any());
-    }
-
-    @Test
-    @DisplayName("back from details returns to list")
-    void backFromDetails_returnsToList() {
-        registerLegacyCommands("help", "info", "rules");
-        helpMenu.help("viewer-1", 1);
-        menuService.onMenuOption(session, 1);
-
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route()).isEqualTo(MenuRoute.of("help.list").withParam("page", "1"));
-        assertThat(session.activeScreen().actionCount()).isEqualTo(4);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("help-menu-title"), eq("help-menu-content"), any());
+        // Admin player
+        session.player.admin = true;
+        var adminItems = helpMenu.buildHelpCommandItems(session, session.sender);
+        assertThat(adminItems).anyMatch(c -> c.name().equals("ban") && c.category() == org.xcore.plugin.ui.menu.help.HelpCategory.ADMIN);
     }
 
     private void registerLegacyCommands(String... names) {

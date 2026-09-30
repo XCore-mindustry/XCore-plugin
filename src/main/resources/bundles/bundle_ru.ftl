@@ -42,6 +42,34 @@ help-legacy-command-content-no-params =
     { "" }
     [gray](Это устаревшая команда с ограниченной информацией)
 help-back = [lightgray]« Назад
+
+# ==============================================================================
+# Modern Reactive Help & Commands Guide (xcore-ui)
+# ==============================================================================
+help-ui-title = СПРАВОЧНИК КОМАНД
+help-ui-summary = [gray]{ $count } команд доступно
+help-ui-empty-category = [lightgray]В этой категории нет доступных команд.[]
+help-ui-overloads = ({ $count } вар.)
+help-ui-back = « Назад к списку
+help-ui-aliases = [orange]» [accent]Псевдонимы: [white]{ $aliases }
+help-ui-syntax-title = [orange]» [accent]Синтаксис:
+help-ui-args-title = [orange]» [accent]Параметры:
+help-ui-arg-required = [scarlet]Обязательный
+help-ui-arg-optional = [sky]Опциональный
+help-ui-btn-run = Выполнить
+help-ui-btn-copy = В чат
+help-ui-btn-back = Назад
+help-ui-hint = Нажмите на команду для просмотра подробного синтаксиса
+help-ui-copied = [accent]Команда: [white]/{ $syntax }
+help-ui-executed = [accent]Выполняется команда: [white]/{ $syntax }
+
+# Categories
+help-cat-all = Все
+help-cat-general = Общие
+help-cat-game = Игра
+help-cat-social = Чат
+help-cat-votes = Голоса
+help-cat-admin = Админ
 # ==============================================================================
 # Command Argument Descriptions
 # ==============================================================================
