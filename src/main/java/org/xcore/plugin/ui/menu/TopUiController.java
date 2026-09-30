@@ -120,15 +120,28 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     public record UiMetrics(
             float dialogWidth,
+            float contentWidth,
+            float cardWidth,
+            float cardContentWidth,
             float paneMaxHeight,
             int maxNickLength,
             boolean isMobile
     ) {
         public static UiMetrics of(boolean isMobile) {
             if (isMobile) {
-                return new UiMetrics(680f, 180f, 18, true);
+                float dw = 680f;
+                float pad = 10f;
+                float cw = dw - pad * 2f;
+                float cardW = cw - 26f;
+                float cardInnerW = cardW - 18f;
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 600f, 44, true);
             } else {
-                return new UiMetrics(740f, 260f, 26, false);
+                float dw = 740f;
+                float pad = 12f;
+                float cw = dw - pad * 2f;
+                float cardW = cw - 26f;
+                float cardInnerW = cardW - 22f;
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 520f, 48, false);
             }
         }
     }
@@ -379,10 +392,10 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
             // 1. Dialog Header: Star Icon + Full Title on row 1, Count on row 2, and Close Button on the right
             root.add(Ui.table(h -> {
-                h.layout(l -> l.growX().padBottom(4f));
+                h.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
 
                 h.add(Ui.table(titleCol -> {
-                    titleCol.layout(l -> l.growX().align("left"));
+                    titleCol.layout(l -> l.width(metrics.contentWidth() - 40f).align("left"));
                     String titleText = local != null
                             ? local.t("top-menu-title", args("category", currentCatName))
                             : "Top Players: " + currentCatName;
@@ -403,11 +416,11 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                         .layout(l -> l.size(32f)));
             })).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("3b4252")).row();
+            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padBottom(4f).color("3b4252")).row();
 
             // 2. Adaptive Category Tabs
             root.add(Ui.table(tabs -> {
-                tabs.layout(l -> l.growX().padBottom(4f));
+                tabs.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
                 int cols = model.categories().size() <= 3 ? model.categories().size() : (model.isMobile() ? 2 : 3);
                 int count = 0;
                 float tabHeight = model.isMobile() ? 32f : 36f;
@@ -427,39 +440,39 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 }
             })).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
+            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
 
             // 3. Dynamic Entries Slot (Scrollable Player Rows)
             root.slot(SLOT_ENTRIES.path(), slot -> {
-                slot.layout(l -> l.growX());
+                slot.layout(l -> l.width(metrics.contentWidth()));
                 slot.pane(pane -> {
-                    pane.layout(l -> l.growX().maxHeight(metrics.paneMaxHeight()));
+                    pane.layout(l -> l.width(metrics.contentWidth()).maxHeight(metrics.paneMaxHeight()));
                     pane.table(list -> renderEntriesList(list, model, metrics, local, currentCatName));
                 });
             }).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
+            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
 
             // 4. Dynamic Sticky Self-Rank Slot
             root.slot(SLOT_SELF_RANK.path(), slot -> {
-                slot.layout(l -> l.growX());
+                slot.layout(l -> l.width(metrics.contentWidth()));
                 renderSelfRankCard(slot, model, metrics, local);
             }).row();
 
             // Feedback Message if any
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("454545")).row();
+                root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("454545")).row();
                 root.add(Ui.table(fb -> {
-                    fb.layout(l -> l.growX().padTop(2f).padBottom(2f));
+                    fb.layout(l -> l.width(metrics.contentWidth()).padTop(2f).padBottom(2f));
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 })).row();
             }
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
+            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
 
             // 5. Dynamic Pagination Toolbar Slot
             root.slot(SLOT_PAGINATION.path(), slot -> {
-                slot.layout(l -> l.growX());
+                slot.layout(l -> l.width(metrics.contentWidth()));
                 renderPaginationBar(slot, model, metrics, local);
             }).row();
         });
@@ -484,13 +497,13 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             String clickAction = "action:inspect:" + entry.playerUuid();
 
             list.buttonTable(clickAction, card -> {
-                card.layout(l -> l.growX().padBottom(3f));
+                card.layout(l -> l.width(metrics.cardWidth()).padBottom(3f));
                 card.margin(model.isMobile() ? 6f : 8f);
                 card.style(isViewer ? "togglet" : "default");
                 if (isViewer) card.checked(true);
 
                 card.table(inner -> {
-                    inner.layout(l -> l.growX());
+                    inner.layout(l -> l.width(metrics.cardContentWidth()));
 
                     // Left Podium Accent Stripe
                     String stripeColor = switch (entry.rank()) {
@@ -551,7 +564,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         slot.add(Ui.table(card -> {
             card.background("button");
             card.margin(8f);
-            card.layout(l -> l.growX());
+            card.layout(l -> l.width(metrics.cardWidth()));
 
             if (model.selfRank() != null) {
                 boolean onPage = model.entries().stream().anyMatch(e -> Objects.equals(e.playerUuid(), model.viewerUuid()));
@@ -579,7 +592,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private void renderPaginationBar(Ui.TableBuilder slot, TopModel model, UiMetrics metrics, Localization local) {
         slot.add(Ui.table(bar -> {
-            bar.layout(l -> l.growX().padTop(2f));
+            bar.layout(l -> l.width(metrics.contentWidth()).padTop(2f));
 
             // Prev Button
             boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
