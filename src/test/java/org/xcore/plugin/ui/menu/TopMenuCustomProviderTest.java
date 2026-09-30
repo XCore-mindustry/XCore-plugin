@@ -1,8 +1,11 @@
 package org.xcore.plugin.ui.menu;
 
 import com.ospx.flubundle.Bundle;
+import jakarta.inject.Provider;
 import mindustry.gen.Player;
 import mindustry.net.NetConnection;
+import mindustry.ui.builder.UiBuilder.NodeBuilder;
+import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,14 +32,8 @@ import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class TopMenuCustomProviderTest {
 
@@ -50,13 +47,16 @@ class TopMenuCustomProviderTest {
     private Session session;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         sessionService = mock(SessionService.class);
         gateway = mock(MindustryMenuGateway.class);
         playerMenu = mock(PlayerMenu.class);
 
         var secretsConfig = new TomlSecretsConfig();
-        menuService = new MenuService(null, gateway);
+        Provider<SessionService> sessionProvider = mock(Provider.class);
+        when(sessionProvider.get()).thenReturn(sessionService);
+        menuService = new MenuService(sessionProvider, gateway);
 
         var tomlConfig = new TomlXcoreConfig();
         tomlConfig.server.name = "mini-pvp";
@@ -86,6 +86,8 @@ class TopMenuCustomProviderTest {
         Localization localization = mock(Localization.class);
         when(localization.t(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.t(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(localization.format(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(localization.format(anyString(), anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
         when(localization.getLocale()).thenReturn(Locale.US);
         session.localization = localization;
 
@@ -93,7 +95,7 @@ class TopMenuCustomProviderTest {
     }
 
     @Test
-    @DisplayName("custom top category renders entries and buttons dynamically")
+    @DisplayName("custom top category renders entries and buttons dynamically in reactive UI")
     void customCategory_rendersDynamicList() {
         TopCategoryProvider customProvider = new TopCategoryProvider() {
             @Override
@@ -115,8 +117,8 @@ class TopMenuCustomProviderTest {
             public LeaderboardPage loadPage(LeaderboardPageRequest request) {
                 LeaderboardEntry e1 = new LeaderboardEntry(
                         "player-1", 1, "Alice", "1600",
-                        Map.of("icon", ":titanium:"),
-                        "[gold]1.[] :titanium: Alice — 1,600 ELO"
+                        Map.of(),
+                        "[gold]1.[] Alice — 1,600 ELO"
                 );
                 return new LeaderboardPage(1, List.of(e1), false, null, 1L, 1);
             }
@@ -126,20 +128,23 @@ class TopMenuCustomProviderTest {
 
         topMenu.topById("viewer-1", "hexed-elo", 1);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route().id()).isEqualTo("top.list");
-        assertThat(session.activeScreen().route().param("category")).isEqualTo("hexed-elo");
+        assertThat(session.activeUiSession()).isNotNull();
+        assertThat(session.activeUiSession().model()).isInstanceOf(TopUiController.TopModel.class);
+        var model = (TopUiController.TopModel) session.activeUiSession().model();
+        assertThat(model.selectedCategoryId()).isEqualTo("hexed-elo");
+        assertThat(model.entries()).hasSize(1);
+        assertThat(model.entries().getFirst().displayName()).isEqualTo("Alice");
 
-        ArgumentCaptor<String[][]> buttonsCaptor = ArgumentCaptor.forClass(String[][].class);
-        verify(gateway).followUpMenu(eq(session.player), anyInt(), any(), any(), buttonsCaptor.capture());
+        ArgumentCaptor<NodeBuilder<?>> dslCaptor = ArgumentCaptor.forClass(NodeBuilder.class);
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), dslCaptor.capture());
 
-        String[][] buttons = buttonsCaptor.getValue();
-        assertThat(buttons.length).isGreaterThanOrEqualTo(2);
-        assertThat(buttons[0][0]).contains("Alice");
+        String dsl = UiDslWriter.write(dslCaptor.getValue());
+        assertThat(dsl).contains("Alice");
+        assertThat(dsl).contains("Hexed ELO");
     }
 
     @Test
-    @DisplayName("categories screen dynamically shows registered custom categories")
+    @DisplayName("category tabs dynamically include registered custom categories")
     void categories_showsDynamicProviders() {
         TopCategoryProvider customProvider = new TopCategoryProvider() {
             @Override
@@ -167,22 +172,14 @@ class TopMenuCustomProviderTest {
 
         topMenu.categoriesById("viewer-1", "custom-ladder");
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route().id()).isEqualTo("top.categories");
+        assertThat(session.activeUiSession()).isNotNull();
+        var model = (TopUiController.TopModel) session.activeUiSession().model();
+        assertThat(model.categories().stream().anyMatch(c -> c.id().equals("custom-ladder"))).isTrue();
 
-        ArgumentCaptor<String[][]> buttonsCaptor = ArgumentCaptor.forClass(String[][].class);
-        verify(gateway).menu(eq(session.player), anyInt(), any(), any(), buttonsCaptor.capture());
+        ArgumentCaptor<NodeBuilder<?>> dslCaptor = ArgumentCaptor.forClass(NodeBuilder.class);
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), dslCaptor.capture());
 
-        String[][] buttons = buttonsCaptor.getValue();
-        boolean foundCustom = false;
-        for (String[] row : buttons) {
-            for (String btn : row) {
-                if (btn.contains("Ladder")) {
-                    foundCustom = true;
-                    assertThat(btn).contains("[accent]●[]"); // selected
-                }
-            }
-        }
-        assertThat(foundCustom).isTrue();
+        String dsl = UiDslWriter.write(dslCaptor.getValue());
+        assertThat(dsl).contains("Ladder");
     }
 }

@@ -769,6 +769,13 @@ top-menu-self-rank-unknown = [lightgray]Your position: [gray]not found[]
 top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
 top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
 top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
+top-menu-total-count = { $count } players
+top-menu-btn-find-self = Find self
+top-menu-on-this-page = on this page
+top-menu-unranked = You are not ranked in this category yet
+top-menu-self-rank-line = Your rank: { $rank }
+top-menu-score-points = { $points } pts
+top-menu-score-minutes = { $time }
 # ==============================================================================
 # Game Modes (Hexed, PvP, Surrender, AI)
 # ==============================================================================

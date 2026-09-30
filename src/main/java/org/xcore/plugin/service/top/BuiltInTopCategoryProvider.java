@@ -69,6 +69,17 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
             if (category == TopCategory.HEXED && player.hexedRank() != null) {
                 attrs.put("rankName", player.hexedRank().name());
             }
+            if (player.customNickname != null && !player.customNickname.isBlank()) {
+                attrs.put("customNickname", player.customNickname);
+            }
+            if (player.activeBadge != null && !player.activeBadge.isBlank()) {
+                attrs.put("activeBadge", player.activeBadge);
+                attrs.put("badgeColorMode", player.badgeSymbolColorMode != null ? player.badgeSymbolColorMode : "default");
+            }
+            if (player.pid > 0) {
+                attrs.put("pid", String.valueOf(player.pid));
+            }
+            attrs.put("admin", String.valueOf(player.admin));
             entries.add(new LeaderboardEntry(
                     player.uuid,
                     rank,
@@ -142,9 +153,9 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
     }
 
     private static String formatPlayTime(long totalPlayTime, Localization local) {
-        long days = totalPlayTime / 86400;
-        long hours = (totalPlayTime % 86400) / 3600;
-        long minutes = (totalPlayTime % 3600) / 60;
+        long days = totalPlayTime / 1440;
+        long hours = (totalPlayTime % 1440) / 60;
+        long minutes = totalPlayTime % 60;
 
         StringBuilder sb = new StringBuilder();
         if (days > 0) sb.append(local.t("player-menu-time-days", args("value", days))).append(" ");

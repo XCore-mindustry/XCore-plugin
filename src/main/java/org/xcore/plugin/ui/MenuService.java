@@ -212,6 +212,9 @@ public class MenuService {
         long version = session.nextUiVersion();
         notifyMenuOpened(session);
 
+        @SuppressWarnings("unchecked")
+        final UiSession<M, E>[] sessionRef = (UiSession<M, E>[]) new UiSession<?, ?>[1];
+
         ControllerContext ctx = new ControllerContext() {
             @Override
             public void post(Runnable action) {
@@ -225,9 +228,11 @@ public class MenuService {
 
             @Override
             public void close() {
-                gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
-                session.clearActiveUiSession();
-                notifyMenuClosed(session);
+                if (session.activeUiSession() == sessionRef[0]) {
+                    gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+                    session.clearActiveUiSession();
+                    notifyMenuClosed(session);
+                }
             }
         };
 
@@ -244,14 +249,17 @@ public class MenuService {
 
             @Override
             public void hide(String playerId) {
-                gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
-                session.clearActiveUiSession();
-                notifyMenuClosed(session);
+                if (session.activeUiSession() == sessionRef[0]) {
+                    gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+                    session.clearActiveUiSession();
+                    notifyMenuClosed(session);
+                }
             }
         };
 
         LocalizerResolver resolver = resolverFor(session);
         UiSession<M, E> uiSession = UiSession.start(controller, initialModel, ctx, deliveryGateway, resolver);
+        sessionRef[0] = uiSession;
         session.setActiveUiSession(uiSession);
         uiSession.open();
         return uiSession;

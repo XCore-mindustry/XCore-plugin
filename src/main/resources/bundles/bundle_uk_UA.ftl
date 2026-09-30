@@ -568,6 +568,13 @@ top-menu-self-rank-unknown = [lightgray]Ваша позиція: [gray]не зн
 top-menu-entry-mini-pvp = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [sky]{ $value }[]
 top-menu-entry-playtime = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [green]{ $value }[]
 top-menu-entry-hexed = { $rankLabel } [accent]{ $nickname }[] [gray]—[] [violet]{ $rankName }[] [gold]•[] [cyan]{ $value }[]
+top-menu-total-count = { $count } гравців
+top-menu-btn-find-self = Знайти себе
+top-menu-on-this-page = на цій сторінці
+top-menu-unranked = Ви ще не кваліфіковані в цій категорії
+top-menu-self-rank-line = Ваша позиція: { $rank }
+top-menu-score-points = { $points } очк.
+top-menu-score-minutes = { $time }
 # ==============================================================================
 # Game Modes (Hexed, PvP, Surrender, AI)
 # ==============================================================================

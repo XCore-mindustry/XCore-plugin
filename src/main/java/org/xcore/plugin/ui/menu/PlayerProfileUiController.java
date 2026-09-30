@@ -242,6 +242,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         record StatsLoaded(String targetUuid, PlayerStatsOverview stats, Integer hexedTopRank) implements ProfileEvent {}
         record InspectPlayer(String targetUuid) implements ProfileEvent {}
         record BackToPlayers() implements ProfileEvent {}
+        record Back() implements ProfileEvent {}
         record CycleAdminFilter() implements ProfileEvent {}
         record ChangePlayersPage(int page) implements ProfileEvent {}
         record RefreshPlayers() implements ProfileEvent {}
@@ -466,6 +467,21 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 yield UpdateResult.rerender(model.withRefreshedPlayersPreservingPage(rows, count).withTab(Tab.PLAYERS));
             }
 
+            case ProfileEvent.Back() -> {
+                if (session != null && session.hasHistory()) {
+                    Runnable prev = session.popHistory();
+                    if (prev != null) {
+                        if (ctx != null) {
+                            ctx.post(prev);
+                        } else {
+                            prev.run();
+                        }
+                        yield UpdateResult.close(model);
+                    }
+                }
+                yield UpdateResult.of(model);
+            }
+
             case ProfileEvent.CycleAdminFilter() -> {
                 AdminFilter nextFilter = model.adminFilter().next();
                 List<OnlinePlayerRow> rows = resolveOnlinePlayers(session, sessionService, playerDisplayService, nextFilter);
@@ -592,6 +608,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         String res = result.result;
 
         if ("action:close".equals(res)) return new ProfileEvent.Close();
+        if ("action:back".equals(res)) return new ProfileEvent.Back();
         if ("action:settings".equals(res)) return new ProfileEvent.OpenSettings();
         if ("action:audit_history".equals(res)) return new ProfileEvent.OpenAuditHistory();
         if ("action:audit_actions".equals(res)) return new ProfileEvent.OpenAuditActions();
@@ -721,7 +738,12 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             t.add(Ui.table(actions -> {
                 actions.layout(l -> l.growX().padTop(6f));
 
-                if (model.viewingFromPlayersTab() && model.tab() != Tab.PLAYERS) {
+                if (session != null && session.hasHistory()) {
+                    actions.button(Text.raw("[lightgray]← " + (local != null ? local.t("back") : "Back") + "[]"),
+                            "action:back", b -> b
+                                    .style("cleart")
+                                    .layout(l -> l.growX().uniform().height(42f).padRight(4f)));
+                } else if (model.viewingFromPlayersTab() && model.tab() != Tab.PLAYERS) {
                     actions.button(Text.raw("[lightgray]" + (local != null ? local.t("player-stats-back-to-players") : "← Back to Online Players") + "[]"),
                             "action:back_to_players", b -> b
                                     .style("cleart")
