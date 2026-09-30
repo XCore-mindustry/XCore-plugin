@@ -804,7 +804,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
                 info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
                         + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]  [darkgray]|[]  "
-                        + pvpLbl + " [sky]" + model.pvpRating() + " MMR[]"), l -> l.align("left").growX());
+                        + pvpLbl + " [sky]" + model.pvpRating() + "[]"), l -> l.align("left").growX());
             })).row();
         })).row();
 
@@ -931,7 +931,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         ? "[white]" + nf.format(pvp.gamesPlayed()) + "[] [gray]games[] | [lime]" + nf.format(pvp.gamesWon()) + "[] [gray]wins (" + pvp.winRatePercent() + "%)[]"
                         : (local != null ? local.t("player-menu-player-no-mode-stats") : "[gray]no data[]");
                 pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + pvpSummary
-                        + "   [gray]Rating:[] [sky]" + model.pvpRating() + " MMR[]"), l -> l.align("left").growX());
+                        + "  [gray]—[] [sky]" + model.pvpRating() + "[]"), l -> l.align("left").growX());
             })).row();
 
             // Survival
