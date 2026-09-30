@@ -381,15 +381,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             // 1. Dialog Header: Star Icon + Title + Total Count + Close Button
             root.add(Ui.table(h -> {
                 h.layout(l -> l.growX().padBottom(4f));
-                String headerTitle = local != null ? local.t("top-menu-header-title") : "Top Players";
-                h.label(Text.raw("[gold]" + Iconc.star + "[] [white]" + headerTitle + "[]"),
+                h.label(Text.raw("[gold]" + Iconc.star + "[] [white]" + (local != null ? local.t("top-menu-title", args("category", currentCatName)) : "Leaderboard") + "[]"),
                         l -> l.align("left").growX());
 
                 if (model.totalEntries() != null && model.totalEntries() > 0) {
                     String totalText = local != null
                             ? local.t("top-menu-total-count", args("count", model.totalEntries()))
                             : model.totalEntries() + " players";
-                    h.label(Text.raw("[lightgray]" + totalText + "[]   "), l -> l.align("right"));
+                    h.label(Text.raw("[gray]" + totalText + "[]  "), l -> l.align("right"));
                 }
 
                 h.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
@@ -480,7 +479,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             list.buttonTable(clickAction, card -> {
                 card.layout(l -> l.growX().padBottom(3f));
                 card.margin(model.isMobile() ? 6f : 8f);
-                card.style("default");
+                card.style(isViewer ? "togglet" : "default");
+                if (isViewer) card.checked(true);
 
                 card.table(inner -> {
                     inner.layout(l -> l.growX());
@@ -517,9 +517,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
                     // Nickname
                     String cleanNick = resolveNickname(entry, attrs, metrics.maxNickLength());
-                    String suffix = isViewer ? " [lime]" + (local != null ? local.t("top-menu-you-label") : "(You)") + "[]" : "";
-                    String nameColor = isViewer ? "[accent]" : "";
-                    inner.label(Text.raw(nameColor + cleanNick + suffix), l -> l.align("left").growX());
+                    String namePrefix = isViewer ? "[lime]● [accent]" : "";
+                    inner.label(Text.raw(namePrefix + cleanNick + "[]"), l -> l.align("left").growX());
 
                     // Optional Tag (e.g. Hexed rank)
                     if (attrs.containsKey("rankName")) {
@@ -577,31 +576,31 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
             // Prev Button
             boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
-            String prevLabel = local != null && local.t("previous") != null ? local.t("previous") : "[accent]« Prev[]";
             if (!canPrev) {
-                prevLabel = "[gray]" + Strings.stripColors(prevLabel) + "[]";
-                bar.button(Text.raw(prevLabel), "action:page:prev", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(4f)));
+                bar.button(Text.raw("[gray]« " + (local != null ? local.t("previous") : "Prev") + "[]"),
+                        "action:page:prev", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(4f)));
             } else {
-                bar.button(Text.raw(prevLabel), "action:page:prev", b -> b.style("cleart").layout(l -> l.height(34f).padRight(4f)));
+                bar.button(Text.raw("[accent]« " + (local != null ? local.t("previous") : "Prev") + "[]"),
+                        "action:page:prev", b -> b.style("cleart").layout(l -> l.height(34f).padRight(4f)));
             }
 
             // Page Info
             String pageInfo = "[white]" + model.currentPage() + " / " + model.totalPages() + "[]";
-            bar.label(Text.raw(pageInfo), l -> l.align("center").padLeft(4f).padRight(4f).growX());
+            bar.label(Text.raw(pageInfo), l -> l.align("center").growX());
 
             // Refresh Button
             bar.button(Text.raw("[sky]" + Iconc.refresh + "[]"), "action:refresh", b -> b
                     .style("cleart")
-                    .layout(l -> l.size(34f).padRight(6f)));
+                    .layout(l -> l.size(34f).padRight(4f)));
 
             // Next Button
             boolean canNext = model.hasNext() && model.nextCursor() != null;
-            String nextLabel = local != null && local.t("next") != null ? local.t("next") : "[accent]Next »[]";
             if (!canNext) {
-                nextLabel = "[gray]" + Strings.stripColors(nextLabel) + "[]";
-                bar.button(Text.raw(nextLabel), "action:page:next", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(6f)));
+                bar.button(Text.raw("[gray]" + (local != null ? local.t("next") : "Next") + " »[]"),
+                        "action:page:next", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(4f)));
             } else {
-                bar.button(Text.raw(nextLabel), "action:page:next", b -> b.style("cleart").layout(l -> l.height(34f).padRight(6f)));
+                bar.button(Text.raw("[accent]" + (local != null ? local.t("next") : "Next") + " »[]"),
+                        "action:page:next", b -> b.style("cleart").layout(l -> l.height(34f).padRight(4f)));
             }
 
             // Close Button
