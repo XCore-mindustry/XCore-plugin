@@ -176,31 +176,36 @@ class PlayerSettingsUiClientIntegrationTest {
 
         // Verify mobile responsiveness: ScrollPane exists with constrained maxHeight
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 360");
+        assertThat(dsl).contains("maxHeight: 460");
 
         // Verify top-right quick close button and footer cancel button both exist
         assertThat(dsl).contains("action:close");
         assertThat(dsl).contains("action:save");
+        assertThat(dsl).contains("action:tab:profile");
+        assertThat(dsl).contains("action:tab:badges");
     }
 
     @Test
-    @DisplayName("Clicking language toggle emits partial Update message inside the scroll pane without redrawing whole dialog")
-    void toggleLanguage_emitsPartialSlotUpdate() {
+    @DisplayName("Clicking tab switch button rerenders dialog with selected tab content")
+    void switchTab_rerendersWithNewTabContent() {
         playerMenu.openSettingsUi(session, session.data);
         int menuId = menuService.getMenuBuilderId();
         assertThat(loop.stepServerToClient()).isTrue();
 
-        // Client clicks toggle language
-        loop.client().click(menuId, "action:toggle_lang");
+        // Client clicks Badges tab
+        loop.client().click(menuId, "action:tab:badges");
         assertThat(loop.stepClientToServer()).isTrue();
 
-        // Server processes event and emits partial update for SLOT_LANG
+        // Server processes event and emits rerender
         assertThat(loop.stepServerToClient()).isTrue();
-        var lastMsg = (UiWireMessage.Update) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Update)
+        var lastMsg = (UiWireMessage.Show) loop.transcript().all().stream()
+                .filter(m -> m instanceof UiWireMessage.Show)
                 .reduce((first, second) -> second)
                 .orElseThrow();
-        assertThat(lastMsg.targetId()).isEqualTo("slot_lang");
+        String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
+
+        assertThat(dsl).contains("action:badges_filter:my");
+        assertThat(dsl).contains("action:toggle_symbol_color");
 
         // Dialog remains visible on client
         assertThat(loop.client().isVisible(menuId)).isTrue();
@@ -225,7 +230,7 @@ class PlayerSettingsUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Submitting settings persists form data and sends partial feedback update")
+    @DisplayName("Submitting settings persists form data and sends rerendered feedback update")
     void submitSettings_persistsAndSendsFeedbackUpdate() {
         playerMenu.openSettingsUi(session, session.data);
         int menuId = menuService.getMenuBuilderId();
@@ -242,13 +247,14 @@ class PlayerSettingsUiClientIntegrationTest {
         menuService.onMenuBuilderResult(session, result);
         loop.serverPost().runTurn();
 
-        // Step server -> client: feedback update emitted
+        // Step server -> client: show/rerender emitted
         assertThat(loop.stepServerToClient()).isTrue();
-        var lastMsg = (UiWireMessage.Update) loop.transcript().all().stream()
-                .filter(m -> m instanceof UiWireMessage.Update)
+        var lastMsg = (UiWireMessage.Show) loop.transcript().all().stream()
+                .filter(m -> m instanceof UiWireMessage.Show)
                 .reduce((first, second) -> second)
                 .orElseThrow();
-        assertThat(lastMsg.targetId()).isEqualTo("slot_feedback");
+        String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
+        assertThat(dsl).contains("player-settings-saved");
 
         // Verify profile service received form updates
         verify(profileSettings).updateCustomNickname(eq(session.data), eq("NewMobileNick"), eq(true), eq(true));

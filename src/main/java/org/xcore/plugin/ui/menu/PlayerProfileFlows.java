@@ -47,7 +47,12 @@ final class PlayerProfileFlows {
             this.gameDataRepository = gameDataRepository;
             this.auditHistoryMenu = auditHistoryMenu;
 
-            action("settings", ctx -> ctx.openRoute(MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", ctx.state().targetUuid)));
+            action("settings", ctx -> {
+                PlayerData target = resolveTargetData(ctx);
+                if (target != null) {
+                    menu.settings(ctx.session().data.uuid, target);
+                }
+            });
             action("audit-history", ctx -> auditHistoryMenu.history(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("audit-actions", ctx -> auditHistoryMenu.actions(ctx.session().data.uuid, resolveTargetData(ctx)));
             action("players", ctx -> ctx.openRoute(MenuRoute.of(ROUTE_PLAYERS).withParam("page", "1")));
@@ -84,8 +89,8 @@ final class PlayerProfileFlows {
                     ? targetData.nickname : targetData.customNickname;
             String description = targetData.description == null || Objects.equals(targetData.description, "")
                     ? local.t("no-description") : targetData.description;
-            String activeBadge = PlayerSettingsFlows.activeBadgeName(local, targetData);
-            String systemBadge = PlayerSettingsFlows.systemBadgeName(local, targetData);
+            String activeBadge = PlayerSettingsUiController.activeBadgeName(local, targetData);
+            String systemBadge = PlayerSettingsUiController.systemBadgeName(local, targetData);
             String accountCreated = menu.formatTime(targetData.createdModelTime, session);
             String playTime = menu.formatPlayTime(targetData.totalPlayTime, local);
             String rankName = local.t("hexed-ranks-" + targetData.hexedRank().name());

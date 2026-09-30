@@ -37,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -184,17 +185,13 @@ class PlayerMenuTest {
     }
 
     @Test
-    @DisplayName("player settings navigation opens routed settings via route history")
-    void player_settingsNavigation_opensRoutedSettingsViaRouteHistory() {
+    @DisplayName("player settings navigation opens reactive settings UI")
+    void player_settingsNavigation_opensSettingsUi() {
         playerMenu.player("viewer-1", targetData);
 
         menuService.onMenuOption(session, 0);
 
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.settings");
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -229,169 +226,11 @@ class PlayerMenuTest {
     }
 
     @Test
-    @DisplayName("custom nickname button opens active prompt and leaves textHandler null")
-    void customNicknameButton_opensActivePromptAndLeavesTextHandlerNull() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.activePrompt()).isNotNull();
-        assertThat(session.textHandler).isNull();
-        verify(gateway).textInput(eq(session.player), eq(0),
-                eq("player-menu-settings-customNickname-title"),
-                eq("player-menu-settings-customNickname-message"),
-                eq(256), eq(targetData.customNickname), eq(false));
-    }
-
-    @Test
-    @DisplayName("custom nickname prompt submit validates and updates via service")
-    void customNicknamePromptSubmit_validatesAndUpdatesViaService() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 0);
-
-        menuService.onTextInput(session, "new nick");
-
-        verify(profileSettings).validateCustomNickname("new nick");
-        verify(profileSettings).updateCustomNickname(targetData, "new nick", true, true);
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("custom nickname reset button clears nickname without opening prompt")
-    void customNicknameResetButton_clearsNicknameWithoutOpeningPrompt() {
+    @DisplayName("settings opens reactive settings UI")
+    void settings_opensSettingsUi() {
         playerMenu.settings("viewer-1", targetData);
 
-        menuService.onMenuOption(session, 1);
-
-        verify(profileSettings).updateCustomNickname(targetData, "", true, true);
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("custom nickname prompt cancel returns to settings without updating")
-    void customNicknamePromptCancel_returnsWithoutUpdating() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 0);
-
-        menuService.onTextInput(session, null);
-
-        verify(profileSettings, never()).updateCustomNickname(any(), anyString(), anyBoolean(), anyBoolean());
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("custom nickname prompt rejects invalid nickname and returns to settings")
-    void customNicknamePromptSubmit_invalidNickname_returnsWithoutUpdating() {
-        when(profileSettings.validateCustomNickname("bad"))
-                .thenReturn(PlayerProfileSettingsService.NicknameValidationResult.tooLong(40));
-
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 0);
-
-        menuService.onTextInput(session, "bad");
-
-        verify(profileSettings, never()).updateCustomNickname(any(), anyString(), anyBoolean(), anyBoolean());
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("description button opens active prompt and leaves textHandler null")
-    void descriptionButton_opensActivePromptAndLeavesTextHandlerNull() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 2);
-
-        assertThat(session.activePrompt()).isNotNull();
-        assertThat(session.textHandler).isNull();
-        verify(gateway).textInput(eq(session.player), eq(0),
-                eq("player-menu-settings-description-title"),
-                eq(""),
-                eq(1000), eq(targetData.description), eq(false));
-    }
-
-    @Test
-    @DisplayName("description prompt submit updates via service")
-    void descriptionPromptSubmit_updatesViaService() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 2);
-
-        menuService.onTextInput(session, "new description");
-
-        verify(profileSettings).updateDescription(targetData, "new description");
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("description prompt cancel returns without updating")
-    void descriptionPromptCancel_returnsWithoutUpdating() {
-        playerMenu.settings("viewer-1", targetData);
-        menuService.onMenuOption(session, 2);
-
-        menuService.onTextInput(session, null);
-
-        verify(profileSettings, never()).updateDescription(any(), anyString());
-        assertThat(session.activePrompt()).isNull();
-    }
-
-    @Test
-    @DisplayName("settings renders routed screen with route metadata")
-    void settings_rendersRoutedScreenWithRouteMetadata() {
-        playerMenu.settings("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.settings");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("settings leaderboard toggle updates service and re-renders")
-    void settings_leaderboardToggle_updatesServiceAndRerenders() {
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 5);
-
-        verify(profileSettings).updateLeaderboard(targetData, false);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("player-menu-settings-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("settings chat settings navigation opens routed child via route history")
-    void settings_chatSettingsNavigation_opensRoutedChildViaRouteHistory() {
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 3);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.chat-settings");
-    }
-
-    @Test
-    @DisplayName("settings badges navigation opens routed child via route history")
-    void settings_badgesNavigation_opensRoutedChildViaRouteHistory() {
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 4);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.badges");
-    }
-
-    @Test
-    @DisplayName("settings language selection opens routed language selection")
-    void settings_languageSelection_opensRoutedLanguageSelection() {
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 6);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.language-selection");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-language-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -402,155 +241,47 @@ class PlayerMenuTest {
 
         playerMenu.settings("viewer-1", otherData);
 
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
-        assertThat(session.activeScreen()).isNull();
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("chatSettings renders routed screen with route metadata")
-    void chatSettings_rendersRoutedScreenWithRouteMetadata() {
+    @DisplayName("chatSettings opens reactive settings UI on Chat tab")
+    void chatSettings_opensChatTab() {
         playerMenu.chatSettings("viewer-1", targetData);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.chat-settings");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-chat-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("chatSettings toggle global chat updates service and re-renders")
-    void chatSettings_toggleGlobalChat_updatesServiceAndRerenders() {
-        playerMenu.chatSettings("viewer-1", targetData);
+    @DisplayName("badges opens reactive settings UI on Badges tab")
+    void badges_opensBadgesTab() {
+        playerMenu.badges("viewer-1", targetData);
 
-        menuService.onMenuOption(session, 0);
-
-        verify(profileSettings).updateGlobalChatVisible(targetData, false);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("player-menu-settings-chat-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("chatSettings toggle discord relay updates service and re-renders")
-    void chatSettings_toggleDiscordRelay_updatesServiceAndRerenders() {
-        playerMenu.chatSettings("viewer-1", targetData);
+    @DisplayName("allBadges opens reactive settings UI on Badges tab")
+    void allBadges_opensBadgesTab() {
+        playerMenu.allBadges("viewer-1", targetData);
 
-        menuService.onMenuOption(session, 1);
-
-        verify(profileSettings).updateDiscordRelayVisible(targetData, false);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("player-menu-settings-chat-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("chatSettings translator language action opens routed language selection")
-    void chatSettings_translatorLanguage_opensRoutedLanguageSelection() {
-        playerMenu.chatSettings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 2);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.language-selection");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-translator-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("language selection renders routed screen for interface language")
-    void languageSelection_interfaceLanguage_rendersRoutedScreen() {
+    @DisplayName("languageSelectionMenu opens reactive settings UI on Chat tab")
+    void languageSelectionMenu_opensChatTab() {
         playerMenu.languageSelectionMenu("viewer-1", targetData, false);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.language-selection");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-language-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("language selection renders routed screen for translator language")
-    void languageSelection_translatorLanguage_rendersRoutedScreen() {
-        playerMenu.languageSelectionMenu("viewer-1", targetData, true);
+    @DisplayName("badgeSymbolColorMode opens reactive settings UI on Badges tab")
+    void badgeSymbolColorMode_opensBadgesTab() {
+        playerMenu.badgeSymbolColorMode("viewer-1", targetData);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.language-selection");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-settings-translator-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("language selection auto option updates language and returns to settings")
-    void languageSelection_auto_updatesLanguageAndReturnsToSettings() {
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 6); // open language selection from settings
-
-        menuService.onMenuOption(session, 0); // select auto
-
-        verify(profileSettings).updateLanguage(targetData, "auto");
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.settings");
-    }
-
-    @Test
-    @DisplayName("language selection default option updates translator language and returns to chat settings")
-    void languageSelection_default_updatesTranslatorLanguageAndReturnsToChatSettings() {
-        playerMenu.chatSettings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 2); // open language selection from chat settings
-
-        menuService.onMenuOption(session, 0); // select default
-
-        verify(profileSettings).updateTranslatorLanguage(targetData, "off");
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.chat-settings");
-    }
-
-    @Test
-    @DisplayName("language selection locale option updates language and returns to parent")
-    void languageSelection_locale_updatesLanguageAndReturnsToParent() {
-        when(bundle.getAvailableLocales()).thenReturn(Seq.with(Locale.ENGLISH));
-
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 6); // open language selection from settings
-        // Row 0: auto
-        // Row 1: English
-        // Row 2: back, close
-        menuService.onMenuOption(session, 1); // select English
-
-        verify(profileSettings).updateLanguage(targetData, "en");
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.settings");
-    }
-
-    @Test
-    @DisplayName("language selection locale rows use namespaced action ids")
-    void languageSelection_localeRows_useNamespacedActionIds() {
-        when(bundle.getAvailableLocales()).thenReturn(Seq.with(Locale.ENGLISH, new Locale("uk")));
-
-        playerMenu.languageSelectionMenu("viewer-1", targetData, false);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("auto");
-        assertThat(session.activeScreen().actionIdAt(1)).isEqualTo("lang:en");
-        assertThat(session.activeScreen().actionIdAt(2)).isEqualTo("lang:uk_UA");
-    }
-
-    @Test
-    @DisplayName("language selection maps uk locale to uk_UA code")
-    void languageSelection_ukLocale_mapsToUkUa() {
-        Locale ukLocale = new Locale("uk");
-        when(bundle.getAvailableLocales()).thenReturn(Seq.with(ukLocale));
-
-        playerMenu.settings("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 6); // open language selection from settings
-        menuService.onMenuOption(session, 1); // select Ukrainian
-
-        verify(profileSettings).updateLanguage(targetData, "uk_UA");
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.settings");
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -561,129 +292,7 @@ class PlayerMenuTest {
 
         playerMenu.chatSettings("viewer-1", otherData);
 
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
-        assertThat(session.activeScreen()).isNull();
-    }
-
-    @Test
-    @DisplayName("badgeSymbolColorMode renders routed screen with route metadata")
-    void badgeSymbolColorMode_rendersRoutedScreenWithRouteMetadata() {
-        playerMenu.badgeSymbolColorMode("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.badge-symbol-color");
-        verify(gateway).menu(eq(session.player), eq(0), eq("badge-menu-symbol-color-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("badgeSymbolColorMode selecting default mode updates service and re-renders")
-    void badgeSymbolColorMode_selectDefaultMode_updatesServiceAndRerenders() {
-        playerMenu.badgeSymbolColorMode("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 0);
-
-        verify(profileSettings).updateBadgeSymbolColorMode(targetData, "default", true, true);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-symbol-color-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("badgeSymbolColorMode selecting player-color mode updates service and re-renders")
-    void badgeSymbolColorMode_selectPlayerColorMode_updatesServiceAndRerenders() {
-        playerMenu.badgeSymbolColorMode("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 1);
-
-        verify(profileSettings).updateBadgeSymbolColorMode(targetData, "player-color", true, true);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-symbol-color-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("badgeSymbolColorMode denies access for non-admin viewing another player")
-    void badgeSymbolColorMode_accessDenied_forNonAdminViewingAnotherPlayer() {
-        PlayerData otherData = new PlayerData("other-1", true);
-        otherData.uuid = "other-1";
-
-        playerMenu.badgeSymbolColorMode("viewer-1", otherData);
-
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
-        assertThat(session.activeScreen()).isNull();
-    }
-
-    @Test
-    @DisplayName("badges renders routed screen with route metadata")
-    void badges_rendersRoutedScreenWithRouteMetadata() {
-        playerMenu.badges("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.badges");
-        verify(gateway).menu(eq(session.player), eq(0), eq("badge-menu-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("badges selecting unlocked badge updates service and re-renders")
-    void badges_selectingUnlockedBadge_updatesServiceAndRerenders() {
-        targetData.unlockedBadges.add("developer");
-
-        playerMenu.badges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 0);
-
-        verify(profileSettings).updateActiveBadge(targetData, "developer", true, true);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("badges rows use namespaced action ids")
-    void badges_rowsUseNamespacedActionIds() {
-        targetData.unlockedBadges.add("developer");
-
-        playerMenu.badges("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("badge:developer");
-    }
-
-    @Test
-    @DisplayName("badges symbol color button opens routed symbol color mode via route history")
-    void badges_symbolColorButton_opensRoutedSymbolColorModeViaRouteHistory() {
-        playerMenu.badges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 0);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.badge-symbol-color");
-    }
-
-    @Test
-    @DisplayName("badges view all button opens routed all badges via route history")
-    void badges_viewAllButton_opensRoutedAllBadgesViaRouteHistory() {
-        playerMenu.badges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.all-badges");
-    }
-
-    @Test
-    @DisplayName("badges clear button clears active badge and re-renders")
-    void badges_clearButton_clearsActiveBadgeAndRerenders() {
-        targetData.activeBadge = "developer";
-
-        playerMenu.badges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 2);
-
-        verify(profileSettings).updateActiveBadge(targetData, "", true, true);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-title"), any(), any());
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -694,53 +303,7 @@ class PlayerMenuTest {
 
         playerMenu.badges("viewer-1", otherData);
 
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
-        assertThat(session.activeScreen()).isNull();
-    }
-
-    @Test
-    @DisplayName("allBadges renders routed screen with route metadata")
-    void allBadges_rendersRoutedScreenWithRouteMetadata() {
-        playerMenu.allBadges("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.all-badges");
-        verify(gateway).menu(eq(session.player), eq(0), eq("badge-menu-all-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("allBadges selecting owned selectable badge updates service and re-renders")
-    void allBadges_selectingOwnedSelectableBadge_updatesServiceAndRerenders() {
-        targetData.unlockedBadges.add("developer");
-
-        playerMenu.allBadges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 1); // DEVELOPER
-
-        verify(profileSettings).updateActiveBadge(targetData, "developer", true, true);
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-all-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("all badges rows use namespaced action ids")
-    void allBadges_rowsUseNamespacedActionIds() {
-        playerMenu.allBadges("viewer-1", targetData);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().actionIdAt(0)).isEqualTo("badge:admin");
-        assertThat(session.activeScreen().actionIdAt(1)).isEqualTo("badge:developer");
-    }
-
-    @Test
-    @DisplayName("allBadges selecting locked or system badge does not update service and re-renders")
-    void allBadges_selectingLockedOrSystemBadge_doesNotUpdateServiceAndRerenders() {
-        playerMenu.allBadges("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 0); // ADMIN (system)
-
-        verify(profileSettings, never()).updateActiveBadge(any(), anyString(), anyBoolean(), anyBoolean());
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("badge-menu-all-title"), any(), any());
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -751,8 +314,18 @@ class PlayerMenuTest {
 
         playerMenu.allBadges("viewer-1", otherData);
 
-        verify(gateway, never()).menu(any(), anyInt(), anyString(), anyString(), any());
-        assertThat(session.activeScreen()).isNull();
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
+    }
+
+    @Test
+    @DisplayName("openSettingsUi denies access for non-admin viewing another player")
+    void openSettingsUi_accessDenied_forNonAdminViewingAnotherPlayer() {
+        PlayerData otherData = new PlayerData("other-1", true);
+        otherData.uuid = "other-1";
+
+        playerMenu.openSettingsUi(session, otherData);
+
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     private Session session() {

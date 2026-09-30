@@ -543,6 +543,22 @@ player-menu-settings-chat = Chat settings
 player-menu-settings-chat-title = [orange]{ -xcore } — Chat Settings
 
 # Modern Player Settings Form
+player-settings-tab-profile = Profile
+player-settings-tab-chat = Chat & Lang
+player-settings-tab-badges = Badges
+player-settings-chat-preview = Chat Preview
+player-settings-chat-preview-sample = Sample
+player-settings-symbol-color-mode = Symbol Color
+player-settings-badges-my = My Badges
+player-settings-badges-all = All Badges
+player-settings-badge-equip = Equip
+player-settings-badge-unequip = Unequip
+player-settings-badge-preview = Preview
+player-settings-badge-previewing = Previewing
+player-settings-translator-lang = Chat Translator
+player-settings-translator-off = Off
+player-settings-badges-empty = You haven't unlocked any badges yet.
+player-settings-manage-badges = Manage Badges →
 player-settings-global-chat = Global chat
 player-settings-discord-relay = Discord relay
 player-settings-leaderboard = Show in leaderboard

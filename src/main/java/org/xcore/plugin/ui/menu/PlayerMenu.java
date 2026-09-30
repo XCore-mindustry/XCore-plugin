@@ -78,12 +78,6 @@ public class PlayerMenu extends Menu {
 
     @PostConstruct
     public void init() {
-        menuService.registerRoute(new PlayerSettingsFlows.SettingsFlow(profileSettings));
-        menuService.registerRoute(new PlayerSettingsFlows.ChatSettingsFlow(profileSettings));
-        menuService.registerRoute(new PlayerSettingsFlows.LanguageSelectionFlow(bundle, profileSettings));
-        menuService.registerRoute(new PlayerSettingsFlows.BadgeSymbolColorModeFlow(profileSettings));
-        menuService.registerRoute(new PlayerSettingsFlows.BadgesFlow(profileSettings));
-        menuService.registerRoute(new PlayerSettingsFlows.AllBadgesFlow(profileSettings));
     }
 
     public void player(String uuid, PlayerData targetData) {
@@ -131,73 +125,50 @@ public class PlayerMenu extends Menu {
     }
 
     public void settings(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-        if (!canAccessSettings(session, targetData)) return;
-
-        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
-            openSettingsUi(session, targetData);
-            return;
-        }
-
-        session.setDraft(PlayerSettingsFlows.SettingsState.class, new PlayerSettingsFlows.SettingsState(targetData.uuid, targetData));
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_SETTINGS).withParam("targetUuid", targetData.uuid));
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.PROFILE);
     }
 
     public void openSettingsUi(Session session, PlayerData targetData) {
+        openSettingsUi(session, targetData, PlayerSettingsUiController.Tab.PROFILE);
+    }
+
+    public void openSettingsUi(Session session, PlayerData targetData, PlayerSettingsUiController.Tab tab) {
         if (session == null || session.player == null) return;
         session.clear();
+        if (!canAccessSettings(session, targetData)) return;
 
         var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
-        var initialModel = PlayerSettingsUiController.createModel(session, targetData);
+        var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
         menuService.openUi(session, controller, initialModel);
     }
 
     public void chatSettings(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-        if (!canAccessSettings(session, targetData)) return;
-
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_CHAT_SETTINGS).withParam("targetUuid", targetData.uuid));
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
     }
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_LANGUAGE_SELECTION)
-                .withParam("targetUuid", targetData.uuid)
-                .withParam("isTranslator", String.valueOf(isTranslator)));
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
     }
 
     public void badges(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-        if (!canAccessSettings(session, targetData)) return;
-
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_BADGES).withParam("targetUuid", targetData.uuid));
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.BADGES);
     }
 
     public void badgeSymbolColorMode(String uuid, PlayerData targetData) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-        if (!canAccessSettings(session, targetData)) return;
-
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_BADGE_SYMBOL_COLOR).withParam("targetUuid", targetData.uuid));
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.BADGES);
     }
 
     public void allBadges(String uuid, PlayerData targetData) {
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.BADGES);
+    }
+
+    private void openSettingsTab(String uuid, PlayerData targetData, PlayerSettingsUiController.Tab tab) {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
         if (!canAccessSettings(session, targetData)) return;
 
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerSettingsFlows.ROUTE_ALL_BADGES).withParam("targetUuid", targetData.uuid));
+        openSettingsUi(session, targetData, tab);
     }
 
     private boolean canAccessSettings(Session session, PlayerData targetData) {

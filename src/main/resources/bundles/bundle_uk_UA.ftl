@@ -886,6 +886,22 @@ player-menu-settings-chat = Налаштування чату
 player-menu-settings-chat-title = [orange]{ -xcore } — Налаштування чату
 
 # Modern Player Settings Form
+player-settings-tab-profile = Профіль
+player-settings-tab-chat = Чат та Мова
+player-settings-tab-badges = Значки
+player-settings-chat-preview = Прев'ю в чаті
+player-settings-chat-preview-sample = Приклад
+player-settings-symbol-color-mode = Колір символу
+player-settings-badges-my = Мої значки
+player-settings-badges-all = Всі значки
+player-settings-badge-equip = Одягти
+player-settings-badge-unequip = Зняти
+player-settings-badge-preview = Прев'ю
+player-settings-badge-previewing = У прев'ю
+player-settings-translator-lang = Перекладач чату
+player-settings-translator-off = Вимк
+player-settings-badges-empty = У вас поки немає відкритих значків.
+player-settings-manage-badges = До значків →
 player-settings-global-chat = Global чат
 player-settings-discord-relay = Discord relay
 player-settings-leaderboard = Відображати в лідерборді
