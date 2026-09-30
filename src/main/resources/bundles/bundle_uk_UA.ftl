@@ -465,9 +465,31 @@ player-menu-player-content =
     [gray]Блоки (Буд/Роз/Знищ): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
 
 # Modern Player Stats UI
+player-stats-title = [orange]{ -xcore } — Профіль гравця
 player-stats-tab-overview = Огляд
+player-stats-tab-stats = Статистика
 player-stats-tab-matches = Матчі
 player-stats-tab-blocks = Блоки
+player-stats-tab-players = Онлайн ({ $count })
+
+player-stats-status-online = [lime]● Онлайн[]
+player-stats-status-offline = [gray]○ Офлайн[]
+player-stats-no-bio = [gray]Опис відсутній.[]
+player-stats-full-stats = Детальна статистика →
+player-stats-back-to-players = ← До списку онлайн
+player-stats-loading = [lightgray]Завантаження статистики...[]
+player-stats-no-stats = [gray]Немає записів матчів[]
+player-stats-filter-all = Фільтр: Всі
+player-stats-filter-admins = Фільтр: Тільки адміни
+player-stats-filter-non-admins = Фільтр: Звичайні
+player-stats-inspect = Профіль →
+player-stats-refresh = Оновити
+player-stats-combat-efficiency = Бойова та будівельна ефективність
+player-stats-waves-summary = [gray]хвилі: макс [lime]{ $best }[], сер [white]{ $avg }[]
+player-stats-hexed-top-placement = [gray]краще [accent]#{ $best }[], топ-3: [sky]{ $top3 }[]
+player-stats-max-rank = [gold]★ МАКСИМАЛЬНИЙ РАНГ ★[]
+player-stats-hexed-wins-left = [lightgray]{ $wins } перемог до [white]{ $rank }[]
+player-stats-ratio-legend = [lightgray]Співвідношення: Побудовано / Розібрано / Знищено[]
 
 player-stats-account-created = [gray]Реєстрація:[]
 player-stats-play-time = [gray]Час у грі:[]

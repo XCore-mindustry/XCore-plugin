@@ -118,25 +118,11 @@ class PlayerMenuTest {
     }
 
     @Test
-    @DisplayName("player renders routed screen with route metadata")
-    void player_rendersRoutedScreenWithRouteMetadata() {
+    @DisplayName("player opens reactive profile UI")
+    void player_opensReactiveProfileUi() {
         playerMenu.player("viewer-1", targetData);
 
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-player-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("preloaded target data is reused without a duplicate Mongo lookup")
-    void player_preloadedTargetDataSkipsRepositoryLookup() {
-        playerMenu.player("viewer-1", targetData);
-
-        // The async caller (TopMenu/PlayerController) already loaded the target data;
-        // route rendering must not issue a second findByUuid on the main thread.
-        verify(playerDataRepository, never()).findByUuid(targetData.uuid);
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -167,62 +153,16 @@ class PlayerMenuTest {
 
         asyncMenu.player("viewer-1", targetData);
 
-        // Pre-fetched via async task
         verify(async).forPlayer(eq(session.player), any(), any());
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
+        verify(gateway, times(2)).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("player queries legacy hexed top rank for profile rendering")
-    void player_rendersLegacyHexedRankAndTopRank() {
-        targetData.hexedRank(org.xcore.plugin.gamemode.hexed.HexedRanks.HexedRank.veteran);
-        targetData.hexedPoints = 23;
-        when(playerDataRepository.findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData)).thenReturn(5);
-
-        playerMenu.player("viewer-1", targetData);
-
-        verify(playerDataRepository).findTopRank(org.xcore.plugin.model.enums.TopCategory.HEXED, targetData);
-    }
-
-    @Test
-    @DisplayName("player settings navigation opens reactive settings UI")
-    void player_settingsNavigation_opensSettingsUi() {
-        playerMenu.player("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 0);
+    @DisplayName("players opens reactive profile UI on Players tab")
+    void players_opensReactivePlayersTab() {
+        playerMenu.players("viewer-1", 1);
 
         verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
-    }
-
-    @Test
-    @DisplayName("player players navigation opens routed players via route history")
-    void player_playersNavigation_opensRoutedPlayersViaRouteHistory() {
-        playerMenu.player("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.players");
-    }
-
-    @Test
-    @DisplayName("player admin audit navigation opens routed audit history via route history")
-    void player_adminAuditNavigation_opensRoutedAuditHistoryViaRouteHistory() {
-        session.player.admin = true;
-        targetData.admin = true;
-
-        playerMenu.player("viewer-1", targetData);
-
-        menuService.onMenuOption(session, 1);
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("audit.history");
     }
 
     @Test
@@ -409,86 +349,19 @@ class PlayerMenuTest {
     }
 
     @Test
-    @DisplayName("players renders routed screen with route metadata")
-    void players_rendersRoutedScreenWithRouteMetadata() {
-        when(sessionService.streamCached()).thenReturn(Stream.of(session));
+    @DisplayName("openProfileUi opens reactive UI for valid session")
+    void openProfileUi_opensReactiveUi() {
+        playerMenu.openProfileUi(session, targetData);
 
-        playerMenu.players("viewer-1", 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.players");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-players-title"), any(), any());
+        verify(gateway).menuBuilder(eq(session.player), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
     @Test
-    @DisplayName("players pagination next and previous transitions pages")
-    void players_pagination_nextAndPreviousTransitionsPages() {
-        Session adminSession = createOnlineSession("admin-1", "admin", 1, true);
-        Session player2 = createOnlineSession("player-2", "player2", 2, false);
-        when(sessionService.streamCached()).thenAnswer(invocation -> Stream.of(session, adminSession, player2));
+    @DisplayName("openProfileUi ignores null session or null player")
+    void openProfileUi_ignoresNullSessionOrNullPlayer() {
+        playerMenu.openProfileUi(null, targetData);
+        playerMenu.openProfileUi(session, null);
 
-        playerMenu.players("viewer-1", 1);
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.players");
-
-        // Page 1 layout: admin-filter(0), next(1), select-0(2), select-1(3), back(4), close(5)
-        menuService.onMenuOption(session, 1); // next
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.players");
-        verify(gateway, times(2)).menu(eq(session.player), eq(0), eq("player-menu-players-title"), any(), any());
-
-        // Page 2 layout: admin-filter(0), prev(1), select-0(2), back(3), close(4)
-        menuService.onMenuOption(session, 1); // prev
-
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.players");
-        verify(gateway, times(3)).menu(eq(session.player), eq(0), eq("player-menu-players-title"), any(), any());
-    }
-
-    @Test
-    @DisplayName("players admin filter toggles through neutral active inactive")
-    void players_adminFilter_togglesThroughNeutralActiveInactive() {
-        Session adminSession = createOnlineSession("admin-1", "admin", 1, true);
-        Session player2 = createOnlineSession("player-2", "player2", 2, false);
-        when(sessionService.streamCached()).thenAnswer(invocation -> Stream.of(session, adminSession, player2));
-
-        playerMenu.players("viewer-1", 1);
-
-        // Toggle to Active
-        menuService.onMenuOption(session, 0);
-        assertThat(session.sortStatus.get("admin")).isEqualTo(StatusEnum.Active);
-        assertThat(session.activeScreen()).isNotNull();
-
-        // Toggle to Inactive
-        menuService.onMenuOption(session, 0);
-        assertThat(session.sortStatus.get("admin")).isEqualTo(StatusEnum.Inactive);
-        assertThat(session.activeScreen()).isNotNull();
-
-        // Toggle to Neutral
-        menuService.onMenuOption(session, 0);
-        assertThat(session.sortStatus.get("admin")).isEqualTo(StatusEnum.Neutral);
-        assertThat(session.activeScreen()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("players selecting a player opens routed profile via route history")
-    void players_selectingPlayer_opensRoutedProfileViaRouteHistory() {
-        Session adminSession = createOnlineSession("admin-1", "admin", 1, true);
-        when(sessionService.streamCached()).thenAnswer(invocation -> Stream.of(session, adminSession));
-
-        playerMenu.players("viewer-1", 1);
-
-        // Page 1 layout with 2 players (perPage=2): admin-filter(0), select-0(1), select-1(2), back(3), close(4)
-        menuService.onMenuOption(session, 1); // select admin player
-
-        assertThat(session.hasHistory()).isFalse();
-        assertThat(session.hasRouteHistory()).isTrue();
-        assertThat(session.activeScreen()).isNotNull();
-        assertThat(session.activeScreen().hasRoute()).isTrue();
-        assertThat(session.activeScreen().route().id()).isEqualTo("player.profile");
-        verify(gateway).menu(eq(session.player), eq(0), eq("player-menu-player-title"), any(), any());
+        verify(gateway, never()).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 }

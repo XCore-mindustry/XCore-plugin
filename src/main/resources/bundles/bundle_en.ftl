@@ -484,9 +484,31 @@ player-menu-player-content =
     [gray]Blocks (Build/Decon/Destroy): [lime]{ $blocksBuilt } [darkgray]/ [orange]{ $blocksDeconstructed } [darkgray]/ [scarlet]{ $blocksDestroyed }[]
 
 # Modern Player Stats UI
+player-stats-title = [orange]{ -xcore } — Player Profile
 player-stats-tab-overview = Overview
+player-stats-tab-stats = Stats
 player-stats-tab-matches = Matches
 player-stats-tab-blocks = Blocks
+player-stats-tab-players = Online ({ $count })
+
+player-stats-status-online = [lime]● Online[]
+player-stats-status-offline = [gray]○ Offline[]
+player-stats-no-bio = [gray]No bio written yet.[]
+player-stats-full-stats = Full Statistics →
+player-stats-back-to-players = ← Back to Online Players
+player-stats-loading = [lightgray]Loading telemetry...[]
+player-stats-no-stats = [gray]No match telemetry recorded yet.[]
+player-stats-filter-all = Filter: All
+player-stats-filter-admins = Filter: Admins Only
+player-stats-filter-non-admins = Filter: Non-Admins
+player-stats-inspect = Inspect →
+player-stats-refresh = Refresh
+player-stats-combat-efficiency = Combat & Construction Efficiency
+player-stats-waves-summary = [gray]waves: max [lime]{ $best }[], avg [white]{ $avg }[]
+player-stats-hexed-top-placement = [gray]best [accent]#{ $best }[], top-3: [sky]{ $top3 }[]
+player-stats-max-rank = [gold]★ MAX RANK ACHIEVED ★[]
+player-stats-hexed-wins-left = [lightgray]{ $wins } wins to [white]{ $rank }[]
+player-stats-ratio-legend = [lightgray]Build / Decon / Destroy Ratio[]
 
 player-stats-account-created = [gray]Joined:[]
 player-stats-play-time = [gray]Play time:[]

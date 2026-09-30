@@ -63,6 +63,12 @@ public class PlayerController implements CloudClientController {
         openForTarget(sender.player(), id, (p, data) -> menu.settings(p.uuid(), data));
     }
 
+    @Command("players")
+    public void players(XCoreSender sender) {
+        if (sender == null || sender.player() == null) return;
+        menu.players(sender.player().uuid(), 1);
+    }
+
     private void openForTarget(Player player, int id, BiConsumer<Player, PlayerData> openAction) {
         if (player == null) return;
 

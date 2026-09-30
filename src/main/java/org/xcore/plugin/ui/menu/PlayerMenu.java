@@ -23,6 +23,7 @@ public class PlayerMenu extends Menu {
 
     private final Bundle bundle;
     private final PlayerProfileSettingsService profileSettings;
+    private final PlayerDisplayService playerDisplayService;
     private final MenuService menuService;
     private final GameDataRepository gameDataRepository;
     private final PlayerDataRepository playerDataRepository;
@@ -43,14 +44,12 @@ public class PlayerMenu extends Menu {
         super(secretsConfig, sessionService);
         this.bundle = bundle;
         this.profileSettings = profileSettings;
+        this.playerDisplayService = playerDisplayService;
         this.menuService = menuService;
         this.gameDataRepository = gameDataRepository;
         this.playerDataRepository = playerDataRepository;
         this.async = async;
         this.auditHistoryMenu = auditHistoryMenu;
-
-        menuService.registerRoute(new PlayerProfileFlows.PlayerFlow(this, playerDataRepository, gameDataRepository, auditHistoryMenu));
-        menuService.registerRoute(new PlayerProfileFlows.PlayersFlow(this, sessionService, playerDisplayService));
     }
 
     public PlayerMenu(TomlSecretsConfig secretsConfig,
@@ -90,7 +89,38 @@ public class PlayerMenu extends Menu {
             return;
         }
 
-        if (async != null && session.player != null) {
+        openProfileUi(session, targetData, PlayerProfileUiController.Tab.OVERVIEW);
+    }
+
+    public void openProfileUi(Session session, PlayerData targetData) {
+        openProfileUi(session, targetData, PlayerProfileUiController.Tab.OVERVIEW, null, null);
+    }
+
+    public void openProfileUi(Session session, PlayerData targetData, PlayerProfileUiController.Tab tab) {
+        openProfileUi(session, targetData, tab, null, null);
+    }
+
+    public void openProfileUi(Session session, PlayerData targetData, PlayerProfileUiController.Tab tab,
+                             PlayerStatsOverview preloadedStats, Integer preloadedHexedTop) {
+        if (session == null || session.player == null) return;
+        session.clear();
+
+        if (targetData == null) {
+            if (session.locale() != null) {
+                session.locale().send("error-player-not-found");
+            }
+            return;
+        }
+
+        var controller = new PlayerProfileUiController(
+                this, auditHistoryMenu, sessionService, playerDisplayService,
+                playerDataRepository, gameDataRepository, async, session, targetData
+        );
+
+        var initialModel = controller.createInitialModel(tab, preloadedStats, preloadedHexedTop);
+        menuService.openUi(session, controller, initialModel);
+
+        if (preloadedStats == null && async != null && session.player != null) {
             async.forPlayer(session.player, () -> {
                 Integer hexedTop = playerDataRepository != null
                         ? playerDataRepository.findTopRank(TopCategory.HEXED, targetData)
@@ -102,17 +132,16 @@ public class PlayerMenu extends Menu {
                         : null;
                 return new ProfileDataBundle(stats, hexedTop);
             }, (player, bundle) -> {
-                Session current = sessionService.get(uuid);
-                if (current == null) return;
-                current.setDraft(PlayerProfileFlows.PlayerState.class,
-                        new PlayerProfileFlows.PlayerState(targetData.uuid, targetData, bundle.stats(), bundle.hexedTop()));
-                current.menuService.renderRoute(current, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
+                var active = session.activeUiSession();
+                if (active != null && active.model() instanceof PlayerProfileUiController.ProfileModel) {
+                    @SuppressWarnings("unchecked")
+                    var profileSession = (org.xcore.ui.runtime.UiSession<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent>) active;
+                    profileSession.dispatch(new PlayerProfileUiController.ProfileEvent.StatsLoaded(
+                            targetData.uuid, bundle.stats(), bundle.hexedTop()
+                    ));
+                }
             });
-            return;
         }
-
-        session.setDraft(PlayerProfileFlows.PlayerState.class, new PlayerProfileFlows.PlayerState(targetData.uuid, targetData));
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYER).withParam("targetUuid", targetData.uuid));
     }
 
     private record ProfileDataBundle(PlayerStatsOverview stats, Integer hexedTop) {}
@@ -121,7 +150,7 @@ public class PlayerMenu extends Menu {
         Session session = sessionService.get(uuid);
         if (session == null || session.data == null) return;
         session.clear();
-        session.menuService.renderRoute(session, MenuRoute.of(PlayerProfileFlows.ROUTE_PLAYERS).withParam("page", String.valueOf(page)));
+        openProfileUi(session, session.data, PlayerProfileUiController.Tab.PLAYERS);
     }
 
     public void settings(String uuid, PlayerData targetData) {
