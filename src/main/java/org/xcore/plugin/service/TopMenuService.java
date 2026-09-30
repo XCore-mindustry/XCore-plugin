@@ -52,7 +52,6 @@ public class TopMenuService {
         boolean isMini = isMiniPvPServer();
         categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.MINI_PVP, isMini ? 20 : 10, this));
         categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, isMini ? 10 : 20, this));
-        categoryRegistry.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.HEXED, 5, this));
     }
 
     public TopCategoryRegistry categoryRegistry() {

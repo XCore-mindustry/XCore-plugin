@@ -73,7 +73,6 @@ public class TopMenu extends Menu {
         }
         effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.MINI_PVP, 20, topMenuService));
         effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, 10, topMenuService));
-        effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.HEXED, 5, topMenuService));
         return effective;
     }
 

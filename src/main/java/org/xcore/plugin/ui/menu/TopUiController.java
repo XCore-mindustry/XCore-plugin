@@ -186,8 +186,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         if (categoryRegistry == null) {
             return List.of(
                     new CategoryTab("MINI_PVP", "MiniPvP", String.valueOf(Iconc.modePvp), 20),
-                    new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10),
-                    new CategoryTab("HEXED", "Hexed", String.valueOf(Iconc.star), 5)
+                    new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10)
             );
         }
         return categoryRegistry.all().stream()
@@ -378,18 +377,26 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             root.margin(model.isMobile() ? 8f : 12f);
             root.layout(l -> l.width(metrics.dialogWidth()).pad(4f));
 
-            // 1. Dialog Header: Star Icon + Title + Total Count + Close Button
+            // 1. Dialog Header: Star Icon + Full Title on row 1, Count on row 2, and Close Button on the right
             root.add(Ui.table(h -> {
                 h.layout(l -> l.growX().padBottom(4f));
-                h.label(Text.raw("[gold]" + Iconc.star + "[] [white]" + (local != null ? local.t("top-menu-title", args("category", currentCatName)) : "Leaderboard") + "[]"),
-                        l -> l.align("left").growX());
 
-                if (model.totalEntries() != null && model.totalEntries() > 0) {
-                    String totalText = local != null
-                            ? local.t("top-menu-total-count", args("count", model.totalEntries()))
-                            : model.totalEntries() + " players";
-                    h.label(Text.raw("[gray]" + totalText + "[]  "), l -> l.align("right"));
-                }
+                h.add(Ui.table(titleCol -> {
+                    titleCol.layout(l -> l.growX().align("left"));
+                    String titleText = local != null
+                            ? local.t("top-menu-title", args("category", currentCatName))
+                            : "Top Players: " + currentCatName;
+                    titleCol.label(Text.raw("[gold]" + Iconc.star + "[] [white]" + titleText + "[]"),
+                            l -> l.align("left").growX()).row();
+
+                    if (model.totalEntries() != null && model.totalEntries() > 0) {
+                        String totalText = local != null
+                                ? local.t("top-menu-total-count", args("count", model.totalEntries()))
+                                : model.totalEntries() + " players";
+                        titleCol.label(Text.raw("[lightgray]" + totalText + "[]"),
+                                l -> l.align("left").padTop(2f));
+                    }
+                }));
 
                 h.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
                         .style("cleart")
