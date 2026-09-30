@@ -72,6 +72,7 @@ class TopMenuTest {
         Bundle bundle = mock(Bundle.class);
         Localization local = mock(Localization.class);
         when(local.getLocale()).thenReturn(Locale.ENGLISH);
+        when(local.t(anyString())).thenAnswer(i -> i.getArgument(0));
         when(local.t(eq("player-menu-time-days"), anyMap())).thenAnswer(i -> ((Map<?, ?>) i.getArgument(1)).get("value") + "d");
         when(local.t(eq("player-menu-time-hours"), anyMap())).thenAnswer(i -> ((Map<?, ?>) i.getArgument(1)).get("value") + "h");
         when(local.t(eq("player-menu-time-minutes"), anyMap())).thenAnswer(i -> ((Map<?, ?>) i.getArgument(1)).get("value") + "m");
