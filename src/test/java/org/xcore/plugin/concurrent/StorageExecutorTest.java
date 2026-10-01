@@ -36,7 +36,7 @@ class StorageExecutorTest {
         var result = executor.supply(() -> Thread.currentThread().getName());
 
         assertThat(result.get(1, TimeUnit.SECONDS)).isNotEqualTo(caller);
-        assertThat(executor.activeTasks()).isZero();
+        awaitActiveTasks(executor, 0);
     }
 
     @Test
@@ -127,11 +127,15 @@ class StorageExecutorTest {
 
         assertThat(callerBlockedMillis).isLessThan(1_000);
         assertThat(slow.get(3, TimeUnit.SECONDS)).isEqualTo("stored");
+        awaitActiveTasks(executor, 0);
+    }
+
+    private static void awaitActiveTasks(StorageExecutor executor, int expected) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 1_000;
-        while (System.currentTimeMillis() < deadline && executor.activeTasks() > 0) {
+        while (System.currentTimeMillis() < deadline && executor.activeTasks() != expected) {
             Thread.sleep(10);
         }
-        assertThat(executor.activeTasks()).isZero();
+        assertThat(executor.activeTasks()).isEqualTo(expected);
     }
 
     private static void awaitGauge(LocalMetricRegistry registry, String name, double expected) throws InterruptedException {
