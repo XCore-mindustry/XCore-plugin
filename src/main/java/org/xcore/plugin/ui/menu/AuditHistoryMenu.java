@@ -56,11 +56,36 @@ public class AuditHistoryMenu extends Menu {
         openHistory(viewerUuid, targetData, AuditViewMode.ACTOR);
     }
 
+    public void openAuditHistoryUi(Session session, PlayerData targetData, AuditHistoryUiController.AuditViewMode mode) {
+        if (session == null || session.player == null || targetData == null) {
+            return;
+        }
+        session.clear();
+
+        var controller = new AuditHistoryUiController(
+                this,
+                auditService,
+                sessionService,
+                session,
+                targetData
+        );
+        var initialModel = controller.createInitialModel(mode);
+        menuService.openUi(session, controller, initialModel);
+    }
+
     private void openHistory(String viewerUuid, PlayerData targetData, AuditViewMode mode) {
         Session session = sessionService.get(viewerUuid);
         if (session == null || session.data == null || targetData == null) {
             return;
         }
+
+        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
+            openAuditHistoryUi(session, targetData, mode == AuditViewMode.ACTOR
+                    ? AuditHistoryUiController.AuditViewMode.ACTOR
+                    : AuditHistoryUiController.AuditViewMode.TARGET);
+            return;
+        }
+
         MenuRoute route = MenuRoute.of(AuditHistoryFlows.ROUTE_HISTORY)
                 .withParam("targetUuid", targetData.uuid)
                 .withParam("targetNickname", targetData.nickname == null ? "" : targetData.nickname)
@@ -79,6 +104,23 @@ public class AuditHistoryMenu extends Menu {
             return;
         }
         session.clear();
+
+        if (session.menuService != null && session.menuService.hasMenuBuilder() && session.player != null && session.player.con != null) {
+            var controller = new AuditHistoryUiController(
+                    this,
+                    auditService,
+                    sessionService,
+                    session,
+                    targetData
+            );
+            var initialModel = controller.createInitialModel(AuditHistoryUiController.AuditViewMode.TARGET);
+            AuditRecord record = auditService.findByAuditId(auditId).orElse(null);
+            if (record != null) {
+                initialModel = initialModel.withDetails(auditId, record);
+            }
+            menuService.openUi(session, controller, initialModel);
+            return;
+        }
 
         AuditRecord record = auditService.findByAuditId(auditId).orElse(null);
         if (record == null) {

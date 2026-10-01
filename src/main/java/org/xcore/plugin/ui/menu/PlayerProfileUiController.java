@@ -566,6 +566,13 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 }
                 PlayerData target = resolveCurrentTarget(model);
                 if (target != null && auditHistoryMenu != null && session != null && session.data != null) {
+                    final Tab returnTab = model.tab();
+                    final PlayerStatsOverview cachedStats = model.stats();
+                    final Integer cachedTop = model.hexedTopRank();
+
+                    session.pushHistory(() -> {
+                        playerMenu.openProfileUi(session, target, returnTab, cachedStats, cachedTop);
+                    });
                     auditHistoryMenu.history(session.data.uuid, target);
                 }
                 yield UpdateResult.close(model);
@@ -577,6 +584,13 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 }
                 PlayerData target = resolveCurrentTarget(model);
                 if (target != null && auditHistoryMenu != null && session != null && session.data != null) {
+                    final Tab returnTab = model.tab();
+                    final PlayerStatsOverview cachedStats = model.stats();
+                    final Integer cachedTop = model.hexedTopRank();
+
+                    session.pushHistory(() -> {
+                        playerMenu.openProfileUi(session, target, returnTab, cachedStats, cachedTop);
+                    });
                     auditHistoryMenu.actions(session.data.uuid, target);
                 }
                 yield UpdateResult.close(model);

@@ -6,11 +6,13 @@ import mindustry.gen.Player;
 import org.incendo.cloud.annotation.specifier.Greedy;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
 
 import org.xcore.plugin.cloud.XCoreSender;
 import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudClientController;
+import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
@@ -23,6 +25,7 @@ import org.xcore.plugin.service.moderation.UnbanCommand;
 import org.xcore.plugin.service.moderation.UnmuteCommand;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.menu.AuditHistoryMenu;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -36,12 +39,21 @@ public class ModerationController implements CloudClientController {
     private final ModerationService moderationService;
     private final FindService find;
     private final SessionService sessionService;
+    private final AuditHistoryMenu auditHistoryMenu;
+    private final Async async;
 
     @Inject
-    public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService) {
+    public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService,
+                                AuditHistoryMenu auditHistoryMenu, Async async) {
         this.moderationService = moderationService;
         this.find = find;
         this.sessionService = sessionService;
+        this.auditHistoryMenu = auditHistoryMenu;
+        this.async = async;
+    }
+
+    public ModerationController(ModerationService moderationService, FindService find, SessionService sessionService) {
+        this(moderationService, find, sessionService, null, null);
     }
 
     @Command("ban <id> <period> [reason]")
@@ -129,6 +141,44 @@ public class ModerationController implements CloudClientController {
         } else {
             sendModerationFailure(local, result);
         }
+    }
+
+    @Command("audit [id]")
+    public void audit(XCoreSender sender, @Argument("id") @Default("-1") int id) {
+        Session session = resolveActiveSession(sender);
+        if (session == null || auditHistoryMenu == null) return;
+        Localization local = session.locale();
+
+        if (id == -1) {
+            auditHistoryMenu.history(session.data.uuid, session.data);
+            return;
+        }
+
+        Session targetOnline = sessionService.findOnlineByPid(id);
+        if (targetOnline != null && targetOnline.data != null) {
+            auditHistoryMenu.history(session.data.uuid, targetOnline.data);
+            return;
+        }
+
+        var stage = sessionService.getOrLoadFromDbAsync(id);
+        if (async != null && sender.player() != null) {
+            async.onMainForPlayer(sender.player(), stage, (p, data) -> {
+                if (data != null) {
+                    auditHistoryMenu.history(p.uuid(), data);
+                } else {
+                    local.send("error-player-not-found", args());
+                }
+            });
+            return;
+        }
+
+        stage.whenComplete((targetData, err) -> {
+            if (err != null || targetData == null) {
+                local.send("error-player-not-found", args());
+                return;
+            }
+            auditHistoryMenu.history(session.data.uuid, targetData);
+        });
     }
 
     private Session resolveActiveSession(XCoreSender sender) {
