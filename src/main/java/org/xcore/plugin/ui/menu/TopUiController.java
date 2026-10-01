@@ -228,20 +228,34 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             pageResult = LeaderboardPage.empty(page);
         }
 
-        String selfValue = resolveSelfPrimaryValue(categoryId);
+        String selfValue = resolveSelfPrimaryValue(categoryId, pageResult);
         return current.withPageData(pageResult, cursor, pageResult.nextCursor(), selfValue);
     }
 
-    private String resolveSelfPrimaryValue(String categoryId) {
+    private String resolveSelfPrimaryValue(String categoryId, LeaderboardPage page) {
         if (session == null || session.data == null) return null;
         Localization local = session.locale();
         NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
 
-        return switch (categoryId.toUpperCase()) {
+        if (page != null && page.entries() != null) {
+            for (LeaderboardEntry entry : page.entries()) {
+                if (Objects.equals(entry.playerUuid(), session.data.uuid)) {
+                    return formatValue(categoryId, entry, local);
+                }
+            }
+        }
+
+        String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
+        return switch (catUpper) {
             case "MINI_PVP" -> nf.format(session.data.pvpRating);
             case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(session.data.totalPlayTime, local) : session.data.totalPlayTime + "m";
-            case "HEXED" -> nf.format(session.data.hexedPoints);
-            default -> null;
+            case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(session.data.hexedPoints))) : session.data.hexedPoints + " pts";
+            default -> {
+                if (catUpper.contains("ELO")) {
+                    yield nf.format(session.data.hexedPoints) + " ELO";
+                }
+                yield null;
+            }
         };
     }
 
@@ -540,7 +554,13 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                     String namePrefix = isViewer ? "[lime]● [accent]" : "";
                     inner.label(Text.raw(namePrefix + cleanNick + "[]"), l -> l.align("left").growX());
 
-                    // Optional Tag (e.g. Hexed rank)
+                    // Optional Tags (e.g. Hexed rank, League from HexedCore)
+                    if (attrs.containsKey("leagueIcon")) {
+                        inner.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(2f));
+                    }
+                    if (attrs.containsKey("leagueName")) {
+                        inner.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(attrs.get("leagueName")) + "][] "), l -> l.align("right").padRight(6f));
+                    }
                     if (attrs.containsKey("rankName")) {
                         String rankName = attrs.get("rankName");
                         String locRank = local != null ? local.t("hexed-ranks-" + rankName) : rankName;
@@ -549,7 +569,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
                     // Score Value
                     String valColor = entry.rank() <= 3 ? "[gold]" : "[sky]";
-                    String formattedVal = formatValue(model.selectedCategoryId(), entry.primaryValue(), local);
+                    String formattedVal = formatValue(model.selectedCategoryId(), entry, local);
                     inner.label(Text.raw(valColor + formattedVal + "[] "), l -> l.align("right").padRight(8f));
 
                     // Inspect Chevron Glyph
@@ -644,12 +664,17 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     }
 
     private static String resolveIcon(String id) {
-        return switch (id.toUpperCase()) {
-            case "MINI_PVP" -> String.valueOf(Iconc.modePvp);
-            case "PLAYTIME" -> String.valueOf(Iconc.refresh);
-            case "HEXED" -> String.valueOf(Iconc.star);
-            default -> String.valueOf(Iconc.players);
-        };
+        String upper = id != null ? id.toUpperCase() : "";
+        if (upper.equals("MINI_PVP") || upper.contains("PVP")) {
+            return String.valueOf(Iconc.modePvp);
+        }
+        if (upper.equals("PLAYTIME") || upper.contains("TIME")) {
+            return String.valueOf(Iconc.refresh);
+        }
+        if (upper.contains("HEXED") || upper.contains("STAR") || upper.contains("ELO")) {
+            return String.valueOf(Iconc.star);
+        }
+        return String.valueOf(Iconc.players);
     }
 
     private static String safeDisplayName(TopCategoryProvider provider, Localization local) {
@@ -683,17 +708,37 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         return "[white]" + clean;
     }
 
+    private String formatValue(String categoryId, LeaderboardEntry entry, Localization local) {
+        if (entry == null) return "-";
+        if (categoryRegistry != null) {
+            TopCategoryProvider provider = categoryRegistry.resolve(categoryId).orElse(null);
+            if (provider != null) {
+                String val = provider.formatValue(entry, local);
+                if (val != null && !val.equals(entry.primaryValue()) && !val.equals("-")) {
+                    return val;
+                }
+            }
+        }
+        return formatValue(categoryId, entry.primaryValue(), local);
+    }
+
     private String formatValue(String categoryId, String rawValue, Localization local) {
         if (rawValue == null || rawValue.isBlank()) return "-";
         try {
             long val = Long.parseLong(rawValue);
             NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
 
-            return switch (categoryId.toUpperCase()) {
+            String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
+            return switch (catUpper) {
                 case "MINI_PVP" -> nf.format(val);
                 case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(val, local) : PlayerProfileUiController.formatDuration((int) val, local);
                 case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(val))) : nf.format(val) + " pts";
-                default -> nf.format(val);
+                default -> {
+                    if (catUpper.contains("ELO")) {
+                        yield nf.format(val) + " ELO";
+                    }
+                    yield nf.format(val);
+                }
             };
         } catch (NumberFormatException e) {
             return rawValue;

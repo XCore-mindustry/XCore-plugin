@@ -45,6 +45,17 @@ public interface TopCategoryProvider {
      * @return formatted button label shown on the menu screen
      */
     default String formatEntry(LeaderboardEntry entry, Localization local) {
-        return entry.displayText();
+        return entry != null ? entry.displayText() : "";
+    }
+
+    /**
+     * Formats the value display for a single player entry in this category.
+     *
+     * @param entry the leaderboard entry
+     * @param local viewer's localization context
+     * @return formatted value label shown on the right side of the card
+     */
+    default String formatValue(LeaderboardEntry entry, Localization local) {
+        return entry != null ? entry.primaryValue() : "-";
     }
 }
