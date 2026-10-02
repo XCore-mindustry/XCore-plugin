@@ -12,6 +12,7 @@ import org.xcore.plugin.integration.top.TopCategoryRegistry;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
+import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.Text;
@@ -555,10 +556,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
                     // Optional Tags (e.g. Hexed rank, League from HexedCore)
                     if (attrs.containsKey("leagueIcon")) {
-                        inner.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(2f));
-                    }
-                    if (attrs.containsKey("leagueName")) {
-                        inner.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(attrs.get("leagueName")) + "][] "), l -> l.align("right").padRight(6f));
+                        inner.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(4f));
+                    } else if (attrs.containsKey("leagueName")) {
+                        String locLeague = attrs.get("leagueName");
+                        try {
+                            RatingLeague rl = RatingLeague.valueOf(attrs.get("leagueName").toUpperCase());
+                            locLeague = local != null ? local.t(rl.localizationKey()) : rl.name();
+                        } catch (Exception ignored) {}
+                        inner.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locLeague) + "][] "), l -> l.align("right").padRight(6f));
                     }
                     if (attrs.containsKey("rankName")) {
                         String rankName = attrs.get("rankName");
