@@ -188,7 +188,7 @@ public class MiniPvP {
                 if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
                 int count = countActivePlayers(t.team);
                 if (!teamsLine.isEmpty()) teamsLine.append(" [gray]vs[] ");
-                teamsLine.append("[").append(t.team.color.toString()).append("]").append(t.team.name)
+                teamsLine.append("[#").append(t.team.color.toString()).append("]").append(t.team.name)
                         .append(" (").append(count).append(")[]");
             }
         }
