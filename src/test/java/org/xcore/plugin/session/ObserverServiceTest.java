@@ -293,4 +293,35 @@ class ObserverServiceTest {
 
         verify(observerStateStore).deleteAsync("uuid-1");
     }
+
+    @Test
+    @DisplayName("observer team is named spectator and colored neutral gray instead of green")
+    void observerTeam_isNamedSpectatorAndColoredNeutralGray() {
+        assertThat(ObserverService.OBSERVER_TEAM.name).isEqualTo("spectator");
+        assertThat(ObserverService.OBSERVER_TEAM.color).isEqualTo(arc.graphics.Color.valueOf("6e7080"));
+    }
+
+    @Test
+    @DisplayName("enter kills existing unit when present and sets deathTimer to 0")
+    void enter_killsExistingUnitWhenPresentAndSetsDeathTimer() {
+        SessionService sessionService = new SessionService(mock(SessionFactory.class), mock(PlayerDataRepository.class));
+        RedisObserverStateStore observerStateStore = mock(RedisObserverStateStore.class);
+        ObserverService observerService = new ObserverService(sessionService, observerStateStore);
+        Session session = mock(Session.class);
+        session.data = new org.xcore.plugin.model.PlayerData("uuid-1", true);
+        Player player = mock(Player.class);
+        mindustry.gen.Unit unit = mock(mindustry.gen.Unit.class);
+        session.player = player;
+
+        when(session.observing()).thenReturn(false);
+        when(player.team()).thenReturn(Team.sharded);
+        when(player.unit()).thenReturn(unit);
+
+        boolean changed = observerService.enter(session);
+
+        assertThat(changed).isTrue();
+        verify(unit).kill();
+        verify(player).clearUnit();
+        verify(player).team(ObserverService.OBSERVER_TEAM);
+    }
 }

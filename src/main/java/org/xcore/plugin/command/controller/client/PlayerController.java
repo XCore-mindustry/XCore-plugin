@@ -110,7 +110,7 @@ public class PlayerController implements CloudClientController {
         });
     }
 
-    @Command("observer")
+    @Command("observer|spectate")
     public void observer(XCoreSender sender) {
         var player = sender.player();
         var session = resolveSession(sender, sessionService);
