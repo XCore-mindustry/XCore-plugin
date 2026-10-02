@@ -275,6 +275,10 @@ commands-mute-description = Замьютить игрока. [scarlet]Тольк
 commands-mute-success = [accent]Игрок { $nickname }[accent] успешно замьючен
 commands-unmute-description = Размутить игрока. [scarlet]Только для админов
 commands-unmute-success = Успешно размучено игрока { $nickname }
+commands-alert-description = Отправить важное объявление игрокам или всем.
+commands-toast-description = Отправить всплывающее уведомление игрокам.
+commands-announcement-description = Отправить периодическое объявление или следующее из ротации.
+commands-audit-description = Открыть журнал аудита действий персонала и модераторов.
 ban-content = [scarlet]⚠ Доступ запрещён[]
     [accent]{ $nickname }[white] — вы навсегда заблокированы на этом сервере.
     [lightgray]Чтобы обжаловать блокировку, перейдите в Discord-канал [gray]{ support-channel }[]:

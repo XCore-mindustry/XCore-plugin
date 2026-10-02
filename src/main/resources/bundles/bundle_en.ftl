@@ -271,6 +271,10 @@ commands-mute-description = Mute a player. [scarlet]Admin only.
 commands-mute-success = [accent]Successfully muted { $nickname }
 commands-unmute-description = Unmute player. [scarlet]Admin only.
 commands-unmute-success = [green]Successfully unmuted []{ $nickname }
+commands-alert-description = Displays a prominent announcement banner to target players or all players.
+commands-toast-description = Displays a warning toast notification to target players.
+commands-announcement-description = Broadcasts a periodic announcement by key, or the next one in rotation.
+commands-audit-description = View staff and moderation audit history and actions.
 ban-content = [scarlet]⚠ Banned[]
     [accent]{ $nickname }[white] — you are permanently banned from this server.
     [lightgray]To appeal, visit Discord channel [gray]{ support-channel }[]:

@@ -250,6 +250,10 @@ commands-mute-description = Заглушити гравця. [scarlet]Тільк
 commands-mute-success = [accent]Успішно заглушено гравця { $nickname }
 commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
 commands-unmute-success = [green]Успішно знято заглушення з гравця []{ $nickname }
+commands-alert-description = Надіслати важливе оголошення гравцям або всім.
+commands-toast-description = Надіслати спливаюче сповіщення гравцям.
+commands-announcement-description = Надіслати періодичне оголошення або наступне з ротації.
+commands-audit-description = Відкрити журнал аудиту дій персоналу та модераторів.
 ban-content = [scarlet]⚠ Доступ заборонено[]
     [accent]{ $nickname }[white] — вас назавжди заблоковано на цьому сервері.
     [lightgray]Щоб оскаржити блокування, перейдіть у Discord-канал [gray]{ support-channel }[]:

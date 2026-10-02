@@ -265,4 +265,38 @@ class HelpUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:copy:hub")))
                 .isEqualTo(new HelpUiEvent.CopyCommand("hub"));
     }
+
+    @Test
+    @DisplayName("formatCardBottomLine properly constrains long syntax and description to prevent overflow")
+    void formatCardBottomLine_constrainsLength() {
+        String alertLine = HelpUiController.formatCardBottomLine(
+                "alert <targets> <message>",
+                "Displays a prominent announcement banner to target players or all players.",
+                48
+        );
+        String strippedAlert = arc.util.Strings.stripColors(alertLine);
+        assertThat(strippedAlert.length()).isLessThanOrEqualTo(48);
+        assertThat(strippedAlert).startsWith("/alert <targets> <message>");
+        assertThat(strippedAlert).contains("|");
+        assertThat(strippedAlert).endsWith("...");
+
+        String avnwLine = HelpUiController.formatCardBottomLine(
+                "avnw",
+                "Примусово достроково запустити наступну хвилю. [scarlet]Тільки для адміністраторів.",
+                48
+        );
+        String strippedAvnw = arc.util.Strings.stripColors(avnwLine);
+        assertThat(strippedAvnw.length()).isLessThanOrEqualTo(48);
+        assertThat(strippedAvnw).startsWith("/avnw");
+        assertThat(strippedAvnw).contains("|");
+
+        String longSyntaxLine = HelpUiController.formatCardBottomLine(
+                "votekick <player_name_or_id> [reason_text...]",
+                "Vote to kick a player from the server",
+                48
+        );
+        String strippedLong = arc.util.Strings.stripColors(longSyntaxLine);
+        assertThat(strippedLong.length()).isLessThanOrEqualTo(48);
+        assertThat(strippedLong).contains("|");
+    }
 }

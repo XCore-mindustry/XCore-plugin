@@ -39,14 +39,14 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                 float cw = dw - pad * 2f;
                 float cardW = cw - 26f;
                 float cardInnerW = cardW - 18f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 440f, 42);
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 440f, 38);
             } else {
                 float dw = 740f;
                 float pad = 12f;
                 float cw = dw - pad * 2f;
                 float cardW = cw - 26f;
                 float cardInnerW = cardW - 22f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 480f, 65);
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 480f, 48);
             }
         }
     }
@@ -204,7 +204,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                     tabs.button(tabText, "action:tab:" + cat.name().toLowerCase(), b -> b
                             .style(checked ? "togglet" : "cleart")
                             .checked(checked)
-                            .layout(l -> l.height(36f).pad(2f).growX().uniform()));
+                            .layout(l -> l.height(34f).padTop(2f).padBottom(2f).padLeft(3f).padRight(3f).growX().uniform()));
                 }
             })).row();
 
@@ -230,21 +230,21 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                         cards.buttonTable("action:cmd:" + cmd.name(), card -> {
                             card.style("default");
                             card.margin(model.isMobile() ? 6f : 8f);
-                            card.layout(l -> l.width(metrics.cardWidth()).padBottom(4f));
+                            card.layout(l -> l.width(metrics.cardWidth()).maxWidth(metrics.cardWidth()).padBottom(4f));
 
                             card.table(inner -> {
-                                inner.layout(l -> l.width(metrics.cardContentWidth()));
+                                inner.layout(l -> l.width(metrics.cardContentWidth()).maxWidth(metrics.cardContentWidth()));
 
                                 // Left category colored accent stripe
                                 inner.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(cmd.category().colorHex()));
 
                                 // Content column
                                 inner.add(Ui.table(col -> {
-                                    col.layout(l -> l.growX());
+                                    col.layout(l -> l.width(metrics.cardContentWidth() - 16f).maxWidth(metrics.cardContentWidth() - 16f).growX());
 
                                     // Top row of card
                                     col.add(Ui.table(top -> {
-                                        top.layout(l -> l.growX());
+                                        top.layout(l -> l.growX().maxWidth(metrics.cardContentWidth() - 16f));
                                         top.label(Text.raw("[accent]/" + cmd.name() + "[]"), l -> l.align("left"));
                                         if (cmd.syntaxes().size() > 1) {
                                             top.label(Text.join(
@@ -266,10 +266,9 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
 
                                     // Bottom row of card
                                     col.add(Ui.table(bottom -> {
-                                        bottom.layout(l -> l.growX().padTop(2f));
-                                        String desc = formatDescription(cmd.rawDescription(), metrics.descMaxLength());
-                                        bottom.label(Text.raw("[gray]/" + escapeMarkup(cmd.primarySyntax()) + "  [darkgray]|[]  [white]" + desc + "[]"),
-                                                l -> l.align("left").growX());
+                                        bottom.layout(l -> l.growX().maxWidth(metrics.cardContentWidth() - 16f).padTop(2f));
+                                        String bottomLine = formatCardBottomLine(cmd.primarySyntax(), cmd.rawDescription(), metrics.descMaxLength());
+                                        bottom.label(Text.raw(bottomLine), l -> l.align("left").growX());
                                     })).row();
                                 }));
                             });
@@ -433,17 +432,31 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         return text.replace("[", "[[");
     }
 
-    public static String formatDescription(String raw, int maxPlainLength) {
+    public static String truncatePlain(String raw, int maxPlainLength) {
         if (raw == null || raw.isBlank()) return "";
         String singleLine = raw.replace('\n', ' ').replace('\r', ' ').trim();
         if (Strings.stripColors(singleLine).length() <= maxPlainLength) {
             return singleLine;
         }
+        if (maxPlainLength <= 3) {
+            return "...";
+        }
         StringBuilder sb = new StringBuilder();
         int visibleCount = 0;
         boolean inTag = false;
+        int targetVisible = maxPlainLength - 3;
         for (int i = 0; i < singleLine.length(); i++) {
             char c = singleLine.charAt(i);
+            if (!inTag && c == '[' && i + 1 < singleLine.length() && singleLine.charAt(i + 1) == '[') {
+                if (visibleCount >= targetVisible) {
+                    sb.append("...[]");
+                    return sb.toString();
+                }
+                sb.append("[[");
+                i++;
+                visibleCount++;
+                continue;
+            }
             if (c == '[') {
                 inTag = true;
                 sb.append(c);
@@ -453,7 +466,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             } else if (inTag) {
                 sb.append(c);
             } else {
-                if (visibleCount >= maxPlainLength) {
+                if (visibleCount >= targetVisible) {
                     sb.append("...[]");
                     return sb.toString();
                 }
@@ -463,5 +476,31 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         }
         sb.append("[]");
         return sb.toString();
+    }
+
+    public static String formatCardBottomLine(String syntax, String rawDesc, int maxTotalLength) {
+        String cleanSyntax = "/" + escapeMarkup(syntax);
+        if (rawDesc == null || rawDesc.isBlank()) {
+            return truncatePlain(cleanSyntax, maxTotalLength);
+        }
+        String cleanDesc = rawDesc.replace('\n', ' ').replace('\r', ' ').trim();
+
+        int syntaxLen = Strings.stripColors(cleanSyntax).length();
+        int minDescLen = 14;
+        int sepLen = 5; // "  |  "
+
+        if (syntaxLen + sepLen + minDescLen > maxTotalLength) {
+            int maxSyntaxLen = Math.max(12, maxTotalLength - sepLen - minDescLen);
+            cleanSyntax = truncatePlain(cleanSyntax, maxSyntaxLen);
+            syntaxLen = Strings.stripColors(cleanSyntax).length();
+        }
+
+        int remainingForDesc = Math.max(8, maxTotalLength - syntaxLen - sepLen);
+        String truncatedDesc = truncatePlain(cleanDesc, remainingForDesc);
+        return "[gray]" + cleanSyntax + "  [darkgray]|[]  [white]" + truncatedDesc + "[]";
+    }
+
+    public static String formatDescription(String raw, int maxPlainLength) {
+        return truncatePlain(raw, maxPlainLength);
     }
 }
