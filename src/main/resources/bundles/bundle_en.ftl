@@ -507,7 +507,9 @@ player-stats-combat-efficiency = Combat & Construction Efficiency
 player-stats-waves-summary = [gray]waves: max [lime]{ $best }[], avg [white]{ $avg }[]
 player-stats-hexed-top-placement = [gray]best [accent]#{ $best }[], top-3: [sky]{ $top3 }[]
 player-stats-max-rank = [gold]★ MAX RANK ACHIEVED ★[]
+player-stats-max-league = [gold]★ MAX LEAGUE ACHIEVED ★[]
 player-stats-hexed-wins-left = [lightgray]{ $wins } wins to [white]{ $rank }[]
+player-stats-league-elo-left = [lightgray]{ $elo } ELO to [white]{ $league }[]
 player-stats-ratio-legend = [lightgray]Build / Decon / Destroy Ratio[]
 
 player-stats-account-created = [gray]Joined:[]

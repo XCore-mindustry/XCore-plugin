@@ -43,4 +43,15 @@ class RatingLeagueTest {
             assertThat(league.localizationKey("hexed")).isEqualTo("hexed_league_" + league.id().replace('-', '_'));
         }
     }
+
+    @Test
+    @DisplayName("next and hasNext step linearly through material tiers")
+    void next_stepsCorrectly() {
+        assertThat(RatingLeague.SCRAP.next()).isEqualTo(RatingLeague.COPPER);
+        assertThat(RatingLeague.COPPER.next()).isEqualTo(RatingLeague.LEAD);
+        assertThat(RatingLeague.LEAD.next()).isEqualTo(RatingLeague.GRAPHITE);
+        assertThat(RatingLeague.PHASE_FABRIC.next()).isEqualTo(RatingLeague.SURGE_ALLOY);
+        assertThat(RatingLeague.SURGE_ALLOY.next()).isNull();
+        assertThat(RatingLeague.SURGE_ALLOY.hasNext()).isFalse();
+    }
 }

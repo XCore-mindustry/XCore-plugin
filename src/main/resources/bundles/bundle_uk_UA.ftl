@@ -488,7 +488,9 @@ player-stats-combat-efficiency = Бойова та будівельна ефек
 player-stats-waves-summary = [gray]хвилі: макс [lime]{ $best }[], сер [white]{ $avg }[]
 player-stats-hexed-top-placement = [gray]краще [accent]#{ $best }[], топ-3: [sky]{ $top3 }[]
 player-stats-max-rank = [gold]★ МАКСИМАЛЬНИЙ РАНГ ★[]
+player-stats-max-league = [gold]★ МАКСИМАЛЬНА ЛІГА ★[]
 player-stats-hexed-wins-left = [lightgray]{ $wins } перемог до [white]{ $rank }[]
+player-stats-league-elo-left = [lightgray]{ $elo } ELO до [white]{ $league }[]
 player-stats-ratio-legend = [lightgray]Співвідношення: Побудовано / Розібрано / Знищено[]
 
 player-stats-account-created = [gray]Реєстрація:[]

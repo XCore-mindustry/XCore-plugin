@@ -405,6 +405,23 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 + "[] [white]" + Math.round(pct * 100f) + "%[]";
     }
 
+    public static String renderRatingLeagueProgressBar(RatingLeague league, int currentRating, int barWidth) {
+        if (league == null || !league.hasNext()) {
+            return "[gold]★ MAX LEAGUE ACHIEVED ★[]";
+        }
+        RatingLeague next = league.next();
+        int min = league.minimumRating();
+        int max = next.minimumRating();
+        int span = Math.max(1, max - min);
+        float pct = Math.clamp((float) (currentRating - min) / span, 0f, 1f);
+        int filled = Math.round(pct * barWidth);
+        int empty = barWidth - filled;
+
+        return "[sky]" + "■".repeat(Math.max(0, filled))
+                + "[darkgray]" + "■".repeat(Math.max(0, empty))
+                + "[] [white]" + Math.round(pct * 100f) + "%[]";
+    }
+
     public static String renderBlockRatioBar(long built, long decon, long destroyed, int totalBars) {
         long sum = built + decon + destroyed;
         if (sum <= 0) {
@@ -846,32 +863,74 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 descTable.labelWrap(Text.raw(desc), l -> l.align("left").width(metrics.cardInnerWidth()));
             })).row();
 
-            // Info row: Joined, Play time, PvP Rating
+            // Info row: Joined, Play time
             c.add(Ui.table(info -> {
                 info.layout(l -> l.width(metrics.cardInnerWidth()));
                 String joinedLbl = local != null ? local.t("player-stats-account-created") : "[gray]Joined:[]";
                 String playTimeLbl = local != null ? local.t("player-stats-play-time") : "[gray]Play time:[]";
-                String pvpLbl = local != null ? local.t("player-stats-pvp-rating") : "[gray]MiniPvP:[]";
-                RatingLeague league = RatingLeague.fromRating(model.pvpRating());
-                String pvpTag = pvpLbl + " " + league.icon() + " [sky]" + model.pvpRating() + "[]";
-                if (model.legacyPvpRating() > 0) {
-                    String legacyLbl = local != null ? local.t("player-stats-legacy-pvp-rating") : "[gray]Legacy PvP:[]";
-                    pvpTag += "  [darkgray]|[]  " + legacyLbl + " [sky]" + model.legacyPvpRating() + "[]";
-                }
-
-                if (model.isMobile()) {
-                    info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
-                            + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]"), l -> l.align("left").growX()).row();
-                    info.label(Text.raw(pvpTag), l -> l.align("left").growX());
-                } else {
-                    info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
-                            + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]  [darkgray]|[]  "
-                            + pvpTag), l -> l.align("left").growX());
-                }
+                info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
+                        + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]"), l -> l.align("left").growX());
             })).row();
         })).row();
 
-        // --- Card 2: Hexed Rank Progression Card ---
+        // --- Card 2: MiniPvP Rating & Progression Card ---
+        body.add(Ui.table(c -> {
+            c.background("button");
+            c.margin(10f);
+            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+
+            RatingLeague league = RatingLeague.fromRating(model.pvpRating());
+            String leagueName = local != null ? local.t(league.localizationKey()) : league.name();
+            RatingLeague nextLeague = league.next();
+
+            c.add(Ui.table(top -> {
+                top.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                String pvpLbl = local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:";
+                String pvpTitle = "[red]" + Iconc.modePvp + " " + pvpLbl + "[] " + league.icon() + " [white]" + leagueName + "[] ([sky]" + model.pvpRating() + " ELO[])";
+
+                int matches = model.pvpMatches();
+                int wins = model.pvpWins();
+                int winRate = matches <= 0 ? 0 : Math.round((wins * 100.0f) / matches);
+                String statsPart = matches > 0
+                        ? "  [darkgray]|[]  [white]" + matches + "[] [gray]matches[] [darkgray]|[] [lime]" + wins + "[] [gray]wins (" + winRate + "%)[]"
+                        : "";
+
+                String legacyPart = model.legacyPvpRating() > 0
+                        ? "  [darkgray]|[]  " + (local != null ? local.t("player-stats-legacy-pvp-rating") : "[gray]Legacy PvP:[]") + " [sky]" + model.legacyPvpRating() + "[]"
+                        : "";
+
+                if (model.isMobile()) {
+                    top.label(Text.raw(pvpTitle), l -> l.align("left").growX()).row();
+                    if (!statsPart.isEmpty() || !legacyPart.isEmpty()) {
+                        String secondLine = (statsPart.startsWith("  [darkgray]|[]  ") ? statsPart.substring(17) : statsPart) + legacyPart;
+                        top.label(Text.raw(secondLine), l -> l.align("left").growX());
+                    }
+                } else {
+                    top.label(Text.raw(pvpTitle + statsPart + legacyPart), l -> l.align("left").growX());
+                }
+            })).row();
+
+            // Progress bar
+            c.add(Ui.table(bar -> {
+                bar.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(2f));
+                String progressLine;
+                if (!league.hasNext()) {
+                    progressLine = local != null ? local.t("player-stats-max-league") : "[gold]★ MAX LEAGUE ACHIEVED ★[]";
+                } else {
+                    String progressBar = renderRatingLeagueProgressBar(league, model.pvpRating(), model.isMobile() ? 10 : 14);
+                    int remaining = nextLeague.minimumRating() - model.pvpRating();
+                    String nextLeagueName = local != null ? local.t(nextLeague.localizationKey()) : nextLeague.name();
+                    String progressText = local != null
+                            ? local.t("player-stats-league-elo-left", args("elo", Math.max(0, remaining), "league", nextLeague.icon() + " " + nextLeagueName))
+                            : Math.max(0, remaining) + " ELO to " + nextLeague.icon() + " " + nextLeagueName;
+                    progressLine = progressBar + "  " + progressText;
+                }
+
+                bar.label(Text.raw(progressLine), l -> l.align("left").growX());
+            })).row();
+        })).row();
+
+        // --- Card 3: Hexed Rank Progression Card ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
@@ -1008,8 +1067,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         ? "  [darkgray]|[]  [gray]" + (local != null ? local.t("player-stats-legacy-pvp-rating") : "Legacy:") + "[] [sky]" + model.legacyPvpRating() + "[]"
                         : "";
 
-                pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + pvpSummary
-                        + "  [gray]—[] " + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX());
+                if (model.isMobile()) {
+                    pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] "
+                            + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX()).row();
+                    pvpRow.label(Text.raw(pvpSummary), l -> l.align("left").growX());
+                } else {
+                    pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + pvpSummary
+                            + "  [gray]—[] " + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX());
+                }
             })).row();
 
             // Survival

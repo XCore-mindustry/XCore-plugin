@@ -11,6 +11,7 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.GameDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
+import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.model.AggregatedPlayerStats;
 import org.xcore.plugin.model.ModeStatsSummary;
 import org.xcore.plugin.model.PlayerData;
@@ -114,6 +115,20 @@ class PlayerProfileUiControllerTest {
         // Max rank
         String maxBar = PlayerProfileUiController.renderHexedProgressBar(HexedRanks.HexedRank.the_legend, 100, 10);
         assertThat(maxBar).contains("★ MAX RANK ACHIEVED ★");
+    }
+
+    @Test
+    @DisplayName("renderRatingLeagueProgressBar formats league progress and handles max tier")
+    void renderRatingLeagueProgressBar_formatsCorrectly() {
+        // Lead (1000) to Graphite (1200): at 1100, progress is 50%
+        String bar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.LEAD, 1100, 10);
+        assertThat(bar).contains("[sky]");
+        assertThat(bar).contains("[darkgray]");
+        assertThat(bar).contains("50%");
+
+        // Max tier
+        String maxBar = PlayerProfileUiController.renderRatingLeagueProgressBar(RatingLeague.SURGE_ALLOY, 3000, 10);
+        assertThat(maxBar).contains("★ MAX LEAGUE ACHIEVED ★");
     }
 
     @Test

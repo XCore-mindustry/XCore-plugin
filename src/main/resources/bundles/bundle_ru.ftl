@@ -517,7 +517,9 @@ player-stats-combat-efficiency = Боевая и строительная эфф
 player-stats-waves-summary = [gray]волны: макс [lime]{ $best }[], ср [white]{ $avg }[]
 player-stats-hexed-top-placement = [gray]лучшее [accent]#{ $best }[], топ-3: [sky]{ $top3 }[]
 player-stats-max-rank = [gold]★ МАКСИМАЛЬНЫЙ РАНГ ★[]
+player-stats-max-league = [gold]★ МАКСИМАЛЬНАЯ ЛИГА ★[]
 player-stats-hexed-wins-left = [lightgray]{ $wins } побед до [white]{ $rank }[]
+player-stats-league-elo-left = [lightgray]{ $elo } ELO до [white]{ $league }[]
 player-stats-ratio-legend = [lightgray]Соотношение: Постр / Разобр / Уничт[]
 
 player-stats-account-created = [gray]Регистрация:[]

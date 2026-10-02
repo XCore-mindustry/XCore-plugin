@@ -93,4 +93,13 @@ public enum RatingLeague {
         }
         return result;
     }
+
+    public RatingLeague next() {
+        int nextOrdinal = ordinal() + 1;
+        return nextOrdinal < VALUES.length ? VALUES[nextOrdinal] : null;
+    }
+
+    public boolean hasNext() {
+        return ordinal() + 1 < VALUES.length;
+    }
 }
