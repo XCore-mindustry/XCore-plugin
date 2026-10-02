@@ -70,6 +70,14 @@ public final class Ui {
         return label(text, null);
     }
 
+    public static VLabel labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
+        return new VLabel(null, buildLayout(layout), text, true, null, null);
+    }
+
+    public static VLabel labelWrap(Text text) {
+        return labelWrap(text, null);
+    }
+
     public static VImage image(String region, Consumer<UiLayout.Builder> layout) {
         return new VImage(null, buildLayout(layout), region, null, null);
     }
@@ -161,6 +169,14 @@ public final class Ui {
             return add(Ui.label(text));
         }
 
+        public TableBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
+            return add(Ui.labelWrap(text, layout));
+        }
+
+        public TableBuilder labelWrap(Text text) {
+            return add(Ui.labelWrap(text));
+        }
+
         public TableBuilder image(String region, Consumer<UiLayout.Builder> layout) {
             return add(Ui.image(region, layout));
         }
@@ -228,6 +244,18 @@ public final class Ui {
             return add(Ui.label(text, layout));
         }
 
+        public PaneBuilder label(Text text) {
+            return add(Ui.label(text));
+        }
+
+        public PaneBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
+            return add(Ui.labelWrap(text, layout));
+        }
+
+        public PaneBuilder labelWrap(Text text) {
+            return add(Ui.labelWrap(text));
+        }
+
         public PaneBuilder table(Consumer<TableBuilder> consumer) {
             return add(Ui.table(consumer));
         }
@@ -250,6 +278,18 @@ public final class Ui {
 
         public StackBuilder label(Text text, Consumer<UiLayout.Builder> layout) {
             return add(Ui.label(text, layout));
+        }
+
+        public StackBuilder label(Text text) {
+            return add(Ui.label(text));
+        }
+
+        public StackBuilder labelWrap(Text text, Consumer<UiLayout.Builder> layout) {
+            return add(Ui.labelWrap(text, layout));
+        }
+
+        public StackBuilder labelWrap(Text text) {
+            return add(Ui.labelWrap(text));
         }
 
         public StackBuilder image(String region, Consumer<UiLayout.Builder> layout) {

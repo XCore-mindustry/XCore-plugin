@@ -33,6 +33,21 @@ class VNodeCompilerTest {
     }
 
     @Test
+    void compilesLabelWrapWithMaxWidth() {
+        VNode root = Ui.table(t -> {
+            t.labelWrap(Text.raw("Wrapped long text"), l -> l.growX().maxWidth(200f));
+        });
+
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        UiBuilder.TableBuilder compiled = compiler.compile(root);
+        String dsl = UiDslWriter.write(compiled);
+
+        assertThat(dsl).contains("label: \"Wrapped long text\"");
+        assertThat(dsl).contains("wrap: true");
+        assertThat(dsl).contains("maxWidth: 200");
+    }
+
+    @Test
     void resolvesLazyLocalizationAtCompileTime() {
         LocalizerResolver resolver = (key, args) -> switch (key) {
             case "btn.save" -> "Save";
