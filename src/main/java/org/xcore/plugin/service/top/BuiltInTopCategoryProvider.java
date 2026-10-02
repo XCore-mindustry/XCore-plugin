@@ -108,8 +108,10 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
         return switch (category) {
             case MINI_PVP -> {
                 long num = parseLongSafe(entry.primaryValue());
+                org.xcore.plugin.rating.RatingLeague league = org.xcore.plugin.rating.RatingLeague.fromRating((int) num);
                 yield local.t("top-menu-entry-mini-pvp", args(
                         "rankLabel", rankLabel,
+                        "leagueIcon", league.icon(),
                         "nickname", entry.displayName(),
                         "value", numberFormat.format(num)
                 ));

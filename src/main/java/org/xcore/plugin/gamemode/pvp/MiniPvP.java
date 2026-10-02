@@ -2,9 +2,7 @@ package org.xcore.plugin.gamemode.pvp;
 
 import arc.Core;
 import arc.Events;
-import arc.math.Mathf;
 import arc.struct.Seq;
-import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -12,19 +10,21 @@ import mindustry.Vars;
 import mindustry.game.EventType;
 import mindustry.game.Team;
 import mindustry.game.Teams.TeamData;
+import mindustry.gen.Call;
 import mindustry.gen.Groups;
 import mindustry.gen.Player;
 import mindustry.server.ServerControl;
 import mindustry.world.blocks.storage.CoreBlock;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
-import org.xcore.plugin.service.LeaderboardService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
+import org.xcore.plugin.gamemode.pvp.rating.MiniPvPMatchTracker;
+import org.xcore.plugin.gamemode.pvp.rating.MiniPvPRatingSettler;
+import org.xcore.plugin.service.LeaderboardService;
+import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.session.ObserverService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.plugin.model.PlayerData;
-import org.xcore.plugin.service.TopMenuCacheService;
 
 import static com.ospx.flubundle.Bundle.args;
 import static org.xcore.plugin.common.PLog.info;
@@ -41,15 +41,23 @@ public class MiniPvP {
     private final TopMenuCacheService topMenuCacheService;
     private final ObserverService observerService;
     private final Async async;
+    private final MiniPvPMatchTracker matchTracker;
+    private final MiniPvPRatingSettler ratingSettler;
+
+    private long lastHudUpdate = 0L;
 
     @Inject
-    public MiniPvP(TomlXcoreConfig config,
-                   SessionService sessionService,
-                   PlayerDataRepository playerDataRepository,
-                   LeaderboardService leaderboardService,
-                   TopMenuCacheService topMenuCacheService,
-                   ObserverService observerService,
-                   Async async) {
+    public MiniPvP(
+            TomlXcoreConfig config,
+            SessionService sessionService,
+            PlayerDataRepository playerDataRepository,
+            LeaderboardService leaderboardService,
+            TopMenuCacheService topMenuCacheService,
+            ObserverService observerService,
+            Async async,
+            MiniPvPMatchTracker matchTracker,
+            MiniPvPRatingSettler ratingSettler
+    ) {
         this.config = config;
         this.sessionService = sessionService;
         this.playerDataRepository = playerDataRepository;
@@ -57,44 +65,51 @@ public class MiniPvP {
         this.topMenuCacheService = topMenuCacheService;
         this.observerService = observerService;
         this.async = async;
+        this.matchTracker = matchTracker;
+        this.ratingSettler = ratingSettler;
+    }
+
+    public MiniPvP(
+            TomlXcoreConfig config,
+            SessionService sessionService,
+            PlayerDataRepository playerDataRepository,
+            LeaderboardService leaderboardService,
+            TopMenuCacheService topMenuCacheService,
+            ObserverService observerService,
+            Async async
+    ) {
+        this(config, sessionService, playerDataRepository, leaderboardService, topMenuCacheService, observerService, async,
+                new MiniPvPMatchTracker(), null);
     }
 
     @PostConstruct
     public void init() {
         if (!"mini-pvp".equals(config.server.name)) return;
 
-        leaderboardService.start((builder, player, locale) -> {
-            Seq<PlayerData> sorted = new Seq<>();
-            for (var d : sessionService.getAllCachedSnapshot()) {
-                if (d.data.pvpRating != 0) {
-                    sorted.add(d.data);
-                }
+        Events.on(EventType.PlayEvent.class, e -> {
+            clearRoundState();
+            if (matchTracker != null) {
+                matchTracker.startMatch(observerService);
             }
-            sorted.sort(d -> d.pvpRating);
-            sorted.reverse();
-
-            sorted.truncate(10);
-            builder.append(locale.format("leaderboard", args())).append("\n\n");
-
-            for (int i = 0; i < sorted.size; i++) {
-                var data = sorted.get(i);
-                builder.append(locale.format("pvp-leaderboard-content", args(
-                        "index", i + 1,
-                        "nickname", data.nickname,
-                        "rating", data.pvpRating
-                ))).append("\n");
+            if (ratingSettler != null) {
+                ratingSettler.onNewRound();
             }
         });
 
-        Events.on(EventType.PlayEvent.class, e -> clearRoundState());
         Events.on(EventType.PlayerConnectionConfirmed.class, e -> {
             if (defeatedPlayers.contains(e.player.uuid())) {
                 observerService.enter(e.player);
                 Session session = sessionService.get(e.player);
                 if (session == null || session.data == null) return;
-
-                // TODO: session is not guaranteed to be created at PlayerConnectionConfirmed stage.
                 session.locale().send("pvp-you-spectator", args());
+            } else if (matchTracker != null) {
+                matchTracker.onPlayerJoin(e.player);
+            }
+        });
+
+        Events.on(EventType.PlayerLeave.class, e -> {
+            if (matchTracker != null && e.player != null) {
+                matchTracker.onPlayerLeave(e.player);
             }
         });
 
@@ -102,40 +117,19 @@ public class MiniPvP {
             if (!roundHadMultipleTeams && Vars.state != null && Vars.state.isPlaying() && Vars.state.rules.pvp) {
                 updateRoundTeamsPresence();
             }
+            updateHud();
         });
 
         Events.on(EventType.GameOverEvent.class, e -> {
             if (e.winner == Team.derelict) return;
 
-            Seq<Player> winners = new Seq<>();
-            Groups.player.each(p -> {
-                if (p.team() == e.winner && !observerService.isObserving(p)) {
-                    winners.add(p);
-                }
-            });
-            if (winners.isEmpty() && e.winner.data() != null && e.winner.data().players != null) {
-                e.winner.data().players.each(p -> {
-                    if (!observerService.isObserving(p)) {
-                        winners.add(p);
-                    }
-                });
+            if (ratingSettler != null) {
+                ratingSettler.settle(e.winner);
             }
-            if (winners.isEmpty()) return;
-
-            int calculated = 150 / (winners.size + 1);
-            int increased = Mathf.clamp(calculated, 10, 60);
-
-            winners.each(p -> {
-                var session = sessionService.get(p);
-                if (session == null || session.data == null) return;
-                var data = session.data;
-
-                data.pvpRating += increased;
-                session.locale().send("pvp-team-won", args("increased", increased + ""));
-                Log.info("@ rating increased by @", p.plainName(), increased);
-
-                persistRatingAsync(data);
-            });
+            try {
+                Call.hideHudText();
+            } catch (Exception ignored) {
+            }
         });
 
         Events.on(EventType.BlockDestroyEvent.class, event -> {
@@ -145,33 +139,22 @@ public class MiniPvP {
                 updateRoundTeamsPresence();
 
                 if (team != Team.derelict && team.cores().size <= 1) {
-                    int allies = team.data().players.size;
-                    int rawEnemies = Groups.player.count(pl -> pl.team() != team && !observerService.isObserving(pl));
-                    final int enemies = Math.max(1, rawEnemies);
+                    if (matchTracker != null) {
+                        int aliveTeams = countAliveTeamsWithCores();
+                        matchTracker.onTeamEliminated(team.id, aliveTeams);
+                    }
 
-                    Seq.with(team.data().players).each(p -> {
-                        defeatedPlayers.add(p.uuid());
-                        observerService.enter(p);
+                    if (team.data() != null && team.data().players != null) {
+                        Seq.with(team.data().players).each(p -> {
+                            defeatedPlayers.add(p.uuid());
+                            observerService.enter(p);
 
-                        var session = sessionService.get(p);
-                        if (session == null || session.data == null) return;
-                        var data = session.data;
-
-                        int reduced = (int) (25f * ((float) allies / enemies));
-
-                        reduced = Mathf.clamp(reduced, 5, 50);
-
-                        if ((data.pvpRating - reduced) < 0) {
-                            data.pvpRating = 0;
-                        } else {
-                            data.pvpRating -= reduced;
-                        }
-                        session.locale().send("pvp-team-lose", args("reduced", reduced + ""));
-
-                        Log.info("@ rating reduced by @", p.plainName(), reduced);
-
-                        persistRatingAsync(data);
-                    });
+                            var session = sessionService.get(p);
+                            if (session != null && session.locale() != null) {
+                                session.locale().send("pvp-you-spectator", args());
+                            }
+                        });
+                    }
                 }
 
                 if (Core.app != null) {
@@ -185,17 +168,49 @@ public class MiniPvP {
         info("MiniPvP loaded.");
     }
 
-    private void persistRatingAsync(PlayerData data) {
-        String uuid = data.uuid;
-        int rating = data.pvpRating;
+    private void updateHud() {
+        if (Vars.state == null || !Vars.state.isPlaying() || !roundHadMultipleTeams) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastHudUpdate < 1000L) {
+            return;
+        }
+        lastHudUpdate = now;
 
-        async.observe(playerDataRepository.updatePvpRatingAsync(uuid, rating), (persisted, error) -> {
-            if (error != null) {
-                Log.warn("Failed to persist PvP rating for @: @", uuid, error.getMessage());
-            } else if (Boolean.TRUE.equals(persisted)) {
-                topMenuCacheService.invalidateAllAsync();
+        long started = matchTracker != null ? matchTracker.startedAt() : now;
+        long durationSeconds = Math.max(0L, (now - started) / 1000L);
+        String timeStr = String.format("%02d:%02d", durationSeconds / 60, durationSeconds % 60);
+
+        StringBuilder teamsLine = new StringBuilder();
+        if (Vars.state.teams != null) {
+            for (TeamData t : Vars.state.teams.getActive()) {
+                if (t.team == Team.derelict || observerService.isObserverTeam(t.team) || !t.isAlive()) continue;
+                int count = countActivePlayers(t.team);
+                if (!teamsLine.isEmpty()) teamsLine.append(" [gray]vs[] ");
+                teamsLine.append("[").append(t.team.color.toString()).append("]").append(t.team.name)
+                        .append(" (").append(count).append(")[]");
             }
-        });
+        }
+
+        if (!teamsLine.isEmpty()) {
+            try {
+                Call.setHudText("[accent]MiniPvP[] | [stat]Alive:[] " + teamsLine + " | [gray]" + timeStr + "[]");
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public int countAliveTeamsWithCores() {
+        if (Vars.state == null || Vars.state.teams == null) return 0;
+        int count = 0;
+        for (TeamData t : Vars.state.teams.getActive()) {
+            if (t.team == Team.derelict || observerService.isObserverTeam(t.team)) continue;
+            if (t.cores != null && !t.cores.isEmpty()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public int countActivePlayers(Team team) {
@@ -258,6 +273,10 @@ public class MiniPvP {
         roundHadMultipleTeams = false;
         if (ServerControl.instance != null) {
             ServerControl.instance.inGameOverWait = false;
+        }
+        try {
+            Call.hideHudText();
+        } catch (Exception ignored) {
         }
     }
 }

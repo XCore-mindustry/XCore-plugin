@@ -265,11 +265,12 @@ public class GameDataService {
     }
 
     private GameData buildGameData(MatchHistoryRecord record) {
+        GameStatsCategory statsCategory = resolveStatsCategory(record.mode(), false);
         GameData game = GameData.builder()
                 .gameMode(record.mode())
                 .matchId(record.matchId())
                 .serverName(resolveServerName())
-                .statsCategory(GameStatsCategory.HEXED)
+                .statsCategory(statsCategory)
                 .ranked(record.ranked())
                 .countedInStats(record.ranked() && "NATURAL".equals(record.finishReason())
                         && record.winnerUuid() != null)

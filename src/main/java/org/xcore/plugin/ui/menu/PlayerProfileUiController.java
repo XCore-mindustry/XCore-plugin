@@ -14,6 +14,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.model.PlayerStatsOverview;
 import org.xcore.plugin.model.enums.TopCategory;
 import org.xcore.plugin.player.Badge;
+import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
@@ -126,6 +127,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Gamemode Progression & Stats
             int pvpRating,
+            int legacyPvpRating,
+            int pvpMatches,
+            int pvpWins,
             int hexedPoints,
             HexedRank hexedRank,
             Integer hexedTopRank,
@@ -149,7 +153,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withTab(Tab newTab) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, newTab, isMobile,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, "");
         }
@@ -157,7 +161,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withStats(PlayerStatsOverview newStats, Integer newHexedTopRank) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, newHexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, newHexedTopRank,
                     newStats, false, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
@@ -181,6 +185,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     target.unlockedBadges != null ? target.unlockedBadges : Set.of(),
                     colorHex != null ? colorHex : "FFD37F",
                     target.pvpRating,
+                    target.legacyPvpRating,
+                    target.pvpMatches,
+                    target.pvpWins,
                     target.hexedPoints,
                     target.hexedRank(),
                     newTopRank,
@@ -202,7 +209,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withPlayersPage(int newPage) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, adminFilter, newPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
@@ -210,7 +217,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withAdminFilter(AdminFilter filter, List<OnlinePlayerRow> players) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, filter, 1, totalOnlineCount, players, feedbackMessage);
         }
@@ -218,7 +225,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withRefreshedPlayers(List<OnlinePlayerRow> players, int totalCount) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, adminFilter, 1, totalCount, players, feedbackMessage);
         }
@@ -228,7 +235,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             int page = Math.clamp(playersPage, 1, maxPage);
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, adminFilter, page, totalCount, players, feedbackMessage);
         }
@@ -236,7 +243,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withFeedback(String msg) {
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
-                    unlockedBadges, playerColorHex, pvpRating, hexedPoints, hexedRank, hexedTopRank,
+                    unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, msg);
         }
@@ -331,6 +338,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 targetData.unlockedBadges != null ? targetData.unlockedBadges : Set.of(),
                 playerColorHex,
                 targetData.pvpRating,
+                targetData.legacyPvpRating,
+                targetData.pvpMatches,
+                targetData.pvpWins,
                 targetData.hexedPoints,
                 targetData.hexedRank(),
                 hexedTop,
@@ -842,15 +852,21 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 String joinedLbl = local != null ? local.t("player-stats-account-created") : "[gray]Joined:[]";
                 String playTimeLbl = local != null ? local.t("player-stats-play-time") : "[gray]Play time:[]";
                 String pvpLbl = local != null ? local.t("player-stats-pvp-rating") : "[gray]MiniPvP:[]";
+                RatingLeague league = RatingLeague.fromRating(model.pvpRating());
+                String pvpTag = pvpLbl + " " + league.icon() + " [sky]" + model.pvpRating() + "[]";
+                if (model.legacyPvpRating() > 0) {
+                    String legacyLbl = local != null ? local.t("player-stats-legacy-pvp-rating") : "[gray]Legacy PvP:[]";
+                    pvpTag += "  [darkgray]|[]  " + legacyLbl + " [sky]" + model.legacyPvpRating() + "[]";
+                }
 
                 if (model.isMobile()) {
                     info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
                             + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]"), l -> l.align("left").growX()).row();
-                    info.label(Text.raw(pvpLbl + " [sky]" + model.pvpRating() + "[]"), l -> l.align("left").growX());
+                    info.label(Text.raw(pvpTag), l -> l.align("left").growX());
                 } else {
                     info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
                             + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]  [darkgray]|[]  "
-                            + pvpLbl + " [sky]" + model.pvpRating() + "[]"), l -> l.align("left").growX());
+                            + pvpTag), l -> l.align("left").growX());
                 }
             })).row();
         })).row();
@@ -979,12 +995,21 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             // MiniPvP
             c.add(Ui.table(pvpRow -> {
                 pvpRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
-                ModeStatsSummary pvp = overview.pvp();
-                String pvpSummary = pvp.hasData()
-                        ? "[white]" + nf.format(pvp.gamesPlayed()) + "[] [gray]games[] | [lime]" + nf.format(pvp.gamesWon()) + "[] [gray]wins (" + pvp.winRatePercent() + "%)[]"
+                RatingLeague league = RatingLeague.fromRating(model.pvpRating());
+                String leagueName = local != null ? local.t(league.localizationKey()) : league.name();
+                int matches = model.pvpMatches();
+                int wins = model.pvpWins();
+                int winRate = matches <= 0 ? 0 : Math.round((wins * 100.0f) / matches);
+                String pvpSummary = matches > 0
+                        ? "[white]" + nf.format(matches) + "[] [gray]matches[] | [lime]" + nf.format(wins) + "[] [gray]wins (" + winRate + "%)[]"
                         : (local != null ? local.t("player-menu-player-no-mode-stats") : "[gray]no data[]");
+
+                String legacyText = model.legacyPvpRating() > 0
+                        ? "  [darkgray]|[]  [gray]" + (local != null ? local.t("player-stats-legacy-pvp-rating") : "Legacy:") + "[] [sky]" + model.legacyPvpRating() + "[]"
+                        : "";
+
                 pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + pvpSummary
-                        + "  [gray]—[] [sky]" + model.pvpRating() + "[]"), l -> l.align("left").growX());
+                        + "  [gray]—[] " + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX());
             })).row();
 
             // Survival

@@ -430,6 +430,22 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
         return updateByUuidAsync(uuid, Updates.set("pvp_rating", rating));
     }
 
+    public boolean updatePvpRatingAndStats(String uuid, int rating, boolean won) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("pvp_rating", rating),
+                Updates.inc("pvp_matches", 1),
+                Updates.inc("pvp_wins", won ? 1 : 0)
+        ));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updatePvpRatingAndStatsAsync(String uuid, int rating, boolean won) {
+        return updateByUuidAsync(uuid, Updates.combine(
+                Updates.set("pvp_rating", rating),
+                Updates.inc("pvp_matches", 1),
+                Updates.inc("pvp_wins", won ? 1 : 0)
+        ));
+    }
+
     public boolean updateHexedProgress(String uuid, int rank, int points) {
         return updateByUuid(uuid, Updates.combine(
                 Updates.set("hexed_rank", rank),

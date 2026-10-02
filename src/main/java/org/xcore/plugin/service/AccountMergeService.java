@@ -235,6 +235,9 @@ public class AccountMergeService {
     private void consolidateData(PlayerData source, PlayerData target) {
         target.totalPlayTime += source.totalPlayTime;
         target.pvpRating = Math.max(target.pvpRating, source.pvpRating);
+        target.legacyPvpRating = Math.max(target.legacyPvpRating, source.legacyPvpRating);
+        target.pvpMatches += source.pvpMatches;
+        target.pvpWins += source.pvpWins;
         target.hexedPoints += source.hexedPoints;
         target.hexedRank = computeHexedRank(target.hexedPoints).ordinal();
 
