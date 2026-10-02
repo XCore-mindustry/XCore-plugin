@@ -318,6 +318,12 @@ public class PluginPlayerStoreFactory {
             ) + 1);
         }
 
+        @Override
+        public long count(SortField sf) {
+            fieldSort(sf);
+            return c.countDocuments(com.mongodb.client.model.Filters.exists("data." + sf.field()));
+        }
+
         private Bson after(SortField s, Cursor x) {
             Bson val = s.direction() == SortDirection.ASC
                     ? gt("data." + s.field(), x.value)

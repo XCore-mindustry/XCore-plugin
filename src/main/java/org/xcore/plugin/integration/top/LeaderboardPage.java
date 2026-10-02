@@ -18,7 +18,8 @@ public record LeaderboardPage(
         boolean hasNext,
         String nextCursor,
         Long totalEntries,
-        Integer selfRank
+        Integer selfRank,
+        String selfPrimaryValue
 ) {
     public LeaderboardPage {
         if (currentPage < 1) {
@@ -39,7 +40,18 @@ public record LeaderboardPage(
         }
     }
 
+    public LeaderboardPage(
+            int currentPage,
+            List<LeaderboardEntry> entries,
+            boolean hasNext,
+            String nextCursor,
+            Long totalEntries,
+            Integer selfRank
+    ) {
+        this(currentPage, entries, hasNext, nextCursor, totalEntries, selfRank, null);
+    }
+
     public static LeaderboardPage empty(int page) {
-        return new LeaderboardPage(Math.max(1, page), List.of(), false, null, 0L, null);
+        return new LeaderboardPage(Math.max(1, page), List.of(), false, null, 0L, null, null);
     }
 }

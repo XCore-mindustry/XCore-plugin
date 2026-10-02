@@ -27,4 +27,7 @@ public interface PluginPlayerStore {
     boolean delete(String uuid);
     PlayerPage top(SortField sort, int limit, String cursor);
     OptionalLong rankOf(String uuid, SortField sort);
+    default long count(SortField sort) {
+        return 0;
+    }
 }

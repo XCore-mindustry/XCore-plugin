@@ -235,7 +235,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     private String resolveSelfPrimaryValue(String categoryId, LeaderboardPage page) {
         if (session == null || session.data == null) return null;
         Localization local = session.locale();
-        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
 
         if (page != null && page.entries() != null) {
             for (LeaderboardEntry entry : page.entries()) {
@@ -245,17 +244,17 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             }
         }
 
+        if (page != null && page.selfPrimaryValue() != null && !page.selfPrimaryValue().isBlank()) {
+            return formatValue(categoryId, page.selfPrimaryValue(), local);
+        }
+
+        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
         String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
         return switch (catUpper) {
             case "MINI_PVP" -> nf.format(session.data.pvpRating);
             case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(session.data.totalPlayTime, local) : session.data.totalPlayTime + "m";
             case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(session.data.hexedPoints))) : session.data.hexedPoints + " pts";
-            default -> {
-                if (catUpper.contains("ELO")) {
-                    yield nf.format(session.data.hexedPoints) + " ELO";
-                }
-                yield null;
-            }
+            default -> null;
         };
     }
 
