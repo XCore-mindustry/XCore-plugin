@@ -727,9 +727,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // 3. Scrollable Body
             t.pane(p -> {
-                p.layout(l -> l.growX().maxHeight(metrics.paneMaxHeight()));
+                p.layout(l -> l.growX().maxWidth(metrics.contentWidth()).maxHeight(metrics.paneMaxHeight()));
                 p.table(body -> {
-                    body.layout(l -> l.growX().fillX());
+                    body.layout(l -> l.growX().fillX().maxWidth(metrics.contentWidth()));
 
                     switch (model.tab()) {
                         case OVERVIEW -> renderOverviewTab(body, model, metrics, local);
@@ -792,7 +792,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             // Name, badges and PID header
             c.add(Ui.table(top -> {
@@ -824,11 +824,11 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Bio / Description
             c.add(Ui.table(descTable -> {
-                descTable.layout(l -> l.growX().padBottom(6f));
+                descTable.layout(l -> l.growX().maxWidth(metrics.cardWidth() - 20f).padBottom(6f));
                 String desc = model.description() != null && !model.description().isBlank()
-                        ? "[lightgray]\"" + PlayerSettingsUiController.escapeMarkup(model.description()) + "\"[]"
+                        ? "[lightgray]\"" + model.description().trim() + "[lightgray]\"[]"
                         : (local != null ? local.t("player-stats-no-bio") : "[gray]No bio written yet.[]");
-                descTable.label(Text.raw(desc), l -> l.align("left").growX());
+                descTable.labelWrap(Text.raw(desc), l -> l.align("left").growX().maxWidth(metrics.cardWidth() - 20f));
             })).row();
 
             // Info row: Joined, Play time, PvP Rating
@@ -848,7 +848,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             HexedRank rank = model.hexedRank() != null ? model.hexedRank() : HexedRank.values()[0];
             String rankName = local != null ? local.t("hexed-ranks-" + rank.name()) : rank.name();
@@ -889,7 +889,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             if (model.isStatsLoading()) {
                 c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
@@ -924,7 +924,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Ui.table(c -> {
                 c.background("button");
                 c.margin(14f);
-                c.layout(l -> l.growX().padBottom(8f));
+                c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(8f));
                 c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
             })).row();
             return;
@@ -937,7 +937,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             c.add(Ui.table(row -> {
                 row.layout(l -> l.growX());
@@ -957,7 +957,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             // MiniPvP
             c.add(Ui.table(pvpRow -> {
@@ -997,7 +997,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+            c.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             c.add(Ui.table(titleRow -> {
                 titleRow.layout(l -> l.growX().padBottom(4f));
@@ -1054,7 +1054,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
         // 1. Controls Toolbar: Filter + Pagination + Refresh
         body.add(Ui.table(tb -> {
-            tb.layout(l -> l.growX().padBottom(6f));
+            tb.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(6f));
 
             // Admin Filter Button
             String filterLabel = switch (model.adminFilter()) {
@@ -1093,7 +1093,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Ui.table(c -> {
                 c.background("button");
                 c.margin(14f);
-                c.layout(l -> l.growX());
+                c.layout(l -> l.growX().maxWidth(metrics.cardWidth()));
                 c.label(Text.raw(local != null ? local.t("player-menu-players-empty") : "No online players found"), l -> l.align("center").growX());
             })).row();
             return;
@@ -1103,7 +1103,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Ui.table(row -> {
                 row.background("button");
                 row.margin(8f);
-                row.layout(l -> l.growX().padBottom(4f));
+                row.layout(l -> l.growX().maxWidth(metrics.cardWidth()).padBottom(4f));
 
                 // Left: Status dot + Badges + Nickname + PID
                 row.add(Ui.table(info -> {

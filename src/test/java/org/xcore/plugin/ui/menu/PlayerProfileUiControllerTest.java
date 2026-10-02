@@ -515,4 +515,27 @@ class PlayerProfileUiControllerTest {
         assertThat(playersDsl).contains("table");
         assertThat(playersDsl).contains("action:inspect:p-2");
     }
+
+    @Test
+    @DisplayName("overview tab renders bio with native color markup and wrapped layout")
+    void overviewTab_rendersColoredBio_withWrapping() {
+        Session session = createTestSession("uuid-1", false);
+        session.data.description = "[#f7b6c]Ri[#f5a9b]T[#f39cac]r [gray] - my [white]Y [red]T [gray] ( [#f7b6c]@Ri[#f5a9b]T[#f39cac]rmm [gray]) [sky] Telegram [gray] - ( [#f7b6c]@Ri[#f5a9b]T[#f39cac]raa [gray])";
+
+        PlayerProfileUiController controller = new PlayerProfileUiController(
+                null, null, null, null, null, null, null, session, session.data
+        );
+        PlayerProfileUiController.ProfileModel model = controller.createInitialModel(
+                PlayerProfileUiController.Tab.OVERVIEW, null, 1
+        );
+
+        VNode overviewTree = controller.render(model);
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        String dsl = UiDslWriter.write(compiler.compile(overviewTree));
+
+        // Must preserve color codes without escaping brackets to [[
+        assertThat(dsl).contains("[#f7b6c]Ri[#f5a9b]T[#f39cac]r");
+        assertThat(dsl).doesNotContain("[[#f7b6c]");
+        assertThat(dsl).contains("wrap: true");
+    }
 }
