@@ -267,13 +267,13 @@ commands-logout-successful = [green]Вы лишены прав админист�
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-description = Забанить игрока. [scarlet]Только для админов
+commands-ban-description = Забанить игрока.
 commands-ban-success = { $nickname } [scarlet]забанен
-commands-unban-description = Разбанить игрока. [scarlet]Только для админов
+commands-unban-description = Разбанить игрока.
 commands-unban-success = { $nickname }[accent] #{ $pid } успешно разбанен
-commands-mute-description = Замьютить игрока. [scarlet]Только для админов
+commands-mute-description = Замьютить игрока.
 commands-mute-success = [accent]Игрок { $nickname }[accent] успешно замьючен
-commands-unmute-description = Размутить игрока. [scarlet]Только для админов
+commands-unmute-description = Размутить игрока.
 commands-unmute-success = Успешно размучено игрока { $nickname }
 commands-alert-description = Отправить важное объявление игрокам или всем.
 commands-toast-description = Отправить всплывающее уведомление игрокам.
@@ -369,12 +369,12 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | От: [sky]{ $author }
-commands-artv-description = Изменить карту. [scarlet]Только для админов
+commands-artv-description = Изменить карту.
 commands-artv-map-skipped = { $nickname }[accent] пропустил карту. Следующая карта: { $name }.
 commands-artv-event-skipped = { $nickname }[accent] пропустил событие. Следующее событие: { $name }.
 commands-rtv-description = Голосование за изменение карты
 commands-vnw-description = Голосование за досрочный старт следующей волны
-commands-avnw-description = Принудительно запустить следующую волну досрочно. [scarlet]Только для админов
+commands-avnw-description = Принудительно запустить следующую волну досрочно.
 commands-like-description = Проголосовать за карту (повышает репутацию)
 commands-dislike-description = Проголосовать против карты
 map-vote-title = [orange]{ -xcore } — [scarlet]ИГРА ОКОНЧЕНА!

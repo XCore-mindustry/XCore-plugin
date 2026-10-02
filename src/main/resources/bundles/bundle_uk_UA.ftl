@@ -242,13 +242,13 @@ commands-logout-successful = [green]Права адміністратора ві
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-description = Заблокувати гравця. [scarlet]Тільки для адміністраторів.
+commands-ban-description = Заблокувати гравця.
 commands-ban-success = { $nickname } [scarlet]заблокований
-commands-unban-description = Розблокувати гравця. [scarlet]Тільки для адміністраторів.
+commands-unban-description = Розблокувати гравця.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]успішно розблокований.
-commands-mute-description = Заглушити гравця. [scarlet]Тільки для адміністраторів.
+commands-mute-description = Заглушити гравця.
 commands-mute-success = [accent]Успішно заглушено гравця { $nickname }
-commands-unmute-description = Зняти заглушення з гравця. [scarlet]Тільки для адміністраторів.
+commands-unmute-description = Зняти заглушення з гравця.
 commands-unmute-success = [green]Успішно знято заглушення з гравця []{ $nickname }
 commands-alert-description = Надіслати важливе оголошення гравцям або всім.
 commands-toast-description = Надіслати спливаюче сповіщення гравцям.
@@ -344,12 +344,12 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | Від: [sky]{ $author }
-commands-artv-description = Примусово змінити мапу. [scarlet]Тільки для адміністраторів.
+commands-artv-description = Примусово змінити мапу.
 commands-artv-map-skipped = { $nickname }[accent] пропустив мапу. Наступна мапа: { $name }.
 commands-artv-event-skipped = { $nickname }[accent] пропустив подію. Наступна подія: { $name }
 commands-rtv-description = Голосування за зміну мапи (Rock the vote).
 commands-vnw-description = Голосування за достроковий запуск наступної хвилі.
-commands-avnw-description = Примусово достроково запустити наступну хвилю. [scarlet]Тільки для адміністраторів.
+commands-avnw-description = Примусово достроково запустити наступну хвилю.
 commands-like-description = Проголосувати за мапу (підвищує репутацію).
 commands-dislike-description = Проголосувати проти мапи.
 map-vote-title = [orange]{ -xcore } — [scarlet]ГРУ ЗАКІНЧЕНО!

@@ -289,6 +289,7 @@ class HelpUiControllerTest {
         assertThat(strippedAvnw.length()).isLessThanOrEqualTo(48);
         assertThat(strippedAvnw).startsWith("/avnw");
         assertThat(strippedAvnw).contains("|");
+        assertThat(strippedAvnw).doesNotContain("Тільки для адміністраторів");
 
         String longSyntaxLine = HelpUiController.formatCardBottomLine(
                 "votekick <player_name_or_id> [reason_text...]",

@@ -359,7 +359,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                         hero.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
 
                         hero.label(Text.raw("[accent]/" + cmd.name() + "[]"), l -> l.align("left").growX().pad(6f).padBottom(2f)).row();
-                        hero.label(Text.raw("[white]" + (cmd.rawDescription().isBlank() ? "-" : cmd.rawDescription()) + "[]"),
+                        String cleanHeroDesc = cleanAdminNote(cmd.rawDescription());
+                        hero.label(Text.raw("[white]" + (cleanHeroDesc.isBlank() ? "-" : cleanHeroDesc) + "[]"),
                                 l -> l.align("left").growX().pad(6f).padTop(0f).padBottom(4f)).row();
 
                         if (!cmd.aliases().isEmpty()) {
@@ -478,12 +479,23 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
         return sb.toString();
     }
 
+    private static final java.util.regex.Pattern ADMIN_ONLY_PATTERN = java.util.regex.Pattern.compile(
+            "(?i)\\s*(\\[[^\\]]+\\])?\\s*[(«\\[]?(тільки для адміністраторів|тільки для адмінів|только для админов|только для администраторов|admin only|only for admins)[)»\\]]?[.!?]?(\\s*\\[\\])?",
+            java.util.regex.Pattern.UNICODE_CASE | java.util.regex.Pattern.CASE_INSENSITIVE
+    );
+
+    public static String cleanAdminNote(String text) {
+        if (text == null || text.isBlank()) return "";
+        return ADMIN_ONLY_PATTERN.matcher(text).replaceAll("").trim();
+    }
+
     public static String formatCardBottomLine(String syntax, String rawDesc, int maxTotalLength) {
         String cleanSyntax = "/" + escapeMarkup(syntax);
-        if (rawDesc == null || rawDesc.isBlank()) {
+        String strippedDesc = cleanAdminNote(rawDesc);
+        if (strippedDesc.isBlank()) {
             return truncatePlain(cleanSyntax, maxTotalLength);
         }
-        String cleanDesc = rawDesc.replace('\n', ' ').replace('\r', ' ').trim();
+        String cleanDesc = strippedDesc.replace('\n', ' ').replace('\r', ' ').trim();
 
         int syntaxLen = Strings.stripColors(cleanSyntax).length();
         int minDescLen = 14;

@@ -263,13 +263,13 @@ commands-logout-successful = [green]Admin rights revoked.
 # ==============================================================================
 # Moderation (Ban, Mute, Kick)
 # ==============================================================================
-commands-ban-description = Ban a player. [scarlet]Admin only.
+commands-ban-description = Ban a player.
 commands-ban-success = { $nickname } [scarlet]banned
-commands-unban-description = Unban a player. [scarlet]Admin only.
+commands-unban-description = Unban a player.
 commands-unban-success = { $nickname }[accent] #{ $pid } [green]successfully unbanned.
-commands-mute-description = Mute a player. [scarlet]Admin only.
+commands-mute-description = Mute a player.
 commands-mute-success = [accent]Successfully muted { $nickname }
-commands-unmute-description = Unmute player. [scarlet]Admin only.
+commands-unmute-description = Unmute player.
 commands-unmute-success = [green]Successfully unmuted []{ $nickname }
 commands-alert-description = Displays a prominent announcement banner to target players or all players.
 commands-toast-description = Displays a warning toast notification to target players.
@@ -363,12 +363,12 @@ commands-maps-text-start-content =
 commands-maps-text-content =
     { "" }
     { $index }. [orange] - [white]{ $name }[orange] | [green]{ $reputation }[orange] | [white]{ $width }x{ $height }[orange] | [white]{ $lastPlayed }[orange] | By: [sky]{ $author }
-commands-artv-description = Force change map. [scarlet]Admin only.
+commands-artv-description = Force change map.
 commands-artv-map-skipped = { $nickname }[accent] skipped map. Next map: { $name }.
 commands-artv-event-skipped = { $nickname }[accent] skipped event. Next event: { $name }.
 commands-rtv-description = Rock the vote to change map.
 commands-vnw-description = Vote to start the next wave early.
-commands-avnw-description = Force start the next wave early. [scarlet]Admin only.
+commands-avnw-description = Force start the next wave early.
 commands-like-description = Vote for the current map (increases reputation).
 commands-dislike-description = Vote against the current map.
 map-vote-title = [orange]{ -xcore } — [scarlet]GAME OVER!
