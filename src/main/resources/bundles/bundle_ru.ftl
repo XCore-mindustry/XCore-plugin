@@ -520,7 +520,7 @@ player-stats-max-rank = [gold]★ МАКСИМАЛЬНЫЙ РАНГ ★[]
 player-stats-max-league = [gold]★ МАКСИМАЛЬНАЯ ЛИГА ★[]
 player-stats-hexed-wins-left = [lightgray]{ $wins } побед до [white]{ $rank }[]
 player-stats-league-elo-left = [lightgray]{ $elo } ELO до [white]{ $league }[]
-player-stats-ratio-legend = [lightgray]Соотношение: Постр / Разобр / Уничт[]
+player-stats-ratio-legend = [lightgray]Соотношение блоков[]
 
 player-stats-account-created = [gray]Регистрация:[]
 player-stats-play-time = [gray]Время в игре:[]

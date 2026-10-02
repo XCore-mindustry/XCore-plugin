@@ -142,6 +142,13 @@ public class MiniPvP {
                     if (matchTracker != null) {
                         int aliveTeams = countAliveTeamsWithCores();
                         matchTracker.onTeamEliminated(team.id, aliveTeams);
+
+                        // Mark all players who participated on this team (including disconnected leavers) as defeated
+                        for (var p : matchTracker.participants().values()) {
+                            if (p.teamId() == team.id) {
+                                defeatedPlayers.add(p.uuid());
+                            }
+                        }
                     }
 
                     if (team.data() != null && team.data().players != null) {

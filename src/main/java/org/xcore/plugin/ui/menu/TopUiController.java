@@ -134,14 +134,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 float cw = dw - pad * 2f;
                 float cardW = cw - 26f;
                 float cardInnerW = cardW - 18f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 600f, 44, true);
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 600f, 20, true);
             } else {
                 float dw = 740f;
                 float pad = 12f;
                 float cw = dw - pad * 2f;
                 float cardW = cw - 26f;
                 float cardInnerW = cardW - 22f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 520f, 48, false);
+                return new UiMetrics(dw, cw, cardW, cardInnerW, 520f, 24, false);
             }
         }
     }
@@ -615,37 +615,42 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
             // Prev Button
             boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
-            if (!canPrev) {
-                bar.button(Text.raw("[gray]« " + (local != null ? local.t("previous") : "Prev") + "[]"),
-                        "action:page:prev", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(4f)));
-            } else {
-                bar.button(Text.raw("[accent]« " + (local != null ? local.t("previous") : "Prev") + "[]"),
-                        "action:page:prev", b -> b.style("cleart").layout(l -> l.height(34f).padRight(4f)));
-            }
+            String rawPrev = local != null ? local.t("previous") : null;
+            if (rawPrev == null || rawPrev.isBlank()) rawPrev = "« Prev";
+            String cleanPrev = Strings.stripColors(rawPrev).replace("«", "").trim();
+            String prevLabel = (canPrev ? "[accent]« " : "[gray]« ") + cleanPrev + "[]";
+            bar.button(Text.raw(prevLabel), "action:page:prev", b -> {
+                if (!canPrev) b.disabled();
+                b.style("cleart").layout(l -> l.height(34f).padRight(12f));
+            });
 
             // Page Info
             String pageInfo = "[white]" + model.currentPage() + " / " + model.totalPages() + "[]";
-            bar.label(Text.raw(pageInfo), l -> l.align("center").growX());
+            bar.label(Text.raw(pageInfo), l -> l.align("center").growX().padLeft(6f).padRight(6f));
 
             // Refresh Button
             bar.button(Text.raw("[sky]" + Iconc.refresh + "[]"), "action:refresh", b -> b
                     .style("cleart")
-                    .layout(l -> l.size(34f).padRight(4f)));
+                    .layout(l -> l.size(34f).padRight(8f)));
 
             // Next Button
             boolean canNext = model.hasNext() && model.nextCursor() != null;
-            if (!canNext) {
-                bar.button(Text.raw("[gray]" + (local != null ? local.t("next") : "Next") + " »[]"),
-                        "action:page:next", b -> b.style("cleart").disabled().layout(l -> l.height(34f).padRight(4f)));
-            } else {
-                bar.button(Text.raw("[accent]" + (local != null ? local.t("next") : "Next") + " »[]"),
-                        "action:page:next", b -> b.style("cleart").layout(l -> l.height(34f).padRight(4f)));
-            }
+            String rawNext = local != null ? local.t("next") : null;
+            if (rawNext == null || rawNext.isBlank()) rawNext = "Next »";
+            String cleanNext = Strings.stripColors(rawNext).replace("»", "").trim();
+            String nextLabel = (canNext ? "[accent]" : "[gray]") + cleanNext + " »[]";
+            bar.button(Text.raw(nextLabel), "action:page:next", b -> {
+                if (!canNext) b.disabled();
+                b.style("cleart").layout(l -> l.height(34f).padRight(12f));
+            });
 
             // Close Button
-            bar.button(Text.raw(local != null ? local.t("close") : "Close"), "action:close", b -> b
+            String rawClose = local != null ? local.t("close") : null;
+            if (rawClose == null || rawClose.isBlank()) rawClose = "Close";
+            String cleanClose = Strings.stripColors(rawClose).trim();
+            bar.button(Text.raw("[scarlet]" + cleanClose + "[]"), "action:close", b -> b
                     .style("cleart")
-                    .layout(l -> l.height(34f)));
+                    .layout(l -> l.height(34f).padLeft(8f)));
         }));
     }
 
@@ -684,27 +689,25 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         return provider.id();
     }
 
-    private static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen) {
-        String raw = attrs.containsKey("customNickname") ? attrs.get("customNickname") : entry.displayName();
-        if (raw == null || raw.isBlank()) return "Player";
+    public static String resolveNickname(LeaderboardEntry entry, Map<String, String> attrs, int maxPlainLen) {
+        String raw = attrs != null && attrs.containsKey("customNickname") ? attrs.get("customNickname") : (entry != null ? entry.displayName() : null);
+        if (raw == null || raw.isBlank()) {
+            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+        }
         String clean = raw.replace('\n', ' ').trim();
 
-        if (clean.startsWith("[")) {
-            if (Strings.stripColors(clean).length() > maxPlainLen) {
-                return Strings.stripColors(clean).substring(0, maxPlainLen) + "...";
-            }
+        String stripped = Strings.stripColors(clean).trim();
+        if (stripped.isEmpty()) {
+            return entry != null && entry.rank() > 0 ? "Player #" + entry.rank() : "Player";
+        }
+
+        // If stripped plain length is within limit, preserve original colors and formatting intact
+        if (stripped.length() <= maxPlainLen) {
             return clean;
         }
 
-        // Escape raw brackets
-        if (clean.contains("[")) {
-            clean = clean.replace("[", "[[");
-        }
-
-        if (clean.length() > maxPlainLen) {
-            return clean.substring(0, maxPlainLen) + "...";
-        }
-        return "[white]" + clean;
+        // Otherwise truncate visible plain text cleanly to avoid broken color tags, overflow, or color bleeding
+        return stripped.substring(0, maxPlainLen) + "...";
     }
 
     private String formatValue(String categoryId, LeaderboardEntry entry, Localization local) {

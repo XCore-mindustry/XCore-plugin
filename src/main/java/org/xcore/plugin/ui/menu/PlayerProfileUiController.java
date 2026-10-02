@@ -712,15 +712,15 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     // Settings quick button (if viewing self or viewer is admin)
                     if (model.isSelf() || model.isViewerAdmin()) {
                         h.button(Text.raw("[accent]" + Iconc.admin + " " + (local != null ? local.t("player-stats-btn-settings") : "Settings") + "[]"),
-                                "action:settings", b -> b.style("cleart").layout(l -> l.padRight(4f)));
+                                "action:settings", b -> b.style("cleart").layout(l -> l.padRight(8f)));
                     }
 
                     // Audit buttons for admins
                     if (model.isViewerAdmin()) {
                         h.button(Text.raw("[gray]" + (local != null ? local.t("player-stats-btn-audit") : "Audit") + "[]"),
-                                "action:audit_history", b -> b.style("cleart").layout(l -> l.padRight(4f)));
+                                "action:audit_history", b -> b.style("cleart").layout(l -> l.padRight(8f)));
                         h.button(Text.raw("[gray]" + (local != null ? local.t("audit-menu-actions-open") : "Actions") + "[]"),
-                                "action:audit_actions", b -> b.style("cleart").layout(l -> l.padRight(4f)));
+                                "action:audit_actions", b -> b.style("cleart").layout(l -> l.padRight(8f)));
                     }
                 }
 
@@ -1060,21 +1060,19 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 int wins = model.pvpWins();
                 int winRate = matches <= 0 ? 0 : Math.round((wins * 100.0f) / matches);
                 String pvpSummary = matches > 0
-                        ? "[white]" + nf.format(matches) + "[] [gray]matches[] | [lime]" + nf.format(wins) + "[] [gray]wins (" + winRate + "%)[]"
+                        ? "[white]" + nf.format(matches) + "[] [gray]matches[]  [darkgray]|[]  [lime]" + nf.format(wins) + "[] [gray]wins (" + winRate + "%)[]"
                         : (local != null ? local.t("player-menu-player-no-mode-stats") : "[gray]no data[]");
 
                 String legacyText = model.legacyPvpRating() > 0
                         ? "  [darkgray]|[]  [gray]" + (local != null ? local.t("player-stats-legacy-pvp-rating") : "Legacy:") + "[] [sky]" + model.legacyPvpRating() + "[]"
                         : "";
 
-                if (model.isMobile()) {
-                    pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] "
-                            + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX()).row();
-                    pvpRow.label(Text.raw(pvpSummary), l -> l.align("left").growX());
-                } else {
-                    pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + pvpSummary
-                            + "  [gray]—[] " + league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText), l -> l.align("left").growX());
-                }
+                String ratingPart = league.icon() + " [sky]" + model.pvpRating() + "[] [gray](" + leagueName + ")[]" + legacyText;
+
+                pvpRow.label(Text.raw("[red]" + Iconc.modePvp + " " + (local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:") + "[] " + ratingPart),
+                        l -> l.align("left").growX()).row();
+                pvpRow.label(Text.raw("  [lightgray]↳[] " + pvpSummary),
+                        l -> l.align("left").growX());
             })).row();
 
             // Survival
@@ -1126,7 +1124,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             // 10-bar ratio visualization
             c.add(Ui.table(ratioRow -> {
                 ratioRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
-                String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), model.isMobile() ? 12 : 16);
+                String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), model.isMobile() ? 10 : 12);
                 String ratioLegend = local != null ? local.t("player-stats-ratio-legend") : "[lightgray]Build / Decon / Destroy Ratio[]";
                 ratioRow.label(Text.raw(ratioBar + "  " + ratioLegend), l -> l.align("left").growX());
             })).row();

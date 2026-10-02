@@ -510,7 +510,7 @@ player-stats-max-rank = [gold]★ MAX RANK ACHIEVED ★[]
 player-stats-max-league = [gold]★ MAX LEAGUE ACHIEVED ★[]
 player-stats-hexed-wins-left = [lightgray]{ $wins } wins to [white]{ $rank }[]
 player-stats-league-elo-left = [lightgray]{ $elo } ELO to [white]{ $league }[]
-player-stats-ratio-legend = [lightgray]Build / Decon / Destroy Ratio[]
+player-stats-ratio-legend = [lightgray]Blocks Ratio[]
 
 player-stats-account-created = [gray]Joined:[]
 player-stats-play-time = [gray]Play time:[]

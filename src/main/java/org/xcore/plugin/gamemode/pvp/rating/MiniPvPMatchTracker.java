@@ -88,8 +88,8 @@ public class MiniPvPMatchTracker {
             if (existing == null) {
                 return new ParticipantInfo(uuid, player.plainName(), player.team().id, now, 0L);
             }
-            // Reconnected player: clear leave time
-            return existing.withLeaveTime(0L).withTeamId(player.team().id);
+            // Reconnected player: clear leave time, but keep their original assigned team for rating integrity
+            return existing.withLeaveTime(0L);
         });
     }
 
@@ -147,19 +147,22 @@ public class MiniPvPMatchTracker {
             double rawParticipation = (double) activePlayTimeMs / matchDurationMs;
             rawParticipation = Math.clamp(rawParticipation, 0.0, 1.0);
 
+            boolean presentAtStart = (p.joinTime() - startedAt <= 20_000L);
+
             double effectiveParticipation;
-            if (activePlayTimeMs < minPlayTimeMs || rawParticipation < 0.25) {
-                // Insufficient participation:
-                // If team won: 0.0 (no free carry gain for late joiners)
-                // If team lost: 0.0 (exempt from loss penalty)
-                effectiveParticipation = 0.0;
-            } else if (!isWinner) {
-                // On losing team: full loss weight (prevents disconnect dodging right before defeat)
-                effectiveParticipation = 1.0;
+            if (!isWinner) {
+                // On losing team:
+                // If player was present at the match start, played >= 25% of the round, or stayed for >= 15s:
+                // Full loss penalty (strictly prevents disconnect-dodging right before core destruction!)
+                if (presentAtStart || rawParticipation >= 0.25 || activePlayTimeMs >= 15_000L) {
+                    effectiveParticipation = 1.0;
+                } else {
+                    // Truly joined at the very end on an already defeated team: exempt
+                    effectiveParticipation = 0.0;
+                }
             } else {
                 // On winning team:
-                // If stayed for >= 50% of the match: prorated gain
-                // If stayed for < 50% of the match: 0 gain
+                // Must have stayed for >= 50% of the match to gain rating (no free carry gain for late joiners)
                 effectiveParticipation = rawParticipation >= 0.5 ? rawParticipation : 0.0;
             }
 

@@ -37,6 +37,6 @@ public record RatingPolicy(
     }
 
     public static RatingPolicy teamEloV1() {
-        return new RatingPolicy(1000, 100, 32, 2, 30);
+        return new RatingPolicy(1000, 100, 32, 2, 15);
     }
 }

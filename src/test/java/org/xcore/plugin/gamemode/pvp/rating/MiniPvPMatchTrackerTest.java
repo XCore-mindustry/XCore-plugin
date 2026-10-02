@@ -92,4 +92,34 @@ class MiniPvPMatchTrackerTest {
         // Quitter receives full loss weight (participation = 1.0)
         assertThat(loserQuitter.participation()).isEqualTo(1.0);
     }
+
+    @Test
+    @DisplayName("disconnecting while core is being destroyed receives full loss penalty")
+    void disconnectDuringCoreDestruction_receivesFullLoss() {
+        MiniPvPMatchTracker tracker = new MiniPvPMatchTracker();
+        tracker.startMatch(mock(ObserverService.class));
+
+        long started = tracker.startedAt();
+        long endedAt = started + 35_000L; // 35 second match
+
+        // Winner: played from start
+        MiniPvPMatchTracker.ParticipantInfo winner = new MiniPvPMatchTracker.ParticipantInfo(
+                "winner-1", "Winner", Team.sharded.id, started, 0L);
+
+        // Loser: started with team, disconnected at 30s right as core was under fatal attack
+        MiniPvPMatchTracker.ParticipantInfo dodger = new MiniPvPMatchTracker.ParticipantInfo(
+                "dodger-1", "Dodger", Team.crux.id, started, started + 30_000L);
+
+        tracker.trackParticipant(winner);
+        tracker.trackParticipant(dodger);
+
+        RatingPolicy policy = RatingPolicy.teamEloV1();
+        var ratedTeams = tracker.buildRatedTeams(Team.sharded, endedAt, policy, uuid -> 1000);
+
+        var crux = ratedTeams.stream().filter(t -> t.teamId() == Team.crux.id).findFirst().orElseThrow();
+        var dodgerMember = crux.members().stream().filter(m -> m.uuid().equals("dodger-1")).findFirst().orElseThrow();
+
+        // Must receive 1.0 participation (full loss weight), not 0.0!
+        assertThat(dodgerMember.participation()).isEqualTo(1.0);
+    }
 }
