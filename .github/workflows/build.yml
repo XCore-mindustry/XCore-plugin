@@ -39,18 +39,30 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           VERSION=$(./gradlew getProjectVersion -q | tail -n 1)
-          echo "XCORE_PUBLISH_VERSION=${VERSION}-SNAPSHOT" >> "$GITHUB_ENV"
+          CLEAN="${VERSION%-SNAPSHOT}"
+          echo "XCORE_PUBLISH_VERSION=${CLEAN}-SNAPSHOT" >> "$GITHUB_ENV"
 
       - name: Build and test
-        if: github.event_name == 'pull_request' || env.XCORE_USERNAME == '' || env.XCORE_PASSWORD == ''
+        if: >-
+          github.event_name == 'pull_request' ||
+          env.XCORE_USERNAME == '' ||
+          env.XCORE_PASSWORD == ''
         run: ./gradlew --refresh-dependencies validateCi
 
       - name: Build, test and publish snapshot
-        if: github.event_name != 'pull_request' && env.XCORE_USERNAME != '' && env.XCORE_PASSWORD != ''
-        run: ./gradlew --refresh-dependencies validateCi publishMavenPublicationToXcoreRepositorySnapshotsRepository -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
+        if: >-
+          github.event_name != 'pull_request' &&
+          env.XCORE_USERNAME != '' &&
+          env.XCORE_PASSWORD != ''
+        run: >-
+          ./gradlew --refresh-dependencies validateCi
+          publishMavenPublicationToXcoreRepositorySnapshotsRepository
+          -PxcorePublishVersion="$XCORE_PUBLISH_VERSION"
         env:
-          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: ${{ secrets.XCORE_USERNAME }}
-          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: ${{ secrets.XCORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsUsername: >-
+            ${{ secrets.XCORE_USERNAME }}
+          ORG_GRADLE_PROJECT_xcoreRepositorySnapshotsPassword: >-
+            ${{ secrets.XCORE_PASSWORD }}
 
       - name: Upload artifacts
         if: always()
