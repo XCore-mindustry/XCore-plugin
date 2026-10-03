@@ -268,6 +268,18 @@ public final class RedisNetworkBackend {
     }
 
     public void respond(Object request, Object response) {
+        sendRpcResponse(request, context ->
+                envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()));
+    }
+
+    /** Answers a request with a failure the caller can tell apart from a successful reply. */
+    public void respondError(Object request, String errorCode, String errorMessage) {
+        sendRpcResponse(request, context ->
+                envelopeFactory.rpcErrorFields(context, errorCode, errorMessage, System.currentTimeMillis()));
+    }
+
+    private void sendRpcResponse(Object request,
+                                 java.util.function.Function<RedisRpcTracker.RpcInboundContext, Map<String, String>> fields) {
         RedisRpcTracker.RpcInboundContext context = rpcTracker.take(request);
         if (context == null) {
             Log.warn("Redis respond context is missing for request: @", request.getClass().getName());
@@ -283,8 +295,7 @@ public final class RedisNetworkBackend {
                 return;
             }
 
-            streamSupport.xaddWithTrimAsync(asyncCommands, context.replyTo(),
-                    envelopeFactory.rpcResponseFields(context, payloadJson(response), System.currentTimeMillis()))
+            streamSupport.xaddWithTrimAsync(asyncCommands, context.replyTo(), fields.apply(context))
                     .whenComplete((messageId, error) -> {
                         if (error == null) {
                             rpcResponses.incrementAndGet();

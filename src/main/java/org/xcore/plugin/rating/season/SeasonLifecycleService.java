@@ -25,6 +25,7 @@ import org.xcore.plugin.service.moderation.AuditService;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,6 +35,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
  * Moves seasons through their life: announces that one is ending, closes it at its
@@ -62,6 +65,7 @@ public class SeasonLifecycleService implements LadderSeasons {
 
     private final Map<String, Runnable> seasonChangedCallbacks = new ConcurrentHashMap<>();
     private final List<SeasonObserver> observers = new CopyOnWriteArrayList<>();
+    private final List<SeasonEvents> events = new CopyOnWriteArrayList<>();
     private final Object refreshLock = new Object();
     private Timer.@Nullable Task tickTask;
 
@@ -113,6 +117,10 @@ public class SeasonLifecycleService implements LadderSeasons {
 
     public void addObserver(SeasonObserver observer) {
         observers.add(Objects.requireNonNull(observer, "observer"));
+    }
+
+    public void addEvents(SeasonEvents listener) {
+        events.add(Objects.requireNonNull(listener, "listener"));
     }
 
     // ------------------------------------------------------------------
@@ -183,8 +191,10 @@ public class SeasonLifecycleService implements LadderSeasons {
             // The network was down for longer than a season; do not open one that is already over.
             endsAt = schedule.endOf(now);
         }
-        if (store.create(Season.opening(closed.ladderId(), number, startsAt, endsAt))) {
-            PLog.info("Season @ has started and runs until @", Season.id(closed.ladderId(), number), endsAt);
+        Season opened = Season.opening(closed.ladderId(), number, startsAt, endsAt);
+        if (store.create(opened)) {
+            PLog.info("Season @ has started and runs until @", opened.id(), endsAt);
+            publish(listener -> listener.started(closed, opened));
         }
     }
 
@@ -195,7 +205,19 @@ public class SeasonLifecycleService implements LadderSeasons {
         }
         Set<String> sent = new LinkedHashSet<>(season.sentNotices());
         sent.addAll(due);
-        store.update(season, season.withSentNotices(sent));
+        store.update(season, season.withSentNotices(sent)).ifPresent(claimed -> {
+            Set<String> fresh = new LinkedHashSet<>(due);
+            fresh.removeAll(season.sentNotices());
+            mostUrgent(fresh).ifPresent(notice -> publish(listener -> listener.noticeDue(claimed, notice)));
+        });
+    }
+
+    /** When several notices fall due together, only the one closest to the end is worth saying. */
+    private Optional<SeasonNotice> mostUrgent(Set<String> keys) {
+        return keys.stream()
+                .map(schedule::notice)
+                .flatMap(Optional::stream)
+                .min(Comparator.comparing(SeasonNotice::lead));
     }
 
     private void archive(Season season) {
@@ -209,6 +231,17 @@ public class SeasonLifecycleService implements LadderSeasons {
         ledger.markCompleted(operationId, season.id());
         PLog.info("Season @ archived: @ participants, @ matches, podium of @", archived.id(),
                 archived.summary().participants(), archived.summary().matches(), archived.podium().size());
+        publish(listener -> listener.ended(archived));
+    }
+
+    private void publish(Consumer<SeasonEvents> delivery) {
+        for (SeasonEvents listener : events) {
+            try {
+                delivery.accept(listener);
+            } catch (RuntimeException e) {
+                Log.err("A season event listener failed", e);
+            }
+        }
     }
 
     /** Re-reads the open seasons and tells this server's ladders and observers what changed. */
@@ -349,11 +382,22 @@ public class SeasonLifecycleService implements LadderSeasons {
             Optional<Season> moved = move(season, newEnd, now, actor, reason);
             if (moved.isPresent()) {
                 recordAudit(season, moved.get(), actor, reason);
+                publish(listener -> listener.rescheduled(season, moved.get(), actor, reason));
                 refresh();
                 return moved.get();
             }
         }
         throw new SeasonException("The season kept changing while it was being rescheduled; try again");
+    }
+
+    /**
+     * Blocking. Moves the end of a ladder's running season relative to where it is now.
+     *
+     * @param newEnd computes the new deadline from the current one
+     * @throws SeasonException as {@link #reschedule}
+     */
+    public Season extend(String ladderId, UnaryOperator<Instant> newEnd, AuditActor actor, @Nullable String reason) {
+        return reschedule(ladderId, newEnd.apply(running(ladderId).endsAt()), actor, reason);
     }
 
     /**

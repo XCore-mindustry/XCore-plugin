@@ -16,6 +16,7 @@ import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
+import org.xcore.plugin.event.transport.RatingTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
 import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.service.NetworkService;
@@ -37,6 +38,7 @@ public class TransportService {
     private final DiscordLinkTransportHandler discordLinkTransportHandler;
     private final ModerationTransportHandler moderationTransportHandler;
     private final MapTransportHandler mapTransportHandler;
+    private final RatingTransportHandler ratingTransportHandler;
     private final NetworkService network;
     private final TomlXcoreConfig config;
     private final StorageExecutor storageExecutor;
@@ -49,6 +51,7 @@ public class TransportService {
                             DiscordLinkTransportHandler discordLinkTransportHandler,
                             ModerationTransportHandler moderationTransportHandler,
                             MapTransportHandler mapTransportHandler,
+                            RatingTransportHandler ratingTransportHandler,
                             NetworkService network,
                             TomlXcoreConfig config,
                             StorageExecutor storageExecutor) {
@@ -56,6 +59,7 @@ public class TransportService {
         this.discordLinkTransportHandler = discordLinkTransportHandler;
         this.moderationTransportHandler = moderationTransportHandler;
         this.mapTransportHandler = mapTransportHandler;
+        this.ratingTransportHandler = ratingTransportHandler;
         this.network = network;
         this.config = config;
         this.storageExecutor = storageExecutor;
@@ -108,6 +112,7 @@ public class TransportService {
         discordLinkTransportHandler.registerListeners();
         moderationTransportHandler.registerListeners();
         mapTransportHandler.registerListeners();
+        ratingTransportHandler.registerListeners();
     }
 
     /**

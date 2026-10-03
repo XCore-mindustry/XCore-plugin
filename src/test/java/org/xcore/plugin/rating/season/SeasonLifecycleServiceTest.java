@@ -68,6 +68,7 @@ class SeasonLifecycleServiceTest {
         final SeasonLifecycleService lifecycle;
         final LadderService ladders;
         final List<SeasonChange> observed = new ArrayList<>();
+        final RecordingEvents events = new RecordingEvents();
 
         Server() {
             SeasonSchedule schedule = SeasonSchedule.from(config.rating.seasons);
@@ -76,8 +77,42 @@ class SeasonLifecycleServiceTest {
                     // The "game thread" continuation runs inline.
                     new Async(new StorageExecutor(4), Runnable::run), clock);
             lifecycle.addObserver(observed::add);
+            lifecycle.addEvents(events);
             ladders = new LadderService(standings, ledger, lifecycle);
         }
+    }
+
+    /** What {@link SeasonEvents} was told, in order, as short strings. */
+    private static final class RecordingEvents implements SeasonEvents {
+        final List<String> told = new ArrayList<>();
+
+        @Override
+        public void started(Season previous, Season season) {
+            told.add("started " + previous.number() + "->" + season.number());
+        }
+
+        @Override
+        public void noticeDue(Season season, SeasonNotice notice) {
+            told.add("notice " + notice.key());
+        }
+
+        @Override
+        public void ended(Season archived) {
+            told.add("ended " + archived.number() + " podium=" + archived.podium().size());
+        }
+
+        @Override
+        public void rescheduled(Season before, Season after, AuditActor actor, String reason) {
+            told.add("rescheduled " + before.endsAt() + "->" + after.endsAt() + " by " + actor.getNameSnapshot());
+        }
+    }
+
+    private List<String> told(Server... servers) {
+        List<String> all = new ArrayList<>();
+        for (Server each : servers) {
+            all.addAll(each.events.told);
+        }
+        return all;
     }
 
     @BeforeEach
@@ -475,5 +510,77 @@ class SeasonLifecycleServiceTest {
         config.database.readOnly = true;
         readOnly.lifecycle.tick();
         assertThat(duel.currentSeason()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("each transition is announced to the network once, by the server that performed it")
+    void events_fireOncePerTransition() {
+        Server other = new Server();
+        other.ladders.register(DUEL);
+
+        clock.set(END.minus(Duration.ofDays(7)));
+        server.lifecycle.tick();
+        other.lifecycle.tick();
+        assertThat(told(server, other)).containsExactly("notice 7d");
+
+        clock.set(END);
+        other.lifecycle.tick();
+        server.lifecycle.tick();
+        assertThat(told(server, other)).containsExactlyInAnyOrder("notice 7d", "started 1->2");
+
+        clock.set(END.plus(Duration.ofMinutes(5)));
+        server.lifecycle.tick();
+        other.lifecycle.tick();
+        // Which server wins each step is up to the race; that it is exactly one is the point.
+        assertThat(told(server, other)).containsExactlyInAnyOrder("notice 7d", "started 1->2", "ended 1 podium=0");
+    }
+
+    @Test
+    @DisplayName("when several notices fall due together only the one closest to the end is announced")
+    void events_announceMostUrgentNotice() {
+        clock.set(END.minus(Duration.ofMinutes(30)));
+        server.lifecycle.tick();
+
+        assertThat(season(1).sentNotices()).containsExactlyInAnyOrder("7d", "3d", "24h", "1h");
+        assertThat(told(server)).containsExactly("notice 1h");
+    }
+
+    @Test
+    @DisplayName("moving a season announces the change, ending it now announces the start of the next")
+    void events_coverAdministration() {
+        Instant newEnd = END.plus(Duration.ofDays(3));
+        server.lifecycle.reschedule("duel", newEnd, CONSOLE, null);
+        assertThat(told(server)).containsExactly("rescheduled " + END + "->" + newEnd + " by Console");
+
+        server.lifecycle.endNow("duel", CONSOLE, null);
+        assertThat(told(server)).contains("started 1->2");
+    }
+
+    @Test
+    @DisplayName("extend moves the end relative to where it is now")
+    void extend_isRelativeToCurrentEnd() {
+        Season moved = server.lifecycle.extend("duel", end -> end.plus(Duration.ofDays(14)), CONSOLE, null);
+
+        assertThat(moved.endsAt()).isEqualTo(END.plus(Duration.ofDays(14)));
+        assertThatThrownBy(() -> server.lifecycle.extend("nowhere", end -> end.plusSeconds(1), CONSOLE, null))
+                .isInstanceOf(SeasonException.class).hasMessageContaining("no running season");
+    }
+
+    @Test
+    @DisplayName("a listener that fails does not stop the others or the season")
+    void events_isolateFailingListeners() {
+        server.lifecycle.addEvents(new SeasonEvents() {
+            @Override
+            public void rescheduled(Season before, Season after, AuditActor actor, String reason) {
+                throw new IllegalStateException("redis is down");
+            }
+        });
+        RecordingEvents later = new RecordingEvents();
+        server.lifecycle.addEvents(later);
+
+        server.lifecycle.reschedule("duel", END.plus(Duration.ofDays(1)), CONSOLE, null);
+
+        assertThat(later.told).hasSize(1);
+        assertThat(season(1).endsAt()).isEqualTo(END.plus(Duration.ofDays(1)));
     }
 }

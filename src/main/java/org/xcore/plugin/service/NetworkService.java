@@ -121,6 +121,11 @@ public class NetworkService {
         backend.respond(request, response);
     }
 
+    /** Answers an RPC request with a failure; the caller sees it as an error, not as a response. */
+    public void respondError(Object request, String errorCode, String errorMessage) {
+        backend.respondError(request, errorCode, errorMessage);
+    }
+
     public String backendName() {
         return backend.getClass().getSimpleName();
     }

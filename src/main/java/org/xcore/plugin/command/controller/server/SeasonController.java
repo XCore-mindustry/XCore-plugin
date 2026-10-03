@@ -93,12 +93,8 @@ public class SeasonController implements CloudServerController {
                        @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
                        @Argument(value = "duration", description = "Time span: 12h, 3d, 2w, 1mo") String duration,
                        @Nullable @Argument(value = "reason", description = "Audit reason") @Greedy String reason) {
-        change(() -> {
-            Season current = seasons.list(ladder).stream().filter(Season::active).findFirst()
-                    .orElseThrow(() -> new SeasonException("Ladder '" + ladder + "' has no running season"));
-            Instant newEnd = SeasonCommandParser.extend(current.endsAt(), duration, schedule.zone());
-            return lifecycle.reschedule(ladder, newEnd, console(), reason);
-        });
+        change(() -> lifecycle.extend(ladder,
+                end -> SeasonCommandParser.extend(end, duration, schedule.zone()), console(), reason));
     }
 
     @Command("season end-at <ladder> <datetime> [reason]")
