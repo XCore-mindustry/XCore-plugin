@@ -104,14 +104,14 @@ class ServerSelectorUiControllerTest {
         VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
         String dsl = UiDslWriter.write(compiler.compile(root));
 
-        // Background and width
+        // Background and caps: the client resolves the real width from its own scene
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 740");
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).doesNotContain("width: 740");
 
         // Header
         assertThat(dsl).contains("ИГРОВЫЕ СЕРВЕРЫ");
         assertThat(dsl).contains("action:close");
-        assertThat(dsl).contains("size: 34");
 
         // Tabs
         assertThat(dsl).contains("action:tab:all");
@@ -122,7 +122,7 @@ class ServerSelectorUiControllerTest {
         // Dynamic slot
         assertThat(dsl).contains("id: slot_servers");
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 520");
+        assertThat(dsl).contains("maxHeight: 460");
 
         // Card buttonTables
         assertThat(dsl).contains("buttonTable{");
@@ -136,21 +136,22 @@ class ServerSelectorUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles responsive mobile layout when isMobile is true")
-    void render_compilesMobileLayout() {
+    @DisplayName("render emits client-resolved caps and native orientation conditions")
+    void render_compilesResponsiveCaps() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
-        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL, true);
+        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
 
         VNode root = controller.render(model);
         VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 680");
-        assertThat(dsl).contains("maxHeight: 600");
-        assertThat(dsl).contains("size: 32");
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).doesNotContain("width: 520");
+        assertThat(dsl).contains("maxHeight: 460");
+        assertThat(dsl).contains("condition: portrait");
         assertThat(dsl).contains("action:connect:mini-pvp");
     }
 
@@ -161,7 +162,7 @@ class ServerSelectorUiControllerTest {
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
         ServerSelectorUiController.ServerSelectorModel model = new ServerSelectorUiController.ServerSelectorModel(
-                "none", Category.ALL, List.of(), 0, 0, 0, false
+                "none", Category.ALL, List.of(), 0, 0, 0
         );
 
         VNode root = controller.render(model);

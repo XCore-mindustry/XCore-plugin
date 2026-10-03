@@ -274,11 +274,32 @@ class MapUiControllerTest {
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 520");
+        assertThat(dsl).contains("maxWidth: 760");
         assertThat(dsl).contains("id: field_search");
         assertThat(dsl).contains("id: slot_map_table");
         assertThat(dsl).contains("Desert Crossing");
         assertThat(dsl).contains("action:select_map:map-1");
+    }
+
+    @Test
+    @DisplayName("render in BROWSER mode caps the shell instead of pinning a device width")
+    void render_browserMode_capsShellInsteadOfPinningWidth() {
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel model = createTestBrowserModel();
+
+        VNode root = controller.render(model);
+        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
+        String dsl = UiDslWriter.write(compiler.compile(root));
+
+        // The client resolves the real width; the server only states the ceiling.
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).doesNotContain("width: 360");
+        assertThat(dsl).doesNotContain("width: 520");
+        assertThat(dsl).contains("maxHeight: 460");
+        assertThat(dsl).contains("action:select_map:map-1");
+        // pagination stays outside the scroll pane so it remains reachable
+        assertThat(dsl).contains("action:page:next");
+        assertThat(dsl).contains("action:page:prev");
     }
 
     @Test
@@ -292,7 +313,7 @@ class MapUiControllerTest {
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 520");
+        assertThat(dsl).contains("maxWidth: 760");
         assertThat(dsl).contains("id: slot_preview");
         assertThat(dsl).contains("net-xcore_test123");
         assertThat(dsl).contains("align: left");

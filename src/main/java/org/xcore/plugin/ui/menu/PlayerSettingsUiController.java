@@ -10,6 +10,7 @@ import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
+import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
@@ -59,32 +60,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
     private static final java.util.regex.Pattern HEX_COLOR_PATTERN =
             java.util.regex.Pattern.compile("\\[#([0-9a-fA-F]{6})");
 
-    public record UiMetrics(
-            float dialogWidth,
-            float contentWidth,
-            float cardWidth,
-            float cardContentWidth,
-            float paneMaxHeight,
-            int langGridCols,
-            boolean isMobile
-    ) {
-        public static UiMetrics of(boolean isMobile) {
-            if (isMobile) {
-                float dw = 680f;
-                float pad = 10f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 16f;
-                return new UiMetrics(dw, cw, cardW, cardW - 14f, 420f, 2, true);
-            } else {
-                float dw = 740f;
-                float pad = 12f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 20f;
-                return new UiMetrics(dw, cw, cardW, cardW - 16f, 460f, 3, false);
-            }
-        }
-    }
-
     public record SettingsModel(
             String targetUuid,
             String nickname,
@@ -104,98 +79,97 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             Tab tab,
             BadgesFilter badgesFilter,
             String feedbackMessage,
-            boolean isSuccess,
-            boolean isMobile
+            boolean isSuccess
     ) {
         public SettingsModel withTab(Tab newTab) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, newTab, badgesFilter,
-                    "", true, isMobile);
+                    "", true);
         }
 
         public SettingsModel withBadgesFilter(BadgesFilter filter) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, filter,
-                    "", true, isMobile);
+                    "", true);
         }
 
         public SettingsModel withCustomNickname(String nick) {
             return new SettingsModel(targetUuid, nickname, nick, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withDescription(String desc) {
             return new SettingsModel(targetUuid, nickname, customNickname, desc, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withGlobalChatVisible(boolean visible) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, visible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withDiscordRelayVisible(boolean visible) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     visible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withLeaderboard(boolean lb) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, lb, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withActiveBadge(String badge) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, badge, badge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withPreviewBadge(String badge) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, badge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withLanguage(String lang) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, lang, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withTranslatorLanguage(String lang) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, lang,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withBadgeSymbolColorMode(String mode) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     mode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    feedbackMessage, isSuccess, isMobile);
+                    feedbackMessage, isSuccess);
         }
 
         public SettingsModel withFeedback(String msg, boolean success) {
             return new SettingsModel(targetUuid, nickname, customNickname, description, globalChatVisible,
                     discordRelayVisible, leaderboard, activeBadge, previewBadge, language, translatorLanguage,
                     badgeSymbolColorMode, unlockedBadges, isAdmin, playerColorHex, tab, badgesFilter,
-                    msg, success, isMobile);
+                    msg, success);
         }
     }
 
@@ -236,8 +210,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         Objects.requireNonNull(targetData, "targetData");
         String customNick = targetData.customNickname != null ? targetData.customNickname : "";
         String desc = targetData.description != null ? targetData.description : "";
-        boolean isMobile = session != null && session.player != null && session.player.con != null && session.player.con.mobile;
-
         String playerColorHex = resolvePlayerColorHex(session, targetData);
 
         Set<String> unlocked = targetData.unlockedBadges != null ? targetData.unlockedBadges : Set.of();
@@ -272,8 +244,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 initialTab != null ? initialTab : Tab.PROFILE,
                 BadgesFilter.MY,
                 "",
-                false,
-                isMobile
+                false
         );
     }
 
@@ -539,13 +510,14 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
     @Override
     public VNode render(SettingsModel model) {
-        UiMetrics metrics = UiMetrics.of(model.isMobile());
+        DialogMetrics metrics = metrics();
         Localization local = session != null ? session.locale() : null;
 
         return Ui.table(t -> {
             t.background("pane");
             t.margin(12f);
-            t.layout(l -> l.width(metrics.dialogWidth()).pad(4f));
+            // A cap, not a resolved width: the client takes min(available, cap).
+            t.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
 
             // 1. Header with Accent Title, Underline, and Close Button
             t.add(Ui.table(h -> {
@@ -561,7 +533,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             // 2. Navigation Tabs Row (Profile / Chat & Lang / Badges)
             t.add(Ui.table(tabs -> {
                 tabs.layout(l -> l.growX().padBottom(6f));
-                float tabHeight = model.isMobile() ? 34f : 36f;
+                float tabHeight = 36f;
 
                 tabs.button(Text.raw(Iconc.admin + " " + (local != null ? local.t("player-settings-tab-profile") : "Profile")),
                         "action:tab:profile", b -> b
@@ -587,7 +559,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
 
             // 3. Scrollable Body
             t.pane(p -> {
-                p.layout(l -> l.growX().maxHeight(metrics.paneMaxHeight()));
+                p.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
                 p.table(body -> {
                     body.layout(l -> l.growX().fillX());
 
@@ -621,7 +593,12 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         });
     }
 
-    private void renderProfileTab(Ui.TableBuilder body, SettingsModel model, UiMetrics metrics, Localization local) {
+    /** Caps only; the client resolves the actual width and body height. */
+    private DialogMetrics metrics() {
+        return DialogMetrics.standard();
+    }
+
+    private void renderProfileTab(Ui.TableBuilder body, SettingsModel model, DialogMetrics metrics, Localization local) {
         // Vanilla Name row with inline Reset button
         body.add(Ui.table(row -> {
             row.layout(l -> l.growX().padBottom(4f));
@@ -680,7 +657,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         })).row();
     }
 
-    private void renderChatLangTab(Ui.TableBuilder body, SettingsModel model, UiMetrics metrics, Localization local) {
+    private void renderChatLangTab(Ui.TableBuilder body, SettingsModel model, DialogMetrics metrics, Localization local) {
         // Chat Visibility Checkboxes
         body.label(Text.raw("[accent]" + Iconc.chat + " " + (local != null ? local.t("player-menu-settings-chat") : "Chat Visibility") + "[]"),
                 l -> l.align("left").padBottom(4f)).row();
@@ -704,9 +681,9 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 + ":[]  [lime]" + curLang + "[]"), l -> l.align("left").padBottom(6f)).row();
 
         body.add(Ui.table(grid -> {
+            // a WrapTable picks its columns from the width the client actually gives it
+            grid.wrap();
             grid.layout(l -> l.growX().padBottom(10f));
-            int col = 0;
-            int maxCols = metrics.langGridCols();
             for (LanguageOption opt : AVAILABLE_LANGUAGES) {
                 boolean isSel = opt.code().equalsIgnoreCase(model.language());
                 grid.button(Text.raw((isSel ? "[accent]● " : "") + opt.displayName() + "[]"),
@@ -714,10 +691,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                 .style("togglet")
                                 .checked(isSel)
                                 .layout(l -> l.uniform().growX().height(36f).pad(2f)));
-                col++;
-                if (col % maxCols == 0) {
-                    grid.row();
-                }
             }
         })).row();
 
@@ -730,9 +703,8 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                 + ":[]  [lime]" + curTrans + "[]"), l -> l.align("left").padBottom(6f)).row();
 
         body.add(Ui.table(grid -> {
+            grid.wrap();
             grid.layout(l -> l.growX().padBottom(6f));
-            int col = 0;
-            int maxCols = metrics.langGridCols();
 
             // Off button
             boolean isOff = model.translatorLanguage() == null || model.translatorLanguage().isBlank() || "off".equalsIgnoreCase(model.translatorLanguage());
@@ -741,7 +713,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                             .style("togglet")
                             .checked(isOff)
                             .layout(l -> l.uniform().growX().height(36f).pad(2f)));
-            col++;
 
             for (LanguageOption opt : AVAILABLE_LANGUAGES) {
                 if ("auto".equalsIgnoreCase(opt.code())) continue;
@@ -751,15 +722,11 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
                                 .style("togglet")
                                 .checked(isSel)
                                 .layout(l -> l.uniform().growX().height(36f).pad(2f)));
-                col++;
-                if (col % maxCols == 0) {
-                    grid.row();
-                }
             }
         })).row();
     }
 
-    private void renderBadgesTab(Ui.TableBuilder body, SettingsModel model, UiMetrics metrics, Localization local) {
+    private void renderBadgesTab(Ui.TableBuilder body, SettingsModel model, DialogMetrics metrics, Localization local) {
         // 1. Live Chat Preview Card
         body.add(Ui.table(previewBox -> {
             previewBox.background("button");
@@ -857,7 +824,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         }
     }
 
-    private void renderBadgeCard(Ui.TableBuilder body, Badge badge, SettingsModel model, UiMetrics metrics, Localization local) {
+    private void renderBadgeCard(Ui.TableBuilder body, Badge badge, SettingsModel model, DialogMetrics metrics, Localization local) {
         boolean isEquipped = badge.id().equals(model.activeBadge());
         boolean isUnlocked = (model.unlockedBadges() != null && model.unlockedBadges().contains(badge.id())) || badge.system();
         boolean isSystem = badge.system();
@@ -865,7 +832,7 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
         body.add(Ui.table(card -> {
             card.background("button");
             card.margin(8f);
-            card.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            card.layout(l -> l.growX().padBottom(6f));
 
             // Top Row: Badge Tag + Name | Status Badge | Preview Button | Action Button
             card.add(Ui.table(top -> {

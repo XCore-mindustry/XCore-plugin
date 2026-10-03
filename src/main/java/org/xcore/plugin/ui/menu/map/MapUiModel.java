@@ -6,6 +6,11 @@ import java.util.List;
 
 /**
  * Immutable state model for the reactive Map UI (both Browser and Details modes).
+ *
+ * <p>No device or orientation flags live here. The server cannot know either — {@code ConnectPacket}
+ * carries only {@code mobile}, and the camera dimensions in {@code clientSnapshot} describe the world
+ * view rather than the screen — so anything the dialog needs to adapt is expressed in the tree and
+ * resolved by the client.
  */
 public record MapUiModel(
         ViewMode mode,
@@ -59,7 +64,6 @@ public record MapUiModel(
         // --- Resolved Database Details ---
         MapData resolvedDetails
 ) {
-    /** Backwards-compatible constructor without resolvedDetails. */
     public MapUiModel(
             ViewMode mode,
             String playerUuid,

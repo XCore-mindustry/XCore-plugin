@@ -17,6 +17,7 @@ import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
+import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
@@ -25,7 +26,6 @@ import org.xcore.ui.runtime.UpdateResult;
 
 import java.text.NumberFormat;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
@@ -56,6 +56,15 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             int priority
     ) {}
 
+    /**
+     * Leaderboard view state.
+     *
+     * <p>No device or orientation flags live here. The server cannot know either one —
+     * {@code ConnectPacket} carries only {@code mobile}, and the camera dimensions in
+     * {@code clientSnapshot} describe the world view rather than the screen — so anything the
+     * dialog needs to adapt is expressed in the tree and resolved by the client, either through
+     * {@link org.xcore.ui.responsive.Responsive} conditions or {@code growX() + maxWidth} caps.
+     */
     public record TopModel(
             String viewerUuid,
             String selectedCategoryId,
@@ -70,7 +79,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             String currentCursor,
             String nextCursor,
             Deque<String> cursorBackStack,
-            boolean isMobile,
             String feedbackMessage
     ) {
         public TopModel withPageData(LeaderboardPage page, String cursor, String nextCursorToken, String selfVal) {
@@ -85,7 +93,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                     page.selfRank(), selfVal != null ? selfVal : selfPrimaryValue,
                     page.entries(), page.hasNext(),
                     cursor, nextCursorToken,
-                    cursorBackStack, isMobile, ""
+                    cursorBackStack, ""
             );
         }
 
@@ -94,7 +102,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                     viewerUuid, newCatId, cats,
                     1, 1, 0L, null, null,
                     List.of(), false, null, null,
-                    new ArrayDeque<>(), isMobile, ""
+                    new ArrayDeque<>(), ""
             );
         }
 
@@ -105,7 +113,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                     selfRank, selfPrimaryValue,
                     entries, hasNext,
                     currentCursor, nextCursor,
-                    cursorBackStack, isMobile, message
+                    cursorBackStack, message
             );
         }
     }
@@ -117,34 +125,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         record Refresh() implements TopEvent {}
         record InspectPlayer(String playerUuid) implements TopEvent {}
         record Close() implements TopEvent {}
-    }
-
-    public record UiMetrics(
-            float dialogWidth,
-            float contentWidth,
-            float cardWidth,
-            float cardContentWidth,
-            float paneMaxHeight,
-            int maxNickLength,
-            boolean isMobile
-    ) {
-        public static UiMetrics of(boolean isMobile) {
-            if (isMobile) {
-                float dw = 680f;
-                float pad = 10f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 18f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 600f, 20, true);
-            } else {
-                float dw = 740f;
-                float pad = 12f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 22f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 520f, 24, false);
-            }
-        }
     }
 
     private final TopMenu topMenu;
@@ -177,7 +157,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     }
 
     public TopModel createInitialModel(String categoryId, int page, String cursor, Deque<String> backStack) {
-        boolean isMobile = session != null && session.player != null && session.player.con != null && session.player.con.mobile;
         Localization local = session != null ? session.locale() : null;
 
         List<CategoryTab> tabs = resolveCategoryTabs(local);
@@ -190,7 +169,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         TopModel emptyState = new TopModel(
                 session != null && session.data != null ? session.data.uuid : "",
                 initialCat, tabs, Math.max(1, page), 1, 0L, null, null,
-                List.of(), false, cursor, null, stack, isMobile, ""
+                List.of(), false, cursor, null, stack, ""
         );
 
         return loadPageData(emptyState, initialCat, Math.max(1, page), cursor);
@@ -282,7 +261,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                         model.selfRank(), model.selfPrimaryValue(),
                         model.entries(), model.hasNext(),
                         model.currentCursor(), model.nextCursor(),
-                        nextStack, model.isMobile(), ""
+                        nextStack, ""
                 );
                 TopModel loaded = loadPageData(nextModel, model.selectedCategoryId(), model.currentPage() + 1, model.nextCursor());
                 yield UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION);
@@ -300,7 +279,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                         model.selfRank(), model.selfPrimaryValue(),
                         model.entries(), model.hasNext(),
                         model.currentCursor(), model.nextCursor(),
-                        prevStack, model.isMobile(), ""
+                        prevStack, ""
                 );
                 TopModel loaded = loadPageData(prevModel, model.selectedCategoryId(), Math.max(1, model.currentPage() - 1), targetCursor);
                 yield UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION);
@@ -389,9 +368,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     // View Rendering
     // =========================================================================
 
+    /** Caps only; the client resolves the actual width and body height. */
+    private DialogMetrics metrics() {
+        return DialogMetrics.standard();
+    }
+
     @Override
     public VNode render(TopModel model) {
-        UiMetrics metrics = UiMetrics.of(model.isMobile());
+        DialogMetrics metrics = metrics();
         Localization local = session != null ? session.locale() : null;
         String currentCatName = model.categories().stream()
                 .filter(c -> Objects.equals(c.id(), model.selectedCategoryId()))
@@ -401,15 +385,15 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
         return Ui.table(root -> {
             root.background("pane");
-            root.margin(model.isMobile() ? 8f : 12f);
-            root.layout(l -> l.width(metrics.dialogWidth()).pad(4f));
+            root.margin(8f);
+            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
 
             // 1. Dialog Header: Star Icon + Full Title on row 1, Count on row 2, and Close Button on the right
             root.add(Ui.table(h -> {
-                h.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
+                h.layout(l -> l.growX().padBottom(4f));
 
                 h.add(Ui.table(titleCol -> {
-                    titleCol.layout(l -> l.width(metrics.contentWidth() - 40f).align("left"));
+                    titleCol.layout(l -> l.growX().align("left"));
                     String titleText = local != null
                             ? local.t("top-menu-title", args("category", currentCatName))
                             : "Top Players: " + currentCatName;
@@ -430,14 +414,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                         .layout(l -> l.size(32f)));
             })).row();
 
-            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padBottom(4f).color("3b4252")).row();
+            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("3b4252")).row();
 
-            // 2. Adaptive Category Tabs
+            // 2. Category Tabs
             root.add(Ui.table(tabs -> {
-                tabs.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
-                int cols = model.categories().size() <= 3 ? model.categories().size() : (model.isMobile() ? 2 : 3);
-                int count = 0;
-                float tabHeight = model.isMobile() ? 32f : 36f;
+                // WrapTable picks the tab columns from the width the client actually gives it, so the
+                // same tab set fits a narrow phone and a wide desktop without a server-side guess
+                tabs.wrap();
+                tabs.layout(l -> l.growX().padBottom(4f));
 
                 for (CategoryTab cat : model.categories()) {
                     boolean active = Objects.equals(cat.id(), model.selectedCategoryId());
@@ -446,53 +430,49 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                     tabs.button(Text.raw(label), "action:tab:" + cat.id(), b -> b
                             .style(active ? "togglet" : "cleart")
                             .checked(active)
-                            .layout(l -> l.height(tabHeight).growX().uniform().pad(2f)));
-
-                    if (++count % cols == 0) {
-                        tabs.row();
-                    }
+                            .layout(l -> l.height(34f).pad(2f).growX().uniform()));
                 }
             })).row();
 
-            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
+            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
 
             // 3. Dynamic Entries Slot (Scrollable Player Rows)
             root.slot(SLOT_ENTRIES.path(), slot -> {
-                slot.layout(l -> l.width(metrics.contentWidth()));
+                slot.layout(l -> l.growX());
                 slot.pane(pane -> {
-                    pane.layout(l -> l.width(metrics.contentWidth()).maxHeight(metrics.paneMaxHeight()));
+                    pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
                     pane.table(list -> renderEntriesList(list, model, metrics, local, currentCatName));
                 });
             }).row();
 
-            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
+            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
 
             // 4. Dynamic Sticky Self-Rank Slot
             root.slot(SLOT_SELF_RANK.path(), slot -> {
-                slot.layout(l -> l.width(metrics.contentWidth()));
+                slot.layout(l -> l.growX());
                 renderSelfRankCard(slot, model, metrics, local);
             }).row();
 
             // Feedback Message if any
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(2f).padBottom(2f).color("454545")).row();
+                root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("454545")).row();
                 root.add(Ui.table(fb -> {
-                    fb.layout(l -> l.width(metrics.contentWidth()).padTop(2f).padBottom(2f));
+                    fb.layout(l -> l.growX().padTop(2f).padBottom(2f));
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 })).row();
             }
 
-            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
+            root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
 
             // 5. Dynamic Pagination Toolbar Slot
             root.slot(SLOT_PAGINATION.path(), slot -> {
-                slot.layout(l -> l.width(metrics.contentWidth()));
-                renderPaginationBar(slot, model, metrics, local);
+                slot.layout(l -> l.growX());
+                renderPaginationBar(slot, model, local);
             }).row();
         });
     }
 
-    private void renderEntriesList(Ui.TableBuilder list, TopModel model, UiMetrics metrics, Localization local, String categoryDisplayName) {
+    private void renderEntriesList(Ui.TableBuilder list, TopModel model, DialogMetrics metrics, Localization local, String categoryDisplayName) {
         list.layout(l -> l.growX());
 
         if (model.entries().isEmpty()) {
@@ -511,84 +491,88 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             String clickAction = "action:inspect:" + entry.playerUuid();
 
             list.buttonTable(clickAction, card -> {
-                card.layout(l -> l.width(metrics.cardWidth()).padBottom(3f));
-                card.margin(model.isMobile() ? 6f : 8f);
+                card.layout(l -> l.growX().padBottom(3f));
+                card.margin(8f);
                 card.style(isViewer ? "togglet" : "default");
                 if (isViewer) card.checked(true);
 
                 card.table(inner -> {
-                    inner.layout(l -> l.width(metrics.cardContentWidth()));
+                    inner.layout(l -> l.growX());
 
-                    // Left Podium Accent Stripe
+                    // Left Column: Stripe, Rank, Badges, Admin, Nickname
                     String stripeColor = switch (entry.rank()) {
                         case 1 -> "ffd700";
                         case 2 -> "c0c0c0";
                         case 3 -> "d99058";
                         default -> isViewer ? "ffd37f" : "3b4252";
                     };
-                    inner.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(stripeColor));
 
-                    // Rank Label
-                    String rankBadge = formatRankBadge(entry.rank());
-                    inner.label(Text.raw(rankBadge + " "), l -> l.align("left").padRight(4f));
+                    inner.add(Ui.table(left -> {
+                        left.layout(l -> l.align("left").growX());
 
-                    // Badges (from attributes)
-                    Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
-                    if (attrs.containsKey("activeBadge")) {
-                        Badge b = Badge.byId(attrs.get("activeBadge"));
-                        if (b != null) {
-                            String mode = attrs.getOrDefault("badgeColorMode", "default");
-                            String colorHex = attrs.get("playerColorHex");
-                            inner.label(Text.raw(PlayerSettingsUiController.renderBadgeTagExact(b, mode, colorHex) + " "),
-                                    l -> l.align("left").padRight(2f));
+                        left.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(stripeColor));
+
+                        String rankBadge = formatRankBadge(entry.rank());
+                        left.label(Text.raw(rankBadge + " "), l -> l.align("left").padRight(4f));
+
+                        Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
+                        if (attrs.containsKey("activeBadge")) {
+                            Badge b = Badge.byId(attrs.get("activeBadge"));
+                            if (b != null) {
+                                String mode = attrs.getOrDefault("badgeColorMode", "default");
+                                String colorHex = attrs.get("playerColorHex");
+                                left.label(Text.raw(PlayerSettingsUiController.renderBadgeTagExact(b, mode, colorHex) + " "),
+                                        l -> l.align("left").padRight(2f));
+                            }
                         }
-                    }
 
-                    // Admin icon
-                    if ("true".equalsIgnoreCase(attrs.get("admin"))) {
-                        inner.label(Text.raw("[scarlet]<" + Iconc.admin + ">[] "), l -> l.align("left").padRight(2f));
-                    }
+                        if ("true".equalsIgnoreCase(attrs.get("admin"))) {
+                            left.label(Text.raw("[scarlet]<" + Iconc.admin + ">[] "), l -> l.align("left").padRight(2f));
+                        }
 
-                    // Nickname
-                    String cleanNick = resolveNickname(entry, attrs, metrics.maxNickLength());
-                    String namePrefix = isViewer ? "[lime]● [accent]" : "";
-                    inner.label(Text.raw(namePrefix + cleanNick + "[]"), l -> l.align("left").growX());
+                        String cleanNick = resolveNickname(entry, attrs, metrics.textBudget());
+                        String namePrefix = isViewer ? "[lime]● [accent]" : "";
+                        left.label(Text.raw(namePrefix + cleanNick + "[]"), l -> l.align("left"));
+                    }));
 
-                    // Optional Tags (e.g. Hexed rank, League from HexedCore)
-                    if (attrs.containsKey("leagueIcon")) {
-                        inner.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(4f));
-                    } else if (attrs.containsKey("leagueName")) {
-                        String locLeague = attrs.get("leagueName");
-                        try {
-                            RatingLeague rl = RatingLeague.valueOf(attrs.get("leagueName").toUpperCase());
-                            locLeague = local != null ? local.t(rl.localizationKey()) : rl.name();
-                        } catch (Exception ignored) {}
-                        inner.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locLeague) + "][] "), l -> l.align("right").padRight(6f));
-                    }
-                    if (attrs.containsKey("rankName")) {
-                        String rankName = attrs.get("rankName");
-                        String locRank = local != null ? local.t("hexed-ranks-" + rankName) : rankName;
-                        inner.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locRank) + "][] "), l -> l.align("right").padRight(8f));
-                    }
+                    // Right Column: Tags, Value, Chevron
+                    inner.add(Ui.table(right -> {
+                        right.layout(l -> l.align("right"));
 
-                    // Score Value
-                    String valColor = entry.rank() <= 3 ? "[gold]" : "[sky]";
-                    String formattedVal = formatValue(model.selectedCategoryId(), entry, local);
-                    inner.label(Text.raw(valColor + formattedVal + "[] "), l -> l.align("right").padRight(8f));
+                        Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
+                        if (attrs.containsKey("leagueIcon")) {
+                            right.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(4f));
+                        } else if (attrs.containsKey("leagueName")) {
+                            String locLeague = attrs.get("leagueName");
+                            try {
+                                RatingLeague rl = RatingLeague.valueOf(attrs.get("leagueName").toUpperCase());
+                                locLeague = local != null ? local.t(rl.localizationKey()) : rl.name();
+                            } catch (Exception ignored) {}
+                            right.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locLeague) + "][] "), l -> l.align("right").padRight(6f));
+                        }
+                        if (attrs.containsKey("rankName")) {
+                            String rankName = attrs.get("rankName");
+                            String locRank = local != null ? local.t("hexed-ranks-" + rankName) : rankName;
+                            right.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locRank) + "][] "), l -> l.align("right").padRight(6f));
+                        }
 
-                    // Inspect Chevron Glyph
-                    inner.label(Text.raw("[gray]" + Iconc.players + "[]"), l -> l.align("right"));
+                        String valColor = entry.rank() <= 3 ? "[gold]" : "[sky]";
+                        String formattedVal = formatValue(model.selectedCategoryId(), entry, local);
+                        right.label(Text.raw(valColor + formattedVal + "[] "), l -> l.align("right").padRight(6f));
+
+                        right.label(Text.raw("[gray]" + Iconc.players + "[]"), l -> l.align("right"));
+                    }));
                 });
             });
             list.row();
         }
     }
 
-    private void renderSelfRankCard(Ui.TableBuilder slot, TopModel model, UiMetrics metrics, Localization local) {
+    private void renderSelfRankCard(Ui.TableBuilder slot, TopModel model, DialogMetrics metrics, Localization local) {
         slot.add(Ui.table(card -> {
             card.background("button");
             card.margin(8f);
-            card.layout(l -> l.width(metrics.cardWidth()));
+            card.layout(l -> l.growX());
 
             if (model.selfRank() != null) {
                 boolean onPage = model.entries().stream().anyMatch(e -> Objects.equals(e.playerUuid(), model.viewerUuid()));
@@ -614,9 +598,9 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         }));
     }
 
-    private void renderPaginationBar(Ui.TableBuilder slot, TopModel model, UiMetrics metrics, Localization local) {
+    private void renderPaginationBar(Ui.TableBuilder slot, TopModel model, Localization local) {
         slot.add(Ui.table(bar -> {
-            bar.layout(l -> l.width(metrics.contentWidth()).padTop(2f));
+            bar.layout(l -> l.growX().padTop(2f));
 
             // Prev Button
             boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;

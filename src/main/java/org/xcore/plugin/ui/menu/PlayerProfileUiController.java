@@ -1,6 +1,5 @@
 package org.xcore.plugin.ui.menu;
 
-import arc.util.Strings;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.concurrent.Async;
@@ -21,6 +20,8 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.responsive.DialogMetrics;
+import org.xcore.ui.responsive.Responsive;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -33,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -79,33 +79,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String playerColorHex
     ) {}
 
-    public record UiMetrics(
-            float dialogWidth,
-            float contentWidth,
-            float cardWidth,
-            float cardInnerWidth,
-            float paneMaxHeight,
-            boolean isMobile
-    ) {
-        public static UiMetrics of(boolean isMobile) {
-            if (isMobile) {
-                float dw = 680f;
-                float pad = 8f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 20f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 250f, true);
-            } else {
-                float dw = 740f;
-                float pad = 12f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 24f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 440f, false);
-            }
-        }
-    }
-
     public record ProfileModel(
             // Viewer identity
             String viewerUuid,
@@ -140,7 +113,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             boolean isSelf,
             boolean isViewerAdmin,
             Tab tab,
-            boolean isMobile,
             boolean viewingFromPlayersTab,
 
             // Players Tab State
@@ -154,7 +126,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, newTab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, newTab,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, "");
         }
 
@@ -162,7 +134,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, newHexedTopRank,
-                    newStats, false, isSelf, isViewerAdmin, tab, isMobile,
+                    newStats, false, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
 
@@ -196,7 +168,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     Objects.equals(viewerUuid, target.uuid),
                     isViewerAdmin,
                     Tab.OVERVIEW,
-                    isMobile,
                     fromPlayersTab,
                     adminFilter,
                     playersPage,
@@ -210,7 +181,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, newPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
 
@@ -218,7 +189,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, filter, 1, totalOnlineCount, players, feedbackMessage);
         }
 
@@ -226,7 +197,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, 1, totalCount, players, feedbackMessage);
         }
 
@@ -236,7 +207,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, page, totalCount, players, feedbackMessage);
         }
 
@@ -244,7 +215,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, pvpRating, legacyPvpRating, pvpMatches, pvpWins, hexedPoints, hexedRank, hexedTopRank,
-                    stats, isStatsLoading, isSelf, isViewerAdmin, tab, isMobile,
+                    stats, isStatsLoading, isSelf, isViewerAdmin, tab,
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, msg);
         }
     }
@@ -306,7 +277,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                                            SessionService sessionService,
                                            PlayerDisplayService playerDisplayService) {
         Objects.requireNonNull(targetData, "targetData");
-        boolean isMobile = session != null && session.player != null && session.player.con != null && session.player.con.mobile;
         String viewerUuid = session != null && session.data != null ? session.data.uuid : "";
         boolean isSelf = session != null && session.data != null && Objects.equals(session.data.uuid, targetData.uuid);
         boolean isViewerAdmin = session != null && session.player != null && session.player.admin;
@@ -349,7 +319,6 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 isSelf,
                 isViewerAdmin,
                 initialTab != null ? initialTab : Tab.OVERVIEW,
-                isMobile,
                 false,
                 AdminFilter.ALL,
                 1,
@@ -683,69 +652,80 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return new ProfileEvent.Close();
     }
 
+    /** Caps only; the client resolves the actual width and body height. */
+    private DialogMetrics metrics() {
+        return DialogMetrics.standard();
+    }
+
     @Override
     public VNode render(ProfileModel model) {
-        UiMetrics metrics = UiMetrics.of(model.isMobile());
+        DialogMetrics metrics = metrics();
         Localization local = session != null ? session.locale() : null;
 
         return Ui.table(t -> {
             t.background("pane");
-            t.margin(model.isMobile() ? 8f : 12f);
-            t.layout(l -> l.width(metrics.dialogWidth()).pad(4f));
+            t.margin(8f);
+            t.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
 
-            // 1. Header with Accent Title, Online Status, Quick Actions, and Close Button
+            // 1. Header: Row 1 = Title & Close; Row 2 = Online Status & Actions
             t.add(Ui.table(h -> {
-                h.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
-                h.label(Text.raw("[orange]" + Iconc.players + "[] [white]"), l -> l.align("left"));
-                String headerTitle = model.tab() == Tab.PLAYERS
-                        ? (local != null ? local.t("player-menu-players-title") : "Online Players")
-                        : (local != null ? local.t("player-stats-title") : "Player Profile");
-                h.label(Text.raw(headerTitle), l -> l.align("left").growX());
+                h.layout(l -> l.growX().padBottom(4f));
 
-                // Online status indicator and quick actions when viewing profile/stats
+                // Row 1: Icon, Title, and Close Button
+                h.add(Ui.table(topRow -> {
+                    topRow.layout(l -> l.growX());
+                    topRow.label(Text.raw("[orange]" + Iconc.players + "[] [white]"), l -> l.align("left"));
+                    String headerTitle = model.tab() == Tab.PLAYERS
+                            ? (local != null ? local.t("player-menu-players-title") : "Online Players")
+                            : (local != null ? local.t("player-stats-title") : "Player Profile");
+                    topRow.label(Text.raw(headerTitle), l -> l.align("left").growX());
+                    topRow.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
+                            .style("cleart")
+                            .layout(l -> l.size(32f)));
+                })).row();
+
+                // Row 2 (when viewing profile/stats): Status on left, Settings & Audit buttons on right
                 if (model.tab() != Tab.PLAYERS) {
-                    String statusText = model.isTargetOnline()
-                            ? (local != null ? local.t("player-stats-status-online") : "[lime]● Online[]")
-                            : (local != null ? local.t("player-stats-status-offline") : "[gray]○ Offline[]");
-                    h.label(Text.raw(statusText + "  "), l -> l.align("right"));
+                    h.add(Ui.table(subRow -> {
+                        subRow.layout(l -> l.growX().padTop(2f));
+                        String statusText = model.isTargetOnline()
+                                ? (local != null ? local.t("player-stats-status-online") : "[lime]● Online[]")
+                                : (local != null ? local.t("player-stats-status-offline") : "[gray]○ Offline[]");
+                        subRow.label(Text.raw(statusText), l -> l.align("left").growX());
 
-                    // Settings quick button (if viewing self or viewer is admin)
-                    if (model.isSelf() || model.isViewerAdmin()) {
-                        h.button(Text.raw("[accent]" + Iconc.admin + " " + (local != null ? local.t("player-stats-btn-settings") : "Settings") + "[]"),
-                                "action:settings", b -> b.style("cleart").layout(l -> l.padRight(8f)));
-                    }
-
-                    // Audit buttons for admins
-                    if (model.isViewerAdmin()) {
-                        h.button(Text.raw("[gray]" + (local != null ? local.t("player-stats-btn-audit") : "Audit") + "[]"),
-                                "action:audit_history", b -> b.style("cleart").layout(l -> l.padRight(8f)));
-                        h.button(Text.raw("[gray]" + (local != null ? local.t("audit-menu-actions-open") : "Actions") + "[]"),
-                                "action:audit_actions", b -> b.style("cleart").layout(l -> l.padRight(8f)));
-                    }
+                        if (model.isSelf() || model.isViewerAdmin()) {
+                            subRow.button(Text.raw("[accent]" + Iconc.admin + " " + (local != null ? local.t("player-stats-btn-settings") : "Settings") + "[]"),
+                                    "action:settings", b -> b.style("cleart").layout(l -> l.padRight(6f)));
+                        }
+                        if (model.isViewerAdmin()) {
+                            subRow.button(Text.raw("[gray]" + (local != null ? local.t("player-stats-btn-audit") : "Audit") + "[]"),
+                                    "action:audit_history", b -> b.style("cleart").layout(l -> l.padRight(6f)));
+                            subRow.button(Text.raw("[gray]" + (local != null ? local.t("audit-menu-actions-open") : "Actions") + "[]"),
+                                    "action:audit_actions", b -> b.style("cleart"));
+                        }
+                    })).row();
                 }
-
-                h.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
-                        .style("cleart")
-                        .layout(l -> l.size(34f)));
             })).row();
-            t.image("whiteui", l -> l.width(metrics.contentWidth()).height(3f).padBottom(6f).color("ffd37f")).row();
+            t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("ffd37f")).row();
 
             // 2. Navigation Tabs Row (Overview / Stats / Online Players)
             t.add(Ui.table(tabs -> {
-                tabs.layout(l -> l.width(metrics.contentWidth()).padBottom(6f));
-                float tabHeight = model.isMobile() ? 34f : 36f;
+                // A WrapTable picks the tab columns from the width the client actually gives it,
+                // so the same three tabs fit a phone and a desktop without a server-side guess.
+                tabs.wrap();
+                tabs.layout(l -> l.growX().padBottom(6f));
 
                 tabs.button(Text.raw(Iconc.admin + " " + (local != null ? local.t("player-stats-tab-overview") : "Overview")),
                         "action:tab:overview", b -> b
                                 .style("togglet")
                                 .checked(model.tab() == Tab.OVERVIEW)
-                                .layout(l -> l.uniform().growX().height(tabHeight).padRight(4f)));
+                                .layout(l -> l.uniform().growX().height(36f).padRight(4f)));
 
                 tabs.button(Text.raw(Iconc.chartBar + " " + (local != null ? local.t("player-stats-tab-stats") : "Stats")),
                         "action:tab:stats", b -> b
                                 .style("togglet")
                                 .checked(model.tab() == Tab.STATS)
-                                .layout(l -> l.uniform().growX().height(tabHeight).padRight(4f)));
+                                .layout(l -> l.uniform().growX().height(36f).padRight(4f)));
 
                 int onlineCount = model.totalOnlineCount();
                 String countStr = " (" + onlineCount + ")";
@@ -753,13 +733,13 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         "action:tab:players", b -> b
                                 .style("togglet")
                                 .checked(model.tab() == Tab.PLAYERS)
-                                .layout(l -> l.uniform().growX().height(tabHeight)));
+                                .layout(l -> l.uniform().growX().height(36f)));
             })).row();
-            t.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padBottom(6f).color("454545")).row();
+            t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("454545")).row();
 
             // 3. Scrollable Body
             t.pane(p -> {
-                p.layout(l -> l.width(metrics.contentWidth()).maxHeight(metrics.paneMaxHeight()));
+                p.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
                 p.table(body -> {
                     body.layout(l -> l.growX());
 
@@ -773,16 +753,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // 4. Feedback Message
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                t.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(4f).padBottom(4f).color("454545")).row();
+                t.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("454545")).row();
                 t.add(Ui.table(fb -> {
-                    fb.layout(l -> l.width(metrics.contentWidth()).padTop(2f).padBottom(2f));
+                    fb.layout(l -> l.growX().padTop(2f).padBottom(2f));
                     fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
                 })).row();
             }
 
             // 5. Bottom Action Bar
             t.add(Ui.table(actions -> {
-                actions.layout(l -> l.width(metrics.contentWidth()).padTop(6f));
+                actions.layout(l -> l.growX().padTop(6f));
 
                 if (session != null && session.hasHistory()) {
                     actions.button(Text.raw("[lightgray]← " + (local != null ? local.t("back") : "Back") + "[]"),
@@ -819,16 +799,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     // Tab 1: OVERVIEW
     // =========================================================================
 
-    private void renderOverviewTab(Ui.TableBuilder body, ProfileModel model, UiMetrics metrics, Localization local) {
+    private void renderOverviewTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
         // --- Card 1: Identity & Bio Card ---
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             // Name, badges and PID header
             c.add(Ui.table(top -> {
-                top.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                top.layout(l -> l.growX().padBottom(4f));
 
                 StringBuilder identity = new StringBuilder();
                 if (model.isTargetAdmin()) {
@@ -856,16 +836,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Bio / Description
             c.add(Ui.table(descTable -> {
-                descTable.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(6f));
+                descTable.layout(l -> l.growX().padBottom(6f));
                 String desc = model.description() != null && !model.description().isBlank()
                         ? "[lightgray]\"" + model.description().trim() + "[lightgray]\"[]"
                         : (local != null ? local.t("player-stats-no-bio") : "[gray]No bio written yet.[]");
-                descTable.labelWrap(Text.raw(desc), l -> l.align("left").width(metrics.cardInnerWidth()));
+                descTable.labelWrap(Text.raw(desc), l -> l.align("left").growX());
             })).row();
 
             // Info row: Joined, Play time
             c.add(Ui.table(info -> {
-                info.layout(l -> l.width(metrics.cardInnerWidth()));
+                info.layout(l -> l.growX());
                 String joinedLbl = local != null ? local.t("player-stats-account-created") : "[gray]Joined:[]";
                 String playTimeLbl = local != null ? local.t("player-stats-play-time") : "[gray]Play time:[]";
                 info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
@@ -877,14 +857,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             RatingLeague league = RatingLeague.fromRating(model.pvpRating());
             String leagueName = local != null ? local.t(league.localizationKey()) : league.name();
             RatingLeague nextLeague = league.next();
 
             c.add(Ui.table(top -> {
-                top.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                top.layout(l -> l.growX().padBottom(4f));
                 String pvpLbl = local != null ? local.t("player-stats-pvp-summary") : "MiniPvP:";
                 String pvpTitle = "[red]" + Iconc.modePvp + " " + pvpLbl + "[] " + league.icon() + " [white]" + leagueName + "[] ([sky]" + model.pvpRating() + " ELO[])";
 
@@ -899,25 +879,28 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         ? "  [darkgray]|[]  " + (local != null ? local.t("player-stats-legacy-pvp-rating") : "[gray]Legacy PvP:[]") + " [sky]" + model.legacyPvpRating() + "[]"
                         : "";
 
-                if (model.isMobile()) {
-                    top.label(Text.raw(pvpTitle), l -> l.align("left").growX()).row();
+                // A portrait phone has no room for the match record beside the title, so it stacks
+                // it underneath; a landscape or desktop screen keeps one line. That is a genuine
+                // structural split, so the client picks the variant instead of the server guessing.
+                Responsive.portrait(top, p -> {
+                    p.label(Text.raw(pvpTitle), l -> l.align("left").growX()).row();
                     if (!statsPart.isEmpty() || !legacyPart.isEmpty()) {
                         String secondLine = (statsPart.startsWith("  [darkgray]|[]  ") ? statsPart.substring(17) : statsPart) + legacyPart;
-                        top.label(Text.raw(secondLine), l -> l.align("left").growX());
+                        p.label(Text.raw(secondLine), l -> l.align("left").growX());
                     }
-                } else {
-                    top.label(Text.raw(pvpTitle + statsPart + legacyPart), l -> l.align("left").growX());
-                }
+                });
+                Responsive.landscape(top, w ->
+                        w.label(Text.raw(pvpTitle + statsPart + legacyPart), l -> l.align("left").growX()));
             })).row();
 
             // Progress bar
             c.add(Ui.table(bar -> {
-                bar.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(2f));
+                bar.layout(l -> l.growX().padBottom(2f));
                 String progressLine;
                 if (!league.hasNext()) {
                     progressLine = local != null ? local.t("player-stats-max-league") : "[gold]★ MAX LEAGUE ACHIEVED ★[]";
                 } else {
-                    String progressBar = renderRatingLeagueProgressBar(league, model.pvpRating(), model.isMobile() ? 10 : 14);
+                    String progressBar = renderRatingLeagueProgressBar(league, model.pvpRating(), 14);
                     int remaining = nextLeague.minimumRating() - model.pvpRating();
                     String nextLeagueName = local != null ? local.t(nextLeague.localizationKey()) : nextLeague.name();
                     String progressText = local != null
@@ -934,14 +917,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             HexedRank rank = model.hexedRank() != null ? model.hexedRank() : HexedRank.values()[0];
             String rankName = local != null ? local.t("hexed-ranks-" + rank.name()) : rank.name();
             String tag = rank.tag != null ? rank.tag : "";
 
             c.add(Ui.table(top -> {
-                top.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                top.layout(l -> l.growX().padBottom(4f));
                 String topRankStr = model.hexedTopRank() != null ? "#" + model.hexedTopRank() : "-";
                 String hexedRankLbl = local != null ? local.t("player-stats-hexed-rank") : "[gray]Legacy Hexed:[]";
                 String topLbl = local != null ? local.t("player-stats-hexed-leaderboard") : "[gray]Hexed Top:[]";
@@ -953,12 +936,12 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Progress bar
             c.add(Ui.table(bar -> {
-                bar.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(2f));
+                bar.layout(l -> l.growX().padBottom(2f));
                 String progressLine;
                 if (!rank.hasNext()) {
                     progressLine = local != null ? local.t("player-stats-max-rank") : "[gold]★ MAX RANK ACHIEVED ★[]";
                 } else {
-                    String progressBar = renderHexedProgressBar(rank, model.hexedPoints(), model.isMobile() ? 10 : 14);
+                    String progressBar = renderHexedProgressBar(rank, model.hexedPoints(), 14);
                     int remaining = rank.next.requirements.wins() - model.hexedPoints();
                     String nextRankName = local != null ? local.t("hexed-ranks-" + rank.next.name()) : rank.next.name();
                     String progressText = local != null
@@ -975,7 +958,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             if (model.isStatsLoading()) {
                 c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
@@ -984,20 +967,23 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
 
                 c.add(Ui.table(row -> {
-                    row.layout(l -> l.width(metrics.cardInnerWidth()));
+                    row.layout(l -> l.growX());
                     String gamesLbl = local != null ? local.t("player-stats-total-games") : "[gray]Total games:[]";
                     String winsLbl = local != null ? local.t("player-stats-victories") : "[gray]Victories:[]";
                     String blocksLbl = local != null ? local.t("player-stats-blocks-built") : "[gray]Blocks built:[]";
 
-                    if (model.isMobile()) {
-                        row.label(Text.raw(gamesLbl + " [white]" + nf.format(overall.gamesPlayed()) + "[]  [darkgray]|[]  "
-                                + winsLbl + " [lime]" + nf.format(overall.gamesWon()) + "[] [gray](" + overall.winRatePercent() + "%)[]"), l -> l.align("left").growX()).row();
-                        row.label(Text.raw(blocksLbl + " [lime]" + nf.format(overall.blocksBuilt()) + "[]"), l -> l.align("left").growX());
-                    } else {
-                        row.label(Text.raw(gamesLbl + " [white]" + nf.format(overall.gamesPlayed()) + "[]  [darkgray]|[]  "
-                                + winsLbl + " [lime]" + nf.format(overall.gamesWon()) + "[] [gray](" + overall.winRatePercent() + "%)[]  [darkgray]|[]  "
-                                + blocksLbl + " [lime]" + nf.format(overall.blocksBuilt()) + "[]"), l -> l.align("left").growX());
-                    }
+                    String summaryLine = gamesLbl + " [white]" + nf.format(overall.gamesPlayed()) + "[]  [darkgray]|[]  "
+                            + winsLbl + " [lime]" + nf.format(overall.gamesWon()) + "[] [gray](" + overall.winRatePercent() + "%)[]";
+                    String blocksLine = blocksLbl + " [lime]" + nf.format(overall.blocksBuilt()) + "[]";
+
+                    // Same structural split as the PvP card: two stacked lines on a portrait
+                    // phone, one combined line anywhere wider.
+                    Responsive.portrait(row, p -> {
+                        p.label(Text.raw(summaryLine), l -> l.align("left").growX()).row();
+                        p.label(Text.raw(blocksLine), l -> l.align("left").growX());
+                    });
+                    Responsive.landscape(row, w ->
+                            w.label(Text.raw(summaryLine + "  [darkgray]|[]  " + blocksLine), l -> l.align("left").growX()));
                 })).row();
             } else {
                 c.label(Text.raw(local != null ? local.t("player-stats-no-stats") : "[gray]No match telemetry recorded yet.[]"), l -> l.align("center").growX());
@@ -1009,14 +995,14 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     // Tab 2: STATS
     // =========================================================================
 
-    private void renderStatsTab(Ui.TableBuilder body, ProfileModel model, UiMetrics metrics, Localization local) {
+    private void renderStatsTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
         NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
 
         if (model.isStatsLoading()) {
             body.add(Ui.table(c -> {
                 c.background("button");
                 c.margin(14f);
-                c.layout(l -> l.width(metrics.cardWidth()).padBottom(8f));
+                c.layout(l -> l.growX().padBottom(8f));
                 c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
             })).row();
             return;
@@ -1029,10 +1015,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             c.add(Ui.table(row -> {
-                row.layout(l -> l.width(metrics.cardInnerWidth()));
+                row.layout(l -> l.growX());
                 String gamesVal = local != null
                         ? local.t("player-stats-games-played-value", args("count", nf.format(overall.gamesPlayed())))
                         : overall.gamesPlayed() + " games";
@@ -1049,11 +1035,11 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             // MiniPvP
             c.add(Ui.table(pvpRow -> {
-                pvpRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                pvpRow.layout(l -> l.growX().padBottom(4f));
                 RatingLeague league = RatingLeague.fromRating(model.pvpRating());
                 String leagueName = local != null ? local.t(league.localizationKey()) : league.name();
                 int matches = model.pvpMatches();
@@ -1077,7 +1063,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Survival
             c.add(Ui.table(survRow -> {
-                survRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                survRow.layout(l -> l.growX().padBottom(4f));
                 ModeStatsSummary surv = overview.survival();
                 String survSummary = surv.hasData()
                         ? "[white]" + nf.format(surv.gamesPlayed()) + "[] [gray]runs[] | "
@@ -1088,7 +1074,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // Legacy Hexed
             c.add(Ui.table(hexRow -> {
-                hexRow.layout(l -> l.width(metrics.cardInnerWidth()));
+                hexRow.layout(l -> l.growX());
                 ModeStatsSummary hex = overview.hexed();
                 String hexSummary = hex.hasData()
                         ? "[white]" + nf.format(hex.gamesPlayed()) + "[] [gray]matches[] | [lime]" + nf.format(hex.gamesWon()) + "[] [gray]top-1[] | "
@@ -1102,16 +1088,16 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         body.add(Ui.table(c -> {
             c.background("button");
             c.margin(10f);
-            c.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            c.layout(l -> l.growX().padBottom(6f));
 
             c.add(Ui.table(titleRow -> {
-                titleRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                titleRow.layout(l -> l.growX().padBottom(4f));
                 titleRow.label(Text.raw("[accent]■ " + (local != null ? local.t("player-stats-combat-efficiency") : "Combat & Construction Efficiency") + "[]"), l -> l.align("left").growX());
             })).row();
 
             // Blocks numbers
             c.add(Ui.table(blocksRow -> {
-                blocksRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
+                blocksRow.layout(l -> l.growX().padBottom(4f));
                 String builtLbl = local != null ? local.t("player-stats-blocks-built") : "Built:";
                 String deconLbl = local != null ? local.t("player-stats-blocks-deconstructed") : "Decon:";
                 String destLbl = local != null ? local.t("player-stats-blocks-destroyed") : "Destroyed:";
@@ -1123,8 +1109,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
             // 10-bar ratio visualization
             c.add(Ui.table(ratioRow -> {
-                ratioRow.layout(l -> l.width(metrics.cardInnerWidth()).padBottom(4f));
-                String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), model.isMobile() ? 10 : 12);
+                ratioRow.layout(l -> l.growX().padBottom(4f));
+                String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), 10);
                 String ratioLegend = local != null ? local.t("player-stats-ratio-legend") : "[lightgray]Build / Decon / Destroy Ratio[]";
                 ratioRow.label(Text.raw(ratioBar + "  " + ratioLegend), l -> l.align("left").growX());
             })).row();
@@ -1132,7 +1118,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             // Units stats (if produced or destroyed)
             if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
                 c.add(Ui.table(unitsRow -> {
-                    unitsRow.layout(l -> l.width(metrics.cardInnerWidth()));
+                    unitsRow.layout(l -> l.growX());
                     unitsRow.label(Text.raw("[gray]Units:[] [sky]" + Iconc.units + " " + nf.format(overall.unitsProduced()) + " produced[]  [darkgray]|[]  [scarlet]" + Iconc.cancel + " "
                             + nf.format(overall.unitsDestroyed()) + " lost[]"), l -> l.align("left").growX());
                 })).row();
@@ -1144,7 +1130,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     // Tab 3: PLAYERS (Live Online Server Roster)
     // =========================================================================
 
-    private void renderPlayersTab(Ui.TableBuilder body, ProfileModel model, UiMetrics metrics, Localization local) {
+    private void renderPlayersTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
         List<OnlinePlayerRow> onlineList = model.onlinePlayers() != null ? model.onlinePlayers() : List.of();
         int totalPlayers = onlineList.size();
         int perPage = PLAYERS_PER_PAGE;
@@ -1159,7 +1145,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
 
         // 1. Controls Toolbar: Filter + Pagination + Refresh
         body.add(Ui.table(tb -> {
-            tb.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            tb.layout(l -> l.growX().padBottom(6f));
 
             // Admin Filter Button
             String filterLabel = switch (model.adminFilter()) {
@@ -1198,7 +1184,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Ui.table(c -> {
                 c.background("button");
                 c.margin(14f);
-                c.layout(l -> l.width(metrics.cardWidth()));
+                c.layout(l -> l.growX());
                 c.label(Text.raw(local != null ? local.t("player-menu-players-empty") : "No online players found"), l -> l.align("center").growX());
             })).row();
             return;
@@ -1208,11 +1194,11 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             body.add(Ui.table(row -> {
                 row.background("button");
                 row.margin(8f);
-                row.layout(l -> l.width(metrics.cardWidth()).padBottom(4f));
+                row.layout(l -> l.growX().padBottom(4f));
 
                 // Left: Status dot + Badges + Nickname + PID
                 row.add(Ui.table(info -> {
-                    info.layout(l -> l.width(metrics.cardInnerWidth() - 90f).align("left"));
+                    info.layout(l -> l.growX().align("left"));
 
                     StringBuilder sb = new StringBuilder("[lime]●[] ");
                     if (p.isAdmin()) {

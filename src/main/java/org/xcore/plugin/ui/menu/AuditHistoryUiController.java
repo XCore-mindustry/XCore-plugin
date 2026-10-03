@@ -1,6 +1,5 @@
 package org.xcore.plugin.ui.menu;
 
-import arc.util.Strings;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.concurrent.Async;
@@ -20,6 +19,7 @@ import org.xcore.plugin.session.SessionService;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
@@ -32,7 +32,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -82,38 +81,9 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         DETAILS
     }
 
-    public record UiMetrics(
-            float dialogWidth,
-            float contentWidth,
-            float cardWidth,
-            float cardContentWidth,
-            float paneMaxHeight,
-            int maxReasonLength,
-            boolean isMobile
-    ) {
-        public static UiMetrics of(boolean isMobile) {
-            if (isMobile) {
-                float dw = 680f;
-                float pad = 10f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 18f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 520f, 40, true);
-            } else {
-                float dw = 740f;
-                float pad = 12f;
-                float cw = dw - pad * 2f;
-                float cardW = cw - 26f;
-                float cardInnerW = cardW - 22f;
-                return new UiMetrics(dw, cw, cardW, cardInnerW, 500f, 65, false);
-            }
-        }
-    }
-
     public record AuditHistoryModel(
             String viewerUuid,
             boolean isViewerAdmin,
-            boolean isMobile,
             String targetUuid,
             int targetPid,
             String targetNickname,
@@ -135,7 +105,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     ) {
         public AuditHistoryModel withMode(AuditViewMode newMode) {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     newMode, ActionFilter.ALL, ViewScreen.LIST,
                     List.of(), null, null, false, new ArrayDeque<>(), 1, false,
@@ -145,7 +115,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         public AuditHistoryModel withActionFilter(ActionFilter filter) {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     mode, filter, screen,
                     records, currentCursor, nextCursor, hasNext, cursorBackStack, pageIndex, isLoading,
@@ -157,7 +127,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                                           AuditCursor next, boolean hasMore,
                                           Deque<AuditCursor> newBackStack, int newPageIndex) {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     mode, actionFilter, ViewScreen.LIST,
                     newRecords, current, next, hasMore, newBackStack, newPageIndex, false,
@@ -167,7 +137,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         public AuditHistoryModel withDetails(String auditId, AuditRecord record) {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     mode, actionFilter, ViewScreen.DETAILS,
                     records, currentCursor, nextCursor, hasNext, cursorBackStack, pageIndex, false,
@@ -177,7 +147,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         public AuditHistoryModel withBackToList() {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     mode, actionFilter, ViewScreen.LIST,
                     records, currentCursor, nextCursor, hasNext, cursorBackStack, pageIndex, false,
@@ -187,7 +157,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         public AuditHistoryModel withFeedback(String message) {
             return new AuditHistoryModel(
-                    viewerUuid, isViewerAdmin, isMobile,
+                    viewerUuid, isViewerAdmin,
                     targetUuid, targetPid, targetNickname, targetDiscordId, targetColorHex,
                     mode, actionFilter, screen,
                     records, currentCursor, nextCursor, hasNext, cursorBackStack, pageIndex, isLoading,
@@ -242,14 +212,13 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     }
 
     public AuditHistoryModel createInitialModel(AuditViewMode mode) {
-        boolean isMobile = session != null && session.player != null && session.player.con != null && session.player.con.mobile;
         boolean isAdmin = session != null && session.player != null && session.player.admin;
         String viewerUuid = session != null && session.data != null ? session.data.uuid : "";
 
         String targetColor = PlayerSettingsUiController.resolvePlayerColorHex(session, targetData);
 
         var emptyModel = new AuditHistoryModel(
-                viewerUuid, isAdmin, isMobile,
+                viewerUuid, isAdmin,
                 targetData != null ? targetData.uuid : "",
                 targetData != null ? targetData.pid : 0,
                 targetData != null && targetData.nickname != null ? targetData.nickname : "",
@@ -434,41 +403,46 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
     @Override
     public VNode render(AuditHistoryModel model) {
-        UiMetrics metrics = UiMetrics.of(model.isMobile());
+        DialogMetrics metrics = metrics();
         Localization local = session != null ? session.locale() : null;
 
         return Ui.table(root -> {
             root.background("pane");
-            root.margin(model.isMobile() ? 8f : 12f);
-            root.layout(l -> l.width(metrics.dialogWidth()).pad(4f));
+            root.margin(8f);
+            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
 
             // Slot 1: Header (Target Nickname, Mode, Breadcrumbs, Close [X])
-            root.slot(SLOT_HEADER.path(), h -> renderHeader(h, model, metrics, local)).row();
-            root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padBottom(4f).color("ffd37f")).row();
+            root.slot(SLOT_HEADER.path(), h -> renderHeader(h, model, local)).row();
+            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("ffd37f")).row();
 
             if (model.screen() == ViewScreen.DETAILS) {
                 // In-Dialog Inspection Dossier
                 root.slot(SLOT_DETAILS.path(), d -> renderDetailsView(d, model, metrics, local)).row();
             } else {
                 // Slot 2: Tabs (Mode Tabs + Action Filter Buttons)
-                root.slot(SLOT_TABS.path(), t -> renderTabs(t, model, metrics, local)).row();
+                root.slot(SLOT_TABS.path(), t -> renderTabs(t, model, local)).row();
 
                 // Slot 3: Scrollable Card List
                 root.slot(SLOT_LIST.path(), l -> renderCardList(l, model, metrics, local)).row();
 
-                root.image("whiteui", l -> l.width(metrics.contentWidth()).height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
+                root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
 
                 // Slot 4: Pagination Footer Bar
-                root.slot(SLOT_PAGINATION.path(), p -> renderPagination(p, model, metrics, local)).row();
+                root.slot(SLOT_PAGINATION.path(), p -> renderPagination(p, model, local)).row();
             }
         });
     }
 
-    private void renderHeader(Ui.TableBuilder h, AuditHistoryModel model, UiMetrics metrics, Localization local) {
-        h.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
+    /** Caps only; the client resolves the actual width and body height. */
+    private DialogMetrics metrics() {
+        return DialogMetrics.standard();
+    }
+
+    private void renderHeader(Ui.TableBuilder h, AuditHistoryModel model, Localization local) {
+        h.layout(l -> l.growX().padBottom(4f));
 
         h.add(Ui.table(left -> {
-            left.layout(l -> l.width(metrics.contentWidth() - 40f).align("left"));
+            left.layout(l -> l.growX().align("left"));
 
             String nameFormatted = "[#" + model.targetColorHex() + "]" + escapeMarkup(model.targetNickname()) + "[]";
             String modeBadge = model.mode() == AuditViewMode.TARGET
@@ -493,13 +467,13 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 b -> b.style("cleart").layout(l -> l.size(34f)));
     }
 
-    private void renderTabs(Ui.TableBuilder t, AuditHistoryModel model, UiMetrics metrics, Localization local) {
-        t.layout(l -> l.width(metrics.contentWidth()).padBottom(6f));
+    private void renderTabs(Ui.TableBuilder t, AuditHistoryModel model, Localization local) {
+        t.layout(l -> l.growX().padBottom(6f));
 
         // 1. Mode Tabs (Only switchable if viewer is admin)
         if (model.isViewerAdmin()) {
             t.add(Ui.table(m -> {
-                m.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
+                m.layout(l -> l.growX().padBottom(4f));
 
                 boolean isTarget = model.mode() == AuditViewMode.TARGET;
                 String targetStyle = isTarget ? "default" : "cleart";
@@ -518,14 +492,17 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         // 2. Action Filter Chips (ALL, BANS, MUTES, WARNS, OTHER)
         t.add(Ui.table(f -> {
-            f.layout(l -> l.width(metrics.contentWidth()).align("left"));
+            // WrapTable picks the chip columns from the width the client gives it, so five
+            // localized filters fit a narrow phone and a wide desktop without a server guess
+            f.wrap();
+            f.layout(l -> l.growX().align("left"));
             for (var filter : ActionFilter.values()) {
                 boolean active = model.actionFilter() == filter;
                 String style = active ? "default" : "cleart";
                 String color = active ? "[white]" : "[darkgray]";
                 String label = resolveFilterLabel(filter, local);
                 f.button(Text.raw(color + label + "[]"), "action:filter:" + filter.name(),
-                        b -> b.style(style).layout(l -> l.height(28f).padRight(4f)));
+                        b -> b.style(style).layout(l -> l.height(28f).padRight(4f).padBottom(2f)));
             }
         })).row();
     }
@@ -541,8 +518,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         };
     }
 
-    private void renderCardList(Ui.TableBuilder l, AuditHistoryModel model, UiMetrics metrics, Localization local) {
-        l.layout(lout -> lout.width(metrics.contentWidth()).padBottom(4f));
+    private void renderCardList(Ui.TableBuilder l, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
+        l.layout(lout -> lout.growX().padBottom(4f));
 
         List<AuditRecordSummary> filtered = model.records().stream()
                 .filter(r -> model.actionFilter().matches(r.action()))
@@ -552,7 +529,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             l.add(Ui.table(empty -> {
                 empty.background("button");
                 empty.margin(14f);
-                empty.layout(lay -> lay.width(metrics.cardWidth()).height(140f).align("center"));
+                empty.layout(lay -> lay.growX().height(140f).align("center"));
                 String emptyMsg = model.mode() == AuditViewMode.TARGET
                         ? (local != null ? local.t("audit-menu-history-empty") : "No audit entries found for this player yet.")
                         : (local != null ? local.t("audit-menu-actions-empty") : "No audit actions found for this player yet.");
@@ -563,7 +540,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         }
 
         l.pane(scroll -> {
-            scroll.layout(p -> p.width(metrics.contentWidth()).maxHeight(metrics.paneMaxHeight()));
+            scroll.layout(p -> p.growX().growY().maxHeight(metrics.maxBodyHeight()));
             scroll.table(list -> {
                 list.layout(lay -> lay.growX());
                 for (var item : filtered) {
@@ -573,21 +550,21 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         });
     }
 
-    private void renderAuditCard(Ui.TableBuilder list, AuditRecordSummary item, AuditHistoryModel model, UiMetrics metrics, Localization local) {
+    private void renderAuditCard(Ui.TableBuilder list, AuditRecordSummary item, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
         String color = actionColor(item.action());
         char icon = actionIcon(item.action());
 
         list.add(Ui.table(card -> {
             card.background("button");
-            card.margin(model.isMobile() ? 6f : 8f);
-            card.layout(l -> l.width(metrics.cardWidth()).padBottom(4f));
+            card.margin(8f);
+            card.layout(l -> l.growX().padBottom(4f));
 
             // Left vertical severity accent stripe
             card.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(color));
 
             // Card Body
             card.add(Ui.table(body -> {
-                body.layout(l -> l.width(metrics.cardContentWidth()).align("left"));
+                body.layout(l -> l.growX().align("left"));
 
                 // Row 1: Action Badge + Subject + Timestamp + Active Status
                 body.add(Ui.table(r1 -> {
@@ -595,8 +572,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                     String actionName = formatActionName(item.action(), local);
                     String badge = "[" + color + "]" + icon + " " + actionName + "[]";
                     String subject = model.mode() == AuditViewMode.TARGET
-                            ? "[gray]by[] [white]" + escapeMarkup(item.actorName()) + "[]"
-                            : "[gray]on[] [white]" + escapeMarkup(item.targetName()) + "[]";
+                            ? "[gray]by[] [white]" + escapeMarkup(metrics.truncate(item.actorName())) + "[]"
+                            : "[gray]on[] [white]" + escapeMarkup(metrics.truncate(item.targetName())) + "[]";
                     String time = "[darkgray]• " + formatTimestamp(item.createdAtEpochMs()) + "[]";
                     String status = formatStatusPill(item, local);
 
@@ -607,7 +584,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 })).row();
 
                 // Row 2: Reason Excerpt
-                String reasonExcerpt = summarizeReason(item.reason(), metrics.maxReasonLength(), local);
+                String reasonExcerpt = summarizeReason(item.reason(), metrics, local);
                 body.label(Text.raw("[lightgray]" + escapeMarkup(reasonExcerpt) + "[]"),
                         l -> l.align("left").growX().padTop(2f).padBottom(3f)).row();
 
@@ -625,8 +602,8 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         })).row();
     }
 
-    private void renderDetailsView(Ui.TableBuilder d, AuditHistoryModel model, UiMetrics metrics, Localization local) {
-        d.layout(l -> l.width(metrics.contentWidth()).padBottom(4f));
+    private void renderDetailsView(Ui.TableBuilder d, AuditHistoryModel model, DialogMetrics metrics, Localization local) {
+        d.layout(l -> l.growX().padBottom(4f));
         AuditRecord rec = model.inspectedRecord();
         if (rec == null) {
             d.label(Text.raw("[scarlet]Record details unavailable.[]")).row();
@@ -639,7 +616,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         d.add(Ui.table(card -> {
             card.background("button");
             card.margin(10f);
-            card.layout(l -> l.width(metrics.cardWidth()).padBottom(6f));
+            card.layout(l -> l.growX().padBottom(6f));
 
             // Section 1: Header & Status
             card.add(Ui.table(top -> {
@@ -709,22 +686,23 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         // Details Navigation Footer
         d.add(Ui.table(foot -> {
-            foot.layout(l -> l.width(metrics.cardWidth()).padTop(4f));
+            foot.layout(l -> l.growX().padTop(4f));
             String backText = local != null ? local.t("audit-menu-btn-back") : "Back to History";
             foot.button(Text.raw("[accent]" + Iconc.left + " " + backText + "[]"), "action:back_to_list",
                     b -> b.style("default").layout(l -> l.growX().height(36f)));
         })).row();
     }
 
-    private void renderPagination(Ui.TableBuilder p, AuditHistoryModel model, UiMetrics metrics, Localization local) {
-        p.layout(l -> l.width(metrics.contentWidth()).padTop(4f));
+    private void renderPagination(Ui.TableBuilder p, AuditHistoryModel model, Localization local) {
+        p.layout(l -> l.growX().padTop(4f));
 
         // Prev Button
         boolean hasPrev = !model.cursorBackStack().isEmpty();
         String prevStyle = hasPrev ? "default" : "cleart";
         String prevText = local != null ? local.t("previous") : "Prev";
         String prevLabel = (hasPrev ? "[accent]" : "[gray]") + Iconc.left + " " + prevText + "[]";
-        p.button(Text.raw(prevLabel), "action:page:prev", b -> b.style(prevStyle).layout(l -> l.width(100f).height(32f).padRight(8f)));
+        // The page buttons share the leftover width, so the bar fits whatever it is given
+        p.button(Text.raw(prevLabel), "action:page:prev", b -> b.style(prevStyle).layout(l -> l.growX().height(32f).padRight(8f)));
 
         // Page Indicator
         p.label(Text.raw("[white]Page " + model.pageIndex() + "[]"), l -> l.align("center").growX());
@@ -734,7 +712,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         String nextStyle = hasNext ? "default" : "cleart";
         String nextText = local != null ? local.t("next") : "Next";
         String nextLabel = (hasNext ? "[accent]" : "[gray]") + nextText + " " + Iconc.right + "[]";
-        p.button(Text.raw(nextLabel), "action:page:next", b -> b.style(nextStyle).layout(l -> l.width(100f).height(32f).padLeft(8f)));
+        p.button(Text.raw(nextLabel), "action:page:next", b -> b.style(nextStyle).layout(l -> l.growX().height(32f).padLeft(8f)));
 
         // Refresh Button
         p.button(Text.raw("[gray]" + Iconc.refresh + "[]"), "action:refresh",
@@ -743,7 +721,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         // Return to Profile / Back Button
         String backBtnText = local != null ? local.t("back") : "Back";
         p.button(Text.raw("[accent]" + Iconc.left + " " + backBtnText + "[]"), "action:back",
-                b -> b.style("default").layout(l -> l.height(32f).padLeft(6f)));
+                b -> b.style("default").layout(l -> l.growX().height(32f).padLeft(6f)));
     }
 
     // --- Helper Formatters ---
@@ -823,12 +801,11 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         return "[darkgray]Expires: " + DATE_TIME_FORMAT.format(item.expiresAt()) + "[]";
     }
 
-    private static String summarizeReason(String reason, int maxLen, Localization local) {
+    private static String summarizeReason(String reason, DialogMetrics metrics, Localization local) {
         if (reason == null || reason.isBlank()) {
             return local != null ? local.t("audit-menu-reason-unspecified") : "Not specified";
         }
-        String clean = reason.replace('\n', ' ').trim();
-        return truncate(clean, maxLen);
+        return metrics.truncateReason(reason.trim());
     }
 
     private static String formatTimestamp(long millis) {

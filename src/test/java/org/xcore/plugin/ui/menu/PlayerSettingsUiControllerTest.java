@@ -95,7 +95,7 @@ class PlayerSettingsUiControllerTest {
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 740");
+        assertThat(dsl).contains("maxWidth: 760");
         assertThat(dsl).contains("maxHeight: 460");
 
         // Tabs
@@ -113,8 +113,8 @@ class PlayerSettingsUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles Mobile responsive layout with 680 width and 420 maxHeight")
-    void render_compilesMobileLayout() {
+    @DisplayName("render emits the same caps for a mobile client instead of a narrower guess")
+    void render_compilesSameCapsForMobileClient() {
         Session session = createTestSession("uuid-1", true);
         PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
         PlayerSettingsUiController controller = new PlayerSettingsUiController(null, null, session, session.data);
@@ -123,9 +123,11 @@ class PlayerSettingsUiControllerTest {
         VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
         String dsl = UiDslWriter.write(compiler.compile(root));
 
+        // A mobile flag on the session must not change the tree: the client sizes itself.
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 680");
-        assertThat(dsl).contains("maxHeight: 420");
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).contains("maxHeight: 460");
+        assertThat(dsl).doesNotContain("width: 520");
     }
 
     @Test

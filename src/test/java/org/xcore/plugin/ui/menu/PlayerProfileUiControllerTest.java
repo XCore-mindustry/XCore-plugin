@@ -100,7 +100,6 @@ class PlayerProfileUiControllerTest {
         assertThat(model.hexedPoints()).isEqualTo(15);
         assertThat(model.hexedRank()).isEqualTo(HexedRanks.HexedRank.advanced);
         assertThat(model.tab()).isEqualTo(PlayerProfileUiController.Tab.OVERVIEW);
-        assertThat(model.isMobile()).isFalse();
         assertThat(model.isSelf()).isTrue();
     }
 

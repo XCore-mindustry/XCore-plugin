@@ -99,19 +99,19 @@ class HelpUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles list view with 740 width desktop metrics, category tabs, and command cards")
+    @DisplayName("render compiles list view with client-resolved caps, category tabs, and command cards")
     void render_compilesListViewDesktop() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null, false);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
 
         VNode root = controller.render(model);
         VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 740");
-        assertThat(dsl).contains("maxHeight: 480");
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).contains("maxHeight: 460");
 
         // Header and tabs
         assertThat(dsl).contains("help-ui-title");
@@ -130,20 +130,27 @@ class HelpUiControllerTest {
     }
 
     @Test
-    @DisplayName("render compiles responsive mobile layout when isMobile is true")
-    void render_compilesMobileLayout() {
+    @DisplayName("render emits caps and native orientation conditions instead of a device guess")
+    void render_compilesResponsiveCaps() {
         Session session = createTestSession(true);
         HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null, true);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
 
         VNode root = controller.render(model);
         VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
         String dsl = UiDslWriter.write(compiler.compile(root));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("width: 680");
-        assertThat(dsl).contains("maxHeight: 440");
-        assertThat(dsl).contains("size: 32");
+        // the dialog fills the screen and stops at the cap; it never pins a width a phone may lack
+        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).doesNotContain("width: 520");
+        // the body takes the leftover height instead of a guessed per-device value
+        assertThat(dsl).contains("maxHeight: 460");
+        // both header arrangements ship, each gated by a condition the client evaluates
+        assertThat(dsl).contains("condition: portrait");
+        assertThat(dsl).contains("condition: landscape");
+        // tabs wrap rather than assuming a column count
+        assertThat(dsl).contains("wrap: true");
         assertThat(dsl).contains("action:cmd:hub");
     }
 
@@ -156,7 +163,7 @@ class HelpUiControllerTest {
         List<HelpCommandItem> regularOnly = sampleCommands().stream()
                 .filter(c -> c.category() != HelpCategory.ADMIN)
                 .toList();
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, regularOnly, null, false);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, regularOnly, null);
 
         VNode root = controller.render(model);
         VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
@@ -181,7 +188,7 @@ class HelpUiControllerTest {
     void selectCategory_updatesCategoryAndRerenders() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null, false);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
 
         ControllerContext ctx = mock(ControllerContext.class);
         UpdateResult<HelpUiModel> result = controller.update(
@@ -198,7 +205,7 @@ class HelpUiControllerTest {
     void selectCommand_switchesToDetailsModeAndRenders() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null, false);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
 
         ControllerContext ctx = mock(ControllerContext.class);
         UpdateResult<HelpUiModel> result = controller.update(
@@ -227,7 +234,7 @@ class HelpUiControllerTest {
     void backToList_switchesToListMode() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.DETAILS, HelpCategory.GAME, sampleCommands(), "hub", false);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.DETAILS, HelpCategory.GAME, sampleCommands(), "hub");
 
         ControllerContext ctx = mock(ControllerContext.class);
         UpdateResult<HelpUiModel> result = controller.update(
