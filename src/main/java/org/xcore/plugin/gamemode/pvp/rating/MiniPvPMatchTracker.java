@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -130,11 +131,14 @@ public class MiniPvPMatchTracker {
     ) {
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(ratingResolver, "ratingResolver");
+        return snapshot(winnerTeam, endedAt).ratedTeams(policy, ratingResolver::apply);
+    }
 
+    /** Freezes the match result: who played on which team, how it placed, and who is exempt. */
+    public MiniPvPMatchSnapshot snapshot(Team winnerTeam, long endedAt) {
         long matchDurationMs = Math.max(1000L, endedAt - startedAt);
-        long minPlayTimeMs = policy.minimumPlayTimeSeconds() * 1000L;
 
-        Map<Integer, List<TeamEloCalculator.RatedMember>> membersByTeam = new ConcurrentHashMap<>();
+        Map<Integer, List<MiniPvPMatchSnapshot.Member>> membersByTeam = new TreeMap<>();
 
         for (ParticipantInfo p : participants.values()) {
             if (p.teamId() == Team.derelict.id || p.teamId() == 255) continue;
@@ -166,23 +170,16 @@ public class MiniPvPMatchTracker {
                 effectiveParticipation = rawParticipation >= 0.5 ? rawParticipation : 0.0;
             }
 
-            int rating = Math.max(policy.minimumRating(), ratingResolver.apply(p.uuid()));
-            TeamEloCalculator.RatedMember member = new TeamEloCalculator.RatedMember(
-                    p.uuid(), rating, effectiveParticipation);
-
-            membersByTeam.computeIfAbsent(p.teamId(), k -> new ArrayList<>()).add(member);
+            membersByTeam.computeIfAbsent(p.teamId(), k -> new ArrayList<>())
+                    .add(new MiniPvPMatchSnapshot.Member(p.uuid(), effectiveParticipation));
         }
 
-        List<TeamEloCalculator.RatedTeam> ratedTeams = new ArrayList<>();
+        List<MiniPvPMatchSnapshot.TeamResult> teams = new ArrayList<>();
         for (var entry : membersByTeam.entrySet()) {
             int teamId = entry.getKey();
-            List<TeamEloCalculator.RatedMember> members = entry.getValue();
-            if (!members.isEmpty()) {
-                int placement = getTeamPlacement(teamId, winnerTeam);
-                ratedTeams.add(new TeamEloCalculator.RatedTeam(teamId, placement, members));
-            }
+            teams.add(new MiniPvPMatchSnapshot.TeamResult(teamId, getTeamPlacement(teamId, winnerTeam), entry.getValue()));
         }
 
-        return ratedTeams;
+        return new MiniPvPMatchSnapshot(matchId, startedAt, endedAt, teams);
     }
 }

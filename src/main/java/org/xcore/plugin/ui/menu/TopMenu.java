@@ -19,7 +19,6 @@ import org.xcore.plugin.ui.route.MenuRoute;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Optional;
 
 @Singleton
 public class TopMenu extends Menu {
@@ -71,7 +70,6 @@ public class TopMenu extends Menu {
         if (effective == null) {
             effective = new TopCategoryRegistry();
         }
-        effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.MINI_PVP, 20, topMenuService));
         effective.registerIfAbsent(new BuiltInTopCategoryProvider(TopCategory.PLAYTIME, 10, topMenuService));
         return effective;
     }
@@ -89,22 +87,11 @@ public class TopMenu extends Menu {
     }
 
     public void top(String uuid) {
-        Optional<String> customDefault = categoryRegistry.defaultCategoryId();
-        if (customDefault.isPresent()) {
-            topById(uuid, customDefault.get(), 1);
-        } else {
-            top(uuid, null, 1);
-        }
+        topById(uuid, null, 1);
     }
 
     public void top(String uuid, TopCategory category, int page) {
-        Session session = sessionService.get(uuid);
-        if (session == null || session.data == null) return;
-        session.clear();
-
-        TopCategory resolvedCategory = category == null ? topMenuService.resolveDefaultCategory() : category;
-        String catId = resolvedCategory != null ? resolvedCategory.name() : "MINI_PVP";
-        openTopUi(session, catId, page, null, null);
+        topById(uuid, category != null ? category.name() : null, page);
     }
 
     public void topById(String uuid, String categoryId, int page) {
@@ -114,8 +101,9 @@ public class TopMenu extends Menu {
 
         String resolvedId = categoryId;
         if (resolvedId == null || resolvedId.isBlank()) {
-            var defaultProvider = categoryRegistry.resolveDefault(null);
-            resolvedId = defaultProvider.map(TopCategoryProvider::id).orElse("MINI_PVP");
+            resolvedId = categoryRegistry.resolveDefault(TopCategory.PLAYTIME.name())
+                    .map(TopCategoryProvider::id)
+                    .orElse(TopCategory.PLAYTIME.name());
         }
 
         openTopUi(session, resolvedId, page, null, null);

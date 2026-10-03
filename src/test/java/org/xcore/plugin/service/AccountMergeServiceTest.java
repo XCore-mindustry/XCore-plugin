@@ -19,6 +19,7 @@ import org.xcore.plugin.database.repository.MuteDataRepository;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
 import org.xcore.plugin.model.*;
+import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.session.SessionService;
 import org.xcore.protocol.generated.messages.server.ServerMessages.PlayerDataCacheReloadCommandV1;
@@ -43,6 +44,7 @@ class AccountMergeServiceTest {
     private NetworkService networkService;
     private FindService findService;
     private TopMenuCacheService topMenuCacheService;
+    private LadderService ladderService;
     private TomlXcoreConfig config;
 
     private AccountMergeService service;
@@ -59,6 +61,7 @@ class AccountMergeServiceTest {
         networkService = mock(NetworkService.class);
         findService = mock(FindService.class);
         topMenuCacheService = mock(TopMenuCacheService.class);
+        ladderService = mock(LadderService.class);
         config = new TomlXcoreConfig();
         config.server.name = "test-server";
 
@@ -77,6 +80,7 @@ class AccountMergeServiceTest {
                 networkService,
                 findService,
                 topMenuCacheService,
+                ladderService,
                 config
         );
     }
@@ -147,6 +151,32 @@ class AccountMergeServiceTest {
         // Verify cluster broadcast
         verify(networkService).post(any(PlayerDataCacheReloadCommandV1.class));
         verify(topMenuCacheService).invalidateAllAsync();
+    }
+
+    @Test
+    @DisplayName("Merge folds ladder standings into the target and refreshes ladder caches")
+    void merge_validAccounts_mergesLadderStandings() {
+        PlayerData source = createPlayer(10, "uuid-source", "OldPlayer", 120, 1400, 15);
+        source.pvpMatches = 12;
+        source.pvpWins = 7;
+        PlayerData target = createPlayer(20, "uuid-target", "NewPlayer", 30, 1600, 10);
+        target.pvpMatches = 3;
+        target.pvpWins = 1;
+
+        when(findService.playerData("10")).thenReturn(source);
+        when(findService.playerData("20")).thenReturn(target);
+        when(ladderService.mergePlayer(any(), eq("uuid-source"), eq("uuid-target"))).thenReturn(2);
+
+        var result = service.merge(new AccountMergeService.MergeRequest("10", "20", "Lost old phone", null));
+
+        assertThat(result.success()).isTrue();
+        var order = inOrder(ladderService);
+        order.verify(ladderService).mergePlayer(any(), eq("uuid-source"), eq("uuid-target"));
+        order.verify(ladderService).reloadCaches();
+
+        ArgumentCaptor<AuditAppendCommand> auditCaptor = ArgumentCaptor.forClass(AuditAppendCommand.class);
+        verify(auditService).append(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().details().extra).containsEntry("standings_merged", "2");
     }
 
     @Test
@@ -245,6 +275,7 @@ class AccountMergeServiceTest {
                 networkService,
                 findService,
                 topMenuCacheService,
+                ladderService,
                 config
         );
 
@@ -293,6 +324,7 @@ class AccountMergeServiceTest {
                 networkService,
                 findService,
                 topMenuCacheService,
+                ladderService,
                 config
         );
 
@@ -347,6 +379,7 @@ class AccountMergeServiceTest {
                 networkService,
                 findService,
                 topMenuCacheService,
+                ladderService,
                 config
         );
 

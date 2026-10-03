@@ -107,7 +107,7 @@ class TopMenuTest {
     @DisplayName("top with default category opens reactive UI")
     void top_defaultCategory_opensReactiveUi() {
         registerMockProvider("MINI_PVP", 20);
-        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+        registry.setDefaultCategory("MINI_PVP");
 
         topMenu.top("viewer-1");
 

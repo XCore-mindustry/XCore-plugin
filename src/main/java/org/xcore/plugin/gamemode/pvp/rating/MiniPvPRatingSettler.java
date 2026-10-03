@@ -8,17 +8,22 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.integration.PlayerDisplayRefreshService;
 import org.xcore.plugin.integration.gamehistory.MatchHistoryRecord;
-import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.rating.RatingPolicy;
+import org.xcore.plugin.rating.ladder.Ladder;
+import org.xcore.plugin.rating.ladder.LadderStanding;
+import org.xcore.plugin.rating.ladder.MatchSettlement;
+import org.xcore.plugin.rating.ladder.SettlementResult;
+import org.xcore.plugin.rating.ladder.StandingMutation;
 import org.xcore.plugin.rating.math.TeamEloCalculator;
 import org.xcore.plugin.service.GameDataService;
-import org.xcore.plugin.service.TopMenuCacheService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.ospx.flubundle.Bundle.args;
@@ -28,11 +33,11 @@ public class MiniPvPRatingSettler {
 
     private final MiniPvPMatchTracker matchTracker;
     private final TeamEloCalculator calculator = new TeamEloCalculator();
-    private final RatingPolicy policy = RatingPolicy.teamEloV1();
+    private final Ladder ladder;
+    private final RatingPolicy policy;
+    private final LegacyPvpRatingMirror legacyMirror;
 
     private final SessionService sessionService;
-    private final PlayerDataRepository playerDataRepository;
-    private final TopMenuCacheService topMenuCacheService;
     private final PlayerDisplayRefreshService playerDisplayRefreshService;
     private final GameDataService gameDataService;
     private final Async async;
@@ -42,17 +47,18 @@ public class MiniPvPRatingSettler {
     @Inject
     public MiniPvPRatingSettler(
             MiniPvPMatchTracker matchTracker,
+            MiniPvPLadder miniPvPLadder,
             SessionService sessionService,
             PlayerDataRepository playerDataRepository,
-            TopMenuCacheService topMenuCacheService,
             PlayerDisplayRefreshService playerDisplayRefreshService,
             GameDataService gameDataService,
             Async async
     ) {
         this.matchTracker = matchTracker;
+        this.ladder = miniPvPLadder.ladder();
+        this.policy = miniPvPLadder.policy();
+        this.legacyMirror = new LegacyPvpRatingMirror(playerDataRepository);
         this.sessionService = sessionService;
-        this.playerDataRepository = playerDataRepository;
-        this.topMenuCacheService = topMenuCacheService;
         this.playerDisplayRefreshService = playerDisplayRefreshService;
         this.gameDataService = gameDataService;
         this.async = async;
@@ -66,99 +72,90 @@ public class MiniPvPRatingSettler {
         return settled.get();
     }
 
-    public boolean settle(Team winnerTeam) {
+    /**
+     * Settles the finished match once. Called on the game thread; storage work runs off it
+     * and players are notified back on it.
+     *
+     * @return completes with {@code true} when ratings were applied
+     */
+    public CompletableFuture<Boolean> settle(Team winnerTeam) {
         if (winnerTeam == null || winnerTeam == Team.derelict) {
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
         if (!settled.compareAndSet(false, true)) {
-            return false; // Already settled
+            return CompletableFuture.completedFuture(false); // Already settled
         }
 
-        long endedAt = System.currentTimeMillis();
-        long startedAt = matchTracker.startedAt();
-        long durationMs = endedAt - startedAt;
+        MiniPvPMatchSnapshot match = matchTracker.snapshot(winnerTeam, System.currentTimeMillis());
 
-        if (durationMs < policy.minimumPlayTimeSeconds() * 1000L) {
+        if (match.durationMs() < policy.minimumPlayTimeSeconds() * 1000L) {
             Log.info("MiniPvP match @ finished too quickly (@s); skipping rating settlement",
-                    matchTracker.matchId(), durationMs / 1000);
+                    match.matchId(), match.durationMs() / 1000);
             settled.set(false);
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
 
-        List<TeamEloCalculator.RatedTeam> ratedTeams = matchTracker.buildRatedTeams(
-                winnerTeam,
-                endedAt,
-                policy,
-                this::resolvePlayerRating
-        );
-
-        int totalPlayers = ratedTeams.stream().mapToInt(t -> t.members().size()).sum();
-        if (ratedTeams.size() < 2 || totalPlayers < policy.minimumPlayers()) {
+        if (match.teams().size() < 2 || match.totalPlayers() < policy.minimumPlayers()) {
             Log.info("MiniPvP match @ had insufficient players (@) or teams (@); unrated",
-                    matchTracker.matchId(), totalPlayers, ratedTeams.size());
+                    match.matchId(), match.totalPlayers(), match.teams().size());
             settled.set(false);
-            return false;
+            return CompletableFuture.completedFuture(false);
         }
 
-        TeamEloCalculator.TeamRatingCalculation calculation;
-        try {
-            calculation = calculator.calculate(ratedTeams, policy);
-        } catch (Exception e) {
-            Log.err("Failed to calculate MiniPvP team ratings: @", e.getMessage());
-            settled.set(false);
-            return false;
+        // Sessions belong to the game thread, so names are read before leaving it.
+        Map<String, String> names = new HashMap<>();
+        for (String uuid : match.playerUuids()) {
+            names.put(uuid, resolvePlayerName(uuid));
         }
 
-        List<MatchHistoryRecord.MatchParticipantRecord> historyParticipants = new ArrayList<>();
-
-        for (TeamEloCalculator.PlayerRatingDelta delta : calculation.deltas()) {
-            boolean isWinner = (delta.placement() == 1);
-            boolean playedToEnd = (delta.participation() >= 0.5);
-
-            historyParticipants.add(new MatchHistoryRecord.MatchParticipantRecord(
-                    delta.uuid(),
-                    resolvePlayerName(delta.uuid()),
-                    delta.placement(),
-                    isWinner,
-                    playedToEnd
-            ));
-
-            applyRatingDelta(delta, isWinner);
-        }
-
-        recordMatchHistory(winnerTeam, historyParticipants, startedAt, endedAt);
-
-        if (topMenuCacheService != null) {
-            topMenuCacheService.invalidateAllAsync();
-        }
-        if (playerDisplayRefreshService != null) {
-            playerDisplayRefreshService.refreshAll();
-        }
-
-        return true;
+        CompletableFuture<Boolean> applied = new CompletableFuture<>();
+        async.supply(() -> settleMatch(match, names)).thenMain((settlement, error) -> {
+            if (error != null) {
+                Log.err("Failed to settle MiniPvP match " + match.matchId(), error);
+                settled.set(false);
+                applied.complete(false);
+                return;
+            }
+            if (settlement.result().applied()) {
+                announce(settlement);
+            }
+            applied.complete(settlement.result().applied());
+        });
+        return applied;
     }
 
-    private void applyRatingDelta(TeamEloCalculator.PlayerRatingDelta delta, boolean isWinner) {
-        String uuid = delta.uuid();
-        int newRating = delta.newRating();
+    private Settlement settleMatch(MiniPvPMatchSnapshot match, Map<String, String> names) {
+        var calculation = calculator.calculate(match.ratedTeams(policy, ladder::rating), policy);
 
-        Session session = sessionService.get(uuid);
-        if (session != null && session.data != null) {
-            session.data.pvpRating = newRating;
-            session.data.pvpMatches++;
-            if (isWinner) {
-                session.data.pvpWins++;
+        List<StandingMutation> mutations = calculation.deltas().stream()
+                .map(delta -> new StandingMutation(delta.uuid(), delta.delta(), delta.placement() == 1))
+                .toList();
+        SettlementResult result = ladder.settle(MatchSettlement.rated(
+                match.matchId(), calculation.algorithmVersion(), match.resultHash(), mutations));
+
+        if (result.claimed()) {
+            recordMatchHistory(match, calculation.deltas(), names);
+        }
+        if (result.applied()) {
+            legacyMirror.persist(result.standings().values());
+        }
+        return new Settlement(result, calculation.deltas());
+    }
+
+    private void announce(Settlement settlement) {
+        for (TeamEloCalculator.PlayerRatingDelta delta : settlement.deltas()) {
+            Session session = sessionService.get(delta.uuid());
+            if (session == null || session.data == null) continue;
+
+            LadderStanding standing = settlement.result().standings().get(delta.uuid());
+            if (standing != null) {
+                LegacyPvpRatingMirror.apply(session.data, standing);
             }
-
             notifyPlayer(session, delta);
         }
 
-        if (playerDataRepository != null && async != null) {
-            async.observe(playerDataRepository.updatePvpRatingAndStatsAsync(uuid, newRating, isWinner), (saved, err) -> {
-                if (err != null) {
-                    Log.warn("Failed to persist MiniPvP rating update for @: @", uuid, err.getMessage());
-                }
-            });
+        if (playerDisplayRefreshService != null) {
+            playerDisplayRefreshService.refreshAll();
         }
     }
 
@@ -199,12 +196,20 @@ public class MiniPvPRatingSettler {
     }
 
     private void recordMatchHistory(
-            Team winnerTeam,
-            List<MatchHistoryRecord.MatchParticipantRecord> participants,
-            long startedAt,
-            long endedAt
+            MiniPvPMatchSnapshot match,
+            List<TeamEloCalculator.PlayerRatingDelta> deltas,
+            Map<String, String> names
     ) {
         if (gameDataService == null) return;
+
+        List<MatchHistoryRecord.MatchParticipantRecord> participants = deltas.stream()
+                .map(delta -> new MatchHistoryRecord.MatchParticipantRecord(
+                        delta.uuid(),
+                        names.getOrDefault(delta.uuid(), "Unknown"),
+                        delta.placement(),
+                        delta.placement() == 1,
+                        delta.participation() >= 0.5))
+                .toList();
 
         String winnerUuid = participants.stream()
                 .filter(MatchHistoryRecord.MatchParticipantRecord::winner)
@@ -213,11 +218,11 @@ public class MiniPvPRatingSettler {
                 .orElse(null);
 
         MatchHistoryRecord record = new MatchHistoryRecord(
-                matchTracker.matchId(),
+                match.matchId(),
                 "minipvp",
                 "1.0",
-                startedAt,
-                endedAt,
+                match.startedAt(),
+                match.endedAt(),
                 "NATURAL",
                 winnerUuid,
                 participants,
@@ -227,27 +232,14 @@ public class MiniPvPRatingSettler {
         gameDataService.recordMatch(record);
     }
 
-    private int resolvePlayerRating(String uuid) {
-        Session session = sessionService.get(uuid);
-        if (session != null && session.data != null && session.data.pvpRating > 0) {
-            return session.data.pvpRating;
-        }
-
-        if (playerDataRepository != null) {
-            PlayerData data = playerDataRepository.findByUuid(uuid);
-            if (data != null && data.pvpRating > 0) {
-                return data.pvpRating;
-            }
-        }
-
-        return policy.defaultRating();
-    }
-
     private String resolvePlayerName(String uuid) {
         Session session = sessionService.get(uuid);
         if (session != null && session.data != null && session.data.nickname != null) {
             return session.data.nickname;
         }
         return "Unknown";
+    }
+
+    private record Settlement(SettlementResult result, List<TeamEloCalculator.PlayerRatingDelta> deltas) {
     }
 }

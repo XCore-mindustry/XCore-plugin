@@ -10,6 +10,7 @@ import mindustry.server.ServerControl;
 import org.xcore.plugin.config.TomlXcoreConfig;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.PlayerDisplayService;
@@ -39,6 +40,7 @@ public class ModerationTransportHandler {
     private final TomlXcoreConfig config;
     private final PlayerDisplayService playerDisplayService;
     private final DiscordAdminAccessService discordAdminAccessService;
+    private final LadderService ladderService;
     private final Async async;
 
     @Inject
@@ -47,12 +49,14 @@ public class ModerationTransportHandler {
                                       TomlXcoreConfig config,
                                       PlayerDisplayService playerDisplayService,
                                       DiscordAdminAccessService discordAdminAccessService,
+                                      LadderService ladderService,
                                       Async async) {
         this.network = network;
         this.sessionService = sessionService;
         this.config = config;
         this.playerDisplayService = playerDisplayService;
         this.discordAdminAccessService = discordAdminAccessService;
+        this.ladderService = ladderService;
         this.async = async;
     }
 
@@ -148,7 +152,11 @@ public class ModerationTransportHandler {
 
         // The cache rebuild walks Groups.player and queries MongoDB per player, so it
         // takes its own snapshot on the game thread and installs the result back onto it.
-        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> sessionService.reloadCacheAsync(async));
+        // Standings are plugin-owned data, so they are re-read right here on the subscriber thread.
+        network.subscribe(PlayerDataCacheReloadCommandV1.class, _ -> {
+            ladderService.reloadCaches();
+            sessionService.reloadCacheAsync(async);
+        });
 
         // handleCommandString runs game logic, including player and world mutation.
         network.subscribe(ServerCommandExecuteCommandV1.class, e -> {

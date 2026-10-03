@@ -162,7 +162,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         List<CategoryTab> tabs = resolveCategoryTabs(local);
         String initialCat = categoryId;
         if (initialCat == null || initialCat.isBlank()) {
-            initialCat = tabs.isEmpty() ? "MINI_PVP" : tabs.getFirst().id();
+            initialCat = tabs.isEmpty() ? "PLAYTIME" : tabs.getFirst().id();
         }
 
         Deque<String> stack = backStack != null ? new ArrayDeque<>(backStack) : new ArrayDeque<>();
@@ -177,10 +177,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private List<CategoryTab> resolveCategoryTabs(Localization local) {
         if (categoryRegistry == null) {
-            return List.of(
-                    new CategoryTab("MINI_PVP", "MiniPvP", String.valueOf(Iconc.modePvp), 20),
-                    new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10)
-            );
+            return List.of(new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10));
         }
         return categoryRegistry.all().stream()
                 .sorted(Comparator.comparingInt(TopCategoryProvider::priority).reversed())
@@ -231,7 +228,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
         String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
         return switch (catUpper) {
-            case "MINI_PVP" -> nf.format(session.data.pvpRating);
             case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(session.data.totalPlayTime, local) : session.data.totalPlayTime + "m";
             case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(session.data.hexedPoints))) : session.data.hexedPoints + " pts";
             default -> null;
@@ -721,7 +717,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
             String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
             return switch (catUpper) {
-                case "MINI_PVP" -> nf.format(val);
                 case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(val, local) : PlayerProfileUiController.formatDuration((int) val, local);
                 case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(val))) : nf.format(val) + " pts";
                 default -> {

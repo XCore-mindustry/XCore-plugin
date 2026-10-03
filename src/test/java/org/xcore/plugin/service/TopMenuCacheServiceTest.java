@@ -72,10 +72,10 @@ class TopMenuCacheServiceTest {
         LeaderboardCursor nextCursor = new LeaderboardCursor(1499, 0, 11);
         LeaderboardSlice<PlayerData> slice = new LeaderboardSlice<>(List.of(player), true, nextCursor);
 
-        assertThat(service.getTopSlice(1L, TopCategory.MINI_PVP, 10, currentCursor)).isNull();
-        assertThat(service.putTopSlice(1L, TopCategory.MINI_PVP, 10, currentCursor, slice)).isTrue();
+        assertThat(service.getTopSlice(1L, TopCategory.PLAYTIME, 10, currentCursor)).isNull();
+        assertThat(service.putTopSlice(1L, TopCategory.PLAYTIME, 10, currentCursor, slice)).isTrue();
 
-        LeaderboardSlice<PlayerData> restored = service.getTopSlice(1L, TopCategory.MINI_PVP, 10, currentCursor);
+        LeaderboardSlice<PlayerData> restored = service.getTopSlice(1L, TopCategory.PLAYTIME, 10, currentCursor);
         assertThat(restored).isNotNull();
         assertThat(restored.items()).hasSize(1);
         assertThat(restored.items().getFirst().uuid).isEqualTo("uuid-2");
