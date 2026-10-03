@@ -16,6 +16,11 @@ import org.xcore.ui.VNode;
  * <p>Events are usually records parsed from {@code MenuResult}: a button click
  * arrives as {@code result}, a form submit carries the field map.
  *
+ * <p>The view must not branch on the player's device. The server cannot know it —
+ * {@code ConnectPacket} carries only {@code mobile} — so widths are expressed as caps
+ * ({@code growX() + maxWidth}) that the client resolves, and structural differences go through
+ * {@link org.xcore.ui.responsive.Responsive}, which emits native conditions.
+ *
  * @param <Model> immutable state record
  * @param <Event> sealed event type
  */

@@ -17,7 +17,8 @@ public record UiLayout(
         Boolean uniform, Boolean uniformX, Boolean uniformY,
         Integer colspan,
         String align, String color,
-        Boolean disabled
+        Boolean disabled,
+        String condition
 ) {
 
     public static final UiLayout DEFAULT = new UiLayout(
@@ -28,7 +29,7 @@ public record UiLayout(
             null, null, null,
             null, null, null,
             null, null, null,
-            null, null, null, null);
+            null, null, null, null, null);
 
     public UiLayout {
         validate("width", width, 0f, false);
@@ -76,6 +77,7 @@ public record UiLayout(
         private Integer colspan;
         private String align, color;
         private Boolean disabled;
+        private String condition;
 
         Builder() {
         }
@@ -93,6 +95,7 @@ public record UiLayout(
             this.uniform = from.uniform; this.uniformX = from.uniformX; this.uniformY = from.uniformY;
             this.colspan = from.colspan; this.align = from.align; this.color = from.color;
             this.disabled = from.disabled;
+            this.condition = from.condition;
         }
 
         public Builder width(float w) { this.width = w; return this; }
@@ -124,13 +127,17 @@ public record UiLayout(
         public Builder color(String hex) { this.color = hex; return this; }
         public Builder disabled() { this.disabled = true; return this; }
         public Builder disabled(boolean d) { this.disabled = d; return this; }
+        public Builder condition(String cond) { this.condition = cond; return this; }
+        public Builder when(String cond) { this.condition = cond; return this; }
+        public Builder whenPortrait() { this.condition = "portrait"; return this; }
+        public Builder whenLandscape() { this.condition = "landscape"; return this; }
 
         public UiLayout build() {
             return new UiLayout(width, height, minWidth, maxWidth, minHeight, maxHeight, size,
                     pad, padTop, padLeft, padBottom, padRight,
                     grow, growX, growY, fill, fillX, fillY,
                     expand, expandX, expandY, uniform, uniformX, uniformY,
-                    colspan, align, color, disabled);
+                    colspan, align, color, disabled, condition);
         }
 
         public UiLayout buildAndReturn() {

@@ -265,6 +265,7 @@ public final class VNodeCompiler {
         if (l.colspan() != null) builder.colspan(l.colspan());
         if (l.align() != null) builder.align(l.align());
         if (l.color() != null) builder.color(l.color());
+        if (l.condition() != null) builder.condition(l.condition());
         if (Boolean.TRUE.equals(l.disabled()) && !(builder instanceof UiBuilder.ContainerBuilder<?>)) {
             // container nodes cannot be disabled in v160; leaf specs handle this themselves
         }

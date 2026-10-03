@@ -228,3 +228,56 @@ When a player changes their language while a dialog is open:
 // Update the session's resolver; this automatically triggers a full re-render:
 session.updateResolver(newPlayerResolver);
 ```
+
+---
+
+## 7. Sizing, UI Scale, and the Limits of `DialogMetrics`
+
+`DialogMetrics` exists because a dialog needs an upper bound on width and body height. It is
+**cap metadata, not viewport metadata**: the server does not know the client's screen size, UI
+scale, or orientation, and it cannot measure them. Every number in `DialogMetrics` is sent to the
+client as a plain float and ends up as a raw value on an Arc `Cell`.
+
+That rawness is the important constraint, and it is not obvious from the DSL:
+
+```java
+// Mindustry UiTreeBuilder - these reach Cell unchanged, with no Scl.scl applied:
+case width     -> cell.width((Float)value);
+case height    -> cell.height((Float)value);
+case size      -> cell.size((Float)value);
+case maxWidth  -> cell.maxWidth((Float)value);
+case pad       -> cell.pad((Float)value);
+```
+
+Text, by contrast, *is* scaled: `Label` and `TextButton` render glyphs through `Scl.scl`. So on a
+client whose UI scale is raised above 100%, **text grows while every box we declared stays the
+same size**. Fixed button heights clip their own labels, fixed paddings look proportionally
+smaller, and a width cap holds less content in logical units than the same cap holds at 1x.
+
+### What this means in practice
+
+- Treat raw-pixel caps as tuned for a **100% UI scale**. XCore's menus are validated up to
+  **105%**.
+- Sizes that are meant to *contain scaled text* should be left to the text. Do not write
+  `size(32f)` on a button whose only content is a glyph, or `height(40f)` on a labelled button -
+  remove the constraint and let the button's own scaled padding derive the box. This is correct at
+  every UI scale.
+- Prefer `growX()` / `growY()` with a cap on the *dialog* over caps on individual cards. A card
+  that grows into its dialog adapts; a card with its own raw cap fights the text inside it.
+- Decorative chrome (separator rules, accent stripes) is fine at a fixed pixel value - it is
+  supposed to stay thin.
+
+### What cannot be fixed here
+
+There is no server-side workaround, because the scale is not sent to us. `ConnectPacket` carries
+no UI dimensions, no UI scale, and no scene size. The one scale-aware measurement the client
+exposes is a `condition` width, which is logical (`graphicsWidth / Scl.scl(1f)`).
+
+Gating a width cap on such a condition does work, and was tried: it emits the dialog body into both
+condition branches, so the whole subtree ships twice. On the `/help` list that doubled the payload
+for no measurable rendering benefit, so it was removed. Keeping it would also mean duplicating
+every card on every menu open, which is the wrong trade for a layout nicety.
+
+The real fix belongs upstream: `UiTreeBuilder` should pass dimension values through `Scl.scl`, the
+same way it already does for text. That is a small change in one method and would make every
+dimension in this DSL scale-aware at once.

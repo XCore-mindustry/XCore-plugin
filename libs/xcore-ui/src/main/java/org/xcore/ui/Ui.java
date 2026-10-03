@@ -27,6 +27,17 @@ public final class Ui {
     }
 
     // ------------------------------------------------------------------
+    // Responsive Scaffolds
+    // ------------------------------------------------------------------
+
+    /** Builds a dialog scaffold: sticky header, bounded scrolling body, sticky footer. */
+    public static VNode scaffold(org.xcore.ui.responsive.DialogMetrics metrics, Consumer<org.xcore.ui.responsive.DialogScaffold> consumer) {
+        org.xcore.ui.responsive.DialogScaffold scaffold = org.xcore.ui.responsive.DialogScaffold.create(metrics);
+        if (consumer != null) consumer.accept(scaffold);
+        return scaffold.build();
+    }
+
+    // ------------------------------------------------------------------
     // Containers
     // ------------------------------------------------------------------
 
@@ -183,6 +194,10 @@ public final class Ui {
 
         public TableBuilder button(Text text, String clicked, Consumer<ButtonSpec> spec) {
             return add(Ui.button(text, clicked, spec));
+        }
+
+        public TableBuilder button(Text text, String clicked) {
+            return button(text, clicked, b -> {});
         }
 
         public TableBuilder buttonTable(String clicked, Consumer<ButtonTableBuilder> consumer) {
