@@ -97,7 +97,8 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `/observer` | Enter spectator mode. |
 | `/surrender` | Surrender in Hexed and enter spectator mode. |
 | `/lb` | Toggle in-game leaderboard. |
-| `/top` | Open paginated rankings menu. |
+| `/top` | Open paginated rankings menu; rating categories have a season switcher. |
+| `/season` `/seasons` | Show the current rating season, time left, your standing and the previous season's winners. |
 | `/t <message>` | Send a team chat message. |
 | `/g <message>` | Send a global cross-server chat message. |
 | `/discord` | Open Discord linking menu. |

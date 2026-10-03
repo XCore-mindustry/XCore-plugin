@@ -158,6 +158,46 @@ class PlayerMenuTest {
     }
 
     @Test
+    @DisplayName("the profile fills in stats and mode sections once they have been read off the game thread")
+    void player_loadsModeSections() {
+        org.xcore.plugin.integration.profile.ProfileSectionRegistry sections =
+                new org.xcore.plugin.integration.profile.ProfileSectionRegistry();
+        sections.register(new org.xcore.plugin.integration.profile.ProfileSectionProvider() {
+            @Override
+            public String id() {
+                return "duel";
+            }
+
+            @Override
+            public java.util.Optional<org.xcore.plugin.integration.profile.ProfileSectionView> load(PlayerData target) {
+                return java.util.Optional.of(local -> new org.xcore.plugin.integration.profile.ProfileSection(
+                        "Duel for " + target.uuid, java.util.List.of(), java.util.List.of()));
+            }
+        });
+        // The test player is not in the world, which forPlayer requires before it calls back.
+        org.xcore.plugin.concurrent.Async async = mock(org.xcore.plugin.concurrent.Async.class);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            java.util.concurrent.Callable<?> task = invocation.getArgument(1);
+            java.util.function.BiConsumer<Player, Object> callback = invocation.getArgument(2);
+            callback.accept(invocation.getArgument(0), task.call());
+            return null;
+        }).when(async).forPlayer(any(), any(), any());
+        PlayerMenu menu = new PlayerMenu(
+                new TomlSecretsConfig(), sessionService, gameDataRepository, playerDataRepository, bundle,
+                playerDisplayService, profileSettings, auditHistoryMenu, menuService, async, sections);
+        when(playerDataRepository.findTopRank(any(), any())).thenReturn(7);
+
+        menu.player("viewer-1", targetData);
+
+        var model = (org.xcore.plugin.ui.menu.PlayerProfileUiController.ProfileModel) session.activeUiSession().model();
+        assertThat(model.isStatsLoading()).isFalse();
+        assertThat(model.hexedTopRank()).isEqualTo(7);
+        assertThat(model.stats()).isNotNull();
+        assertThat(model.sections()).hasSize(1);
+        assertThat(model.sections().getFirst().render(null).headline()).isEqualTo("Duel for " + targetData.uuid);
+    }
+
+    @Test
     @DisplayName("players opens reactive profile UI on Players tab")
     void players_opensReactivePlayersTab() {
         playerMenu.players("viewer-1", 1);

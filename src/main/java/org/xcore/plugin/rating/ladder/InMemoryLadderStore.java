@@ -26,7 +26,6 @@ public final class InMemoryLadderStore implements LadderStore {
     private final Map<Key, LadderStanding> standings = new HashMap<>();
     private final Map<Key, Set<String>> appliedOperations = new HashMap<>();
     private final Map<Key, StandingSeed> seeds = new HashMap<>();
-    private final Map<Key, Integer> finalRanks = new HashMap<>();
 
     @Override
     public synchronized Optional<LadderStanding> find(String ladderId, int season, String uuid) {
@@ -34,11 +33,13 @@ public final class InMemoryLadderStore implements LadderStore {
     }
 
     @Override
-    public synchronized Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid) {
+    public synchronized List<LadderStanding> history(String ladderId, int season, String uuid, int limit) {
         return standings.values().stream()
                 .filter(standing -> standing.ladderId().equals(ladderId) && standing.uuid().equals(uuid)
                         && standing.season() < season)
-                .max(Comparator.comparingInt(LadderStanding::season));
+                .sorted(Comparator.comparingInt(LadderStanding::season).reversed())
+                .limit(Math.max(1, limit))
+                .toList();
     }
 
     @Override
@@ -64,7 +65,8 @@ public final class InMemoryLadderStore implements LadderStore {
                 Math.max(current != null ? current.peakRating() : 0, rating),
                 (current != null ? current.matches() : 0) + 1,
                 (current != null ? current.wins() : 0) + (mutation.win() ? 1 : 0),
-                stats);
+                stats,
+                current != null ? current.finalRank() : null);
         standings.put(key, updated);
         return new ApplyResult(true, updated);
     }
@@ -113,7 +115,8 @@ public final class InMemoryLadderStore implements LadderStore {
     public synchronized int assignFinalRanks(String ladderId, int season) {
         List<LadderStanding> ordered = ordered(ladderId, season);
         for (int i = 0; i < ordered.size(); i++) {
-            finalRanks.put(new Key(ladderId, season, ordered.get(i).uuid()), i + 1);
+            LadderStanding standing = ordered.get(i);
+            standings.put(new Key(ladderId, season, standing.uuid()), standing.withFinalRank(i + 1));
         }
         return ordered.size();
     }
@@ -157,7 +160,8 @@ public final class InMemoryLadderStore implements LadderStore {
 
     /** The rank frozen by {@link #assignFinalRanks}, empty while the season is still open. */
     public synchronized OptionalInt finalRankOf(String ladderId, int season, String uuid) {
-        Integer rank = finalRanks.get(new Key(ladderId, season, uuid));
+        LadderStanding standing = standings.get(new Key(ladderId, season, uuid));
+        Integer rank = standing == null ? null : standing.finalRank();
         return rank == null ? OptionalInt.empty() : OptionalInt.of(rank);
     }
 

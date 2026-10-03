@@ -1,20 +1,17 @@
-package org.xcore.plugin.rating.ladder;
+package org.xcore.plugin.rating.view;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.xcore.plugin.database.repository.PlayerDataRepository;
-import org.xcore.plugin.integration.idempotency.InMemoryIdempotencyLedger;
 import org.xcore.plugin.integration.top.LeaderboardEntry;
 import org.xcore.plugin.integration.top.LeaderboardPage;
 import org.xcore.plugin.integration.top.LeaderboardPageRequest;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.integration.top.TopScope;
 import org.xcore.plugin.rating.RatingLeague;
-import org.xcore.plugin.rating.RatingPolicy;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -22,21 +19,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class LadderTopCategoryProviderTest {
-    private InMemoryLadderStore store;
-    private PlayerDataRepository players;
+    private RatingWorld world;
     private LadderTopCategoryProvider provider;
 
     @BeforeEach
     void setUp() {
-        store = new InMemoryLadderStore();
-        Ladder ladder = new LadderService(store, new InMemoryIdempotencyLedger())
-                .register(new LadderDefinition("duel", "top-menu-category-duel", RatingPolicy.teamEloV1()));
-        players = mock(PlayerDataRepository.class);
-        provider = new LadderTopCategoryProvider("DUEL", 20, ladder, players);
+        world = new RatingWorld();
+        provider = world.views.topCategory("DUEL", 20, world.ladder);
 
-        store.put(new LadderStanding("duel", 1, "u1", 1500, 1500, 10, 8, Map.of()));
-        store.put(new LadderStanding("duel", 1, "u2", 1200, 1250, 10, 5, Map.of()));
-        store.put(new LadderStanding("duel", 1, "u3", 900, 1000, 10, 2, Map.of()));
+        world.standing(1, "u1", 1500, 1500, 10, 8);
+        world.standing(1, "u2", 1200, 1250, 10, 5);
+        world.standing(1, "u3", 900, 1000, 10, 2);
     }
 
     private static PlayerData profile(String uuid, int pid, String nickname) {
@@ -60,7 +53,7 @@ class LadderTopCategoryProviderTest {
     @Test
     @DisplayName("loadPage ranks standings, joins profiles in one query and reports the viewer")
     void loadPage_firstPage() {
-        when(players.findByUuids(anyCollection()))
+        when(world.players.findByUuids(anyCollection()))
                 .thenReturn(List.of(profile("u1", 11, "Alpha"), profile("u2", 12, "Beta")));
 
         LeaderboardPage page = provider.loadPage(
@@ -82,7 +75,7 @@ class LadderTopCategoryProviderTest {
     @Test
     @DisplayName("loadPage continues from the cursor and keeps counting ranks")
     void loadPage_secondPage() {
-        when(players.findByUuids(anyCollection())).thenReturn(List.of());
+        when(world.players.findByUuids(anyCollection())).thenReturn(List.of());
         LeaderboardPage first = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 2, null, null));
 
         LeaderboardPage second = provider.loadPage(
@@ -98,12 +91,76 @@ class LadderTopCategoryProviderTest {
     @Test
     @DisplayName("a viewer without a rated match has no rank")
     void loadPage_unplacedViewer() {
-        when(players.findByUuids(anyCollection())).thenReturn(List.of());
+        when(world.players.findByUuids(anyCollection())).thenReturn(List.of());
 
         LeaderboardPage page = provider.loadPage(
                 new LeaderboardPageRequest("DUEL", 1, 10, null, profile("stranger", 99, "Stranger")));
 
         assertThat(page.selfRank()).isNull();
         assertThat(page.selfPrimaryValue()).isNull();
+    }
+
+    @Test
+    @DisplayName("a ladder in its first season offers no season switcher")
+    void scopes_firstSeason() {
+        assertThat(provider.scopes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("once a season is over the scopes list every season, the running one first")
+    void scopes_afterSeasonEnd() {
+        world.finishSeason();
+
+        List<TopScope> scopes = provider.scopes();
+
+        assertThat(scopes).extracting(TopScope::id).containsExactly("2", "1");
+        assertThat(scopes).extracting(TopScope::current).containsExactly(true, false);
+
+        Localization local = RatingWorld.echo();
+        assertThat(provider.formatScope(scopes.get(0), local))
+                .startsWith("top-menu-scope-current{")
+                .contains("season=season-title{number=2}");
+        assertThat(provider.formatScope(scopes.get(1), local))
+                .isEqualTo("top-menu-scope-past{from=03.10.2026, season=season-title{number=1}, to=03.01.2027}");
+    }
+
+    @Test
+    @DisplayName("a past season is read through its scope; without one the page is the running season")
+    void loadPage_pastSeason() {
+        world.finishSeason();
+        world.standing(2, "u2", 1100, 1100, 1, 1);
+        PlayerData viewer = profile("u3", 13, "Gamma");
+
+        LeaderboardPage past = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 10, null, viewer, "1"));
+        LeaderboardPage running = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 10, null, viewer));
+
+        assertThat(past.entries()).extracting(LeaderboardEntry::playerUuid).containsExactly("u1", "u2", "u3");
+        assertThat(past.entries()).extracting(LeaderboardEntry::primaryValue).containsExactly("1500", "1200", "900");
+        assertThat(past.totalEntries()).isEqualTo(3L);
+        assertThat(past.selfRank()).isEqualTo(3);
+        assertThat(past.selfPrimaryValue()).isEqualTo("900");
+
+        assertThat(running.entries()).extracting(LeaderboardEntry::playerUuid).containsExactly("u2");
+        assertThat(running.totalEntries()).isEqualTo(1L);
+        assertThat(running.selfRank()).isNull();
+    }
+
+    @Test
+    @DisplayName("a scope that names no season so far falls back to the running season")
+    void loadPage_unknownScope() {
+        world.finishSeason();
+        world.standing(2, "u2", 1100, 1100, 1, 1);
+
+        for (String scope : new String[]{"7", "0", "latest"}) {
+            LeaderboardPage page = provider.loadPage(new LeaderboardPageRequest("DUEL", 1, 10, null, null, scope));
+            assertThat(page.entries()).extracting(LeaderboardEntry::playerUuid).containsExactly("u2");
+        }
+    }
+
+    @Test
+    @DisplayName("ratings are written with the unit and digit grouping of the viewer's locale")
+    void formatValue() {
+        assertThat(provider.formatValue("1642", null)).isEqualTo("1,642 ELO");
+        assertThat(provider.formatValue("", null)).isEqualTo("-");
     }
 }

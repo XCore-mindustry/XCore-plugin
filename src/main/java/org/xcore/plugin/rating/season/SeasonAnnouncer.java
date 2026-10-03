@@ -16,6 +16,7 @@ import org.xcore.plugin.ui.menu.PlayerProfileUiController;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -70,6 +71,11 @@ public class SeasonAnnouncer implements SeasonObserver {
     /** Announces this ladder's seasons to the players of this server. */
     public void follow(LadderDefinition ladder) {
         followed.put(ladder.id(), ladder);
+    }
+
+    /** The ladders this server announces, i.e. the ones of the modes it hosts. */
+    public List<LadderDefinition> followed() {
+        return followed.values().stream().sorted(Comparator.comparing(LadderDefinition::id)).toList();
     }
 
     @Override

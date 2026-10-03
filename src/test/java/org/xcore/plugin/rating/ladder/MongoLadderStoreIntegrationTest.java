@@ -224,6 +224,27 @@ class MongoLadderStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("history lists earlier seasons of one player, most recent first, and carries the final rank")
+    void history_listsEarlierSeasons() {
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("p1", 100, true), 1000, 100);
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("p2", 200, true), 1000, 100);
+        store.applyOnce("duel", 2, "op-2", new StandingMutation("p1", 300, true), 1000, 100);
+        store.applyOnce("duel", 3, "op-3", new StandingMutation("p1", 50, true), 1000, 100);
+        store.applyOnce("duel", 4, "op-4", new StandingMutation("p1", 10, true), 1000, 100);
+        store.applyOnce("ffa", 1, "op-5", new StandingMutation("p1", 70, true), 1000, 100);
+        store.assignFinalRanks("duel", 1);
+
+        List<LadderStanding> history = store.history("duel", 4, "p1", 10);
+
+        assertThat(history).extracting(LadderStanding::season).containsExactly(3, 2, 1);
+        assertThat(history.getLast().finalRank()).isEqualTo(2);
+        assertThat(history.getFirst().finalRank()).isNull();
+        assertThat(store.history("duel", 4, "p1", 2)).extracting(LadderStanding::season).containsExactly(3, 2);
+        assertThat(store.history("duel", 1, "p1", 10)).isEmpty();
+        assertThat(store.history("duel", 4, "nobody", 10)).isEmpty();
+    }
+
+    @Test
     @DisplayName("final ranks follow the leaderboard order, and leaders skip players with too few matches")
     void finalRanks_andLeaders() {
         store.applyOnce("duel", 1, "op-1", new StandingMutation("b", 30, true), 1000, 100);

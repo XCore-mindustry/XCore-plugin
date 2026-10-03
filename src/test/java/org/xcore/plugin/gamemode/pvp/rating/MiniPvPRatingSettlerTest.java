@@ -1,5 +1,11 @@
 package org.xcore.plugin.gamemode.pvp.rating;
 
+import org.xcore.plugin.config.TomlSecretsConfig;
+import org.xcore.plugin.integration.profile.ProfileSectionRegistry;
+import org.xcore.plugin.rating.season.InMemorySeasonStore;
+import org.xcore.plugin.rating.season.SeasonResolver;
+import org.xcore.plugin.rating.season.SeasonSchedule;
+import org.xcore.plugin.rating.view.LadderViews;
 import mindustry.game.Team;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,9 +61,12 @@ class MiniPvPRatingSettlerTest {
 
         TomlXcoreConfig config = new TomlXcoreConfig();
         config.server.name = "mini-pvp";
+        SeasonSchedule schedule = SeasonSchedule.from(new TomlSecretsConfig().rating.seasons);
         MiniPvPLadder miniPvPLadder = new MiniPvPLadder(
                 new LadderService(store, new InMemoryIdempotencyLedger()),
-                new TopCategoryRegistry(), playerRepo, mock(SeasonAnnouncer.class), config);
+                new TopCategoryRegistry(), new ProfileSectionRegistry(),
+                new LadderViews(new InMemorySeasonStore(), new SeasonResolver(), schedule, playerRepo),
+                mock(SeasonAnnouncer.class), config);
         ladder = miniPvPLadder.ladder();
 
         settler = new MiniPvPRatingSettler(

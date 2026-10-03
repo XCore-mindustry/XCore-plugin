@@ -12,13 +12,15 @@ import java.util.Objects;
  * @param pageSize   number of entries requested per page
  * @param cursor     opaque string cursor token (null for first page)
  * @param viewerData viewing player's data (nullable, used to compute self rank)
+ * @param scopeId    one of the category's {@link TopScope}s, {@code null} for the current one
  */
 public record LeaderboardPageRequest(
         String categoryId,
         int page,
         int pageSize,
         String cursor,
-        PlayerData viewerData
+        PlayerData viewerData,
+        String scopeId
 ) {
     public LeaderboardPageRequest {
         Objects.requireNonNull(categoryId, "categoryId");
@@ -27,5 +29,11 @@ public record LeaderboardPageRequest(
         }
         page = Math.max(1, page);
         pageSize = Math.max(1, pageSize);
+        scopeId = scopeId == null || scopeId.isBlank() ? null : scopeId;
+    }
+
+    /** A request for the category's current scope. */
+    public LeaderboardPageRequest(String categoryId, int page, int pageSize, String cursor, PlayerData viewerData) {
+        this(categoryId, page, pageSize, cursor, viewerData, null);
     }
 }

@@ -6,6 +6,7 @@ import org.xcore.plugin.integration.idempotency.PluginIdempotencyLedger;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -146,17 +147,42 @@ public final class Ladder {
 
     /** Blocking. */
     public StandingPage top(int limit, @Nullable String cursor) {
-        return store.top(id(), currentSeason(), limit, cursor);
+        return top(currentSeason(), limit, cursor);
+    }
+
+    /** Blocking. A past season's leaderboard is the same query with another season. */
+    public StandingPage top(int season, int limit, @Nullable String cursor) {
+        return store.top(id(), season, limit, cursor);
     }
 
     /** Blocking. Empty when the player has not played a rated match this season. */
     public OptionalLong rankOf(@Nullable String uuid) {
-        return uuid == null || uuid.isBlank() ? OptionalLong.empty() : store.rankOf(id(), currentSeason(), uuid);
+        return rankOf(currentSeason(), uuid);
+    }
+
+    /** Blocking. Empty when the player did not play a rated match in {@code season}. */
+    public OptionalLong rankOf(int season, @Nullable String uuid) {
+        return uuid == null || uuid.isBlank() ? OptionalLong.empty() : store.rankOf(id(), season, uuid);
     }
 
     /** Blocking. */
     public long count() {
-        return store.count(id(), currentSeason());
+        return count(currentSeason());
+    }
+
+    /** Blocking. Number of players with a standing in {@code season}. */
+    public long count(int season) {
+        return store.count(id(), season);
+    }
+
+    /** Blocking. The standing a player finished or currently holds in {@code season}, if they played in it. */
+    public Optional<LadderStanding> played(int season, @Nullable String uuid) {
+        return uuid == null || uuid.isBlank() ? Optional.empty() : store.find(id(), season, uuid);
+    }
+
+    /** Blocking. The player's standings in the seasons before the current one, most recent first. */
+    public List<LadderStanding> history(@Nullable String uuid, int limit) {
+        return uuid == null || uuid.isBlank() ? List.of() : store.history(id(), currentSeason(), uuid, limit);
     }
 
     /**

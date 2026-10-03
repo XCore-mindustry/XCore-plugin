@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import arc.util.Log;
 import io.avaje.inject.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -43,23 +44,6 @@ public class TopMenu extends Menu {
         this.playerMenu = playerMenu;
         this.async = async;
         this.categoryRegistry = initRegistry(categoryRegistry, topMenuService);
-    }
-
-    public TopMenu(TomlSecretsConfig secretsConfig,
-                   SessionService sessionService,
-                   MenuService menuService,
-                   TopMenuService topMenuService,
-                   PlayerMenu playerMenu,
-                   TopCategoryRegistry categoryRegistry) {
-        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, categoryRegistry, null);
-    }
-
-    public TopMenu(TomlSecretsConfig secretsConfig,
-                   SessionService sessionService,
-                   MenuService menuService,
-                   TopMenuService topMenuService,
-                   PlayerMenu playerMenu) {
-        this(secretsConfig, sessionService, menuService, topMenuService, playerMenu, null, null);
     }
 
     private static TopCategoryRegistry initRegistry(TopCategoryRegistry registry, TopMenuService topMenuService) {
@@ -106,7 +90,7 @@ public class TopMenu extends Menu {
                     .orElse(TopCategory.PLAYTIME.name());
         }
 
-        openTopUi(session, resolvedId, page, null, null);
+        openTopUi(session, resolvedId, null, page, null, null);
     }
 
     public void categories(String uuid, TopCategory currentCategory) {
@@ -118,10 +102,17 @@ public class TopMenu extends Menu {
     }
 
     public void openTopUi(Session session, String categoryId) {
-        openTopUi(session, categoryId, 1, null, null);
+        openTopUi(session, categoryId, null, 1, null, null);
     }
 
-    public void openTopUi(Session session, String categoryId, int page, String cursor, Deque<String> backStack) {
+    /**
+     * Opens the leaderboard on the given page. The page is read off the game thread, so the
+     * dialog appears a moment after the call.
+     *
+     * @param scopeId one of the category's scopes (a season), {@code null} for the current one
+     */
+    public void openTopUi(Session session, String categoryId, String scopeId, int page, String cursor,
+                          Deque<String> backStack) {
         if (session == null || session.player == null) return;
         session.clear();
 
@@ -133,7 +124,14 @@ public class TopMenu extends Menu {
                 async,
                 session
         );
-        var initialModel = controller.createInitialModel(categoryId, page, cursor, backStack);
-        menuService.openUi(session, controller, initialModel);
+        var query = controller.query(categoryId, scopeId, page, cursor, backStack);
+        var viewer = session.data;
+        async.supply(() -> controller.fetch(query, viewer)).thenMain((data, error) -> {
+            if (error != null) {
+                Log.err("Failed to open top category " + query.categoryId(), error);
+                return;
+            }
+            menuService.openUi(session, controller, controller.model(data));
+        });
     }
 }

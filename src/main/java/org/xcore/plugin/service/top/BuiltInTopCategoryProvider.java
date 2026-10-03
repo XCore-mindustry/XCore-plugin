@@ -84,8 +84,19 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
                 cursorPage.hasNext(),
                 LeaderboardCursorCodec.encode(cursorPage.nextCursor()),
                 cursorPage.totalEntries(),
-                cursorPage.selfRank()
+                cursorPage.selfRank(),
+                request.viewerData() != null ? formatPrimaryValue(request.viewerData()) : null
         );
+    }
+
+    @Override
+    public String formatValue(String primaryValue, Localization local) {
+        long value = parseLongSafe(primaryValue);
+        return switch (category) {
+            case PLAYTIME -> formatPlayTime(value, local);
+            case HEXED -> local.t("top-menu-score-points", args(
+                    "points", NumberFormat.getIntegerInstance(local.getLocale()).format(value)));
+        };
     }
 
     @Override

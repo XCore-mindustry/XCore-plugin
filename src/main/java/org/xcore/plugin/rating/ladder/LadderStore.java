@@ -17,8 +17,13 @@ public interface LadderStore {
 
     Optional<LadderStanding> find(String ladderId, int season, String uuid);
 
+    /** The player's standings in seasons earlier than {@code season}, most recent first. */
+    List<LadderStanding> history(String ladderId, int season, String uuid, int limit);
+
     /** The player's most recent standing in a season earlier than {@code season}. */
-    Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid);
+    default Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid) {
+        return history(ladderId, season, uuid, 1).stream().findFirst();
+    }
 
     /**
      * Applies a match result to a standing at most once per operation, creating the

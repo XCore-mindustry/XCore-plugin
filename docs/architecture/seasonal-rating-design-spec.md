@@ -1,6 +1,6 @@
 # Technical Design Specification: Seasonal Rating (Mini-PVP and HexedCore)
 
-Status: decisions in section 10 accepted; phases 1 and 2 implemented (see 9.1 and 9.2), phases 3–5 pending.
+Status: decisions in section 10 accepted; phases 1–3 implemented (see 9.1–9.3), phases 4–5 pending.
 Affects: `XCore-plugin`, `aethercore-plugin` (HexedCore), `xcore-protocol`, `XCore-discord-bot`.
 
 ## 1. Goal
@@ -49,10 +49,15 @@ org.xcore.plugin.rating
 │   ├── LadderStanding         a player's row in one season of one ladder
 │   ├── StandingMutation       uuid, rating delta, win, counter increments
 │   ├── MatchSettlement        a finished match: mutations, or the reason it is unrated
-│   ├── LadderTopCategoryProvider   the /top category of any ladder
 │   └── LadderLeagueDisplay    the league icon next to a player's name
 │   ├── StandingSeed           the rating a new standing starts from, and where it came from
 │   └── LadderSeasons          SPI: everything the ladder needs to know about seasons
+├── view/                                                            (phase 3, done)
+│   ├── LadderViews            @Singleton factory + blocking loaders; what a mode registers
+│   ├── LadderTopCategoryProvider   the /top category of any ladder, one scope per season
+│   ├── LadderProfileSection   the /stats block of any ladder (ProfileSectionProvider)
+│   ├── LadderProgress, SeasonOverview, SeasonCard   data read for, and words written for, one player
+│   └── SeasonText, LadderProgressText   season titles, dates, time left; the lines of a progress block
 ├── season/                                                          (phase 2, done)
 │   ├── Season, SeasonStatus   one season of one ladder; transitions are pure functions
 │   ├── SeasonStore            rating_seasons (MongoSeasonStore, InMemorySeasonStore)
@@ -228,30 +233,36 @@ A server that sees a ladder for the first time announces nothing: a restart does
 
 ## 6. In-game interface
 
-### 6.1. `/top`
+Season-aware presentation lives in `rating.view`, which depends on both `ladder` and `season`; the dependency between those two stays one-way (`season → ladder`). A mode builds its views from `LadderViews` and registers them where it wants them.
+
+### 6.1. `/top` — done
 
 SPI extension:
 
-- `TopCategoryProvider.scopes(Localization)` → a list of `TopScope(id, label)`; by default a single unnamed scope (backward compatible for `PLAYTIME` and the legacy `HEXED`);
-- `LeaderboardPageRequest.scopeId`.
+- `TopCategoryProvider.scopes()` (blocking, newest first, empty = no switcher) → `TopScope(id, current, attributes)`; `formatScope(scope, local)` words a scope. A category without scopes (`PLAYTIME`, the legacy `HEXED`) behaves as before;
+- `LeaderboardPageRequest.scopeId` (nullable = the category's current scope);
+- `TopCategoryProvider.formatValue(String, Localization)` words a bare value, so the viewer's own value comes from `LeaderboardPage.selfPrimaryValue` and the `switch` on category id is gone from `TopUiController`.
 
-One shared `LadderTopCategoryProvider(LadderDefinition)` serves both modes. The menu gets a "◀ Season 3 ▶" switcher above the list; for archived seasons the prize, if any, is shown next to the placement.
+One shared `LadderTopCategoryProvider` serves both modes: a scope is a season number, a past season is the same leaderboard read with another season number (an unknown or future number falls back to the running season). The menu shows a "◀ Season 3 ▶" switcher under the category tabs once a ladder has more than one season.
 
-The `switch` on category id is removed from `TopUiController`: the viewer's own value comes from `LeaderboardPage.selfPrimaryValue`.
+The page is read off the game thread: `TopUiController` starts the load with `Async.supply`, keeps showing the old page meanwhile, and dispatches `TopEvent.Loaded` back; a result for a dialog that has moved on is dropped. Turning a page patches the list, switching category or season redraws the dialog.
 
-### 6.2. `/stats`
+Prizes next to a placement are phase 5.
 
-A `ProfileSectionProvider` SPI (registered the same way as `PlayerDisplayRegistry`) and a shared `LadderProfileSection`:
+### 6.2. `/stats` — done
+
+A `ProfileSectionProvider` SPI (`integration.profile`, registered through `ProfileSectionRegistry` like `PlayerDisplayRegistry`) and a shared `LadderProfileSection`:
 
 - current season: rating, league, progress to the next league, rank, matches / wins / win rate, peak;
-- time left until the season ends;
-- history: "Season 2 — #4, Titanium, 1642" and prizes received.
+- time left until the season ends (or "results are being tallied" while it closes);
+- history of the last three seasons: "Season 2 — #4, Titanium, 1642 ELO", from `final_rank` stored on the standing;
+- a mode may append its own facts with `withDetail` (Mini-PVP shows the legacy pre-season rating).
 
-Only the PvP block is extracted from `PlayerProfileUiController`; the rest of the profile is left alone.
+Sections are read together with the match statistics, off the game thread (`PlayerMenu.loadDetails`, shared by opening a profile and inspecting another player). Only the PvP block was extracted from `PlayerProfileUiController`; the rest of the profile is untouched. A player who never played a ladder sees its section only on a server that hosts the mode (`showUnplayed`).
 
-### 6.3. `/season` command
+### 6.3. `/season` command — done
 
-For players: the current season of this server's ladder, time remaining, prizes, own rank.
+For players: opens a dialog with a card per ladder this server hosts (every registered ladder on a server that hosts none) — the season and its end date, time left, number of players, the viewer's own league / rating / rank / progress, the previous season's top three — and a button that opens `/top` on that ladder. Prizes are phase 5.
 
 ## 7. Discord
 
@@ -330,7 +341,7 @@ reset_carry = 0.5
 
 1. **Refactor with no behaviour change — done.** Remove the copies in HexedCore; introduce the ladder engine (`LadderService`, `Ladder`, `LadderStore`); port Mini-PVP and HexedCore onto it; migration V5; the shared `LadderTopCategoryProvider` and `LadderLeagueDisplay`; account merge over `rating_standings`. Release XCore-plugin, then bump the dependency in HexedCore.
 2. **Season core — done.** Model, repository, resolver, lifecycle, lazy reset, console commands, in-game notifications.
-3. **Interface.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
+3. **Interface — done.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
 4. **Protocol and bot.** The `rating` family, the channel, `/season`, the updated `/stats`.
 5. **Prizes.** Model, handlers, commands, delivery tracking.
 
@@ -353,7 +364,7 @@ Known gap until phase 4: the Discord bot's own account merge does not merge `rat
 - Season 1 of each ladder starts when the first server with the new build registers that ladder, and ends one season length later, at midnight in the configured time zone. Move it with `season end-at` if a different date is wanted.
 - When a season ends, the next one starts at once. Ratings are soft-reset on a player's first match of the new season; match and win counters start from zero.
 - Players on the mode's server see "season ends in …" at each threshold and on join inside the last threshold, and "season N has started" with the reset rule at rollover.
-- `/top` and the league icons show the current season only. Past seasons are kept in `rating_standings` with `final_rank` and in `rating_seasons` with the podium; the interface to browse them is phase 3.
+- `/top` and the league icons show the current season only. Past seasons are kept in `rating_standings` with `final_rank` and in `rating_seasons` with the podium; the interface to browse them is phase 3 (9.3).
 - Console: `season list`, `season info`, `season extend`, `season end-at`, `season end-now`.
 
 Known gaps:
@@ -362,6 +373,21 @@ Known gaps:
 - `summary.matches` of season 1 counts only matches settled after phase 2 was deployed.
 - An account merge after a season is archived moves the standings but does not recompute `final_rank` or the stored podium.
 - No protocol events are published yet. The places where each transition is won exactly once (`close`, `claimNotices`, `archive`, `move` in `SeasonLifecycleService`) are where phase 4 publishes them.
+
+### 9.3. What phase 3 changed for players and operators
+
+- `/top` gets a season switcher as soon as a ladder has a second season; past seasons are browsable. The leaderboard now loads off the game thread, so the dialog appears a moment after the command and a page turn keeps the old page on screen until the new one arrives.
+- `/stats` shows a rating block per ladder instead of the fixed MiniPvP card: league, progress, matches, wins, rank, peak, time left in the season and the last three seasons. The block appears on the server that hosts the mode, and elsewhere only for players who have played it. The profile's statistics and these blocks are read in one off-thread step.
+- `/season` (alias `/seasons`) is new.
+- Bundles: new `season-*`, `top-menu-scope-*`, `ladder-profile-*` and `season-menu-*` keys in `en`, `ru`, `uk_UA`; the unused `player-stats-pvp-rating` and `player-stats-pvp-summary` keys are removed. Other locales fall back to English.
+- API for other modes: `LadderViews.topCategory/profileSection`, `ProfileSectionRegistry`, `TopCategoryProvider.scopes`. `LadderTopCategoryProvider` moved from `rating.ladder` to `rating.view` and is built through `LadderViews`; `MiniPvPLadder` and `HexedLadder` take `LadderViews` instead of `PlayerDataRepository`.
+
+Known gaps:
+
+- HexedCore's section and league names use XCore's `rating_league_*` texts; the `hexed_league_*` ones are used only by HexedCore's own menus.
+- The legacy `players.pvp_*` mirror is still written for the bot until phase 4; `/stats` no longer reads it except for the "legacy" figure.
+- Only the last three seasons are listed in a profile and the previous season's top three in `/season`; the full archive is in `/top`.
+- A profile for a player of another mode's server shows a block only when that player has a standing; there is no per-server hiding beyond that.
 
 ## 10. Decisions
 

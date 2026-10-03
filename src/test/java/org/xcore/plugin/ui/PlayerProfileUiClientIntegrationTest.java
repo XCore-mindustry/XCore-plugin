@@ -171,6 +171,7 @@ class PlayerProfileUiClientIntegrationTest {
                 mock(PlayerProfileSettingsService.class),
                 mock(AuditHistoryMenu.class),
                 menuService,
+                null,
                 null
         );
     }

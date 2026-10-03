@@ -73,12 +73,16 @@ public class MongoLadderStore implements LadderStore {
     }
 
     @Override
-    public Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid) {
+    public List<LadderStanding> history(String ladderId, int season, String uuid, int limit) {
         requireUuid(uuid);
-        return Optional.ofNullable(collection.find(and(eq("ladder", ladderId), eq("player_uuid", uuid),
+        List<LadderStanding> history = new ArrayList<>();
+        for (Document document : collection.find(and(eq("ladder", ladderId), eq("player_uuid", uuid),
                         lt("season", season)))
                 .sort(descending("season"))
-                .first()).map(MongoLadderStore::standing);
+                .limit(Math.max(1, limit))) {
+            history.add(standing(document));
+        }
+        return history;
     }
 
     @Override
@@ -336,7 +340,8 @@ public class MongoLadderStore implements LadderStore {
                 Math.max(rating, number(document, "peak_rating", rating)),
                 number(document, "matches", 0),
                 number(document, "wins", 0),
-                stats(document));
+                stats(document),
+                document.get("final_rank") instanceof Number rank && rank.intValue() > 0 ? rank.intValue() : null);
     }
 
     private static int number(Document document, String field, int fallback) {
