@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 import time
 from typing import TYPE_CHECKING
@@ -21,10 +22,14 @@ from .presentation import (
     format_size,
 )
 from .retry import retry_read_rpc
+from .season_embeds import build_ratings_field
 from .server_views import MapsListView, ServersView
 
 if TYPE_CHECKING:
     from .bot import XCoreDiscordBot
+
+
+logger = logging.getLogger(__name__)
 
 
 def _format_admin_label(*, admin_name: str, admin_discord_id: str | None) -> str:
@@ -85,6 +90,18 @@ def _sort_maps(maps: list[dict[str, str]], mode: str) -> list[dict[str, str]]:
     )
 
 
+async def _season_ratings_text(bot: XCoreDiscordBot, player: PlayerRecord) -> str:
+    """The player's place on every ladder this season; stats still open without it."""
+    if not player.uuid:
+        return "No rated matches this season"
+    try:
+        placings = await bot.container.ratings.placings(player.uuid)
+    except Exception:
+        logger.exception("Cannot load season ratings for %s", player.uuid)
+        return "Unavailable right now"
+    return build_ratings_field(placings)
+
+
 async def cmd_stats(
     bot: XCoreDiscordBot,
     interaction: Interaction,
@@ -113,10 +130,15 @@ async def cmd_stats(
         name="Progress",
         value=(
             f"Playtime: `{format_minutes(player.total_play_time)}`\n"
-            f"PvP rating: `{player.pvp_rating}`\n"
             f"Hexed rank: `{rank_label}`\n"
             f"Hexed progress: `{rank_progress}`"
         ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="Season ratings",
+        value=await _season_ratings_text(bot, player),
         inline=False,
     )
 

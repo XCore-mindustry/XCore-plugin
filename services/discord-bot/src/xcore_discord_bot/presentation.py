@@ -280,6 +280,18 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
             "Both accounts were linked to a different Discord user; "
             "the surviving account kept its own link."
         )
+    if result.ratings_merged:
+        warnings.append("Season ratings moved to the surviving account.")
+    elif result.ratings_pending:
+        warnings.append(
+            "Season ratings could not be moved right now (no game server answered). "
+            "The bot will keep retrying until they are."
+        )
+    elif result.ratings_error:
+        warnings.append(
+            "Season ratings were NOT moved: "
+            f"{result.ratings_error}. Move them manually."
+        )
     if warnings:
         embed.add_field(name="⚠️ Notes", value="\n".join(warnings), inline=False)
 

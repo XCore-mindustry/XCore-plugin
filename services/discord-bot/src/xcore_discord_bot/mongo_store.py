@@ -689,6 +689,11 @@ class MongoStore:
     def now_utc() -> datetime:
         return datetime.now(UTC)
 
+    @property
+    def database(self) -> AsyncIOMotorDatabase:
+        """The connected database, for stores that read collections this one does not own."""
+        return self._db_required()
+
     def _db_required(self) -> AsyncIOMotorDatabase:
         if self._db is None:
             raise RuntimeError("MongoStore is not connected")

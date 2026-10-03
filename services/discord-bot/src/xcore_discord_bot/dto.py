@@ -106,3 +106,7 @@ class AccountMergeResult:
     tombstone_pid: int | None = None
     discord_link_moved: bool = False
     discord_link_conflict: bool = False
+    # None: nothing to move or not attempted. Otherwise whether the rating standings moved.
+    ratings_merged: bool | None = None
+    ratings_pending: bool = False
+    ratings_error: str | None = None

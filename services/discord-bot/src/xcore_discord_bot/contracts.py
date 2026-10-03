@@ -10,6 +10,10 @@ from xcore_protocol.generated import (
     ModerationMuteCreatedV1,
     ModerationVoteKickCreatedV1,
     PlayerJoinLeaveV1,
+    RatingSeasonEndedV1,
+    RatingSeasonEndingSoonV1,
+    RatingSeasonRescheduledV1,
+    RatingSeasonStartedV1,
     ServerActionV1,
     ServerHeartbeatV1,
 )
@@ -49,6 +53,26 @@ def parse_discord_link_status_payload(
     return DiscordLinkStatusChangedV1.from_payload(payload)
 
 
+def parse_season_started_payload(payload: dict[str, Any]) -> RatingSeasonStartedV1:
+    return RatingSeasonStartedV1.from_payload(payload)
+
+
+def parse_season_ending_soon_payload(
+    payload: dict[str, Any],
+) -> RatingSeasonEndingSoonV1:
+    return RatingSeasonEndingSoonV1.from_payload(payload)
+
+
+def parse_season_ended_payload(payload: dict[str, Any]) -> RatingSeasonEndedV1:
+    return RatingSeasonEndedV1.from_payload(payload)
+
+
+def parse_season_rescheduled_payload(
+    payload: dict[str, Any],
+) -> RatingSeasonRescheduledV1:
+    return RatingSeasonRescheduledV1.from_payload(payload)
+
+
 def parse_server_heartbeat_payload(payload: dict[str, Any]) -> ServerHeartbeatV1:
     return ServerHeartbeatV1.from_payload(payload)
 
@@ -61,6 +85,10 @@ __all__ = [
     "ModerationMuteCreatedV1",
     "ModerationVoteKickCreatedV1",
     "PlayerJoinLeaveV1",
+    "RatingSeasonEndedV1",
+    "RatingSeasonEndingSoonV1",
+    "RatingSeasonRescheduledV1",
+    "RatingSeasonStartedV1",
     "ServerActionV1",
     "ServerHeartbeatV1",
     "parse_ban_payload",
@@ -69,6 +97,10 @@ __all__ = [
     "parse_global_chat_payload",
     "parse_mute_payload",
     "parse_player_join_leave_payload",
+    "parse_season_ended_payload",
+    "parse_season_ending_soon_payload",
+    "parse_season_rescheduled_payload",
+    "parse_season_started_payload",
     "parse_server_action_payload",
     "parse_server_heartbeat_payload",
     "parse_vote_kick_payload",

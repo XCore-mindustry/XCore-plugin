@@ -41,6 +41,22 @@ class StreamSupervisor:
                 "redis-votekick-consumer",
             ),
             (
+                runtime_consumers.consume_season_started(self._bot),
+                "redis-season-started-consumer",
+            ),
+            (
+                runtime_consumers.consume_season_ending_soon(self._bot),
+                "redis-season-ending-soon-consumer",
+            ),
+            (
+                runtime_consumers.consume_season_ended(self._bot),
+                "redis-season-ended-consumer",
+            ),
+            (
+                runtime_consumers.consume_season_rescheduled(self._bot),
+                "redis-season-rescheduled-consumer",
+            ),
+            (
                 runtime_consumers.consume_server_heartbeats(self._bot),
                 "redis-server-heartbeat-consumer",
             ),

@@ -52,6 +52,16 @@ def general_admin_role_ids(settings: Settings) -> tuple[int, ...]:
     return (settings.discord_admin_role_id, general_role)
 
 
+def head_admin_role_ids(settings: Settings) -> tuple[int, ...]:
+    """Head administrators only; the plain admin role is not enough."""
+    head_role = (
+        settings.discord_general_admin_role_id
+        if settings.discord_general_admin_role_id is not None
+        else settings.discord_admin_role_id
+    )
+    return (head_role,)
+
+
 def map_reviewer_role_ids(settings: Settings) -> tuple[int, ...]:
     reviewer_role = (
         settings.discord_map_reviewer_role_id

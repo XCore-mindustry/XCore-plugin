@@ -5,6 +5,7 @@ from discord import Interaction, app_commands
 from ..permissions import (
     admin_role_ids,
     general_admin_role_ids,
+    head_admin_role_ids,
     map_reviewer_role_ids,
     require_any_role,
     role_mention,
@@ -43,6 +44,21 @@ def general_admin_check():
                 f"{role_mention(general_role)} or "
                 f"{role_mention(settings.discord_admin_role_id)}"
             ),
+        )
+
+    return app_commands.check(predicate)
+
+
+def head_admin_check():
+    async def predicate(interaction: Interaction) -> bool:
+        settings = settings_from_interaction(interaction)
+        if settings is None:
+            return False
+        head_role = head_admin_role_ids(settings)[0]
+        return require_any_role(
+            interaction,
+            role_ids=head_admin_role_ids(settings),
+            message=f"Missing permissions: required role {role_mention(head_role)}",
         )
 
     return app_commands.check(predicate)

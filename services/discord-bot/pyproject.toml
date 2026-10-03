@@ -23,7 +23,11 @@ dependencies = [
 # commit of the protocol. v0.7.0 is the first tag carrying the chat-domain decomposition this
 # bot imports (v0.6.2 predates it and fails collection). The tag is annotated, so uv records
 # the commit it peels to and the build stays reproducible.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.7.0" }
+#
+# TEMPORARY: the seasonal-rating work needs the `rating` family from xcore-protocol#2, which
+# has no tag yet. Until v0.8.0 is released this is pinned to that PR's commit; switch it back
+# to `tag = "v0.8.0"` before merging.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "1f1da10932daaa023701d77dd515d84b29a1db10" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"

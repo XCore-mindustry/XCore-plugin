@@ -24,6 +24,11 @@ from xcore_protocol.generated.moderation import (
     ModerationKickBannedCommandV1,
     ModerationPardonCommandV1,
 )
+from xcore_protocol.generated.rating import (
+    RatingAccountsMergeRequestV1,
+    RatingSeasonRescheduleRequestV1,
+    RatingSeasonRescheduleRequestV1Operation,
+)
 from xcore_protocol.generated.security import (
     PlayerPasswordResetCommandV1,
 )
@@ -300,4 +305,43 @@ def build_maps_remove_request(
     return MapsRemoveRequestV1(
         server=server,
         fileName=file_name,
+    )
+
+
+def build_season_reschedule_request(
+    *,
+    server: str,
+    ladder: str,
+    operation: RatingSeasonRescheduleRequestV1Operation,
+    discord_id: str,
+    actor_name: str,
+    extend_seconds: int | None = None,
+    ends_at: str | None = None,
+    reason: str | None = None,
+) -> RatingSeasonRescheduleRequestV1:
+    return RatingSeasonRescheduleRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=operation,
+        actor=ActorRefV1(
+            actorName=actor_name,
+            actorDiscordId=str(discord_id),
+            actorType=ActorRefV1ActorType.DISCORD,
+        ),
+        extendSeconds=extend_seconds,
+        endsAt=ends_at,
+        reason=reason or None,
+    )
+
+
+def build_ratings_merge_request(
+    *,
+    server: str,
+    source_uuid: str,
+    target_uuid: str,
+) -> RatingAccountsMergeRequestV1:
+    return RatingAccountsMergeRequestV1(
+        server=server,
+        sourceUuid=source_uuid,
+        targetUuid=target_uuid,
     )

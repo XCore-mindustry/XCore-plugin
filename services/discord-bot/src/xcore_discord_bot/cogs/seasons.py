@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+import discord
+from discord import Interaction, app_commands
+from discord.ext import commands
+
+from ..redis_bus import RpcRejected
+from ..rpc.mindustry_rpc import NoLiveServerError
+from ..season_embeds import (
+    LADDER_NAMES,
+    build_season_info_embed,
+    build_season_top_embed,
+    ladder_name,
+    season_title,
+    timestamp,
+)
+from ..ui_helpers import ensure_requester_action_allowed
+from ..utils import parse_duration
+from .checks import head_admin_check
+
+if TYPE_CHECKING:
+    from ..bot import XCoreDiscordBot
+
+logger = logging.getLogger(__name__)
+
+TOP_SIZE = 10
+MAX_REASON = 200
+
+
+def parse_end_at(text: str) -> datetime:
+    """`2026-07-01` or `2026-07-01 18:00`, read as UTC."""
+    value = text.strip()
+    for pattern in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, pattern).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    raise ValueError("Use a date like 2026-07-01 or 2026-07-01 18:00 (UTC).")
+
+
+async def _autocomplete_ladder(
+    interaction: Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    bot = interaction.client
+    try:
+        known = await bot.container.ratings.ladders()
+    except Exception:
+        logger.exception("Cannot list ladders for autocomplete")
+        known = []
+    ladders = sorted(set(known) | set(LADDER_NAMES))
+    needle = current.strip().lower()
+    return [
+        app_commands.Choice(name=ladder_name(ladder), value=ladder)
+        for ladder in ladders
+        if not needle or needle in ladder.lower() or needle in ladder_name(ladder).lower()
+    ][:25]
+
+
+class SeasonEndConfirmView(discord.ui.View):
+    def __init__(self, cog: SeasonsCog, *, requester_id: int, ladder: str, reason: str | None):
+        super().__init__(timeout=60)
+        self._cog = cog
+        self._requester_id = requester_id
+        self._ladder = ladder
+        self._reason = reason
+        self.message: discord.Message | None = None
+
+    @discord.ui.button(label="End season now", style=discord.ButtonStyle.danger)
+    async def _confirm(self, interaction: Interaction, button: discord.ui.Button) -> None:
+        if not await ensure_requester_action_allowed(
+            interaction,
+            requester_id=self._requester_id,
+            denied_message="Only the admin who ran the command can confirm this.",
+        ):
+            return
+        self.stop()
+        await interaction.response.edit_message(content="Ending the season…", view=None)
+        message = await self._cog.run_admin(
+            interaction,
+            lambda ratings: ratings.end_season_now(
+                ladder=self._ladder,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+                reason=self._reason,
+            ),
+            describe=lambda response: (
+                f"**{ladder_name(self._ladder)}**: season "
+                f"`{response.season.season}` was ended."
+            ),
+        )
+        await interaction.edit_original_response(content=message)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def _cancel(self, interaction: Interaction, button: discord.ui.Button) -> None:
+        if not await ensure_requester_action_allowed(
+            interaction,
+            requester_id=self._requester_id,
+            denied_message="Only the admin who ran the command can cancel this.",
+        ):
+            return
+        self.stop()
+        await interaction.response.edit_message(
+            content="Cancelled. The season was not changed.", view=None
+        )
+
+    async def on_timeout(self) -> None:
+        if self.message is not None:
+            try:
+                await self.message.edit(content="Timed out. The season was not changed.", view=None)
+            except discord.HTTPException:
+                pass
+
+
+class SeasonsCog(commands.Cog):
+    season_group = app_commands.Group(
+        name="season",
+        description="Rating seasons",
+    )
+
+    def __init__(self, bot: XCoreDiscordBot) -> None:
+        self.bot = bot
+
+    # ----------------------------------------------------------------- reading
+
+    @season_group.command(name="info", description="Show the current rating season")
+    @app_commands.describe(ladder="Ladder (all of them when omitted)")
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    async def cmd_info(self, interaction: Interaction, ladder: str | None = None) -> None:
+        ratings = self.bot.container.ratings
+        ladders = [ladder] if ladder else await ratings.ladders()
+        now = datetime.now(UTC)
+        embeds: list[discord.Embed] = []
+        for ladder_id in ladders:
+            season = await ratings.current_season(ladder_id)
+            if season is None:
+                continue
+            embeds.append(
+                build_season_info_embed(
+                    season,
+                    participants=await ratings.count(ladder_id, season.number),
+                    now=now,
+                )
+            )
+        if not embeds:
+            await interaction.response.send_message(
+                "No rating seasons yet.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(embeds=embeds[:10])
+
+    @season_group.command(name="top", description="Show a season's leaderboard")
+    @app_commands.describe(
+        ladder="Ladder", season="Season number (the current one when omitted)"
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    async def cmd_top(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        season: app_commands.Range[int, 1] | None = None,
+    ) -> None:
+        ratings = self.bot.container.ratings
+        found = (
+            await ratings.find_season(ladder, season)
+            if season is not None
+            else await ratings.current_season(ladder)
+        )
+        if found is None:
+            await interaction.response.send_message(
+                f"No such season for {ladder_name(ladder)}.", ephemeral=True
+            )
+            return
+        standings = await ratings.top(ladder, found.number, TOP_SIZE)
+        embed = build_season_top_embed(
+            found,
+            standings,
+            participants=await ratings.count(ladder, found.number),
+        )
+        await interaction.response.send_message(embed=embed)
+
+    # ---------------------------------------------------------- administration
+
+    async def run_admin(self, interaction: Interaction, call, *, describe) -> str:
+        """Runs a season change on a game server and words the result for the admin."""
+        try:
+            response = await call(self.bot.container.rating_service)
+        except RpcRejected as error:
+            return f"❌ The server refused: {error.error_message}"
+        except NoLiveServerError:
+            return "❌ No Mindustry server is online to carry this out."
+        except TimeoutError:
+            return "❌ The servers did not answer in time. Check `/season info` before retrying."
+        except Exception:
+            logger.exception("Season administration failed")
+            return "❌ Something went wrong. Check the logs."
+        return "✅ " + describe(response)
+
+    async def _admin_reply(self, interaction: Interaction, call, *, describe) -> None:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        message = await self.run_admin(interaction, call, describe=describe)
+        await interaction.followup.send(message, ephemeral=True)
+
+    @staticmethod
+    def _clean_reason(reason: str | None) -> str | None:
+        return (reason or "").strip()[:MAX_REASON] or None
+
+    @season_group.command(name="extend", description="Move the season end later (head admin)")
+    @app_commands.describe(
+        ladder="Ladder",
+        duration="How much later, e.g. 3d, 2w, 12h",
+        reason="Why (shown in the announcement)",
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_extend(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        duration: str,
+        reason: str | None = None,
+    ) -> None:
+        try:
+            by = parse_duration(duration, default_unit="d")
+        except ValueError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await self._admin_reply(
+            interaction,
+            lambda ratings: ratings.extend_season(
+                ladder=ladder,
+                by=by,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+                reason=self._clean_reason(reason),
+            ),
+            describe=lambda response: self._describe_moved(ladder, response),
+        )
+
+    @season_group.command(name="end-at", description="Set the exact season end (head admin)")
+    @app_commands.describe(
+        ladder="Ladder",
+        when="UTC date and time, e.g. 2026-07-01 or 2026-07-01 18:00",
+        reason="Why (shown in the announcement)",
+    )
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_end_at(
+        self,
+        interaction: Interaction,
+        ladder: str,
+        when: str,
+        reason: str | None = None,
+    ) -> None:
+        try:
+            ends_at = parse_end_at(when)
+        except ValueError as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+        await self._admin_reply(
+            interaction,
+            lambda ratings: ratings.set_season_end(
+                ladder=ladder,
+                ends_at=ends_at,
+                discord_id=str(interaction.user.id),
+                actor_name=interaction.user.display_name,
+                reason=self._clean_reason(reason),
+            ),
+            describe=lambda response: self._describe_moved(ladder, response),
+        )
+
+    @season_group.command(name="end-now", description="End the season right now (head admin)")
+    @app_commands.describe(ladder="Ladder", reason="Why (shown in the announcement)")
+    @app_commands.autocomplete(ladder=_autocomplete_ladder)
+    @head_admin_check()
+    async def cmd_end_now(
+        self, interaction: Interaction, ladder: str, reason: str | None = None
+    ) -> None:
+        view = SeasonEndConfirmView(
+            self,
+            requester_id=interaction.user.id,
+            ladder=ladder,
+            reason=self._clean_reason(reason),
+        )
+        await interaction.response.send_message(
+            f"End **{ladder_name(ladder)}** now? The season is archived, the podium is "
+            "announced and the next season starts straight away.",
+            view=view,
+            ephemeral=True,
+        )
+        view.message = await interaction.original_response()
+
+    @staticmethod
+    def _describe_moved(ladder: str, response) -> str:
+        ref = response.season
+        ends_at = datetime.fromisoformat(ref.endsAt.replace("Z", "+00:00"))
+        title = season_title(ladder, ref.name, ref.season)
+        if response.ended:
+            return f"**{title}** has ended."
+        return f"**{title}** now ends {timestamp(ends_at)} ({timestamp(ends_at, 'R')})."
