@@ -1,5 +1,7 @@
 package org.xcore.plugin.ui;
 
+import org.xcore.plugin.concurrent.Async;
+import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import com.ospx.flubundle.Bundle;
 import jakarta.inject.Provider;
 import mindustry.gen.Player;
@@ -58,7 +60,8 @@ class TopMenuTest {
         when(sessionProvider.get()).thenReturn(sessionService);
         menuService = new MenuService(sessionProvider, gateway);
 
-        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry);
+        topMenu = new TopMenu(new TomlSecretsConfig(), sessionService, menuService, topMenuService, playerMenu, registry,
+                new Async(InlineStorageExecutor.create(), Runnable::run));
         topMenu.init();
 
         Player player = Player.create();
@@ -107,7 +110,7 @@ class TopMenuTest {
     @DisplayName("top with default category opens reactive UI")
     void top_defaultCategory_opensReactiveUi() {
         registerMockProvider("MINI_PVP", 20);
-        when(topMenuService.resolveDefaultCategory()).thenReturn(TopCategory.MINI_PVP);
+        registry.setDefaultCategory("MINI_PVP");
 
         topMenu.top("viewer-1");
 
@@ -139,7 +142,7 @@ class TopMenuTest {
     void openTopUi_mountsController() {
         registerMockProvider("MINI_PVP", 10);
 
-        topMenu.openTopUi(session, "MINI_PVP", 1, null, new ArrayDeque<>());
+        topMenu.openTopUi(session, "MINI_PVP", null, 1, null, new ArrayDeque<>());
 
         assertThat(session.activeUiSession()).isNotNull();
         assertThat(session.activeUiSession().model()).isInstanceOf(TopUiController.TopModel.class);

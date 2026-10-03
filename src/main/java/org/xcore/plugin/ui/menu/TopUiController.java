@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import arc.util.Log;
 import arc.util.Strings;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.MenuResult;
@@ -9,6 +10,7 @@ import org.xcore.plugin.integration.top.LeaderboardPage;
 import org.xcore.plugin.integration.top.LeaderboardPageRequest;
 import org.xcore.plugin.integration.top.TopCategoryProvider;
 import org.xcore.plugin.integration.top.TopCategoryRegistry;
+import org.xcore.plugin.integration.top.TopScope;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.player.Badge;
@@ -24,12 +26,10 @@ import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
-import java.text.NumberFormat;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -64,11 +64,16 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
      * {@code clientSnapshot} describe the world view rather than the screen — so anything the
      * dialog needs to adapt is expressed in the tree and resolved by the client, either through
      * {@link org.xcore.ui.responsive.Responsive} conditions or {@code growX() + maxWidth} caps.
+     *
+     * @param scopes          the selected category's leaderboards, empty when it has only one
+     * @param selectedScopeId the scope on screen, {@code null} when the category has only one
      */
     public record TopModel(
             String viewerUuid,
             String selectedCategoryId,
             List<CategoryTab> categories,
+            List<TopScope> scopes,
+            String selectedScopeId,
             int currentPage,
             int totalPages,
             Long totalEntries,
@@ -81,34 +86,9 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             Deque<String> cursorBackStack,
             String feedbackMessage
     ) {
-        public TopModel withPageData(LeaderboardPage page, String cursor, String nextCursorToken, String selfVal) {
-            long total = page.totalEntries() != null ? page.totalEntries() : page.entries().size();
-            int pages = page.totalEntries() != null
-                    ? Math.max(1, (int) Math.ceil((double) page.totalEntries() / PLAYERS_PER_PAGE))
-                    : (page.hasNext() ? page.currentPage() + 1 : page.currentPage());
-
-            return new TopModel(
-                    viewerUuid, selectedCategoryId, categories,
-                    page.currentPage(), pages, total,
-                    page.selfRank(), selfVal != null ? selfVal : selfPrimaryValue,
-                    page.entries(), page.hasNext(),
-                    cursor, nextCursorToken,
-                    cursorBackStack, ""
-            );
-        }
-
-        public TopModel withCategory(String newCatId, List<CategoryTab> cats) {
-            return new TopModel(
-                    viewerUuid, newCatId, cats,
-                    1, 1, 0L, null, null,
-                    List.of(), false, null, null,
-                    new ArrayDeque<>(), ""
-            );
-        }
-
         public TopModel withFeedback(String message) {
             return new TopModel(
-                    viewerUuid, selectedCategoryId, categories,
+                    viewerUuid, selectedCategoryId, categories, scopes, selectedScopeId,
                     currentPage, totalPages, totalEntries,
                     selfRank, selfPrimaryValue,
                     entries, hasNext,
@@ -118,12 +98,39 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         }
     }
 
+    /**
+     * One leaderboard page to load.
+     *
+     * @param scopeId    {@code null} for the category's current scope
+     * @param cursor     {@code null} for the first page
+     * @param backStack  cursors of the pages before this one
+     * @param withScopes whether the category's scopes must be (re)read as well
+     */
+    public record TopQuery(String categoryId, String scopeId, int page, String cursor, Deque<String> backStack,
+                           boolean withScopes) {
+        public TopQuery {
+            page = Math.max(1, page);
+            backStack = backStack == null ? new ArrayDeque<>() : new ArrayDeque<>(backStack);
+        }
+    }
+
+    /**
+     * What storage returned for a {@link TopQuery}.
+     *
+     * @param scopes {@code null} when the query did not ask for them
+     */
+    public record TopData(TopQuery query, List<TopScope> scopes, LeaderboardPage page) {
+    }
+
     public sealed interface TopEvent {
         record SelectCategory(String categoryId) implements TopEvent {}
+        record SelectScope(String scopeId) implements TopEvent {}
         record NextPage() implements TopEvent {}
         record PrevPage() implements TopEvent {}
         record Refresh() implements TopEvent {}
         record InspectPlayer(String playerUuid) implements TopEvent {}
+        /** A page requested by an earlier event has arrived from storage. */
+        record Loaded(TopData data) implements TopEvent {}
         record Close() implements TopEvent {}
     }
 
@@ -148,39 +155,112 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         this.session = session;
     }
 
+    /** Blocking: loads the first page on the calling thread. Use {@link TopMenu#openTopUi} from the game thread. */
     @Override
     public TopModel initialModel(Object context) {
-        if (context instanceof String catId) {
-            return createInitialModel(catId, 1, null, null);
-        }
-        return createInitialModel(null, 1, null, null);
+        return createInitialModel(context instanceof String categoryId ? categoryId : null, null, 1, null, null);
     }
 
-    public TopModel createInitialModel(String categoryId, int page, String cursor, Deque<String> backStack) {
-        Localization local = session != null ? session.locale() : null;
+    /** Blocking. The same as {@link #query}, {@link #fetch} and {@link #model} in one go. */
+    public TopModel createInitialModel(String categoryId, String scopeId, int page, String cursor, Deque<String> backStack) {
+        return model(fetch(query(categoryId, scopeId, page, cursor, backStack), viewer()));
+    }
 
-        List<CategoryTab> tabs = resolveCategoryTabs(local);
-        String initialCat = categoryId;
-        if (initialCat == null || initialCat.isBlank()) {
-            initialCat = tabs.isEmpty() ? "MINI_PVP" : tabs.getFirst().id();
+    /** The query that opens the menu; a blank category means the first tab. */
+    public TopQuery query(String categoryId, String scopeId, int page, String cursor, Deque<String> backStack) {
+        String category = categoryId;
+        if (category == null || category.isBlank()) {
+            List<CategoryTab> tabs = resolveCategoryTabs(locale());
+            category = tabs.isEmpty() ? "PLAYTIME" : tabs.getFirst().id();
+        }
+        return new TopQuery(category, scopeId, page, cursor, backStack, true);
+    }
+
+    /**
+     * Reads a page, and the category's scopes when asked to. Blocks on storage and touches
+     * nothing viewer-specific, so it runs off the game thread.
+     */
+    public TopData fetch(TopQuery query, PlayerData viewer) {
+        TopCategoryProvider provider = provider(query.categoryId());
+        if (provider == null) {
+            return new TopData(query, query.withScopes() ? List.of() : null, LeaderboardPage.empty(query.page()));
         }
 
-        Deque<String> stack = backStack != null ? new ArrayDeque<>(backStack) : new ArrayDeque<>();
-        TopModel emptyState = new TopModel(
-                session != null && session.data != null ? session.data.uuid : "",
-                initialCat, tabs, Math.max(1, page), 1, 0L, null, null,
-                List.of(), false, cursor, null, stack, ""
-        );
+        List<TopScope> scopes = null;
+        if (query.withScopes()) {
+            try {
+                scopes = provider.scopes();
+            } catch (Exception e) {
+                Log.warn("Top category @ failed to list its scopes: @", query.categoryId(), e.getMessage());
+            }
+            scopes = scopes == null ? List.of() : List.copyOf(scopes);
+        }
 
-        return loadPageData(emptyState, initialCat, Math.max(1, page), cursor);
+        LeaderboardPage page;
+        try {
+            page = provider.loadPage(new LeaderboardPageRequest(
+                    query.categoryId(), query.page(), PLAYERS_PER_PAGE, query.cursor(), viewer, query.scopeId()));
+        } catch (Exception e) {
+            Log.warn("Top category @ failed to load page @: @", query.categoryId(), query.page(), e.getMessage());
+            page = LeaderboardPage.empty(query.page());
+        }
+        return new TopData(query, scopes, page);
+    }
+
+    /** The model that opens the menu on {@code data}. */
+    public TopModel model(TopData data) {
+        TopModel blank = new TopModel(
+                session != null && session.data != null ? session.data.uuid : "",
+                data.query().categoryId(), resolveCategoryTabs(locale()), List.of(), null,
+                1, 1, 0L, null, null,
+                List.of(), false, null, null, new ArrayDeque<>(), ""
+        );
+        return apply(blank, data);
+    }
+
+    /** {@code current} showing what {@code data} holds. */
+    private TopModel apply(TopModel current, TopData data) {
+        TopQuery query = data.query();
+        LeaderboardPage page = data.page();
+        boolean sameCategory = Objects.equals(current.selectedCategoryId(), query.categoryId());
+        List<TopScope> scopes = data.scopes() != null ? data.scopes() : (sameCategory ? current.scopes() : List.of());
+
+        long total = page.totalEntries() != null ? page.totalEntries() : page.entries().size();
+        int pages = page.totalEntries() != null
+                ? Math.max(1, (int) Math.ceil((double) page.totalEntries() / PLAYERS_PER_PAGE))
+                : (page.hasNext() ? page.currentPage() + 1 : page.currentPage());
+
+        return new TopModel(
+                current.viewerUuid(), query.categoryId(), current.categories(),
+                scopes, selectedScope(scopes, query.scopeId()),
+                page.currentPage(), pages, total,
+                page.selfRank(), selfPrimaryValue(query.categoryId(), page),
+                page.entries(), page.hasNext(),
+                query.cursor(), page.nextCursor(),
+                query.backStack(), ""
+        );
+    }
+
+    /** The scope on screen: the one asked for when it exists, otherwise the category's current one. */
+    private static String selectedScope(List<TopScope> scopes, String requested) {
+        if (scopes.isEmpty()) {
+            return null;
+        }
+        String current = scopes.getFirst().id();
+        for (TopScope scope : scopes) {
+            if (scope.id().equals(requested)) {
+                return requested;
+            }
+            if (scope.current()) {
+                current = scope.id();
+            }
+        }
+        return current;
     }
 
     private List<CategoryTab> resolveCategoryTabs(Localization local) {
         if (categoryRegistry == null) {
-            return List.of(
-                    new CategoryTab("MINI_PVP", "MiniPvP", String.valueOf(Iconc.modePvp), 20),
-                    new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10)
-            );
+            return List.of(new CategoryTab("PLAYTIME", "Playtime", String.valueOf(Iconc.refresh), 10));
         }
         return categoryRegistry.all().stream()
                 .sorted(Comparator.comparingInt(TopCategoryProvider::priority).reversed())
@@ -188,54 +268,55 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 .toList();
     }
 
-    private TopModel loadPageData(TopModel current, String categoryId, int page, String cursor) {
-        if (categoryRegistry == null) return current;
-        TopCategoryProvider provider = categoryRegistry.resolve(categoryId).orElse(null);
-        if (provider == null) return current;
+    /** The viewer's own value in the category, as the category words it. */
+    private String selfPrimaryValue(String categoryId, LeaderboardPage page) {
+        TopCategoryProvider provider = provider(categoryId);
+        if (provider == null || session == null || session.data == null) return null;
+        Localization local = locale();
 
-        LeaderboardPageRequest req = new LeaderboardPageRequest(
-                categoryId,
-                page,
-                PLAYERS_PER_PAGE,
-                cursor,
-                session != null ? session.data : null
-        );
-
-        LeaderboardPage pageResult;
-        try {
-            pageResult = provider.loadPage(req);
-        } catch (Exception e) {
-            pageResult = LeaderboardPage.empty(page);
-        }
-
-        String selfValue = resolveSelfPrimaryValue(categoryId, pageResult);
-        return current.withPageData(pageResult, cursor, pageResult.nextCursor(), selfValue);
-    }
-
-    private String resolveSelfPrimaryValue(String categoryId, LeaderboardPage page) {
-        if (session == null || session.data == null) return null;
-        Localization local = session.locale();
-
-        if (page != null && page.entries() != null) {
-            for (LeaderboardEntry entry : page.entries()) {
-                if (Objects.equals(entry.playerUuid(), session.data.uuid)) {
-                    return formatValue(categoryId, entry, local);
-                }
+        for (LeaderboardEntry entry : page.entries()) {
+            if (Objects.equals(entry.playerUuid(), session.data.uuid)) {
+                return provider.formatValue(entry, local);
             }
         }
-
-        if (page != null && page.selfPrimaryValue() != null && !page.selfPrimaryValue().isBlank()) {
-            return formatValue(categoryId, page.selfPrimaryValue(), local);
+        if (page.selfPrimaryValue() != null && !page.selfPrimaryValue().isBlank()) {
+            return provider.formatValue(page.selfPrimaryValue(), local);
         }
+        return null;
+    }
 
-        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
-        String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
-        return switch (catUpper) {
-            case "MINI_PVP" -> nf.format(session.data.pvpRating);
-            case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(session.data.totalPlayTime, local) : session.data.totalPlayTime + "m";
-            case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(session.data.hexedPoints))) : session.data.hexedPoints + " pts";
-            default -> null;
-        };
+    private TopCategoryProvider provider(String categoryId) {
+        return categoryRegistry == null ? null : categoryRegistry.resolve(categoryId).orElse(null);
+    }
+
+    private Localization locale() {
+        return session != null ? session.locale() : null;
+    }
+
+    private PlayerData viewer() {
+        return session != null ? session.data : null;
+    }
+
+    /**
+     * Loads {@code query} off the game thread and feeds the result back as a
+     * {@link TopEvent.Loaded}. The dialog keeps showing {@code model} meanwhile; a result
+     * that arrives after the dialog moved on is dropped.
+     */
+    private UpdateResult<TopModel> load(TopModel model, TopQuery query) {
+        PlayerData viewer = viewer();
+        async.supply(() -> fetch(query, viewer)).thenMain((data, error) -> {
+            if (error != null) {
+                Log.err("Failed to load top category " + query.categoryId(), error);
+                return;
+            }
+            var active = session != null ? session.activeUiSession() : null;
+            if (active != null && active.model() == model) {
+                @SuppressWarnings("unchecked")
+                var topSession = (org.xcore.ui.runtime.UiSession<TopModel, TopEvent>) active;
+                topSession.dispatch(new TopEvent.Loaded(data));
+            }
+        });
+        return UpdateResult.of(model);
     }
 
     @Override
@@ -245,9 +326,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 if (Objects.equals(model.selectedCategoryId(), e.categoryId())) {
                     yield UpdateResult.of(model);
                 }
-                TopModel switched = model.withCategory(e.categoryId(), model.categories());
-                TopModel loaded = loadPageData(switched, e.categoryId(), 1, null);
-                yield UpdateResult.rerender(loaded);
+                yield load(model, new TopQuery(e.categoryId(), null, 1, null, null, true));
+            }
+            case TopEvent.SelectScope e -> {
+                boolean known = model.scopes().stream().anyMatch(scope -> scope.id().equals(e.scopeId()));
+                if (!known || Objects.equals(model.selectedScopeId(), e.scopeId())) {
+                    yield UpdateResult.of(model);
+                }
+                yield load(model, new TopQuery(model.selectedCategoryId(), e.scopeId(), 1, null, null, false));
             }
             case TopEvent.NextPage() -> {
                 if (!model.hasNext() || model.nextCursor() == null) {
@@ -255,16 +341,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 }
                 Deque<String> nextStack = new ArrayDeque<>(model.cursorBackStack());
                 nextStack.addLast(model.currentCursor() == null ? FIRST_PAGE_CURSOR_TOKEN : model.currentCursor());
-                TopModel nextModel = new TopModel(
-                        model.viewerUuid(), model.selectedCategoryId(), model.categories(),
-                        model.currentPage(), model.totalPages(), model.totalEntries(),
-                        model.selfRank(), model.selfPrimaryValue(),
-                        model.entries(), model.hasNext(),
-                        model.currentCursor(), model.nextCursor(),
-                        nextStack, ""
-                );
-                TopModel loaded = loadPageData(nextModel, model.selectedCategoryId(), model.currentPage() + 1, model.nextCursor());
-                yield UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION);
+                yield load(model, new TopQuery(model.selectedCategoryId(), model.selectedScopeId(),
+                        model.currentPage() + 1, model.nextCursor(), nextStack, false));
             }
             case TopEvent.PrevPage() -> {
                 if (model.cursorBackStack().isEmpty()) {
@@ -273,20 +351,20 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 Deque<String> prevStack = new ArrayDeque<>(model.cursorBackStack());
                 String prevCursor = prevStack.pollLast();
                 String targetCursor = FIRST_PAGE_CURSOR_TOKEN.equals(prevCursor) ? null : prevCursor;
-                TopModel prevModel = new TopModel(
-                        model.viewerUuid(), model.selectedCategoryId(), model.categories(),
-                        model.currentPage(), model.totalPages(), model.totalEntries(),
-                        model.selfRank(), model.selfPrimaryValue(),
-                        model.entries(), model.hasNext(),
-                        model.currentCursor(), model.nextCursor(),
-                        prevStack, ""
-                );
-                TopModel loaded = loadPageData(prevModel, model.selectedCategoryId(), Math.max(1, model.currentPage() - 1), targetCursor);
-                yield UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION);
+                yield load(model, new TopQuery(model.selectedCategoryId(), model.selectedScopeId(),
+                        Math.max(1, model.currentPage() - 1), targetCursor, prevStack, false));
             }
-            case TopEvent.Refresh() -> {
-                TopModel reloaded = loadPageData(model, model.selectedCategoryId(), model.currentPage(), model.currentCursor());
-                yield UpdateResult.patch(reloaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION);
+            case TopEvent.Refresh() -> load(model, new TopQuery(model.selectedCategoryId(), model.selectedScopeId(),
+                    model.currentPage(), model.currentCursor(), model.cursorBackStack(), true));
+            case TopEvent.Loaded(TopData data) -> {
+                TopModel loaded = apply(model, data);
+                // Turning a page changes the list only; anything else may change the header as well.
+                boolean pageOnly = !data.query().withScopes()
+                        && Objects.equals(model.selectedCategoryId(), loaded.selectedCategoryId())
+                        && Objects.equals(model.selectedScopeId(), loaded.selectedScopeId());
+                yield pageOnly
+                        ? UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION)
+                        : UpdateResult.rerender(loaded);
             }
             case TopEvent.InspectPlayer e -> {
                 if (e.playerUuid() == null || e.playerUuid().isBlank()) {
@@ -332,13 +410,14 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     private void openProfileWithReturn(TopModel model, PlayerData target) {
         if (session == null || playerMenu == null) return;
         String cat = model.selectedCategoryId();
+        String scope = model.selectedScopeId();
         int page = model.currentPage();
         String cursor = model.currentCursor();
         Deque<String> backStack = new ArrayDeque<>(model.cursorBackStack());
 
         session.pushHistory(() -> {
             if (topMenu != null) {
-                topMenu.openTopUi(session, cat, page, cursor, backStack);
+                topMenu.openTopUi(session, cat, scope, page, cursor, backStack);
             }
         });
 
@@ -358,6 +437,9 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         if (res.startsWith("action:tab:")) {
             return new TopEvent.SelectCategory(res.substring("action:tab:".length()));
         }
+        if (res.startsWith("action:scope:")) {
+            return new TopEvent.SelectScope(res.substring("action:scope:".length()));
+        }
         if (res.startsWith("action:inspect:")) {
             return new TopEvent.InspectPlayer(res.substring("action:inspect:".length()));
         }
@@ -376,7 +458,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     @Override
     public VNode render(TopModel model) {
         DialogMetrics metrics = metrics();
-        Localization local = session != null ? session.locale() : null;
+        Localization local = locale();
         String currentCatName = model.categories().stream()
                 .filter(c -> Objects.equals(c.id(), model.selectedCategoryId()))
                 .findFirst()
@@ -434,6 +516,11 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 }
             })).row();
 
+            // 2b. Scope switcher, for a category with several leaderboards (rating seasons)
+            if (model.scopes().size() > 1) {
+                root.add(Ui.table(bar -> renderScopeSwitcher(bar, model, local))).row();
+            }
+
             root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
 
             // 3. Dynamic Entries Slot (Scrollable Player Rows)
@@ -469,6 +556,46 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 slot.layout(l -> l.growX());
                 renderPaginationBar(slot, model, local);
             }).row();
+        });
+    }
+
+    /** "◀ Season 3 ▶": scopes run newest first, so the left arrow steps to an older one. */
+    private void renderScopeSwitcher(Ui.TableBuilder bar, TopModel model, Localization local) {
+        bar.layout(l -> l.growX().padBottom(2f));
+
+        List<TopScope> scopes = model.scopes();
+        int index = 0;
+        for (int i = 0; i < scopes.size(); i++) {
+            if (scopes.get(i).id().equals(model.selectedScopeId())) {
+                index = i;
+            }
+        }
+        TopScope selected = scopes.get(index);
+        TopScope older = index + 1 < scopes.size() ? scopes.get(index + 1) : null;
+        TopScope newer = index > 0 ? scopes.get(index - 1) : null;
+
+        scopeStep(bar, older, Iconc.left);
+
+        TopCategoryProvider provider = provider(model.selectedCategoryId());
+        String label = selected.id();
+        if (provider != null && local != null) {
+            try {
+                label = provider.formatScope(selected, local);
+            } catch (Exception ignored) {
+                // The raw scope id is still a usable label.
+            }
+        }
+        bar.label(Text.raw((selected.current() ? "[accent]" : "[lightgray]") + label + "[]"),
+                l -> l.align("center").growX().padLeft(6f).padRight(6f));
+
+        scopeStep(bar, newer, Iconc.right);
+    }
+
+    private static void scopeStep(Ui.TableBuilder bar, TopScope target, char glyph) {
+        String action = target != null ? "action:scope:" + target.id() : "action:scope:";
+        bar.button(Text.raw((target != null ? "[accent]" : "[gray]") + glyph + "[]"), action, b -> {
+            if (target == null) b.disabled();
+            b.style("cleart").layout(l -> l.size(34f));
         });
     }
 
@@ -701,38 +828,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
 
     private String formatValue(String categoryId, LeaderboardEntry entry, Localization local) {
         if (entry == null) return "-";
-        if (categoryRegistry != null) {
-            TopCategoryProvider provider = categoryRegistry.resolve(categoryId).orElse(null);
-            if (provider != null) {
-                String val = provider.formatValue(entry, local);
-                if (val != null && !val.equals(entry.primaryValue()) && !val.equals("-")) {
-                    return val;
-                }
-            }
-        }
-        return formatValue(categoryId, entry.primaryValue(), local);
-    }
-
-    private String formatValue(String categoryId, String rawValue, Localization local) {
-        if (rawValue == null || rawValue.isBlank()) return "-";
-        try {
-            long val = Long.parseLong(rawValue);
-            NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
-
-            String catUpper = categoryId != null ? categoryId.toUpperCase() : "";
-            return switch (catUpper) {
-                case "MINI_PVP" -> nf.format(val);
-                case "PLAYTIME" -> topMenu != null ? topMenu.formatPlayTime(val, local) : PlayerProfileUiController.formatDuration((int) val, local);
-                case "HEXED" -> local != null ? local.t("top-menu-score-points", args("points", nf.format(val))) : nf.format(val) + " pts";
-                default -> {
-                    if (catUpper.contains("ELO")) {
-                        yield nf.format(val) + " ELO";
-                    }
-                    yield nf.format(val);
-                }
-            };
-        } catch (NumberFormatException e) {
-            return rawValue;
-        }
+        TopCategoryProvider provider = provider(categoryId);
+        return provider != null ? provider.formatValue(entry, local) : entry.primaryValue();
     }
 }

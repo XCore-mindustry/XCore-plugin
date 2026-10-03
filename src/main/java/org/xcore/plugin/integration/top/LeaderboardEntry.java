@@ -1,5 +1,8 @@
 package org.xcore.plugin.integration.top;
 
+import org.xcore.plugin.model.PlayerData;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -33,6 +36,29 @@ public record LeaderboardEntry(
         primaryValue = primaryValue == null ? "" : primaryValue;
         attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
         displayText = displayText == null ? "" : displayText;
+    }
+
+    /**
+     * Attributes every player card understands: nickname override, active badge, PID and
+     * the admin mark. Providers add their own on top.
+     */
+    public static Map<String, String> profileAttributes(PlayerData player) {
+        Map<String, String> attributes = new HashMap<>();
+        if (player == null) {
+            return attributes;
+        }
+        if (player.customNickname != null && !player.customNickname.isBlank()) {
+            attributes.put("customNickname", player.customNickname);
+        }
+        if (player.activeBadge != null && !player.activeBadge.isBlank()) {
+            attributes.put("activeBadge", player.activeBadge);
+            attributes.put("badgeColorMode", player.badgeSymbolColorMode != null ? player.badgeSymbolColorMode : "default");
+        }
+        if (player.pid > 0) {
+            attributes.put("pid", String.valueOf(player.pid));
+        }
+        attributes.put("admin", String.valueOf(player.admin));
+        return attributes;
     }
 
     public static LeaderboardEntry of(String playerUuid, int rank, String displayName, String primaryValue, String displayText) {

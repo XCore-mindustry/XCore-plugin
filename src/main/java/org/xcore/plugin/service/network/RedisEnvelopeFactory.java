@@ -75,14 +75,30 @@ final class RedisEnvelopeFactory {
     }
 
     Map<String, String> rpcResponseFields(RedisRpcTracker.RpcInboundContext context, String responseJson, long respondedAt) {
+        return rpcResponse(context, "ok", "", "", responseJson, respondedAt);
+    }
+
+    Map<String, String> rpcErrorFields(RedisRpcTracker.RpcInboundContext context,
+                                       String errorCode,
+                                       String errorMessage,
+                                       long respondedAt) {
+        return rpcResponse(context, "error", errorCode, errorMessage, "{}", respondedAt);
+    }
+
+    private Map<String, String> rpcResponse(RedisRpcTracker.RpcInboundContext context,
+                                            String status,
+                                            String errorCode,
+                                            String errorMessage,
+                                            String responseJson,
+                                            long respondedAt) {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("schema_version", "1");
         fields.put("rpc_type", context.rpcType());
         fields.put("correlation_id", context.correlationId());
         fields.put("server", config.server.name);
-        fields.put("status", "ok");
-        fields.put("error_code", "");
-        fields.put("error_message", "");
+        fields.put("status", status);
+        fields.put("error_code", errorCode);
+        fields.put("error_message", errorMessage);
         fields.put("responded_at", String.valueOf(respondedAt));
         fields.put("payload_json", responseJson);
         return fields;

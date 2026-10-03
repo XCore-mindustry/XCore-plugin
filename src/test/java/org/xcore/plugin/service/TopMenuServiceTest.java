@@ -21,25 +21,36 @@ import static org.mockito.Mockito.when;
 class TopMenuServiceTest {
 
     @Test
-    @DisplayName("loadCursorPage resolves default category from config")
-    void loadCursorPage_resolvesDefaultCategoryFromConfig() {
+    @DisplayName("loadCursorPage falls back to playtime when no category is given")
+    void loadCursorPage_fallsBackToPlaytime() {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         TopMenuCacheService cacheService = mock(TopMenuCacheService.class);
         when(cacheService.currentVersion()).thenReturn(1L, 1L);
         when(cacheService.getTotalEntries(1L)).thenReturn(1L);
-        when(repository.findTopRank(TopCategory.MINI_PVP, null)).thenReturn(3);
+        when(repository.findTopRank(TopCategory.PLAYTIME, null)).thenReturn(3);
 
         PlayerData player = player("player-1", 10);
         LeaderboardSlice<PlayerData> slice = new LeaderboardSlice<>(List.of(player), false, null);
-        when(cacheService.getTopSlice(1L, TopCategory.MINI_PVP, 10, null)).thenReturn(slice);
+        when(cacheService.getTopSlice(1L, TopCategory.PLAYTIME, 10, null)).thenReturn(slice);
 
         TopMenuService service = new TopMenuService(config("mini-pvp"), repository, cacheService);
 
         TopMenuService.TopCursorPage page = service.loadCursorPage(null, null, 1, 10, null);
 
-        assertThat(page.category()).isEqualTo(TopCategory.MINI_PVP);
+        assertThat(page.category()).isEqualTo(TopCategory.PLAYTIME);
         assertThat(page.players()).containsExactly(player);
         assertThat(page.currentPage()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("only the playtime category is built in; ladders register their own")
+    void builtInCategories_arePlaytimeOnly() {
+        TopMenuService service = new TopMenuService(config("mini-pvp"),
+                mock(PlayerDataRepository.class), mock(TopMenuCacheService.class));
+
+        assertThat(service.categoryRegistry().all())
+                .extracting(provider -> provider.id())
+                .containsExactly(TopCategory.PLAYTIME.name());
     }
 
     @Test
@@ -104,19 +115,19 @@ class TopMenuServiceTest {
 
         PlayerData player = player("top-1", 100);
         LeaderboardSlice<PlayerData> slice = new LeaderboardSlice<>(List.of(player), false, null);
-        when(cacheService.getTopSlice(2L, TopCategory.MINI_PVP, 10, cursor)).thenReturn(slice);
-        when(repository.findTopRank(TopCategory.MINI_PVP, null)).thenReturn(4);
+        when(cacheService.getTopSlice(2L, TopCategory.HEXED, 10, cursor)).thenReturn(slice);
+        when(repository.findTopRank(TopCategory.HEXED, null)).thenReturn(4);
 
-        TopMenuService service = new TopMenuService(config("mini-pvp"), repository, cacheService);
+        TopMenuService service = new TopMenuService(config("survival"), repository, cacheService);
 
-        TopMenuService.TopCursorPage page = service.loadCursorPage(TopCategory.MINI_PVP, cursor, 2, 10, null);
+        TopMenuService.TopCursorPage page = service.loadCursorPage(TopCategory.HEXED, cursor, 2, 10, null);
 
         assertThat(page.selfRank()).isEqualTo(4);
         assertThat(page.players()).containsExactly(player);
         assertThat(page.currentCursor()).isEqualTo(cursor);
         verify(repository, never()).countTopEntries();
-        verify(repository, never()).findTopSlice(TopCategory.MINI_PVP, cursor, 10);
-        verify(repository, times(1)).findTopRank(TopCategory.MINI_PVP, null);
+        verify(repository, never()).findTopSlice(TopCategory.HEXED, cursor, 10);
+        verify(repository, times(1)).findTopRank(TopCategory.HEXED, null);
     }
 
     @Test

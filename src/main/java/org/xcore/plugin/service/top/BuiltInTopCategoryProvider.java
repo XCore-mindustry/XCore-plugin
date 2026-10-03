@@ -12,7 +12,6 @@ import org.xcore.plugin.service.TopMenuService;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,21 +64,10 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
         for (int i = 0; i < cursorPage.players().size(); i++) {
             PlayerData player = cursorPage.players().get(i);
             int rank = cursorPage.displayRank(i);
-            Map<String, String> attrs = new HashMap<>();
+            Map<String, String> attrs = LeaderboardEntry.profileAttributes(player);
             if (category == TopCategory.HEXED && player.hexedRank() != null) {
                 attrs.put("rankName", player.hexedRank().name());
             }
-            if (player.customNickname != null && !player.customNickname.isBlank()) {
-                attrs.put("customNickname", player.customNickname);
-            }
-            if (player.activeBadge != null && !player.activeBadge.isBlank()) {
-                attrs.put("activeBadge", player.activeBadge);
-                attrs.put("badgeColorMode", player.badgeSymbolColorMode != null ? player.badgeSymbolColorMode : "default");
-            }
-            if (player.pid > 0) {
-                attrs.put("pid", String.valueOf(player.pid));
-            }
-            attrs.put("admin", String.valueOf(player.admin));
             entries.add(new LeaderboardEntry(
                     player.uuid,
                     rank,
@@ -96,8 +84,19 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
                 cursorPage.hasNext(),
                 LeaderboardCursorCodec.encode(cursorPage.nextCursor()),
                 cursorPage.totalEntries(),
-                cursorPage.selfRank()
+                cursorPage.selfRank(),
+                request.viewerData() != null ? formatPrimaryValue(request.viewerData()) : null
         );
+    }
+
+    @Override
+    public String formatValue(String primaryValue, Localization local) {
+        long value = parseLongSafe(primaryValue);
+        return switch (category) {
+            case PLAYTIME -> formatPlayTime(value, local);
+            case HEXED -> local.t("top-menu-score-points", args(
+                    "points", NumberFormat.getIntegerInstance(local.getLocale()).format(value)));
+        };
     }
 
     @Override
@@ -106,16 +105,6 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
         String rankLabel = rankLabel(entry.rank());
 
         return switch (category) {
-            case MINI_PVP -> {
-                long num = parseLongSafe(entry.primaryValue());
-                org.xcore.plugin.rating.RatingLeague league = org.xcore.plugin.rating.RatingLeague.fromRating((int) num);
-                yield local.t("top-menu-entry-mini-pvp", args(
-                        "rankLabel", rankLabel,
-                        "leagueIcon", league.icon(),
-                        "nickname", entry.displayName(),
-                        "value", numberFormat.format(num)
-                ));
-            }
             case PLAYTIME -> {
                 long time = parseLongSafe(entry.primaryValue());
                 yield local.t("top-menu-entry-playtime", args(
@@ -139,7 +128,6 @@ public class BuiltInTopCategoryProvider implements TopCategoryProvider {
 
     private String formatPrimaryValue(PlayerData player) {
         return switch (category) {
-            case MINI_PVP -> String.valueOf(player.pvpRating);
             case PLAYTIME -> String.valueOf(player.totalPlayTime);
             case HEXED -> String.valueOf(player.hexedPoints);
         };

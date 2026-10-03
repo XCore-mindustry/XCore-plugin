@@ -15,6 +15,7 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.MainThreadDispatcher;
 import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.service.DiscordAdminAccessService;
 import org.xcore.plugin.service.NetworkService;
@@ -83,7 +84,7 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -119,7 +120,7 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -155,7 +156,7 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -202,7 +203,7 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -243,7 +244,7 @@ class ModerationTransportHandlerTest {
         config.server.name = "mini-pvp";
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
-                network, sessionService, config, playerDisplayService, discordAdminAccessService, async);
+                network, sessionService, config, playerDisplayService, discordAdminAccessService, mock(LadderService.class), async);
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -288,7 +289,7 @@ class ModerationTransportHandlerTest {
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
                 network, sessionService, config, playerDisplayService, discordAdminAccessService,
-                new Async(new StorageExecutor(4), deferred));
+                mock(LadderService.class), new Async(new StorageExecutor(4), deferred));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);
@@ -341,7 +342,7 @@ class ModerationTransportHandlerTest {
 
         ModerationTransportHandler handler = new ModerationTransportHandler(
                 network, sessionService, config, playerDisplayService, discordAdminAccessService,
-                new Async(new StorageExecutor(4), marshalled::add));
+                mock(LadderService.class), new Async(new StorageExecutor(4), marshalled::add));
 
         Map<Class<?>, Cons<?>> listeners = new HashMap<>();
         captureListeners(network, listeners);

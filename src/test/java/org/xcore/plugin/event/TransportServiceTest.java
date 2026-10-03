@@ -7,6 +7,7 @@ import org.xcore.plugin.concurrent.StorageExecutor;
 import org.xcore.plugin.event.transport.ChatTransportHandler;
 import org.xcore.plugin.event.transport.DiscordLinkTransportHandler;
 import org.xcore.plugin.event.transport.MapTransportHandler;
+import org.xcore.plugin.event.transport.RatingTransportHandler;
 import org.xcore.plugin.event.transport.ModerationTransportHandler;
 import org.xcore.plugin.service.NetworkService;
 
@@ -118,6 +119,7 @@ class TransportServiceTest {
                     mock(DiscordLinkTransportHandler.class),
                     mock(ModerationTransportHandler.class),
                     mock(MapTransportHandler.class),
+                    mock(RatingTransportHandler.class),
                     mock(NetworkService.class),
                     config,
                     // Unused: this subclass overrides the scheduling hook and resolves inline.
