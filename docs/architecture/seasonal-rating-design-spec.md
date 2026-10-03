@@ -1,6 +1,6 @@
 # Technical Design Specification: Seasonal Rating (Mini-PVP and HexedCore)
 
-Status: decisions in section 10 accepted; phase 1 implemented (see 9.1), phases 2–5 pending.
+Status: decisions in section 10 accepted; phases 1 and 2 implemented (see 9.1 and 9.2), phases 3–5 pending.
 Affects: `XCore-plugin`, `aethercore-plugin` (HexedCore), `xcore-protocol`, `XCore-discord-bot`.
 
 ## 1. Goal
@@ -51,12 +51,18 @@ org.xcore.plugin.rating
 │   ├── MatchSettlement        a finished match: mutations, or the reason it is unrated
 │   ├── LadderTopCategoryProvider   the /top category of any ladder
 │   └── LadderLeagueDisplay    the league icon next to a player's name
-├── season/
-│   ├── Season, SeasonStatus, SeasonRepository
-│   ├── SeasonSchedule         length, time zone, notification thresholds
-│   ├── SeasonResolver         the ladder's active season at a point in time
+│   ├── StandingSeed           the rating a new standing starts from, and where it came from
+│   └── LadderSeasons          SPI: everything the ladder needs to know about seasons
+├── season/                                                          (phase 2, done)
+│   ├── Season, SeasonStatus   one season of one ladder; transitions are pure functions
+│   ├── SeasonStore            rating_seasons (MongoSeasonStore, InMemorySeasonStore)
+│   ├── SeasonSchedule         length, time zone, notification thresholds, grace, podium
 │   ├── SeasonResetPolicy      starting rating for a new season
-│   └── SeasonLifecycleService tick: notifications, closing, opening
+│   ├── SeasonResolver         this server's view of the open seasons; diffs produce SeasonChange
+│   ├── SeasonLifecycleService tick: notifications, closing, opening; implements LadderSeasons
+│   ├── SeasonFinalizer        final ranks, podium and summary of a closing season
+│   ├── SeasonObserver         per-server reaction to a SeasonChange
+│   └── SeasonAnnouncer        in-game announcements and icon refresh
 └── prize/
     ├── SeasonPrize, PrizeGrant, PrizeGrantRepository
     └── PrizeHandler           SPI per prize kind
@@ -74,7 +80,7 @@ Removed: `hexedcore.rating.RatingPolicy`, `hexedcore.rating.PlacementEloCalculat
 
 `Ladder.settle(MatchSettlement)`:
 
-1. The season is resolved (phase 1: always season 1; phase 2: `SeasonResolver` from the match end time).
+1. The season is resolved from the match end time (`MatchSettlement.endedAt`) through `LadderSeasons.at`. An overdue season is rolled over right there, so a match is never written into a season that should already have ended.
 2. `PluginIdempotencyLedger.claim` on the operation `{ladder}:{matchId}:rating:{algorithm}` in the shared `rating` ledger. An unrated match is claimed and marked skipped, so it is also seen exactly once.
 3. For each participant, `LadderStore.applyOnce` into `rating_standings` (the record is created with a lazy reset, see 5.2). The store applies a rating *delta* and clamps to the policy minimum, so it never overwrites a concurrent change.
 4. `ledger.markCompleted`.
@@ -87,7 +93,13 @@ Mini-PVP gains the idempotency it lacked, and its settlement now runs off the ga
 
 - **The archive is free.** A past season is the same `rating_standings` documents that are no longer written to. A past season's leaderboard is the same query with a different `season`. There is no separate archive code or archive collection.
 - **The reset is lazy.** Nothing is rewritten in bulk when a season rolls over. A player's record in the new season is created on their first match, from their latest rating, according to `SeasonResetPolicy`.
-- **Closing happens exactly once.** The tick runs on every XCore server over all seasons in `rating_seasons`, regardless of which mode that server hosts. One server claims the transition through the ledger with a lease. The season closes even if the server hosting that mode is down.
+- **Closing happens exactly once.** The tick runs on every XCore server over all seasons in `rating_seasons`, regardless of which mode that server hosts. Every transition is a compare-and-set on the season's `revision`, so exactly one server wins it; finalisation additionally runs under a ledger lease. The season closes even if the server hosting that mode is down.
+
+### 3.4. The seam between ladders and seasons
+
+The dependency is one-way: `rating.season` knows `rating.ladder`, not the reverse. The ladder asks its questions through `LadderSeasons` — which season is current, which season a match that ended at a given instant belongs to, what rating a new standing starts from — and `SeasonLifecycleService` answers them. `LadderSeasons.single()` is the season-less implementation (always season 1, no reset) used by tests.
+
+A ladder caches standings for one season. When its season changes, the lifecycle service calls the ladder back and the cache is rebuilt for the new season.
 
 ## 4. Data (MongoDB)
 
@@ -98,17 +110,23 @@ _id            "{ladder}:{number}"
 ladder         "minipvp" | "hexed"
 number         1, 2, 3...
 name           optional display name
-starts_at      epoch ms
-ends_at        epoch ms (can be moved)
+starts_at      date
+ends_at        date (can be moved)
 status         ACTIVE | CLOSING | ARCHIVED
 sent_notices   ["7d", "3d", "24h", "1h"]   — thresholds already sent
-prizes         [{place_from, place_to, kind, payload, description}]
+prizes         [{place_from, place_to, kind, payload, description}]   — phase 5
 podium         [{place, uuid, pid, nickname, rating, league, matches, wins,
                  discord_id, discord_username}]   — snapshot taken at close
 summary        {participants, matches}
+matches        live counter of rated matches settled in the season
 rescheduled    [{from, to, actor, at, reason}]
 revision       for optimistic locking
+created_at, updated_at
 ```
+
+Indexes: unique `{ladder, number: -1}`; `{status}` for the tick, which reads only the open (`ACTIVE`/`CLOSING`) seasons.
+
+`matches` is incremented with `$inc` outside the `revision` compare-and-set, so counting a match never makes a concurrent transition fail. It becomes `summary.matches` when the season is archived.
 
 ### 4.2. `rating_standings`
 
@@ -144,26 +162,32 @@ granted_by, updated_at, note
 - only players with at least one rated match are copied; `merged:` accounts are skipped;
 - existing standings are never overwritten (`$merge … whenMatched: keepExisting`), so the migration is safe to re-run;
 - the old fields and collection are left untouched until the next release (rollback), then removed by a separate migration;
-- the season 1 documents in `rating_seasons` are created in phase 2, together with the collection.
+- there is no migration for `rating_seasons`: season 1 of a ladder is created the first time a server registers that ladder (`LadderSeasons.open`, an idempotent insert), with `starts_at` = now and `ends_at` from the schedule. A ladder added later gets its season the same way.
 
 Until phases 3 and 4, Mini-PVP standings are mirrored back into `players.pvp_rating/pvp_matches/pvp_wins` after every settlement (`LegacyPvpRatingMirror`): the profile menu and the Discord bot still read them. The ladder is the source of truth.
 
 ## 5. Season lifecycle
 
 ```
-ACTIVE ──(now >= ends_at)──> CLOSING ──(settlement grace elapsed)──> ARCHIVED
+ACTIVE ──(now >= ends_at)──> CLOSING ──(now >= ends_at + grace)──> ARCHIVED
                                 │                                        │
                                 └── season N+1 is created as ACTIVE ─────┘
 ```
 
 ### 5.1. Closing
 
-1. `ACTIVE → CLOSING` atomically (`findOneAndUpdate` on `status` and `revision`).
+1. `ACTIVE → CLOSING` atomically (an update filtered by `_id` and `revision`).
 2. Season N+1 is created immediately (`starts_at` = season N's `ends_at`) so that new matches land in it.
 3. A settlement grace window (5 minutes by default) for matches that finished before `ends_at` but have not been settled yet.
 4. Finalisation under the ledger operation `season:{id}:finalize`: set `final_rank`, build `podium` (top N, 10 by default) with a snapshot of nickname, pid and Discord account, compute `summary`.
-5. Create `rating_prize_grants` from `prizes` and run `PrizeHandler` for the automatic kinds.
-6. `CLOSING → ARCHIVED`, emit `RatingSeasonEndedV1`.
+5. Create `rating_prize_grants` from `prizes` and run `PrizeHandler` for the automatic kinds (phase 5).
+6. `CLOSING → ARCHIVED`, emit `RatingSeasonEndedV1` (phase 4).
+
+The season end is aligned to midnight in the configured time zone: `ends_at` = `starts_at` + length, truncated to the start of that day. If a season is closed so late that its successor's default end is already in the past, the successor runs a full length from now instead.
+
+A server that crashes between steps 1 and 2 leaves a `CLOSING` season with no successor; the next tick on any server creates it. Steps 4–6 are retried the same way.
+
+A match that ended before `ends_at` but is settled during the grace window is written into the `CLOSING` season. One settled after the season is archived goes into the current season: the final ranks are already fixed.
 
 A match belongs to a season by its end time. A match started in season N and finished after `ends_at` counts towards season N+1.
 
@@ -178,14 +202,19 @@ On a player's first match in season N, their latest record in that ladder is loo
 
 Policy options: soft reset `default + (prev − default) × carry` (`carry = 0.5` by default), hard reset, no reset. Match and win counters always start from zero.
 
-League shown for a player who has not played in the new season yet: derived from the computed starting rating, marked "uncalibrated".
+The standing records where its starting rating came from in `seeded_from {season, rating}`, written only when the document is created.
+
+A player who has not played in the new season yet has no standing in it: they are absent from the season's `/top` and are drawn with the starting league icon. Showing their carried-over rating as "uncalibrated" belongs to the profile work in phase 3.
 
 ### 5.3. Notifications
 
 Thresholds come from config (`7d`, `3d`, `24h`, `1h` by default).
 
-- **Discord**: the event is published by the server that atomically added the threshold to `sent_notices` (`$addToSet` conditional on absence) — exactly once.
-- **In game**: every server that has the ladder registered announces on its own when a threshold is crossed; plus a line on player join when less than the largest threshold remains.
+- **Cluster-wide, exactly once**: the server whose compare-and-set adds the threshold to `sent_notices` claims it. That is where the Discord event is published in phase 4.
+- **In game**: every server compares consecutive snapshots of the open seasons (`SeasonResolver`) and reacts to what changed — a new threshold in `sent_notices`, or a new season number. The announcement is made on the server whose mode follows the ladder (`SeasonAnnouncer.follow`), so the Mini-PVP season is not announced on a survival server. A player who joins when less than the largest threshold remains gets the same line.
+- If several thresholds are due at once (a server was down, or the end was moved closer), they are claimed together and announced once.
+
+A server that sees a ladder for the first time announces nothing: a restart does not replay old notifications.
 
 ### 5.4. Moving the season end
 
@@ -194,7 +223,8 @@ Thresholds come from config (`7d`, `3d`, `24h`, `1h` by default).
 - a date in the past is rejected — ending early is a separate `end-now` command;
 - a season in `CLOSING`/`ARCHIVED` cannot be changed;
 - thresholds that are in the future again are removed from `sent_notices`;
-- an entry is appended to `rescheduled`, an audit record is written, and `RatingSeasonRescheduledV1` is emitted.
+- an entry is appended to `rescheduled`, an audit record is written (`NOTE`, target `season:{id}`, with the old and new end), and `RatingSeasonRescheduledV1` is emitted (phase 4);
+- `end-now` sets `ends_at` to the current instant; the next tick closes the season as usual.
 
 ## 6. In-game interface
 
@@ -261,14 +291,16 @@ Server console (any XCore server):
 ```
 season list [ladder]
 season info <ladder>
-season extend <ladder> <duration>
-season end-at <ladder> <datetime>
-season end-now <ladder> confirm
+season extend <ladder> <duration> [reason]
+season end-at <ladder> <datetime> [reason]
+season end-now <ladder> confirm [reason]
 season prize set <ladder> <places> <kind> <payload> [description]
 season prize clear <ladder> [places]
 season prize list <ladder> [season]
 season prize delivered <season> <place>
 ```
+
+`<duration>` is `90m`, `12h`, `7d`, `2w`, `1mo`; `<datetime>` is `2027-01-01` or `2027-01-01T18:00` in the season time zone. The `prize` commands arrive in phase 5.
 
 Prizes are `SeasonPrize(place_from, place_to, kind, payload, description)` with one handler per kind:
 
@@ -280,7 +312,7 @@ Prizes are `SeasonPrize(place_from, place_to, kind, payload, description)` with 
 
 Prizes are optional: a season with no `prizes` closes as usual.
 
-Config (`xcore.toml`):
+Config (the shared `secrets.toml`, not the server-local `xcore.toml`: every server must compute the same schedule):
 
 ```toml
 [rating.seasons]
@@ -297,7 +329,7 @@ reset_carry = 0.5
 ## 9. Work order
 
 1. **Refactor with no behaviour change — done.** Remove the copies in HexedCore; introduce the ladder engine (`LadderService`, `Ladder`, `LadderStore`); port Mini-PVP and HexedCore onto it; migration V5; the shared `LadderTopCategoryProvider` and `LadderLeagueDisplay`; account merge over `rating_standings`. Release XCore-plugin, then bump the dependency in HexedCore.
-2. **Season core.** Model, repository, resolver, lifecycle, lazy reset, console commands, in-game notifications.
+2. **Season core — done.** Model, repository, resolver, lifecycle, lazy reset, console commands, in-game notifications.
 3. **Interface.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
 4. **Protocol and bot.** The `rating` family, the channel, `/season`, the updated `/stats`.
 5. **Prizes.** Model, handlers, commands, delivery tracking.
@@ -315,6 +347,21 @@ Ratings, leagues, notifications and commands are the same. The visible differenc
 Rollout: V5 copies the ratings once, at the first start of the new XCore-plugin. A Mini-PVP or HexedCore server still running the old build after that keeps writing to the old fields, and those matches do not reach `rating_standings`. Restart both mode servers on the new builds together.
 
 Known gap until phase 4: the Discord bot's own account merge does not merge `rating_standings`; the plugin's merge does.
+
+### 9.2. What phase 2 changed for players and operators
+
+- Season 1 of each ladder starts when the first server with the new build registers that ladder, and ends one season length later, at midnight in the configured time zone. Move it with `season end-at` if a different date is wanted.
+- When a season ends, the next one starts at once. Ratings are soft-reset on a player's first match of the new season; match and win counters start from zero.
+- Players on the mode's server see "season ends in …" at each threshold and on join inside the last threshold, and "season N has started" with the reset rule at rollover.
+- `/top` and the league icons show the current season only. Past seasons are kept in `rating_standings` with `final_rank` and in `rating_seasons` with the podium; the interface to browse them is phase 3.
+- Console: `season list`, `season info`, `season extend`, `season end-at`, `season end-now`.
+
+Known gaps:
+
+- The legacy mirror `players.pvp_rating/pvp_matches/pvp_wins` (read by `/stats` and the bot until phases 3 and 4) keeps a player's previous-season values until their first match of the new season.
+- `summary.matches` of season 1 counts only matches settled after phase 2 was deployed.
+- An account merge after a season is archived moves the standings but does not recompute `final_rank` or the stored podium.
+- No protocol events are published yet. The places where each transition is won exactly once (`close`, `claimNotices`, `archive`, `move` in `SeasonLifecycleService`) are where phase 4 publishes them.
 
 ## 10. Decisions
 

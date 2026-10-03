@@ -7,6 +7,7 @@ import org.xcore.plugin.common.PLog;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,6 +22,7 @@ public class TomlSecretsConfig implements SelfNormalizing {
     public PaginationConfig pagination = new PaginationConfig();
     public MessagesConfig messages = new MessagesConfig();
     public TranslationSection translation = new TranslationSection();
+    public RatingConfig rating = new RatingConfig();
 
     public void normalize() {
         if (database == null) {
@@ -52,6 +54,10 @@ public class TomlSecretsConfig implements SelfNormalizing {
             translation = new TranslationSection();
         }
         translation.normalize();
+        if (rating == null) {
+            rating = new RatingConfig();
+        }
+        rating.normalize();
     }
 
     public void validate(Fi secretsFile) {
@@ -177,6 +183,54 @@ public class TomlSecretsConfig implements SelfNormalizing {
             public int cooldownSeconds = 10;
             public int unreadLimit = 30;
             public int blockedLimit = 100;
+        }
+    }
+
+    public static class RatingConfig {
+        public SeasonsConfig seasons = new SeasonsConfig();
+
+        public void normalize() {
+            if (seasons == null) {
+                seasons = new SeasonsConfig();
+            }
+            seasons.normalize();
+        }
+    }
+
+    /** Shared by every server so that all of them agree on when a season ends. */
+    public static class SeasonsConfig {
+        public String length = "3mo";
+        public String timezone = "UTC";
+        public List<String> noticeThresholds = new ArrayList<>(List.of("7d", "3d", "24h", "1h"));
+        public String settlementGrace = "5m";
+        public int podiumSize = 10;
+        public int podiumMinMatches = 10;
+        public String reset = "soft";
+        public double resetCarry = 0.5;
+
+        public void normalize() {
+            SeasonsConfig defaults = new SeasonsConfig();
+            if (length == null || length.isBlank()) {
+                length = defaults.length;
+            }
+            if (timezone == null || timezone.isBlank()) {
+                timezone = defaults.timezone;
+            }
+            if (noticeThresholds == null) {
+                noticeThresholds = defaults.noticeThresholds;
+            }
+            if (settlementGrace == null || settlementGrace.isBlank()) {
+                settlementGrace = defaults.settlementGrace;
+            }
+            if (podiumSize <= 0) {
+                podiumSize = defaults.podiumSize;
+            }
+            if (podiumMinMatches < 0) {
+                podiumMinMatches = defaults.podiumMinMatches;
+            }
+            if (reset == null || reset.isBlank()) {
+                reset = defaults.reset;
+            }
         }
     }
 

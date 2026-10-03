@@ -10,6 +10,7 @@ import org.xcore.plugin.rating.ladder.Ladder;
 import org.xcore.plugin.rating.ladder.LadderDefinition;
 import org.xcore.plugin.rating.ladder.LadderService;
 import org.xcore.plugin.rating.ladder.LadderTopCategoryProvider;
+import org.xcore.plugin.rating.season.SeasonAnnouncer;
 
 /**
  * The MiniPvP ladder and its {@code /top} category. Registered on every server so the
@@ -26,6 +27,7 @@ public class MiniPvPLadder {
     public MiniPvPLadder(LadderService ladders,
                          TopCategoryRegistry topCategories,
                          PlayerDataRepository players,
+                         SeasonAnnouncer seasonAnnouncer,
                          TomlXcoreConfig config) {
         this.ladder = ladders.register(
                 new LadderDefinition(LADDER_ID, "top-menu-category-mini-pvp", RatingPolicy.teamEloV1()));
@@ -35,6 +37,7 @@ public class MiniPvPLadder {
                 new LadderTopCategoryProvider(TOP_CATEGORY_ID, hostsMode ? 20 : 10, ladder, players));
         if (hostsMode) {
             topCategories.setDefaultCategory(TOP_CATEGORY_ID);
+            seasonAnnouncer.follow(ladder.definition());
         }
     }
 

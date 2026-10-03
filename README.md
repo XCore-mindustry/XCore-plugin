@@ -177,6 +177,11 @@ Multifunctional plugin for XCore Mindustry servers. Provides player profiles, cr
 | `badge grant <player> <id>` | Grant a badge to a player. |
 | `badge revoke <player> <id>` | Revoke a badge from a player. |
 | `badge list` | List grantable badges. |
+| `season list [ladder]` | List rating seasons of every ladder, or of one. |
+| `season info <ladder>` | Show the running season: dates, sent notices, reschedules. |
+| `season extend <ladder> <duration> [reason]` | Move the season end later (`7d`, `2w`, `1mo`). |
+| `season end-at <ladder> <datetime> [reason]` | Set the season end (`2027-01-01` or `2027-01-01T18:00`, season time zone). |
+| `season end-now <ladder> confirm [reason]` | End the running season immediately. |
 
 ## Configuration
 
@@ -264,6 +269,14 @@ This file contains sensitive and shared settings. **It is created automatically*
 | `messages.private.cooldown_seconds` | `10` | Cooldown between private messages from the same player. |
 | `messages.private.unread_limit` | `30` | Maximum unread messages retained. |
 | `messages.private.blocked_limit` | `100` | Maximum blocked-player entries retained. |
+| `rating.seasons.length` | `3mo` | Length of a rating season (`6w`, `90d`, `3mo`, `1y`). |
+| `rating.seasons.timezone` | `UTC` | Time zone seasons end in; the end is aligned to midnight there. |
+| `rating.seasons.notice_thresholds` | `["7d", "3d", "24h", "1h"]` | When to announce that the season is ending. |
+| `rating.seasons.settlement_grace` | `5m` | How long after the end late match settlements are still accepted before the season is archived. |
+| `rating.seasons.podium_size` | `10` | Number of places stored in a season's podium. |
+| `rating.seasons.podium_min_matches` | `10` | Matches in the season required to appear on the podium. |
+| `rating.seasons.reset` | `soft` | Rating reset between seasons: `soft`, `hard` or `none`. |
+| `rating.seasons.reset_carry` | `0.5` | Share of the distance from the default rating kept by a soft reset. |
 
 #### Translation provider config (`[translation.providers.<id>]`)
 

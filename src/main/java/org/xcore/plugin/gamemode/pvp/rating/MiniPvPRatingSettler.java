@@ -20,6 +20,7 @@ import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,7 +132,8 @@ public class MiniPvPRatingSettler {
                 .map(delta -> new StandingMutation(delta.uuid(), delta.delta(), delta.placement() == 1))
                 .toList();
         SettlementResult result = ladder.settle(MatchSettlement.rated(
-                match.matchId(), calculation.algorithmVersion(), match.resultHash(), mutations));
+                        match.matchId(), calculation.algorithmVersion(), match.resultHash(), mutations)
+                .withEndedAt(Instant.ofEpochMilli(match.endedAt())));
 
         if (result.claimed()) {
             recordMatchHistory(match, calculation.deltas(), names);

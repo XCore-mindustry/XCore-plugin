@@ -3,6 +3,7 @@ package org.xcore.plugin.rating.ladder;
 import com.mongodb.client.ClientSession;
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 
@@ -16,12 +17,21 @@ public interface LadderStore {
 
     Optional<LadderStanding> find(String ladderId, int season, String uuid);
 
+    /** The player's most recent standing in a season earlier than {@code season}. */
+    Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid);
+
     /**
      * Applies a match result to a standing at most once per operation, creating the
-     * standing from {@code startingRating} when the player has none in this season.
+     * standing from {@code seed} when the player has none in this season.
      */
     ApplyResult applyOnce(String ladderId, int season, String operationId, StandingMutation mutation,
-                          int startingRating, int minimumRating);
+                          StandingSeed seed, int minimumRating);
+
+    /** {@link #applyOnce} for a player who starts the season from {@code startingRating}. */
+    default ApplyResult applyOnce(String ladderId, int season, String operationId, StandingMutation mutation,
+                                  int startingRating, int minimumRating) {
+        return applyOnce(ladderId, season, operationId, mutation, StandingSeed.fresh(startingRating), minimumRating);
+    }
 
     StandingPage top(String ladderId, int season, int limit, @Nullable String cursor);
 
@@ -29,6 +39,17 @@ public interface LadderStore {
     OptionalLong rankOf(String ladderId, int season, String uuid);
 
     long count(String ladderId, int season);
+
+    /** The best standings of a season among players with at least {@code minMatches} matches. */
+    List<LadderStanding> leaders(String ladderId, int season, int minMatches, int limit);
+
+    /**
+     * Freezes the leaderboard order of a finished season into every standing's final rank.
+     * Safe to repeat.
+     *
+     * @return number of standings ranked
+     */
+    int assignFinalRanks(String ladderId, int season);
 
     /**
      * Folds every standing of {@code sourceUuid} into {@code targetUuid}: the higher rating

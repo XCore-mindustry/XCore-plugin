@@ -181,4 +181,44 @@ class TomlSecretsConfigTest {
         assertThatCode(() -> toml.validate(secretsConfigFile))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    @DisplayName("rating.seasons has documented defaults, binds from TOML and repairs blank values")
+    void ratingSeasons_defaultsBindingAndRepair() throws Exception {
+        TomlSecretsConfig defaults = new TomlSecretsConfig();
+        assertThat(defaults.rating.seasons.length).isEqualTo("3mo");
+        assertThat(defaults.rating.seasons.timezone).isEqualTo("UTC");
+        assertThat(defaults.rating.seasons.noticeThresholds).containsExactly("7d", "3d", "24h", "1h");
+        assertThat(defaults.rating.seasons.settlementGrace).isEqualTo("5m");
+        assertThat(defaults.rating.seasons.podiumSize).isEqualTo(10);
+        assertThat(defaults.rating.seasons.podiumMinMatches).isEqualTo(10);
+        assertThat(defaults.rating.seasons.reset).isEqualTo("soft");
+        assertThat(defaults.rating.seasons.resetCarry).isEqualTo(0.5);
+
+        TomlSecretsConfig bound = PluginConfigLoader.lenientTomlMapper().readValue("""
+                [rating.seasons]
+                length = "6w"
+                timezone = "Europe/Kyiv"
+                notice_thresholds = ["2d"]
+                settlement_grace = ""
+                podium_size = 0
+                podium_min_matches = 3
+                reset = "hard"
+                reset_carry = 0.25
+                """, TomlSecretsConfig.class);
+        bound.normalize();
+
+        assertThat(bound.rating.seasons.length).isEqualTo("6w");
+        assertThat(bound.rating.seasons.timezone).isEqualTo("Europe/Kyiv");
+        assertThat(bound.rating.seasons.noticeThresholds).containsExactly("2d");
+        assertThat(bound.rating.seasons.settlementGrace).isEqualTo("5m");
+        assertThat(bound.rating.seasons.podiumSize).isEqualTo(10);
+        assertThat(bound.rating.seasons.podiumMinMatches).isEqualTo(3);
+        assertThat(bound.rating.seasons.reset).isEqualTo("hard");
+        assertThat(bound.rating.seasons.resetCarry).isEqualTo(0.25);
+
+        TomlSecretsConfig template = PluginConfigLoader.lenientTomlMapper()
+                .readValue(ConfigTomlTemplateWriter.defaultSecretsTomlContent(), TomlSecretsConfig.class);
+        assertThat(template.rating.seasons).usingRecursiveComparison().isEqualTo(defaults.rating.seasons);
+    }
 }

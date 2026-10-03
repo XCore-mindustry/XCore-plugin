@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
@@ -16,13 +17,16 @@ import java.util.Objects;
  * @param algorithmVersion version of the calculator that produced the mutations
  * @param resultHash       fingerprint of the match result; a retry must present the same one
  * @param skipReason       non-null for an unrated match, which is recorded but changes nothing
+ * @param endedAt          when the match ended, which decides the season it counts towards;
+ *                         {@code null} means the moment it is settled
  */
 public record MatchSettlement(
         String matchId,
         String algorithmVersion,
         String resultHash,
         List<StandingMutation> mutations,
-        @Nullable String skipReason
+        @Nullable String skipReason,
+        @Nullable Instant endedAt
 ) {
     public MatchSettlement {
         if (matchId == null || matchId.isBlank()) throw new IllegalArgumentException("matchId must not be blank");
@@ -44,12 +48,17 @@ public record MatchSettlement(
 
     public static MatchSettlement rated(String matchId, String algorithmVersion, String resultHash,
                                         List<StandingMutation> mutations) {
-        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, null);
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, null, null);
     }
 
     public static MatchSettlement unrated(String matchId, String algorithmVersion, String resultHash, String reason) {
         if (reason == null || reason.isBlank()) throw new IllegalArgumentException("reason must not be blank");
-        return new MatchSettlement(matchId, algorithmVersion, resultHash, List.of(), reason);
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, List.of(), reason, null);
+    }
+
+    public MatchSettlement withEndedAt(Instant endedAt) {
+        return new MatchSettlement(matchId, algorithmVersion, resultHash, mutations, skipReason,
+                Objects.requireNonNull(endedAt, "endedAt"));
     }
 
     public boolean rated() {

@@ -8,6 +8,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.bson.Document;
@@ -25,6 +27,7 @@ import java.util.OptionalLong;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gt;
+import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.lt;
 import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Sorts.ascending;
@@ -40,6 +43,7 @@ public class MongoLadderStore implements LadderStore {
     static final int APPLIED_OPERATIONS_LIMIT = 64;
     private static final int DUPLICATE_KEY = 11000;
     private static final int APPLY_ATTEMPTS = 3;
+    private static final int RANK_BATCH_SIZE = 500;
 
     private final MongoCollection<Document> collection;
     private final TomlSecretsConfig config;
@@ -69,15 +73,24 @@ public class MongoLadderStore implements LadderStore {
     }
 
     @Override
+    public Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid) {
+        requireUuid(uuid);
+        return Optional.ofNullable(collection.find(and(eq("ladder", ladderId), eq("player_uuid", uuid),
+                        lt("season", season)))
+                .sort(descending("season"))
+                .first()).map(MongoLadderStore::standing);
+    }
+
+    @Override
     public ApplyResult applyOnce(String ladderId, int season, String operationId, StandingMutation mutation,
-                                 int startingRating, int minimumRating) {
+                                 StandingSeed seed, int minimumRating) {
         writable();
         if (operationId == null || operationId.isBlank()) {
             throw new IllegalArgumentException("Operation ID must not be blank");
         }
         Document key = key(ladderId, season, mutation.uuid());
         Document filter = new Document(key).append("applied_operations", new Document("$ne", operationId));
-        List<Bson> update = applyPipeline(operationId, mutation, startingRating, minimumRating);
+        List<Bson> update = applyPipeline(operationId, mutation, seed, minimumRating);
         var options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER);
 
         for (int attempt = 1; ; attempt++) {
@@ -102,10 +115,10 @@ public class MongoLadderStore implements LadderStore {
     }
 
     private static List<Bson> applyPipeline(String operationId, StandingMutation mutation,
-                                            int startingRating, int minimumRating) {
+                                            StandingSeed seed, int minimumRating) {
         Document fields = new Document()
                 .append("rating", new Document("$max", List.of(minimumRating, new Document("$add",
-                        List.of(new Document("$ifNull", List.of("$rating", startingRating)), mutation.ratingDelta())))))
+                        List.of(new Document("$ifNull", List.of("$rating", seed.rating())), mutation.ratingDelta())))))
                 .append("matches", increment("matches", 1))
                 .append("wins", increment("wins", mutation.win() ? 1 : 0));
         for (var stat : mutation.stats().entrySet()) {
@@ -116,6 +129,14 @@ public class MongoLadderStore implements LadderStore {
                                 new Document("$ifNull", List.of("$applied_operations", List.of())),
                                 List.of(new Document("$literal", operationId)))),
                         -APPLIED_OPERATIONS_LIMIT)))
+                // Only a standing created by this very update records where its rating came from.
+                .append("seeded_from", new Document("$cond", List.of(
+                        new Document("$eq", List.of(new Document("$type", "$created_at"), "missing")),
+                        seed.carried()
+                                ? new Document("$literal", new Document("season", seed.fromSeason())
+                                        .append("rating", seed.fromRating()))
+                                : "$$REMOVE",
+                        new Document("$ifNull", List.of("$seeded_from", "$$REMOVE")))))
                 .append("created_at", new Document("$ifNull", List.of("$created_at", "$$NOW")))
                 .append("updated_at", "$$NOW");
         // A second stage, so the peak is compared against the rating this update just produced.
@@ -169,6 +190,41 @@ public class MongoLadderStore implements LadderStore {
     @Override
     public long count(String ladderId, int season) {
         return collection.countDocuments(key(ladderId, season));
+    }
+
+    @Override
+    public List<LadderStanding> leaders(String ladderId, int season, int minMatches, int limit) {
+        List<LadderStanding> leaders = new ArrayList<>();
+        if (limit < 1) {
+            return leaders;
+        }
+        for (Document document : collection.find(and(key(ladderId, season), gte("matches", minMatches)))
+                .sort(orderBy(descending("rating"), ascending("player_uuid")))
+                .limit(limit)) {
+            leaders.add(standing(document));
+        }
+        return leaders;
+    }
+
+    @Override
+    public int assignFinalRanks(String ladderId, int season) {
+        writable();
+        List<WriteModel<Document>> batch = new ArrayList<>(RANK_BATCH_SIZE);
+        int rank = 0;
+        for (Document document : collection.find(key(ladderId, season))
+                .sort(orderBy(descending("rating"), ascending("player_uuid")))
+                .projection(new Document("_id", 1))) {
+            batch.add(new UpdateOneModel<>(eq("_id", document.get("_id")),
+                    new Document("$set", new Document("final_rank", ++rank))));
+            if (batch.size() == RANK_BATCH_SIZE) {
+                collection.bulkWrite(batch);
+                batch = new ArrayList<>(RANK_BATCH_SIZE);
+            }
+        }
+        if (!batch.isEmpty()) {
+            collection.bulkWrite(batch);
+        }
+        return rank;
     }
 
     @Override

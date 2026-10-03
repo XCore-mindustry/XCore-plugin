@@ -20,26 +20,38 @@ public class LadderService {
 
     private final LadderStore store;
     private final PluginIdempotencyLedger ledger;
+    private final LadderSeasons seasons;
     private final ConcurrentMap<String, Ladder> ladders = new ConcurrentHashMap<>();
 
     @Inject
-    public LadderService(LadderStore store, PluginIdempotencyLedgerFactory ledgerFactory) {
-        this(store, ledgerFactory.create(LEDGER_ID));
+    public LadderService(LadderStore store, PluginIdempotencyLedgerFactory ledgerFactory, LadderSeasons seasons) {
+        this(store, ledgerFactory.create(LEDGER_ID), seasons);
     }
 
+    /** Ladders with one open-ended season. */
     public LadderService(LadderStore store, PluginIdempotencyLedger ledger) {
+        this(store, ledger, LadderSeasons.single());
+    }
+
+    public LadderService(LadderStore store, PluginIdempotencyLedger ledger, LadderSeasons seasons) {
         this.store = Objects.requireNonNull(store, "store");
         this.ledger = Objects.requireNonNull(ledger, "ledger");
+        this.seasons = Objects.requireNonNull(seasons, "seasons");
     }
 
     /**
      * Registers a ladder, or returns the one already registered under the same definition.
+     * Blocks while the ladder's seasons are looked up.
      *
      * @throws IllegalArgumentException when the ID is taken by a different definition
      */
     public Ladder register(LadderDefinition definition) {
         Objects.requireNonNull(definition, "definition");
-        Ladder ladder = ladders.computeIfAbsent(definition.id(), _ -> new Ladder(definition, store, ledger));
+        Ladder ladder = ladders.computeIfAbsent(definition.id(), _ -> {
+            Ladder created = new Ladder(definition, store, ledger, seasons);
+            seasons.open(definition, created::reloadCache);
+            return created;
+        });
         if (!ladder.definition().equals(definition)) {
             throw new IllegalArgumentException("A ladder is already registered with a different definition: "
                     + definition.id());

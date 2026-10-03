@@ -17,6 +17,7 @@ import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.rating.ladder.InMemoryLadderStore;
 import org.xcore.plugin.rating.ladder.Ladder;
 import org.xcore.plugin.rating.ladder.LadderService;
+import org.xcore.plugin.rating.season.SeasonAnnouncer;
 import org.xcore.plugin.rating.ladder.LadderStanding;
 import org.xcore.plugin.service.GameDataService;
 import org.xcore.plugin.session.Session;
@@ -56,7 +57,7 @@ class MiniPvPRatingSettlerTest {
         config.server.name = "mini-pvp";
         MiniPvPLadder miniPvPLadder = new MiniPvPLadder(
                 new LadderService(store, new InMemoryIdempotencyLedger()),
-                new TopCategoryRegistry(), playerRepo, config);
+                new TopCategoryRegistry(), playerRepo, mock(SeasonAnnouncer.class), config);
         ladder = miniPvPLadder.ladder();
 
         settler = new MiniPvPRatingSettler(

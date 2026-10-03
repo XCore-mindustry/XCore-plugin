@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
 
@@ -24,6 +25,8 @@ public final class InMemoryLadderStore implements LadderStore {
 
     private final Map<Key, LadderStanding> standings = new HashMap<>();
     private final Map<Key, Set<String>> appliedOperations = new HashMap<>();
+    private final Map<Key, StandingSeed> seeds = new HashMap<>();
+    private final Map<Key, Integer> finalRanks = new HashMap<>();
 
     @Override
     public synchronized Optional<LadderStanding> find(String ladderId, int season, String uuid) {
@@ -31,8 +34,16 @@ public final class InMemoryLadderStore implements LadderStore {
     }
 
     @Override
+    public synchronized Optional<LadderStanding> latestBefore(String ladderId, int season, String uuid) {
+        return standings.values().stream()
+                .filter(standing -> standing.ladderId().equals(ladderId) && standing.uuid().equals(uuid)
+                        && standing.season() < season)
+                .max(Comparator.comparingInt(LadderStanding::season));
+    }
+
+    @Override
     public synchronized ApplyResult applyOnce(String ladderId, int season, String operationId,
-                                              StandingMutation mutation, int startingRating, int minimumRating) {
+                                              StandingMutation mutation, StandingSeed seed, int minimumRating) {
         if (operationId == null || operationId.isBlank()) {
             throw new IllegalArgumentException("Operation ID must not be blank");
         }
@@ -42,8 +53,11 @@ public final class InMemoryLadderStore implements LadderStore {
             return new ApplyResult(false, current);
         }
 
+        if (current == null && seed.carried()) {
+            seeds.put(key, seed);
+        }
         int rating = Math.max(minimumRating,
-                (current != null ? current.rating() : startingRating) + mutation.ratingDelta());
+                (current != null ? current.rating() : seed.rating()) + mutation.ratingDelta());
         Map<String, Integer> stats = new HashMap<>(current != null ? current.stats() : Map.of());
         mutation.stats().forEach((name, value) -> stats.merge(name, value, Integer::sum));
         LadderStanding updated = new LadderStanding(ladderId, season, mutation.uuid(), rating,
@@ -88,6 +102,23 @@ public final class InMemoryLadderStore implements LadderStore {
     }
 
     @Override
+    public synchronized List<LadderStanding> leaders(String ladderId, int season, int minMatches, int limit) {
+        return ordered(ladderId, season).stream()
+                .filter(standing -> standing.matches() >= minMatches)
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized int assignFinalRanks(String ladderId, int season) {
+        List<LadderStanding> ordered = ordered(ladderId, season);
+        for (int i = 0; i < ordered.size(); i++) {
+            finalRanks.put(new Key(ladderId, season, ordered.get(i).uuid()), i + 1);
+        }
+        return ordered.size();
+    }
+
+    @Override
     public synchronized int mergePlayer(@Nullable ClientSession session, String sourceUuid, String targetUuid) {
         if (sourceUuid.equals(targetUuid)) {
             throw new IllegalArgumentException("Cannot merge a player's standings into themselves");
@@ -117,6 +148,17 @@ public final class InMemoryLadderStore implements LadderStore {
     /** Seeds a standing directly, bypassing settlement. */
     public synchronized void put(LadderStanding standing) {
         standings.put(new Key(standing.ladderId(), standing.season(), standing.uuid()), standing);
+    }
+
+    /** The seed a standing was created from, empty for a player new to the ladder. */
+    public synchronized Optional<StandingSeed> seedOf(String ladderId, int season, String uuid) {
+        return Optional.ofNullable(seeds.get(new Key(ladderId, season, uuid)));
+    }
+
+    /** The rank frozen by {@link #assignFinalRanks}, empty while the season is still open. */
+    public synchronized OptionalInt finalRankOf(String ladderId, int season, String uuid) {
+        Integer rank = finalRanks.get(new Key(ladderId, season, uuid));
+        return rank == null ? OptionalInt.empty() : OptionalInt.of(rank);
     }
 
     private List<LadderStanding> ordered(String ladderId, int season) {

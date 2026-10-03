@@ -187,6 +187,72 @@ class MongoLadderStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("a standing created from a carried rating records where it came from, once")
+    void applyOnce_recordsSeed() {
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("p1", 400, true), 1000, 100);
+        LadderStanding previous = store.find("duel", 1, "p1").orElseThrow();
+
+        var created = store.applyOnce("duel", 2, "op-2", new StandingMutation("p1", 10, true),
+                StandingSeed.carried(1200, previous), 100);
+        // A later match must not rewrite the origin, whatever seed the caller passes.
+        store.applyOnce("duel", 2, "op-3", new StandingMutation("p1", 5, true), new StandingSeed(9999, 7, 9999), 100);
+        store.applyOnce("duel", 2, "op-4", new StandingMutation("fresh", 5, true), StandingSeed.fresh(1000), 100);
+
+        assertThat(created.standing().rating()).isEqualTo(1210);
+        assertThat(store.find("duel", 2, "p1").orElseThrow().rating()).isEqualTo(1215);
+        Document stored = collection().find(new Document("season", 2).append("player_uuid", "p1")).first();
+        assertThat(stored.get("seeded_from", Document.class))
+                .isEqualTo(new Document("season", 1).append("rating", 1400));
+        assertThat(collection().find(new Document("season", 2).append("player_uuid", "fresh")).first())
+                .doesNotContainKey("seeded_from");
+        assertThat(collection().find(new Document("season", 1).append("player_uuid", "p1")).first())
+                .doesNotContainKey("seeded_from");
+    }
+
+    @Test
+    @DisplayName("latestBefore finds the most recent earlier season a player has a standing in")
+    void latestBefore_findsPreviousSeason() {
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("p1", 100, true), 1000, 100);
+        store.applyOnce("duel", 3, "op-2", new StandingMutation("p1", 300, true), 1000, 100);
+        store.applyOnce("ffa", 4, "op-3", new StandingMutation("p1", 50, true), 1000, 100);
+        store.applyOnce("duel", 4, "op-4", new StandingMutation("other", 50, true), 1000, 100);
+
+        assertThat(store.latestBefore("duel", 1, "p1")).isEmpty();
+        assertThat(store.latestBefore("duel", 3, "p1").orElseThrow().season()).isEqualTo(1);
+        assertThat(store.latestBefore("duel", 5, "p1").orElseThrow().rating()).isEqualTo(1300);
+        assertThat(store.latestBefore("duel", 5, "nobody")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("final ranks follow the leaderboard order, and leaders skip players with too few matches")
+    void finalRanks_andLeaders() {
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("b", 30, true), 1000, 100);
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("c", 10, true), 1000, 100);
+        store.applyOnce("duel", 1, "op-1", new StandingMutation("a", 10, true), 1000, 100);
+        store.applyOnce("duel", 1, "op-2", new StandingMutation("a", 0, false), 1000, 100);
+        store.applyOnce("duel", 1, "op-2", new StandingMutation("c", 0, false), 1000, 100);
+        store.applyOnce("duel", 2, "op-3", new StandingMutation("z", 500, true), 1000, 100);
+
+        assertThat(store.leaders("duel", 1, 2, 10)).extracting(LadderStanding::uuid).containsExactly("a", "c");
+        assertThat(store.leaders("duel", 1, 0, 2)).extracting(LadderStanding::uuid).containsExactly("b", "a");
+        assertThat(store.leaders("duel", 1, 99, 10)).isEmpty();
+
+        assertThat(store.assignFinalRanks("duel", 1)).isEqualTo(3);
+        assertThat(store.assignFinalRanks("duel", 1)).isEqualTo(3);
+        assertThat(store.assignFinalRanks("duel", 9)).isZero();
+
+        assertThat(finalRank(1, "b")).isEqualTo(1);
+        assertThat(finalRank(1, "a")).isEqualTo(2);
+        assertThat(finalRank(1, "c")).isEqualTo(3);
+        assertThat(collection().find(new Document("season", 2)).first()).doesNotContainKey("final_rank");
+    }
+
+    private Integer finalRank(int season, String uuid) {
+        return collection().find(new Document("ladder", "duel").append("season", season)
+                .append("player_uuid", uuid)).first().getInteger("final_rank");
+    }
+
+    @Test
     @DisplayName("mergePlayer combines overlapping standings and re-keys the rest")
     void mergePlayer_combines() {
         store.applyOnce("duel", 1, "op-1", new StandingMutation("old", 300, true, Map.of("top3", 2)), 1000, 100);
