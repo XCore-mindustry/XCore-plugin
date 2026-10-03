@@ -9,6 +9,7 @@ import org.xcore.protocol.generated.messages.discord.DiscordLinkStatusChangedV1A
 import org.xcore.protocol.generated.messages.discord.DiscordMessages.*;
 import org.xcore.protocol.generated.messages.moderation.ModerationMessages.*;
 import org.xcore.protocol.generated.messages.maps.MapsMessages.*;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.*;
 import org.xcore.protocol.generated.messages.telemetry.TelemetryMessages.*;
 import org.xcore.protocol.generated.shared.*;
 
@@ -380,5 +381,39 @@ class ProtocolPayloadTest {
         var maps = (List<Map<String, Object>>) payload.get("maps");
         assertEquals(1, maps.size());
         assertEquals("map1", maps.get(0).get("name"));
+    }
+
+    @Test
+    void seasonEndedPayloadNestsPodiumAndOmitsUnlinkedDiscord() {
+        var season = new SeasonRefV1("mini-pvp", 3, "Season 3", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z");
+        var linked = new SeasonPodiumEntryV1(1, new PlayerRefV1("uuid-1", 101, "Alice", null),
+                new DiscordIdentityRefV1("111", "alice"), 1820, "DIAMOND", 64, 47);
+        var unlinked = new SeasonPodiumEntryV1(2, new PlayerRefV1("uuid-2", 202, "Bob", null),
+                null, 1744, "PLATINUM", 58, 38);
+
+        var payload = new RatingSeasonEndedV1(season, List.of(linked, unlinked),
+                new SeasonSummaryV1(312, 4120), "alpha", "2026-10-01T00:30:00Z").toPayload();
+
+        assertEquals("rating.season.ended", payload.get("messageType"));
+        @SuppressWarnings("unchecked")
+        var podium = (List<Map<String, Object>>) payload.get("podium");
+        assertEquals(2, podium.size());
+        assertTrue(podium.get(0).containsKey("discord"));
+        assertFalse(podium.get(1).containsKey("discord"));
+        assertEquals(1, podium.get(0).get("place"));
+    }
+
+    @Test
+    void seasonStartedOmitsPreviousSeasonForTheFirstSeason() {
+        var season = new SeasonRefV1("mini-pvp", 1, "Season 1", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z");
+        var payload = new RatingSeasonStartedV1(season, null, "alpha", "2026-07-01T00:00:01Z").toPayload();
+
+        assertFalse(payload.containsKey("previousSeason"));
+    }
+
+    @Test
+    void seasonRatingRejectsSeasonNumberBelowOne() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new SeasonRefV1("mini-pvp", 0, "Season 0", "2026-07-01T00:00:00Z", "2026-10-01T00:00:00Z"));
     }
 }

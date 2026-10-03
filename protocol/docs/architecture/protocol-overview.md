@@ -17,6 +17,7 @@ Define the official communication model used between XCore components.
 - maps RPC
 - chat and heartbeat
 - telemetry snapshots
+- rating seasons (season events, season administration and account-merge RPC)
 
 ## Boundary
 Application repositories consume this protocol. They do not independently redefine canonical wire contracts.

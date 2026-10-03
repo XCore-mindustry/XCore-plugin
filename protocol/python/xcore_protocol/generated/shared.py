@@ -553,6 +553,127 @@ class PlayerRefV1:
         return payload
 
 @dataclass(frozen=True, slots=True)
+class SeasonPodiumEntryV1:
+    place: int
+    player: PlayerRefV1
+    rating: int
+    league: str
+    matches: int
+    wins: int
+    discord: DiscordIdentityRefV1 | None = None
+
+    def __post_init__(self) -> None:
+        _expect_int(self.place, 'place')
+        _expect_instance(self.player, 'player', PlayerRefV1)
+        if self.discord is not None:
+            _expect_instance(self.discord, 'discord', DiscordIdentityRefV1)
+        _expect_int(self.rating, 'rating')
+        _expect_str(self.league, 'league')
+        _expect_int(self.matches, 'matches')
+        _expect_int(self.wins, 'wins')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonPodiumEntryV1":
+        mapping = _expect_mapping(payload, "SeasonPodiumEntryV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('place', 'player', 'rating', 'league', 'matches', 'wins')),
+            allowed=frozenset(('place', 'player', 'discord', 'rating', 'league', 'matches', 'wins')),
+            model_name="SeasonPodiumEntryV1",
+        )
+        return cls(
+            place=_expect_int(mapping['place'], 'place'),
+            player=PlayerRefV1.from_payload(_expect_mapping(mapping['player'], 'player')),
+            discord=(DiscordIdentityRefV1.from_payload(_expect_mapping(mapping['discord'], 'discord')) if 'discord' in mapping else None),
+            rating=_expect_int(mapping['rating'], 'rating'),
+            league=_expect_str(mapping['league'], 'league'),
+            matches=_expect_int(mapping['matches'], 'matches'),
+            wins=_expect_int(mapping['wins'], 'wins'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['place'] = self.place
+        payload['player'] = self.player.to_payload()
+        if self.discord is not None:
+            payload['discord'] = self.discord.to_payload()
+        payload['rating'] = self.rating
+        payload['league'] = self.league
+        payload['matches'] = self.matches
+        payload['wins'] = self.wins
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SeasonRefV1:
+    ladder: str
+    season: int
+    name: str
+    startsAt: str
+    endsAt: str
+
+    def __post_init__(self) -> None:
+        _expect_str(self.ladder, 'ladder')
+        _expect_int(self.season, 'season')
+        _expect_str(self.name, 'name')
+        _expect_str(self.startsAt, 'startsAt')
+        _expect_str(self.endsAt, 'endsAt')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonRefV1":
+        mapping = _expect_mapping(payload, "SeasonRefV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('ladder', 'season', 'name', 'startsAt', 'endsAt')),
+            allowed=frozenset(('ladder', 'season', 'name', 'startsAt', 'endsAt')),
+            model_name="SeasonRefV1",
+        )
+        return cls(
+            ladder=_expect_str(mapping['ladder'], 'ladder'),
+            season=_expect_int(mapping['season'], 'season'),
+            name=_expect_str(mapping['name'], 'name'),
+            startsAt=_expect_str(mapping['startsAt'], 'startsAt'),
+            endsAt=_expect_str(mapping['endsAt'], 'endsAt'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['ladder'] = self.ladder
+        payload['season'] = self.season
+        payload['name'] = self.name
+        payload['startsAt'] = self.startsAt
+        payload['endsAt'] = self.endsAt
+        return payload
+
+@dataclass(frozen=True, slots=True)
+class SeasonSummaryV1:
+    participants: int
+    matches: int
+
+    def __post_init__(self) -> None:
+        _expect_int(self.participants, 'participants')
+        _expect_int(self.matches, 'matches')
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, Any]) -> "SeasonSummaryV1":
+        mapping = _expect_mapping(payload, "SeasonSummaryV1")
+        _expect_exact_keys(
+            mapping,
+            required=frozenset(('participants', 'matches')),
+            allowed=frozenset(('participants', 'matches')),
+            model_name="SeasonSummaryV1",
+        )
+        return cls(
+            participants=_expect_int(mapping['participants'], 'participants'),
+            matches=_expect_int(mapping['matches'], 'matches'),
+        )
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        payload['participants'] = self.participants
+        payload['matches'] = self.matches
+        return payload
+
+@dataclass(frozen=True, slots=True)
 class VoteKickParticipantV1:
     playerName: str
     playerPid: int | None = None
@@ -599,6 +720,9 @@ __all__ = [
     "ModerationTargetRefV1",
     "PlayerCommandTargetV1",
     "PlayerRefV1",
+    "SeasonPodiumEntryV1",
+    "SeasonRefV1",
+    "SeasonSummaryV1",
     "VoteKickParticipantV1",
     "ActorRefV1ActorType",
     "MetricSampleV1Type",

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:xcore:protocol:shared:types:season-ref:v1",
+  "title": "SeasonRefV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ladder", "season", "name", "startsAt", "endsAt"],
+  "properties": {
+    "ladder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "season": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "startsAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endsAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

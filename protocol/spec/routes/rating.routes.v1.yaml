@@ -1,0 +1,73 @@
+version: 1
+family: rating
+messages:
+  - messageType: rating.season.started
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:rating:season-started
+    targetScope: broadcast
+    ttlMs: 86400000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: rating-seasons
+  - messageType: rating.season.ending-soon
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:rating:season-ending-soon
+    targetScope: broadcast
+    ttlMs: 86400000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: rating-seasons
+  - messageType: rating.season.ended
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:rating:season-ended
+    targetScope: broadcast
+    ttlMs: 86400000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: rating-seasons
+  - messageType: rating.season.rescheduled
+    messageVersion: 1
+    kind: event
+    stream: xcore:evt:rating:season-rescheduled
+    targetScope: broadcast
+    ttlMs: 86400000
+    replayable: true
+    idempotentConsumerRecommended: true
+    owner: rating-seasons
+  - messageType: rating.season.reschedule.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: rating-seasons
+    response:
+      messageType: rating.season.reschedule.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
+  - messageType: rating.accounts.merge.request
+    messageVersion: 1
+    kind: rpc-request
+    stream: xcore:rpc:req:{server}
+    bindings:
+      server: payload.server
+    targetScope: server
+    ttlMs: 10000
+    replayable: false
+    idempotentConsumerRecommended: true
+    owner: rating-accounts
+    response:
+      messageType: rating.accounts.merge.response
+      messageVersion: 1
+      stream: xcore:rpc:resp:{requester}
+      bindings:
+        requester: rpc.requester
