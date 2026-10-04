@@ -84,6 +84,7 @@ public final class RatingMessages {
             String ladder,
             int season,
             int place,
+            Integer playerPid,
             RatingPrizeGrantUpdateRequestV1Status status,
             ActorRefV1 actor,
             String note
@@ -106,6 +107,11 @@ public final class RatingMessages {
             if (place < 1) {
                 throw new IllegalArgumentException("place must be >= 1");
             }
+            if (playerPid != null) {
+                if (playerPid < 1) {
+                    throw new IllegalArgumentException("playerPid must be >= 1");
+                }
+            }
             Objects.requireNonNull(status, "status must not be null");
             Objects.requireNonNull(actor, "actor must not be null");
             if (note != null) {
@@ -122,6 +128,9 @@ public final class RatingMessages {
             payload.put("ladder", ladder);
             payload.put("season", season);
             payload.put("place", place);
+            if (playerPid != null) {
+                payload.put("playerPid", playerPid);
+            }
             if (status != null) {
                 payload.put("status", status.toString());
             }

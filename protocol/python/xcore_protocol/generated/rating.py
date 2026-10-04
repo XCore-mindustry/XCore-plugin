@@ -209,6 +209,7 @@ class RatingPrizeGrantUpdateRequestV1:
     place: int
     status: RatingPrizeGrantUpdateRequestV1Status
     actor: ActorRefV1
+    playerPid: int | None = None
     note: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'rating.prize.grant.update.request'
@@ -218,6 +219,8 @@ class RatingPrizeGrantUpdateRequestV1:
         _expect_str(self.ladder, 'ladder')
         _expect_int(self.season, 'season')
         _expect_int(self.place, 'place')
+        if self.playerPid is not None:
+            _expect_int(self.playerPid, 'playerPid')
         _expect_instance(self.status, 'status', RatingPrizeGrantUpdateRequestV1Status)
         _expect_instance(self.actor, 'actor', ActorRefV1)
         if self.note is not None:
@@ -229,7 +232,7 @@ class RatingPrizeGrantUpdateRequestV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'season', 'place', 'status', 'actor')),
-            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'season', 'place', 'status', 'actor', 'note')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'season', 'place', 'playerPid', 'status', 'actor', 'note')),
             model_name="RatingPrizeGrantUpdateRequestV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -241,6 +244,7 @@ class RatingPrizeGrantUpdateRequestV1:
             ladder=_expect_str(mapping['ladder'], 'ladder'),
             season=_expect_int(mapping['season'], 'season'),
             place=_expect_int(mapping['place'], 'place'),
+            playerPid=(_expect_int(mapping['playerPid'], 'playerPid') if 'playerPid' in mapping else None),
             status=_expect_enum(mapping['status'], 'status', RatingPrizeGrantUpdateRequestV1Status),
             actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             note=(_expect_str(mapping['note'], 'note') if 'note' in mapping else None),
@@ -255,6 +259,8 @@ class RatingPrizeGrantUpdateRequestV1:
         payload['ladder'] = self.ladder
         payload['season'] = self.season
         payload['place'] = self.place
+        if self.playerPid is not None:
+            payload['playerPid'] = self.playerPid
         payload['status'] = str(self.status)
         payload['actor'] = self.actor.to_payload()
         if self.note is not None:

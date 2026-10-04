@@ -37,6 +37,10 @@
       "type": "integer",
       "minimum": 1
     },
+    "playerPid": {
+      "type": "integer",
+      "minimum": 1
+    },
     "status": {
       "type": "string",
       "enum": [

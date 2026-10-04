@@ -1,0 +1,16 @@
+{
+  "messageType": "rating.prize.grant.update.request",
+  "messageVersion": 1,
+  "server": "mini-pvp",
+  "ladder": "mini-pvp",
+  "season": 3,
+  "place": 2,
+  "playerPid": 0,
+  "status": "delivered",
+  "actor": {
+    "actorName": "Head",
+    "actorDiscordId": "111111111111111111",
+    "actorType": "discord"
+  },
+  "note": "Sent in DM"
+}

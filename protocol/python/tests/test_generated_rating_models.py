@@ -117,7 +117,7 @@ def test_generated_prize_grant_update_rpc_roundtrip() -> None:
     response = _assert_roundtrip(RatingPrizeGrantUpdateResponseV1, "rating.prize.grant.update.response")
 
     assert request.status is RatingPrizeGrantUpdateRequestV1Status.DELIVERED
-    assert (request.season, request.place) == (3, 2)
+    assert (request.season, request.place, request.playerPid) == (3, 2, 14)
     assert response.updated == 1
 
 

@@ -38,6 +38,7 @@ INVALID_CASES = [
         ("rating.season.prizes.set.request", "unknown-kind"),
         ("rating.prize.grant.update.request", "unknown-status"),
         ("rating.prize.grant.update.request", "zero-place"),
+        ("rating.prize.grant.update.request", "zero-pid"),
     )
 ]
 
