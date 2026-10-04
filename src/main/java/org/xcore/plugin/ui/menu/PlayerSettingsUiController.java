@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import org.xcore.plugin.ui.kit.TextWidth;
 import arc.util.Strings;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.MenuResult;
@@ -348,11 +349,6 @@ public class PlayerSettingsUiController implements UiController<PlayerSettingsUi
             return local != null ? local.t("player-settings-translator-off") : "Off";
         }
         return resolveLanguageDisplay(code);
-    }
-
-    public static String escapeMarkup(String text) {
-        if (text == null || text.isBlank()) return "";
-        return text.replace("[", "[[");
     }
 
     public static String activeBadgeName(Localization local, PlayerData targetData) {

@@ -73,6 +73,15 @@ public final class TextWidth {
     }
 
     /**
+     * {@code text} as markup that draws it as it is: a name or a reason a player wrote may hold
+     * a bracket, which the client would otherwise read as the start of a colour.
+     */
+    public static String escape(String text) {
+        if (text == null || text.isBlank()) return "";
+        return text.replace("[", "[[");
+    }
+
+    /**
      * The signs of {@code markup} the client's font has no glyph for. The client draws nothing in
      * their place, so an arrow or a tick that is not in the font is simply not there.
      */

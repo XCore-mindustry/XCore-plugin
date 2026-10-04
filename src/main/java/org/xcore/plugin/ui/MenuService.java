@@ -177,9 +177,11 @@ public class MenuService {
         if (hasMenuBuilder() && showBuilt(session, active, MenuScreenToUiAdapter.toVNode(screen))) {
             return;
         }
-        // Too large to be built: the client's own dialog shows it, over nothing of ours.
-        if (session.activeScreen() != null && session.activeScreen().isBuilt()) {
-            hide(session, session.activeScreen());
+        // Not built: the client's own dialog shows it, and what the builder has on the screen
+        // goes, a UI session's dialog included, or it would stay open under it and be answered for.
+        if (session.hasActiveUiSession() || (session.activeScreen() != null && session.activeScreen().isBuilt())) {
+            gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+            session.clearActiveUiSession();
         }
         session.setActiveScreen(active);
         notifyMenuOpened(session);

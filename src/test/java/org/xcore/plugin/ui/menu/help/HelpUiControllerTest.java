@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu.help;
 
+import org.xcore.plugin.ui.kit.TextWidth;
 import com.ospx.flubundle.Bundle;
 import mindustry.ui.builder.MenuResult;
 import org.junit.jupiter.api.DisplayName;
@@ -243,14 +244,6 @@ class HelpUiControllerTest {
         // An optional argument keeps its bracket: it is escaped, not read as a colour.
         HelpCommandItem kick = sampleCommands().get(1);
         assertThat(HelpUiController.rowText(kick, 600f, null)).contains("<player> [[reason]");
-    }
-
-    @Test
-    @DisplayName("escapeMarkup escapes opening brackets so Arc does not treat them as color tags")
-    void escapeMarkup_escapesOpeningBrackets() {
-        assertThat(HelpUiController.escapeMarkup("votekick <player> [reason]"))
-                .isEqualTo("votekick <player> [[reason]");
-        assertThat(HelpUiController.escapeMarkup(null)).isEqualTo("");
     }
 
     @Test

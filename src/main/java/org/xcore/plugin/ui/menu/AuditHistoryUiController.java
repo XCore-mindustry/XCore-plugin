@@ -445,7 +445,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
     private VNode header(AuditHistoryModel model, float width, Localization local) {
         float text = width - 2f * MARGIN;
         String name = TextWidth.fit("[accent]" + Iconc.list + "[] [#" + model.targetColorHex() + "]"
-                + escapeMarkup(model.targetNickname()) + "[] [gray]#" + model.targetPid() + "[]", text);
+                + TextWidth.escape(model.targetNickname()) + "[] [gray]#" + model.targetPid() + "[]", text);
 
         boolean sanctions = model.mode() == AuditViewMode.TARGET;
         String second;
@@ -532,7 +532,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
 
         boolean sanctions = mode == AuditViewMode.TARGET;
         String who = sanctions ? item.actorName() : item.targetName();
-        String whom = "[gray]" + (sanctions ? Iconc.admin : Iconc.players) + "[] [white]" + escapeMarkup(who) + "[]";
+        String whom = "[gray]" + (sanctions ? Iconc.admin : Iconc.players) + "[] [white]" + TextWidth.escape(who) + "[]";
         String when = "[gray]" + (item.createdAtEpochMs() <= 0
                 ? "-" : DATE_TIME_FORMAT.format(Instant.ofEpochMilli(item.createdAtEpochMs()))) + "[]";
 
@@ -541,7 +541,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                 : item.reason().trim().replaceAll("\\s+", " ");
 
         return TextWidth.fit(what, width) + "\n" + TextWidth.fit(whom, width) + "\n"
-                + TextWidth.fit("[lightgray]" + escapeMarkup(reason) + "[]", width) + "\n" + when;
+                + TextWidth.fit("[lightgray]" + TextWidth.escape(reason) + "[]", width) + "\n" + when;
     }
 
     // ------------------------------------------------------------------ details
@@ -587,11 +587,11 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
                     ? rec.target.nameSnapshot : t(local, "audit-menu-unknown-target", "Unknown");
             String actor = rec.actor != null && rec.actor.nameSnapshot != null
                     ? rec.actor.nameSnapshot : t(local, "audit-menu-unknown-actor", "Unknown");
-            lines.add(field(local, "audit-menu-field-target", "Player") + " [white]" + escapeMarkup(target) + "[]");
-            lines.add(field(local, "audit-menu-field-actor", "Performed by") + " [white]" + escapeMarkup(actor) + "[]"
+            lines.add(field(local, "audit-menu-field-target", "Player") + " [white]" + TextWidth.escape(target) + "[]");
+            lines.add(field(local, "audit-menu-field-actor", "Performed by") + " [white]" + TextWidth.escape(actor) + "[]"
                     + (rec.actor != null && rec.actor.type != null ? " [gray](" + rec.actor.type + ")[]" : ""));
             if (rec.origin != null && rec.origin.serverId != null && !rec.origin.serverId.isBlank()) {
-                lines.add(field(local, "audit-menu-field-server", "Server") + " [sky]" + escapeMarkup(rec.origin.serverId) + "[]");
+                lines.add(field(local, "audit-menu-field-server", "Server") + " [sky]" + TextWidth.escape(rec.origin.serverId) + "[]");
             }
             content.add(Kit.text(String.join("\n", lines), inner)).row();
         });
@@ -601,7 +601,7 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         return Kit.card(width, Accent.GRAY, Iconc.chat + " " + t(local, "audit-menu-field-reason", "Reason"), (content, inner) -> {
             String reason = rec.reason != null && !rec.reason.isBlank()
                     ? rec.reason : t(local, "audit-menu-reason-unspecified", "Not specified");
-            content.add(Kit.text("[white]" + escapeMarkup(reason) + "[]", inner)).row();
+            content.add(Kit.text("[white]" + TextWidth.escape(reason) + "[]", inner)).row();
         });
     }
 
@@ -653,13 +653,13 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
         StringBuilder line = new StringBuilder();
         for (int i = 0; i < id.length(); i++) {
             char c = id.charAt(i);
-            if (line.length() > 0 && TextWidth.of(escapeMarkup(line.toString() + c)) > width) {
-                all.append(escapeMarkup(line.toString())).append('\n');
+            if (line.length() > 0 && TextWidth.of(TextWidth.escape(line.toString() + c)) > width) {
+                all.append(TextWidth.escape(line.toString())).append('\n');
                 line.setLength(0);
             }
             line.append(c);
         }
-        return all.append(escapeMarkup(line.toString())).toString();
+        return all.append(TextWidth.escape(line.toString())).toString();
     }
 
     private static String formatActionName(AuditAction action, Localization local) {
@@ -712,10 +712,5 @@ public class AuditHistoryUiController implements UiController<AuditHistoryUiCont
             return "[scarlet]" + t(local, "audit-menu-status-active", "ACTIVE") + "[]";
         }
         return "[gray]" + t(local, "audit-menu-status-expired", "EXPIRED") + "[]";
-    }
-
-    private static String escapeMarkup(String text) {
-        if (text == null || text.isBlank()) return "";
-        return text.replace("[", "[[");
     }
 }

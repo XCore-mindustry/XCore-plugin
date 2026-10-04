@@ -112,13 +112,16 @@ final class FontWidths {
     }
 
     /**
-     * Whether the client has anything to draw for {@code c}; only the range of signs is known
-     * well enough to say no. Half of a pair is never drawn: the client looks a glyph up by one
-     * {@code char}, so nothing beyond the basic plane (an emoji) has one.
+     * Whether the client has anything to draw for {@code c}. Only the ranges the tables cover
+     * are known well enough to say no: a sign that is not listed, or a letter listed with no
+     * width. Half of a pair is never drawn: the client looks a glyph up by one {@code char}, so
+     * nothing beyond the basic plane (an emoji) has one.
      */
     static boolean has(char c) {
         if (Character.isSurrogate(c)) return false;
-        return c < 0x2000 || c > 0x27BF || SYMBOLS.indexOf(c) >= 0;
+        if (c >= 0x2000 && c <= 0x27BF) return SYMBOLS.indexOf(c) >= 0;
+        boolean tabled = (c >= 0xA0 && c <= 0x17F) || (c >= 0x400 && c <= 0x4FF);
+        return !tabled || of(c) > 0f;
     }
 
     static float of(char c) {

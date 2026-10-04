@@ -55,6 +55,25 @@ class KitTest {
     }
 
     @Test
+    @DisplayName("an escaped text keeps its brackets instead of having them read as colours")
+    void escape_keepsBrackets() {
+        assertThat(TextWidth.escape("votekick <player> [reason]")).isEqualTo("votekick <player> [[reason]");
+        assertThat(TextWidth.of(TextWidth.escape("[accent]")))
+                .isCloseTo(TextWidth.of("accent") + TextWidth.of("[[") + TextWidth.of("]"), within(0.01f));
+        assertThat(TextWidth.escape(null)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a sign the font has no glyph for is told apart from one it has")
+    void undrawable_findsWhatTheFontLacks() {
+        assertThat(TextWidth.undrawable("Готово ● 100%\n— ok")).isEmpty();
+        // An arrow outside the font, half of an emoji, and a letter the font has no width for.
+        assertThat(TextWidth.undrawable("a → b")).isEqualTo("→");
+        assertThat(TextWidth.undrawable("ok \uD83D\uDE00")).hasSize(2);
+        assertThat(TextWidth.undrawable("soft\u00ADhyphen")).isEqualTo("\u00AD");
+    }
+
+    @Test
     @DisplayName("tabs take as many rows as their labels need, and every row fills the width")
     void tabs_evenOutTheirRows() {
         List<Kit.Tab> tabs = new ArrayList<>();

@@ -79,6 +79,22 @@ class MenuServiceBuiltScreenTest {
     }
 
     @Test
+    @DisplayName("a screen left to the client's own dialog takes the dialog of a UI session away")
+    void renderFlow_fallbackEndsAUiSession() {
+        session.setActiveUiSession(mock(org.xcore.ui.runtime.UiSession.class));
+        String text = "Очень длинный текст. ".repeat(1200);
+        MenuFlow<String> flow = new TestFlow(MenuScreen.normal("Title", text, List.of(List.of(MenuButton.of("OK", "ok")))),
+                (context, action) -> {
+                });
+
+        menuService.renderFlow(session, flow, "state", null);
+
+        assertThat(session.hasActiveUiSession()).isFalse();
+        verify(gateway).hideMenuBuilder(session.player, menuService.getMenuBuilderId());
+        verify(gateway).menu(eq(session.player), eq(menuService.getMenuId()), eq("Title"), eq(text), any());
+    }
+
+    @Test
     @DisplayName("a press runs the action of the button; a screen that shows nothing after it is taken away")
     void press_hidesAScreenThatIsDone() {
         List<String> pressed = new ArrayList<>();

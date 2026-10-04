@@ -617,11 +617,11 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
             } catch (Exception ignored) {
                 // An unknown league is shown as it was stored.
             }
-            value.append("[purple]").append(PlayerSettingsUiController.escapeMarkup(league)).append("[] ");
+            value.append("[purple]").append(TextWidth.escape(league)).append("[] ");
         }
         if (attrs.containsKey("rankName")) {
             String rankName = attrs.get("rankName");
-            value.append("[purple]").append(PlayerSettingsUiController.escapeMarkup(
+            value.append("[purple]").append(TextWidth.escape(
                     local != null ? local.t("hexed-ranks-" + rankName) : rankName)).append("[] ");
         }
         value.append(entry.rank() <= 3 ? "[gold]" : "[sky]")

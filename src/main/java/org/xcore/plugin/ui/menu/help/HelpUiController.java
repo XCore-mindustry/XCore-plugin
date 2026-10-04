@@ -216,7 +216,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
     static String rowText(HelpCommandItem command, float width, Localization local) {
         String syntax = command.primarySyntax() == null ? command.name() : command.primarySyntax();
         int space = syntax.indexOf(' ');
-        String arguments = space < 0 ? "" : " [gray]" + escapeMarkup(syntax.substring(space + 1)) + "[]";
+        String arguments = space < 0 ? "" : " [gray]" + TextWidth.escape(syntax.substring(space + 1)) + "[]";
         String overloads = command.syntaxes().size() > 1
                 ? "  [darkgray]" + (local != null
                 ? local.t("help-ui-overloads", Map.of("count", command.syntaxes().size()))
@@ -263,7 +263,7 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                 }));
                 left.add(Kit.card(screen.card(), accent, Iconc.edit + " " + t("help-ui-syntax-title"), (content, inner) ->
                         content.add(Kit.text(command.syntaxes().stream()
-                                .map(syntax -> "[accent]/" + escapeMarkup(syntax) + "[]")
+                                .map(syntax -> "[accent]/" + TextWidth.escape(syntax) + "[]")
                                 .collect(Collectors.joining("\n")), inner)).row()));
 
                 List<VNode> right = new ArrayList<>();
@@ -300,8 +300,8 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
     /** An argument as it is typed, whether it may be left out, and under that what it is for. */
     private String argumentText(HelpCommandItem.ArgumentInfo argument) {
         String name = argument.required()
-                ? "[scarlet]<" + escapeMarkup(argument.name()) + ">[]"
-                : "[sky][[" + escapeMarkup(argument.name()) + "][]";
+                ? "[scarlet]<" + TextWidth.escape(argument.name()) + ">[]"
+                : "[sky][[" + TextWidth.escape(argument.name()) + "][]";
         String kind = t(argument.required() ? "help-ui-arg-required" : "help-ui-arg-optional");
         String description = argument.description() == null || argument.description().isBlank()
                 ? "" : "\n[white]" + argument.description() + "[]";
@@ -314,11 +314,6 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
 
     private String t(String key, Map<String, Object> args) {
         return session != null ? session.locale().t(key, args) : key;
-    }
-
-    public static String escapeMarkup(String text) {
-        if (text == null || text.isBlank()) return "";
-        return text.replace("[", "[[");
     }
 
     private static final java.util.regex.Pattern ADMIN_ONLY_PATTERN = java.util.regex.Pattern.compile(
