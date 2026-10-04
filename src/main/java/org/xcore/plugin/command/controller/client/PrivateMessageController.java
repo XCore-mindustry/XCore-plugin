@@ -32,16 +32,14 @@ public class PrivateMessageController implements CloudClientController {
     }
 
     @RequiresMuteCheck
-    @Command("msg <id> <message>")
+    @Command("msg <target> <message>")
     public void msg(XCoreSender sender,
-                    @Argument("id") int id,
+                    @Argument("target") String target,
                     @Argument("message") @Greedy String message) {
         Session session = resolveSession(sender, sessionService);
-        if (session == null || session.data == null) {
-            return;
-        }
+        if (session == null || session.data == null) return;
 
-        privateMessageService.send(session, id, message);
+        privateMessageService.sendByTarget(session, target, message);
     }
 
     @RequiresMuteCheck

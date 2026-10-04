@@ -18,6 +18,7 @@ import org.xcore.plugin.ui.menu.TopMenu;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
@@ -205,21 +206,20 @@ class PlayerControllerObserverTest {
         XCoreSender sender = mock(XCoreSender.class);
         when(sender.player()).thenReturn(selfPlayer);
 
-        // Self lookup (-1)
-        controller.player(sender, -1);
+        controller.player(sender, "");
         verify(menu).player("uuid-self", selfSession.data);
 
-        // Online lookup by PID (2)
-        controller.player(sender, 2);
+        controller.player(sender, "2");
         verify(menu).player("uuid-self", otherSession.data);
 
         // No database calls performed
         verify(repository, never()).findByPid(anyInt());
         verify(repository, never()).findByPidAsync(anyInt());
+        verify(repository, never()).findByUsername(anyString());
     }
 
     @Test
-    @DisplayName("player command offline target queries async repository and opens menu")
+    @DisplayName("player command offline target queries repository and opens menu")
     void player_offlineTargetQueriesAsyncRepositoryAndOpensMenu() {
         PlayerDataRepository repository = mock(PlayerDataRepository.class);
         PlayerData offlineData = new PlayerData("uuid-offline", true);
@@ -250,10 +250,8 @@ class PlayerControllerObserverTest {
         XCoreSender sender = mock(XCoreSender.class);
         when(sender.player()).thenReturn(selfPlayer);
 
-        controller.player(sender, 99);
+        controller.player(sender, "99");
 
-        verify(repository).findByPidAsync(99);
-        verify(repository, never()).findByPid(99);
         verify(menu).player("uuid-self", offlineData);
     }
 }

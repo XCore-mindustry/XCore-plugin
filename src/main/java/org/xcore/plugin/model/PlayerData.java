@@ -28,7 +28,7 @@ public class PlayerData extends ModelData {
     
     @Builder.Default public int pid = -1;
     @Builder.Default public String username = "";
-    @BsonProperty("is_change_username")
+    @BsonProperty("can_change_username")
     @Builder.Default public boolean canChangeUsername = false;
 
     @BsonProperty("identity_display_mode")

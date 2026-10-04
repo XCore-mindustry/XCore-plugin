@@ -676,4 +676,18 @@ public class PlayerDataRepository extends DataRepository<PlayerData> {
     public List<PlayerData> findAllWithMapVotes() {
         return collection.find(Filters.exists("map_votes", true)).into(new ArrayList<>());
     }
+
+    public boolean updateUsername(String uuid, String username, boolean canChangeUsername) {
+        return updateByUuid(uuid, Updates.combine(
+                Updates.set("username", username == null ? "" : username),
+                Updates.set("can_change_username", canChangeUsername)
+        ));
+    }
+
+    public java.util.concurrent.CompletionStage<Boolean> updateUsernameAsync(String uuid, String username, boolean canChangeUsername) {
+        return updateByUuidAsync(uuid, Updates.combine(
+                Updates.set("username", username == null ? "" : username),
+                Updates.set("can_change_username", canChangeUsername)
+        ));
+    }
 }

@@ -194,6 +194,8 @@ public class AccountMergeService {
 
         String oldSourceUuid = sourceBefore.uuid;
         sourceWorking.uuid = "merged:" + oldSourceUuid;
+        sourceWorking.username = "";
+        sourceWorking.canChangeUsername = false;
         sourceWorking.totalPlayTime = 0;
         sourceWorking.description = "Merged into PID #" + targetWorking.pid + " (" + targetWorking.nickname + ")";
 
@@ -243,6 +245,13 @@ public class AccountMergeService {
     }
 
     private void consolidateData(PlayerData source, PlayerData target) {
+        if ((target.username == null || target.username.isBlank())
+                && source.username != null && !source.username.isBlank()) {
+            target.username = source.username;
+        }
+        
+        target.canChangeUsername = target.canChangeUsername || source.canChangeUsername;
+
         target.totalPlayTime += source.totalPlayTime;
         target.legacyPvpRating = Math.max(target.legacyPvpRating, source.legacyPvpRating);
         target.hexedPoints += source.hexedPoints;
@@ -491,6 +500,8 @@ public class AccountMergeService {
         if (dest == null || src == null || dest == src) return;
         dest.uuid = src.uuid;
         dest.pid = src.pid;
+        dest.username = src.username;
+        dest.canChangeUsername = src.canChangeUsername;
         dest.totalPlayTime = src.totalPlayTime;
         dest.legacyPvpRating = src.legacyPvpRating;
         dest.hexedPoints = src.hexedPoints;
@@ -557,6 +568,8 @@ public class AccountMergeService {
         PlayerData copy = new PlayerData(original.uuid, original.exists);
         copy.id = original.id;
         copy.pid = original.pid;
+        copy.username = original.username;
+        copy.canChangeUsername = original.canChangeUsername;
         copy.ip = original.ip;
         copy.nickname = original.nickname;
         copy.customNickname = original.customNickname;

@@ -1271,3 +1271,13 @@ announcement-help =
 
 
 error-only-players = [scarlet]⚠ This command can only be used by a player.
+
+player-settings-username-editable = [gold]★ Username (Event Reward):[]
+player-settings-username-hint = Enter unique username (4-32 chars)...
+player-settings-username-locked = [gray]Username:[] [accent]@{ $username }[] [darkgray](🔒 Locked)[]
+player-settings-username-none = [gray]Username: [darkgray]Not set (Win an event to unlock)[]
+
+error-username-empty = Username cannot be empty!
+error-username-length = Username length must be between 4 and 32 characters!
+error-username-invalid-chars = Username can only contain Latin letters, numbers, and underscores!
+error-username-taken = This username is already taken by another player!

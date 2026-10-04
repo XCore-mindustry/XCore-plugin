@@ -1273,3 +1273,13 @@ announcement-help =
 
 
 error-only-players = [scarlet]⚠ Цю команду можуть використовувати лише гравці.
+
+player-settings-username-editable = [gold]★ Ім'я користувача (Нагорода за подію):[]
+player-settings-username-hint = Введіть унікальне ім'я (4-32 симв.)...
+player-settings-username-locked = [gray]Ім'я користувача:[] [accent]@{ $username }[] [darkgray](🔒 Заблоковано)[]
+player-settings-username-none = [gray]Ім'я користувача: [darkgray]Не встановлено (Виграйте у події)[]
+
+error-username-empty = Ім'я користувача не може бути порожнім!
+error-username-length = Довжина імені користувача має бути від 4 до 32 символів!
+error-username-invalid-chars = Ім'я користувача може містити лише латинські літери, цифри та символ підкреслення!
+error-username-taken = Це ім'я користувача вже зайнято іншим гравцем!

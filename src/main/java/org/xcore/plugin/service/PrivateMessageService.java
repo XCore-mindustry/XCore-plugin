@@ -117,6 +117,15 @@ public class PrivateMessageService {
         return true;
     }
 
+    public boolean sendByTarget(Session senderSession, String target, String rawMessage) {
+        PlayerData targetData = sessionService.resolvePlayerData(target);
+        if (targetData == null) {
+            senderSession.locale().send("error-player-not-found", args());
+            return false;
+        }
+        return send(senderSession, targetData.pid, rawMessage);
+    }
+
     public boolean reply(Session senderSession, String message) {
         PlayerData target = resolveLastCorrespondent(senderSession);
         if (target == null) {
