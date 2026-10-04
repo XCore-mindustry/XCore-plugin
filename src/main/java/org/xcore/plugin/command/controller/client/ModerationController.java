@@ -14,6 +14,7 @@ import org.xcore.plugin.cloud.annotation.DefaultUnit;
 import org.xcore.plugin.command.controller.CloudClientController;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.localization.Localization;
+import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.service.FindService;
 import org.xcore.plugin.service.SecurityService;
 import org.xcore.plugin.service.moderation.BanCommand;
@@ -56,9 +57,9 @@ public class ModerationController implements CloudClientController {
         this(moderationService, find, sessionService, null, null);
     }
 
-    @Command("ban <id> <period> [reason]")
+    @Command("ban <target> <period> [reason]")
     public void ban(XCoreSender sender,
-                    @Argument("id") int id,
+                    @Argument("target") String target,
                     @Argument("period") @DefaultUnit(TimeUnit.DAYS) Duration period,
                     @Argument("reason") @Greedy String reason) {
 
@@ -66,10 +67,8 @@ public class ModerationController implements CloudClientController {
         if (session == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.ban(BanCommand.byId(id, ModerationActor.of(session), period)
-                .reason(reason)
-                .kickOnline(true)
-                .build());
+        var actor = ModerationActor.of(session);
+        var result = moderationService.banByTarget(target, actor.name(), actor.discordId(), reason, period, true);
 
         if (result.isSuccess()) {
             local.send("commands-ban-success", args("nickname", result.getData().get().name));
@@ -78,38 +77,37 @@ public class ModerationController implements CloudClientController {
         }
     }
 
-    @Command("unban <id>")
-    public void unban(XCoreSender sender, @Argument("id") int id) {
+    @Command("unban <target>")
+    public void unban(XCoreSender sender, @Argument("target") String target) {
         Session session = resolveActiveSession(sender);
         if (session == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unban(UnbanCommand.byId(id, ModerationActor.of(session)));
+        var actor = ModerationActor.of(session);
+        var result = moderationService.unbanByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
-            var target = result.getData().get();
+            var pData = result.getData().get();
             local.send("commands-unban-success", args(
-                    "nickname", target.nickname,
-                    "pid", target.pid
+                    "nickname", pData.nickname,
+                    "pid", pData.pid
             ));
         } else {
             sendModerationFailure(local, result);
         }
     }
 
-    @Command("mute <id> <period> [reason]")
+    @Command("mute <target> <period> [reason]")
     public void mute(XCoreSender sender,
-                     @Argument("id") int id,
+                     @Argument("target") String target,
                      @Argument("period") @DefaultUnit(TimeUnit.HOURS) Duration period,
                      @Argument("reason") @Greedy String reason) {
-
         Session session = resolveActiveSession(sender);
         if (session == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.mute(MuteCommand.byId(id, ModerationActor.of(session), period)
-                .reason(reason)
-                .build());
+        var actor = ModerationActor.of(session);
+        var result = moderationService.muteByTarget(target, actor.name(), actor.discordId(), reason, period);
 
         if (result.isSuccess()) {
             var mute = result.getData().get();
@@ -127,13 +125,14 @@ public class ModerationController implements CloudClientController {
         }
     }
 
-    @Command("unmute <id>")
-    public void unmute(XCoreSender sender, @Argument("id") int id) {
+    @Command("unmute <target>")
+    public void unmute(XCoreSender sender, @Argument("target") String target) {
         Session session = resolveActiveSession(sender);
         if (session == null) return;
         Localization local = session.locale();
 
-        var result = moderationService.unmute(UnmuteCommand.byId(id, ModerationActor.of(session)));
+        var actor = ModerationActor.of(session);
+        var result = moderationService.unmuteByTarget(target, actor.name(), actor.discordId());
 
         if (result.isSuccess()) {
             local.send("commands-unmute-success",
@@ -143,44 +142,25 @@ public class ModerationController implements CloudClientController {
         }
     }
 
-    @Command("audit [id]")
-    public void audit(XCoreSender sender, @Argument("id") @Default("-1") int id) {
+    @Command("audit [target]")
+    public void audit(XCoreSender sender, @Argument("target") @Default("") String target) {
         Session session = resolveActiveSession(sender);
         if (session == null || auditHistoryMenu == null) return;
         Localization local = session.locale();
 
-        if (id == -1) {
+        if (target.isBlank()) {
             auditHistoryMenu.history(session.data.uuid, session.data);
             return;
         }
 
-        Session targetOnline = sessionService.findOnlineByPid(id);
-        if (targetOnline != null && targetOnline.data != null) {
-            auditHistoryMenu.history(session.data.uuid, targetOnline.data);
+        PlayerData targetData = moderationService.resolvePlayerData(target);
+        if (targetData == null) {
+            local.send("error-player-not-found", args());
             return;
         }
 
-        var stage = sessionService.getOrLoadFromDbAsync(id);
-        if (async != null && sender.player() != null) {
-            async.onMainForPlayer(sender.player(), stage, (p, data) -> {
-                if (data != null) {
-                    auditHistoryMenu.history(p.uuid(), data);
-                } else {
-                    local.send("error-player-not-found", args());
-                }
-            });
-            return;
-        }
-
-        stage.whenComplete((targetData, err) -> {
-            if (err != null || targetData == null) {
-                local.send("error-player-not-found", args());
-                return;
-            }
-            auditHistoryMenu.history(session.data.uuid, targetData);
-        });
+        auditHistoryMenu.history(session.data.uuid, targetData);
     }
-
     private Session resolveActiveSession(XCoreSender sender) {
         Session session = resolveSession(sender, sessionService);
         return (session != null && session.data != null) ? session : null;

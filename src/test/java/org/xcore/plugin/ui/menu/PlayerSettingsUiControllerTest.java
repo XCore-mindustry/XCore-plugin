@@ -15,6 +15,7 @@ import org.xcore.plugin.config.TomlSecretsConfig;
 import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
+import org.xcore.plugin.model.enums.IdentityDisplayMode;
 import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.service.PlayerProfileSettingsService;
 import org.xcore.plugin.session.Session;
@@ -111,6 +112,10 @@ class PlayerSettingsUiControllerTest {
         }
         pages.add(PlayerSettingsUiController.createModel(session, session.data, PlayerSettingsUiController.Tab.BADGES)
                 .withBadgesFilter(PlayerSettingsUiController.BadgesFilter.ALL));
+        // The username as a field, and as a settled line of the longest name there can be.
+        pages.add(PlayerSettingsUiController.createModel(session, session.data).withCanChangeUsername(true));
+        pages.add(PlayerSettingsUiController.createModel(session, session.data)
+                .withUsername("a_username_of_the_longest_kind_1"));
         return pages;
     }
 
@@ -600,5 +605,120 @@ class PlayerSettingsUiControllerTest {
         assertThat(result.model().customNickname()).isEqualTo("TypedNick");
         assertThat(result.model().description()).isEqualTo("TypedDesc");
         assertThat(result.model().language()).isEqualTo("uk_UA");
+    }
+
+    @Test
+    @DisplayName("the username is a field while it can be changed and a line of text once it is settled")
+    void window_showsTheUsernameAsItCanBeChanged() {
+        Session session = createTestSession("uuid-1", false);
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, null, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        String settled = LayoutAssert.dsl(controller.window(model.withUsername("steve"), Screen.NARROW));
+        assertThat(settled).doesNotContain("field_username");
+
+        String open = LayoutAssert.dsl(controller.window(model.withCanChangeUsername(true), Screen.NARROW));
+        assertThat(open).contains("field_username");
+        for (IdentityDisplayMode mode : IdentityDisplayMode.values()) {
+            assertThat(open).contains("action:identity_mode:" + mode.name().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    @Test
+    @DisplayName("Save takes a new username once, and the field is closed after it")
+    void update_save_takesANewUsername() {
+        Session session = createTestSession("uuid-1", false);
+        session.data.canChangeUsername = true;
+        PlayerProfileSettingsService profileSettings = mock(PlayerProfileSettingsService.class);
+        when(profileSettings.validateCustomNickname(anyString()))
+                .thenReturn(PlayerProfileSettingsService.NicknameValidationResult.ok());
+        when(profileSettings.validateUsername("steve"))
+                .thenReturn(PlayerProfileSettingsService.UsernameValidationResult.ok());
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, profileSettings, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        MenuResult save = new MenuResult("action:save");
+        save.values.put("field_username", " steve ");
+        UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(
+                model, new PlayerSettingsUiController.SettingsEvent.Save(save), null);
+
+        verify(profileSettings).updateUsername(session.data, "steve");
+        assertThat(result.model().username()).isEqualTo("steve");
+        assertThat(result.model().usernameEditable()).isFalse();
+        assertThat(result.model().isSuccess()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Save refuses a username that is not valid or belongs to another player, and saves nothing")
+    void update_save_refusesABadUsername() {
+        Session session = createTestSession("uuid-1", false);
+        session.data.canChangeUsername = true;
+        PlayerProfileSettingsService profileSettings = mock(PlayerProfileSettingsService.class);
+        when(profileSettings.validateCustomNickname(anyString()))
+                .thenReturn(PlayerProfileSettingsService.NicknameValidationResult.ok());
+        when(profileSettings.validateUsername("no"))
+                .thenReturn(PlayerProfileSettingsService.UsernameValidationResult.error("error-username-length"));
+        when(profileSettings.validateUsername("taken"))
+                .thenReturn(PlayerProfileSettingsService.UsernameValidationResult.ok());
+        when(session.playerDataRepository.findByUsername("taken")).thenReturn(new PlayerData("uuid-2", true));
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, profileSettings, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        for (String name : List.of("no", "taken")) {
+            MenuResult save = new MenuResult("action:save");
+            save.values.put("field_username", name);
+            UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(
+                    model, new PlayerSettingsUiController.SettingsEvent.Save(save), null);
+
+            assertThat(result.model().isSuccess()).as(name).isFalse();
+            assertThat(result.model().usernameDraft()).isEqualTo(name);
+            assertThat(result.model().username()).isEmpty();
+        }
+        verify(profileSettings, never()).updateUsername(any(), anyString());
+        verify(profileSettings, never()).updateCustomNickname(any(), anyString(), anyBoolean(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("Save leaves the username alone for a player who may not change it")
+    void update_save_ignoresAUsernameThatIsSettled() {
+        Session session = createTestSession("uuid-1", false);
+        session.data.username = "steve";
+        PlayerProfileSettingsService profileSettings = mock(PlayerProfileSettingsService.class);
+        when(profileSettings.validateCustomNickname(anyString()))
+                .thenReturn(PlayerProfileSettingsService.NicknameValidationResult.ok());
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, profileSettings, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        MenuResult save = new MenuResult("action:save");
+        save.values.put("field_username", "another");
+        UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(
+                model, new PlayerSettingsUiController.SettingsEvent.Save(save), null);
+
+        verify(profileSettings, never()).updateUsername(any(), anyString());
+        assertThat(result.model().username()).isEqualTo("steve");
+    }
+
+    @Test
+    @DisplayName("choosing how the identity is shown persists a change and keeps what is typed")
+    void update_selectIdentityDisplayMode_persistsOnlyAChange() {
+        Session session = createTestSession("uuid-1", false);
+        session.data.identityDisplayMode = IdentityDisplayMode.PID;
+        PlayerProfileSettingsService profileSettings = mock(PlayerProfileSettingsService.class);
+        PlayerSettingsUiController controller = new PlayerSettingsUiController(null, profileSettings, session, session.data);
+        PlayerSettingsUiController.SettingsModel model = PlayerSettingsUiController.createModel(session, session.data);
+
+        MenuResult pressed = new MenuResult("action:identity_mode:both");
+        pressed.values.put("field_nickname", "Typed");
+        PlayerSettingsUiController.SettingsEvent event = controller.parseEvent(pressed);
+        assertThat(event).isEqualTo(
+                new PlayerSettingsUiController.SettingsEvent.SelectIdentityDisplayMode(IdentityDisplayMode.BOTH, pressed));
+
+        UpdateResult<PlayerSettingsUiController.SettingsModel> result = controller.update(model, event, null);
+        verify(profileSettings).updateIdentityDisplayMode(session.data, IdentityDisplayMode.BOTH);
+        assertThat(result.model().identityDisplayMode()).isEqualTo(IdentityDisplayMode.BOTH);
+        assertThat(result.model().customNickname()).isEqualTo("Typed");
+
+        controller.update(result.model(), event, null);
+        verify(profileSettings, times(1)).updateIdentityDisplayMode(any(), any());
     }
 }

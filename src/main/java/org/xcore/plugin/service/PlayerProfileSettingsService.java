@@ -20,8 +20,9 @@ import java.util.function.Function;
 @Singleton
 public class PlayerProfileSettingsService {
 
-    /** Vanilla Mindustry name length limit in UTF-8 bytes (see Vars.maxNameLength). */
     public static final int MAX_PLAIN_NAME_BYTES = 40;
+    public static final int MIN_USERNAME_LENGTH = 4;
+    public static final int MAX_USERNAME_LENGTH = 32;
 
     private final SessionService sessionService;
     private final PlayerDataRepository playerDataRepository;
@@ -59,6 +60,41 @@ public class PlayerProfileSettingsService {
         public static NicknameValidationResult badgeGlyph() {
             return new NicknameValidationResult(false, "error-nickname-badge-glyph", MAX_PLAIN_NAME_BYTES);
         }
+    }
+
+    public record UsernameValidationResult(boolean valid, String errorKey) {
+        public static UsernameValidationResult ok() {
+            return new UsernameValidationResult(true, null);
+        }
+
+        public static UsernameValidationResult error(String key) {
+            return new UsernameValidationResult(false, key);
+        }
+    }
+
+    public UsernameValidationResult validateUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return UsernameValidationResult.error("error-username-empty");
+        }
+        if (username.length() < MIN_USERNAME_LENGTH || username.length() > MAX_USERNAME_LENGTH) {
+            return UsernameValidationResult.error("error-username-length");
+        }
+        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+            return UsernameValidationResult.error("error-username-invalid-chars");
+        }
+        return UsernameValidationResult.ok();
+    }
+
+    public void updateUsername(PlayerData targetData, String username) {
+        mutate(targetData,
+                data -> {
+                    data.username = username;
+                    data.canChangeUsername = false;
+                },
+                data -> playerDataRepository.updateUsername(data.uuid, username, false),
+                null,
+                false,
+                false);
     }
 
     public NicknameValidationResult validateCustomNickname(String customNickname) {
@@ -210,5 +246,14 @@ public class PlayerProfileSettingsService {
 
     private boolean containsBadgeLikeGlyphs(String input) {
         return input.codePoints().anyMatch(Badge::containsReservedGlyph);
+    }
+
+    public void updateIdentityDisplayMode(PlayerData targetData, org.xcore.plugin.model.enums.IdentityDisplayMode mode) {
+        mutate(targetData,
+                data -> data.identityDisplayMode = mode,
+                data -> playerDataRepository.updateIdentityDisplayMode(data.uuid, mode),
+                null,
+                false,
+                false);
     }
 }

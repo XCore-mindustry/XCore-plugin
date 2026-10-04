@@ -53,14 +53,14 @@ public class PlayerController implements CloudClientController {
         this(sessionService, observerService, menu, topMenu, null);
     }
 
-    @Command("player|stats|me|player-statistics [id]")
-    public void player(XCoreSender sender, @Argument("id") @Default("-1") int id) {
-        openForTarget(sender.player(), id, (p, data) -> menu.player(p.uuid(), data));
+    @Command("player|stats|me|player-statistics [target]")
+    public void player(XCoreSender sender, @Argument("target") String target) {
+        openForTarget(sender.player(), target, (p, data) -> menu.player(p.uuid(), data));
     }
 
-    @Command("settings [id]")
-    public void settings(XCoreSender sender, @Argument("id") @Default("-1") int id) {
-        openForTarget(sender.player(), id, (p, data) -> menu.settings(p.uuid(), data));
+    @Command("settings [target]")
+    public void settings(XCoreSender sender, @Argument("target") String target) {
+        openForTarget(sender.player(), target, (p, data) -> menu.settings(p.uuid(), data));
     }
 
     @Command("players")
@@ -69,10 +69,11 @@ public class PlayerController implements CloudClientController {
         menu.players(sender.player().uuid(), 1);
     }
 
-    private void openForTarget(Player player, int id, BiConsumer<Player, PlayerData> openAction) {
+    private void openForTarget(Player player, String target, BiConsumer<Player, PlayerData> openAction) {
         if (player == null) return;
 
-        if (id == -1) {
+        // Якщо аргумент порожній — відкриваємо себе
+        if (target == null || target.isBlank()) {
             Session session = sessionService.get(player.uuid());
             if (session != null && session.data != null) {
                 openAction.accept(player, session.data);
@@ -82,13 +83,26 @@ public class PlayerController implements CloudClientController {
             return;
         }
 
-        Session targetOnline = sessionService.findOnlineByPid(id);
-        if (targetOnline != null && targetOnline.data != null) {
-            openAction.accept(player, targetOnline.data);
+        String pidCandidate = target.startsWith("#") ? target.substring(1) : target;
+        if (pidCandidate.matches("\\d+")) {
+            try {
+                int pid = Integer.parseInt(pidCandidate);
+                Session targetOnline = sessionService.findOnlineByPid(pid);
+                if (targetOnline != null && targetOnline.data != null) {
+                    openAction.accept(player, targetOnline.data);
+                    return;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        String userCandidate = target.startsWith("@") ? target.substring(1) : target;
+        Session targetOnlineUser = sessionService.findOnlineByUsername(userCandidate);
+        if (targetOnlineUser != null && targetOnlineUser.data != null) {
+            openAction.accept(player, targetOnlineUser.data);
             return;
         }
 
-        fetchAndOpen(player, sessionService.getOrLoadFromDbAsync(id), openAction);
+        fetchAndOpen(player, sessionService.resolvePlayerDataAsync(target), openAction);
     }
 
     private void fetchAndOpen(Player player, CompletionStage<PlayerData> stage, BiConsumer<Player, PlayerData> openAction) {
@@ -98,6 +112,11 @@ public class PlayerController implements CloudClientController {
             async.onMainForPlayer(player, stage, (p, data) -> {
                 if (data != null) {
                     openAction.accept(p, data);
+                } else {
+                    Session s = sessionService.get(p.uuid());
+                    if (s != null && s.locale() != null) {
+                        s.locale().send("error-player-not-found");
+                    }
                 }
             });
             return;
@@ -106,6 +125,11 @@ public class PlayerController implements CloudClientController {
         stage.whenComplete((data, error) -> {
             if (error == null && data != null) {
                 openAction.accept(player, data);
+            } else {
+                Session s = sessionService.get(player.uuid());
+                if (s != null && s.locale() != null) {
+                    s.locale().send("error-player-not-found");
+                }
             }
         });
     }

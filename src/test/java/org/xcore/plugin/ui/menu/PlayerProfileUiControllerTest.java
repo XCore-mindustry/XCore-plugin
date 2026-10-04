@@ -573,8 +573,9 @@ class PlayerProfileUiControllerTest {
         assertThat(statsDsl).doesNotContain("Season 3 ends in 12d");
 
         // 3. Players tab
+
         PlayerProfileUiController.OnlinePlayerRow row = new PlayerProfileUiController.OnlinePlayerRow(
-                "p-2", 100, "OnlineUser", null, Badge.DEVELOPER.id(), "default", false, "FFD37F"
+                "p-2", 100, "test_user", "OnlineUser", null, Badge.DEVELOPER.id(), "default", false, "FFD37F"
         );
         PlayerProfileUiController.ProfileModel playersModel = overviewModel
                 .withTab(PlayerProfileUiController.Tab.PLAYERS)
@@ -615,6 +616,7 @@ class PlayerProfileUiControllerTest {
         session.data.description = "Строю схемы на логике, играю с 2021 года. Пишите в Discord, если нужна помощь с процессорами!";
         session.data.admin = admin;
         session.player.admin = admin;
+        session.data.username = "a_username_of_the_longest_kind_1";
         ProfileSectionView ladder = local -> new ProfileSection(
                 "[accent]\uf7a9[] [white]Mini-PvP:[] [#b4c7dc]Титан III[] [accent]1642[]",
                 List.of("[white]112[] [gray]матчей[]", "[lime]61%[] [gray]побед[]", "[gray]место[] [accent]#4[]"),
@@ -627,6 +629,7 @@ class PlayerProfileUiControllerTest {
         List<PlayerProfileUiController.OnlinePlayerRow> online = new java.util.ArrayList<>();
         for (int i = 0; i < 20; i++) {
             online.add(new PlayerProfileUiController.OnlinePlayerRow("p-" + i, 100 + i,
+                    i % 2 == 0 ? "a_username_of_the_longest_kind_" + i : "",
                     "A_rather_long_nickname_of_player_" + i, i % 3 == 0 ? "[#2CABFE]Epic[#ff5555]Builder" + i : null,
                     i % 2 == 0 ? Badge.DEVELOPER.id() : "", "default", i % 4 == 0, "FFD37F"));
         }

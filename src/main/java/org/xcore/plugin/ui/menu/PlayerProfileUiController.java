@@ -70,6 +70,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     public record OnlinePlayerRow(
             String uuid,
             int pid,
+            String username,
             String nickname,
             String customNickname,
             String activeBadge,
@@ -85,6 +86,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             // Target Player Identity
             String targetUuid,
             int pid,
+            String username,
             String nickname,
             String customNickname,
             String description,
@@ -119,7 +121,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String feedbackMessage
     ) {
         public ProfileModel withTab(Tab newTab) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, newTab,
@@ -132,7 +134,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withDetails(ProfileDetails details) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, details.sections(), hexedPoints, hexedRank, details.hexedTopRank(),
                     details.stats(), false, isSelf, isViewerAdmin, tab,
@@ -147,6 +149,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     viewerUuid,
                     target.uuid,
                     target.pid,
+                    target.username != null ? target.username : "",
                     target.nickname != null ? target.nickname : "",
                     target.customNickname != null ? target.customNickname : "",
                     target.description != null ? target.description : "",
@@ -177,7 +180,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withPlayersPage(int newPage) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -185,7 +188,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withAdminFilter(AdminFilter filter, List<OnlinePlayerRow> players) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -193,7 +196,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withRefreshedPlayers(List<OnlinePlayerRow> players, int totalCount) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -203,7 +206,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         public ProfileModel withRefreshedPlayersPreservingPage(List<OnlinePlayerRow> players, int totalCount) {
             int maxPage = Math.max(1, (int) Math.ceil((double) players.size() / PLAYERS_PER_PAGE));
             int page = Math.clamp(playersPage, 1, maxPage);
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -211,7 +214,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         }
 
         public ProfileModel withFeedback(String msg) {
-            return new ProfileModel(viewerUuid, targetUuid, pid, nickname, customNickname, description, isTargetAdmin,
+            return new ProfileModel(viewerUuid, targetUuid, pid, username, nickname, customNickname, description, isTargetAdmin,
                     isTargetOnline, createdModelTime, totalPlayTime, activeBadge, badgeSymbolColorMode,
                     unlockedBadges, playerColorHex, sections, hexedPoints, hexedRank, hexedTopRank,
                     stats, isStatsLoading, isSelf, isViewerAdmin, tab,
@@ -288,6 +291,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 viewerUuid,
                 targetData.uuid,
                 targetData.pid,
+                targetData.username != null ? targetData.username : "",
                 targetData.nickname != null ? targetData.nickname : "",
                 targetData.customNickname != null ? targetData.customNickname : "",
                 targetData.description != null ? targetData.description : "",
@@ -333,6 +337,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                 .map(s -> new OnlinePlayerRow(
                         s.data.uuid,
                         s.data.pid,
+                        s.data.username != null ? s.data.username : "",
                         s.data.nickname != null ? s.data.nickname : "",
                         s.data.customNickname != null ? s.data.customNickname : "",
                         s.data.activeBadge != null ? s.data.activeBadge : "",
@@ -632,7 +637,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String title = "[orange]" + Iconc.players + "[] [white]"
                     + t(local, players ? "player-menu-players-title" : "player-stats-title") + "[]";
             String status = players ? ""
-                    : "\n" + identity(model, local) + "  "
+                    : "\n" + identity(model, local, width - 2f * Kit.MARGIN) + "  "
                     + t(local, model.isTargetOnline() ? "player-stats-status-online" : "player-stats-status-offline");
             window.add(Kit.header(width, title + status)).row();
 
@@ -716,15 +721,28 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return local != null ? local.t(key) : key;
     }
 
-    /** The admin mark, the badge, the name in its own colours and the player's number. */
-    private static String identity(ProfileModel model, Localization local) {
+    /**
+     * The admin mark, the badge, the name in its own colours, the username and the player's number,
+     * for a label of {@code room}.
+     */
+    private static String identity(ProfileModel model, Localization local, float room) {
         StringBuilder identity = new StringBuilder();
         if (model.isTargetAdmin()) {
             identity.append("[scarlet]<").append(Iconc.admin).append(' ').append(t(local, "admin")).append(">[] ");
         }
         appendName(identity, model.activeBadge(), model.badgeSymbolColorMode(), model.playerColorHex(),
                 model.customNickname(), model.nickname(), "[accent]");
+        appendUsername(identity, model.username(), room);
         return identity.append(" [gray]#").append(model.pid()).append("[]").toString();
+    }
+
+    /** A username has nowhere to break, and the longest is wider than a card of a phone. */
+    private static void appendUsername(StringBuilder text, String username, float room) {
+        if (username != null && !username.isBlank()) {
+            text.append(" [gold]@[accent]")
+                    .append(TextWidth.fit(TextWidth.escape(username), room - TextWidth.of("@")))
+                    .append("[]");
+        }
     }
 
     private static void appendName(StringBuilder text, String badgeId, String badgeColorMode, String colorHex,
@@ -768,7 +786,8 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         List<VNode> right = new ArrayList<>();
 
         // Who this is: the bio, when the account appeared and how long it has played.
-        left.add(Kit.card(card, Accent.GOLD, Iconc.players + " " + identity(model, local), (content, inner) -> {
+        left.add(Kit.card(card, Accent.GOLD, Iconc.players + " " + identity(model, local, card - 2f * Kit.BAND_MARGIN),
+                (content, inner) -> {
             String bio = model.description() != null && !model.description().isBlank()
                     ? "[lightgray]\"" + model.description().trim() + "[lightgray]\"[]"
                     : t(local, "player-stats-no-bio");
@@ -968,6 +987,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                         }
                         appendName(name, player.activeBadge(), player.badgeSymbolColorMode(), player.playerColorHex(),
                                 player.customNickname(), player.nickname(), "[white]");
+                        appendUsername(name, player.username(), inner);
                         name.append(" [gray]#").append(player.pid()).append("[]");
                         row.add(Kit.text(TextWidth.fit(name.toString(), inner), inner));
                     })).row();
