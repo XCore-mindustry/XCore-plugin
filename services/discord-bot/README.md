@@ -19,6 +19,14 @@ Standalone Discord bot for XCore transport migration.
   - `/map remove <server> <map>` → `maps.remove`
   - `/map upload <server> <file1> [file2] [file3]` (+ `.msav` attachments) → `maps.load`
   - `/subnet list|check|allow|deny|remove|reload|import|sweep <server>` (general admin; protocol 0.6.0)
+- Rating seasons (Mini-PvP and HexedCore ladders; protocol 0.8.0):
+  - consumes `xcore:evt:rating:season-started|season-ending-soon|season-ended|season-rescheduled`
+    and posts each announcement once to `DISCORD_SEASONS_CHANNEL_ID` (podium winners are mentioned)
+  - `/season info [ladder]`, `/season top <ladder> [season]`
+  - `/season extend|end-at|end-now <ladder>` (head admins, i.e. `DISCORD_GENERAL_ADMIN_ROLE_ID`) → `rating.season.reschedule.request`
+  - `/stats` shows the player's rating and place on every ladder for the current season
+  - account merges move rating standings through `rating.accounts.merge.request`; if no server
+    answers, the merge is queued in `rating_merge_pending` and retried every minute
 - Moderation/admin slash commands (Mongo-backed):
   - `/stats`, `/search`, `/bans`
   - `/ban`, `/unban`, `/mute`, `/unmute`
@@ -42,6 +50,7 @@ Optional:
 - `DISCORD_CLEAR_STALE_COMMANDS` (default: `false`; one-shot cleanup of stale global/guild slash commands before sync)
 - `DISCORD_GENERAL_ADMIN_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
 - `DISCORD_MAP_REVIEWER_ROLE_ID` (default: `DISCORD_ADMIN_ROLE_ID`)
+- `DISCORD_SEASONS_CHANNEL_ID` (default: `0`; season announcements are disabled while it is `0`)
 - `REDIS_URL` (default: `redis://127.0.0.1:6379`)
 - `REDIS_GROUP_PREFIX` (default: `xcore:cg`)
 - `REDIS_CONSUMER_NAME` (default: `discord-bot`)
