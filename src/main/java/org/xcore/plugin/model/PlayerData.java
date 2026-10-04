@@ -9,6 +9,7 @@ import org.bson.codecs.pojo.annotations.BsonProperty;
 import arc.util.Log;
 import org.mindrot.jbcrypt.BCrypt;
 import org.xcore.plugin.gamemode.hexed.HexedRanks;
+import org.xcore.plugin.model.enums.IdentityDisplayMode;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,11 +24,16 @@ import java.util.Set;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class PlayerData extends ModelData {
-
-    @Builder.Default
-    public int pid = -1;
     @Builder.Default public String uuid = "";
+    
+    @Builder.Default public int pid = -1;
+    @Builder.Default public String username = "";
+    @BsonProperty("is_change_username")
+    @Builder.Default public boolean canChangeUsername = false;
 
+    @BsonProperty("identity_display_mode")
+    @Builder.Default public IdentityDisplayMode identityDisplayMode = IdentityDisplayMode.BOTH;
+    
     @BsonProperty("last_ip")
     @Builder.Default public String ip = "";
     @Builder.Default public String nickname = "Unknown";
