@@ -1,6 +1,6 @@
 # Technical Design Specification: Seasonal Rating (Mini-PVP and HexedCore)
 
-Status: decisions in section 10 accepted; phases 1–3 implemented (see 9.1–9.3), phases 4–5 pending.
+Status: decisions in section 10 accepted; phases 1–4 implemented (see 9.1–9.4), phase 5 pending.
 Affects: `XCore-plugin`, `aethercore-plugin` (HexedCore), `xcore-protocol`, `XCore-discord-bot`.
 
 ## 1. Goal
@@ -266,7 +266,9 @@ For players: opens a dialog with a card per ladder this server hosts (every regi
 
 ## 7. Discord
 
-### 7.1. Protocol (`xcore-protocol`, new `rating` family)
+### 7.1. Protocol (`xcore-protocol`, new `rating` family, 0.8.0)
+
+Phase 4 ships the season events and the two RPCs below marked *(phase 4)*; the prize messages arrive with phase 5. Field names follow the shared types `SeasonRefV1` (ladder, season, name, startsAt, endsAt), `SeasonPodiumEntryV1` and `SeasonSummaryV1`.
 
 Events (`xcore:evt:rating:*`, replayable):
 
@@ -281,7 +283,8 @@ RPC (bot → any live server):
 
 | Request | Purpose |
 |---|---|
-| `RatingSeasonRescheduleRequestV1` | extend / set a date / end now |
+| `RatingSeasonRescheduleRequestV1` *(phase 4)* | extend / set a date / end now |
+| `RatingAccountsMergeRequestV1` *(phase 4)* | move one account's standings to another after a bot-side account merge |
 | `RatingSeasonPrizesSetRequestV1` | set the season's prize list |
 | `RatingPrizeGrantUpdateRequestV1` | mark a prize as delivered |
 
@@ -294,6 +297,8 @@ RPC (bot → any live server):
 - `/stats` shows per-ladder ratings instead of `pvp_rating`.
 
 Rule: **only the plugin writes season state.** The bot sends commands and reads. Otherwise a second implementation appears, as happened with account merge.
+
+A server refuses an RPC with a reply carrying `status=error`, `error_code` (`REJECTED` for a request the lifecycle refuses, `FAILED` for anything unexpected) and `error_message`; the bot raises `RpcRejected` and does not ask another server.
 
 ## 8. Administration
 
@@ -342,7 +347,7 @@ reset_carry = 0.5
 1. **Refactor with no behaviour change — done.** Remove the copies in HexedCore; introduce the ladder engine (`LadderService`, `Ladder`, `LadderStore`); port Mini-PVP and HexedCore onto it; migration V5; the shared `LadderTopCategoryProvider` and `LadderLeagueDisplay`; account merge over `rating_standings`. Release XCore-plugin, then bump the dependency in HexedCore.
 2. **Season core — done.** Model, repository, resolver, lifecycle, lazy reset, console commands, in-game notifications.
 3. **Interface — done.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
-4. **Protocol and bot.** The `rating` family, the channel, `/season`, the updated `/stats`.
+4. **Protocol and bot — done.** The `rating` family, the channel, `/season`, the updated `/stats`, rating merge over RPC.
 5. **Prizes.** Model, handlers, commands, delivery tracking.
 
 Each phase ships separately.
@@ -388,6 +393,23 @@ Known gaps:
 - The legacy `players.pvp_*` mirror is still written for the bot until phase 4; `/stats` no longer reads it except for the "legacy" figure.
 - Only the last three seasons are listed in a profile and the previous season's top three in `/season`; the full archive is in `/top`.
 - A profile for a player of another mode's server shows a block only when that player has a standing; there is no per-server hiding beyond that.
+
+### 9.4. What phase 4 changed for players and operators
+
+- Every season transition is published once per network, however many servers run the mode: `started` (when a season opens after another), `ending-soon` (the most urgent threshold that became due), `ended` (podium and summary of the archived season) and `rescheduled` (every move of the end, from the console or the bot). The publisher is `SeasonTransportPublisher`, a `SeasonEvents` listener of `SeasonLifecycleService`; a failing listener never blocks a transition.
+- Head admins (`DISCORD_GENERAL_ADMIN_ROLE_ID`) can `extend`, `end-at` and `end-now` a season from Discord. The request goes to any live server (the bot tries up to three); the actor is recorded in the season's audit trail like a console actor.
+- The bot posts the announcements to `DISCORD_SEASONS_CHANNEL_ID`, once per season and kind (`discord_season_posts`), mentioning podium winners who linked Discord. `/season info|top` read Mongo; `/stats` shows each ladder's rating and place for the current season.
+- The bot's account merge now also moves `rating_standings` through `RatingAccountsMergeRequestV1`. If no server answers, the merge waits in `rating_merge_pending` and is retried every minute; the merge embed says which of the cases happened.
+- Console `season extend` shares its implementation with the bot's RPC (`SeasonLifecycleService.extend`).
+
+Known gaps:
+
+- Event delivery is at-most-once from the plugin: a server that dies right after winning a transition loses its event. The bot's dedup protects against replays, not against a lost event; a reconcile pass over `rating_seasons` is the follow-up if this ever matters.
+- The first season of a ladder, created when a server first registers the ladder, publishes no `started` event.
+- `season end-now` publishes `ended` and then `started` of the next season, not `rescheduled`.
+- `extend` is relative to the end read just before the compare-and-set; two simultaneous extends can both apply against the same base and one wins.
+- The legacy `players.pvp_*` mirror is still written; nothing but the merge embed reads it now, so it can be removed once phase 5 is out.
+- `PROTOCOL_SURFACE.md` is not regenerated for the new family.
 
 ## 10. Decisions
 
