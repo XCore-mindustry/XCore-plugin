@@ -281,6 +281,9 @@ public class MenuService {
         UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
+                if (session.activeUiSession() == sessionRef[0]) {
+                    session.markUiShown();
+                }
                 gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, fillScreen, ui);
             }
 
@@ -511,7 +514,20 @@ public class MenuService {
         if (session == null || session.data == null || result == null) return;
 
         if (session.hasActiveUiSession()) {
-            session.activeUiSession().handle(result);
+            var uiSession = session.activeUiSession();
+            boolean currentWindow = result.token == 0 || result.token == uiSession.token();
+            if (currentWindow && !result.wasCancelled()) {
+                // The client's dialog stops reporting its close once pressed (Menus.menuBuilder sets
+                // wasHidden), and a patch keeps that same dialog up.
+                session.markUiPressed();
+            }
+            uiSession.handle(result);
+            if (currentWindow && result.wasCancelled()
+                    && session.activeUiSession() == uiSession && uiSession.token() == result.token) {
+                // The client closed the dialog and the controller neither closed nor re-sent it.
+                session.clearActiveUiSession();
+                notifyMenuClosed(session);
+            }
             return;
         }
 

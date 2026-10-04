@@ -102,7 +102,21 @@ public class Session {
         return uiVersion;
     }
 
+    /**
+     * How long after the last press a UI session dialog still counts as open once the client can
+     * no longer report closing it; see {@link #markUiPressed()}.
+     */
+    public static final long UNREPORTED_MENU_TIMEOUT_MILLIS = 60_000L;
+    private java.util.function.LongSupplier clock = System::currentTimeMillis;
+
     private org.xcore.ui.runtime.UiSession<?, ?> activeUiSession;
+    /** Whether the client's dialog of the active UI session will tell the server it was closed. */
+    private boolean uiCloseReportable;
+    private long lastUiPressAt;
+
+    public void useClock(java.util.function.LongSupplier clock) {
+        this.clock = clock;
+    }
 
     public void setActiveScreen(ActiveMenuScreen screen) {
         this.activeScreen = screen;
@@ -116,8 +130,10 @@ public class Session {
         this.activeScreen = null;
     }
 
+    /** Makes {@code uiSession} the active one; it is about to show the client a fresh dialog. */
     public void setActiveUiSession(org.xcore.ui.runtime.UiSession<?, ?> uiSession) {
         this.activeUiSession = uiSession;
+        this.uiCloseReportable = uiSession != null;
     }
 
     public org.xcore.ui.runtime.UiSession<?, ?> activeUiSession() {
@@ -130,6 +146,32 @@ public class Session {
 
     public void clearActiveUiSession() {
         this.activeUiSession = null;
+        this.uiCloseReportable = false;
+    }
+
+    /** The client got a fresh dialog for the active UI session; closing it sends a cancel. */
+    public void markUiShown() {
+        this.uiCloseReportable = true;
+    }
+
+    /**
+     * The player pressed something in the active UI session's dialog. The client then stops
+     * reporting that dialog closed, and the session goes on patching it in place, so from now on
+     * only further presses show it is still up.
+     */
+    public void markUiPressed() {
+        this.uiCloseReportable = false;
+        this.lastUiPressAt = clock.getAsLong();
+    }
+
+    /**
+     * Whether the active UI session's dialog is likely still on the player's screen: it will
+     * report being closed, or the player pressed something in it recently. The session itself
+     * stays active either way, so a dialog that outlived the timeout still answers presses.
+     */
+    private boolean uiSessionLikelyOpen() {
+        if (activeUiSession == null) return false;
+        return uiCloseReportable || clock.getAsLong() - lastUiPressAt < UNREPORTED_MENU_TIMEOUT_MILLIS;
     }
 
     public void setActivePrompt(ActiveMenuPrompt prompt) {
@@ -145,7 +187,7 @@ public class Session {
     }
 
     public boolean hasActiveMenu() {
-        return activeScreen != null || activePrompt != null || activeUiSession != null || !actions.isEmpty() || textHandler != null;
+        return activeScreen != null || activePrompt != null || uiSessionLikelyOpen() || !actions.isEmpty() || textHandler != null;
     }
 
     public void clearUiState() {
