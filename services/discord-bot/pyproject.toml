@@ -20,14 +20,10 @@ dependencies = [
 
 [tool.uv.sources]
 # Pinned to a release tag, not a branch: a branch pin makes every build resolve a different
-# commit of the protocol. v0.7.0 is the first tag carrying the chat-domain decomposition this
-# bot imports (v0.6.2 predates it and fails collection). The tag is annotated, so uv records
-# the commit it peels to and the build stays reproducible.
-#
-# TEMPORARY: the seasonal-rating work needs the `rating` family (with prizes) from
-# xcore-protocol#2, which has no tag yet. Until v0.10.0 is released this is pinned to that PR's
-# commit; switch it back to `tag = "v0.10.0"` before merging.
-xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", rev = "cb50dd9d393bedab82e12e5400392adff9461b8d" }
+# commit of the protocol. v0.10.0 is the first tag carrying the `rating` family (seasons, prizes,
+# request ids) this bot imports. The tag is annotated, so uv records the commit it peels to and
+# the build stays reproducible.
+xcore-protocol = { git = "https://github.com/XCore-mindustry/xcore-protocol.git", tag = "v0.10.0" }
 
 [project.scripts]
 xcore-discord-bot = "xcore_discord_bot.main:main"
