@@ -3,6 +3,7 @@ package org.xcore.plugin.event.handler;
 import arc.util.Log;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.game.EventType.PlayerLeave;
 import mindustry.gen.Call;
@@ -28,6 +29,7 @@ import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
 
+@Slf4j
 @Singleton
 public class ConnectionHandler {
 
@@ -166,8 +168,12 @@ public class ConnectionHandler {
         if (prepared.unreadMessages() > 0 && locale != null) {
             locale.send("private-message-join-notification", args("count", prepared.unreadMessages()));
         }
-
-        Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
+        if (data.username != null && !data.username.isEmpty()) {
+            Log.info("@ [@] #@ @ joined", player.plainName(), data.username, data.pid, player.uuid());
+        }
+        else {
+            Log.info("@ #@ @ joined", player.plainName(), data.pid, player.uuid());
+        }
 
         // Відправка локалізованого входу відповідно до налаштувань відображення
         broadcastJoin(player, data);
@@ -204,7 +210,11 @@ public class ConnectionHandler {
 
         if (data != null) {
             sessionService.markOffline(data);
-            Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
+            if (data.username != null && !data.username.isEmpty()) {
+                Log.info("@ [@] #@ @ left", player.plainName(), data.username, data.pid, player.uuid());
+            } else {
+                Log.info("@ #@ @ left", player.plainName(), data.pid, player.uuid());
+            }
 
             // Відправка локалізованого виходу відповідно до налаштувань відображення
             broadcastLeave(player, data);

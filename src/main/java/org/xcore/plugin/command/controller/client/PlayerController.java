@@ -54,12 +54,12 @@ public class PlayerController implements CloudClientController {
     }
 
     @Command("player|stats|me|player-statistics [target]")
-    public void player(XCoreSender sender, @Argument("target") @Default("") String target) {
+    public void player(XCoreSender sender, @Argument("target") String target) {
         openForTarget(sender.player(), target, (p, data) -> menu.player(p.uuid(), data));
     }
 
     @Command("settings [target]")
-    public void settings(XCoreSender sender, @Argument("target") @Default("") String target) {
+    public void settings(XCoreSender sender, @Argument("target") String target) {
         openForTarget(sender.player(), target, (p, data) -> menu.settings(p.uuid(), data));
     }
 
