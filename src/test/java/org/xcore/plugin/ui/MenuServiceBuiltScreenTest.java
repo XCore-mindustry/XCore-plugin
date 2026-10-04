@@ -18,6 +18,8 @@ import org.xcore.plugin.ui.flow.MenuMode;
 import org.xcore.plugin.ui.flow.MenuPrompt;
 import org.xcore.plugin.ui.flow.MenuRenderContext;
 import org.xcore.plugin.ui.flow.MenuScreen;
+import org.xcore.ui.Ui;
+import org.xcore.ui.runtime.UiController;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /** The screens of flows, once the server can have the client build a dialog for them. */
 class MenuServiceBuiltScreenTest {
@@ -233,6 +236,24 @@ class MenuServiceBuiltScreenTest {
         verify(gateway, times(2)).menuBuilder(any(), anyInt(), anyLong(), any(), anyBoolean(), anyBoolean(), anyBoolean(), any());
     }
 
+    @Test
+    @DisplayName("a UI session opened over a screen ends the screen and tells its flow")
+    @SuppressWarnings("unchecked")
+    void openUi_closesTheScreenItReplaces() {
+        TestFlow flow = flow(MenuMode.FOLLOW_UP, (context, action) -> {
+        });
+        menuService.renderFlow(session, flow, "state", null);
+        UiController<String, String> controller = mock(UiController.class);
+        when(controller.render(any())).thenReturn(Ui.table(table -> {
+        }));
+
+        menuService.openUi(session, controller, "model");
+
+        assertThat(flow.closed).isEqualTo(1);
+        assertThat(session.activeScreen()).isNull();
+        assertThat(session.hasActiveUiSession()).isTrue();
+    }
+
     private MenuResult press(String option) {
         MenuResult result = new MenuResult(option);
         result.token = session.activeScreen().token();
@@ -251,6 +272,7 @@ class MenuServiceBuiltScreenTest {
     private static class TestFlow implements MenuFlow<String> {
         private final MenuScreen screen;
         private final BiConsumer<MenuRenderContext<String>, String> onAction;
+        private int closed;
 
         TestFlow(MenuScreen screen, BiConsumer<MenuRenderContext<String>, String> onAction) {
             this.screen = screen;
@@ -270,6 +292,11 @@ class MenuServiceBuiltScreenTest {
         @Override
         public void onAction(MenuRenderContext<String> context, String actionId) {
             onAction.accept(context, actionId);
+        }
+
+        @Override
+        public void onClose(MenuRenderContext<String> context) {
+            closed++;
         }
     }
 

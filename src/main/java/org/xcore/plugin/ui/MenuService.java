@@ -250,9 +250,16 @@ public class MenuService {
         if (session == null || session.player == null || session.player.con == null) return null;
 
         long version = session.nextUiVersion();
-        // The session's dialog takes the place of a built screen, which is then no longer open.
-        if (session.activeScreen() != null && session.activeScreen().isBuilt()) {
-            session.clearActiveScreen();
+        // The session's dialog takes the place of a built screen, which is then no longer open:
+        // its flow is told so, as the client will not report the close of a dialog it replaced.
+        ActiveMenuScreen replaced = session.activeScreen();
+        if (replaced != null && replaced.isBuilt()) {
+            if (replaced.hasFlow()) {
+                dispatchFlowClose(replaced, session);
+            }
+            if (session.activeScreen() == replaced) {
+                session.clearActiveScreen();
+            }
         }
         notifyMenuOpened(session);
 

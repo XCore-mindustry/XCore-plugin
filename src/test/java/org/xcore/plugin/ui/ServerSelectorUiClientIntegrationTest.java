@@ -224,18 +224,17 @@ class ServerSelectorUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Close button dismisses servers dialog cleanly")
-    void closeButton_dismissesDialog() {
+    @DisplayName("closing the dialog with the client's own button ends the session")
+    void dismissDialog_closesSession() {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
         assertThat(loop.stepServerToClient()).isTrue();
+        assertThat(loop.client().isVisible(menuId)).isTrue();
 
-        // Client clicks close
-        loop.client().click(menuId, "action:close");
+        // The dialog has no close button of its own: the client's one reports a cancel.
+        loop.client().dismiss(menuId);
         assertThat(loop.stepClientToServer()).isTrue();
 
-        // Server emits Hide wire message
-        assertThat(loop.stepServerToClient()).isTrue();
         assertThat(loop.client().isVisible(menuId)).isFalse();
         assertThat(session.hasActiveUiSession()).isFalse();
     }
