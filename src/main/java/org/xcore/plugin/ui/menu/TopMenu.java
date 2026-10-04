@@ -126,7 +126,11 @@ public class TopMenu extends Menu {
         );
         var query = controller.query(categoryId, scopeId, page, cursor, backStack);
         var viewer = session.data;
+        long requested = session.nextUiVersion();
         async.supply(() -> controller.fetch(query, viewer)).thenMain((data, error) -> {
+            if (session.uiVersion() != requested) {
+                return; // The player opened something else while this was loading.
+            }
             if (error != null) {
                 Log.err("Failed to open top category " + query.categoryId(), error);
                 return;

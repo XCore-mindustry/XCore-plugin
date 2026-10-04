@@ -140,6 +140,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     private final SessionService sessionService;
     private final Async async;
     private final Session session;
+    /** Counts the page loads this dialog started; only the latest one may change it. */
+    private long loadGeneration;
 
     public TopUiController(TopMenu topMenu,
                            TopCategoryRegistry categoryRegistry,
@@ -300,11 +302,16 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     /**
      * Loads {@code query} off the game thread and feeds the result back as a
      * {@link TopEvent.Loaded}. The dialog keeps showing {@code model} meanwhile; a result
-     * that arrives after the dialog moved on is dropped.
+     * that arrives after the dialog moved on, or after the player asked for something newer,
+     * is dropped.
      */
     private UpdateResult<TopModel> load(TopModel model, TopQuery query) {
         PlayerData viewer = viewer();
+        long generation = ++loadGeneration;
         async.supply(() -> fetch(query, viewer)).thenMain((data, error) -> {
+            if (generation != loadGeneration) {
+                return; // Superseded: applying it would make the newer request look stale.
+            }
             if (error != null) {
                 Log.err("Failed to load top category " + query.categoryId(), error);
                 return;

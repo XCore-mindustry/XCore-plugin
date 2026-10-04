@@ -43,6 +43,7 @@ public record Season(
         Objects.requireNonNull(startsAt, "startsAt");
         Objects.requireNonNull(endsAt, "endsAt");
         Objects.requireNonNull(status, "status");
+        if (endsAt.isBefore(startsAt)) throw new IllegalArgumentException("endsAt must not be before startsAt");
         name = name == null ? "" : name;
         sentNotices = sentNotices == null ? Set.of() : Set.copyOf(sentNotices);
         podium = podium == null ? List.of() : List.copyOf(podium);

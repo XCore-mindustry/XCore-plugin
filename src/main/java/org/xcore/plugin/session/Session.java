@@ -93,6 +93,15 @@ public class Session {
         return ++uiVersion;
     }
 
+    /**
+     * The version of the last menu shown or requested. A menu that loads before it opens takes
+     * the {@link #nextUiVersion() next} one when the load starts and opens only if this still
+     * matches: anything the player opened meanwhile is newer and must not be replaced.
+     */
+    public long uiVersion() {
+        return uiVersion;
+    }
+
     private org.xcore.ui.runtime.UiSession<?, ?> activeUiSession;
 
     public void setActiveScreen(ActiveMenuScreen screen) {

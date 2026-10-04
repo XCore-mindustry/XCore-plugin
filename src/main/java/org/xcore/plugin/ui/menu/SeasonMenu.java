@@ -62,7 +62,11 @@ public class SeasonMenu {
 
         String viewer = session.data.uuid;
         var controller = new SeasonUiController(this, views, session);
+        long requested = session.nextUiVersion();
         async.supply(() -> load(viewer)).thenMain((model, error) -> {
+            if (session.uiVersion() != requested) {
+                return; // The player opened something else while this was loading.
+            }
             if (error != null) {
                 Log.err("Failed to load seasons for " + viewer, error);
                 return;

@@ -341,6 +341,32 @@ class TopUiControllerTest {
     }
 
     @Test
+    @DisplayName("of two requests still loading only the latest one is applied")
+    @SuppressWarnings("unchecked")
+    void load_appliesOnlyTheLatestRequest() {
+        registerMockProvider("MINI_PVP", 30, List.of(), false, null, null);
+        registerMockProvider("PLAYTIME", 20, List.of(), false, null, null);
+        registerMockProvider("HEXED", 10, List.of(), false, null, null);
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel initial = controller.createInitialModel("MINI_PVP", null, 1, null, null);
+        UiSession<TopUiController.TopModel, TopUiController.TopEvent> ui = mock(UiSession.class);
+        when(ui.model()).thenReturn(initial);
+        session.setActiveUiSession(ui);
+
+        // Both taps land before either page is back, so both start from the same model.
+        controller.update(initial, new TopUiController.TopEvent.SelectCategory("PLAYTIME"), null);
+        controller.update(initial, new TopUiController.TopEvent.SelectCategory("HEXED"), null);
+        while (!mainThread.isEmpty()) {
+            mainThread.poll().run();
+        }
+
+        ArgumentCaptor<TopUiController.TopEvent> dispatched = ArgumentCaptor.forClass(TopUiController.TopEvent.class);
+        verify(ui).dispatch(dispatched.capture());
+        assertThat(((TopUiController.TopEvent.Loaded) dispatched.getValue()).data().query().categoryId())
+                .isEqualTo("HEXED");
+    }
+
+    @Test
     @DisplayName("a category that fails to load shows an empty page instead of breaking the dialog")
     void fetch_survivesProviderFailure() {
         TopCategoryProvider broken = mock(TopCategoryProvider.class);
