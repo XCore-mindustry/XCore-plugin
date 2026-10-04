@@ -202,4 +202,37 @@ class MongoSeasonStoreIntegrationTest {
         assertThatThrownBy(() -> readOnlyStore.countMatch("duel", 1))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    @DisplayName("prizes are stored in the documented shape, read back, and survive later transitions")
+    void update_storesPrizes() {
+        Season season = created("duel", 1);
+        SeasonPrize badge = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+        SeasonPrize nitro = new SeasonPrize(1, 3, PrizeKind.CUSTOM, "Discord Nitro", "1 month");
+
+        Season prized = store.update(season, season.withPrizes(List.of(badge, nitro))).orElseThrow();
+        Season moved = store.update(prized, prized.close()).orElseThrow();
+
+        assertThat(prized.prizes()).containsExactly(badge, nitro);
+        assertThat(moved.prizes()).containsExactly(badge, nitro);
+        assertThat(store.find("duel", 1).orElseThrow().prizes()).containsExactly(badge, nitro);
+        Document stored = database.getCollection(MongoSeasonStore.COLLECTION).find().first()
+                .getList("prizes", Document.class).get(1);
+        assertThat(stored.getInteger("place_from")).isEqualTo(1);
+        assertThat(stored.getInteger("place_to")).isEqualTo(3);
+        assertThat(stored.getString("kind")).isEqualTo("CUSTOM");
+        assertThat(stored.getString("value")).isEqualTo("Discord Nitro");
+        assertThat(stored.getString("description")).isEqualTo("1 month");
+    }
+
+    @Test
+    @DisplayName("two servers editing the prizes at once cannot both win")
+    void update_prizeEditsAreCompareAndSet() {
+        Season season = created("duel", 1);
+
+        assertThat(store.update(season, season.withPrizes(List.of(new SeasonPrize(1, 1, PrizeKind.CUSTOM, "A", ""))))).isPresent();
+        assertThat(store.update(season, season.withPrizes(List.of(new SeasonPrize(2, 2, PrizeKind.CUSTOM, "B", ""))))).isEmpty();
+
+        assertThat(store.find("duel", 1).orElseThrow().prizes()).hasSize(1);
+    }
 }

@@ -132,7 +132,8 @@ public class MongoSeasonStore implements SeasonStore {
                 .append("status", season.status().name())
                 .append("sent_notices", List.copyOf(season.sentNotices()))
                 .append("podium", season.podium().stream().map(MongoSeasonStore::document).toList())
-                .append("rescheduled", season.rescheduled().stream().map(MongoSeasonStore::document).toList());
+                .append("rescheduled", season.rescheduled().stream().map(MongoSeasonStore::document).toList())
+                .append("prizes", season.prizes().stream().map(MongoSeasonStore::document).toList());
         SeasonSummary summary = season.summary();
         fields.append("summary", summary == null ? null : new Document("participants", summary.participants())
                 .append("matches", summary.matches()));
@@ -150,6 +151,14 @@ public class MongoSeasonStore implements SeasonStore {
                 .append("wins", entry.wins())
                 .append("discord_id", entry.discordId())
                 .append("discord_username", entry.discordUsername());
+    }
+
+    private static Document document(SeasonPrize prize) {
+        return new Document("place_from", prize.placeFrom())
+                .append("place_to", prize.placeTo())
+                .append("kind", prize.kind().name())
+                .append("value", prize.value())
+                .append("description", prize.description());
     }
 
     private static Document document(SeasonReschedule change) {
@@ -177,6 +186,8 @@ public class MongoSeasonStore implements SeasonStore {
                         number(summary, "matches", 0)),
                 document.getList("rescheduled", Document.class, List.of()).stream()
                         .map(MongoSeasonStore::reschedule).toList(),
+                document.getList("prizes", Document.class, List.of()).stream()
+                        .map(MongoSeasonStore::prize).toList(),
                 number(document, "matches", 0),
                 document.get("revision") instanceof Number value ? value.longValue() : 0L);
     }
@@ -193,6 +204,12 @@ public class MongoSeasonStore implements SeasonStore {
                 number(document, "wins", 0),
                 text(document, "discord_id"),
                 text(document, "discord_username"));
+    }
+
+    private static SeasonPrize prize(Document document) {
+        int from = number(document, "place_from", 1);
+        return new SeasonPrize(from, Math.max(from, number(document, "place_to", from)),
+                PrizeKind.parse(text(document, "kind")), text(document, "value"), text(document, "description"));
     }
 
     private static SeasonReschedule reschedule(Document document) {

@@ -748,6 +748,8 @@ badge-event-winner-name = Event Winner
 badge-event-winner-description = Awarded to winners of special server events.
 badge-veteran-name = Veteran
 badge-veteran-description = Awarded to long-term respected players.
+badge-season-champion-name = Season Champion
+badge-season-champion-description = Awarded for finishing on the podium of a rating season.
 commands-lb-description = Enable/disable leaderboard.
 commands-lb-success =
     { $leaderboardEnabled ->

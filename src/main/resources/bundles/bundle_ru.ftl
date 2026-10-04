@@ -686,6 +686,8 @@ badge-event-winner-name = Победитель ивента
 badge-event-winner-description = Выдаётся победителям специальных серверных событий.
 badge-veteran-name = Ветеран
 badge-veteran-description = Выдаётся уважаемым старым игрокам.
+badge-season-champion-name = Чемпион сезона
+badge-season-champion-description = Выдаётся за место на подиуме рейтингового сезона.
 commands-lb-description = Включить/выключить таблицу лидеров
 commands-lb-success =
     { $leaderboardEnabled ->

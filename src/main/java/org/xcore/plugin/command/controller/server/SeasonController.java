@@ -15,11 +15,15 @@ import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
 import org.xcore.plugin.rating.ladder.LadderStore;
+import org.xcore.plugin.rating.prize.PrizeGrant;
+import org.xcore.plugin.rating.prize.PrizeService;
+import org.xcore.plugin.rating.season.PrizeKind;
 import org.xcore.plugin.rating.season.Season;
 import org.xcore.plugin.rating.season.SeasonCommandParser;
 import org.xcore.plugin.rating.season.SeasonException;
 import org.xcore.plugin.rating.season.SeasonLifecycleService;
 import org.xcore.plugin.rating.season.SeasonPodiumEntry;
+import org.xcore.plugin.rating.season.SeasonPrize;
 import org.xcore.plugin.rating.season.SeasonReschedule;
 import org.xcore.plugin.rating.season.SeasonSchedule;
 import org.xcore.plugin.rating.season.SeasonStatus;
@@ -40,6 +44,7 @@ public class SeasonController implements CloudServerController {
     private final SeasonLifecycleService lifecycle;
     private final SeasonSchedule schedule;
     private final LadderStore standings;
+    private final PrizeService prizes;
     private final Async async;
 
     @Inject
@@ -47,11 +52,13 @@ public class SeasonController implements CloudServerController {
                             SeasonLifecycleService lifecycle,
                             SeasonSchedule schedule,
                             LadderStore standings,
+                            PrizeService prizes,
                             Async async) {
         this.seasons = seasons;
         this.lifecycle = lifecycle;
         this.schedule = schedule;
         this.standings = standings;
+        this.prizes = prizes;
         this.async = async;
     }
 
@@ -115,6 +122,67 @@ public class SeasonController implements CloudServerController {
         change(() -> lifecycle.endNow(ladder, console(), reason));
     }
 
+    @Command("season prize list <ladder> [season]")
+    @CommandDescription("Shows the prizes of a season and who they were granted to.")
+    public void prizeList(XCoreSender sender,
+                          @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
+                          @Nullable @Argument(value = "season", description = "Season number; the running one by default") Integer season) {
+        run(() -> {
+            Season found = season == null
+                    ? seasons.list(ladder).stream().findFirst().orElseThrow(() -> new SeasonException("Ladder '" + ladder + "' has no seasons"))
+                    : seasons.find(ladder, season).orElseThrow(() -> new SeasonException("Season " + ladder + ":" + season + " does not exist"));
+            if (found.prizes().isEmpty()) {
+                PLog.info("Season @ has no prizes.", found.id());
+            }
+            for (SeasonPrize prize : found.prizes()) {
+                PLog.info("  place @: @ &fb@&fr@", prize.places(), prize.kind().name().toLowerCase(), prize.value(),
+                        prize.description().isBlank() ? "" : " - " + prize.description());
+            }
+            for (PrizeGrant grant : prizes.grants(ladder, found.number())) {
+                PLog.info("  grant #@ @: @ &fb@&fr by @@", grant.place(), grant.playerUuid(), grant.value(),
+                        grant.status(), grant.grantedBy(), grant.note().isBlank() ? "" : " (" + grant.note() + ")");
+            }
+        });
+    }
+
+    @Command("season prize set <ladder> <places> <kind> <value>")
+    @CommandDescription("Adds a prize to the running season: badge <badge-id>, or custom <free text>.")
+    public void prizeSet(XCoreSender sender,
+                         @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
+                         @Argument(value = "places", description = "A place or a range: 1 or 1-3") String places,
+                         @Argument(value = "kind", description = "badge or custom") String kind,
+                         @Argument(value = "value", description = "Badge ID, or the prize text") @Greedy String value) {
+        run(() -> {
+            int[] range = SeasonCommandParser.places(places);
+            Season season = lifecycle.addPrize(ladder,
+                    new SeasonPrize(range[0], range[1], PrizeKind.parse(kind), value, ""), console());
+            PLog.info("&gSeason @ now has @ prize(s)", season.id(), season.prizes().size());
+        });
+    }
+
+    @Command("season prize clear <ladder> <places>")
+    @CommandDescription("Removes the prizes of the running season that lie within the given places.")
+    public void prizeClear(XCoreSender sender,
+                           @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
+                           @Argument(value = "places", description = "A place or a range: 1 or 1-3") String places) {
+        run(() -> {
+            int[] range = SeasonCommandParser.places(places);
+            Season season = lifecycle.removePrizes(ladder, range[0], range[1], console());
+            PLog.info("&gSeason @ now has @ prize(s)", season.id(), season.prizes().size());
+        });
+    }
+
+    @Command("season prize delivered <ladder> <season> <place> [note]")
+    @CommandDescription("Records that the prizes of a finished season's place were handed over.")
+    public void prizeDelivered(XCoreSender sender,
+                               @Argument(value = "ladder", description = "Ladder ID, e.g. minipvp or hexed") String ladder,
+                               @Argument(value = "season", description = "Season number") int season,
+                               @Argument(value = "place", description = "Place on the podium") int place,
+                               @Nullable @Argument(value = "note", description = "For example, the gift code that was sent") @Greedy String note) {
+        run(() -> PLog.info("&gMarked @ prize(s) of place @ delivered",
+                prizes.markDelivered(ladder, season, place, console(), note), place));
+    }
+
     private void describe(Season season) {
         Instant now = Instant.now();
         PLog.info("Season @ &fb@&fr", season.id(), season.status());
@@ -133,6 +201,9 @@ public class SeasonController implements CloudServerController {
         for (SeasonReschedule change : season.rescheduled()) {
             PLog.info("  Moved:        @ -> @ by @ at @@", time(change.from()), time(change.to()), change.actor(),
                     time(change.at()), change.reason().isBlank() ? "" : " (" + change.reason() + ")");
+        }
+        for (SeasonPrize prize : season.prizes()) {
+            PLog.info("  Prize @: @ @", prize.places(), prize.kind().name().toLowerCase(), prize.label());
         }
         for (SeasonPodiumEntry entry : season.podium()) {
             PLog.info("  #@ @ (#@) @ @, @ matches@", entry.place(), entry.nickname(), entry.pid(), entry.rating(),

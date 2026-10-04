@@ -1,5 +1,6 @@
 package org.xcore.plugin.rating.view;
 
+import org.xcore.plugin.rating.season.SeasonPrizes;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
 import org.xcore.plugin.config.TomlSecretsConfig;
@@ -76,7 +77,7 @@ final class RatingWorld {
         SeasonSchedule schedule = SeasonSchedule.from(config.rating.seasons);
         InMemoryIdempotencyLedger ledger = new InMemoryIdempotencyLedger();
         lifecycle = new SeasonLifecycleService(seasons, resolver, schedule,
-                new SeasonFinalizer(standings, players, schedule), ledger, mock(AuditService.class), config,
+                new SeasonFinalizer(standings, players, schedule), SeasonPrizes.NONE, ledger, mock(AuditService.class), config,
                 new Async(InlineStorageExecutor.create(), Runnable::run), clock);
         ladder = new LadderService(standings, ledger, lifecycle)
                 .register(new LadderDefinition("duel", "top-menu-category-duel", RatingPolicy.teamEloV1()));

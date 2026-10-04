@@ -1,5 +1,8 @@
 package org.xcore.plugin.service.network;
 
+import org.xcore.protocol.generated.shared.SeasonPrizeV1Kind;
+import org.xcore.plugin.rating.season.SeasonPrize;
+import org.xcore.plugin.rating.season.PrizeKind;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.plugin.model.AuditActor;
@@ -27,7 +30,7 @@ class RatingProtocolMapperTest {
     private static Season season(int number, String name, SeasonStatus status, List<SeasonPodiumEntry> podium,
                                  SeasonSummary summary) {
         return new Season("minipvp", number, name, STARTS, ENDS, status, Set.of(), podium, summary,
-                List.of(), 0, 1);
+                List.of(), List.of(), 0, 1);
     }
 
     @Test
@@ -87,7 +90,7 @@ class RatingProtocolMapperTest {
     void rescheduled() {
         Season before = season(3, "", SeasonStatus.ACTIVE, List.of(), null);
         Season after = new Season("minipvp", 3, "", STARTS, ENDS.plus(Duration.ofDays(14)), SeasonStatus.ACTIVE,
-                Set.of(), List.of(), null, List.of(), 0, 2);
+                Set.of(), List.of(), null, List.of(), List.of(), 0, 2);
         AuditActor actor = AuditActor.builder().type(AuditActorType.DISCORD_USER).id("222")
                 .nameSnapshot("Admin").discordId("222").build();
 
@@ -120,5 +123,43 @@ class RatingProtocolMapperTest {
                 .type(AuditActorType.SERVER_CONSOLE).id("console").nameSnapshot("Console").build());
         assertThat(console.actorType()).isEqualTo(ActorRefV1ActorType.SERVER);
         assertThat(console.actorDiscordId()).isNull();
+    }
+
+    @Test
+    @DisplayName("prizes ride on the ending-soon event and on the podium places they cover")
+    void prizes_rideOnEvents() {
+        SeasonPrize champion = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+        SeasonPrize podium = new SeasonPrize(1, 3, PrizeKind.CUSTOM, "Nitro", "One month");
+        Season running = season(3, "", SeasonStatus.ACTIVE, List.of(), null).withPrizes(List.of(champion, podium));
+
+        var soon = RatingProtocolMapper.toEndingSoon(running, new SeasonNotice("7d", Duration.ofDays(7)),
+                "mini-pvp", AT);
+        assertThat(soon.prizes()).hasSize(2);
+        assertThat(soon.prizes().get(0).kind()).isEqualTo(SeasonPrizeV1Kind.BADGE);
+        assertThat(soon.prizes().get(0).description()).isNull();
+        assertThat(soon.prizes().get(1).placeTo()).isEqualTo(3);
+        assertThat(soon.prizes().get(1).description()).isEqualTo("One month");
+
+        Season archived = season(3, "", SeasonStatus.ARCHIVED, List.of(
+                new SeasonPodiumEntry(1, "uuid-1", 101, "Alice", 1820, "DIAMOND", 64, 47, "", ""),
+                new SeasonPodiumEntry(2, "uuid-2", 102, "Bob", 1744, "PLATINUM", 58, 38, "", ""),
+                new SeasonPodiumEntry(4, "uuid-4", 104, "Dan", 1500, "GOLD", 40, 20, "", "")),
+                new SeasonSummary(10, 20)).withPrizes(List.of(champion, podium));
+        var ended = RatingProtocolMapper.toEnded(archived, "mini-pvp", AT);
+        assertThat(ended.podium().get(0).prizes()).hasSize(2);
+        assertThat(ended.podium().get(1).prizes()).hasSize(1);
+        assertThat(ended.podium().get(2).prizes()).isNull();
+    }
+
+    @Test
+    @DisplayName("a season without prizes sends none and prizes survive the trip back from the wire")
+    void prizes_roundTrip() {
+        var plain = RatingProtocolMapper.toEndingSoon(season(3, "", SeasonStatus.ACTIVE, List.of(), null),
+                new SeasonNotice("7d", Duration.ofDays(7)), "mini-pvp", AT);
+        assertThat(plain.prizes()).isNull();
+        assertThat(plain.toPayload()).doesNotContainKey("prizes");
+
+        SeasonPrize prize = new SeasonPrize(2, 4, PrizeKind.CUSTOM, "Sticker pack", "Mailed");
+        assertThat(RatingProtocolMapper.toPrize(RatingProtocolMapper.toPrize(prize))).isEqualTo(prize);
     }
 }

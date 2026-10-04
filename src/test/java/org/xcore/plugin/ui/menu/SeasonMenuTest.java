@@ -1,5 +1,6 @@
 package org.xcore.plugin.ui.menu;
 
+import org.xcore.plugin.rating.season.SeasonPrizes;
 import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.Localizer;
 import jakarta.inject.Provider;
@@ -77,7 +78,7 @@ class SeasonMenuTest {
         InMemoryIdempotencyLedger ledger = new InMemoryIdempotencyLedger();
         Clock clock = Clock.fixed(START, ZoneOffset.UTC);
         SeasonLifecycleService lifecycle = new SeasonLifecycleService(seasons, resolver, schedule,
-                new SeasonFinalizer(standings, mock(PlayerDataRepository.class), schedule), ledger,
+                new SeasonFinalizer(standings, mock(PlayerDataRepository.class), schedule), SeasonPrizes.NONE, ledger,
                 mock(AuditService.class), config, new Async(InlineStorageExecutor.create(), Runnable::run), clock);
         ladders = new LadderService(standings, ledger, lifecycle);
         duel = ladders.register(new LadderDefinition("duel", "top-menu-category-duel", RatingPolicy.teamEloV1()));

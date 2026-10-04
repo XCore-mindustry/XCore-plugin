@@ -14,7 +14,8 @@ public enum Badge {
     CONTRIBUTOR("contributor", "[gold]<[white]", Iconc.star, "[]>[]", "badge-contributor-name", "badge-contributor-description", BadgeType.MANUAL, true),
     BUG_FINDER("bug-finder", "[#c8ff8c]<[white]", Iconc.warning, "[]>[]", "badge-bug-finder-name", "badge-bug-finder-description", BadgeType.MANUAL, true),
     EVENT_WINNER("event-winner", "[#ffef88]<[white]", Iconc.itemSurgeAlloy, "[]>[]", "badge-event-winner-name", "badge-event-winner-description", BadgeType.MANUAL, true),
-    VETERAN("veteran", "[cyan]<[white]", Iconc.statusOverdrive, "[]>[]", "badge-veteran-name", "badge-veteran-description", BadgeType.MANUAL, true);
+    VETERAN("veteran", "[cyan]<[white]", Iconc.statusOverdrive, "[]>[]", "badge-veteran-name", "badge-veteran-description", BadgeType.MANUAL, true),
+    SEASON_CHAMPION("season-champion", "[#ffd37f]<[white]", Iconc.effect, "[]>[]", "badge-season-champion-name", "badge-season-champion-description", BadgeType.ACHIEVEMENT, true);
 
     private final String id;
     private final String tagPrefix;

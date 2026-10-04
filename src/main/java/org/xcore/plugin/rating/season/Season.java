@@ -17,6 +17,7 @@ import java.util.Set;
  * @param endsAt      deadline, movable while the season is {@link SeasonStatus#ACTIVE}
  * @param sentNotices keys of the {@link SeasonNotice}s already announced network-wide
  * @param podium      best players, filled in when the season is archived
+ * @param prizes      what the podium wins; changeable while the season is {@link SeasonStatus#ACTIVE}
  * @param summary     totals, present once the season is archived
  * @param matches     rated matches settled into the season so far
  * @param revision    bumped by every stored change
@@ -32,6 +33,7 @@ public record Season(
         List<SeasonPodiumEntry> podium,
         @Nullable SeasonSummary summary,
         List<SeasonReschedule> rescheduled,
+        List<SeasonPrize> prizes,
         int matches,
         long revision
 ) {
@@ -45,12 +47,13 @@ public record Season(
         sentNotices = sentNotices == null ? Set.of() : Set.copyOf(sentNotices);
         podium = podium == null ? List.of() : List.copyOf(podium);
         rescheduled = rescheduled == null ? List.of() : List.copyOf(rescheduled);
+        prizes = prizes == null ? List.of() : List.copyOf(prizes);
     }
 
     /** A new active season with nothing recorded yet. */
     public static Season opening(String ladderId, int number, Instant startsAt, Instant endsAt) {
         return new Season(ladderId, number, "", startsAt, endsAt, SeasonStatus.ACTIVE,
-                Set.of(), List.of(), null, List.of(), 0, 0);
+                Set.of(), List.of(), null, List.of(), List.of(), 0, 0);
     }
 
     public static String id(String ladderId, int number) {
@@ -86,7 +89,17 @@ public record Season(
 
     public Season withSentNotices(Set<String> sentNotices) {
         return new Season(ladderId, number, name, startsAt, endsAt, status, sentNotices, podium, summary,
-                rescheduled, matches, revision);
+                rescheduled, prizes, matches, revision);
+    }
+
+    public Season withPrizes(List<SeasonPrize> prizes) {
+        return new Season(ladderId, number, name, startsAt, endsAt, status, sentNotices, podium, summary,
+                rescheduled, prizes, matches, revision);
+    }
+
+    /** The prizes the player on {@code place} wins. */
+    public List<SeasonPrize> prizesFor(int place) {
+        return prizes.stream().filter(prize -> prize.covers(place)).toList();
     }
 
     /** Moves the deadline, keeping only the notices that are still due under the new one. */
@@ -94,11 +107,11 @@ public record Season(
         List<SeasonReschedule> history = new ArrayList<>(rescheduled);
         history.add(change);
         return new Season(ladderId, number, name, startsAt, change.to(), status, stillSentNotices, podium, summary,
-                history, matches, revision);
+                history, prizes, matches, revision);
     }
 
     private Season withStatus(SeasonStatus status, List<SeasonPodiumEntry> podium, @Nullable SeasonSummary summary) {
         return new Season(ladderId, number, name, startsAt, endsAt, status, sentNotices, podium, summary,
-                rescheduled, matches, revision);
+                rescheduled, prizes, matches, revision);
     }
 }

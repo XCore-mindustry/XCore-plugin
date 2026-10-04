@@ -53,7 +53,7 @@ public final class InMemorySeasonStore implements SeasonStore {
         }
         Season stored = new Season(current.ladderId(), current.number(), updated.name(), current.startsAt(),
                 updated.endsAt(), updated.status(), updated.sentNotices(), updated.podium(), updated.summary(),
-                updated.rescheduled(), current.matches(), current.revision() + 1);
+                updated.rescheduled(), updated.prizes(), current.matches(), current.revision() + 1);
         seasons.put(stored.id(), stored);
         return Optional.of(stored);
     }
@@ -62,7 +62,7 @@ public final class InMemorySeasonStore implements SeasonStore {
     public synchronized void countMatch(String ladderId, int number) {
         seasons.computeIfPresent(Season.id(ladderId, number), (_, season) -> new Season(
                 season.ladderId(), season.number(), season.name(), season.startsAt(), season.endsAt(),
-                season.status(), season.sentNotices(), season.podium(), season.summary(), season.rescheduled(),
+                season.status(), season.sentNotices(), season.podium(), season.summary(), season.rescheduled(), season.prizes(),
                 season.matches() + 1, season.revision()));
     }
 }

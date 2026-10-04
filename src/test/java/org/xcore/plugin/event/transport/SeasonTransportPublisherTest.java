@@ -44,7 +44,7 @@ class SeasonTransportPublisherTest {
 
     private static Season season(int number, SeasonStatus status, SeasonSummary summary) {
         return new Season("minipvp", number, "", Instant.parse("2026-07-01T00:00:00Z"),
-                Instant.parse("2026-10-01T00:00:00Z"), status, Set.of(), List.of(), summary, List.of(), 0, 1);
+                Instant.parse("2026-10-01T00:00:00Z"), status, Set.of(), List.of(), summary, List.of(), List.of(), 0, 1);
     }
 
     private Object posted() {

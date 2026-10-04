@@ -1,6 +1,6 @@
 # Technical Design Specification: Seasonal Rating (Mini-PVP and HexedCore)
 
-Status: decisions in section 10 accepted; phases 1–4 implemented (see 9.1–9.4), phase 5 pending.
+Status: decisions in section 10 accepted; phases 1–5 implemented (see 9.1–9.5).
 Affects: `XCore-plugin`, `aethercore-plugin` (HexedCore), `xcore-protocol`, `XCore-discord-bot`.
 
 ## 1. Goal
@@ -119,7 +119,7 @@ starts_at      date
 ends_at        date (can be moved)
 status         ACTIVE | CLOSING | ARCHIVED
 sent_notices   ["7d", "3d", "24h", "1h"]   — thresholds already sent
-prizes         [{place_from, place_to, kind, payload, description}]   — phase 5
+prizes         [{place_from, place_to, kind, value, description}]   — kind is BADGE | CUSTOM
 podium         [{place, uuid, pid, nickname, rating, league, matches, wins,
                  discord_id, discord_username}]   — snapshot taken at close
 summary        {participants, matches}
@@ -155,10 +155,12 @@ Indexes: unique `{ladder, season, player_uuid}`; `{ladder, season, rating: -1, p
 ```
 _id          "{season_id}:{place}:{player_uuid}:{prize_index}"
 season_id, place, player_uuid
-prize        {kind, payload, description}
+prize        {kind, value, description}   — copied from the season, so later edits never change what a finished podium was promised
 status       PENDING | GRANTED | DELIVERED | FAILED
 granted_by, updated_at, note
 ```
+
+`PENDING` — created, waiting (an automatic prize awaiting its handler, or a custom one awaiting a person); `GRANTED` — given by the plugin; `DELIVERED` — a person confirmed the hand-over; `FAILED` — the handler could not give it, kept for a person. `granted_by` is `system` or an actor key such as `discord_user:222`.
 
 ### 4.4. Migration V5
 
@@ -185,7 +187,7 @@ ACTIVE ──(now >= ends_at)──> CLOSING ──(now >= ends_at + grace)─�
 2. Season N+1 is created immediately (`starts_at` = season N's `ends_at`) so that new matches land in it.
 3. A settlement grace window (5 minutes by default) for matches that finished before `ends_at` but have not been settled yet.
 4. Finalisation under the ledger operation `season:{id}:finalize`: set `final_rank`, build `podium` (top N, 10 by default) with a snapshot of nickname, pid and Discord account, compute `summary`.
-5. Create `rating_prize_grants` from `prizes` and run `PrizeHandler` for the automatic kinds (phase 5).
+5. Create `rating_prize_grants` from `prizes` (one per podium place and prize that covers it) and run `PrizeHandler` for the automatic kinds. This happens before step 6, so a crash in between is retried; creating a grant twice and delivering a non-pending grant are both no-ops.
 6. `CLOSING → ARCHIVED`, emit `RatingSeasonEndedV1` (phase 4).
 
 The season end is aligned to midnight in the configured time zone: `ends_at` = `starts_at` + length, truncated to the start of that day. If a season is closed so late that its successor's default end is already in the past, the successor runs a full length from now instead.
@@ -247,7 +249,7 @@ One shared `LadderTopCategoryProvider` serves both modes: a scope is a season nu
 
 The page is read off the game thread: `TopUiController` starts the load with `Async.supply`, keeps showing the old page meanwhile, and dispatches `TopEvent.Loaded` back; a result for a dialog that has moved on is dropped. Turning a page patches the list, switching category or season redraws the dialog.
 
-Prizes next to a placement are phase 5.
+Prizes next to a placement are not shown in game (see the gaps in 9.5).
 
 ### 6.2. `/stats` — done
 
@@ -262,19 +264,19 @@ Sections are read together with the match statistics, off the game thread (`Play
 
 ### 6.3. `/season` command — done
 
-For players: opens a dialog with a card per ladder this server hosts (every registered ladder on a server that hosts none) — the season and its end date, time left, number of players, the viewer's own league / rating / rank / progress, the previous season's top three — and a button that opens `/top` on that ladder. Prizes are phase 5.
+For players: opens a dialog with a card per ladder this server hosts (every registered ladder on a server that hosts none) — the season and its end date, time left, number of players, the viewer's own league / rating / rank / progress, the previous season's top three — and a button that opens `/top` on that ladder. The card does not list prizes (see 9.5).
 
 ## 7. Discord
 
 ### 7.1. Protocol (`xcore-protocol`, new `rating` family, 0.8.0)
 
-Phase 4 ships the season events and the two RPCs below marked *(phase 4)*; the prize messages arrive with phase 5. Field names follow the shared types `SeasonRefV1` (ladder, season, name, startsAt, endsAt), `SeasonPodiumEntryV1` and `SeasonSummaryV1`.
+Phase 4 ships the season events and the two RPCs below marked *(phase 4)*; phase 5 adds the prize messages (protocol 0.9.0): `prizes` on `RatingSeasonEndingSoonV1` and on each podium entry, and the two prize RPCs. Field names follow the shared types `SeasonRefV1` (ladder, season, name, startsAt, endsAt), `SeasonPodiumEntryV1` and `SeasonSummaryV1`.
 
 Events (`xcore:evt:rating:*`, replayable):
 
 | Message | Content |
 |---|---|
-| `RatingSeasonStartedV1` | ladder, season, startsAt, endsAt, prizes |
+| `RatingSeasonStartedV1` | ladder, season, startsAt, endsAt |
 | `RatingSeasonEndingSoonV1` | ladder, season, endsAt, threshold |
 | `RatingSeasonEndedV1` | ladder, season, podium[] (`PlayerRefV1`, `DiscordIdentityRefV1?`, rating, league, matches, wins, prize?), summary |
 | `RatingSeasonRescheduledV1` | ladder, season, oldEndsAt, newEndsAt, actor, reason |
@@ -285,8 +287,8 @@ RPC (bot → any live server):
 |---|---|
 | `RatingSeasonRescheduleRequestV1` *(phase 4)* | extend / set a date / end now |
 | `RatingAccountsMergeRequestV1` *(phase 4)* | move one account's standings to another after a bot-side account merge |
-| `RatingSeasonPrizesSetRequestV1` | set the season's prize list |
-| `RatingPrizeGrantUpdateRequestV1` | mark a prize as delivered |
+| `RatingSeasonPrizesSetRequestV1` *(phase 5)* | `add` one prize or `remove` the prizes within a range of places; the answer is the season's resulting prize list. Operations instead of a whole list, so two admins cannot overwrite each other |
+| `RatingPrizeGrantUpdateRequestV1` *(phase 5)* | mark a place's waiting prizes as delivered, with a note |
 
 ### 7.2. Bot
 
@@ -310,19 +312,19 @@ season info <ladder>
 season extend <ladder> <duration> [reason]
 season end-at <ladder> <datetime> [reason]
 season end-now <ladder> confirm [reason]
-season prize set <ladder> <places> <kind> <payload> [description]
-season prize clear <ladder> [places]
+season prize set <ladder> <places> <kind> <value>
+season prize clear <ladder> <places>
 season prize list <ladder> [season]
-season prize delivered <season> <place>
+season prize delivered <ladder> <season> <place> [note]
 ```
 
-`<duration>` is `90m`, `12h`, `7d`, `2w`, `1mo`; `<datetime>` is `2027-01-01` or `2027-01-01T18:00` in the season time zone. The `prize` commands arrive in phase 5.
+`<duration>` is `90m`, `12h`, `7d`, `2w`, `1mo`; `<datetime>` is `2027-01-01` or `2027-01-01T18:00` in the season time zone. `<places>` is `1` or `1-3`. `prize clear` removes the prizes that lie entirely within the places given. The console takes the prize value only; the description is set from Discord.
 
-Prizes are `SeasonPrize(place_from, place_to, kind, payload, description)` with one handler per kind:
+Prizes are `SeasonPrize(placeFrom, placeTo, kind, value, description)` with one `PrizeHandler` per kind:
 
 | Kind | Delivery |
 |---|---|
-| `BADGE` | automatic, through the existing badge system (needs new badges, e.g. `season-champion`) |
+| `BADGE` | automatic, through the existing badge system; `value` is the badge id (system badges are refused). The `season-champion` badge ships with phase 5 |
 | `CUSTOM` | free text (e.g. Nitro); status `PENDING`, an admin marks it `DELIVERED` |
 | `DISCORD_ROLE` | later: the bot grants a role when a Discord account is linked |
 
@@ -348,7 +350,7 @@ reset_carry = 0.5
 2. **Season core — done.** Model, repository, resolver, lifecycle, lazy reset, console commands, in-game notifications.
 3. **Interface — done.** Scope in the leaderboard SPI and the season switcher; profile sections; `/season`.
 4. **Protocol and bot — done.** The `rating` family, the channel, `/season`, the updated `/stats`, rating merge over RPC.
-5. **Prizes.** Model, handlers, commands, delivery tracking.
+5. **Prizes — done.** Model, handlers, commands, delivery tracking.
 
 Each phase ships separately.
 
@@ -410,6 +412,21 @@ Known gaps:
 - `extend` is relative to the end read just before the compare-and-set; two simultaneous extends can both apply against the same base and one wins.
 - The legacy `players.pvp_*` mirror is still written; nothing but the merge embed reads it now, so it can be removed once phase 5 is out.
 - `PROTOCOL_SURFACE.md` is not regenerated for the new family.
+
+### 9.5. What phase 5 changed for players and operators
+
+- A season can carry prizes for places or ranges of places. They are added and removed on the running season from the console (`season prize set|clear|list`) or from Discord by head admins (`/season prize ...`); both go through `SeasonLifecycleService.addPrize/removePrizes`, which edit the season by compare-and-set and write an audit record.
+- `BADGE` prizes are validated when they are set (the badge must exist and not be a system badge) and are unlocked automatically when the season is archived, on every server at once (`PlayerBadgeInventoryChangedCommandV1`). The new `season-champion` badge is an achievement badge a player can select like the manual ones.
+- `CUSTOM` prizes (a gift code, a sticker pack) create a `PENDING` grant per winner. The winner's Discord account is in the `ended` post and in `season prize list`; an admin hands the prize over and records it with `season prize delivered` or `/season prize delivered`.
+- The ending-soon and results posts list the prizes, so players see what they play for.
+
+Known gaps:
+
+- Delivery is by place, not per winner: `delivered` settles every waiting grant of that place. Two players sharing a range each get their own grant, but they are marked together.
+- The in-game `/season` card, `/top` and the winner's profile do not show prizes yet.
+- A prize edited after the season has ended changes nothing: the grants were created from the prizes at archive time.
+- Prizes can only be edited while the season is running; once it is closing they are final. A new season starts with no prizes, so they have to be set again each season.
+- The legacy `players.pvp_*` mirror is still written, now only for the merge embed. Removing it is a separate migration.
 
 ## 10. Decisions
 

@@ -3,12 +3,16 @@ package org.xcore.plugin.service.network;
 import org.jspecify.annotations.Nullable;
 import org.xcore.plugin.model.AuditActor;
 import org.xcore.plugin.model.AuditActorType;
+import org.xcore.plugin.rating.season.PrizeKind;
 import org.xcore.plugin.rating.season.Season;
 import org.xcore.plugin.rating.season.SeasonNotice;
 import org.xcore.plugin.rating.season.SeasonPodiumEntry;
+import org.xcore.plugin.rating.season.SeasonPrize;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingAccountsMergeResponseV1;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingPrizeGrantUpdateResponseV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonEndedV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonEndingSoonV1;
+import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonPrizesSetResponseV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonRescheduleResponseV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonRescheduledV1;
 import org.xcore.protocol.generated.messages.rating.RatingMessages.RatingSeasonStartedV1;
@@ -17,6 +21,8 @@ import org.xcore.protocol.generated.shared.ActorRefV1ActorType;
 import org.xcore.protocol.generated.shared.DiscordIdentityRefV1;
 import org.xcore.protocol.generated.shared.PlayerRefV1;
 import org.xcore.protocol.generated.shared.SeasonPodiumEntryV1;
+import org.xcore.protocol.generated.shared.SeasonPrizeV1;
+import org.xcore.protocol.generated.shared.SeasonPrizeV1Kind;
 import org.xcore.protocol.generated.shared.SeasonRefV1;
 import org.xcore.protocol.generated.shared.SeasonSummaryV1;
 
@@ -35,13 +41,14 @@ public final class RatingProtocolMapper {
 
     public static RatingSeasonEndingSoonV1 toEndingSoon(Season season, SeasonNotice notice, String server,
                                                         Instant at) {
-        return new RatingSeasonEndingSoonV1(toSeasonRef(season), notice.key(), server, at.toString());
+        return new RatingSeasonEndingSoonV1(toSeasonRef(season), notice.key(), server, at.toString(),
+                toPrizes(season.prizes()));
     }
 
     public static RatingSeasonEndedV1 toEnded(Season archived, String server, Instant at) {
         Objects.requireNonNull(archived.summary(), "an archived season has a summary");
         List<SeasonPodiumEntryV1> podium = archived.podium().stream()
-                .map(RatingProtocolMapper::toPodiumEntry)
+                .map(entry -> toPodiumEntry(entry, archived.prizesFor(entry.place())))
                 .toList();
         return new RatingSeasonEndedV1(
                 toSeasonRef(archived),
@@ -71,6 +78,34 @@ public final class RatingProtocolMapper {
         return new RatingAccountsMergeResponseV1(server, standingsMerged);
     }
 
+    public static RatingSeasonPrizesSetResponseV1 toPrizesResponse(String server, Season season) {
+        List<SeasonPrizeV1> prizes = toPrizes(season.prizes());
+        return new RatingSeasonPrizesSetResponseV1(server, toSeasonRef(season), prizes == null ? List.of() : prizes);
+    }
+
+    public static RatingPrizeGrantUpdateResponseV1 toGrantUpdateResponse(String server, int season, int place,
+                                                                         int updated) {
+        return new RatingPrizeGrantUpdateResponseV1(server, season, place, updated);
+    }
+
+    /** @return null for no prizes: the field is optional and absent means none */
+    public static @Nullable List<SeasonPrizeV1> toPrizes(List<SeasonPrize> prizes) {
+        if (prizes.isEmpty()) return null;
+        return prizes.stream().map(RatingProtocolMapper::toPrize).toList();
+    }
+
+    public static SeasonPrizeV1 toPrize(SeasonPrize prize) {
+        return new SeasonPrizeV1(prize.placeFrom(), prize.placeTo(),
+                prize.kind() == PrizeKind.BADGE ? SeasonPrizeV1Kind.BADGE : SeasonPrizeV1Kind.CUSTOM,
+                prize.value(), blankToNull(prize.description()));
+    }
+
+    public static SeasonPrize toPrize(SeasonPrizeV1 prize) {
+        return new SeasonPrize(prize.placeFrom(), prize.placeTo(),
+                prize.kind() == SeasonPrizeV1Kind.BADGE ? PrizeKind.BADGE : PrizeKind.CUSTOM,
+                prize.value(), prize.description());
+    }
+
     public static SeasonRefV1 toSeasonRef(Season season) {
         // A season is named by an administrator or not at all; the protocol wants a label.
         String name = season.name().isBlank() ? "Season " + season.number() : season.name();
@@ -78,7 +113,7 @@ public final class RatingProtocolMapper {
                 season.startsAt().toString(), season.endsAt().toString());
     }
 
-    private static SeasonPodiumEntryV1 toPodiumEntry(SeasonPodiumEntry entry) {
+    private static SeasonPodiumEntryV1 toPodiumEntry(SeasonPodiumEntry entry, List<SeasonPrize> prizes) {
         DiscordIdentityRefV1 discord = entry.discordLinked()
                 ? new DiscordIdentityRefV1(entry.discordId(), blankToNull(entry.discordUsername()))
                 : null;
@@ -90,7 +125,8 @@ public final class RatingProtocolMapper {
                 entry.rating(),
                 entry.league(),
                 entry.matches(),
-                entry.wins());
+                entry.wins(),
+                toPrizes(prizes));
     }
 
     public static ActorRefV1 toActorRef(AuditActor actor) {

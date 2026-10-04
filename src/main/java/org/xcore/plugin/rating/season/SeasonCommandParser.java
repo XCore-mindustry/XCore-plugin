@@ -38,4 +38,25 @@ public final class SeasonCommandParser {
     public static Instant extend(Instant from, String span, ZoneId zone) {
         return from.atZone(zone).plus(TimeSpans.calendar(span)).toInstant();
     }
+
+    /**
+     * Places written as {@code 1} or {@code 1-3}.
+     *
+     * @return {@code {from, to}}
+     * @throws IllegalArgumentException when the text is neither
+     */
+    public static int[] places(String text) {
+        String value = text == null ? "" : text.strip();
+        try {
+            int dash = value.indexOf('-');
+            int from = Integer.parseInt(dash < 0 ? value : value.substring(0, dash).strip());
+            int to = dash < 0 ? from : Integer.parseInt(value.substring(dash + 1).strip());
+            if (from < 1 || to < from) {
+                throw new NumberFormatException();
+            }
+            return new int[]{from, to};
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("'" + text + "' is not a place; expected 1 or 1-3");
+        }
+    }
 }

@@ -58,6 +58,7 @@ class SeasonLifecycleServiceTest {
     private AuditService audit;
     private TomlSecretsConfig config;
     private MutableClock clock;
+    private SeasonPrizes prizes;
 
     private Server server;
     private Ladder ladder;
@@ -73,7 +74,7 @@ class SeasonLifecycleServiceTest {
         Server() {
             SeasonSchedule schedule = SeasonSchedule.from(config.rating.seasons);
             lifecycle = new SeasonLifecycleService(seasons, resolver, schedule,
-                    new SeasonFinalizer(standings, players, schedule), ledger, audit, config,
+                    new SeasonFinalizer(standings, players, schedule), prizes, ledger, audit, config,
                     // The "game thread" continuation runs inline.
                     new Async(new StorageExecutor(4), Runnable::run), clock);
             lifecycle.addObserver(observed::add);
@@ -125,6 +126,7 @@ class SeasonLifecycleServiceTest {
         audit = mock(AuditService.class);
         config = new TomlSecretsConfig();
         clock = new MutableClock(START);
+        prizes = mock(SeasonPrizes.class);
 
         server = new Server();
         ladder = server.ladders.register(DUEL);
@@ -582,5 +584,95 @@ class SeasonLifecycleServiceTest {
 
         assertThat(later.told).hasSize(1);
         assertThat(season(1).endsAt()).isEqualTo(END.plus(Duration.ofDays(1)));
+    }
+
+    @Test
+    @DisplayName("a prize is checked, stored on the running season and recorded in the audit log")
+    void addPrize_storesAndAudits() {
+        SeasonPrize badge = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+
+        Season changed = server.lifecycle.addPrize("duel", badge, CONSOLE);
+
+        verify(prizes).validate(badge);
+        assertThat(changed.prizes()).containsExactly(badge);
+        assertThat(season(1).prizes()).containsExactly(badge);
+        ArgumentCaptor<AuditAppendCommand> command = ArgumentCaptor.forClass(AuditAppendCommand.class);
+        verify(audit).append(command.capture());
+        assertThat(command.getValue().details().extra)
+                .containsEntry("event", "season_prize_added")
+                .containsEntry("season", "duel:1");
+    }
+
+    @Test
+    @DisplayName("a prize that cannot be delivered is refused before it is stored")
+    void addPrize_refusesUndeliverablePrize() {
+        SeasonPrize prize = new SeasonPrize(1, 1, PrizeKind.BADGE, "nope", "");
+        org.mockito.Mockito.doThrow(new SeasonException("Badge 'nope' was not found")).when(prizes).validate(prize);
+
+        assertThatThrownBy(() -> server.lifecycle.addPrize("duel", prize, CONSOLE))
+                .isInstanceOf(SeasonException.class).hasMessageContaining("nope");
+
+        assertThat(season(1).prizes()).isEmpty();
+        verify(audit, never()).append(any());
+    }
+
+    @Test
+    @DisplayName("clearing removes the prizes inside the given places and refuses when none match")
+    void removePrizes_removesWithinRange() {
+        SeasonPrize first = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+        SeasonPrize podium = new SeasonPrize(1, 3, PrizeKind.CUSTOM, "Nitro", "");
+        SeasonPrize third = new SeasonPrize(3, 3, PrizeKind.CUSTOM, "Sticker", "");
+        server.lifecycle.addPrize("duel", first, CONSOLE);
+        server.lifecycle.addPrize("duel", podium, CONSOLE);
+        server.lifecycle.addPrize("duel", third, CONSOLE);
+
+        // 1-1 covers only the first-place prize; the 1-3 prize reaches beyond it.
+        assertThat(server.lifecycle.removePrizes("duel", 1, 1, CONSOLE).prizes()).containsExactly(podium, third);
+        assertThat(server.lifecycle.removePrizes("duel", 1, 3, CONSOLE).prizes()).isEmpty();
+
+        assertThatThrownBy(() -> server.lifecycle.removePrizes("duel", 1, 3, CONSOLE))
+                .isInstanceOf(SeasonException.class).hasMessageContaining("No prize");
+        assertThatThrownBy(() -> server.lifecycle.removePrizes("duel", 3, 1, CONSOLE))
+                .isInstanceOf(SeasonException.class);
+    }
+
+    @Test
+    @DisplayName("prizes are awarded from the archived season, before it is stored as archived")
+    void archive_awardsPrizes() {
+        standing(1, "ace", 1500, 12);
+        SeasonPrize badge = new SeasonPrize(1, 1, PrizeKind.BADGE, "season-champion", "");
+        server.lifecycle.addPrize("duel", badge, CONSOLE);
+        List<SeasonStatus> storedWhenAwarded = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(call -> {
+            storedWhenAwarded.add(season(1).status());
+            Season archived = call.getArgument(0);
+            assertThat(archived.prizes()).containsExactly(badge);
+            assertThat(archived.podium()).extracting(SeasonPodiumEntry::uuid).containsExactly("ace");
+            return null;
+        }).when(prizes).award(any());
+
+        clock.set(END);
+        server.lifecycle.tick();
+        clock.set(END.plus(Duration.ofMinutes(5)));
+        server.lifecycle.tick();
+
+        verify(prizes).award(any());
+        assertThat(storedWhenAwarded).containsExactly(SeasonStatus.CLOSING);
+        assertThat(season(1).status()).isEqualTo(SeasonStatus.ARCHIVED);
+    }
+
+    @Test
+    @DisplayName("when awarding fails the season stays unarchived so the finalisation is retried")
+    void archive_staysOpenWhenAwardingFails() {
+        standing(1, "ace", 1500, 12);
+        org.mockito.Mockito.doThrow(new IllegalStateException("db down")).when(prizes).award(any());
+
+        clock.set(END);
+        server.lifecycle.tick();
+        clock.set(END.plus(Duration.ofMinutes(5)));
+        server.lifecycle.tick();
+
+        assertThat(season(1).status()).isEqualTo(SeasonStatus.CLOSING);
+        assertThat(server.events.told).noneMatch(line -> line.startsWith("ended"));
     }
 }

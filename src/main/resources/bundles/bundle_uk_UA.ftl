@@ -1224,6 +1224,8 @@ badge-event-winner-name = Переможець події
 badge-event-winner-description = Надається переможцям особливих серверних подій.
 badge-veteran-name = Ветеран
 badge-veteran-description = Надається шанованим досвідченим гравцям.
+badge-season-champion-name = Чемпіон сезону
+badge-season-champion-description = Надається за місце на подіумі рейтингового сезону.
 none = Немає
 
 # Серверний браузер (/servers)

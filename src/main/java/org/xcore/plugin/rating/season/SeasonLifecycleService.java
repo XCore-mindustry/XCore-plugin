@@ -25,6 +25,7 @@ import org.xcore.plugin.service.moderation.AuditService;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -57,6 +58,7 @@ public class SeasonLifecycleService implements LadderSeasons {
     private final SeasonResolver resolver;
     private final SeasonSchedule schedule;
     private final SeasonFinalizer finalizer;
+    private final SeasonPrizes prizes;
     private final PluginIdempotencyLedger ledger;
     private final AuditService audit;
     private final TomlSecretsConfig config;
@@ -74,11 +76,12 @@ public class SeasonLifecycleService implements LadderSeasons {
                                   SeasonResolver resolver,
                                   SeasonSchedule schedule,
                                   SeasonFinalizer finalizer,
+                                  SeasonPrizes prizes,
                                   PluginIdempotencyLedgerFactory ledgerFactory,
                                   AuditService audit,
                                   TomlSecretsConfig config,
                                   Async async) {
-        this(store, resolver, schedule, finalizer, ledgerFactory.create(LEDGER_ID), audit, config, async,
+        this(store, resolver, schedule, finalizer, prizes, ledgerFactory.create(LEDGER_ID), audit, config, async,
                 Clock.systemUTC());
     }
 
@@ -86,6 +89,7 @@ public class SeasonLifecycleService implements LadderSeasons {
                                   SeasonResolver resolver,
                                   SeasonSchedule schedule,
                                   SeasonFinalizer finalizer,
+                                  SeasonPrizes prizes,
                                   PluginIdempotencyLedger ledger,
                                   AuditService audit,
                                   TomlSecretsConfig config,
@@ -95,6 +99,7 @@ public class SeasonLifecycleService implements LadderSeasons {
         this.resolver = Objects.requireNonNull(resolver, "resolver");
         this.schedule = Objects.requireNonNull(schedule, "schedule");
         this.finalizer = Objects.requireNonNull(finalizer, "finalizer");
+        this.prizes = Objects.requireNonNull(prizes, "prizes");
         this.ledger = Objects.requireNonNull(ledger, "ledger");
         this.audit = Objects.requireNonNull(audit, "audit");
         this.config = Objects.requireNonNull(config, "config");
@@ -225,7 +230,10 @@ public class SeasonLifecycleService implements LadderSeasons {
         if (!ledger.claim(operationId, FINALIZE_OPERATION, season.id()).acquired()) {
             return; // Another server is finalising it, or already has.
         }
-        Season archived = store.update(season, finalizer.archive(season))
+        Season finalized = finalizer.archive(season);
+        // Before the season is stored as archived, so a crash in between is retried with the grants intact.
+        prizes.award(finalized);
+        Season archived = store.update(season, finalized)
                 // Left claimed on purpose: the lease expires and the finalisation is retried.
                 .orElseThrow(() -> new IllegalStateException("Season changed while it was being finalised"));
         ledger.markCompleted(operationId, season.id());
@@ -422,6 +430,54 @@ public class SeasonLifecycleService implements LadderSeasons {
         throw new SeasonException("The season kept changing while it was being ended; try again");
     }
 
+    /**
+     * Blocking. Adds a prize to the running season.
+     *
+     * @throws SeasonException when there is no running season or the prize cannot be delivered
+     */
+    public Season addPrize(String ladderId, SeasonPrize prize, AuditActor actor) {
+        Objects.requireNonNull(prize, "prize");
+        prizes.validate(prize);
+        return changePrizes(ladderId, current -> {
+            List<SeasonPrize> changed = new ArrayList<>(current);
+            changed.add(prize);
+            return changed;
+        }, actor, "season_prize_added", prize.places() + " " + prize.kind() + " " + prize.value());
+    }
+
+    /**
+     * Blocking. Removes the prizes of the running season that lie entirely within {@code from..to}.
+     *
+     * @throws SeasonException when there is no running season or no such prize
+     */
+    public Season removePrizes(String ladderId, int from, int to, AuditActor actor) {
+        if (from < 1 || to < from) {
+            throw new SeasonException("Places must be positive and in order, such as 1 or 1-3");
+        }
+        return changePrizes(ladderId, current -> {
+            List<SeasonPrize> kept = current.stream().filter(prize -> !prize.within(from, to)).toList();
+            if (kept.size() == current.size()) {
+                throw new SeasonException("No prize lies within places " + from + "-" + to);
+            }
+            return kept;
+        }, actor, "season_prize_removed", from + "-" + to);
+    }
+
+    private Season changePrizes(String ladderId, UnaryOperator<List<SeasonPrize>> change, AuditActor actor,
+                                String event, String summary) {
+        for (int attempt = 0; attempt < UPDATE_ATTEMPTS; attempt++) {
+            Season season = running(ladderId);
+            Season edited = season.withPrizes(change.apply(season.prizes()));
+            Optional<Season> stored = store.update(season, edited);
+            if (stored.isPresent()) {
+                recordAudit(stored.get(), event, summary, Map.of("prizes", String.valueOf(edited.prizes().size())),
+                        actor, "Season prizes changed");
+                return stored.get();
+            }
+        }
+        throw new SeasonException("The season kept changing while its prizes were edited; try again");
+    }
+
     private Season running(String ladderId) {
         if (readOnly()) {
             throw new SeasonException("The database is read-only on this server");
@@ -443,11 +499,19 @@ public class SeasonLifecycleService implements LadderSeasons {
     }
 
     private void recordAudit(Season before, Season after, AuditActor actor, @Nullable String reason) {
+        recordAudit(after, "season_rescheduled", after.endsAt().toString(), Map.of(
+                "ends_at_before", before.endsAt().toString(),
+                "ends_at_after", after.endsAt().toString()), actor,
+                reason == null || reason.isBlank() ? "Season end moved" : reason.strip());
+    }
+
+    private void recordAudit(Season after, String event, String summary, Map<String, String> extra,
+                             AuditActor actor, String reason) {
         Map<String, String> details = new LinkedHashMap<>();
-        details.put("event", "season_rescheduled");
+        details.put("event", event);
         details.put("season", after.id());
-        details.put("ends_at_before", before.endsAt().toString());
-        details.put("ends_at_after", after.endsAt().toString());
+        details.put("change", summary);
+        details.putAll(extra);
         try {
             AuditAppendResult result = audit.append(AuditAppendCommand.builder()
                     .action(AuditAction.NOTE)
@@ -456,15 +520,15 @@ public class SeasonLifecycleService implements LadderSeasons {
                             .uuid("season:" + after.id())
                             .nameSnapshot("Season " + after.id())
                             .build())
-                    .reason(reason == null || reason.isBlank() ? "Season end moved" : reason.strip())
+                    .reason(reason)
                     .details(AuditDetails.builder().extra(details).build())
                     .build());
             if (result != null && !result.isSuccess()) {
-                PLog.warn("Season @ was rescheduled but the audit record was not stored", after.id());
+                PLog.warn("Season @ changed (@) but the audit record was not stored", after.id(), event);
             }
         } catch (RuntimeException e) {
             // The change is already recorded on the season itself.
-            Log.err("Season " + after.id() + " was rescheduled but the audit record failed", e);
+            Log.err("Season " + after.id() + " changed (" + event + ") but the audit record failed", e);
         }
     }
 
