@@ -25,6 +25,9 @@ import org.xcore.plugin.service.moderation.AuditService;
 import org.xcore.plugin.service.moderation.DefaultAuditService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
@@ -268,41 +271,149 @@ class AuditHistoryUiControllerTest {
         assertThat(historyRun.get()).isTrue();
     }
 
-    @Test
-    @DisplayName("render compiles valid VNode tree for LIST and DETAILS views")
-    void render_compilesValidVNodeTree() {
-        AuditRecord record = AuditRecord.builder()
-                .auditId("audit-123")
+    private static final String LONG_ID = "0193a7c4-5b2e-7d10-9f3a-6c1e8b4d2f70";
+
+    private AuditRecord banRecord(String auditId) {
+        return AuditRecord.builder()
+                .auditId(auditId)
                 .action(AuditAction.BAN)
-                .reason("Test Reason [[with brackets]")
+                .reason("Test Reason [[with brackets] and a rather long explanation of what the player did wrong")
                 .target(AuditTarget.builder().uuid("target-uuid").nameSnapshot("TroubleMaker").build())
                 .actor(AuditActor.builder().nameSnapshot("AdminAlex").type(AuditActorType.PLAYER_ADMIN).build())
                 .origin(AuditOrigin.builder().serverId("EU-Survival").build())
                 .details(AuditDetails.builder().durationMs(86400000L).expiresAt(Instant.now().plusSeconds(86400)).build())
                 .occurredAt(Instant.now())
                 .build();
-        when(auditService.findByAuditId("audit-123")).thenReturn(Optional.of(record));
+    }
 
-        List<AuditRecordSummary> records = List.of(
-                new AuditRecordSummary("audit-123", AuditAction.BAN, "TroubleMaker", "AdminAlex", "Test Reason [[with brackets]", 86400000L, Instant.now().plusSeconds(86400), 1000L),
-                new AuditRecordSummary("audit-124", AuditAction.MUTE, "TroubleMaker", "AdminAlex", "Spamming chat", 3600000L, Instant.now().minusSeconds(100), 900L)
-        );
+    private AuditHistoryUiController.AuditHistoryModel listModel(AuditHistoryUiController controller, List<AuditRecordSummary> records) {
         when(auditService.findSummaryByTargetUuid(any(), any(), anyInt()))
-                .thenReturn(new Slice<>(records, false, null));
+                .thenReturn(new Slice<>(records, true, new AuditCursor(1000L, "next")));
+        return controller.createInitialModel(AuditHistoryUiController.AuditViewMode.TARGET);
+    }
 
+    @Test
+    @DisplayName("the list is sent once per class of screens, each with slots of its own, and has no close button")
+    void render_sendsOneWindowPerScreen() {
         AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
-        AuditHistoryUiController.AuditHistoryModel listModel = controller.createInitialModel(AuditHistoryUiController.AuditViewMode.TARGET);
+        var model = listModel(controller, List.of(
+                new AuditRecordSummary("audit-123", AuditAction.BAN, "TroubleMaker", "AdminAlex", "Griefing", 86400000L, Instant.now().plusSeconds(86400), 1000L)));
 
-        VNode listNode = controller.render(listModel);
-        assertThat(listNode).isNotNull();
+        String dsl = LayoutAssert.dsl(controller.render(model));
 
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
-        assertThat(compiler.compile(listNode)).isNotNull();
+        assertThat(dsl).contains("condition: \"width >= 800\"");
+        assertThat(dsl).contains("id: slot_audit_header_wide", "id: slot_audit_tabs_narrow",
+                "id: slot_audit_list_small", "id: slot_audit_pagination_small");
+        assertThat(dsl).contains("action:inspect:audit-123");
+        assertThat(dsl).doesNotContain("action:close");
 
-        AuditHistoryUiController.AuditHistoryModel detailsModel = listModel.withDetails("audit-123", record);
-        VNode detailsNode = controller.render(detailsModel);
-        assertThat(detailsNode).isNotNull();
-        assertThat(compiler.compile(detailsNode)).isNotNull();
+        String details = LayoutAssert.dsl(controller.render(model.withDetails("audit-123", banRecord("audit-123"))));
+        assertThat(details).contains("action:back_to_list", "action:copy_id:audit-123");
+        assertThat(details).doesNotContain("action:close");
+    }
+
+    @Test
+    @DisplayName("the list shows each record as a row that opens it, and offers the modes to an admin only")
+    void window_listsRecordsAsRows() {
+        session.localization = LayoutAssert.localization("ru");
+        AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
+        var model = listModel(controller, List.of(
+                new AuditRecordSummary("audit-123", AuditAction.BAN, "TroubleMaker", "AdminAlex", "Griefing\nthe core", 86400000L, Instant.now().plusSeconds(86400), 1000L),
+                new AuditRecordSummary("audit-124", AuditAction.MUTE, "TroubleMaker", "AdminAlex", "", 3600000L, Instant.now().minusSeconds(100), 900L),
+                new AuditRecordSummary("audit-125", AuditAction.WARN, "TroubleMaker", "AdminAlex", "Spam", null, null, 800L)));
+
+        VNode window = controller.window(model, Screen.SMALL);
+
+        assertThat(LayoutAssert.actions(window)).containsExactly(
+                "action:mode:TARGET", "action:mode:ACTOR",
+                "action:filter:ALL", "action:filter:BANS", "action:filter:MUTES", "action:filter:WARNS", "action:filter:OTHER",
+                "action:inspect:audit-123", "action:inspect:audit-124", "action:inspect:audit-125",
+                "action:none", "action:refresh", "action:page:next");
+        String text = LayoutAssert.allText(window);
+        assertThat(text).contains("TroubleMaker[] [gray]#42[]", "Выберите запись ниже");
+        assertThat(text).contains("Бан[]  [scarlet]АКТИВНО[]", "Мут[]  [gray]ИСТЕКЛО[]", "Предупреждение[]\n");
+        assertThat(text).contains("[white]AdminAlex[]\n[lightgray]Griefing the core[]\n[gray]01.01.1970", "[lightgray]Не указано[]", "Стр. 1");
+
+        // Someone who is not an admin sees the sanctions only, and a way back when there is one.
+        player.admin = false;
+        session.pushHistory(() -> {});
+        VNode plain = controller.window(listModel(controller, List.of()), Screen.SMALL);
+        assertThat(LayoutAssert.actions(plain)).doesNotContain("action:mode:TARGET", "action:mode:ACTOR").contains("action:back");
+        assertThat(LayoutAssert.allText(plain)).contains("Для этого игрока пока нет записей аудита.");
+    }
+
+    @Test
+    @DisplayName("a filter leaves only the records of its kind")
+    void window_filtersRecords() {
+        AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
+        var model = listModel(controller, List.of(
+                new AuditRecordSummary("audit-123", AuditAction.BAN, "TroubleMaker", "AdminAlex", "Griefing", null, null, 1000L),
+                new AuditRecordSummary("audit-124", AuditAction.MUTE, "TroubleMaker", "AdminAlex", "Spam", null, null, 900L)));
+
+        VNode window = controller.window(model.withActionFilter(AuditHistoryUiController.ActionFilter.MUTES), Screen.WIDE);
+
+        assertThat(LayoutAssert.actions(window)).contains("action:inspect:audit-124").doesNotContain("action:inspect:audit-123");
+    }
+
+    @Test
+    @DisplayName("the details show the record's fields, and its id in lines that fit")
+    void window_detailsShowTheRecord() {
+        session.localization = LayoutAssert.localization("ru");
+        AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
+        var model = listModel(controller, List.of()).withDetails(LONG_ID, banRecord(LONG_ID));
+
+        VNode window = controller.window(model, Screen.SMALL);
+
+        assertThat(LayoutAssert.actions(window)).containsExactly("action:back_to_list", "action:copy_id:" + LONG_ID);
+        String text = LayoutAssert.allText(window);
+        assertThat(text).contains("Бан", "[scarlet]АКТИВНО[]");
+        assertThat(text).contains("[gray]Игрок:[] [white]TroubleMaker[]", "[gray]Кто выполнил:[] [white]AdminAlex[] [gray](PLAYER_ADMIN)[]");
+        assertThat(text).contains("[gray]Сервер:[] [sky]EU-Survival[]", "Причина", "Test Reason [[[[with brackets]");
+        assertThat(text).contains("[gray]Когда:[]", "[gray]Длительность:[]", "[gray]Истекает:[]");
+        assertThat(text.replace("\n", "")).contains(LONG_ID);
+        assertThat(text).doesNotContain("…");
+
+        VNode missing = controller.window(model.withDetails(LONG_ID, null), Screen.SMALL);
+        assertThat(LayoutAssert.allText(missing)).contains("Запись недоступна.");
+        assertThat(LayoutAssert.actions(missing)).containsExactly("action:back_to_list");
+    }
+
+    @Test
+    @DisplayName("an id is cut into lines, each of which fits")
+    void lines_cutAnIdToTheWidth() {
+        String cut = AuditHistoryUiController.lines(LONG_ID, 200f);
+
+        assertThat(cut.replace("\n", "")).isEqualTo(LONG_ID);
+        assertThat(cut.split("\n")).hasSizeGreaterThan(1).allMatch(line -> TextWidth.of(line) <= 200f);
+        assertThat(AuditHistoryUiController.lines("short", 200f)).isEqualTo("short");
+    }
+
+    @Test
+    @DisplayName("both views fit every class of screens in every language, and one packet")
+    void window_isLaidOutForEveryScreen() {
+        List<AuditRecordSummary> records = new java.util.ArrayList<>();
+        AuditAction[] actions = AuditAction.values();
+        for (int i = 0; i < AuditHistoryUiController.RECORDS_PER_PAGE; i++) {
+            records.add(new AuditRecordSummary("0193a7c4-5b2e-7d10-9f3a-6c1e8b4d2f7" + i, actions[i % actions.length],
+                    "[accent]A target with a very long nickname " + i, "An admin with a very long nickname " + i,
+                    "A reason that runs on and on, far past what a row of a small phone can hold " + i,
+                    i % 2 == 0 ? 86400000L : null, i % 3 == 0 ? Instant.now().plusSeconds(86400) : null, 1_700_000_000_000L + i));
+        }
+
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            AuditHistoryUiController controller = new AuditHistoryUiController(menu, auditService, sessionService, session, targetData);
+            var list = listModel(controller, records);
+            var copied = list.withDetails(LONG_ID, banRecord(LONG_ID)).withFeedback(
+                    "[lime]" + mindustry.gen.Iconc.ok + " " + session.locale().t("audit-menu-copy-id-success") + "[]");
+            for (var model : List.of(list, list.withMode(AuditHistoryUiController.AuditViewMode.ACTOR),
+                    list.withDetails(LONG_ID, banRecord(LONG_ID)), copied)) {
+                for (Screen screen : Screen.ALL) {
+                    LayoutAssert.assertLaidOut(controller.window(model, screen), screen);
+                }
+                LayoutAssert.assertFitsPacket(controller.render(model), language + " " + model.screen());
+            }
+        }
     }
 
     @Test

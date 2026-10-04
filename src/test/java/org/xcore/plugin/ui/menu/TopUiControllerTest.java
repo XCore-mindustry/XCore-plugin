@@ -9,6 +9,8 @@ import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.xcore.plugin.concurrent.Async;
 import org.xcore.plugin.concurrent.InlineStorageExecutor;
@@ -23,13 +25,17 @@ import org.xcore.plugin.integration.top.TopScope;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
+import org.xcore.ui.VNodes;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.runtime.UiSession;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
@@ -212,9 +218,12 @@ class TopUiControllerTest {
         assertThat(nextRes.model().cursorBackStack()).containsExactly(TopUiController.FIRST_PAGE_CURSOR_TOKEN);
         assertThat(nextRes.model().currentCursor()).isEqualTo("cur_page_2");
         assertThat(nextRes.model().entries().getFirst().displayName()).isEqualTo("P2");
-        assertThat(nextRes.dirtySlots()).containsExactly(
-                TopUiController.SLOT_ENTRIES, TopUiController.SLOT_SELF_RANK, TopUiController.SLOT_PAGINATION
-        );
+        // A client has built one layout; the patch goes to the slots of each and it applies its own.
+        assertThat(nextRes.dirtySlots()).containsExactlyElementsOf(Screen.slots(
+                TopUiController.SLOT_ENTRIES, TopUiController.SLOT_SELF_RANK, TopUiController.SLOT_PAGINATION));
+        for (var slot : nextRes.dirtySlots()) {
+            assertThat(VNodes.findSlot(controller.render(nextRes.model()), slot.path())).as(slot.path()).isNotNull();
+        }
 
         // Now test PrevPage restores back stack and cursor
         UpdateResult<TopUiController.TopModel> prevRes = loadThrough(
@@ -499,6 +508,71 @@ class TopUiControllerTest {
         assertThat(dsl).contains("action:tab:PLAYTIME");
         assertThat(dsl).contains("action:inspect:viewer-uuid");
         assertThat(dsl).contains("action:inspect:other-uuid");
+    }
+
+    /** A full page of the kind that is hardest to fit: long names, every tag, ranks of four digits. */
+    private TopUiController.TopModel crowdedPage(String language) {
+        session.localization = LayoutAssert.localization(language);
+
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        for (int i = 0; i < TopUiController.PLAYERS_PER_PAGE; i++) {
+            entries.add(new LeaderboardEntry(i == 3 ? "viewer-uuid" : "uuid-" + i, 1238 + i,
+                    "Player" + i, "2 147 483 очков",
+                    Map.of("customNickname", "[#ff8800]ОченьДлинныйНикнеймИгрокаБезПробелов" + i,
+                            "activeBadge", "developer", "admin", "true",
+                            "leagueName", "DIAMOND", "rankName", "veteran"), ""));
+        }
+        for (String[] category : new String[][]{{"MINI_PVP", "Mini-PvP"}, {"HEXED", "HexedCore"},
+                {"PLAYTIME", "Время игры"}, {"HEXED_LEGACY", "Старый Hexed"}}) {
+            TopCategoryProvider provider = mock(TopCategoryProvider.class);
+            when(provider.id()).thenReturn(category[0]);
+            when(provider.displayName(any())).thenReturn(category[1]);
+            when(provider.priority()).thenReturn(100 - registry.all().size());
+            when(provider.scopes()).thenReturn(List.of(new TopScope("3", true, Map.of()), new TopScope("2", false, Map.of())));
+            when(provider.formatScope(any(), any())).thenAnswer(inv ->
+                    "Сезон " + inv.<TopScope>getArgument(0).id() + " · до 1 января 2027");
+            when(provider.formatValue(any(LeaderboardEntry.class), any())).thenAnswer(inv ->
+                    inv.<LeaderboardEntry>getArgument(0).primaryValue());
+            when(provider.loadPage(any(LeaderboardPageRequest.class))).thenReturn(
+                    new LeaderboardPage(124, entries, true, "next", 123_456L, 1241));
+            registry.register(provider);
+        }
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        return controller.createInitialModel("MINI_PVP", null, 124, "cursor", new ArrayDeque<>(List.of("prev")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ru", "uk", "en"})
+    @DisplayName("nothing in the leaderboard is left to find its own width, and every text fits its place")
+    void window_isLaidOutForEveryScreen(String language) {
+        TopUiController.TopModel model = crowdedPage(language);
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            LayoutAssert.assertLaidOut(window, screen);
+            assertThat(LayoutAssert.actions(window))
+                    .contains("action:tab:HEXED", "action:scope:2", "action:inspect:uuid-0",
+                            "action:page:prev", "action:page:next", "action:refresh");
+        }
+        LayoutAssert.assertFitsPacket(controller.render(model), "a crowded page in " + language);
+        assertThat(LayoutAssert.allText(controller.render(model))).doesNotContain("top-menu-");
+    }
+
+    @Test
+    @DisplayName("an empty category says so instead of showing an empty list")
+    void window_showsEmptyCategory() {
+        registerMockProvider("PLAYTIME", 10, List.of(), false, null, null);
+        TopUiController controller = new TopUiController(topMenu, registry, playerMenu, sessionService, async, session);
+        TopUiController.TopModel model = controller.createInitialModel("PLAYTIME", null, 1, null, null);
+
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            LayoutAssert.assertLaidOut(window, screen);
+            assertThat(LayoutAssert.allText(window)).contains("top-menu-empty", "top-menu-unranked");
+            // Neither arrow of the pager can be pressed on the only page.
+            assertThat(LayoutAssert.actions(window)).doesNotContain("action:page:prev", "action:page:next");
+        }
     }
 
     @Test

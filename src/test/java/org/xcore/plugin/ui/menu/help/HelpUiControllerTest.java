@@ -9,9 +9,9 @@ import org.xcore.plugin.database.repository.PlayerDataRepository;
 import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.model.PlayerData;
 import org.xcore.plugin.session.Session;
-import mindustry.ui.builder.UiDslWriter;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.VNode;
-import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UpdateResult;
 
@@ -98,60 +98,54 @@ class HelpUiControllerTest {
         );
     }
 
+    /** Enough commands for several pages, with the long syntaxes and descriptions real ones have. */
+    private List<HelpCommandItem> manyCommands() {
+        List<HelpCommandItem> commands = new java.util.ArrayList<>(sampleCommands());
+        HelpCategory[] categories = {HelpCategory.GENERAL, HelpCategory.GAME, HelpCategory.SOCIAL, HelpCategory.VOTES, HelpCategory.ADMIN};
+        for (int i = 0; i < 40; i++) {
+            HelpCategory category = categories[i % categories.length];
+            commands.add(new HelpCommandItem(
+                    "command" + i,
+                    category,
+                    "command" + i + " <player_name_or_id> [reason_text...]",
+                    List.of("command" + i + " <player_name_or_id> [reason_text...]", "command" + i + " list"),
+                    List.of("c" + i, "cmd" + i),
+                    "Показывает заметное объявление выбранным игрокам или всем игрокам на сервере сразу. [scarlet]Только для админов.",
+                    List.of(
+                            new HelpCommandItem.ArgumentInfo("player_name_or_id", true, "Ник игрока или его идентификатор, как в списке игроков"),
+                            new HelpCommandItem.ArgumentInfo("reason_text", false, "Причина, которую увидят остальные игроки")
+                    ),
+                    category == HelpCategory.ADMIN,
+                    false
+            ));
+        }
+        return commands;
+    }
+
+    private Session realSession(String language) {
+        Session session = createTestSession(false);
+        session.localization = LayoutAssert.localization(language);
+        return session;
+    }
+
     @Test
-    @DisplayName("render compiles list view with client-resolved caps, category tabs, and command cards")
-    void render_compilesListViewDesktop() {
+    @DisplayName("the list shows a page of commands as rows, with a tab per category that has any")
+    void window_listsAPageOfCommands() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
         HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).contains("maxHeight: 460");
-
-        // Header and tabs
-        assertThat(dsl).contains("help-ui-title");
-        assertThat(dsl).contains("action:tab:all");
-        assertThat(dsl).contains("action:tab:game");
-        assertThat(dsl).contains("action:tab:votes");
-        assertThat(dsl).contains("action:tab:admin");
-
-        // Cards
-        assertThat(dsl).contains("action:cmd:hub");
-        assertThat(dsl).contains("action:cmd:votekick");
-        assertThat(dsl).contains("action:cmd:ban");
-
-        // Overloads badge
-        assertThat(dsl).contains("help-ui-overloads");
-    }
-
-    @Test
-    @DisplayName("render emits caps and native orientation conditions instead of a device guess")
-    void render_compilesResponsiveCaps() {
-        Session session = createTestSession(true);
-        HelpUiController controller = new HelpUiController(session, null);
-        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, sampleCommands(), null);
-
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        assertThat(dsl).contains("background: pane");
-        // the dialog fills the screen and stops at the cap; it never pins a width a phone may lack
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).doesNotContain("width: 520");
-        // the body takes the leftover height instead of a guessed per-device value
-        assertThat(dsl).contains("maxHeight: 460");
-        // both header arrangements ship, each gated by a condition the client evaluates
-        assertThat(dsl).contains("condition: portrait");
-        assertThat(dsl).contains("condition: landscape");
-        // tabs wrap rather than assuming a column count
-        assertThat(dsl).contains("wrap: true");
-        assertThat(dsl).contains("action:cmd:hub");
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            assertThat(LayoutAssert.actions(window)).containsExactly(
+                    "action:tab:all", "action:tab:general", "action:tab:game", "action:tab:social",
+                    "action:tab:votes", "action:tab:admin",
+                    "action:cmd:hub", "action:cmd:votekick", "action:cmd:ban");
+            assertThat(LayoutAssert.allText(window)).contains("help-ui-title", "help-ui-overloads");
+        }
+        String dsl = LayoutAssert.dsl(controller.render(model));
+        assertThat(dsl).contains("background: pane", "condition: \"width >= 800\"", "condition: \"width < 490\"");
+        assertThat(dsl).doesNotContain("maxWidth", "wrap: true\n    table", "action:close");
     }
 
     @Test
@@ -159,20 +153,96 @@ class HelpUiControllerTest {
     void render_omitsAdminTabWhenNoAdminCommands() {
         Session session = createTestSession(false);
         HelpUiController controller = new HelpUiController(session, null);
-        // Only non-admin commands
         List<HelpCommandItem> regularOnly = sampleCommands().stream()
                 .filter(c -> c.category() != HelpCategory.ADMIN)
                 .toList();
         HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, regularOnly, null);
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
+        List<String> actions = LayoutAssert.actions(controller.window(model, Screen.SMALL));
 
-        assertThat(dsl).contains("action:tab:all");
-        assertThat(dsl).contains("action:tab:game");
-        assertThat(dsl).contains("action:tab:votes");
-        assertThat(dsl).doesNotContain("action:tab:admin");
+        assertThat(actions).contains("action:tab:all", "action:tab:game", "action:tab:votes");
+        assertThat(actions).doesNotContain("action:tab:admin");
+    }
+
+    @Test
+    @DisplayName("the list and a command's page are laid out for every screen in every language")
+    void window_isLaidOutForEveryScreen() {
+        for (String language : LayoutAssert.LANGUAGES) {
+            Session session = realSession(language);
+            HelpUiController controller = new HelpUiController(session, null);
+            for (HelpCategory category : HelpCategory.values()) {
+                HelpUiModel list = new HelpUiModel(HelpUiModel.ViewMode.LIST, category, manyCommands(), null);
+                for (Screen screen : Screen.ALL) {
+                    VNode window = controller.window(list, screen);
+                    LayoutAssert.assertLaidOut(window, screen);
+                    assertThat(LayoutAssert.allText(window)).doesNotContain("help-ui-", "help-cat-");
+                }
+                LayoutAssert.assertFitsPacket(controller.render(list), language + " " + category);
+            }
+            for (String name : List.of("hub", "votekick", "ban", "command4")) {
+                HelpUiModel details = new HelpUiModel(HelpUiModel.ViewMode.DETAILS, HelpCategory.ALL, manyCommands(), name);
+                for (Screen screen : Screen.ALL) {
+                    VNode window = controller.window(details, screen);
+                    LayoutAssert.assertLaidOut(window, screen);
+                    assertThat(LayoutAssert.allText(window)).doesNotContain("help-ui-", "help-cat-");
+                }
+                LayoutAssert.assertFitsPacket(controller.render(details), language + " /" + name);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a long list is split into pages; turning one patches the list and the pager only")
+    void openPage_patchesListAndPager() {
+        Session session = realSession("ru");
+        HelpUiController controller = new HelpUiController(session, null);
+        HelpUiModel model = new HelpUiModel(HelpUiModel.ViewMode.LIST, HelpCategory.ALL, manyCommands(), null);
+        assertThat(model.pages()).isEqualTo(4);
+        assertThat(model.pageCommands()).hasSize(HelpUiModel.PAGE_SIZE);
+        assertThat(LayoutAssert.actions(controller.window(model, Screen.SMALL))).contains("action:page:1").doesNotContain("action:page:0");
+
+        UpdateResult<HelpUiModel> result = controller.update(model, new HelpUiEvent.OpenPage(3), mock(ControllerContext.class));
+
+        assertThat(result.fullRerender()).isFalse();
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(
+                Screen.slots(HelpUiController.SLOT_COMMANDS, HelpUiController.SLOT_PAGER));
+        assertThat(result.model().page()).isEqualTo(3);
+        assertThat(result.model().pageCommands()).hasSize(43 - 3 * HelpUiModel.PAGE_SIZE);
+        VNode rendered = controller.render(result.model());
+        for (var slot : result.dirtySlots()) {
+            assertThat(org.xcore.ui.VNodes.findSlot(rendered, slot.path())).as(slot.path()).isNotNull();
+        }
+        assertThat(LayoutAssert.actions(controller.window(result.model(), Screen.SMALL)))
+                .contains("action:page:2").doesNotContain("action:page:4");
+
+        // A page past the end is the last one, and a new category starts from its first.
+        assertThat(model.withPage(99).page()).isEqualTo(3);
+        assertThat(result.model().withCategory(HelpCategory.GAME).page()).isZero();
+        // Going into a command and back returns to the page it was picked on.
+        assertThat(result.model().withDetails("command39").withList().page()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("a row shows the command as typed and its description, each cut to the row")
+    void rowText_fitsTheRow() {
+        HelpCommandItem alert = new HelpCommandItem("alert", HelpCategory.ADMIN, "alert <targets> <message>",
+                List.of("alert <targets> <message>"), List.of(),
+                "Примусово достроково запустити наступну хвилю та показати оголошення. [scarlet]Тільки для адміністраторів.",
+                List.of(), true, false);
+
+        String text = HelpUiController.rowText(alert, 340f, null);
+
+        String[] lines = text.split("\n");
+        assertThat(lines).hasSize(2);
+        assertThat(lines[0]).contains("[accent]/alert[]", "<targets> <message>");
+        assertThat(lines[1]).endsWith("…[]").doesNotContain("Тільки для адміністраторів");
+        assertThat(org.xcore.plugin.ui.kit.TextWidth.of(text)).isLessThanOrEqualTo(340f);
+        // A row too narrow for the command itself cuts that too.
+        assertThat(HelpUiController.rowText(alert, 150f, null).split("\n")[0]).contains("…");
+
+        // An optional argument keeps its bracket: it is escaped, not read as a colour.
+        HelpCommandItem kick = sampleCommands().get(1);
+        assertThat(HelpUiController.rowText(kick, 600f, null)).contains("<player> [[reason]");
     }
 
     @Test
@@ -216,17 +286,12 @@ class HelpUiControllerTest {
         assertThat(result.model().mode()).isEqualTo(HelpUiModel.ViewMode.DETAILS);
         assertThat(result.model().selectedCommandName()).isEqualTo("hub");
 
-        VNode detailsNode = controller.render(result.model());
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(detailsNode));
-
-        // Details elements
-        assertThat(dsl).contains("action:back");
-        assertThat(dsl).contains("help-ui-back");
-        assertThat(dsl).contains("help-ui-aliases");
-        assertThat(dsl).contains("help-ui-syntax-title");
-        assertThat(dsl).contains("action:run:hub");
-        assertThat(dsl).contains("action:copy:hub");
+        for (Screen screen : Screen.ALL) {
+            VNode details = controller.window(result.model(), screen);
+            assertThat(LayoutAssert.actions(details)).containsExactly("action:back", "action:run:hub", "action:copy:hub");
+            assertThat(LayoutAssert.allText(details)).contains(
+                    "help-ui-btn-back", "help-ui-aliases", "help-ui-syntax-title", "help-ui-args-title", "/hub <lobby>");
+        }
     }
 
     @Test
@@ -263,6 +328,9 @@ class HelpUiControllerTest {
         assertThat(controller.parseEvent(new MenuResult("action:tab:votes")))
                 .isEqualTo(new HelpUiEvent.SelectCategory(HelpCategory.VOTES));
 
+        assertThat(controller.parseEvent(new MenuResult("action:page:2")))
+                .isEqualTo(new HelpUiEvent.OpenPage(2));
+
         assertThat(controller.parseEvent(new MenuResult("action:cmd:votekick")))
                 .isEqualTo(new HelpUiEvent.SelectCommand("votekick"));
 
@@ -271,40 +339,5 @@ class HelpUiControllerTest {
 
         assertThat(controller.parseEvent(new MenuResult("action:copy:hub")))
                 .isEqualTo(new HelpUiEvent.CopyCommand("hub"));
-    }
-
-    @Test
-    @DisplayName("formatCardBottomLine properly constrains long syntax and description to prevent overflow")
-    void formatCardBottomLine_constrainsLength() {
-        String alertLine = HelpUiController.formatCardBottomLine(
-                "alert <targets> <message>",
-                "Displays a prominent announcement banner to target players or all players.",
-                48
-        );
-        String strippedAlert = arc.util.Strings.stripColors(alertLine);
-        assertThat(strippedAlert.length()).isLessThanOrEqualTo(48);
-        assertThat(strippedAlert).startsWith("/alert <targets> <message>");
-        assertThat(strippedAlert).contains("|");
-        assertThat(strippedAlert).endsWith("...");
-
-        String avnwLine = HelpUiController.formatCardBottomLine(
-                "avnw",
-                "Примусово достроково запустити наступну хвилю. [scarlet]Тільки для адміністраторів.",
-                48
-        );
-        String strippedAvnw = arc.util.Strings.stripColors(avnwLine);
-        assertThat(strippedAvnw.length()).isLessThanOrEqualTo(48);
-        assertThat(strippedAvnw).startsWith("/avnw");
-        assertThat(strippedAvnw).contains("|");
-        assertThat(strippedAvnw).doesNotContain("Тільки для адміністраторів");
-
-        String longSyntaxLine = HelpUiController.formatCardBottomLine(
-                "votekick <player_name_or_id> [reason_text...]",
-                "Vote to kick a player from the server",
-                48
-        );
-        String strippedLong = arc.util.Strings.stripColors(longSyntaxLine);
-        assertThat(strippedLong.length()).isLessThanOrEqualTo(48);
-        assertThat(strippedLong).contains("|");
     }
 }

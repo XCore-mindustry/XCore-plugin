@@ -1,30 +1,43 @@
 package org.xcore.plugin.ui.menu.help;
 
-import arc.util.Strings;
 import mindustry.Vars;
 import mindustry.gen.Iconc;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.cloud.XCoreSender;
+import org.xcore.plugin.localization.Localization;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.plugin.ui.menu.HelpMenu;
-import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
-import org.xcore.ui.responsive.DialogMetrics;
-import org.xcore.ui.responsive.Responsive;
 import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.SlotKey;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.xcore.plugin.ui.kit.Kit.GAP;
+
 /**
- * Modern reactive command browser dialog utilizing xcore-ui and native Mindustry glyphs.
+ * The command browser ({@code /help}): a tab per kind of command, the commands of a page as rows
+ * that open a command's own page, laid out once per {@link Screen}. Turning a page patches the
+ * list and the pager and leaves the rest of the window.
  */
 public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> {
+
+    public static final SlotKey<Object> SLOT_COMMANDS = SlotKey.of("slot_help_commands");
+    public static final SlotKey<Object> SLOT_PAGER = SlotKey.of("slot_help_pager");
+
+    private static final float STRIPE = 4f;
 
     private final Session session;
     private final HelpMenu helpMenu;
@@ -53,6 +66,10 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
             case HelpUiEvent.SelectCommand e -> {
                 HelpUiModel updated = model.withDetails(e.commandName());
                 yield UpdateResult.rerender(updated);
+            }
+            case HelpUiEvent.OpenPage e -> {
+                HelpUiModel updated = model.withPage(e.page());
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_COMMANDS, SLOT_PAGER));
             }
             case HelpUiEvent.BackToList e -> {
                 HelpUiModel updated = model.withList();
@@ -104,6 +121,13 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
                 return new HelpUiEvent.SelectCategory(HelpCategory.ALL);
             }
         }
+        if (action.startsWith("action:page:")) {
+            try {
+                return new HelpUiEvent.OpenPage(Integer.parseInt(action.substring("action:page:".length())));
+            } catch (NumberFormatException ignored) {
+                return new HelpUiEvent.OpenPage(0);
+            }
+        }
         if (action.startsWith("action:cmd:")) {
             return new HelpUiEvent.SelectCommand(action.substring("action:cmd:".length()));
         }
@@ -118,349 +142,183 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
 
     @Override
     public VNode render(HelpUiModel model) {
-        if (model.mode() == HelpUiModel.ViewMode.DETAILS) {
-            return renderDetails(model, metrics());
-        }
-        return renderList(model, metrics());
+        return Screen.each(screen -> window(model, screen));
     }
 
-    /** Caps only; the client resolves the actual width and body height. */
-    private DialogMetrics metrics() {
-        return DialogMetrics.standard();
+    /** The window as one {@link Screen} sees it: the list, or the command picked from it. */
+    VNode window(HelpUiModel model, Screen screen) {
+        Optional<HelpCommandItem> selected = model.mode() == HelpUiModel.ViewMode.DETAILS
+                ? model.selectedCommand() : Optional.empty();
+        return selected.isPresent() ? details(selected.get(), screen) : list(model, screen);
     }
 
-    private VNode renderList(HelpUiModel model, DialogMetrics metrics) {
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+    // ------------------------------------------------------------------ list
 
-            // 1. Header
-            root.add(Ui.table(header -> {
-                header.layout(l -> l.growX().padBottom(4f));
-                Text title = Text.join(
-                        Text.raw("[accent]" + Iconc.bookOpen + "[] [white]"),
-                        Text.t("help-ui-title"),
-                        Text.raw("[]")
-                );
-                Text summary = Text.t("help-ui-summary", Text.args("count", model.allCommands().size()));
+    private VNode list(HelpUiModel model, Screen screen) {
+        float width = screen.width();
 
-                // Narrow screens put the summary under the title; wide ones keep it on the
-                // same line. This is a structural difference, not a size one, so it goes
-                // through a native client-side condition rather than a server-side guess.
-                Responsive.portrait(header, p -> {
-                    p.add(Ui.table(topRow -> {
-                        topRow.layout(l -> l.growX());
-                        topRow.label(title, l -> l.align("left").growX());
-                        topRow.button(Text.raw("[scarlet]" + Iconc.cancel + "[]"), "action:close", b -> b
-                                .style("cleart")
-                                .layout(l -> l.minWidth(44f).minHeight(44f)));
-                    })).row();
-                    p.label(summary, l -> l.align("left").growX().padTop(2f));
-                });
-                Responsive.landscape(header, w -> {
-                    w.label(title, l -> l.align("left").growX());
-                    w.label(summary, l -> l.align("right").padRight(8f));
-                    w.button(Text.raw("[scarlet]" + Iconc.cancel + "[]"), "action:close", b -> b
-                            .style("cleart")
-                            .layout(l -> l.minWidth(44f).minHeight(44f)));
-                });
-            })).row();
+        return Kit.window(window -> {
+            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t("help-ui-title") + "[]\n"
+                    + t("help-ui-summary", Map.of("count", model.allCommands().size())))).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(6f).color("3b4252")).row();
-
-            // 2. Category Tabs
-            root.add(Ui.table(tabs -> {
-                // WrapTable picks the tab columns from the width the client gives it, so the
-                // same tab set fits a narrow phone and a wide desktop without a server guess
-                tabs.wrap();
-                tabs.layout(l -> l.growX().padBottom(6f));
-                for (HelpCategory cat : HelpCategory.values()) {
-                    if (cat == HelpCategory.ADMIN && model.countForCategory(HelpCategory.ADMIN) == 0) {
-                        continue;
-                    }
-                    boolean checked = model.selectedCategory() == cat;
-                    Text tabText = Text.join(
-                            Text.raw(checked ? "[accent]" : "[lightgray]"),
-                            Text.raw(cat.icon() + " "),
-                            Text.t(cat.bundleKey()),
-                            Text.raw(" [gray]" + model.countForCategory(cat) + "[]")
-                    );
-                    tabs.button(tabText, "action:tab:" + cat.name().toLowerCase(), b -> b
-                            .style(checked ? "togglet" : "cleart")
-                            .checked(checked)
-                            .layout(l -> l.growX().uniform()));
+            List<Kit.Tab> tabs = new ArrayList<>();
+            for (HelpCategory category : HelpCategory.values()) {
+                if (category == HelpCategory.ADMIN && model.countForCategory(HelpCategory.ADMIN) == 0) {
+                    continue;
                 }
-            })).row();
+                tabs.add(new Kit.Tab(category.icon(),
+                        t(category.bundleKey()) + " [gray]" + model.countForCategory(category) + "[]",
+                        "action:tab:" + category.name().toLowerCase(Locale.ROOT),
+                        Accent.of(category.colorHex()), model.selectedCategory() == category));
+            }
+            window.add(Kit.tabs(width, "help_tabs", tabs)).row();
+            window.add(Kit.line(width, Accent.of(model.selectedCategory().colorHex()))).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(6f).color("3b4252")).row();
-
-            // 3. Command Cards List inside ScrollPane
-            List<HelpCommandItem> commands = model.filteredCommands();
-            root.pane(pane -> {
-                pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                pane.table(cards -> {
-                    cards.layout(l -> l.growX());
-
-                    if (commands.isEmpty()) {
-                        cards.add(Ui.table(empty -> {
-                            empty.layout(l -> l.growX().pad(24f));
-                            empty.label(Text.raw("[gray]" + Iconc.info + "[]"), l -> l.align("center").padBottom(6f)).row();
-                            empty.label(Text.t("help-ui-empty-category"), l -> l.align("center"));
-                        })).row();
-                        return;
-                    }
-
-                    for (HelpCommandItem cmd : commands) {
-                        cards.buttonTable("action:cmd:" + cmd.name(), card -> {
-                            card.style("default");
-                            card.margin(8f);
-                            card.layout(l -> l.growX().padBottom(4f));
-
-                            card.table(inner -> {
-                                inner.layout(l -> l.growX());
-
-                                // Left category colored accent stripe
-                                inner.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(cmd.category().colorHex()));
-
-                                // Content column
-                                inner.add(Ui.table(col -> {
-                                    col.layout(l -> l.growX());
-
-                                    // Top row of card
-                                    col.add(Ui.table(top -> {
-                                        top.layout(l -> l.growX());
-                                        top.label(Text.raw("[accent]/" + cmd.name() + "[]"), l -> l.align("left"));
-                                        if (cmd.syntaxes().size() > 1) {
-                                            top.label(Text.join(
-                                                    Text.raw("  [darkgray]"),
-                                                    Text.t("help-ui-overloads", Text.args("count", cmd.syntaxes().size()))
-                                            ), l -> l.align("left"));
-                                        }
-                                        top.add(Ui.table(spacer -> spacer.layout(l -> l.growX())));
-                                        top.label(Text.join(
-                                                Text.raw("[#" + cmd.category().colorHex() + "]" + cmd.category().icon() + " "),
-                                                Text.t(cmd.category().bundleKey()),
-                                                Text.raw("[]")
-                                        ), l -> l.align("right"));
-                                        if (cmd.isAdminOnly()) {
-                                            top.label(Text.raw("  [scarlet]" + Iconc.admin + "[]"), l -> l.align("right"));
-                                        }
-                                        top.label(Text.raw(" [gray]»[]"), l -> l.align("right"));
-                                    })).row();
-
-                                    // Bottom row of card
-                                    col.add(Ui.table(bottom -> {
-                                        bottom.layout(l -> l.growX().padTop(2f));
-                                        String bottomLine = formatCardBottomLine(cmd.primarySyntax(), cmd.rawDescription(), metrics.textBudget());
-                                        bottom.label(Text.raw(bottomLine), l -> l.align("left").growX());
-                                    })).row();
-                                }));
-                            });
-                        }).row();
-                    }
-                });
+            // A turned page changes these two and leaves the rest of the window as it is.
+            window.slot(screen.slot(SLOT_COMMANDS).path(), slot ->
+                    slot.add(Kit.pane(screen, commands -> commands(commands, model, screen)))).row();
+            window.slot(screen.slot(SLOT_PAGER).path(), slot -> {
+                if (model.pages() > 1) {
+                    int page = model.page();
+                    slot.add(Kit.pager(width, (page + 1) + " / " + model.pages(),
+                            page > 0 ? "action:page:" + (page - 1) : null,
+                            page < model.pages() - 1 ? "action:page:" + (page + 1) : null, null));
+                }
             }).row();
-
-            root.image("whiteui", l -> l.growX().height(2f).padTop(6f).padBottom(4f).color("3b4252")).row();
-
-            // 4. Footer
-            root.add(Ui.table(footer -> {
-                footer.layout(l -> l.growX().padTop(2f));
-                Text hint = Text.join(
-                        Text.raw("[gray]" + Iconc.info + "[] [lightgray]"),
-                        Text.t("help-ui-hint"),
-                        Text.raw("[]")
-                );
-                footer.label(hint, l -> l.align("left").growX());
-                footer.button(Text.raw("[accent]" + Iconc.cancel + "[]"), "action:close", b -> b
-                        .style("cleart")
-                        .layout(l -> l.minWidth(44f).minHeight(44f)));
-            })).row();
-    });
+        });
     }
 
-    private VNode renderDetails(HelpUiModel model, DialogMetrics metrics) {
-        Optional<HelpCommandItem> selectedOpt = model.selectedCommand();
-        if (selectedOpt.isEmpty()) {
-            return renderList(model.withList(), metrics);
+    private void commands(Ui.TableBuilder list, HelpUiModel model, Screen screen) {
+        List<HelpCommandItem> commands = model.pageCommands();
+        if (commands.isEmpty()) {
+            list.add(Kit.note(screen.cards(), t("help-ui-empty-category"))).row();
+            return;
         }
-        HelpCommandItem cmd = selectedOpt.get();
+        for (HelpCommandItem command : commands) {
+            list.add(commandRow(command, screen.cards())).row();
+        }
+    }
 
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+    /** A command as a row that opens it: a stripe in its category's colour, how it is written, what it does. */
+    private VNode commandRow(HelpCommandItem command, float width) {
+        return Kit.row("action:cmd:" + command.name(), width, false, true, (row, inner) -> {
+            float text = inner - STRIPE - GAP;
+            row.add(Ui.image("whiteui", l -> l.width(STRIPE).growY().padRight(GAP)
+                    .color(command.category().colorHex())));
+            row.add(Kit.text(rowText(command, text, session != null ? session.locale() : null), text));
+        });
+    }
 
-            // Header
-            root.add(Ui.table(header -> {
-                header.layout(l -> l.growX().padBottom(4f));
-                Text title = Text.join(
-                        Text.raw("[accent]" + Iconc.bookOpen + "[] [white]"),
-                        Text.t("help-ui-title"),
-                        Text.raw(" [gray]» [accent]/" + cmd.name() + "[]")
-                );
-                Responsive.portrait(header, p -> p.add(Ui.table(topRow -> {
-                    topRow.layout(l -> l.growX());
-                    topRow.label(title, l -> l.align("left").growX());
-                    topRow.button(Text.raw("[scarlet]" + Iconc.cancel + "[]"), "action:close", b -> b
-                            .style("cleart")
-                            .layout(l -> l.minWidth(44f).minHeight(44f)));
-                })).row());
-                Responsive.landscape(header, w -> {
-                    w.label(title, l -> l.align("left").growX());
-                    w.button(Text.raw("[scarlet]" + Iconc.cancel + "[]"), "action:close", b -> b
-                            .style("cleart")
-                            .layout(l -> l.minWidth(44f).minHeight(44f)));
-                });
-            })).row();
+    /**
+     * The two lines of a command's row, each cut to {@code width}: the command as it is typed,
+     * and its description without the note that it is for admins, which the mark in front says.
+     */
+    static String rowText(HelpCommandItem command, float width, Localization local) {
+        String syntax = command.primarySyntax() == null ? command.name() : command.primarySyntax();
+        int space = syntax.indexOf(' ');
+        String arguments = space < 0 ? "" : " [gray]" + escapeMarkup(syntax.substring(space + 1)) + "[]";
+        String overloads = command.syntaxes().size() > 1
+                ? "  [darkgray]" + (local != null
+                ? local.t("help-ui-overloads", Map.of("count", command.syntaxes().size()))
+                : "(" + command.syntaxes().size() + ")") + "[]"
+                : "";
+        String first = (command.isAdminOnly() ? "[scarlet]" + Iconc.admin + "[] " : "")
+                + "[accent]/" + command.name() + "[]" + arguments + overloads;
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(6f).color("3b4252")).row();
+        String description = cleanAdminNote(command.rawDescription());
+        if (description.isBlank()) {
+            return TextWidth.fit(first, width);
+        }
+        return TextWidth.fit(first, width) + "\n" + TextWidth.fit("[lightgray]" + description + "[]", width);
+    }
 
-            // Navigation bar: Back button + Category chip
-            root.add(Ui.table(nav -> {
-                nav.layout(l -> l.growX().padBottom(6f));
-                nav.button(Text.join(Text.raw("[accent]" + Iconc.left + "[] "), Text.t("help-ui-back")), "action:back", b -> b
-                        .style("cleart")
-                        .layout(l -> l.padRight(8f)));
-                nav.add(Ui.table(sp -> sp.layout(l -> l.growX())));
-                nav.label(Text.join(
-                        Text.raw("[#" + cmd.category().colorHex() + "]" + cmd.category().icon() + " "),
-                        Text.t(cmd.category().bundleKey()),
-                        Text.raw("[]")
-                ), l -> l.align("right"));
-            })).row();
+    // ------------------------------------------------------------------ details
 
-            // Scrollable Details Pane
-            root.pane(pane -> {
-                pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                pane.table(body -> {
-                    body.layout(l -> l.growX());
+    private VNode details(HelpCommandItem command, Screen screen) {
+        float width = screen.width();
+        HelpCategory category = command.category();
+        Accent accent = Accent.of(category.colorHex());
 
-                    // 1. Overview Card
-                    body.add(Ui.table(hero -> {
-                        hero.background("pane");
-                        hero.layout(l -> l.growX().padBottom(6f));
+        return Kit.window(window -> {
+            window.add(Kit.header(width, "[accent]" + Iconc.bookOpen + "[] [white]" + t("help-ui-title") + "[]\n"
+                    + (command.isAdminOnly() ? "[scarlet]" + Iconc.admin + "[] " : "")
+                    + "[accent]/" + command.name() + "[]  [#" + category.colorHex() + "]" + category.icon() + " "
+                    + t(category.bundleKey()) + "[]")).row();
+            window.add(Kit.line(width, accent)).row();
 
-                        hero.label(Text.raw("[accent]/" + cmd.name() + "[]"), l -> l.align("left").growX().pad(6f).padBottom(2f)).row();
-                        String cleanHeroDesc = cleanAdminNote(cmd.rawDescription());
-                        hero.label(Text.raw("[white]" + (cleanHeroDesc.isBlank() ? "-" : cleanHeroDesc) + "[]"),
-                                l -> l.align("left").growX().pad(6f).padTop(0f).padBottom(4f)).row();
+            Kit.body(window, screen, body -> {
+                List<VNode> left = new ArrayList<>();
+                left.add(Kit.card(screen.card(), accent, Iconc.info + " /" + command.name(), (content, inner) -> {
+                    String description = cleanAdminNote(command.rawDescription());
+                    content.add(Kit.text("[white]" + (description.isBlank() ? "-" : description) + "[]", inner)).row();
+                    if (!command.aliases().isEmpty()) {
+                        String aliases = command.aliases().stream()
+                                .map(alias -> "[white]/" + alias + "[]")
+                                .collect(Collectors.joining("[gray],[] "));
+                        content.add(Ui.table(line -> {
+                            line.layout(l -> l.padTop(GAP));
+                            line.add(Kit.text(t("help-ui-aliases", Map.of("aliases", aliases)), inner));
+                        })).row();
+                    }
+                }));
+                left.add(Kit.card(screen.card(), accent, Iconc.edit + " " + t("help-ui-syntax-title"), (content, inner) ->
+                        content.add(Kit.text(command.syntaxes().stream()
+                                .map(syntax -> "[accent]/" + escapeMarkup(syntax) + "[]")
+                                .collect(Collectors.joining("\n")), inner)).row()));
 
-                        if (!cmd.aliases().isEmpty()) {
-                            String aliasList = cmd.aliases().stream().map(a -> "[white]/" + a + "[]").collect(Collectors.joining("[gray], []"));
-                            hero.label(Text.t("help-ui-aliases", Text.args("aliases", aliasList)),
-                                    l -> l.align("left").growX().pad(6f).padTop(0f)).row();
-                        }
-                    })).row();
-
-                    // 2. Syntax variants
-                    body.add(Ui.table(syntaxBox -> {
-                        syntaxBox.background("pane");
-                        syntaxBox.layout(l -> l.growX().padBottom(6f));
-
-                        syntaxBox.label(Text.t("help-ui-syntax-title"), l -> l.align("left").growX().pad(6f).padBottom(2f)).row();
-                        for (String s : cmd.syntaxes()) {
-                            syntaxBox.add(Ui.table(row -> {
-                                row.layout(l -> l.growX().pad(2f));
-                                row.label(Text.raw("[gray]• [accent]/" + escapeMarkup(s) + "[]"), l -> l.align("left").growX());
+                List<VNode> right = new ArrayList<>();
+                if (!command.arguments().isEmpty()) {
+                    right.add(Kit.card(screen.card(), accent, Iconc.list + " " + t("help-ui-args-title"), (content, inner) -> {
+                        for (int i = 0; i < command.arguments().size(); i++) {
+                            HelpCommandItem.ArgumentInfo argument = command.arguments().get(i);
+                            boolean first = i == 0;
+                            content.add(Ui.table(line -> {
+                                line.layout(l -> l.padTop(first ? 0f : GAP));
+                                line.add(Kit.text(argumentText(argument), inner));
                             })).row();
                         }
-                    })).row();
-
-                    // 3. Parameters / Arguments
-                    if (!cmd.arguments().isEmpty()) {
-                        body.add(Ui.table(argsBox -> {
-                            argsBox.background("pane");
-                            argsBox.layout(l -> l.growX().padBottom(6f));
-
-                            argsBox.label(Text.t("help-ui-args-title"), l -> l.align("left").growX().pad(6f).padBottom(2f)).row();
-                            for (HelpCommandItem.ArgumentInfo arg : cmd.arguments()) {
-                                argsBox.add(Ui.table(argRow -> {
-                                    argRow.layout(l -> l.growX().pad(3f));
-                                    Text badge = arg.required()
-                                            ? Text.join(Text.raw("[scarlet]<" + escapeMarkup(arg.name()) + ">[]  [lightgray]("), Text.t("help-ui-arg-required"), Text.raw(")[gray]"))
-                                            : Text.join(Text.raw("[sky][[" + escapeMarkup(arg.name()) + "]  [lightgray]("), Text.t("help-ui-arg-optional"), Text.raw(")[gray]"));
-                                    argRow.label(badge, l -> l.align("left").growX()).row();
-                                    if (arg.description() != null && !arg.description().isBlank()) {
-                                        argRow.label(Text.raw("[white]  " + arg.description() + "[]"), l -> l.align("left").growX());
-                                    }
-                                })).row();
-                            }
-                        })).row();
-                    }
-                });
-            }).row();
-
-            root.image("whiteui", l -> l.growX().height(2f).padTop(6f).padBottom(6f).color("3b4252")).row();
-
-            // Action Toolbar
-            root.add(Ui.table(toolbar -> {
-                toolbar.layout(l -> l.growX());
-                toolbar.button(Text.join(Text.raw("[accent]" + Iconc.left + "[] "), Text.t("help-ui-btn-back")), "action:back", b -> b
-                        .style("cleart")
-                        .layout(l -> l.growX().uniform().pad(2f)));
-                if (cmd.hasNoRequiredArgs()) {
-                    toolbar.button(Text.join(Text.raw("[green]" + Iconc.play + "[] "), Text.t("help-ui-btn-run")), "action:run:" + cmd.name(), b -> b
-                            .style("cleart")
-                            .layout(l -> l.growX().uniform().pad(2f)));
+                    }));
                 }
-                toolbar.button(Text.join(Text.raw("[sky]" + Iconc.copy + "[] "), Text.t("help-ui-btn-copy")), "action:copy:" + cmd.primarySyntax(), b -> b
-                        .style("cleart")
-                        .layout(l -> l.growX().uniform().pad(2f)));
+                body.add(Kit.columns(screen, left, right)).row();
+            });
+
+            List<Kit.Action> actions = new ArrayList<>();
+            actions.add(new Kit.Action("[accent]" + Iconc.left + "[] " + t("help-ui-btn-back"), "action:back"));
+            if (command.hasNoRequiredArgs()) {
+                actions.add(new Kit.Action("[green]" + Iconc.play + "[] " + t("help-ui-btn-run"),
+                        "action:run:" + command.name()));
+            }
+            actions.add(new Kit.Action("[sky]" + Iconc.copy + "[] " + t("help-ui-btn-copy"),
+                    "action:copy:" + command.primarySyntax()));
+            window.add(Ui.table(bar -> {
+                bar.layout(l -> l.padTop(GAP));
+                bar.add(Kit.actions(width, actions));
             })).row();
-    });
+        });
+    }
+
+    /** An argument as it is typed, whether it may be left out, and under that what it is for. */
+    private String argumentText(HelpCommandItem.ArgumentInfo argument) {
+        String name = argument.required()
+                ? "[scarlet]<" + escapeMarkup(argument.name()) + ">[]"
+                : "[sky][[" + escapeMarkup(argument.name()) + "][]";
+        String kind = t(argument.required() ? "help-ui-arg-required" : "help-ui-arg-optional");
+        String description = argument.description() == null || argument.description().isBlank()
+                ? "" : "\n[white]" + argument.description() + "[]";
+        return name + "  [gray]—[] " + kind + "[]" + description;
+    }
+
+    private String t(String key) {
+        return session != null ? session.locale().t(key) : key;
+    }
+
+    private String t(String key, Map<String, Object> args) {
+        return session != null ? session.locale().t(key, args) : key;
     }
 
     public static String escapeMarkup(String text) {
         if (text == null || text.isBlank()) return "";
         return text.replace("[", "[[");
-    }
-
-    public static String truncatePlain(String raw, int maxPlainLength) {
-        if (raw == null || raw.isBlank()) return "";
-        String singleLine = raw.replace('\n', ' ').replace('\r', ' ').trim();
-        if (Strings.stripColors(singleLine).length() <= maxPlainLength) {
-            return singleLine;
-        }
-        if (maxPlainLength <= 3) {
-            return "...";
-        }
-        StringBuilder sb = new StringBuilder();
-        int visibleCount = 0;
-        boolean inTag = false;
-        int targetVisible = maxPlainLength - 3;
-        for (int i = 0; i < singleLine.length(); i++) {
-            char c = singleLine.charAt(i);
-            if (!inTag && c == '[' && i + 1 < singleLine.length() && singleLine.charAt(i + 1) == '[') {
-                if (visibleCount >= targetVisible) {
-                    sb.append("...[]");
-                    return sb.toString();
-                }
-                sb.append("[[");
-                i++;
-                visibleCount++;
-                continue;
-            }
-            if (c == '[') {
-                inTag = true;
-                sb.append(c);
-            } else if (c == ']' && inTag) {
-                inTag = false;
-                sb.append(c);
-            } else if (inTag) {
-                sb.append(c);
-            } else {
-                if (visibleCount >= targetVisible) {
-                    sb.append("...[]");
-                    return sb.toString();
-                }
-                sb.append(c);
-                visibleCount++;
-            }
-        }
-        sb.append("[]");
-        return sb.toString();
     }
 
     private static final java.util.regex.Pattern ADMIN_ONLY_PATTERN = java.util.regex.Pattern.compile(
@@ -471,32 +329,5 @@ public class HelpUiController implements UiController<HelpUiModel, HelpUiEvent> 
     public static String cleanAdminNote(String text) {
         if (text == null || text.isBlank()) return "";
         return ADMIN_ONLY_PATTERN.matcher(text).replaceAll("").trim();
-    }
-
-    public static String formatCardBottomLine(String syntax, String rawDesc, int maxTotalLength) {
-        String cleanSyntax = "/" + escapeMarkup(syntax);
-        String strippedDesc = cleanAdminNote(rawDesc);
-        if (strippedDesc.isBlank()) {
-            return truncatePlain(cleanSyntax, maxTotalLength);
-        }
-        String cleanDesc = strippedDesc.replace('\n', ' ').replace('\r', ' ').trim();
-
-        int syntaxLen = Strings.stripColors(cleanSyntax).length();
-        int minDescLen = 14;
-        int sepLen = 5; // "  |  "
-
-        if (syntaxLen + sepLen + minDescLen > maxTotalLength) {
-            int maxSyntaxLen = Math.max(12, maxTotalLength - sepLen - minDescLen);
-            cleanSyntax = truncatePlain(cleanSyntax, maxSyntaxLen);
-            syntaxLen = Strings.stripColors(cleanSyntax).length();
-        }
-
-        int remainingForDesc = Math.max(8, maxTotalLength - syntaxLen - sepLen);
-        String truncatedDesc = truncatePlain(cleanDesc, remainingForDesc);
-        return "[gray]" + cleanSyntax + "  [darkgray]|[]  [white]" + truncatedDesc + "[]";
-    }
-
-    public static String formatDescription(String raw, int maxPlainLength) {
-        return truncatePlain(raw, maxPlainLength);
     }
 }

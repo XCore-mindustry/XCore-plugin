@@ -207,6 +207,16 @@ public class MenuService {
     }
 
     public <M, E> UiSession<M, E> openUi(Session session, UiController<M, E> controller, M initialModel) {
+        return openUi(session, controller, initialModel, false);
+    }
+
+    /**
+     * @param fillScreen whether the client's dialog takes the whole screen. A dialog that does not
+     *                   is as large as its content asks and is cut off where the screen ends; one
+     *                   that does gives the content the screen it has, so scroll panes shrink to fit.
+     */
+    public <M, E> UiSession<M, E> openUi(Session session, UiController<M, E> controller, M initialModel,
+                                         boolean fillScreen) {
         if (session == null || session.player == null || session.player.con == null) return null;
 
         long version = session.nextUiVersion();
@@ -239,7 +249,7 @@ public class MenuService {
         UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
-                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, false, ui);
+                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, fillScreen, ui);
             }
 
             @Override

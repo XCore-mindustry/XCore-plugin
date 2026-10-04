@@ -122,7 +122,7 @@ public class PlayerMenu extends Menu {
         );
 
         var initialModel = controller.createInitialModel(tab, preloaded);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
 
         if (preloaded == null) {
             loadDetails(session, targetData);
@@ -179,15 +179,17 @@ public class PlayerMenu extends Menu {
 
         var controller = new PlayerSettingsUiController(this, profileSettings, session, targetData);
         var initialModel = PlayerSettingsUiController.createModel(session, targetData, tab);
-        menuService.openUi(session, controller, initialModel);
+        // Filling the screen is what lets the cards scroll on a screen shorter than the settings.
+        menuService.openUi(session, controller, initialModel, true);
     }
 
     public void chatSettings(String uuid, PlayerData targetData) {
-        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
+        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT);
     }
 
     public void languageSelectionMenu(String uuid, PlayerData targetData, boolean isTranslator) {
-        openSettingsTab(uuid, targetData, PlayerSettingsUiController.Tab.CHAT_LANG);
+        openSettingsTab(uuid, targetData,
+                isTranslator ? PlayerSettingsUiController.Tab.CHAT : PlayerSettingsUiController.Tab.LANGUAGE);
     }
 
     public void badges(String uuid, PlayerData targetData) {

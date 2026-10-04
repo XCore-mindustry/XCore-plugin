@@ -38,8 +38,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * End-to-end integration test driving MenuService, UiSession, and ServerSelectorUiController
- * through DeterministicUiLoop and HeadlessMenuClient to verify mobile landscape scrolling,
- * responsive layout constraints, partial slot updates on category tabs, and connection handling.
+ * through DeterministicUiLoop and HeadlessMenuClient to verify what the client is sent when the
+ * browser opens, when a category tab is pressed and when the dialog is closed.
  */
 class ServerSelectorUiClientIntegrationTest {
 
@@ -168,7 +168,7 @@ class ServerSelectorUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Open servers delivers responsive dialog with buttonTable cards, tabs, and maxHeight 350")
+    @DisplayName("Open servers delivers a window per screen class with tabs and server rows")
     void openServers_deliversResponsiveDialog() {
         serverMenu.open(session);
         int menuId = menuService.getMenuBuilderId();
@@ -188,8 +188,8 @@ class ServerSelectorUiClientIntegrationTest {
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 460");
-        assertThat(dsl).contains("action:close");
+        assertThat(dsl).contains("condition: \"width >= 800\"");
+        assertThat(dsl).doesNotContain("action:close");
         assertThat(dsl).contains("action:tab:all");
         assertThat(dsl).contains("action:tab:pvp");
         assertThat(dsl).contains("action:connect:mini-pvp");

@@ -70,7 +70,7 @@ public class AuditHistoryMenu extends Menu {
                 targetData
         );
         var initialModel = controller.createInitialModel(mode);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
     }
 
     private void openHistory(String viewerUuid, PlayerData targetData, AuditViewMode mode) {
@@ -118,7 +118,7 @@ public class AuditHistoryMenu extends Menu {
             if (record != null) {
                 initialModel = initialModel.withDetails(auditId, record);
             }
-            menuService.openUi(session, controller, initialModel);
+            menuService.openUi(session, controller, initialModel, true);
             return;
         }
 

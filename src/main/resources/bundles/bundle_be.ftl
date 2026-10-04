@@ -116,14 +116,14 @@ commands-maps-text-page-description = Нумар старонкі
 commands-rtv-map-description = Карта для галасавання (неабавязкова)
 commands-artv-map-description = Карта для прымусовай змены
 map-maps = Карты
-map-maps-back = ← Да спісу карт
+map-maps-back = Да спісу карт
 
 # Map UI Modernized
 map-ui-search-hint = Пошук карты ці аўтара...
+map-ui-total = [lightgray]Усяго карт: [white]{ $count }[]
+map-ui-about-title = Пра карту
+map-ui-rtv-title = Змена карты
 map-ui-no-maps-found = [lightgray]Карты па вашым запыце не знойдзены.[]
-map-ui-page-info = [lightgray]Старонка [white]{ $page }[] з [white]{ $total }[]
-map-ui-prev = < Назад
-map-ui-next = Уперад >
 map-ui-by = ад [lightgray]{ $author }[]
 map-ui-mode = Рэжым: [white]{ $mode }[]
 map-ui-loading = [gray]Загрузка...[]
@@ -134,31 +134,27 @@ map-ui-last-played = [gray]Апошняя гульня: [white]{ $lastPlayed }[]
 map-ui-description = [gray]Апісанне: [lightgray]{ $description }[]
 map-ui-no-description = [gray]Апісанне: [lightgray]Апісанне адсутнічае.[]
 
-map-ui-col-duration = [accent]ПРАЦЯГЛАСЦЬ[]
+map-ui-col-duration = Працягласць
 map-ui-duration-min = [gray]Мін: [white]{ $value }[]
 map-ui-duration-avg = [gray]Сяр: [white]{ $value }[]
 map-ui-duration-max = [gray]Макс: [white]{ $value }[]
 
-map-ui-col-popularity = [accent]ПАПУЛЯРНАСЦЬ[]
-map-ui-popularity-score = [gray]Рэйтынг: [white]+{ $value }[]
-map-ui-popularity-pop = [gray]Пап: [white]{ $value }[]
+map-ui-col-popularity = Папулярнасць
+map-ui-popularity-score = [gray]Рэйтынг: [white]{ $value }[]
+map-ui-popularity-pop = [gray]Папулярнасць: [white]{ $value }[]
 map-ui-popularity-interest = [gray]Цікавасць: [white]{ $value }[]
 
-map-ui-col-community = [accent]СУПОЛЬНАСЦЬ[]
+map-ui-col-community = Супольнасць
 map-ui-community-approval = [gray]Ухваленне: [green]{ $rate }%[]
-map-ui-community-likes = [gray]Падабайкі: [white]{ $value }[]
-map-ui-community-dislikes = [gray]Дызлайкі: [white]{ $value }[]
 
-map-ui-btn-like = [lightgray]👍 Падабаецца ({ $count })[]
-map-ui-btn-liked = [green]✔ Падабаецца ({ $count })[]
-map-ui-btn-dislike = [lightgray]👎 Не падабаецца ({ $count })[]
-map-ui-btn-disliked = [scarlet]✔ Не падабаецца ({ $count })[]
+map-ui-btn-like = Лайк ({ $count })
+map-ui-btn-dislike = Дызлайк ({ $count })
 
-map-ui-rtv-active-status = [accent]● RTV Галасаванне: [white]{ $votes }/{ $required }[] [gray](засталося [white]{ $seconds }с[gray])[]
-map-ui-rtv-vote-yes = [accent]✔ Прагаласаваць ЗА гэтую карту[]
-map-ui-rtv-start = [accent]ГАЛАСАВАННЕ ЗА ЗМЕНУ КАРТЫ (RTV)[]
-map-ui-admin-rtv = [red]⚡ Адмін: Змяніць карту неадкладна (ARTV)[]
-map-ui-admin-rtv-confirm = [scarlet]⚠ Націсніце яшчэ раз для пацверджання! ⚠
+map-ui-rtv-active-status = [accent]● Ідзе галасаванне: [white]{ $votes }/{ $required }[] [gray](засталося [white]{ $seconds } с[gray])[]
+map-ui-rtv-vote-yes = Галасаваць за карту
+map-ui-rtv-start = Галасаваць за гэтую карту
+map-ui-admin-rtv = Змяніць карту адразу
+map-ui-admin-rtv-confirm = Націсніце яшчэ раз
 
 gamemode-survival = Выжыванне
 gamemode-attack = Атака

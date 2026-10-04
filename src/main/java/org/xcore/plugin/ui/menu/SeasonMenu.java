@@ -71,7 +71,7 @@ public class SeasonMenu {
                 Log.err("Failed to load seasons for " + viewer, error);
                 return;
             }
-            menuService.openUi(session, controller, model);
+            menuService.openUi(session, controller, model, true);
         });
     }
 

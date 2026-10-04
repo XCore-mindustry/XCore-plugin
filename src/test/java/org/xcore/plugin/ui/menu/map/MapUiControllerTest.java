@@ -22,6 +22,8 @@ import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.map.MapPreviewService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.Session;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.LocalizerResolver;
 import org.xcore.ui.VNode;
 import org.xcore.ui.VNodeCompiler;
@@ -264,63 +266,150 @@ class MapUiControllerTest {
     }
 
     @Test
-    @DisplayName("render in BROWSER mode compiles 520f shell with search and map table")
-    void render_browserMode_compilesSearchAndTable() {
+    @DisplayName("the browser is sent once per class of screens, each with a slot of its own")
+    void render_browserMode_sendsOneWindowPerScreen() {
         MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        MapUiModel model = createTestBrowserModel();
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
-        String dsl = UiDslWriter.write(compiler.compile(root));
+        String dsl = LayoutAssert.dsl(controller.render(createTestBrowserModel()));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("maxWidth: 760");
+        assertThat(dsl).contains("condition: \"width >= 800\"");
         assertThat(dsl).contains("id: field_search");
-        assertThat(dsl).contains("id: slot_map_table");
+        assertThat(dsl).contains("id: slot_map_table_wide", "id: slot_map_table_narrow", "id: slot_map_table_small");
         assertThat(dsl).contains("Desert Crossing");
         assertThat(dsl).contains("action:select_map:map-1");
+        // The client's dialog has the button that closes it.
+        assertThat(dsl).doesNotContain("action:close");
     }
 
     @Test
-    @DisplayName("render in BROWSER mode caps the shell instead of pinning a device width")
-    void render_browserMode_capsShellInsteadOfPinningWidth() {
+    @DisplayName("the browser lists the maps as rows, marks the one being played, and turns pages")
+    void window_browserListsMaps() {
+        session.localization = LayoutAssert.localization("ru");
         MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        MapUiModel model = createTestBrowserModel();
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
-        String dsl = UiDslWriter.write(compiler.compile(root));
+        VNode window = controller.window(createTestBrowserModel(), Screen.SMALL);
 
-        // The client resolves the real width; the server only states the ceiling.
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).doesNotContain("width: 360");
-        assertThat(dsl).doesNotContain("width: 520");
-        assertThat(dsl).contains("maxHeight: 460");
-        assertThat(dsl).contains("action:select_map:map-1");
-        // pagination stays outside the scroll pane so it remains reachable
-        assertThat(dsl).contains("action:page:next");
-        assertThat(dsl).contains("action:page:prev");
+        assertThat(LayoutAssert.actions(window)).containsExactly(
+                "action:search", "action:select_map:map-1", "action:select_map:map-2",
+                "action:none", "action:page:next");
+        String text = LayoutAssert.allText(window);
+        assertThat(text).contains("Карты", "Всего карт: [white]2[]", "1 / 2");
+        assertThat(text).contains("[white]Desert Crossing[]", "[green]+10[] [scarlet]-2[]", "Anuke");
+        assertThat(text).contains("[accent]" + mindustry.gen.Iconc.play + " Glacier Pass[]");
     }
 
     @Test
-    @DisplayName("render in DETAILS mode compiles 2-column hero, telemetry matrix, and RTV button")
-    void render_detailsMode_compilesHeroAndTelemetry() {
+    @DisplayName("a search with no maps to show says so")
+    void window_browserShowsEmptySearch() {
+        session.localization = LayoutAssert.localization("ru");
         MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        MapUiModel model = createTestDetailsModel("map-1");
+        MapUiModel empty = createTestBrowserModel().withSearchQuery("zzz").withPagination(1, 1, List.of(), 2);
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler(LocalizerResolver.IDENTITY);
-        String dsl = UiDslWriter.write(compiler.compile(root));
+        VNode window = controller.window(empty, Screen.NARROW);
+
+        assertThat(LayoutAssert.allText(window)).contains("Карты по вашему запросу не найдены.");
+        assertThat(LayoutAssert.actions(window)).containsExactly("action:search", "action:none", "action:none");
+    }
+
+    @Test
+    @DisplayName("the details are sent once per class of screens, with the slots that change on their own")
+    void render_detailsMode_sendsOneWindowPerScreen() {
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+
+        String dsl = LayoutAssert.dsl(controller.render(createTestDetailsModel("map-1")));
 
         assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).contains("id: slot_preview");
+        assertThat(dsl).contains("id: slot_preview_wide", "id: slot_preview_small");
         assertThat(dsl).contains("net-xcore_test123");
-        assertThat(dsl).contains("align: left");
-        assertThat(dsl).contains("id: slot_reputation");
-        assertThat(dsl).contains("id: slot_rtv");
+        assertThat(dsl).contains("id: slot_reputation_narrow");
+        assertThat(dsl).contains("id: slot_rtv_small");
         assertThat(dsl).contains("action:rtv");
         assertThat(dsl).contains("action:back_to_list");
+        assertThat(dsl).doesNotContain("action:close");
+    }
+
+    @Test
+    @DisplayName("the details show what is known of the map and offer the votes")
+    void window_detailsShowTheMap() {
+        session.localization = LayoutAssert.localization("ru");
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+
+        VNode window = controller.window(createTestDetailsModel("map-1"), Screen.SMALL);
+
+        assertThat(LayoutAssert.actions(window)).containsExactly(
+                "action:rtv", "action:admin_rtv", "action:like", "action:dislike", "action:back_to_list");
+        String text = LayoutAssert.allText(window);
+        assertThat(text).contains("Desert Crossing", "от Anuke · Режим: Survival");
+        assertThat(text).contains("Размеры: [white]250 x 250[]", "A rough battlefield.");
+        assertThat(text).contains("Длительность", "Популярность", "Сообщество", "Смена карты");
+        assertThat(text).contains("Одобрение: [green]88%[]", "Рейтинг: [white]+35[]");
+        assertThat(text).contains("Лайк (14)", "Дизлайк (2)", "Голосовать за эту карту", "К списку карт");
+        // None of the menu's own texts is cut on the smallest screen.
+        assertThat(text).doesNotContain("…");
+    }
+
+    @Test
+    @DisplayName("a running vote shows how it stands, and an admin's second press is asked for")
+    void window_detailsShowTheRunningVote() {
+        session.localization = LayoutAssert.localization("ru");
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel voting = createTestDetailsModel("map-1")
+                .withRtvStatus(true, 3, 5, 24)
+                .withAdminConfirm(true, Long.MAX_VALUE)
+                .withReputation(true, 36, 15, 2, 88);
+
+        String text = LayoutAssert.allText(controller.window(voting, Screen.SMALL));
+
+        assertThat(text).contains("Идёт голосование: [white]3/5[]", "Голосовать за карту", "Нажмите ещё раз");
+        assertThat(text).contains("[green]" + mindustry.gen.Iconc.ok + " Лайк (15)[]");
+        assertThat(text).doesNotContain("…");
+    }
+
+    @Test
+    @DisplayName("the votes cannot be given before the map's record is read, and there is no preview until it comes")
+    void window_detailsWaitForTheRecord() {
+        session.localization = LayoutAssert.localization("en");
+        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+        MapUiModel loading = createTestDetailsModel("map-1").withResolvedDetails(null).withPreview(null, true);
+
+        VNode window = controller.window(loading, Screen.WIDE);
+
+        assertThat(LayoutAssert.allText(window)).contains("Loading...");
+        List<Boolean> disabled = new java.util.ArrayList<>();
+        for (VNode node : org.xcore.ui.VNodes.walk(window)) {
+            if (node instanceof org.xcore.ui.VButton button && button.clicked().endsWith("like")) {
+                disabled.add(button.disabled());
+            }
+        }
+        assertThat(disabled).containsExactly(true, true);
+    }
+
+    @Test
+    @DisplayName("both views fit every class of screens in every language, and one packet")
+    void window_isLaidOutForEveryScreen() {
+        List<MapUiModel.MapSummary> maps = new java.util.ArrayList<>();
+        for (int i = 0; i < MapUiController.MAPS_PER_PAGE; i++) {
+            maps.add(new MapUiModel.MapSummary("map-" + i + ".msav",
+                    "A map with a very long name that never ends " + i, "[accent]An author with a long name " + i,
+                    500, 500, 120 + i, 30 + i, i == 0));
+        }
+        MapUiModel browser = createTestBrowserModel().withPagination(2, 7, maps, 64);
+        MapUiModel details = createTestDetailsModel("map-1")
+                .withRtvStatus(true, 12, 30, 24)
+                .withAdminConfirm(true, Long.MAX_VALUE);
+        MapUiModel plain = createTestDetailsModel("map-1").withPreview(null, false);
+
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
+            for (MapUiModel model : List.of(browser, details, plain)) {
+                for (Screen screen : Screen.ALL) {
+                    LayoutAssert.assertLaidOut(controller.window(model, screen), screen);
+                }
+                LayoutAssert.assertFitsPacket(controller.render(model), language + " " + model.mode());
+            }
+        }
     }
 
     @Test
@@ -335,7 +424,7 @@ class MapUiControllerTest {
 
         assertThat(result.model().playerVote()).isTrue();
         assertThat(result.model().likes()).isEqualTo(15);
-        assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_REPUTATION);
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(Screen.slots(MapUiController.SLOT_REPUTATION));
         assertThat(result.fullRerender()).isFalse();
     }
 
@@ -366,7 +455,7 @@ class MapUiControllerTest {
 
         assertThat(result.model().previewLoading()).isFalse();
         assertThat(result.model().previewTextureRegion()).isEqualTo("net-xcore_streamed999");
-        assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_PREVIEW);
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(Screen.slots(MapUiController.SLOT_PREVIEW));
     }
 
     @Test
@@ -383,7 +472,7 @@ class MapUiControllerTest {
         assertThat(result.model().rtvVotes()).isEqualTo(3);
         assertThat(result.model().rtvVotesRequired()).isEqualTo(5);
         assertThat(result.model().rtvRemainingSeconds()).isEqualTo(24);
-        assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_RTV);
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(Screen.slots(MapUiController.SLOT_RTV));
     }
 
     @Test
@@ -398,7 +487,7 @@ class MapUiControllerTest {
         );
 
         assertThat(firstClick.model().adminForceConfirming()).isTrue();
-        assertThat(firstClick.dirtySlots()).containsExactly(MapUiController.SLOT_RTV);
+        assertThat(firstClick.dirtySlots()).containsExactlyElementsOf(Screen.slots(MapUiController.SLOT_RTV));
 
         // 2nd click: executes force switch and closes dialog
         ControllerContext ctx = mock(ControllerContext.class);
@@ -488,72 +577,6 @@ class MapUiControllerTest {
         // Prev page goes back to page 2
         UpdateResult<MapUiModel> prevResult = controller.update(page3, new MapUiEvent.PrevPage(), null);
         assertThat(prevResult.model().page()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("render in BROWSER mode resolves localized text via LocalizerResolver")
-    void render_browserMode_resolvesLocalizedText() {
-        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        MapUiModel model = createTestBrowserModel();
-
-        VNode root = controller.render(model);
-        LocalizerResolver resolver = (key, args) -> switch (key) {
-            case "commands-maps-title" -> "Карты";
-            case "map-ui-search-hint" -> "Поиск карты или автора...";
-            case "map-ui-prev" -> "< Назад";
-            case "map-ui-next" -> "Вперед >";
-            case "map-ui-page-info" -> "Страница " + args.get("page") + " из " + args.get("total");
-            case "map-ui-by" -> "от " + args.get("author");
-            case "close" -> "Закрыть";
-            default -> key;
-        };
-
-        VNodeCompiler compiler = new VNodeCompiler(resolver);
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        assertThat(dsl).contains("Карты");
-        assertThat(dsl).contains("Поиск карты или автора...");
-        assertThat(dsl).contains("< Назад");
-        assertThat(dsl).contains("Вперед >");
-        assertThat(dsl).contains("Страница 1 из 2");
-        assertThat(dsl).contains("от Anuke");
-        assertThat(dsl).contains("Закрыть");
-    }
-
-    @Test
-    @DisplayName("render in DETAILS mode resolves localized telemetry, actions, and back button")
-    void render_detailsMode_resolvesLocalizedTelemetryAndActions() {
-        MapUiController controller = new MapUiController(mapService, mapDataRepository, previewService, observerService, session);
-        MapUiModel model = createTestDetailsModel("map-1");
-
-        VNode root = controller.render(model);
-        LocalizerResolver resolver = (key, args) -> switch (key) {
-            case "map-ui-by" -> "от " + args.get("author");
-            case "map-ui-mode" -> "Режим: " + args.get("mode");
-            case "map-ui-dimensions" -> "Размеры: " + args.get("width") + " x " + args.get("height");
-            case "map-ui-col-duration" -> "ДЛИТЕЛЬНОСТЬ";
-            case "map-ui-col-popularity" -> "ПОПУЛЯРНОСТЬ";
-            case "map-ui-col-community" -> "СООБЩЕСТВО";
-            case "map-ui-btn-like" -> "👍 Нравится (" + args.get("count") + ")";
-            case "map-ui-btn-dislike" -> "👎 Не нравится (" + args.get("count") + ")";
-            case "map-ui-rtv-start" -> "ГОЛОСОВАНИЕ ЗА СМЕНУ КАРТЫ (RTV)";
-            case "map-maps-back" -> "← К списку карт";
-            default -> key;
-        };
-
-        VNodeCompiler compiler = new VNodeCompiler(resolver);
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        assertThat(dsl).contains("от Anuke");
-        assertThat(dsl).contains("Режим: Survival");
-        assertThat(dsl).contains("Размеры: 250 x 250");
-        assertThat(dsl).contains("ДЛИТЕЛЬНОСТЬ");
-        assertThat(dsl).contains("ПОПУЛЯРНОСТЬ");
-        assertThat(dsl).contains("СООБЩЕСТВО");
-        assertThat(dsl).contains("👍 Нравится (14)");
-        assertThat(dsl).contains("👎 Не нравится (2)");
-        assertThat(dsl).contains("ГОЛОСОВАНИЕ ЗА СМЕНУ КАРТЫ (RTV)");
-        assertThat(dsl).contains("← К списку карт");
     }
 
     @Test
@@ -686,7 +709,7 @@ class MapUiControllerTest {
         pending.complete(List.of(data));
         var result = controller.update(initial, new MapUiEvent.SummariesReady(), null);
         assertThat(result.model().displayedMaps().getFirst().likes()).isEqualTo(5);
-        assertThat(result.dirtySlots()).containsExactly(MapUiController.SLOT_MAP_TABLE);
+        assertThat(result.dirtySlots()).containsExactlyElementsOf(Screen.slots(MapUiController.SLOT_MAP_TABLE));
     }
 
     @Test
