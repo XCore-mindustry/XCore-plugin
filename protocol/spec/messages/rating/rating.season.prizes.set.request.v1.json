@@ -83,6 +83,11 @@
     },
     "actor": {
       "$ref": "urn:xcore:protocol:shared:types:actor-ref:v1"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     }
   }
 }

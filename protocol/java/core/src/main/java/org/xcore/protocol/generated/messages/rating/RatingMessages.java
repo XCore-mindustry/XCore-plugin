@@ -284,7 +284,8 @@ public final class RatingMessages {
             SeasonPrizeV1 prize,
             Integer placeFrom,
             Integer placeTo,
-            ActorRefV1 actor
+            ActorRefV1 actor,
+            String requestId
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "rating.season.prizes.set.request";
     public static final int MESSAGE_VERSION = 1;
@@ -313,6 +314,12 @@ public final class RatingMessages {
                 }
             }
             Objects.requireNonNull(actor, "actor must not be null");
+            if (requestId != null) {
+                Objects.requireNonNull(requestId, "requestId must not be null");
+                if (requestId.length() < 1) {
+                    throw new IllegalArgumentException("requestId must be at least 1 characters");
+                }
+            }
         }
 
         @Override
@@ -335,6 +342,9 @@ public final class RatingMessages {
                 payload.put("placeTo", placeTo);
             }
             payload.put("actor", actor.toPayload());
+            if (requestId != null) {
+                payload.put("requestId", requestId);
+            }
             return payload;
         }
     }
@@ -386,7 +396,8 @@ public final class RatingMessages {
             Integer extendSeconds,
             String endsAt,
             ActorRefV1 actor,
-            String reason
+            String reason,
+            String requestId
     ) implements ProtocolPayload {
     public static final String MESSAGE_TYPE = "rating.season.reschedule.request";
     public static final int MESSAGE_VERSION = 1;
@@ -413,6 +424,12 @@ public final class RatingMessages {
             if (reason != null) {
                 Objects.requireNonNull(reason, "reason must not be null");
             }
+            if (requestId != null) {
+                Objects.requireNonNull(requestId, "requestId must not be null");
+                if (requestId.length() < 1) {
+                    throw new IllegalArgumentException("requestId must be at least 1 characters");
+                }
+            }
         }
 
         @Override
@@ -434,6 +451,9 @@ public final class RatingMessages {
             payload.put("actor", actor.toPayload());
             if (reason != null) {
                 payload.put("reason", reason);
+            }
+            if (requestId != null) {
+                payload.put("requestId", requestId);
             }
             return payload;
         }

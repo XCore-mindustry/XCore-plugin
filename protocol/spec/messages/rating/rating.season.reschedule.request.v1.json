@@ -84,6 +84,11 @@
     },
     "reason": {
       "type": "string"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     }
   }
 }

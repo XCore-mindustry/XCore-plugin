@@ -434,6 +434,7 @@ class RatingSeasonPrizesSetRequestV1:
     prize: SeasonPrizeV1 | None = None
     placeFrom: int | None = None
     placeTo: int | None = None
+    requestId: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'rating.season.prizes.set.request'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -448,6 +449,8 @@ class RatingSeasonPrizesSetRequestV1:
         if self.placeTo is not None:
             _expect_int(self.placeTo, 'placeTo')
         _expect_instance(self.actor, 'actor', ActorRefV1)
+        if self.requestId is not None:
+            _expect_str(self.requestId, 'requestId')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonPrizesSetRequestV1":
@@ -455,7 +458,7 @@ class RatingSeasonPrizesSetRequestV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'actor')),
-            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'prize', 'placeFrom', 'placeTo', 'actor')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'prize', 'placeFrom', 'placeTo', 'actor', 'requestId')),
             model_name="RatingSeasonPrizesSetRequestV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -470,6 +473,7 @@ class RatingSeasonPrizesSetRequestV1:
             placeFrom=(_expect_int(mapping['placeFrom'], 'placeFrom') if 'placeFrom' in mapping else None),
             placeTo=(_expect_int(mapping['placeTo'], 'placeTo') if 'placeTo' in mapping else None),
             actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
+            requestId=(_expect_str(mapping['requestId'], 'requestId') if 'requestId' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -487,6 +491,8 @@ class RatingSeasonPrizesSetRequestV1:
         if self.placeTo is not None:
             payload['placeTo'] = self.placeTo
         payload['actor'] = self.actor.to_payload()
+        if self.requestId is not None:
+            payload['requestId'] = self.requestId
         return payload
 
 @dataclass(frozen=True, slots=True)
@@ -548,6 +554,7 @@ class RatingSeasonRescheduleRequestV1:
     extendSeconds: int | None = None
     endsAt: str | None = None
     reason: str | None = None
+    requestId: str | None = None
 
     MESSAGE_TYPE: ClassVar[str] = 'rating.season.reschedule.request'
     MESSAGE_VERSION: ClassVar[int] = 1
@@ -562,6 +569,8 @@ class RatingSeasonRescheduleRequestV1:
         _expect_instance(self.actor, 'actor', ActorRefV1)
         if self.reason is not None:
             _expect_str(self.reason, 'reason')
+        if self.requestId is not None:
+            _expect_str(self.requestId, 'requestId')
 
     @classmethod
     def from_payload(cls, payload: Mapping[str, Any]) -> "RatingSeasonRescheduleRequestV1":
@@ -569,7 +578,7 @@ class RatingSeasonRescheduleRequestV1:
         _expect_exact_keys(
             mapping,
             required=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'actor')),
-            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'extendSeconds', 'endsAt', 'actor', 'reason')),
+            allowed=frozenset(('messageType', 'messageVersion', 'server', 'ladder', 'operation', 'extendSeconds', 'endsAt', 'actor', 'reason', 'requestId')),
             model_name="RatingSeasonRescheduleRequestV1",
         )
         if mapping['messageType'] != cls.MESSAGE_TYPE:
@@ -584,6 +593,7 @@ class RatingSeasonRescheduleRequestV1:
             endsAt=(_expect_str(mapping['endsAt'], 'endsAt') if 'endsAt' in mapping else None),
             actor=ActorRefV1.from_payload(_expect_mapping(mapping['actor'], 'actor')),
             reason=(_expect_str(mapping['reason'], 'reason') if 'reason' in mapping else None),
+            requestId=(_expect_str(mapping['requestId'], 'requestId') if 'requestId' in mapping else None),
         )
 
     def to_payload(self) -> dict[str, Any]:
@@ -601,6 +611,8 @@ class RatingSeasonRescheduleRequestV1:
         payload['actor'] = self.actor.to_payload()
         if self.reason is not None:
             payload['reason'] = self.reason
+        if self.requestId is not None:
+            payload['requestId'] = self.requestId
         return payload
 
 @dataclass(frozen=True, slots=True)
