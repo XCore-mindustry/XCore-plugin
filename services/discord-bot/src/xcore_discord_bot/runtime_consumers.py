@@ -10,9 +10,19 @@ from redis.exceptions import RedisError
 from .contracts import (
     ChatGlobalV1,
     ChatMessageV1,
+    RatingSeasonEndedV1,
+    RatingSeasonEndingSoonV1,
+    RatingSeasonRescheduledV1,
+    RatingSeasonStartedV1,
     ServerHeartbeatV1,
 )
 from .handlers_moderation import post_ban_log, post_mute_log, post_vote_kick_log
+from .handlers_seasons import (
+    on_season_ended,
+    on_season_ending_soon,
+    on_season_rescheduled,
+    on_season_started,
+)
 from .retry import retry_reconnect_bus
 from .service_protocols import ConsumerRecoveryService, PlayerLookupService
 
@@ -238,6 +248,42 @@ async def consume_vote_kicks(bot: XCoreDiscordBot) -> None:
 
     await run_consumer_forever(
         bot, "Vote-kick", bot.consume_vote_kicks_stream, dispatch
+    )
+
+
+async def consume_season_started(bot: XCoreDiscordBot) -> None:
+    async def dispatch(event: RatingSeasonStartedV1) -> None:
+        await on_season_started(bot, event)
+
+    await run_consumer_forever(
+        bot, "Season started", bot.consume_season_started_stream, dispatch
+    )
+
+
+async def consume_season_ending_soon(bot: XCoreDiscordBot) -> None:
+    async def dispatch(event: RatingSeasonEndingSoonV1) -> None:
+        await on_season_ending_soon(bot, event)
+
+    await run_consumer_forever(
+        bot, "Season ending soon", bot.consume_season_ending_soon_stream, dispatch
+    )
+
+
+async def consume_season_ended(bot: XCoreDiscordBot) -> None:
+    async def dispatch(event: RatingSeasonEndedV1) -> None:
+        await on_season_ended(bot, event)
+
+    await run_consumer_forever(
+        bot, "Season ended", bot.consume_season_ended_stream, dispatch
+    )
+
+
+async def consume_season_rescheduled(bot: XCoreDiscordBot) -> None:
+    async def dispatch(event: RatingSeasonRescheduledV1) -> None:
+        await on_season_rescheduled(bot, event)
+
+    await run_consumer_forever(
+        bot, "Season rescheduled", bot.consume_season_rescheduled_stream, dispatch
     )
 
 

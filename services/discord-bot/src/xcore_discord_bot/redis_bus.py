@@ -17,6 +17,13 @@ from xcore_protocol.generated.maps import (
     MapsRemoveRequestV1,
     MapsRemoveResponseV1,
 )
+from xcore_protocol.generated.rating import (
+    RatingAccountsMergeResponseV1,
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetResponseV1,
+    RatingSeasonRescheduleRequestV1Operation,
+    RatingSeasonRescheduleResponseV1,
+)
 from xcore_protocol.generated.sentinel import (
     SentinelSubnetRulesCheckRequestV1,
     SentinelSubnetRulesCheckResponseV1,
@@ -25,7 +32,11 @@ from xcore_protocol.generated.sentinel import (
     SentinelSubnetRulesListResponseV1,
     SentinelSubnetRulesResponseV1,
 )
-from xcore_protocol.generated.shared import ActorRefV1ActorType, MapEntryV1
+from xcore_protocol.generated.shared import (
+    ActorRefV1ActorType,
+    MapEntryV1,
+    SeasonPrizeV1,
+)
 
 from .contracts import (
     ChatGlobalV1,
@@ -35,6 +46,10 @@ from .contracts import (
     ModerationMuteCreatedV1,
     ModerationVoteKickCreatedV1,
     PlayerJoinLeaveV1,
+    RatingSeasonEndedV1,
+    RatingSeasonEndingSoonV1,
+    RatingSeasonRescheduledV1,
+    RatingSeasonStartedV1,
     ServerActionV1,
     ServerHeartbeatV1,
     parse_ban_payload,
@@ -43,6 +58,10 @@ from .contracts import (
     parse_global_chat_payload,
     parse_mute_payload,
     parse_player_join_leave_payload,
+    parse_season_ended_payload,
+    parse_season_ending_soon_payload,
+    parse_season_rescheduled_payload,
+    parse_season_started_payload,
     parse_server_action_payload,
     parse_server_heartbeat_payload,
     parse_vote_kick_payload,
@@ -60,6 +79,11 @@ from .protocol_outbound import (
     build_player_active_badge_changed_command,
     build_player_badge_inventory_changed_command,
     build_player_password_reset_command,
+    build_prize_delivered_request,
+    build_ratings_merge_request,
+    build_season_prize_add_request,
+    build_season_prize_remove_request,
+    build_season_reschedule_request,
     build_sentinel_subnet_rules_check_request,
     build_sentinel_subnet_rules_command,
     build_sentinel_subnet_rules_list_request,
@@ -77,6 +101,27 @@ MAXLEN_DLQ = 100_000
 RECLAIM_INTERVAL_SEC = 10
 RECLAIM_MIN_IDLE_MS = 15_000
 MAX_ATTEMPTS_EVT = 5
+
+
+class RpcError(RuntimeError):
+    """A server answered an RPC request with an error."""
+
+    def __init__(self, rpc_type: str, error_code: str, error_message: str) -> None:
+        super().__init__(f"RPC {rpc_type} failed [{error_code}]: {error_message}")
+        self.rpc_type = rpc_type
+        self.error_code = error_code
+        self.error_message = error_message
+
+
+class RpcRejected(RpcError):
+    """The server understood an RPC request and refused it; retrying elsewhere cannot help."""
+
+
+class RpcFailed(RpcError):
+    """The server could not carry an RPC request out; another server or a later try may."""
+
+
+REJECTED_ERROR_CODE = "REJECTED"
 
 
 class RedisBus:
@@ -273,6 +318,46 @@ class RedisBus:
             stream="xcore:evt:discord:link-status",
             group_suffix="discord-link-status",
             parse_payload=parse_discord_link_status_payload,
+            callback=callback,
+        )
+
+    async def consume_season_started(
+        self, callback: Callable[[RatingSeasonStartedV1], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:rating:season-started",
+            group_suffix="discord-season-started",
+            parse_payload=parse_season_started_payload,
+            callback=callback,
+        )
+
+    async def consume_season_ending_soon(
+        self, callback: Callable[[RatingSeasonEndingSoonV1], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:rating:season-ending-soon",
+            group_suffix="discord-season-ending-soon",
+            parse_payload=parse_season_ending_soon_payload,
+            callback=callback,
+        )
+
+    async def consume_season_ended(
+        self, callback: Callable[[RatingSeasonEndedV1], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:rating:season-ended",
+            group_suffix="discord-season-ended",
+            parse_payload=parse_season_ended_payload,
+            callback=callback,
+        )
+
+    async def consume_season_rescheduled(
+        self, callback: Callable[[RatingSeasonRescheduledV1], Awaitable[None]]
+    ) -> None:
+        await self._consume_events(
+            stream="xcore:evt:rating:season-rescheduled",
+            group_suffix="discord-season-rescheduled",
+            parse_payload=parse_season_rescheduled_payload,
             callback=callback,
         )
 
@@ -868,6 +953,152 @@ class RedisBus:
             json.loads(body.get("payload_json", "{}"))
         )
 
+    async def rpc_season_reschedule(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        operation: RatingSeasonRescheduleRequestV1Operation,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+        extend_seconds: int | None = None,
+        ends_at: str | None = None,
+        reason: str | None = None,
+        request_id: str | None = None,
+    ) -> RatingSeasonRescheduleResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.season.reschedule.request",
+            payload=build_season_reschedule_request(
+                server=server,
+                ladder=ladder,
+                operation=operation,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                extend_seconds=extend_seconds,
+                ends_at=ends_at,
+                reason=reason,
+                request_id=request_id,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingSeasonRescheduleResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_ratings_merge(
+        self,
+        *,
+        server: str,
+        source_uuid: str,
+        target_uuid: str,
+        timeout_ms: int,
+    ) -> RatingAccountsMergeResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.accounts.merge.request",
+            payload=build_ratings_merge_request(
+                server=server,
+                source_uuid=source_uuid,
+                target_uuid=target_uuid,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingAccountsMergeResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_season_prize_add(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        prize: SeasonPrizeV1,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+        request_id: str | None = None,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.season.prizes.set.request",
+            payload=build_season_prize_add_request(
+                server=server,
+                ladder=ladder,
+                prize=prize,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                request_id=request_id,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingSeasonPrizesSetResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_season_prize_remove(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+        request_id: str | None = None,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.season.prizes.set.request",
+            payload=build_season_prize_remove_request(
+                server=server,
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                request_id=request_id,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingSeasonPrizesSetResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
+    async def rpc_prize_delivered(
+        self,
+        *,
+        server: str,
+        ladder: str,
+        season: int,
+        place: int,
+        discord_id: str,
+        actor_name: str,
+        note: str | None,
+        timeout_ms: int,
+        player_pid: int | None = None,
+    ) -> RatingPrizeGrantUpdateResponseV1:
+        body = await self._rpc_request(
+            server=server,
+            rpc_type="rating.prize.grant.update.request",
+            payload=build_prize_delivered_request(
+                server=server,
+                ladder=ladder,
+                season=season,
+                place=place,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                note=note,
+                player_pid=player_pid,
+            ).to_payload(),
+            timeout_ms=timeout_ms,
+        )
+        return RatingPrizeGrantUpdateResponseV1.from_payload(
+            json.loads(body.get("payload_json", "{}"))
+        )
+
     async def _publish_for_all_servers(
         self,
         *,
@@ -989,9 +1220,12 @@ class RedisBus:
                     if status != "ok":
                         error_code = body.get("error_code", "UNKNOWN")
                         error_message = body.get("error_message", "unknown rpc error")
-                        raise RuntimeError(
-                            f"RPC {rpc_type} failed [{error_code}]: {error_message}"
+                        # Only an explicit refusal is final; anything else, such as the
+                        # plugin's FAILED for a storage error, is worth another try.
+                        error_type = (
+                            RpcRejected if error_code == REJECTED_ERROR_CODE else RpcFailed
                         )
+                        raise error_type(rpc_type, error_code, error_message)
                     return body
 
     async def _ensure_group(self, stream: str, group: str) -> None:

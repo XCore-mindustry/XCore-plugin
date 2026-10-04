@@ -20,7 +20,6 @@ class PlayerRecord:
     language: str | None = None
     translator_language: str | None = None
     total_play_time: int = 0
-    pvp_rating: int = 0
     hexed_rank: int = 0
     hexed_points: int = 0
     leaderboard: bool = True
@@ -106,3 +105,7 @@ class AccountMergeResult:
     tombstone_pid: int | None = None
     discord_link_moved: bool = False
     discord_link_conflict: bool = False
+    # None: nothing to move or not attempted. Otherwise whether the rating standings moved.
+    ratings_merged: bool | None = None
+    ratings_pending: bool = False
+    ratings_error: str | None = None

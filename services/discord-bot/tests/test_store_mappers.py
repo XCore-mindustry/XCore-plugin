@@ -18,7 +18,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
             "local_language": "  ru  ",
             "translator_language": "  uk  ",
             "total_play_time": "15",
-            "pvp_rating": None,
             "hexed_rank": "3",
             "hexed_points": "9",
             "leaderboard": "0",
@@ -40,7 +39,6 @@ def test_player_record_from_doc_normalizes_dirty_values() -> None:
     assert record.language == "ru"
     assert record.translator_language == "uk"
     assert record.total_play_time == 15
-    assert record.pvp_rating == 0
     assert record.hexed_rank == 3
     assert record.hexed_points == 9
     assert record.leaderboard is False
@@ -60,7 +58,6 @@ def test_player_record_from_doc_uses_safe_defaults() -> None:
     assert record.nickname == "Unknown"
     assert record.uuid is None
     assert record.total_play_time == 0
-    assert record.pvp_rating == 0
     assert record.description is None
     assert record.language is None
     assert record.translator_language is None

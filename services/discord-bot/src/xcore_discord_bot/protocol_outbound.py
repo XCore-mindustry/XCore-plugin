@@ -24,6 +24,15 @@ from xcore_protocol.generated.moderation import (
     ModerationKickBannedCommandV1,
     ModerationPardonCommandV1,
 )
+from xcore_protocol.generated.rating import (
+    RatingAccountsMergeRequestV1,
+    RatingPrizeGrantUpdateRequestV1,
+    RatingPrizeGrantUpdateRequestV1Status,
+    RatingSeasonPrizesSetRequestV1,
+    RatingSeasonPrizesSetRequestV1Operation,
+    RatingSeasonRescheduleRequestV1,
+    RatingSeasonRescheduleRequestV1Operation,
+)
 from xcore_protocol.generated.security import (
     PlayerPasswordResetCommandV1,
 )
@@ -40,6 +49,7 @@ from xcore_protocol.generated.shared import (
     MapFileSourceV1,
     PlayerCommandTargetV1,
     PlayerRefV1,
+    SeasonPrizeV1,
 )
 
 
@@ -301,3 +311,116 @@ def build_maps_remove_request(
         server=server,
         fileName=file_name,
     )
+
+
+def build_season_reschedule_request(
+    *,
+    server: str,
+    ladder: str,
+    operation: RatingSeasonRescheduleRequestV1Operation,
+    discord_id: str,
+    actor_name: str,
+    extend_seconds: int | None = None,
+    ends_at: str | None = None,
+    reason: str | None = None,
+    request_id: str | None = None,
+) -> RatingSeasonRescheduleRequestV1:
+    return RatingSeasonRescheduleRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=operation,
+        actor=ActorRefV1(
+            actorName=actor_name,
+            actorDiscordId=str(discord_id),
+            actorType=ActorRefV1ActorType.DISCORD,
+        ),
+        extendSeconds=extend_seconds,
+        endsAt=ends_at,
+        reason=reason or None,
+        requestId=request_id,
+    )
+
+
+def build_ratings_merge_request(
+    *,
+    server: str,
+    source_uuid: str,
+    target_uuid: str,
+) -> RatingAccountsMergeRequestV1:
+    return RatingAccountsMergeRequestV1(
+        server=server,
+        sourceUuid=source_uuid,
+        targetUuid=target_uuid,
+    )
+
+
+def _discord_actor(discord_id: str, actor_name: str) -> ActorRefV1:
+    return ActorRefV1(
+        actorName=actor_name,
+        actorDiscordId=str(discord_id),
+        actorType=ActorRefV1ActorType.DISCORD,
+    )
+
+
+def build_season_prize_add_request(
+    *,
+    server: str,
+    ladder: str,
+    prize: SeasonPrizeV1,
+    discord_id: str,
+    actor_name: str,
+    request_id: str | None = None,
+) -> RatingSeasonPrizesSetRequestV1:
+    return RatingSeasonPrizesSetRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=RatingSeasonPrizesSetRequestV1Operation.ADD,
+        prize=prize,
+        actor=_discord_actor(discord_id, actor_name),
+        requestId=request_id,
+    )
+
+
+def build_season_prize_remove_request(
+    *,
+    server: str,
+    ladder: str,
+    place_from: int,
+    place_to: int,
+    discord_id: str,
+    actor_name: str,
+    request_id: str | None = None,
+) -> RatingSeasonPrizesSetRequestV1:
+    return RatingSeasonPrizesSetRequestV1(
+        server=server,
+        ladder=ladder,
+        operation=RatingSeasonPrizesSetRequestV1Operation.REMOVE,
+        placeFrom=place_from,
+        placeTo=place_to,
+        actor=_discord_actor(discord_id, actor_name),
+        requestId=request_id,
+    )
+
+
+def build_prize_delivered_request(
+    *,
+    server: str,
+    ladder: str,
+    season: int,
+    place: int,
+    discord_id: str,
+    actor_name: str,
+    note: str | None = None,
+    player_pid: int | None = None,
+) -> RatingPrizeGrantUpdateRequestV1:
+    return RatingPrizeGrantUpdateRequestV1(
+        server=server,
+        ladder=ladder,
+        season=season,
+        place=place,
+        playerPid=player_pid,
+        status=RatingPrizeGrantUpdateRequestV1Status.DELIVERED,
+        actor=_discord_actor(discord_id, actor_name),
+        note=note or None,
+    )
+

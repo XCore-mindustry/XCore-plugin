@@ -44,6 +44,7 @@ async def test_autocomplete_badge_id_returns_all_grantable_badges_for_empty_quer
         "bug-finder",
         "event-winner",
         "veteran",
+        "season-champion",
     ]
 
 

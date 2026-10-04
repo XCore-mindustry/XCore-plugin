@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         default=0,
         validation_alias="DISCORD_VOTEKICKS_CHANNEL_ID",
     )  # 0 = disabled
+    discord_seasons_channel_id: int = Field(
+        default=0,
+        validation_alias="DISCORD_SEASONS_CHANNEL_ID",
+    )  # 0 = disabled
     discord_guild_id: int = Field(
         default=0,
         validation_alias="DISCORD_GUILD_ID",

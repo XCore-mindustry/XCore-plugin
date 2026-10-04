@@ -149,7 +149,6 @@ def _merge_account_summary(player: PlayerRecord) -> str:
     return (
         f"Nickname: `{player.nickname}`\n"
         f"Playtime: `{format_minutes(player.total_play_time)}`\n"
-        f"PvP rating: `{player.pvp_rating}`\n"
         f"Hexed points: `{player.hexed_points}`\n"
         f"Badges: `{len(player.unlocked_badges)}`\n"
         f"Discord: `{player.discord_username or 'not linked'}`"
@@ -209,7 +208,6 @@ def build_merge_preview_embed(
         name="📊 Result after merge",
         value=(
             f"Total playtime: `{format_minutes(source.total_play_time + target.total_play_time)}`\n"
-            f"PvP rating: `{max(source.pvp_rating, target.pvp_rating)}`\n"
             f"Hexed points: `{source.hexed_points + target.hexed_points}`\n"
             f"Badges: `{combined_badges}`"
         ),
@@ -258,8 +256,6 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
             value=(
                 f"Playtime: `{format_minutes(source.total_play_time)}` "
                 f"(total `{format_minutes(target_after.total_play_time)}`)\n"
-                f"PvP rating: `{source.pvp_rating}` vs `{target_before.pvp_rating}` "
-                f"-> `{target_after.pvp_rating}`\n"
                 f"Hexed points: `+{source.hexed_points}` "
                 f"(total `{target_after.hexed_points}`)\n"
                 f"Badges: `{len(target_after.unlocked_badges)}` unlocked\n"
@@ -279,6 +275,18 @@ def build_merge_result_embed(result: AccountMergeResult) -> discord.Embed:
         warnings.append(
             "Both accounts were linked to a different Discord user; "
             "the surviving account kept its own link."
+        )
+    if result.ratings_merged:
+        warnings.append("Season ratings moved to the surviving account.")
+    elif result.ratings_pending:
+        warnings.append(
+            "Season ratings could not be moved right now (no game server answered). "
+            "The bot will keep retrying until they are."
+        )
+    elif result.ratings_error:
+        warnings.append(
+            "Season ratings were NOT moved: "
+            f"{result.ratings_error}. Move them manually."
         )
     if warnings:
         embed.add_field(name="⚠️ Notes", value="\n".join(warnings), inline=False)

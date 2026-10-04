@@ -14,7 +14,7 @@ from discord.abc import Messageable
 from discord.ext import commands
 from xcore_protocol.generated.shared import ActorRefV1ActorType
 
-from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SubnetCog
+from .cogs import AdminCog, InfoCog, LinkingCog, MapsCog, SeasonsCog, SubnetCog
 from .dto import (
     MERGE_KEEP_PID_TARGET,
     AccountMergeResult,
@@ -156,6 +156,13 @@ class XCoreDiscordBot(commands.Bot):
         if settings is None:
             return 0
         return settings.discord_votekicks_channel_id
+
+    @property
+    def seasons_channel_id(self) -> int:
+        settings = getattr(self, "_settings", None)
+        if settings is None:
+            return 0
+        return settings.discord_seasons_channel_id
 
     async def autocomplete_players(
         self,
@@ -357,7 +364,7 @@ class XCoreDiscordBot(commands.Bot):
         reason: str,
         keep_pid: str = MERGE_KEEP_PID_TARGET,
     ) -> AccountMergeResult:
-        result = await self._store.merge_player_accounts(
+        return await self._ensure_container().players.merge_player_accounts(
             source_pid=source_pid,
             target_pid=target_pid,
             actor_name=actor_name,
@@ -365,12 +372,6 @@ class XCoreDiscordBot(commands.Bot):
             reason=reason,
             keep_pid=keep_pid,
         )
-        if result.success and result.source_before and result.source_before.uuid:
-            await self._bus.publish_kick_banned(
-                uuid_value=result.source_before.uuid,
-                ip=None,
-            )
-        return result
 
     async def grant_badge(self, *, uuid: str, badge_id: str) -> bool:
         return await self._store.grant_badge(uuid=uuid, badge_id=badge_id)
@@ -839,12 +840,33 @@ class XCoreDiscordBot(commands.Bot):
     ) -> None:
         await self._bus.consume_discord_link_status_changed(callback)
 
+    async def consume_season_started_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_season_started(callback)
+
+    async def consume_season_ending_soon_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_season_ending_soon(callback)
+
+    async def consume_season_ended_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_season_ended(callback)
+
+    async def consume_season_rescheduled_stream(
+        self, callback: Callable[..., Awaitable[None]]
+    ) -> None:
+        await self._bus.consume_season_rescheduled(callback)
+
     async def setup_hook(self) -> None:
         await self.add_cog(InfoCog(self))
         await self.add_cog(AdminCog(self))
         await self.add_cog(LinkingCog(self))
         await self.add_cog(MapsCog(self))
         await self.add_cog(SubnetCog(self))
+        await self.add_cog(SeasonsCog(self))
 
         @self.tree.error
         async def _on_app_command_error(
@@ -859,6 +881,7 @@ class XCoreDiscordBot(commands.Bot):
         self._ensure_container().stream_supervisor.start()
         self._ensure_container().presence_daemon.start()
         self._ensure_container().admin_sync_daemon.start()
+        self._ensure_container().rating_merge_daemon.start()
 
         await self._sync_application_commands()
 
@@ -956,6 +979,7 @@ class XCoreDiscordBot(commands.Bot):
         if hasattr(self, "container"):
             self.container.presence_daemon.stop()
             self.container.admin_sync_daemon.stop()
+            self.container.rating_merge_daemon.stop()
             await self.container.stream_supervisor.stop()
 
         await self._bus.close()

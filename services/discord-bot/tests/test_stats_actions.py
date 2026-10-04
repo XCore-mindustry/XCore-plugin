@@ -90,7 +90,6 @@ class _Store:
             hexed_rank=0,
             hexed_points=0,
             total_play_time=10,
-            pvp_rating=1000,
             leaderboard=False,
             unlocked_badges=("developer", "translator"),
             active_badge="translator",

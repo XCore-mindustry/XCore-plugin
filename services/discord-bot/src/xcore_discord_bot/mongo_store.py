@@ -69,7 +69,6 @@ class PlayerDoc(_MongoDoc):
     hexed_rank: int | None = None
     hexed_points: int | None = None
     total_play_time: int | None = None
-    pvp_rating: int | None = None
     leaderboard: bool | None = None
     unlocked_badges: list[str] | None = None
     active_badge: str | None = None
@@ -689,6 +688,11 @@ class MongoStore:
     def now_utc() -> datetime:
         return datetime.now(UTC)
 
+    @property
+    def database(self) -> AsyncIOMotorDatabase:
+        """The connected database, for stores that read collections this one does not own."""
+        return self._db_required()
+
     def _db_required(self) -> AsyncIOMotorDatabase:
         if self._db is None:
             raise RuntimeError("MongoStore is not connected")
@@ -793,10 +797,6 @@ class MongoStore:
         total_play_time = _to_int(target_raw.get("total_play_time")) + _to_int(
             source_raw.get("total_play_time")
         )
-        pvp_rating = max(
-            _to_int(target_raw.get("pvp_rating")),
-            _to_int(source_raw.get("pvp_rating")),
-        )
         hexed_points = _to_int(target_raw.get("hexed_points")) + _to_int(
             source_raw.get("hexed_points")
         )
@@ -876,7 +876,6 @@ class MongoStore:
         target_updates: dict[str, Any] = {
             "pid": surviving_pid,
             "total_play_time": total_play_time,
-            "pvp_rating": pvp_rating,
             "hexed_points": hexed_points,
             "hexed_rank": hexed_rank,
             "unlocked_badges": unlocked_badges,

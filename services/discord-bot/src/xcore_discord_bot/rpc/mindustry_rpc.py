@@ -1,13 +1,185 @@
 from __future__ import annotations
 
-from typing import Any
+import uuid
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
-from ..redis_bus import RedisBus
+from xcore_protocol.generated.rating import (
+    RatingAccountsMergeResponseV1,
+    RatingPrizeGrantUpdateResponseV1,
+    RatingSeasonPrizesSetResponseV1,
+    RatingSeasonRescheduleRequestV1Operation,
+    RatingSeasonRescheduleResponseV1,
+)
+from xcore_protocol.generated.shared import SeasonPrizeV1
+
+from ..redis_bus import RedisBus, RpcFailed
+from ..registry import server_registry
+
+T = TypeVar("T")
+
+# A dead server stays in the registry until its heartbeat times out; do not wait out
+# every one of them before giving up.
+MAX_SERVERS_TRIED = 3
+
+
+class NoLiveServerError(RuntimeError):
+    """No Mindustry server is online to carry out a request that any server can answer."""
 
 
 class MindustryRpcClient:
     def __init__(self, bus: RedisBus) -> None:
         self._bus = bus
+
+    async def on_any_live_server(self, call: Callable[[str], Awaitable[T]]) -> T:
+        """Runs ``call`` against a live server, trying the next one when a server stays
+        silent or says it could not carry the request out.
+
+        For requests whose answer lives in shared storage and so does not depend on which
+        server gives it. A server that answers with a refusal ends the attempt: another
+        server would refuse for the same reason.
+
+        A silent server may still apply the request after the next one was asked, so a
+        change that must not happen twice has to carry a request id (see ``_request_id``),
+        which makes every server but the first refuse it.
+        """
+        names = sorted(
+            (server.name for server in server_registry.get_all_servers()),
+            key=str.lower,
+        )[:MAX_SERVERS_TRIED]
+        if not names:
+            raise NoLiveServerError(
+                "No Mindustry server is online to carry out this request."
+            )
+        last_error: TimeoutError | RpcFailed | None = None
+        for name in names:
+            try:
+                return await call(name)
+            except (TimeoutError, RpcFailed) as error:
+                last_error = error
+        assert last_error is not None
+        raise last_error
+
+    @staticmethod
+    def _request_id() -> str:
+        """One id per administrator action, repeated on every server that is tried."""
+        return str(uuid.uuid4())
+
+    async def reschedule_season(
+        self,
+        *,
+        ladder: str,
+        operation: RatingSeasonRescheduleRequestV1Operation,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+        extend_seconds: int | None = None,
+        ends_at: str | None = None,
+        reason: str | None = None,
+    ) -> RatingSeasonRescheduleResponseV1:
+        request_id = self._request_id()
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_season_reschedule(
+                server=server,
+                ladder=ladder,
+                operation=operation,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                timeout_ms=timeout_ms,
+                extend_seconds=extend_seconds,
+                ends_at=ends_at,
+                reason=reason,
+                request_id=request_id,
+            )
+        )
+
+    async def add_season_prize(
+        self,
+        *,
+        ladder: str,
+        prize: SeasonPrizeV1,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        request_id = self._request_id()
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_season_prize_add(
+                server=server,
+                ladder=ladder,
+                prize=prize,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                timeout_ms=timeout_ms,
+                request_id=request_id,
+            )
+        )
+
+    async def remove_season_prizes(
+        self,
+        *,
+        ladder: str,
+        place_from: int,
+        place_to: int,
+        discord_id: str,
+        actor_name: str,
+        timeout_ms: int,
+    ) -> RatingSeasonPrizesSetResponseV1:
+        request_id = self._request_id()
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_season_prize_remove(
+                server=server,
+                ladder=ladder,
+                place_from=place_from,
+                place_to=place_to,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                timeout_ms=timeout_ms,
+                request_id=request_id,
+            )
+        )
+
+    async def mark_prize_delivered(
+        self,
+        *,
+        ladder: str,
+        season: int,
+        place: int,
+        discord_id: str,
+        actor_name: str,
+        note: str | None,
+        timeout_ms: int,
+        player_pid: int | None = None,
+    ) -> RatingPrizeGrantUpdateResponseV1:
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_prize_delivered(
+                server=server,
+                ladder=ladder,
+                season=season,
+                place=place,
+                discord_id=discord_id,
+                actor_name=actor_name,
+                note=note,
+                timeout_ms=timeout_ms,
+                player_pid=player_pid,
+            )
+        )
+
+    async def merge_ratings(
+        self,
+        *,
+        source_uuid: str,
+        target_uuid: str,
+        timeout_ms: int,
+    ) -> RatingAccountsMergeResponseV1:
+        return await self.on_any_live_server(
+            lambda server: self._bus.rpc_ratings_merge(
+                server=server,
+                source_uuid=source_uuid,
+                target_uuid=target_uuid,
+                timeout_ms=timeout_ms,
+            )
+        )
 
     async def rpc_subnet_rules_command(self, **kwargs: Any) -> Any:
         return await self._bus.rpc_subnet_rules_command(**kwargs)
