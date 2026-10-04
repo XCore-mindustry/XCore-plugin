@@ -15,11 +15,12 @@ import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.service.PlayerDisplayService;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
-import org.xcore.ui.Text;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
-import org.xcore.ui.responsive.DialogMetrics;
-import org.xcore.ui.responsive.Responsive;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
@@ -36,13 +37,16 @@ import java.util.Objects;
 import java.util.Set;
 
 import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.ui.kit.Kit.GAP;
 
 /**
- * Modern reactive Player Profile and Stats UI controller for Mindustry v160 using xcore-ui.
+ * A player's profile ({@code /stats}) and the list of who is online ({@code /players}) as tabs of
+ * one dialog: who the player is, what the modes say about them, their figures, and the players
+ * on the server as rows that open their profiles. Laid out once per {@link Screen}.
  */
 public class PlayerProfileUiController implements UiController<PlayerProfileUiController.ProfileModel, PlayerProfileUiController.ProfileEvent> {
 
-    public static final int PLAYERS_PER_PAGE = 5;
+    public static final int PLAYERS_PER_PAGE = 8;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.systemDefault());
@@ -76,7 +80,10 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     ) {}
 
     public record ProfileModel(
+            // Viewer identity
             String viewerUuid,
+
+            // Target Player Identity
             String targetUuid,
             int pid,
             String username,
@@ -91,16 +98,22 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
             String badgeSymbolColorMode,
             Set<String> unlockedBadges,
             String playerColorHex,
+
+            // Gamemode Progression & Stats
             List<ProfileSectionView> sections,
             int hexedPoints,
             HexedRank hexedRank,
             Integer hexedTopRank,
             PlayerStatsOverview stats,
             boolean isStatsLoading,
+
+            // Viewer & Context
             boolean isSelf,
             boolean isViewerAdmin,
             Tab tab,
             boolean viewingFromPlayersTab,
+
+            // Players Tab State
             AdminFilter adminFilter,
             int playersPage,
             int totalOnlineCount,
@@ -115,6 +128,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, "");
         }
 
+        /** What has been read about the target so far, {@code null} while it is still loading. */
         public ProfileDetails details() {
             return isStatsLoading ? null : new ProfileDetails(stats, hexedTopRank, sections);
         }
@@ -127,8 +141,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
                     viewingFromPlayersTab, adminFilter, playersPage, totalOnlineCount, onlinePlayers, feedbackMessage);
         }
 
+        /** @param details what is already loaded about {@code target}, {@code null} while it is being read */
         public ProfileModel withTarget(PlayerData target, boolean isOnline, String colorHex,
-                                       ProfileDetails details, boolean fromPlayersTab) {
+                                      ProfileDetails details, boolean fromPlayersTab) {
             Objects.requireNonNull(target, "target");
             return new ProfileModel(
                     viewerUuid,
@@ -245,6 +260,7 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         this.initialTargetData = targetData;
     }
 
+    /** @param details what is already loaded about the target, {@code null} while it is being read */
     public ProfileModel createInitialModel(Tab tab, ProfileDetails details) {
         return createModel(session, initialTargetData, tab, details, sessionService, playerDisplayService);
     }
@@ -306,9 +322,9 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
     }
 
     public static List<OnlinePlayerRow> resolveOnlinePlayers(Session viewerSession,
-                                                             SessionService sessionService,
-                                                             PlayerDisplayService playerDisplayService,
-                                                             AdminFilter filter) {
+                                                            SessionService sessionService,
+                                                            PlayerDisplayService playerDisplayService,
+                                                            AdminFilter filter) {
         if (sessionService == null) return List.of();
         return sessionService.streamCached()
                 .filter(s -> s != null && s.data != null && s.player != null)
@@ -606,144 +622,149 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         return new ProfileEvent.Close();
     }
 
-    private DialogMetrics metrics() {
-        return DialogMetrics.standard();
-    }
-
     @Override
     public VNode render(ProfileModel model) {
-        DialogMetrics metrics = metrics();
+        return Screen.each(screen -> window(model, screen));
+    }
+
+    /** The window as one {@link Screen} sees it. */
+    VNode window(ProfileModel model, Screen screen) {
+        float width = screen.width();
         Localization local = session != null ? session.locale() : null;
+        boolean players = model.tab() == Tab.PLAYERS;
 
-        return Ui.table(t -> {
-            t.background("pane");
-            t.margin(8f);
-            t.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+        return Kit.window(window -> {
+            String title = "[orange]" + Iconc.players + "[] [white]"
+                    + t(local, players ? "player-menu-players-title" : "player-stats-title") + "[]";
+            String status = players ? ""
+                    : "\n" + identity(model, local, width - 2f * Kit.MARGIN) + "  "
+                    + t(local, model.isTargetOnline() ? "player-stats-status-online" : "player-stats-status-offline");
+            window.add(Kit.header(width, title + status)).row();
 
-            // Header
-            t.add(Ui.table(h -> {
-                h.layout(l -> l.growX().padBottom(4f));
+            window.add(Kit.tabs(width, "profile_tabs", List.of(
+                    new Kit.Tab(Iconc.admin, t(local, "player-stats-tab-overview"), "action:tab:overview",
+                            accent(Tab.OVERVIEW), model.tab() == Tab.OVERVIEW),
+                    new Kit.Tab(Iconc.chartBar, t(local, "player-stats-tab-stats"), "action:tab:stats",
+                            accent(Tab.STATS), model.tab() == Tab.STATS),
+                    new Kit.Tab(Iconc.players, local != null
+                            ? local.t("player-stats-tab-players", args("count", model.totalOnlineCount()))
+                            : "Online (" + model.totalOnlineCount() + ")", "action:tab:players",
+                            accent(Tab.PLAYERS), players)))).row();
+            window.add(Kit.line(width, accent(model.tab()))).row();
 
-                h.add(Ui.table(topRow -> {
-                    topRow.layout(l -> l.growX());
-                    topRow.label(Text.raw("[orange]" + Iconc.players + "[] [white]"), l -> l.align("left"));
-                    String headerTitle = model.tab() == Tab.PLAYERS
-                            ? (local != null ? local.t("player-menu-players-title") : "Online Players")
-                            : (local != null ? local.t("player-stats-title") : "Player Profile");
-                    topRow.label(Text.raw(headerTitle), l -> l.align("left").growX());
-                    topRow.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
-                            .style("cleart")
-                            .layout(l -> l.size(32f)));
-                })).row();
-
-                if (model.tab() != Tab.PLAYERS) {
-                    h.add(Ui.table(subRow -> {
-                        subRow.layout(l -> l.growX().padTop(2f));
-                        String statusText = model.isTargetOnline()
-                                ? (local != null ? local.t("player-stats-status-online") : "[lime]● Online[]")
-                                : (local != null ? local.t("player-stats-status-offline") : "[gray]○ Offline[]");
-                        subRow.label(Text.raw(statusText), l -> l.align("left").growX());
-
-                        if (model.isSelf() || model.isViewerAdmin()) {
-                            subRow.button(Text.raw("[accent]" + Iconc.admin + " " + (local != null ? local.t("player-stats-btn-settings") : "Settings") + "[]"),
-                                    "action:settings", b -> b.style("cleart").layout(l -> l.padRight(6f)));
-                        }
-                        if (model.isViewerAdmin()) {
-                            subRow.button(Text.raw("[gray]" + (local != null ? local.t("player-stats-btn-audit") : "Audit") + "[]"),
-                                    "action:audit_history", b -> b.style("cleart").layout(l -> l.padRight(6f)));
-                            subRow.button(Text.raw("[gray]" + (local != null ? local.t("audit-menu-actions-open") : "Actions") + "[]"),
-                                    "action:audit_actions", b -> b.style("cleart"));
-                        }
-                    })).row();
+            Kit.body(window, screen, body -> {
+                switch (model.tab()) {
+                    case OVERVIEW -> overview(body, model, screen, local);
+                    case STATS -> stats(body, model, screen, local);
+                    case PLAYERS -> players(body, model, screen, local);
                 }
-            })).row();
-            t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("ffd37f")).row();
+            });
 
-            // Tabs
-            t.add(Ui.table(tabs -> {
-                tabs.wrap();
-                tabs.layout(l -> l.growX().padBottom(6f));
+            if (players) {
+                int pages = Math.max(1, (int) Math.ceil((double) model.onlinePlayers().size() / PLAYERS_PER_PAGE));
+                int page = Math.clamp(model.playersPage(), 1, pages);
+                window.add(Kit.pager(width, page + " / " + pages,
+                        page > 1 ? "action:page:" + (page - 1) : null,
+                        page < pages ? "action:page:" + (page + 1) : null,
+                        "action:refresh_players")).row();
+            }
 
-                tabs.button(Text.raw(Iconc.admin + " " + (local != null ? local.t("player-stats-tab-overview") : "Overview")),
-                        "action:tab:overview", b -> b
-                                .style("togglet")
-                                .checked(model.tab() == Tab.OVERVIEW)
-                                .layout(l -> l.uniform().growX().height(36f).padRight(4f)));
-
-                tabs.button(Text.raw(Iconc.chartBar + " " + (local != null ? local.t("player-stats-tab-stats") : "Stats")),
-                        "action:tab:stats", b -> b
-                                .style("togglet")
-                                .checked(model.tab() == Tab.STATS)
-                                .layout(l -> l.uniform().growX().height(36f).padRight(4f)));
-
-                int onlineCount = model.totalOnlineCount();
-                String countStr = " (" + onlineCount + ")";
-                tabs.button(Text.raw(Iconc.players + " " + (local != null ? local.t("player-stats-tab-players", args("count", onlineCount)) : "Online" + countStr)),
-                        "action:tab:players", b -> b
-                                .style("togglet")
-                                .checked(model.tab() == Tab.PLAYERS)
-                                .layout(l -> l.uniform().growX().height(36f)));
-            })).row();
-            t.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("454545")).row();
-
-            // Body
-            t.pane(p -> {
-                p.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                p.table(body -> {
-                    body.layout(l -> l.growX());
-
-                    switch (model.tab()) {
-                        case OVERVIEW -> renderOverviewTab(body, model, metrics, local);
-                        case STATS -> renderStatsTab(body, model, metrics, local);
-                        case PLAYERS -> renderPlayersTab(body, model, metrics, local);
-                    }
-                });
-            }).row();
-
-            // Feedback
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                t.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("454545")).row();
-                t.add(Ui.table(fb -> {
-                    fb.layout(l -> l.growX().padTop(2f).padBottom(2f));
-                    fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
+                window.add(Ui.table(feedback -> {
+                    feedback.layout(l -> l.padTop(GAP));
+                    feedback.add(Kit.feedback(width, model.feedbackMessage(), false));
                 })).row();
             }
 
-            // Bottom Actions
-            t.add(Ui.table(actions -> {
-                actions.layout(l -> l.growX().padTop(6f));
-
-                if (session != null && session.hasHistory()) {
-                    actions.button(Text.raw("[lightgray]← " + (local != null ? local.t("back") : "Back") + "[]"),
-                            "action:back", b -> b
-                                    .style("cleart")
-                                    .layout(l -> l.growX().uniform().height(42f).padRight(4f)));
-                } else if (model.viewingFromPlayersTab() && model.tab() != Tab.PLAYERS) {
-                    actions.button(Text.raw("[lightgray]" + (local != null ? local.t("player-stats-back-to-players") : "← Back to Online Players") + "[]"),
-                            "action:back_to_players", b -> b
-                                    .style("cleart")
-                                    .layout(l -> l.growX().uniform().height(42f).padRight(4f)));
-                }
-
-                if (model.tab() == Tab.OVERVIEW) {
-                    actions.button(Text.raw("[accent]" + (local != null ? local.t("player-stats-full-stats") : "Full Statistics →") + "[]"),
-                            "action:tab:stats", b -> b
-                                    .style("cleart")
-                                    .layout(l -> l.growX().uniform().height(42f).padRight(4f)));
-                } else if (model.tab() == Tab.STATS) {
-                    actions.button(Text.raw("[accent]← " + (local != null ? local.t("player-stats-tab-overview") : "Overview") + "[]"),
-                            "action:tab:overview", b -> b
-                                    .style("cleart")
-                                    .layout(l -> l.growX().uniform().height(42f).padRight(4f)));
-                }
-
-                actions.button(Text.t("close"), "action:close", b -> b
-                        .style("cleart")
-                        .layout(l -> l.growX().uniform().height(42f)));
-            })).row();
+            List<Kit.Action> actions = actions(model, local);
+            if (!actions.isEmpty()) {
+                window.add(Ui.table(bar -> {
+                    bar.layout(l -> l.padTop(GAP));
+                    bar.add(Kit.actions(width, actions));
+                })).row();
+            }
         });
     }
 
+    private static Accent accent(Tab tab) {
+        return switch (tab) {
+            case OVERVIEW -> Accent.GOLD;
+            case STATS -> Accent.BLUE;
+            case PLAYERS -> Accent.GREEN;
+        };
+    }
+
+    /** The way back, and what the viewer may do with the profile on screen. The client's own button closes the dialog. */
+    private List<Kit.Action> actions(ProfileModel model, Localization local) {
+        List<Kit.Action> actions = new ArrayList<>();
+        if (session != null && session.hasHistory()) {
+            actions.add(new Kit.Action("[lightgray]" + Iconc.left + "[] " + t(local, "back"), "action:back"));
+        } else if (model.viewingFromPlayersTab() && model.tab() != Tab.PLAYERS) {
+            actions.add(new Kit.Action("[lightgray]" + Iconc.left + "[] " + t(local, "back"), "action:back_to_players"));
+        }
+        if (model.tab() != Tab.PLAYERS) {
+            if (model.isSelf() || model.isViewerAdmin()) {
+                actions.add(new Kit.Action("[accent]" + Iconc.settings + "[] " + t(local, "player-stats-btn-settings"),
+                        "action:settings"));
+            }
+            if (model.isViewerAdmin()) {
+                actions.add(new Kit.Action("[sky]" + Iconc.list + "[] " + t(local, "player-stats-btn-audit"),
+                        "action:audit_history"));
+                actions.add(new Kit.Action("[scarlet]" + Iconc.hammer + "[] " + t(local, "audit-menu-actions-open"),
+                        "action:audit_actions"));
+            }
+        }
+        return actions;
+    }
+
+    private static String t(Localization local, String key) {
+        return local != null ? local.t(key) : key;
+    }
+
+    /**
+     * The admin mark, the badge, the name in its own colours, the username and the player's number,
+     * for a label of {@code room}.
+     */
+    private static String identity(ProfileModel model, Localization local, float room) {
+        StringBuilder identity = new StringBuilder();
+        if (model.isTargetAdmin()) {
+            identity.append("[scarlet]<").append(Iconc.admin).append(' ').append(t(local, "admin")).append(">[] ");
+        }
+        appendName(identity, model.activeBadge(), model.badgeSymbolColorMode(), model.playerColorHex(),
+                model.customNickname(), model.nickname(), "[accent]");
+        appendUsername(identity, model.username(), room);
+        return identity.append(" [gray]#").append(model.pid()).append("[]").toString();
+    }
+
+    /** A username has nowhere to break, and the longest is wider than a card of a phone. */
+    private static void appendUsername(StringBuilder text, String username, float room) {
+        if (username != null && !username.isBlank()) {
+            text.append(" [gold]@[accent]")
+                    .append(TextWidth.fit(TextWidth.escape(username), room - TextWidth.of("@")))
+                    .append("[]");
+        }
+    }
+
+    private static void appendName(StringBuilder text, String badgeId, String badgeColorMode, String colorHex,
+                                   String customNickname, String nickname, String color) {
+        if (badgeId != null && !badgeId.isBlank()) {
+            Badge badge = Badge.byId(badgeId);
+            if (badge != null) {
+                text.append(PlayerSettingsUiController.renderBadgeTagExact(badge, badgeColorMode, colorHex)).append(' ');
+            }
+        }
+        String name = customNickname != null && !customNickname.isBlank()
+                ? customNickname
+                : (nickname != null && !nickname.isBlank() ? nickname : "Player");
+        // A name that brings its own colours keeps them.
+        text.append(name.startsWith("[") ? "" : color).append(name).append("[]");
+    }
+
+    // =========================================================================
+    // Tab 1: OVERVIEW
+    // =========================================================================
+
+    /** The mode sections in the viewer's language; a section that fails to render is left out. */
     private static List<ProfileSection> renderSections(ProfileModel model, Localization local) {
         List<ProfileSection> sections = new ArrayList<>();
         if (local == null) {
@@ -752,378 +773,224 @@ public class PlayerProfileUiController implements UiController<PlayerProfileUiCo
         for (ProfileSectionView view : model.sections()) {
             try {
                 sections.add(view.render(local));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                // One mode's section must not take the whole profile down.
+            }
         }
         return sections;
     }
 
-    private void renderOverviewTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+    private void overview(Ui.TableBuilder body, ProfileModel model, Screen screen, Localization local) {
+        float card = screen.card();
+        List<VNode> left = new ArrayList<>();
+        List<VNode> right = new ArrayList<>();
 
-            c.add(Ui.table(top -> {
-                top.layout(l -> l.growX().padBottom(4f));
-
-                StringBuilder identity = new StringBuilder();
-                if (model.isTargetAdmin()) {
-                    identity.append("[scarlet]<" + Iconc.admin + " " + (local != null ? local.t("admin") : "Admin") + ">[] ");
-                }
-                if (model.activeBadge() != null && !model.activeBadge().isBlank()) {
-                    Badge b = Badge.byId(model.activeBadge());
-                    if (b != null) {
-                        identity.append(PlayerSettingsUiController.renderBadgeTagExact(b, model.badgeSymbolColorMode(), model.playerColorHex())).append(" ");
-                    }
-                }
-
-                String rawNick = model.customNickname() != null && !model.customNickname().isBlank()
-                        ? model.customNickname()
-                        : (model.nickname() != null && !model.nickname().isBlank() ? model.nickname() : "Player");
-                if (rawNick.startsWith("[")) {
-                    identity.append(rawNick);
-                } else {
-                    identity.append("[accent]").append(rawNick);
-                }
-
-                // Виведення імені користувача, якщо воно є
-                if (model.username() != null && !model.username().isBlank()) {
-                    identity.append(" [gold]@[accent]").append(model.username()).append("[]");
-                }
-
-                identity.append(" [gray]#").append(model.pid()).append("[]");
-
-                top.label(Text.raw(identity.toString()), l -> l.align("left").growX());
+        // Who this is: the bio, when the account appeared and how long it has played.
+        left.add(Kit.card(card, Accent.GOLD, Iconc.players + " " + identity(model, local, card - 2f * Kit.BAND_MARGIN),
+                (content, inner) -> {
+            String bio = model.description() != null && !model.description().isBlank()
+                    ? "[lightgray]\"" + model.description().trim() + "[lightgray]\"[]"
+                    : t(local, "player-stats-no-bio");
+            content.add(Kit.text(bio, inner)).row();
+            content.add(Ui.table(facts -> {
+                facts.layout(l -> l.padTop(GAP));
+                facts.add(Kit.text(t(local, "player-stats-account-created") + " [white]"
+                        + formatTimestamp(model.createdModelTime()) + "[]\n"
+                        + t(local, "player-stats-play-time") + " [white]"
+                        + formatDuration(model.totalPlayTime(), local) + "[]", inner));
             })).row();
+        }));
 
-            c.add(Ui.table(descTable -> {
-                descTable.layout(l -> l.growX().padBottom(6f));
-                String desc = model.description() != null && !model.description().isBlank()
-                        ? "[lightgray]\"" + model.description().trim() + "[lightgray]\"[]"
-                        : (local != null ? local.t("player-stats-no-bio") : "[gray]No bio written yet.[]");
-                descTable.labelWrap(Text.raw(desc), l -> l.align("left").growX());
-            })).row();
-
-            c.add(Ui.table(info -> {
-                info.layout(l -> l.growX());
-                String joinedLbl = local != null ? local.t("player-stats-account-created") : "[gray]Joined:[]";
-                String playTimeLbl = local != null ? local.t("player-stats-play-time") : "[gray]Play time:[]";
-                info.label(Text.raw(joinedLbl + " [white]" + formatTimestamp(model.createdModelTime()) + "[]  [darkgray]|[]  "
-                        + playTimeLbl + " [white]" + formatDuration(model.totalPlayTime(), local) + "[]"), l -> l.align("left").growX());
-            })).row();
-        })).row();
-
-        for (ProfileSection section : renderSections(model, local)) {
-            body.add(Ui.table(c -> {
-                c.background("button");
-                c.margin(10f);
-                c.layout(l -> l.growX().padBottom(6f));
-
-                c.add(Ui.table(top -> {
-                    top.layout(l -> l.growX().padBottom(4f));
-                    String details = String.join(SEPARATOR, section.details());
-
-                    Responsive.portrait(top, p -> {
-                        p.label(Text.raw(section.headline()), l -> l.align("left").growX()).row();
-                        if (!details.isEmpty()) {
-                            p.label(Text.raw(details), l -> l.align("left").growX());
-                        }
-                    });
-                    Responsive.landscape(top, w -> w.label(
-                            Text.raw(details.isEmpty() ? section.headline() : section.headline() + SEPARATOR + details),
-                            l -> l.align("left").growX()));
-                })).row();
-
-                for (String line : section.lines()) {
-                    c.add(Ui.table(row -> {
-                        row.layout(l -> l.growX().padBottom(2f));
-                        row.label(Text.raw(line), l -> l.align("left").growX());
-                    })).row();
-                }
-            })).row();
+        // What the player has done so far, in three figures.
+        if (model.isStatsLoading()) {
+            left.add(Kit.note(card, t(local, "player-stats-loading")));
+        } else if (model.stats() != null) {
+            AggregatedPlayerStats overall = model.stats().overall();
+            NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
+            left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
+                    t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
+                            + t(local, "player-stats-victories") + " [lime]" + nf.format(overall.gamesWon())
+                            + "[] [gray](" + overall.winRatePercent() + "%)[]\n"
+                            + t(local, "player-stats-blocks-built") + " [lime]" + nf.format(overall.blocksBuilt()) + "[]",
+                    inner)).row()));
+        } else {
+            left.add(Kit.note(card, t(local, "player-stats-no-stats")));
         }
 
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+        // One card per section the server's modes contribute (rating ladders).
+        for (ProfileSection section : renderSections(model, local)) {
+            right.add(Kit.card(card, (content, inner) -> {
+                StringBuilder text = new StringBuilder(section.headline());
+                if (!section.details().isEmpty()) {
+                    text.append('\n').append(String.join(SEPARATOR, section.details()));
+                }
+                for (String line : section.lines()) {
+                    text.append('\n').append(line);
+                }
+                content.add(Kit.text(text.toString(), inner)).row();
+            }));
+        }
 
+        // The rank of the old Hexed mode and the way to the next one.
+        right.add(Kit.card(card, (content, inner) -> {
             HexedRank rank = model.hexedRank() != null ? model.hexedRank() : HexedRank.values()[0];
             String rankName = local != null ? local.t("hexed-ranks-" + rank.name()) : rank.name();
-            String tag = rank.tag != null ? rank.tag : "";
-
-            c.add(Ui.table(top -> {
-                top.layout(l -> l.growX().padBottom(4f));
-                String topRankStr = model.hexedTopRank() != null ? "#" + model.hexedTopRank() : "-";
-                String hexedRankLbl = local != null ? local.t("player-stats-hexed-rank") : "[gray]Legacy Hexed:[]";
-                String topLbl = local != null ? local.t("player-stats-hexed-leaderboard") : "[gray]Hexed Top:[]";
-                String ptsLbl = local != null ? local.t("player-stats-hexed-points", args("points", model.hexedPoints())) : "(" + model.hexedPoints() + " pts)";
-
-                top.label(Text.raw(hexedRankLbl + " " + tag + " [white]" + rankName + "[] " + ptsLbl
-                        + "   " + topLbl + " [accent]" + topRankStr + "[]"), l -> l.align("left").growX());
-            })).row();
-
-            c.add(Ui.table(bar -> {
-                bar.layout(l -> l.growX().padBottom(2f));
-                String progressLine;
-                if (!rank.hasNext()) {
-                    progressLine = local != null ? local.t("player-stats-max-rank") : "[gold]★ MAX RANK ACHIEVED ★[]";
-                } else {
-                    String progressBar = renderHexedProgressBar(rank, model.hexedPoints(), 14);
-                    int remaining = rank.next.requirements.wins() - model.hexedPoints();
-                    String nextRankName = local != null ? local.t("hexed-ranks-" + rank.next.name()) : rank.next.name();
-                    String progressText = local != null
-                            ? local.t("player-stats-hexed-wins-left", args("wins", Math.max(0, remaining), "rank", nextRankName))
-                            : Math.max(0, remaining) + " wins to " + nextRankName;
-                    progressLine = progressBar + "  " + progressText;
-                }
-
-                bar.label(Text.raw(progressLine), l -> l.align("left").growX());
-            })).row();
-        })).row();
-
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
-
-            if (model.isStatsLoading()) {
-                c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
-            } else if (model.stats() != null) {
-                AggregatedPlayerStats overall = model.stats().overall();
-                NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
-
-                c.add(Ui.table(row -> {
-                    row.layout(l -> l.growX());
-                    String gamesLbl = local != null ? local.t("player-stats-total-games") : "[gray]Total games:[]";
-                    String winsLbl = local != null ? local.t("player-stats-victories") : "[gray]Victories:[]";
-                    String blocksLbl = local != null ? local.t("player-stats-blocks-built") : "[gray]Blocks built:[]";
-
-                    String summaryLine = gamesLbl + " [white]" + nf.format(overall.gamesPlayed()) + "[]  [darkgray]|[]  "
-                            + winsLbl + " [lime]" + nf.format(overall.gamesWon()) + "[] [gray](" + overall.winRatePercent() + "%)[]";
-                    String blocksLine = blocksLbl + " [lime]" + nf.format(overall.blocksBuilt()) + "[]";
-
-                    Responsive.portrait(row, p -> {
-                        p.label(Text.raw(summaryLine), l -> l.align("left").growX()).row();
-                        p.label(Text.raw(blocksLine), l -> l.align("left").growX());
-                    });
-                    Responsive.landscape(row, w ->
-                            w.label(Text.raw(summaryLine + "  [darkgray]|[]  " + blocksLine), l -> l.align("left").growX()));
-                })).row();
+            String points = local != null
+                    ? local.t("player-stats-hexed-points", args("points", model.hexedPoints()))
+                    : "(" + model.hexedPoints() + " pts)";
+            String progress;
+            if (!rank.hasNext()) {
+                progress = t(local, "player-stats-max-rank");
             } else {
-                c.label(Text.raw(local != null ? local.t("player-stats-no-stats") : "[gray]No match telemetry recorded yet.[]"), l -> l.align("center").growX());
+                int remaining = Math.max(0, rank.next.requirements.wins() - model.hexedPoints());
+                String nextRank = local != null ? local.t("hexed-ranks-" + rank.next.name()) : rank.next.name();
+                progress = renderHexedProgressBar(rank, model.hexedPoints(), 14) + "  " + (local != null
+                        ? local.t("player-stats-hexed-wins-left", args("wins", remaining, "rank", nextRank))
+                        : remaining + " wins to " + nextRank);
             }
-        })).row();
+            content.add(Kit.text(t(local, "player-stats-hexed-rank") + " " + (rank.tag != null ? rank.tag : "")
+                    + " [white]" + rankName + "[] " + points + "\n"
+                    + t(local, "player-stats-hexed-leaderboard") + " [accent]"
+                    + (model.hexedTopRank() != null ? "#" + model.hexedTopRank() : "-") + "[]\n"
+                    + progress, inner)).row();
+        }));
+
+        body.add(Kit.columns(screen, left, right)).row();
     }
 
-    private void renderStatsTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
-        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
+    // =========================================================================
+    // Tab 2: STATS
+    // =========================================================================
 
+    private void stats(Ui.TableBuilder body, ProfileModel model, Screen screen, Localization local) {
         if (model.isStatsLoading()) {
-            body.add(Ui.table(c -> {
-                c.background("button");
-                c.margin(14f);
-                c.layout(l -> l.growX().padBottom(8f));
-                c.label(Text.raw(local != null ? local.t("player-stats-loading") : "[lightgray]Loading telemetry...[]"), l -> l.align("center").growX());
-            })).row();
+            body.add(Kit.note(screen.cards(), t(local, "player-stats-loading"))).row();
             return;
         }
-
+        float card = screen.card();
+        NumberFormat nf = NumberFormat.getIntegerInstance(local != null ? local.getLocale() : Locale.ROOT);
         PlayerStatsOverview overview = model.stats() != null ? model.stats() : PlayerStatsOverview.EMPTY;
         AggregatedPlayerStats overall = overview.overall();
+        List<VNode> left = new ArrayList<>();
+        List<VNode> right = new ArrayList<>();
 
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
+        // Every game of every mode together.
+        left.add(Kit.card(card, (content, inner) -> content.add(Kit.text(
+                t(local, "player-stats-total-games") + " [white]" + nf.format(overall.gamesPlayed()) + "[]\n"
+                        + (local != null
+                        ? local.t("player-stats-victories-value",
+                        args("wins", nf.format(overall.gamesWon()), "winRate", overall.winRatePercent()))
+                        : overall.gamesWon() + " wins | " + overall.winRatePercent() + "% win rate"),
+                inner)).row()));
 
-            c.add(Ui.table(row -> {
-                row.layout(l -> l.growX());
-                String gamesVal = local != null
-                        ? local.t("player-stats-games-played-value", args("count", nf.format(overall.gamesPlayed())))
-                        : overall.gamesPlayed() + " games";
-                String winsVal = local != null
-                        ? local.t("player-stats-victories-value", args("wins", nf.format(overall.gamesWon()), "winRate", overall.winRatePercent()))
-                        : overall.gamesWon() + " wins | " + overall.winRatePercent() + "% win rate";
-
-                row.label(Text.raw("[accent]■ " + (local != null ? local.t("player-stats-total-games") : "Overall Performance") + "[]  "
-                        + gamesVal + "  [darkgray]|[]  " + winsVal), l -> l.align("left").growX());
-            })).row();
-        })).row();
-
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
-
+        // Mode by mode: the rating ladders first, then the modes that keep no rating.
+        left.add(Kit.card(card, (content, inner) -> {
+            List<String> modes = new ArrayList<>();
             for (ProfileSection section : renderSections(model, local)) {
-                c.add(Ui.table(row -> {
-                    row.layout(l -> l.growX().padBottom(4f));
-                    row.label(Text.raw(section.headline()), l -> l.align("left").growX()).row();
-                    if (!section.details().isEmpty()) {
-                        row.label(Text.raw("  [lightgray]↳[] " + String.join(SEPARATOR, section.details())),
-                                l -> l.align("left").growX());
-                    }
+                modes.add(section.details().isEmpty() ? section.headline()
+                        : section.headline() + "\n  [lightgray]\u21b3[] " + String.join(SEPARATOR, section.details()));
+            }
+            ModeStatsSummary survival = overview.survival();
+            modes.add("[green]" + Iconc.defense + "[] " + t(local, "player-stats-survival-summary") + " "
+                    + (survival.hasData()
+                    ? games(local, nf, survival.gamesPlayed()) + SEPARATOR + (local != null
+                    ? local.t("player-stats-waves-summary",
+                    args("best", nf.format(survival.bestWave()), "avg", nf.format(survival.averageWave())))
+                    : "waves: max " + survival.bestWave() + ", avg " + survival.averageWave())
+                    : t(local, "player-menu-player-no-mode-stats")));
+            ModeStatsSummary hexed = overview.hexed();
+            modes.add("[purple]" + Iconc.star + "[] " + t(local, "player-stats-hexed-summary") + " "
+                    + (hexed.hasData()
+                    ? games(local, nf, hexed.gamesPlayed()) + SEPARATOR
+                    + t(local, "player-stats-victories") + " [lime]" + nf.format(hexed.gamesWon()) + "[]" + SEPARATOR
+                    + (local != null
+                    ? local.t("player-stats-hexed-top-placement",
+                    args("best", hexed.bestPlacement(), "top3", hexed.top3Finishes()))
+                    : "best #" + hexed.bestPlacement() + ", top-3: " + hexed.top3Finishes())
+                    : t(local, "player-menu-player-no-mode-stats")));
+            for (int i = 0; i < modes.size(); i++) {
+                String mode = modes.get(i);
+                boolean first = i == 0;
+                content.add(Ui.table(line -> {
+                    line.layout(l -> l.padTop(first ? 0f : GAP));
+                    line.add(Kit.text(mode, inner));
                 })).row();
             }
+        }));
 
-            c.add(Ui.table(survRow -> {
-                survRow.layout(l -> l.growX().padBottom(4f));
-                ModeStatsSummary surv = overview.survival();
-                String survSummary = surv.hasData()
-                        ? "[white]" + nf.format(surv.gamesPlayed()) + "[] [gray]runs[] | "
-                        + (local != null ? local.t("player-stats-waves-summary", args("best", nf.format(surv.bestWave()), "avg", nf.format(surv.averageWave()))) : "waves: max " + surv.bestWave() + ", avg " + surv.averageWave())
-                        : (local != null ? local.t("player-menu-player-no-mode-stats") : "[gray]no data[]");
-                survRow.label(Text.raw("[green]" + Iconc.defense + " " + (local != null ? local.t("player-stats-survival-summary") : "Survival:") + "[] " + survSummary), l -> l.align("left").growX());
-            })).row();
-
-            c.add(Ui.table(hexRow -> {
-                hexRow.layout(l -> l.growX());
-                ModeStatsSummary hex = overview.hexed();
-                String hexSummary = hex.hasData()
-                        ? "[white]" + nf.format(hex.gamesPlayed()) + "[] [gray]matches[] | [lime]" + nf.format(hex.gamesWon()) + "[] [gray]top-1[] | "
-                        + (local != null ? local.t("player-stats-hexed-top-placement", args("best", hex.bestPlacement(), "top3", hex.top3Finishes())) : "best #" + hex.bestPlacement() + ", top-3: " + hex.top3Finishes())
-                        : (local != null ? local.t("player-menu-player-no-mode-stats") : "[gray]no data[]");
-                hexRow.label(Text.raw("[purple]" + Iconc.star + " " + (local != null ? local.t("player-stats-hexed-summary") : "Legacy Hexed:") + "[] " + hexSummary), l -> l.align("left").growX());
-            })).row();
-        })).row();
-
-        body.add(Ui.table(c -> {
-            c.background("button");
-            c.margin(10f);
-            c.layout(l -> l.growX().padBottom(6f));
-
-            c.add(Ui.table(titleRow -> {
-                titleRow.layout(l -> l.growX().padBottom(4f));
-                titleRow.label(Text.raw("[accent]■ " + (local != null ? local.t("player-stats-combat-efficiency") : "Combat & Construction Efficiency") + "[]"), l -> l.align("left").growX());
-            })).row();
-
-            c.add(Ui.table(blocksRow -> {
-                blocksRow.layout(l -> l.growX().padBottom(4f));
-                String builtLbl = local != null ? local.t("player-stats-blocks-built") : "Built:";
-                String deconLbl = local != null ? local.t("player-stats-blocks-deconstructed") : "Decon:";
-                String destLbl = local != null ? local.t("player-stats-blocks-destroyed") : "Destroyed:";
-
-                blocksRow.label(Text.raw(builtLbl + " [lime]" + Iconc.hammer + " " + nf.format(overall.blocksBuilt()) + "[]  [darkgray]|[]  "
-                        + deconLbl + " [orange]" + Iconc.refresh + " " + nf.format(overall.blocksDeconstructed()) + "[]  [darkgray]|[]  "
-                        + destLbl + " [scarlet]" + Iconc.warning + " " + nf.format(overall.blocksDestroyed()) + "[]"), l -> l.align("left").growX());
-            })).row();
-
-            c.add(Ui.table(ratioRow -> {
-                ratioRow.layout(l -> l.growX().padBottom(4f));
-                String ratioBar = renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(), overall.blocksDestroyed(), 10);
-                String ratioLegend = local != null ? local.t("player-stats-ratio-legend") : "[lightgray]Build / Decon / Destroy Ratio[]";
-                ratioRow.label(Text.raw(ratioBar + "  " + ratioLegend), l -> l.align("left").growX());
-            })).row();
-
-            if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
-                c.add(Ui.table(unitsRow -> {
-                    unitsRow.layout(l -> l.growX());
-                    unitsRow.label(Text.raw("[gray]Units:[] [sky]" + Iconc.units + " " + nf.format(overall.unitsProduced()) + " produced[]  [darkgray]|[]  [scarlet]" + Iconc.cancel + " "
-                            + nf.format(overall.unitsDestroyed()) + " lost[]"), l -> l.align("left").growX());
-                })).row();
-            }
-        })).row();
-    }
-
-    private void renderPlayersTab(Ui.TableBuilder body, ProfileModel model, DialogMetrics metrics, Localization local) {
-        List<OnlinePlayerRow> onlineList = model.onlinePlayers() != null ? model.onlinePlayers() : List.of();
-        int totalPlayers = onlineList.size();
-        int perPage = PLAYERS_PER_PAGE;
-        int totalPages = Math.max(1, (int) Math.ceil((double) totalPlayers / perPage));
-        int validPage = Math.clamp(model.playersPage(), 1, totalPages);
-        int skip = (validPage - 1) * perPage;
-
-        List<OnlinePlayerRow> pagePlayers = onlineList.stream()
-                .skip(skip)
-                .limit(perPage)
-                .toList();
-
-        body.add(Ui.table(tb -> {
-            tb.layout(l -> l.growX().padBottom(6f));
-
-            String filterLabel = switch (model.adminFilter()) {
-                case ALL -> local != null ? local.t("player-stats-filter-all") : "Filter: All";
-                case ADMINS_ONLY -> local != null ? local.t("player-stats-filter-admins") : "Filter: Admins";
-                case NON_ADMINS -> local != null ? local.t("player-stats-filter-non-admins") : "Filter: Non-Admins";
-            };
-            tb.button(Text.raw(filterLabel), "action:filter_cycle", b -> b
-                    .style("cleart")
-                    .layout(l -> l.height(34f).padRight(4f)));
-
-            if (validPage > 1) {
-                tb.button(Text.raw("[accent]< Prev[]"), "action:page:" + (validPage - 1), b -> b
-                        .style("cleart")
-                        .layout(l -> l.height(34f).padRight(4f)));
-            }
-            tb.label(Text.raw("[white]" + validPage + " / " + totalPages + "[]"), l -> l.align("center").padRight(4f));
-            if (validPage < totalPages) {
-                tb.button(Text.raw("[accent]Next >[]"), "action:page:" + (validPage + 1), b -> b
-                        .style("cleart")
-                        .layout(l -> l.height(34f).padRight(4f)));
-            }
-
-            tb.label(Text.raw(""), l -> l.growX());
-
-            tb.button(Text.raw("[sky]" + Iconc.refresh + " " + (local != null ? local.t("player-stats-refresh") : "Refresh") + "[]"),
-                    "action:refresh_players", b -> b
-                            .style("cleart")
-                            .layout(l -> l.height(34f)));
-        })).row();
-
-        if (pagePlayers.isEmpty()) {
-            body.add(Ui.table(c -> {
-                c.background("button");
-                c.margin(14f);
-                c.layout(l -> l.growX());
-                c.label(Text.raw(local != null ? local.t("player-menu-players-empty") : "No online players found"), l -> l.align("center").growX());
-            })).row();
-            return;
-        }
-
-        for (OnlinePlayerRow p : pagePlayers) {
-            body.add(Ui.table(row -> {
-                row.background("button");
-                row.margin(8f);
-                row.layout(l -> l.growX().padBottom(4f));
-
-                row.add(Ui.table(info -> {
-                    info.layout(l -> l.growX().align("left"));
-
-                    StringBuilder sb = new StringBuilder("[lime]●[] ");
-                    if (p.isAdmin()) {
-                        sb.append("[scarlet]<" + Iconc.admin + ">[] ");
+        // What was built, taken apart and lost.
+        right.add(Kit.card(card, Accent.BLUE, Iconc.hammer + " " + t(local, "player-stats-combat-efficiency"),
+                (content, inner) -> {
+                    StringBuilder text = new StringBuilder()
+                            .append(t(local, "player-stats-blocks-built")).append(" [lime]")
+                            .append(nf.format(overall.blocksBuilt())).append("[]\n")
+                            .append(t(local, "player-stats-blocks-deconstructed")).append(" [orange]")
+                            .append(nf.format(overall.blocksDeconstructed())).append("[]\n")
+                            .append(t(local, "player-stats-blocks-destroyed")).append(" [scarlet]")
+                            .append(nf.format(overall.blocksDestroyed())).append("[]\n")
+                            .append(renderBlockRatioBar(overall.blocksBuilt(), overall.blocksDeconstructed(),
+                                    overall.blocksDestroyed(), 10))
+                            .append("  ").append(t(local, "player-stats-ratio-legend"));
+                    if (overall.unitsProduced() > 0 || overall.unitsDestroyed() > 0) {
+                        text.append('\n').append(t(local, "player-stats-units-produced")).append(" [sky]")
+                                .append(nf.format(overall.unitsProduced())).append("[]\n")
+                                .append(t(local, "player-stats-units-lost")).append(" [scarlet]")
+                                .append(nf.format(overall.unitsDestroyed())).append("[]");
                     }
-                    if (p.activeBadge() != null && !p.activeBadge().isBlank()) {
-                        Badge b = Badge.byId(p.activeBadge());
-                        if (b != null) {
-                            sb.append(PlayerSettingsUiController.renderBadgeTagExact(b, p.badgeSymbolColorMode(), p.playerColorHex())).append(" ");
-                        }
-                    }
-
-                    String nick = p.customNickname() != null && !p.customNickname().isBlank()
-                            ? p.customNickname()
-                            : (p.nickname() != null && !p.nickname().isBlank() ? p.nickname() : "Player");
-                    if (nick.startsWith("[")) {
-                        sb.append(nick);
-                    } else {
-                        sb.append("[white]").append(nick);
-                    }
-
-                    if (p.username() != null && !p.username().isBlank()) {
-                        sb.append(" [gold]@[accent]").append(p.username()).append("[]");
-                    }
-
-                    sb.append(" [gray]#").append(p.pid()).append("[]");
-
-                    info.label(Text.raw(sb.toString()), l -> l.align("left").growX());
+                    content.add(Kit.text(text.toString(), inner)).row();
                 }));
 
-                row.button(Text.raw("[accent]" + (local != null ? local.t("player-stats-inspect") : "Inspect →") + "[]"),
-                        "action:inspect:" + p.uuid(), b -> b
-                                .style("cleart")
-                                .layout(l -> l.height(32f)));
-            })).row();
+        body.add(Kit.columns(screen, left, right)).row();
+    }
+
+    private static String games(Localization local, NumberFormat nf, long count) {
+        return local != null
+                ? local.t("player-stats-games-played-value", args("count", nf.format(count)))
+                : count + " games";
+    }
+
+    // =========================================================================
+    // Tab 3: PLAYERS (Live Online Server Roster)
+    // =========================================================================
+
+    private void players(Ui.TableBuilder body, ProfileModel model, Screen screen, Localization local) {
+        float width = screen.cards();
+        List<OnlinePlayerRow> online = model.onlinePlayers() != null ? model.onlinePlayers() : List.of();
+        int pages = Math.max(1, (int) Math.ceil((double) online.size() / PLAYERS_PER_PAGE));
+        int page = Math.clamp(model.playersPage(), 1, pages);
+
+        // Who is shown: everyone, the admins or the rest. A press steps to the next.
+        body.add(Ui.table(filter -> {
+            filter.layout(l -> l.padBottom(GAP));
+            filter.add(Kit.button(new Kit.Action("[accent]" + Iconc.filter + "[] " + t(local, switch (model.adminFilter()) {
+                case ALL -> "player-stats-filter-all";
+                case ADMINS_ONLY -> "player-stats-filter-admins";
+                case NON_ADMINS -> "player-stats-filter-non-admins";
+            }), "action:filter_cycle"), width));
+        })).row();
+
+        List<OnlinePlayerRow> shown = online.stream()
+                .skip((long) (page - 1) * PLAYERS_PER_PAGE)
+                .limit(PLAYERS_PER_PAGE)
+                .toList();
+        if (shown.isEmpty()) {
+            body.add(Kit.note(width, t(local, "player-menu-players-empty"))).row();
+            return;
+        }
+        for (OnlinePlayerRow player : shown) {
+            // The whole row opens the player's profile.
+            body.add(Kit.row("action:inspect:" + player.uuid(), width,
+                    Objects.equals(player.uuid(), model.viewerUuid()), true, (row, inner) -> {
+                        StringBuilder name = new StringBuilder("[lime]\u25cf[] ");
+                        if (player.isAdmin()) {
+                            name.append("[scarlet]<").append(Iconc.admin).append(">[] ");
+                        }
+                        appendName(name, player.activeBadge(), player.badgeSymbolColorMode(), player.playerColorHex(),
+                                player.customNickname(), player.nickname(), "[white]");
+                        appendUsername(name, player.username(), inner);
+                        name.append(" [gray]#").append(player.pid()).append("[]");
+                        row.add(Kit.text(TextWidth.fit(name.toString(), inner), inner));
+                    })).row();
         }
     }
 }

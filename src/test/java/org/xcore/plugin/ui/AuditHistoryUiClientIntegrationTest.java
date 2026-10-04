@@ -215,7 +215,7 @@ class AuditHistoryUiClientIntegrationTest {
                 .map(m -> (UiWireMessage.Update) m)
                 .reduce((first, second) -> second)
                 .orElseThrow();
-        assertThat(updateMsg.targetId()).isIn("slot_audit_tabs", "slot_audit_list");
+        assertThat(updateMsg.targetId()).matches("slot_audit_(tabs|list)_(wide|narrow|small)");
 
         // 4. Client clicks inspect record audit-1 -> transitions to in-dialog details
         loop.client().click(menuId, "action:inspect:audit-1");

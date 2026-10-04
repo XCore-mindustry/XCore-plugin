@@ -133,7 +133,7 @@ public class MapMenu extends Menu {
 
         var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
         var initialModel = controller.createInitialBrowserModel(session, page);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
         controller.requestSummariesAsync();
     }
 
@@ -143,7 +143,7 @@ public class MapMenu extends Menu {
 
         var controller = new org.xcore.plugin.ui.menu.map.MapUiController(mapService, mapDataRepository, mapPreviewService, mapVoteObserverService, session, hashService, summaryCache);
         var initialModel = controller.createInitialDetailsModel(session, m);
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
         if (mapVoteObserverService != null) {
             mapVoteObserverService.registerViewing(session.player.uuid(), initialModel.selectedMapId());
         }

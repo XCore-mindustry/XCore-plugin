@@ -77,7 +77,7 @@ public class HelpMenu extends Menu {
             return;
         }
 
-        menuService.openUi(session, controller, initialModel);
+        menuService.openUi(session, controller, initialModel, true);
     }
 
     public void help(XCoreSender sender, int page) {

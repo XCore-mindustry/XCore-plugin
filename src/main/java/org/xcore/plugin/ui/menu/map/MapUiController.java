@@ -1,6 +1,8 @@
 package org.xcore.plugin.ui.menu.map;
 
+import arc.util.Strings;
 import mindustry.game.Gamemode;
+import mindustry.gen.Iconc;
 import mindustry.maps.Map;
 import mindustry.ui.builder.MenuResult;
 import org.xcore.plugin.database.repository.MapDataRepository;
@@ -9,9 +11,13 @@ import org.xcore.plugin.service.MapService;
 import org.xcore.plugin.service.map.MapPreviewService;
 import org.xcore.plugin.service.map.MapVoteObserverService;
 import org.xcore.plugin.session.Session;
-import org.xcore.ui.responsive.DialogMetrics;
-import org.xcore.ui.Ui;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Text;
+import org.xcore.ui.Ui;
+import org.xcore.ui.VImage;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
@@ -24,6 +30,12 @@ import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
 import static mindustry.Vars.state;
+import static org.xcore.plugin.ui.kit.Kit.FIELD_HEIGHT;
+import static org.xcore.plugin.ui.kit.Kit.GAP;
+import static org.xcore.plugin.ui.kit.Kit.GLYPH_BUTTON;
+import static org.xcore.plugin.ui.kit.Kit.MARGIN;
+import static org.xcore.plugin.ui.kit.Kit.PAD;
+import static org.xcore.plugin.ui.kit.Kit.TAB_GAP;
 
 /**
  * Modern reactive controller for Map browsing, inspection, texture streaming,
@@ -38,13 +50,8 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     public static final int MAPS_PER_PAGE = 10;
 
-    /**
-     * Square edge of the details hero preview.
-     *
-     * <p>A fixed edge rather than a cap: the thumbnail has to keep its aspect ratio, and the
-     * metadata column beside it already absorbs whatever width the client leaves over.
-     */
-    private static final float PREVIEW_SIZE = 130f;
+    /** Edge of the square the preview is drawn in; it fits a card of the smallest screen. */
+    private static final float PREVIEW_SIZE = 200f;
 
     private final MapService mapService;
     private final MapDataRepository mapDataRepository;
@@ -110,25 +117,25 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             case MapUiEvent.SummariesReady() -> {
                 cachedMapSummaries = null;
                 yield model.mode() == MapUiModel.ViewMode.BROWSER
-                        ? UpdateResult.patch(filterAndPaginate(model, model.page()), SLOT_MAP_TABLE)
+                        ? UpdateResult.patch(filterAndPaginate(model, model.page()), Screen.slots(SLOT_MAP_TABLE))
                         : UpdateResult.of(model);
             }
             // --- Browser Search & Pagination ---
             case MapUiEvent.SearchChanged(var query) -> {
                 MapUiModel updated = filterAndPaginate(model.withSearchQuery(query), 1);
-                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_MAP_TABLE));
             }
             case MapUiEvent.NextPage() -> {
                 MapUiModel updated = filterAndPaginate(model, model.page() + 1);
-                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_MAP_TABLE));
             }
             case MapUiEvent.PrevPage() -> {
                 MapUiModel updated = filterAndPaginate(model, model.page() - 1);
-                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_MAP_TABLE));
             }
             case MapUiEvent.ChangePage(int newPage) -> {
                 MapUiModel updated = filterAndPaginate(model, newPage);
-                yield UpdateResult.patch(updated, SLOT_MAP_TABLE);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_MAP_TABLE));
             }
 
             // --- Navigation: Browser -> Details ---
@@ -158,11 +165,11 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
             // --- Async Preview Callbacks ---
             case MapUiEvent.PreviewReady(var mapId, var region) -> {
                 if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
-                yield UpdateResult.patch(model.withPreview(region, false), SLOT_PREVIEW);
+                yield UpdateResult.patch(model.withPreview(region, false), Screen.slots(SLOT_PREVIEW));
             }
             case MapUiEvent.PreviewFailed(var mapId) -> {
                 if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
-                yield UpdateResult.patch(model.withPreview(null, false), SLOT_PREVIEW);
+                yield UpdateResult.patch(model.withPreview(null, false), Screen.slots(SLOT_PREVIEW));
             }
 
             // --- Optimistic Reputation (Like / Dislike) ---
@@ -205,16 +212,16 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
                 cachedMapSummaries = null;
 
-                yield UpdateResult.patch(updated, SLOT_REPUTATION);
+                yield UpdateResult.patch(updated, Screen.slots(SLOT_REPUTATION));
             }
 
             // --- Live RTV Vote Observer Callbacks ---
             case MapUiEvent.RtvVoteUpdated(var mapId, int votes, int req, int remainingSec) -> {
                 if (!isSameMap(mapId, model.selectedMapId())) yield UpdateResult.of(model);
-                yield UpdateResult.patch(model.withRtvStatus(true, votes, req, remainingSec), SLOT_RTV);
+                yield UpdateResult.patch(model.withRtvStatus(true, votes, req, remainingSec), Screen.slots(SLOT_RTV));
             }
             case MapUiEvent.RtvVoteEnded() ->
-                UpdateResult.patch(model.withRtvStatus(false, 0, 0, 0), SLOT_RTV);
+                UpdateResult.patch(model.withRtvStatus(false, 0, 0, 0), Screen.slots(SLOT_RTV));
 
             // --- Player Trigger RTV ---
             case MapUiEvent.TriggerRtv() -> {
@@ -222,7 +229,7 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                 if (mindustryMap != null && session != null && session.player != null && mapService != null) {
                     mapService.startRtvSession(session.player, mindustryMap, true, false);
                 }
-                yield UpdateResult.patch(model.withRtvStatus(true, 1, 1, 30), SLOT_RTV);
+                yield UpdateResult.patch(model.withRtvStatus(true, 1, 1, 30), Screen.slots(SLOT_RTV));
             }
 
             // --- Admin Force RTV (2-Click Confirmed) ---
@@ -238,11 +245,11 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
                     yield UpdateResult.close(model);
                 } else {
                     MapUiModel confirming = model.withAdminConfirm(true, now + 3000L);
-                    yield UpdateResult.patch(confirming, SLOT_RTV);
+                    yield UpdateResult.patch(confirming, Screen.slots(SLOT_RTV));
                 }
             }
             case MapUiEvent.AdminCancelForceRtv() ->
-                UpdateResult.patch(model.withAdminConfirm(false, 0L), SLOT_RTV);
+                UpdateResult.patch(model.withAdminConfirm(false, 0L), Screen.slots(SLOT_RTV));
 
             // --- Close ---
             case MapUiEvent.Close() -> {
@@ -257,297 +264,217 @@ public class MapUiController implements UiController<MapUiModel, MapUiEvent> {
 
     @Override
     public VNode render(MapUiModel model) {
-        DialogMetrics metrics = metrics();
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
-
-            if (model.mode() == MapUiModel.ViewMode.BROWSER) {
-                renderBrowser(root, model, metrics);
-            } else {
-                renderDetails(root, model, metrics);
-            }
-        });
+        return Screen.each(screen -> window(model, screen));
     }
 
-    /** Caps only; the client resolves the actual width and body height. */
-    private DialogMetrics metrics() {
-        return DialogMetrics.standard();
+    /** The whole menu as it is on a screen of the given class. */
+    VNode window(MapUiModel model, Screen screen) {
+        return model.mode() == MapUiModel.ViewMode.BROWSER ? browser(model, screen) : details(model, screen);
     }
 
     // ==================================================================
     // View 1: Browser View
     // ==================================================================
 
-    private void renderBrowser(Ui.TableBuilder root, MapUiModel model, DialogMetrics metrics) {
-        // 1. Header with Title and Accent underline
-        root.add(Ui.table(h -> {
-            h.layout(l -> l.growX().padBottom(4f));
-            h.label(Text.t("commands-maps-title"), l -> l.align("center").growX());
-            String totalText = "[gray] (" + model.totalMapsCount() + ")[]";
-            h.label(Text.raw(totalText), l -> l.align("center").padLeft(4f));
-        })).row();
-        root.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("ffd37f")).row();
+    private VNode browser(MapUiModel model, Screen screen) {
+        float width = screen.width();
+        return Kit.window(window -> {
+            window.add(Kit.header(width, "[accent]" + Iconc.map + "[] [white]" + t("map-maps") + "[]\n"
+                    + t("map-ui-total", args("count", model.totalMapsCount())))).row();
+            window.add(Kit.line(width, Accent.GOLD)).row();
+            window.add(search(model, width)).row();
 
-        // 2. Search Field
-        root.add(Ui.table(s -> {
-            s.layout(l -> l.growX().padBottom(6f));
-            s.field("field_search", f -> f
-                    .value(model.searchQuery())
-                    .hint(Text.t("map-ui-search-hint"))
-                    .enter("action:search")
-                    .layout(l -> l.growX()));
-        })).row();
-
-        root.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("454545")).row();
-
-        // 3. Tabular Map Table Slot inside ScrollPane
-        root.slot(SLOT_MAP_TABLE.path(), listSlot -> {
-            listSlot.layout(l -> l.growX());
-
-            if (model.displayedMaps().isEmpty()) {
-                listSlot.add(Ui.table(empty -> {
-                    empty.layout(l -> l.growX().height(140f));
-                    empty.label(Text.t("map-ui-no-maps-found"), l -> l.align("center"));
-                })).row();
-            } else {
-                listSlot.pane(pane -> {
-                    pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                    pane.table(table -> {
-                        table.layout(l -> l.growX());
-                        for (MapUiModel.MapSummary map : model.displayedMaps()) {
-                            table.add(Ui.table(row -> {
-                                row.layout(l -> l.growX().height(36f).padBottom(2f));
-                                row.button(buildMapRowText(map, metrics), "action:select_map:" + map.id(), b -> b
-                                        .style("cleart")
-                                        .layout(l -> l.growX().height(34f)));
-                            })).row();
-                        }
-                    });
-                }).row();
-            }
-
-            // Pagination Row - ALWAYS FIXED AND VISIBLE
-            listSlot.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(6f).color("454545")).row();
-            listSlot.add(Ui.table(pag -> {
-                pag.layout(l -> l.growX().height(32f));
-                pag.button(Text.t("map-ui-prev"), "action:page:prev", b -> {
-                    b.style("cleart");
-                    if (model.page() <= 1) b.disabled();
-                    b.layout(l -> l.width(70f).height(28f));
-                });
-
-                pag.label(Text.t("map-ui-page-info", args("page", model.page(), "total", model.totalPages())),
-                        l -> l.growX().align("center"));
-
-                pag.button(Text.t("map-ui-next"), "action:page:next", b -> {
-                    b.style("cleart");
-                    if (model.page() >= model.totalPages()) b.disabled();
-                    b.layout(l -> l.width(70f).height(28f));
-                });
-            })).row();
-        }).row();
-
-        // 4. Footer Close
-        root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("454545")).row();
-        root.button(Text.join(Text.raw("[accent]"), Text.t("close")), "action:close", b -> b
-                .style("cleart")
-                .layout(l -> l.growX().fillX().height(36f)));
+            // The list and its pager change together; the field above them keeps what is typed.
+            window.slot(screen.slot(SLOT_MAP_TABLE).path(), slot -> {
+                slot.add(Kit.pane(screen, body -> maps(body, model, screen))).row();
+                slot.add(Kit.pager(width, model.page() + " / " + model.totalPages(),
+                        model.page() > 1 ? "action:page:prev" : null,
+                        model.page() < model.totalPages() ? "action:page:next" : null,
+                        null)).row();
+            }).row();
+        });
     }
 
-    private Text buildMapRowText(MapUiModel.MapSummary map, DialogMetrics metrics) {
-        String prefix = map.isCurrent() ? "[gold]* [accent]" : "[white]";
-        String name = metrics.truncate(map.name());
-        String author = metrics.truncate(map.author());
-        String rep = (map.likes() > 0 || map.dislikes() > 0)
-                ? "  [green]+" + map.likes() + "[] [scarlet]-" + map.dislikes() + "[]"
+    /** The field and a button beside it: a phone's keyboard has no key that sends the search. */
+    private VNode search(MapUiModel model, float width) {
+        float field = width - GLYPH_BUTTON - TAB_GAP;
+        return Ui.table(bar -> {
+            bar.layout(l -> l.padBottom(GAP));
+            bar.field("field_search", f -> f
+                    .value(model.searchQuery())
+                    .hint(Strings.stripColors(t("map-ui-search-hint")))
+                    .enter("action:search")
+                    .layout(l -> l.width(field).height(FIELD_HEIGHT).padRight(TAB_GAP)));
+            bar.button(Text.raw("[accent]" + Iconc.zoom + "[]"), "action:search", b -> b
+                    .style("flatBordert")
+                    .layout(l -> l.width(GLYPH_BUTTON).height(FIELD_HEIGHT)));
+        });
+    }
+
+    private void maps(Ui.TableBuilder body, MapUiModel model, Screen screen) {
+        if (model.displayedMaps().isEmpty()) {
+            body.add(Kit.note(screen.cards(), Strings.stripColors(t("map-ui-no-maps-found")))).row();
+            return;
+        }
+        List<VNode> rows = new ArrayList<>();
+        for (MapUiModel.MapSummary map : model.displayedMaps()) {
+            rows.add(Kit.row("action:select_map:" + map.id(), screen.card(), map.isCurrent(), true,
+                    (row, inner) -> row.add(Kit.text(rowText(map, inner), inner))));
+        }
+        body.add(Kit.columns(screen, rows)).row();
+    }
+
+    /** A map in two lines: its name, then its size, votes and author. The map being played is marked. */
+    static String rowText(MapUiModel.MapSummary map, float width) {
+        String name = (map.isCurrent() ? "[accent]" + Iconc.play + " " : "[white]") + map.name() + "[]";
+        String votes = map.likes() > 0 || map.dislikes() > 0
+                ? " [green]+" + map.likes() + "[] [scarlet]-" + map.dislikes() + "[]"
                 : "";
-        return Text.join(
-                Text.raw(prefix + name + "[] [gray]"),
-                Text.join(
-                        Text.t("map-ui-by", args("author", author)),
-                        Text.raw(" [darkgray]| [gray]" + map.width() + "x" + map.height() + "[]" + rep)
-                )
-        );
+        String about = "[gray]" + map.width() + "x" + map.height() + "[]" + votes
+                + " [gray]·[] [lightgray]" + Strings.stripColors(map.author()) + "[]";
+        return TextWidth.fit(name, width) + "\n" + TextWidth.fit(about, width);
     }
 
     // ==================================================================
     // View 2: Details View
     // ==================================================================
 
-    private void renderDetails(Ui.TableBuilder root, MapUiModel model, DialogMetrics metrics) {
-        // 1. Header with Map Name and Accent line
-        root.add(Ui.table(h -> {
-            h.layout(l -> l.growX().padBottom(4f));
-            h.label(Text.raw("[accent]" + model.mapName() + "[]"), l -> l.align("center").growX()).row();
-            h.label(Text.join(
-                    Text.t("map-ui-by", args("author", model.mapAuthor())),
-                    Text.join(
-                            Text.raw(" [darkgray]| [gray]"),
-                            Text.t("map-ui-mode", args("mode", model.gamemodeName()))
-                    )
-            ), l -> l.align("center").growX());
-        })).row();
-        root.image("whiteui", l -> l.growX().height(2f).padBottom(6f).color("ffd37f")).row();
+    private VNode details(MapUiModel model, Screen screen) {
+        float width = screen.width();
+        float text = width - 2f * MARGIN;
+        return Kit.window(window -> {
+            String author = Strings.stripColors(t("map-ui-by", args("author", Strings.stripColors(model.mapAuthor()))));
+            String mode = Strings.stripColors(t("map-ui-mode", args("mode", model.gamemodeName())));
+            window.add(Kit.header(width,
+                    TextWidth.fit("[accent]" + Iconc.map + "[] [white]" + model.mapName() + "[]", text) + "\n"
+                            + TextWidth.fit("[lightgray]" + author + " · " + mode + "[]", text))).row();
+            window.add(Kit.line(width, Accent.GOLD)).row();
 
-        // Scrollable details body
-        root.pane(pane -> {
-            pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-            pane.table(body -> {
-                body.layout(l -> l.growX());
+            Kit.body(window, screen, body -> body.add(Kit.columns(screen,
+                    List.of(previewCard(model, screen), aboutCard(model, screen.card())),
+                    List.of(rtvCard(model, screen), communityCard(model, screen),
+                            durationCard(model, screen.card()), popularityCard(model, screen.card())))).row());
 
-                // 2. Hero: Preview (SLOT_PREVIEW) + Metadata
-                body.add(Ui.table(hero -> {
-                    hero.layout(l -> l.growX().padBottom(8f));
+            window.add(Ui.table(bar -> {
+                bar.layout(l -> l.padTop(GAP));
+                bar.add(Kit.actions(width, List.of(
+                        new Kit.Action(Iconc.left + " " + t("map-maps-back"), "action:back_to_list"))));
+            })).row();
+        });
+    }
 
-                    // Left Column: SLOT_PREVIEW
-                    hero.slot(SLOT_PREVIEW.path(), pSlot -> {
-                        pSlot.layout(l -> l.size(PREVIEW_SIZE).padRight(10f));
-                        if (model.previewTextureRegion() != null) {
-                            pSlot.image(model.previewTextureRegion(), l -> l.size(PREVIEW_SIZE));
-                        } else if (model.previewLoading()) {
-                            pSlot.add(Ui.table(loading -> {
-                                loading.background("button");
-                                loading.layout(l -> l.size(PREVIEW_SIZE));
-                                loading.label(Text.t("map-ui-loading"), l -> l.align("center"));
-                            }));
-                        } else {
-                            pSlot.add(Ui.table(err -> {
-                                err.background("button");
-                                err.layout(l -> l.size(PREVIEW_SIZE));
-                                err.label(Text.t("map-ui-no-preview"), l -> l.align("center"));
-                            }));
-                        }
-                    });
-
-                    // Right Column: Identity metadata
-                    hero.add(Ui.table(meta -> {
-                        meta.layout(l -> l.growX().align("left"));
-                        meta.label(Text.t("map-ui-dimensions", args("width", model.width(), "height", model.height())), l -> l.align("left").padBottom(2f)).row();
-                        meta.label(Text.t("map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())), l -> l.align("left").padBottom(2f)).row();
-                        meta.label(Text.t("map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())), l -> l.align("left").padBottom(2f)).row();
-                        if (model.mapDescription() == null || model.mapDescription().isBlank()) {
-                            meta.label(Text.t("map-ui-no-description"), l -> l.align("left").growX().padTop(2f));
-                        } else {
-                            meta.label(Text.t("map-ui-description", args("description", model.mapDescription())), l -> l.align("left").growX().padTop(2f));
-                        }
-                    }));
-                })).row();
-
-                body.image("whiteui", l -> l.growX().height(2f).padBottom(8f).color("454545")).row();
-
-                // 3. Telemetry Matrix
-                body.add(Ui.table(matrix -> {
-                    matrix.layout(l -> l.growX().padBottom(8f));
-
-                    // Col 1: Duration
-                    matrix.add(Ui.table(c1 -> {
-                        c1.layout(l -> l.uniform().growX().align("left"));
-                        c1.label(Text.t("map-ui-col-duration"), l -> l.padBottom(2f)).row();
-                        c1.label(Text.t("map-ui-duration-min", args("value", model.minGameTime()))).row();
-                        c1.label(Text.t("map-ui-duration-avg", args("value", model.avgGameTime()))).row();
-                        c1.label(Text.t("map-ui-duration-max", args("value", model.maxGameTime())));
-                    }));
-
-                    // Col 2: Popularity
-                    matrix.add(Ui.table(c2 -> {
-                        c2.layout(l -> l.uniform().growX().align("left"));
-                        c2.label(Text.t("map-ui-col-popularity"), l -> l.padBottom(2f)).row();
-                        c2.label(Text.t("map-ui-popularity-score", args("value", model.reputation()))).row();
-                        c2.label(Text.t("map-ui-popularity-pop", args("value", String.format("%.1f", model.popularity())))).row();
-                        c2.label(Text.t("map-ui-popularity-interest", args("value", String.format("%.1f", model.interest()))));
-                    }));
-
-                    // Col 3: Community
-                    matrix.add(Ui.table(c3 -> {
-                        c3.layout(l -> l.uniform().growX().align("left"));
-                        c3.label(Text.t("map-ui-col-community"), l -> l.padBottom(2f)).row();
-                        c3.label(Text.t("map-ui-community-approval", args("rate", model.approvalRatePercent()))).row();
-                        c3.label(Text.t("map-ui-community-likes", args("value", model.likes()))).row();
-                        c3.label(Text.t("map-ui-community-dislikes", args("value", model.dislikes())));
-                    }));
-                })).row();
-
-                body.image("whiteui", l -> l.growX().height(2f).padBottom(8f).color("454545")).row();
-
-                // 4. Interactive Reputation Slot (SLOT_REPUTATION)
-                body.slot(SLOT_REPUTATION.path(), rSlot -> {
-                    rSlot.layout(l -> l.growX().padBottom(8f));
-                    if (model.resolvedDetails() == null) {
-                        rSlot.add(Ui.table(loading -> {
-                            loading.layout(l -> l.growX().height(32f));
-                            loading.label(Text.t("map-ui-loading"), l -> l.align("center"));
-                        }));
+    private VNode previewCard(MapUiModel model, Screen screen) {
+        return Kit.card(screen.card(), (content, inner) ->
+                content.slot(screen.slot(SLOT_PREVIEW).path(), slot -> {
+                    slot.layout(l -> l.width(inner));
+                    if (model.previewTextureRegion() != null) {
+                        // A map is rarely square: the picture keeps its shape inside the square.
+                        slot.add(new VImage(null, Ui.layout().width(PREVIEW_SIZE).height(PREVIEW_SIZE).build(),
+                                model.previewTextureRegion(), null, VImage.SCALING_FIT));
                         return;
                     }
-                    rSlot.add(Ui.table(votes -> {
-                        votes.layout(l -> l.growX());
-                        boolean isLiked = Boolean.TRUE.equals(model.playerVote());
-                        boolean isDisliked = Boolean.FALSE.equals(model.playerVote());
-
-                        Text likeText = isLiked
-                        ? Text.t("map-ui-btn-liked", args("count", model.likes()))
-                        : Text.t("map-ui-btn-like", args("count", model.likes()));
-                        Text dislikeText = isDisliked
-                        ? Text.t("map-ui-btn-disliked", args("count", model.dislikes()))
-                        : Text.t("map-ui-btn-dislike", args("count", model.dislikes()));
-
-                        votes.button(likeText, "action:like", b -> b
-                                .style("cleart")
-                                .layout(l -> l.uniform().growX().height(32f).padRight(6f)));
-
-                        votes.button(dislikeText, "action:dislike", b -> b
-                                .style("cleart")
-                                .layout(l -> l.uniform().growX().height(32f)));
+                    String note = model.previewLoading() ? t("map-ui-loading") : t("map-ui-no-preview");
+                    slot.add(Ui.table(empty -> {
+                        empty.background("whiteui");
+                        empty.layout(l -> l.width(PREVIEW_SIZE).height(PREVIEW_SIZE).color(Kit.INSET));
+                        empty.add(Kit.centered("[gray]" + Iconc.image + "[]\n" + note, PREVIEW_SIZE - 2f * PAD));
                     }));
-                }).row();
+                }).row());
+    }
 
-                body.image("whiteui", l -> l.growX().height(2f).padBottom(8f).color("454545")).row();
+    private VNode aboutCard(MapUiModel model, float width) {
+        return Kit.card(width, Accent.GOLD, Iconc.info + " " + t("map-ui-about-title"), (content, inner) -> {
+            String description = model.mapDescription() == null || model.mapDescription().isBlank()
+                    ? t("map-ui-no-description")
+                    : t("map-ui-description", args("description", model.mapDescription()));
+            content.add(Kit.text(String.join("\n",
+                    t("map-ui-dimensions", args("width", model.width(), "height", model.height())),
+                    t("map-ui-total-plays", args("played", model.playedTimes(), "playedYear", model.playedTimesYear())),
+                    t("map-ui-last-played", args("lastPlayed", model.lastPlayedFormatted())),
+                    description), inner)).row();
+        });
+    }
 
-                // 5. Live RTV Slot (SLOT_RTV)
-                body.slot(SLOT_RTV.path(), rtvSlot -> {
-                    rtvSlot.layout(l -> l.growX().padBottom(8f));
-
+    /** The vote for this map: how it stands while one runs, and the buttons that start or join it. */
+    private VNode rtvCard(MapUiModel model, Screen screen) {
+        return Kit.card(screen.card(), Accent.ORANGE, Iconc.refresh + " " + t("map-ui-rtv-title"), (content, inner) ->
+                content.slot(screen.slot(SLOT_RTV).path(), slot -> {
+                    slot.layout(l -> l.width(inner));
+                    List<Kit.Action> actions = new ArrayList<>();
                     if (model.rtvActive()) {
-                        rtvSlot.label(Text.t("map-ui-rtv-active-status", args(
-                                "votes", model.rtvVotes(),
-                                "required", model.rtvVotesRequired(),
-                                "seconds", model.rtvRemainingSeconds()
-                        )), l -> l.align("center").padBottom(4f)).row();
-                        rtvSlot.button(Text.t("map-ui-rtv-vote-yes"), "action:rtv", b -> b
-                                .style("cleart")
-                                .layout(l -> l.growX().fillX().height(38f))).row();
+                        slot.add(Ui.table(status -> {
+                            status.layout(l -> l.padBottom(GAP));
+                            status.add(Kit.centered(t("map-ui-rtv-active-status", args(
+                                    "votes", model.rtvVotes(),
+                                    "required", model.rtvVotesRequired(),
+                                    "seconds", model.rtvRemainingSeconds())), inner));
+                        })).row();
+                        actions.add(new Kit.Action("[accent]" + Iconc.ok + " " + t("map-ui-rtv-vote-yes") + "[]", "action:rtv"));
                     } else {
-                        rtvSlot.button(Text.t("map-ui-rtv-start"), "action:rtv", b -> b
-                                .style("cleart")
-                                .layout(l -> l.growX().fillX().height(38f))).row();
+                        actions.add(new Kit.Action("[accent]" + Iconc.play + " " + t("map-ui-rtv-start") + "[]", "action:rtv"));
                     }
-
-                    // Admin Force RTV button (2-click confirmed)
+                    // An admin changes the map at once, on the second press.
                     if (model.isAdmin()) {
-                        Text adminText = model.adminForceConfirming()
-                                ? Text.t("map-ui-admin-rtv-confirm")
-                                : Text.t("map-ui-admin-rtv");
-                        rtvSlot.button(adminText, "action:admin_rtv", b -> b
-                                .style("cleart")
-                                .layout(l -> l.growX().fillX().height(28f).padTop(4f)));
+                        actions.add(model.adminForceConfirming()
+                                ? new Kit.Action("[scarlet]" + Iconc.warning + " " + t("map-ui-admin-rtv-confirm") + "[]", "action:admin_rtv")
+                                : new Kit.Action("[scarlet]" + Iconc.admin + " " + t("map-ui-admin-rtv") + "[]", "action:admin_rtv"));
                     }
-                }).row();
-            });
-        }).row();
+                    for (int i = 0; i < actions.size(); i++) {
+                        Kit.Action action = actions.get(i);
+                        boolean last = i == actions.size() - 1;
+                        slot.add(Ui.table(line -> {
+                            line.layout(l -> l.padBottom(last ? 0f : TAB_GAP));
+                            line.add(Kit.button(action, inner));
+                        })).row();
+                    }
+                }).row());
+    }
 
-        // 6. Footer Navigation
-        root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(6f).color("454545")).row();
-        root.add(Ui.table(nav -> {
-            nav.layout(l -> l.growX());
-            nav.button(Text.join(Text.raw("[accent]"), Text.t("map-maps-back")), "action:back_to_list", b -> b
-                    .style("cleart")
-                    .layout(l -> l.uniform().growX().height(36f).padRight(6f)));
-            nav.button(Text.join(Text.raw("[gray]"), Text.t("close")), "action:close", b -> b
-                    .style("cleart")
-                    .layout(l -> l.uniform().growX().height(36f)));
-        }));
+    /** What players think of the map, and the player's own vote on it. */
+    private VNode communityCard(MapUiModel model, Screen screen) {
+        return Kit.card(screen.card(), Accent.GREEN, Iconc.players + " " + t("map-ui-col-community"), (content, inner) ->
+                content.slot(screen.slot(SLOT_REPUTATION).path(), slot -> {
+                    slot.layout(l -> l.width(inner));
+                    String score = (model.reputation() > 0 ? "+" : "") + model.reputation();
+                    slot.add(Ui.table(numbers -> {
+                        numbers.layout(l -> l.padBottom(GAP));
+                        numbers.add(Kit.text(t("map-ui-community-approval", args("rate", model.approvalRatePercent()))
+                                + "\n" + t("map-ui-popularity-score", args("value", score)), inner));
+                    })).row();
+
+                    // The votes cannot be given until the map's record is read.
+                    boolean ready = model.resolvedDetails() != null;
+                    boolean liked = Boolean.TRUE.equals(model.playerVote());
+                    boolean disliked = Boolean.FALSE.equals(model.playerVote());
+                    slot.add(Kit.actions(inner, List.of(
+                            new Kit.Action((liked ? "[green]" + Iconc.ok : "[lightgray]" + Iconc.up) + " "
+                                    + t("map-ui-btn-like", args("count", model.likes())) + "[]", "action:like", ready),
+                            new Kit.Action((disliked ? "[scarlet]" + Iconc.ok : "[lightgray]" + Iconc.down) + " "
+                                    + t("map-ui-btn-dislike", args("count", model.dislikes())) + "[]", "action:dislike", ready)))).row();
+                }).row());
+    }
+
+    private VNode durationCard(MapUiModel model, float width) {
+        return Kit.card(width, Accent.BLUE, Iconc.play + " " + t("map-ui-col-duration"), (content, inner) ->
+                content.add(Kit.text(String.join("\n",
+                        t("map-ui-duration-min", args("value", model.minGameTime())),
+                        t("map-ui-duration-avg", args("value", model.avgGameTime())),
+                        t("map-ui-duration-max", args("value", model.maxGameTime()))), inner)).row());
+    }
+
+    private VNode popularityCard(MapUiModel model, float width) {
+        return Kit.card(width, Accent.PURPLE, Iconc.chartBar + " " + t("map-ui-col-popularity"), (content, inner) ->
+                content.add(Kit.text(String.join("\n",
+                        t("map-ui-popularity-pop", args("value", String.format("%.1f", model.popularity()))),
+                        t("map-ui-popularity-interest", args("value", String.format("%.1f", model.interest())))), inner)).row());
+    }
+
+    private String t(String key) {
+        return session != null ? session.locale().t(key) : key;
+    }
+
+    private String t(String key, java.util.Map<String, Object> args) {
+        return session != null ? session.locale().t(key, args) : key;
     }
 
     // ==================================================================

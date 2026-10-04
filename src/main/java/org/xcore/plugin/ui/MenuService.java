@@ -40,6 +40,12 @@ public class MenuService {
     private final Map<String, RoutedMenuFlow<?>> routedFlows = new HashMap<>();
     private final List<MenuLifecycleListener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
+    /**
+     * Tokens of built screens. UI sessions count theirs up from one, so a negative one is never
+     * taken for theirs, nor theirs for it.
+     */
+    private static final java.util.concurrent.atomic.AtomicLong BUILT_TOKENS = new java.util.concurrent.atomic.AtomicLong();
+
     private int globalMenuId = 0;
     private int globalTextId = 0;
     private int globalMenuBuilderId = -1;
@@ -168,6 +174,15 @@ public class MenuService {
                 .flatMap(row -> row.stream().map(MenuButton::actionId))
                 .toList();
         var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds, route);
+        if (hasMenuBuilder() && showBuilt(session, active, MenuScreenToUiAdapter.toVNode(screen))) {
+            return;
+        }
+        // Not built: the client's own dialog shows it, and what the builder has on the screen
+        // goes, a UI session's dialog included, or it would stay open under it and be answered for.
+        if (session.hasActiveUiSession() || (session.activeScreen() != null && session.activeScreen().isBuilt())) {
+            gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+            session.clearActiveUiSession();
+        }
         session.setActiveScreen(active);
         notifyMenuOpened(session);
 
@@ -190,26 +205,62 @@ public class MenuService {
         gateway.menuBuilder(session.player, globalMenuBuilderId, version, title, true, true, false, compiled);
     }
 
-    public <TState> void showUi(Session session, MenuScreen screen, MenuFlow<TState> flow, TState state, MenuRoute route) {
-        if (session == null || session.player == null || session.player.con == null) return;
+    /**
+     * Shows {@code screen} as a dialog the client builds from {@code tree}, in place of the one
+     * the menu builder has on the screen. The dialog stays until it is replaced or told to go.
+     *
+     * @return false when the tree is too large for a packet, and nothing was shown
+     */
+    private boolean showBuilt(Session session, ActiveMenuScreen screen, VNode tree) {
+        var compiled = new VNodeCompiler(resolverFor(session)).compile(tree);
+        if (MenuScreenToUiAdapter.packetSize(compiled) >= MenuScreenToUiAdapter.PACKET_LIMIT) {
+            return false;
+        }
 
-        long version = session.nextUiVersion();
-        List<MenuAction> actions = screen.toActions();
-        List<String> actionIds = screen.rows().stream()
-                .flatMap(row -> row.stream().map(MenuButton::actionId))
-                .toList();
-        var active = ActiveMenuScreen.create(version, screen.mode(), actions, flow, state, actionIds, route);
-        session.setActiveScreen(active);
+        // The dialog of a UI session, if there is one, is the one replaced.
+        session.clearActiveUiSession();
+        var built = screen.built(tree, BUILT_TOKENS.decrementAndGet());
+        session.setActiveScreen(built);
         notifyMenuOpened(session);
+        gateway.menuBuilder(session.player, globalMenuBuilderId, built.token(), null, false, true, true, compiled);
+        return true;
+    }
 
-        var compiled = MenuScreenToUiAdapter.compile(screen, resolverFor(session));
-        gateway.menuBuilder(session.player, globalMenuBuilderId, version, screen.title(), true, true, false, compiled);
+    /** Takes {@code screen} off the client's screen, if it is one that stays there. */
+    private void hide(Session session, ActiveMenuScreen screen) {
+        if (session.player == null || screen == null) return;
+        if (screen.isBuilt()) {
+            gateway.hideMenuBuilder(session.player, globalMenuBuilderId);
+        } else if (screen.mode() == MenuMode.FOLLOW_UP) {
+            gateway.hideFollowUpMenu(session.player, globalMenuId);
+        }
     }
 
     public <M, E> UiSession<M, E> openUi(Session session, UiController<M, E> controller, M initialModel) {
+        return openUi(session, controller, initialModel, false);
+    }
+
+    /**
+     * @param fillScreen whether the client's dialog takes the whole screen. A dialog that does not
+     *                   is as large as its content asks and is cut off where the screen ends; one
+     *                   that does gives the content the screen it has, so scroll panes shrink to fit.
+     */
+    public <M, E> UiSession<M, E> openUi(Session session, UiController<M, E> controller, M initialModel,
+                                         boolean fillScreen) {
         if (session == null || session.player == null || session.player.con == null) return null;
 
         long version = session.nextUiVersion();
+        // The session's dialog takes the place of a built screen, which is then no longer open:
+        // its flow is told so, as the client will not report the close of a dialog it replaced.
+        ActiveMenuScreen replaced = session.activeScreen();
+        if (replaced != null && replaced.isBuilt()) {
+            if (replaced.hasFlow()) {
+                dispatchFlowClose(replaced, session);
+            }
+            if (session.activeScreen() == replaced) {
+                session.clearActiveScreen();
+            }
+        }
         notifyMenuOpened(session);
 
         @SuppressWarnings("unchecked")
@@ -239,7 +290,10 @@ public class MenuService {
         UiSession.DeliveryGateway deliveryGateway = new UiSession.DeliveryGateway() {
             @Override
             public void show(String playerId, long token, UiBuilder.NodeBuilder<?> ui) {
-                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, false, ui);
+                if (session.activeUiSession() == sessionRef[0]) {
+                    session.markUiShown();
+                }
+                gateway.menuBuilder(session.player, globalMenuBuilderId, token, null, false, true, fillScreen, ui);
             }
 
             @Override
@@ -319,18 +373,14 @@ public class MenuService {
 
         var activeScreen = session.activeScreen();
         if (session.hasRouteHistory() && (activeScreen == null || activeScreen.hasRoute())) {
-            if (activeScreen != null && activeScreen.mode() == MenuMode.FOLLOW_UP && session.player != null) {
-                gateway.hideFollowUpMenu(session.player, globalMenuId);
-            }
+            hideBeforeNext(session, activeScreen);
             renderRoute(session, session.popRouteHistory());
             return true;
         }
 
         Runnable previousMenu = session.popHistory();
         if (previousMenu != null) {
-            if (activeScreen != null && activeScreen.mode() == MenuMode.FOLLOW_UP && session.player != null) {
-                gateway.hideFollowUpMenu(session.player, globalMenuId);
-            }
+            hideBeforeNext(session, activeScreen);
             session.clearActivePrompt();
             session.textHandler = null;
             session.actions.clear();
@@ -344,11 +394,21 @@ public class MenuService {
         return false;
     }
 
+    /**
+     * Makes room for the menu that comes next. A built screen needs none: the next dialog
+     * replaces it, and hiding it first would only make the two flicker.
+     */
+    private void hideBeforeNext(Session session, ActiveMenuScreen screen) {
+        if (screen != null && !screen.isBuilt()) {
+            hide(session, screen);
+        }
+    }
+
     public void hideFollowUp(Session session) {
         if (session == null || session.player == null) return;
         var screen = session.activeScreen();
         if (screen != null && screen.mode() == MenuMode.FOLLOW_UP) {
-            gateway.hideFollowUpMenu(session.player, globalMenuId);
+            hide(session, screen);
         }
         if (session.activeScreen() == screen) {
             session.clearActiveScreen();
@@ -364,11 +424,7 @@ public class MenuService {
         session.textHandler = null;
         session.actions.clear();
 
-        if (screen != null && screen.mode() == MenuMode.FOLLOW_UP) {
-            if (session.player != null) {
-                gateway.hideFollowUpMenu(session.player, globalMenuId);
-            }
-        }
+        hide(session, screen);
         if (screen != null && screen.hasFlow()) {
             dispatchFlowClose(screen, session);
         }
@@ -431,8 +487,8 @@ public class MenuService {
                 session.textHandler = null;
                 session.actions.clear();
 
-                if (screen.mode() == MenuMode.FOLLOW_UP) {
-                    gateway.hideFollowUpMenu(session.player, globalMenuId);
+                if (!screen.isBuilt()) {
+                    hide(session, screen);
                 }
                 if (screen.hasFlow()) {
                     dispatchFlowClose(screen, session);
@@ -467,31 +523,103 @@ public class MenuService {
         if (session == null || session.data == null || result == null) return;
 
         if (session.hasActiveUiSession()) {
-            session.activeUiSession().handle(result);
+            var uiSession = session.activeUiSession();
+            boolean currentWindow = result.token == 0 || result.token == uiSession.token();
+            if (currentWindow && !result.wasCancelled()) {
+                // The client's dialog stops reporting its close once pressed (Menus.menuBuilder sets
+                // wasHidden), and a patch keeps that same dialog up.
+                session.markUiPressed();
+            }
+            uiSession.handle(result);
+            if (currentWindow && result.wasCancelled()
+                    && session.activeUiSession() == uiSession && uiSession.token() == result.token) {
+                // The client closed the dialog and the controller neither closed nor re-sent it.
+                session.clearActiveUiSession();
+                notifyMenuClosed(session);
+            }
             return;
         }
+
+        var screen = session.activeScreen();
+        if (screen != null && screen.isBuilt()) {
+            // A dialog that was replaced reports it as a cancel, under its own token.
+            if (result.token != screen.token()) return;
+            if (result.wasCancelled()) {
+                onMenuOption(session, -1);
+            } else {
+                onBuiltOption(session, screen, optionOf(screen, result.result));
+            }
+            return;
+        }
+        // From a built screen that is no longer the open one.
+        if (result.token < 0) return;
 
         if (result.wasCancelled()) {
             onMenuOption(session, -1);
             return;
         }
 
-        if (result.result != null) {
-            try {
-                int option = Integer.parseInt(result.result);
-                onMenuOption(session, option);
-                return;
-            } catch (NumberFormatException ignored) {
-            }
-
-            var screen = session.activeScreen();
-            if (screen != null) {
-                int index = screen.actionIds().indexOf(result.result);
-                if (index >= 0) {
-                    onMenuOption(session, index);
-                }
-            }
+        int option = optionOf(screen, result.result);
+        if (option >= 0) {
+            onMenuOption(session, option);
         }
+    }
+
+    /** The button {@code result} names, by its number or by its action; -1 when it names none. */
+    private static int optionOf(ActiveMenuScreen screen, String result) {
+        if (result == null) return -1;
+        try {
+            return Integer.parseInt(result);
+        } catch (NumberFormatException ignored) {
+        }
+        return screen == null ? -1 : screen.actionIds().indexOf(result);
+    }
+
+    /**
+     * A press on a built screen. Its dialog does not close on a press, so what becomes of it is
+     * decided here, once the action has run.
+     */
+    private void onBuiltOption(Session session, ActiveMenuScreen screen, int option) {
+        if (option < 0 || option >= screen.actionCount()) return;
+
+        if (screen.hasFlow()) {
+            dispatchFlowAction(screen, session, option);
+        } else {
+            screen.runAction(option);
+        }
+
+        // The action showed another screen, or closed this one.
+        if (session.activeScreen() != screen) return;
+
+        if (session.hasActiveUiSession()) {
+            // A UI session's dialog took its place.
+            session.clearActiveScreen();
+            return;
+        }
+
+        if (screen.mode() != MenuMode.FOLLOW_UP) {
+            hide(session, screen);
+            session.clearActiveScreen();
+            notifyMenuClosed(session);
+            return;
+        }
+
+        // A follow-up stays open; while a prompt is over it, it is left as it is.
+        if (session.activePrompt() == null) {
+            rearm(session, screen);
+        }
+    }
+
+    /**
+     * Sends the dialog of {@code screen} anew. The client reports that a dialog was closed only
+     * until its first press, so one that stays after a press would count as open for good.
+     */
+    private void rearm(Session session, ActiveMenuScreen screen) {
+        if (session.player == null || session.player.con == null) return;
+        var fresh = screen.built(screen.tree(), BUILT_TOKENS.decrementAndGet());
+        session.setActiveScreen(fresh);
+        gateway.menuBuilder(session.player, globalMenuBuilderId, fresh.token(), null, false, true, true,
+                new VNodeCompiler(resolverFor(session)).compile(screen.tree()));
     }
 
     // Package-private for testing
@@ -500,6 +628,7 @@ public class MenuService {
 
         var prompt = session.activePrompt();
         if (prompt != null) {
+            var under = session.activeScreen();
             session.clearActivePrompt();
             notifyMenuClosed(session);
             if (prompt.hasFlow()) {
@@ -510,6 +639,11 @@ public class MenuService {
                 } else {
                     prompt.submit(text);
                 }
+            }
+            // A follow-up the prompt was opened over, when the answer showed nothing in its place.
+            if (under != null && under.isBuilt() && session.activeScreen() == under
+                    && session.activePrompt() == null && !session.hasActiveUiSession()) {
+                rearm(session, under);
             }
             return;
         }

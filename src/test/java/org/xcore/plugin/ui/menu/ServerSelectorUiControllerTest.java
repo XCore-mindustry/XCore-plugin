@@ -4,7 +4,6 @@ import com.ospx.flubundle.Bundle;
 import com.ospx.flubundle.BundleContext;
 import mindustry.gen.Player;
 import mindustry.ui.builder.MenuResult;
-import mindustry.ui.builder.UiDslWriter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.xcore.protocol.generated.messages.server.ServerMessages.ServerHeartbeatV1;
@@ -16,9 +15,9 @@ import org.xcore.plugin.service.NetworkService;
 import org.xcore.plugin.service.ServerRegistryService;
 import org.xcore.plugin.service.ServerRegistryService.Category;
 import org.xcore.plugin.session.Session;
-import org.xcore.ui.LocalizerResolver;
+import org.xcore.plugin.ui.kit.LayoutAssert;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.VNode;
-import org.xcore.ui.VNodeCompiler;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UpdateResult;
 
@@ -92,84 +91,97 @@ class ServerSelectorUiControllerTest {
         return service;
     }
 
-    @Test
-    @DisplayName("render compiles VNode tree with 740 width, maxHeight 520 pane, tabs, and buttonTable cards")
-    void render_compilesVNodeTreeWithResponsiveCards() {
-        ServerRegistryService registry = createRegistry();
-        Session session = createTestSession("uuid-1");
-        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
-        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
-
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        // Background and caps: the client resolves the real width from its own scene
-        assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).doesNotContain("width: 740");
-
-        // Header
-        assertThat(dsl).contains("ИГРОВЫЕ СЕРВЕРЫ");
-        assertThat(dsl).contains("action:close");
-
-        // Tabs
-        assertThat(dsl).contains("action:tab:all");
-        assertThat(dsl).contains("action:tab:pvp");
-        assertThat(dsl).contains("action:tab:survival");
-        assertThat(dsl).contains("action:tab:special");
-
-        // Dynamic slot
-        assertThat(dsl).contains("id: slot_servers");
-        assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 460");
-
-        // Card buttonTables
-        assertThat(dsl).contains("buttonTable{");
-        assertThat(dsl).contains("action:connect:mini-pvp");
-        assertThat(dsl).contains("action:connect:mini-surv");
-        assertThat(dsl).contains("ВЫ ЗДЕСЬ");
-
-        // Footer
-        assertThat(dsl).contains("action:refresh");
-        assertThat(dsl).contains("Обновить");
+    /** A network with a full server, a busy one with a long description, an idle one and the rest offline. */
+    private ServerRegistryService crowdedRegistry() {
+        ServerRegistryService service = createRegistry();
+        service.handleHeartbeat(new ServerHeartbeatV1(
+                "hexedcore", 2L, 16, 16, "v160", "play.xcore.top", 7005,
+                "Захватывайте гексы, стройте базу и не дайте соседям вырасти раньше вас", "Hexed Arena", null, "hexed", 58
+        ));
+        service.handleHeartbeat(new ServerHeartbeatV1(
+                "towerdefence", 3L, 7, 12, "v160", "play.xcore.top", 7009, "", "Supercalifragilistic_Crossroads_v12_final", 143, "td", 60
+        ));
+        service.handleHeartbeat(new ServerHeartbeatV1(
+                "sandbox", 4L, 0, 20, "v160", "play.xcore.top", 7013, "", "-", null, "sandbox", 60
+        ));
+        return service;
     }
 
     @Test
-    @DisplayName("render emits client-resolved caps and native orientation conditions")
-    void render_compilesResponsiveCaps() {
-        ServerRegistryService registry = createRegistry();
+    @DisplayName("the window is laid out for every screen in every language")
+    void window_isLaidOutForEveryScreen() {
+        ServerRegistryService registry = crowdedRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
-        ServerSelectorUiController.ServerSelectorModel model = ServerSelectorUiController.createModel(registry, Category.ALL);
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
-
-        assertThat(dsl).contains("background: pane");
-        assertThat(dsl).contains("maxWidth: 760");
-        assertThat(dsl).doesNotContain("width: 520");
-        assertThat(dsl).contains("maxHeight: 460");
-        assertThat(dsl).contains("condition: portrait");
-        assertThat(dsl).contains("action:connect:mini-pvp");
+        for (String language : LayoutAssert.LANGUAGES) {
+            session.localization = LayoutAssert.localization(language);
+            for (Category category : Category.values()) {
+                var model = ServerSelectorUiController.createModel(registry, category);
+                for (Screen screen : Screen.ALL) {
+                    VNode window = controller.window(model, screen);
+                    LayoutAssert.assertLaidOut(window, screen);
+                    assertThat(LayoutAssert.allText(window)).doesNotContain("player-servers-");
+                    assertThat(LayoutAssert.actions(window)).contains(
+                            "action:tab:all", "action:tab:pvp", "action:tab:survival", "action:tab:special",
+                            "action:refresh");
+                }
+                LayoutAssert.assertFitsPacket(controller.render(model), language + " " + category);
+            }
+        }
     }
 
     @Test
-    @DisplayName("render compiles centered info message when category is empty")
-    void render_compilesEmptyCategoryMessage() {
+    @DisplayName("a server is a row that connects to it; the player's own is marked")
+    void window_showsServersAsRows() {
+        ServerRegistryService registry = crowdedRegistry();
+        Session session = createTestSession("uuid-1");
+        session.localization = LayoutAssert.localization("ru");
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        var model = ServerSelectorUiController.createModel(registry, Category.ALL);
+
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            String text = LayoutAssert.allText(window);
+
+            assertThat(LayoutAssert.actions(window)).contains("action:connect:mini-pvp", "action:connect:mini-surv");
+            assertThat(LayoutAssert.actions(window)).doesNotContain("action:close");
+            assertThat(text).contains("ИГРОВЫЕ СЕРВЕРЫ", "ВЫ ЗДЕСЬ", "МЕСТ НЕТ", "Обновить");
+
+            String dsl = LayoutAssert.dsl(window);
+            assertThat(dsl).contains("background: pane", "pane{", "buttonTable{");
+            assertThat(dsl).doesNotContain("maxWidth", "condition: portrait");
+        }
+        // A description or a map name longer than the row is cut, and its colour is closed at the cut.
+        assertThat(LayoutAssert.allText(controller.window(model, Screen.SMALL))).contains("…[]");
+    }
+
+    @Test
+    @DisplayName("every screen class gets its own copy, chosen by the client")
+    void render_sendsOneWindowPerScreen() {
         ServerRegistryService registry = createRegistry();
         Session session = createTestSession("uuid-1");
         ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
-        ServerSelectorUiController.ServerSelectorModel model = new ServerSelectorUiController.ServerSelectorModel(
-                "none", Category.ALL, List.of(), 0, 0, 0
-        );
+        var model = ServerSelectorUiController.createModel(registry, Category.ALL);
 
-        VNode root = controller.render(model);
-        VNodeCompiler compiler = new VNodeCompiler((key, args) -> session.locale().format(key, args));
-        String dsl = UiDslWriter.write(compiler.compile(root));
+        String dsl = LayoutAssert.dsl(controller.render(model));
 
-        assertThat(dsl).contains("player-servers-empty-category");
+        assertThat(dsl).contains("condition: \"width >= 800\"", "condition: \"width < 800\"", "condition: \"width < 490\"");
+    }
+
+    @Test
+    @DisplayName("an empty category says so")
+    void window_showsEmptyCategory() {
+        ServerRegistryService registry = createRegistry();
+        Session session = createTestSession("uuid-1");
+        ServerSelectorUiController controller = new ServerSelectorUiController(registry, session);
+        var model = new ServerSelectorUiController.ServerSelectorModel("none", Category.ALL, List.of(), 0, 0, 0);
+
+        for (Screen screen : Screen.ALL) {
+            VNode window = controller.window(model, screen);
+            assertThat(LayoutAssert.allText(window)).contains("player-servers-empty-category");
+            assertThat(LayoutAssert.actions(window)).noneMatch(action -> action.startsWith("action:connect:"));
+        }
     }
 
     @Test

@@ -17,9 +17,12 @@ import org.xcore.plugin.player.Badge;
 import org.xcore.plugin.rating.RatingLeague;
 import org.xcore.plugin.session.Session;
 import org.xcore.plugin.session.SessionService;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
+import org.xcore.plugin.ui.kit.TextWidth;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
-import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.VNode;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.SlotKey;
@@ -27,6 +30,7 @@ import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
@@ -34,11 +38,12 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.ospx.flubundle.Bundle.args;
+import static org.xcore.plugin.ui.kit.Kit.GAP;
 
 /**
- * Modern reactive Elm/MVI controller for the Leaderboard / Top Menu (/top, /lb) in Mindustry v160.
- * Replaces legacy TopFlows.java with in-dialog adaptive category tabs, zero-aim full-row touch targets,
- * sticky self-rank indicator, and zero-flicker slot patching.
+ * The leaderboard ({@code /top}, {@code /lb}): a tab per category, the players of a page as rows
+ * that open a profile, the viewer's own place under the list, laid out once per {@link Screen}.
+ * Turning a page patches the list, the place and the pager and leaves the rest of the window.
  */
 public class TopUiController implements UiController<TopUiController.TopModel, TopUiController.TopEvent> {
 
@@ -47,6 +52,8 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     public static final SlotKey<Object> SLOT_PAGINATION = SlotKey.of("slot_top_pagination");
 
     public static final int PLAYERS_PER_PAGE = 10;
+    /** Letters of a nickname kept before it is measured against the row; no nickname needs more. */
+    private static final int NICKNAME_BUDGET = 64;
     public static final String FIRST_PAGE_CURSOR_TOKEN = "__first__";
 
     public record CategoryTab(
@@ -62,8 +69,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
      * <p>No device or orientation flags live here. The server cannot know either one —
      * {@code ConnectPacket} carries only {@code mobile}, and the camera dimensions in
      * {@code clientSnapshot} describe the world view rather than the screen — so anything the
-     * dialog needs to adapt is expressed in the tree and resolved by the client, either through
-     * {@link org.xcore.ui.responsive.Responsive} conditions or {@code growX() + maxWidth} caps.
+     * dialog needs to adapt is expressed in the tree and resolved by the client (see {@link Screen}).
      *
      * @param scopes          the selected category's leaderboards, empty when it has only one
      * @param selectedScopeId the scope on screen, {@code null} when the category has only one
@@ -370,7 +376,7 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                         && Objects.equals(model.selectedCategoryId(), loaded.selectedCategoryId())
                         && Objects.equals(model.selectedScopeId(), loaded.selectedScopeId());
                 yield pageOnly
-                        ? UpdateResult.patch(loaded, SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION)
+                        ? UpdateResult.patch(loaded, Screen.slots(SLOT_ENTRIES, SLOT_SELF_RANK, SLOT_PAGINATION))
                         : UpdateResult.rerender(loaded);
             }
             case TopEvent.InspectPlayer e -> {
@@ -457,119 +463,83 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
     // View Rendering
     // =========================================================================
 
-    /** Caps only; the client resolves the actual width and body height. */
-    private DialogMetrics metrics() {
-        return DialogMetrics.standard();
-    }
+    /** What the rank takes of a row, and the value on a screen wide enough to keep it on the name's line. */
+    private static final float RANK_WIDTH = 60f;
+    private static final float VALUE_WIDTH = 250f;
+    private static final float STRIPE = 4f;
 
     @Override
     public VNode render(TopModel model) {
-        DialogMetrics metrics = metrics();
+        return Screen.each(screen -> window(model, screen));
+    }
+
+    /** The leaderboard laid out for one class of screens. */
+    VNode window(TopModel model, Screen screen) {
         Localization local = locale();
-        String currentCatName = model.categories().stream()
+        float width = screen.width();
+        String categoryName = model.categories().stream()
                 .filter(c -> Objects.equals(c.id(), model.selectedCategoryId()))
                 .findFirst()
                 .map(CategoryTab::displayName)
                 .orElse(model.selectedCategoryId());
 
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+        List<Kit.Tab> tabs = new ArrayList<>();
+        Accent accent = Accent.GOLD;
+        for (int i = 0; i < model.categories().size(); i++) {
+            CategoryTab category = model.categories().get(i);
+            boolean selected = Objects.equals(category.id(), model.selectedCategoryId());
+            if (selected) accent = Accent.at(i);
+            char glyph = category.iconGlyph() == null || category.iconGlyph().isEmpty()
+                    ? 0 : category.iconGlyph().charAt(0);
+            tabs.add(new Kit.Tab(glyph, category.displayName(), "action:tab:" + category.id(), Accent.at(i), selected));
+        }
+        Accent lineAccent = accent;
 
-            // 1. Dialog Header: Star Icon + Full Title on row 1, Count on row 2, and Close Button on the right
-            root.add(Ui.table(h -> {
-                h.layout(l -> l.growX().padBottom(4f));
-
-                h.add(Ui.table(titleCol -> {
-                    titleCol.layout(l -> l.growX().align("left"));
-                    String titleText = local != null
-                            ? local.t("top-menu-title", args("category", currentCatName))
-                            : "Top Players: " + currentCatName;
-                    titleCol.label(Text.raw("[gold]" + Iconc.star + "[] [white]" + titleText + "[]"),
-                            l -> l.align("left").growX()).row();
-
-                    if (model.totalEntries() != null && model.totalEntries() > 0) {
-                        String totalText = local != null
-                                ? local.t("top-menu-total-count", args("count", model.totalEntries()))
-                                : model.totalEntries() + " players";
-                        titleCol.label(Text.raw("[lightgray]" + totalText + "[]"),
-                                l -> l.align("left").padTop(2f));
-                    }
-                }));
-
-                h.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
-                        .style("cleart")
-                        .layout(l -> l.size(32f)));
-            })).row();
-
-            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("3b4252")).row();
-
-            // 2. Category Tabs
-            root.add(Ui.table(tabs -> {
-                // WrapTable picks the tab columns from the width the client actually gives it, so the
-                // same tab set fits a narrow phone and a wide desktop without a server-side guess
-                tabs.wrap();
-                tabs.layout(l -> l.growX().padBottom(4f));
-
-                for (CategoryTab cat : model.categories()) {
-                    boolean active = Objects.equals(cat.id(), model.selectedCategoryId());
-                    String label = (active ? "[accent]" : "[lightgray]") + cat.iconGlyph() + " " + cat.displayName() + "[]";
-
-                    tabs.button(Text.raw(label), "action:tab:" + cat.id(), b -> b
-                            .style(active ? "togglet" : "cleart")
-                            .checked(active)
-                            .layout(l -> l.height(34f).pad(2f).growX().uniform()));
-                }
-            })).row();
-
-            // 2b. Scope switcher, for a category with several leaderboards (rating seasons)
-            if (model.scopes().size() > 1) {
-                root.add(Ui.table(bar -> renderScopeSwitcher(bar, model, local))).row();
+        return Kit.window(window -> {
+            String title = local != null
+                    ? local.t("top-menu-title", args("category", categoryName))
+                    : "Top Players: " + categoryName;
+            String total = "";
+            if (model.totalEntries() != null && model.totalEntries() > 0) {
+                total = "\n[lightgray]" + (local != null
+                        ? local.t("top-menu-total-count", args("count", model.totalEntries()))
+                        : model.totalEntries() + " players") + "[]";
             }
+            window.add(Kit.header(width, "[gold]" + Iconc.star + "[] [white]" + title + "[]" + total)).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
+            window.add(Kit.tabs(width, "tabs", tabs)).row();
+            // A category with several leaderboards (rating seasons) steps through them here.
+            if (model.scopes().size() > 1) {
+                window.add(scopeSwitcher(model, width, local)).row();
+            }
+            window.add(Kit.line(width, lineAccent)).row();
 
-            // 3. Dynamic Entries Slot (Scrollable Player Rows)
-            root.slot(SLOT_ENTRIES.path(), slot -> {
-                slot.layout(l -> l.growX());
-                slot.pane(pane -> {
-                    pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                    pane.table(list -> renderEntriesList(list, model, metrics, local, currentCatName));
-                });
+            // The parts a turned page changes are slots, so the rest of the window stays as it is.
+            window.slot(screen.slot(SLOT_ENTRIES).path(), slot ->
+                    slot.add(Kit.pane(screen, list -> entries(list, model, screen, local, categoryName)))).row();
+            window.slot(screen.slot(SLOT_SELF_RANK).path(), slot -> {
+                slot.layout(l -> l.padTop(GAP));
+                slot.add(Kit.band(width, Kit.HEADER, Kit.BAND_MARGIN, selfRank(model, local)));
             }).row();
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("3b4252")).row();
-
-            // 4. Dynamic Sticky Self-Rank Slot
-            root.slot(SLOT_SELF_RANK.path(), slot -> {
-                slot.layout(l -> l.growX());
-                renderSelfRankCard(slot, model, metrics, local);
-            }).row();
-
-            // Feedback Message if any
             if (model.feedbackMessage() != null && !model.feedbackMessage().isBlank()) {
-                root.image("whiteui", l -> l.growX().height(2f).padTop(2f).padBottom(2f).color("454545")).row();
-                root.add(Ui.table(fb -> {
-                    fb.layout(l -> l.growX().padTop(2f).padBottom(2f));
-                    fb.label(Text.raw(model.feedbackMessage()), l -> l.align("center").growX());
+                window.add(Ui.table(feedback -> {
+                    feedback.layout(l -> l.padTop(GAP));
+                    feedback.add(Kit.feedback(width, model.feedbackMessage(), false));
                 })).row();
             }
 
-            root.image("whiteui", l -> l.growX().height(2f).padTop(4f).padBottom(4f).color("3b4252")).row();
-
-            // 5. Dynamic Pagination Toolbar Slot
-            root.slot(SLOT_PAGINATION.path(), slot -> {
-                slot.layout(l -> l.growX());
-                renderPaginationBar(slot, model, local);
+            window.slot(screen.slot(SLOT_PAGINATION).path(), slot -> {
+                boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
+                boolean canNext = model.hasNext() && model.nextCursor() != null;
+                slot.add(Kit.pager(width, model.currentPage() + " / " + model.totalPages(),
+                        canPrev ? "action:page:prev" : null, canNext ? "action:page:next" : null, "action:refresh"));
             }).row();
         });
     }
 
     /** "◀ Season 3 ▶": scopes run newest first, so the left arrow steps to an older one. */
-    private void renderScopeSwitcher(Ui.TableBuilder bar, TopModel model, Localization local) {
-        bar.layout(l -> l.growX().padBottom(2f));
-
+    private VNode scopeSwitcher(TopModel model, float width, Localization local) {
         List<TopScope> scopes = model.scopes();
         int index = 0;
         for (int i = 0; i < scopes.size(); i++) {
@@ -581,8 +551,6 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
         TopScope older = index + 1 < scopes.size() ? scopes.get(index + 1) : null;
         TopScope newer = index > 0 ? scopes.get(index - 1) : null;
 
-        scopeStep(bar, older, Iconc.left);
-
         TopCategoryProvider provider = provider(model.selectedCategoryId());
         String label = selected.id();
         if (provider != null && local != null) {
@@ -592,189 +560,110 @@ public class TopUiController implements UiController<TopUiController.TopModel, T
                 // The raw scope id is still a usable label.
             }
         }
-        bar.label(Text.raw((selected.current() ? "[accent]" : "[lightgray]") + label + "[]"),
-                l -> l.align("center").growX().padLeft(6f).padRight(6f));
-
-        scopeStep(bar, newer, Iconc.right);
+        return Kit.pager(width, (selected.current() ? "[accent]" : "[lightgray]") + label + "[]",
+                older != null ? "action:scope:" + older.id() : null,
+                newer != null ? "action:scope:" + newer.id() : null, null);
     }
 
-    private static void scopeStep(Ui.TableBuilder bar, TopScope target, char glyph) {
-        String action = target != null ? "action:scope:" + target.id() : "action:scope:";
-        bar.button(Text.raw((target != null ? "[accent]" : "[gray]") + glyph + "[]"), action, b -> {
-            if (target == null) b.disabled();
-            b.style("cleart").layout(l -> l.size(34f));
+    private void entries(Ui.TableBuilder list, TopModel model, Screen screen, Localization local,
+                         String categoryName) {
+        float width = screen.cards();
+        if (model.entries().isEmpty()) {
+            list.add(Kit.note(width, local != null
+                    ? local.t("top-menu-empty", args("category", categoryName))
+                    : "No entries found.")).row();
+            return;
+        }
+        for (LeaderboardEntry entry : model.entries()) {
+            list.add(entryRow(entry, model, screen, local)).row();
+        }
+    }
+
+    /**
+     * A player of the list; pressing the row opens their profile. A wide screen keeps the value on
+     * the name's line, a phone puts it under the name.
+     */
+    private VNode entryRow(LeaderboardEntry entry, TopModel model, Screen screen, Localization local) {
+        boolean isViewer = Objects.equals(entry.playerUuid(), model.viewerUuid());
+        Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
+        String stripeColor = switch (entry.rank()) {
+            case 1 -> "ffd700";
+            case 2 -> "c0c0c0";
+            case 3 -> "d99058";
+            default -> isViewer ? "ffd37f" : "3b4252";
+        };
+
+        StringBuilder identity = new StringBuilder();
+        if (attrs.containsKey("activeBadge")) {
+            Badge badge = Badge.byId(attrs.get("activeBadge"));
+            if (badge != null) {
+                identity.append(PlayerSettingsUiController.renderBadgeTagExact(badge,
+                        attrs.getOrDefault("badgeColorMode", "default"), attrs.get("playerColorHex"))).append(' ');
+            }
+        }
+        if ("true".equalsIgnoreCase(attrs.get("admin"))) {
+            identity.append("[scarlet]").append(Iconc.admin).append("[] ");
+        }
+        identity.append(isViewer ? "[accent]" : "[white]").append(resolveNickname(entry, attrs, NICKNAME_BUDGET));
+
+        StringBuilder value = new StringBuilder();
+        if (attrs.containsKey("leagueIcon")) {
+            value.append(attrs.get("leagueIcon")).append(' ');
+        } else if (attrs.containsKey("leagueName")) {
+            String league = attrs.get("leagueName");
+            try {
+                RatingLeague rl = RatingLeague.valueOf(league.toUpperCase());
+                league = local != null ? local.t(rl.localizationKey()) : rl.name();
+            } catch (Exception ignored) {
+                // An unknown league is shown as it was stored.
+            }
+            value.append("[purple]").append(TextWidth.escape(league)).append("[] ");
+        }
+        if (attrs.containsKey("rankName")) {
+            String rankName = attrs.get("rankName");
+            value.append("[purple]").append(TextWidth.escape(
+                    local != null ? local.t("hexed-ranks-" + rankName) : rankName)).append("[] ");
+        }
+        value.append(entry.rank() <= 3 ? "[gold]" : "[sky]")
+                .append(formatValue(model.selectedCategoryId(), entry, local)).append("[]");
+
+        String rank = formatRankBadge(entry.rank());
+        float rankWidth = Math.max(RANK_WIDTH, TextWidth.of(rank) + 4f);
+
+        return Kit.row("action:inspect:" + entry.playerUuid(), screen.cards(), isViewer, true, (row, inner) -> {
+            float rest = inner - STRIPE - GAP - rankWidth;
+            row.image("whiteui", l -> l.width(STRIPE).growY().padRight(GAP).color(stripeColor));
+            row.label(Text.raw(rank), l -> l.width(rankWidth));
+            if (screen.columns() > 1) {
+                float name = rest - VALUE_WIDTH - GAP;
+                row.label(Text.raw(TextWidth.fit(identity.toString(), name)), l -> l.width(name).padRight(GAP));
+                row.add(Kit.right(TextWidth.fit(value.toString(), VALUE_WIDTH), VALUE_WIDTH));
+            } else {
+                row.add(Kit.text(TextWidth.fit(identity.toString(), rest) + "[]\n"
+                        + TextWidth.fit(value.toString(), rest), rest));
+            }
         });
     }
 
-    private void renderEntriesList(Ui.TableBuilder list, TopModel model, DialogMetrics metrics, Localization local, String categoryDisplayName) {
-        list.layout(l -> l.growX());
-
-        if (model.entries().isEmpty()) {
-            list.add(Ui.table(empty -> {
-                empty.background("button");
-                empty.margin(14f);
-                empty.layout(l -> l.growX());
-                empty.label(Text.raw("[gray]" + Iconc.info + " " + (local != null ? local.t("top-menu-empty", args("category", categoryDisplayName)) : "No entries found.") + "[]"),
-                        l -> l.align("center").growX());
-            })).row();
-            return;
+    /** Where the viewer stands in the category, whatever page is open. */
+    private String selfRank(TopModel model, Localization local) {
+        if (model.selfRank() == null) {
+            return "[gray]" + Iconc.info + " " + (local != null
+                    ? local.t("top-menu-unranked")
+                    : "You are not ranked in this category yet") + "[]";
         }
-
-        for (LeaderboardEntry entry : model.entries()) {
-            boolean isViewer = Objects.equals(entry.playerUuid(), model.viewerUuid());
-            String clickAction = "action:inspect:" + entry.playerUuid();
-
-            list.buttonTable(clickAction, card -> {
-                card.layout(l -> l.growX().padBottom(3f));
-                card.margin(8f);
-                card.style(isViewer ? "togglet" : "default");
-                if (isViewer) card.checked(true);
-
-                card.table(inner -> {
-                    inner.layout(l -> l.growX());
-
-                    // Left Column: Stripe, Rank, Badges, Admin, Nickname
-                    String stripeColor = switch (entry.rank()) {
-                        case 1 -> "ffd700";
-                        case 2 -> "c0c0c0";
-                        case 3 -> "d99058";
-                        default -> isViewer ? "ffd37f" : "3b4252";
-                    };
-
-                    inner.add(Ui.table(left -> {
-                        left.layout(l -> l.align("left").growX());
-
-                        left.image("whiteui", l -> l.width(4f).growY().padRight(8f).color(stripeColor));
-
-                        String rankBadge = formatRankBadge(entry.rank());
-                        left.label(Text.raw(rankBadge + " "), l -> l.align("left").padRight(4f));
-
-                        Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
-                        if (attrs.containsKey("activeBadge")) {
-                            Badge b = Badge.byId(attrs.get("activeBadge"));
-                            if (b != null) {
-                                String mode = attrs.getOrDefault("badgeColorMode", "default");
-                                String colorHex = attrs.get("playerColorHex");
-                                left.label(Text.raw(PlayerSettingsUiController.renderBadgeTagExact(b, mode, colorHex) + " "),
-                                        l -> l.align("left").padRight(2f));
-                            }
-                        }
-
-                        if ("true".equalsIgnoreCase(attrs.get("admin"))) {
-                            left.label(Text.raw("[scarlet]<" + Iconc.admin + ">[] "), l -> l.align("left").padRight(2f));
-                        }
-
-                        String cleanNick = resolveNickname(entry, attrs, metrics.textBudget());
-                        String namePrefix = isViewer ? "[lime]● [accent]" : "";
-                        left.label(Text.raw(namePrefix + cleanNick + "[]"), l -> l.align("left"));
-                    }));
-
-                    // Right Column: Tags, Value, Chevron
-                    inner.add(Ui.table(right -> {
-                        right.layout(l -> l.align("right"));
-
-                        Map<String, String> attrs = entry.attributes() != null ? entry.attributes() : Map.of();
-                        if (attrs.containsKey("leagueIcon")) {
-                            right.label(Text.raw(attrs.get("leagueIcon") + " "), l -> l.align("right").padRight(4f));
-                        } else if (attrs.containsKey("leagueName")) {
-                            String locLeague = attrs.get("leagueName");
-                            try {
-                                RatingLeague rl = RatingLeague.valueOf(attrs.get("leagueName").toUpperCase());
-                                locLeague = local != null ? local.t(rl.localizationKey()) : rl.name();
-                            } catch (Exception ignored) {}
-                            right.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locLeague) + "][] "), l -> l.align("right").padRight(6f));
-                        }
-                        if (attrs.containsKey("rankName")) {
-                            String rankName = attrs.get("rankName");
-                            String locRank = local != null ? local.t("hexed-ranks-" + rankName) : rankName;
-                            right.label(Text.raw("[purple][[" + PlayerSettingsUiController.escapeMarkup(locRank) + "][] "), l -> l.align("right").padRight(6f));
-                        }
-
-                        String valColor = entry.rank() <= 3 ? "[gold]" : "[sky]";
-                        String formattedVal = formatValue(model.selectedCategoryId(), entry, local);
-                        right.label(Text.raw(valColor + formattedVal + "[] "), l -> l.align("right").padRight(6f));
-
-                        right.label(Text.raw("[gray]" + Iconc.players + "[]"), l -> l.align("right"));
-                    }));
-                });
-            });
-            list.row();
+        String rank = "[#ffd37f]#" + model.selfRank() + "[]";
+        String line = "[lime]●[] " + (local != null
+                ? local.t("top-menu-self-rank-line", args("rank", rank))
+                : "Your rank: " + rank);
+        boolean onPage = model.entries().stream().anyMatch(e -> Objects.equals(e.playerUuid(), model.viewerUuid()));
+        if (onPage) {
+            return line + "  [gray](" + (local != null ? local.t("top-menu-on-this-page") : "on this page") + ")[]";
         }
-    }
-
-    private void renderSelfRankCard(Ui.TableBuilder slot, TopModel model, DialogMetrics metrics, Localization local) {
-        slot.add(Ui.table(card -> {
-            card.background("button");
-            card.margin(8f);
-            card.layout(l -> l.growX());
-
-            if (model.selfRank() != null) {
-                boolean onPage = model.entries().stream().anyMatch(e -> Objects.equals(e.playerUuid(), model.viewerUuid()));
-                String rankStr = "[#ffd37f]#" + model.selfRank() + "[]";
-                String text = local != null
-                        ? local.t("top-menu-self-rank-line", args("rank", rankStr))
-                        : "Your rank: " + rankStr;
-
-                card.label(Text.raw("[lime]●[] " + text), l -> l.align("left").growX());
-
-                if (onPage) {
-                    String onPageStr = local != null ? local.t("top-menu-on-this-page") : "on this page";
-                    card.label(Text.raw("[gray](" + onPageStr + ")[]"), l -> l.align("right"));
-                } else if (model.selfPrimaryValue() != null) {
-                    card.label(Text.raw("[gray]|[] [sky]" + model.selfPrimaryValue() + "[]"), l -> l.align("right"));
-                }
-            } else {
-                String unrankedStr = local != null
-                        ? local.t("top-menu-unranked")
-                        : "You are not ranked in this category yet";
-                card.label(Text.raw("[gray]" + Iconc.info + " " + unrankedStr + "[]"), l -> l.align("left").growX());
-            }
-        }));
-    }
-
-    private void renderPaginationBar(Ui.TableBuilder slot, TopModel model, Localization local) {
-        slot.add(Ui.table(bar -> {
-            bar.layout(l -> l.growX().padTop(2f));
-
-            // Prev Button
-            boolean canPrev = !model.cursorBackStack().isEmpty() && model.currentPage() > 1;
-            String rawPrev = local != null ? local.t("previous") : null;
-            if (rawPrev == null || rawPrev.isBlank()) rawPrev = "« Prev";
-            String cleanPrev = Strings.stripColors(rawPrev).replace("«", "").trim();
-            String prevLabel = (canPrev ? "[accent]« " : "[gray]« ") + cleanPrev + "[]";
-            bar.button(Text.raw(prevLabel), "action:page:prev", b -> {
-                if (!canPrev) b.disabled();
-                b.style("cleart").layout(l -> l.height(34f).padRight(12f));
-            });
-
-            // Page Info
-            String pageInfo = "[white]" + model.currentPage() + " / " + model.totalPages() + "[]";
-            bar.label(Text.raw(pageInfo), l -> l.align("center").growX().padLeft(6f).padRight(6f));
-
-            // Refresh Button
-            bar.button(Text.raw("[sky]" + Iconc.refresh + "[]"), "action:refresh", b -> b
-                    .style("cleart")
-                    .layout(l -> l.size(34f).padRight(8f)));
-
-            // Next Button
-            boolean canNext = model.hasNext() && model.nextCursor() != null;
-            String rawNext = local != null ? local.t("next") : null;
-            if (rawNext == null || rawNext.isBlank()) rawNext = "Next »";
-            String cleanNext = Strings.stripColors(rawNext).replace("»", "").trim();
-            String nextLabel = (canNext ? "[accent]" : "[gray]") + cleanNext + " »[]";
-            bar.button(Text.raw(nextLabel), "action:page:next", b -> {
-                if (!canNext) b.disabled();
-                b.style("cleart").layout(l -> l.height(34f).padRight(12f));
-            });
-
-            // Close Button
-            String rawClose = local != null ? local.t("close") : null;
-            if (rawClose == null || rawClose.isBlank()) rawClose = "Close";
-            String cleanClose = Strings.stripColors(rawClose).trim();
-            bar.button(Text.raw("[scarlet]" + cleanClose + "[]"), "action:close", b -> b
-                    .style("cleart")
-                    .layout(l -> l.height(34f).padLeft(8f)));
-        }));
+        if (model.selfPrimaryValue() != null) {
+            return line + "  [gray]|[] [sky]" + model.selfPrimaryValue() + "[]";
+        }
+        return line;
     }
 
     // =========================================================================

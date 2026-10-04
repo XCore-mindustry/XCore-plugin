@@ -8,19 +8,25 @@ import org.xcore.plugin.rating.view.LadderViews;
 import org.xcore.plugin.rating.view.SeasonCard;
 import org.xcore.plugin.rating.view.SeasonOverview;
 import org.xcore.plugin.session.Session;
-import org.xcore.ui.Text;
+import org.xcore.plugin.ui.kit.Accent;
+import org.xcore.plugin.ui.kit.Kit;
+import org.xcore.plugin.ui.kit.Screen;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
-import org.xcore.ui.responsive.DialogMetrics;
 import org.xcore.ui.runtime.ControllerContext;
 import org.xcore.ui.runtime.UiController;
 import org.xcore.ui.runtime.UpdateResult;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.xcore.plugin.ui.kit.Kit.GAP;
 
 /**
  * The {@code /season} dialog: one card per rating ladder with its current season, the time it
- * has left, the viewer's own standing and the winners of the season before.
+ * has left, the viewer's own standing and the winners of the season before, laid out once per
+ * {@link Screen}.
  */
 public class SeasonUiController implements UiController<SeasonUiController.SeasonModel, SeasonUiController.SeasonEvent> {
 
@@ -84,77 +90,64 @@ public class SeasonUiController implements UiController<SeasonUiController.Seaso
 
     @Override
     public VNode render(SeasonModel model) {
-        DialogMetrics metrics = DialogMetrics.standard();
+        return Screen.each(screen -> window(model, screen));
+    }
+
+    /** The window as one {@link Screen} sees it. */
+    VNode window(SeasonModel model, Screen screen) {
+        float width = screen.width();
         Localization local = session != null ? session.locale() : null;
 
-        return Ui.table(root -> {
-            root.background("pane");
-            root.margin(8f);
-            root.layout(l -> l.growX().maxWidth(metrics.maxDialogWidth()).pad(4f));
+        return Kit.window(window -> {
+            window.add(Kit.header(width, "[gold]" + Iconc.star + "[] [white]"
+                    + (local != null ? local.t("season-menu-title") : "season-menu-title") + "[]")).row();
+            window.add(Kit.line(width, Accent.GOLD)).row();
 
-            root.add(Ui.table(h -> {
-                h.layout(l -> l.growX().padBottom(4f));
-                h.label(Text.join(Text.raw("[gold]" + Iconc.star + "[] [white]"), Text.t("season-menu-title"), Text.raw("[]")),
-                        l -> l.align("left").growX());
-                h.button(Text.raw(" [scarlet]" + Iconc.cancel + "[] "), "action:close", b -> b
-                        .style("cleart")
-                        .layout(l -> l.size(32f)));
-            })).row();
-
-            root.image("whiteui", l -> l.growX().height(2f).padBottom(4f).color("3b4252")).row();
-
-            root.pane(pane -> {
-                pane.layout(l -> l.growX().growY().maxHeight(metrics.maxBodyHeight()));
-                pane.table(body -> {
-                    body.layout(l -> l.growX());
-                    if (model.ladders().isEmpty() || local == null) {
-                        body.add(Ui.table(empty -> {
-                            empty.background("button");
-                            empty.margin(14f);
-                            empty.layout(l -> l.growX());
-                            empty.label(Text.join(Text.raw("[gray]" + Iconc.info + " "), Text.t("season-menu-empty"), Text.raw("[]")),
-                                    l -> l.align("center").growX());
-                        })).row();
-                        return;
-                    }
-                    for (LadderEntry entry : model.ladders()) {
-                        body.add(Ui.table(card -> renderCard(card, entry, local))).row();
-                    }
-                });
-            }).row();
+            Kit.body(window, screen, body -> {
+                if (model.ladders().isEmpty() || local == null) {
+                    body.add(Kit.note(screen.cards(), local != null ? local.t("season-menu-empty") : "season-menu-empty")).row();
+                    return;
+                }
+                List<VNode> cards = new ArrayList<>();
+                for (int i = 0; i < model.ladders().size(); i++) {
+                    cards.add(ladderCard(model.ladders().get(i), Accent.at(i), screen.card(), local));
+                }
+                body.add(Kit.columns(screen, cards)).row();
+            });
         });
     }
 
-    private void renderCard(Ui.TableBuilder card, LadderEntry entry, Localization local) {
+    /** A ladder's season: where it stands and where the viewer does, its prizes, the winners before, and the way to its leaderboard. */
+    private VNode ladderCard(LadderEntry entry, Accent accent, float width, Localization local) {
         SeasonCard text = views.card(entry.overview(), local);
 
-        card.background("button");
-        card.margin(10f);
-        card.layout(l -> l.growX().padBottom(6f));
+        return Kit.card(width, accent, Iconc.star + " " + text.title(), (content, inner) -> {
+            content.add(Kit.text(lines(text.lines()), inner)).row();
+            if (!text.prizes().isEmpty()) {
+                content.add(section(text.prizeTitle(), text.prizes(), inner)).row();
+            }
+            if (!text.podium().isEmpty()) {
+                content.add(section(text.podiumTitle(), text.podium(), inner)).row();
+            }
+            if (entry.topCategoryId() != null) {
+                content.add(Ui.table(open -> {
+                    open.layout(l -> l.padTop(GAP));
+                    open.add(Kit.button(new Kit.Action("[accent]" + Iconc.list + "[] " + local.t("season-menu-open-top"),
+                            "action:top:" + entry.topCategoryId()), inner));
+                })).row();
+            }
+        });
+    }
 
-        card.label(Text.raw("[accent]" + text.title() + "[]"), l -> l.align("left").growX().padBottom(4f)).row();
-        for (String line : text.lines()) {
-            if (!line.isBlank()) {
-                card.label(Text.raw(line), l -> l.align("left").growX().padBottom(2f)).row();
-            }
-        }
-        if (!text.prizes().isEmpty()) {
-            card.label(Text.raw(text.prizeTitle()), l -> l.align("left").growX().padTop(6f).padBottom(2f)).row();
-            for (String line : text.prizes()) {
-                card.label(Text.raw(line), l -> l.align("left").growX().padBottom(2f)).row();
-            }
-        }
-        if (!text.podium().isEmpty()) {
-            card.label(Text.raw(text.podiumTitle()), l -> l.align("left").growX().padTop(6f).padBottom(2f)).row();
-            for (String line : text.podium()) {
-                card.label(Text.raw(line), l -> l.align("left").growX().padBottom(2f)).row();
-            }
-        }
-        if (entry.topCategoryId() != null) {
-            card.button(Text.join(Text.raw("[accent]" + Iconc.list + "[] "), Text.t("season-menu-open-top")),
-                    "action:top:" + entry.topCategoryId(), b -> b
-                            .style("cleart")
-                            .layout(l -> l.growX().height(36f).padTop(6f)));
-        }
+    /** A heading and what is under it, set off from the lines above. */
+    private static VNode section(String title, List<String> lines, float width) {
+        return Ui.table(section -> {
+            section.layout(l -> l.padTop(GAP));
+            section.add(Kit.text(title + "\n" + lines(lines), width));
+        });
+    }
+
+    private static String lines(List<String> lines) {
+        return lines.stream().filter(line -> !line.isBlank()).collect(Collectors.joining("\n"));
     }
 }

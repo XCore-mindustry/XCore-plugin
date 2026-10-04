@@ -18,6 +18,9 @@ import org.xcore.plugin.ui.flow.MenuScreen;
 import org.xcore.ui.Text;
 import org.xcore.ui.Ui;
 import org.xcore.ui.VNode;
+import org.xcore.ui.runtime.ControllerContext;
+import org.xcore.ui.runtime.UiController;
+import org.xcore.ui.runtime.UpdateResult;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -67,6 +70,41 @@ class MenuServiceUiTest {
 
         verify(gateway).menuBuilder(eq(session.player), eq(menuService.getMenuBuilderId()), eq(1L), eq("Test Title"), eq(true), eq(true), eq(false), any());
         assertThat(session.activeScreen()).isNull();
+    }
+
+    /** A controller with one fixed screen. */
+    private static final class StaticController implements UiController<String, String> {
+        @Override
+        public String initialModel(Object context) {
+            return "model";
+        }
+
+        @Override
+        public UpdateResult<String> update(String model, String event, ControllerContext context) {
+            return UpdateResult.of(model);
+        }
+
+        @Override
+        public String parseEvent(MenuResult result) {
+            return "event";
+        }
+
+        @Override
+        public VNode render(String model) {
+            return Ui.table(t -> t.label(Text.raw("Guide")));
+        }
+    }
+
+    @Test
+    @DisplayName("openUi opens a dialog sized by its content unless asked to fill the screen")
+    void openUi_passesFillScreenToTheClient() {
+        menuService.openUi(session, new StaticController(), "model");
+        verify(gateway).menuBuilder(eq(session.player), eq(menuService.getMenuBuilderId()), anyLong(), isNull(),
+                eq(false), eq(true), eq(false), any());
+
+        menuService.openUi(session, new StaticController(), "model", true);
+        verify(gateway).menuBuilder(eq(session.player), eq(menuService.getMenuBuilderId()), anyLong(), isNull(),
+                eq(false), eq(true), eq(true), any());
     }
 
     @Test

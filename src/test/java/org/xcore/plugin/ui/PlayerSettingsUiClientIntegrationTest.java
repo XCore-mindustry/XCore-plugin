@@ -35,8 +35,8 @@ import static org.mockito.Mockito.*;
 
 /**
  * End-to-end integration test driving MenuService, UiSession, and PlayerSettingsUiController
- * through DeterministicUiLoop and HeadlessMenuClient to verify mobile landscape scrolling,
- * responsive layout constraints, partial slot updates, and cancel/close handling.
+ * through DeterministicUiLoop and HeadlessMenuClient to verify the delivered layout, tab
+ * switches, saving, and dismissal.
  */
 class PlayerSettingsUiClientIntegrationTest {
 
@@ -156,8 +156,8 @@ class PlayerSettingsUiClientIntegrationTest {
     }
 
     @Test
-    @DisplayName("Open settings on client delivers scrollable pane with max height and close buttons")
-    void openSettings_deliversScrollablePaneWithCloseButtons() {
+    @DisplayName("Open settings on client delivers a scrollable pane for every screen class")
+    void openSettings_deliversScrollablePaneForEveryScreenClass() {
         playerMenu.openSettingsUi(session, session.data);
         int menuId = menuService.getMenuBuilderId();
 
@@ -175,12 +175,11 @@ class PlayerSettingsUiClientIntegrationTest {
                 .orElseThrow();
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
-        // Verify mobile responsiveness: ScrollPane exists with constrained maxHeight
+        // Verify mobile responsiveness: a pane of cards per screen class, picked by the client
         assertThat(dsl).contains("pane{");
-        assertThat(dsl).contains("maxHeight: 460");
+        assertThat(dsl).contains("condition: \"width < 490\"");
+        assertThat(dsl).contains("condition: \"width >= 800\"");
 
-        // Verify top-right quick close button and footer cancel button both exist
-        assertThat(dsl).contains("action:close");
         assertThat(dsl).contains("action:save");
         assertThat(dsl).contains("action:tab:profile");
         assertThat(dsl).contains("action:tab:badges");
@@ -206,28 +205,10 @@ class PlayerSettingsUiClientIntegrationTest {
         String dsl = UiDslWriter.write((NodeBuilder<?>) lastMsg.body().decode());
 
         assertThat(dsl).contains("action:badges_filter:my");
-        assertThat(dsl).contains("action:toggle_symbol_color");
+        assertThat(dsl).contains("action:symbol_color:player-color");
 
         // Dialog remains visible on client
         assertThat(loop.client().isVisible(menuId)).isTrue();
-    }
-
-    @Test
-    @DisplayName("Clicking close button closes the settings dialog cleanly")
-    void clickClose_hidesDialogAndClosesSession() {
-        playerMenu.openSettingsUi(session, session.data);
-        int menuId = menuService.getMenuBuilderId();
-        assertThat(loop.stepServerToClient()).isTrue();
-        assertThat(loop.client().isVisible(menuId)).isTrue();
-
-        // Client clicks top close (✕) or bottom Cancel button
-        loop.client().click(menuId, "action:close");
-        assertThat(loop.stepClientToServer()).isTrue();
-
-        // Server emits Hide message to client
-        assertThat(loop.stepServerToClient()).isTrue();
-        assertThat(loop.client().isVisible(menuId)).isFalse();
-        assertThat(session.hasActiveUiSession()).isFalse();
     }
 
     @Test
@@ -241,9 +222,6 @@ class PlayerSettingsUiClientIntegrationTest {
         var result = new MenuResult("action:save");
         result.values.put("field_nickname", "NewMobileNick");
         result.values.put("field_description", "Updated bio");
-        result.values.put("check_global_chat", false);
-        result.values.put("check_discord_relay", true);
-        result.values.put("check_leaderboard", false);
 
         menuService.onMenuBuilderResult(session, result);
         loop.serverPost().runTurn();
@@ -260,9 +238,6 @@ class PlayerSettingsUiClientIntegrationTest {
         // Verify profile service received form updates
         verify(profileSettings).updateCustomNickname(eq(session.data), eq("NewMobileNick"), eq(true), eq(true));
         verify(profileSettings).updateDescription(eq(session.data), eq("Updated bio"));
-        verify(profileSettings).updateGlobalChatVisible(eq(session.data), eq(false));
-        verify(profileSettings).updateDiscordRelayVisible(eq(session.data), eq(true));
-        verify(profileSettings).updateLeaderboard(eq(session.data), eq(false));
     }
 
     @Test
